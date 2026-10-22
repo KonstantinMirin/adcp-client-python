@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Payload sent by a rights holder to a buyer's revocation_webhook when rights are revoked. The buyer must cease creative delivery by effective_at. Partial revocation is supported \u2014 if revoked_uses is present, only those uses are revoked.",
+  "properties": {
+    "brand_id": {
+      "description": "Brand identifier of the rights subject",
+      "type": "string",
+      "x-entity": "rights_holder_brand"
+    },
+    "context": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "title": "Context Object",
+      "type": "object"
+    },
+    "effective_at": {
+      "description": "When the revocation takes effect. Immediate revocations use current time. Grace periods use a future time. The buyer must stop serving creative using these rights by this time.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "idempotency_key": {
+      "description": "Sender-generated key stable across retries of the same revocation notification. Rights holders MUST generate a cryptographically random value (UUID v4 recommended) per distinct revocation event and reuse the same key when retrying delivery. Buyers MUST dedupe by this key, scoped to the authenticated sender identity (HMAC secret or Bearer credential); keys from different senders are independent.",
+      "maxLength": 255,
+      "minLength": 16,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "type": "string"
+    },
+    "reason": {
+      "description": "Human-readable reason for revocation",
+      "type": "string"
+    },
+    "revoked_uses": {
+      "description": "If present, only these uses are revoked (partial revocation). If absent, all uses under the grant are revoked.",
+      "items": {
+        "enum": [
+          "name",
+          "sync",
+          "voice",
+          "likeness",
+          "editorial",
+          "signature",
+          "commercial",
+          "catchphrase",
+          "endorsement",
+          "motion_capture",
+          "background_music",
+          "ai_generated_image"
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "rights_id": {
+      "description": "The revoked rights grant identifier",
+      "type": "string",
+      "x-entity": "rights_grant"
+    }
+  },
+  "required": [
+    "idempotency_key",
+    "rights_id",
+    "brand_id",
+    "reason",
+    "effective_at"
+  ],
+  "title": "Revocation Notification",
+  "type": "object"
+}

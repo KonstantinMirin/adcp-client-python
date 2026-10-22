@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Buyer-authored pin to one exact immutable audience-evidence snapshot selected during discovery. Sellers MUST match all four fields against a single published snapshot; they MUST reject the package rather than substitute a newer version or reuse snapshot_id with changed content. A confirmed package MUST return the same identity in audience_evidence_selections with decision_use package_construction.",
+  "properties": {
+    "content_digest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "evidence_id": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "audience_evidence"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "snapshot_id": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "audience_evidence_snapshot"
+    },
+    "version": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "evidence_id",
+    "snapshot_id",
+    "version",
+    "content_digest"
+  ],
+  "title": "Audience Evidence Pin",
+  "type": "object"
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Event-specific data for attribution and reporting",
+  "properties": {
+    "content_category": {
+      "description": "Category of the product or content",
+      "type": "string"
+    },
+    "content_ids": {
+      "description": "Item identifiers for catalog attribution. Values are matched against catalog items using the identifier type declared by the catalog's content_id_type field (e.g., SKUs, GTINs, or vertical-specific IDs like job_id).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "content_name": {
+      "description": "Name of the product or content",
+      "type": "string"
+    },
+    "content_type": {
+      "description": "Category of content associated with the event (e.g., 'product', 'job', 'hotel'). Corresponds to the catalog type when used for catalog attribution.",
+      "type": "string"
+    },
+    "contents": {
+      "description": "Per-item details for e-commerce events",
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "brand": {
+            "description": "Brand name of this item",
+            "type": "string"
+          },
+          "id": {
+            "description": "Product or content identifier",
+            "type": "string"
+          },
+          "price": {
+            "description": "Price per unit of this item",
+            "minimum": 0,
+            "type": "number"
+          },
+          "quantity": {
+            "description": "Quantity of this item",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "currency": {
+      "description": "ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.",
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "num_items": {
+      "description": "Number of items in the event",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "order_id": {
+      "description": "Unique order or transaction identifier",
+      "type": "string"
+    },
+    "progress_percent": {
+      "description": "Content progress percentage reached, primarily for `watch_milestone` events. Use 25, 50, 75, or 100 for quartiles, or another publisher-defined threshold. Do not use `value` for non-monetary progress.",
+      "maximum": 100,
+      "minimum": 0,
+      "type": "number"
+    },
+    "progress_seconds": {
+      "description": "Content progress duration reached in seconds, primarily for `watch_milestone` events. Use when the milestone is time-based rather than percentage-based.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "search_string": {
+      "description": "Search query for search events",
+      "type": "string"
+    },
+    "value": {
+      "description": "Monetary value of the event. For an event source that declares value_currencies, currency is required and MUST appear in that list. Legacy sources without the new contract remain schema-compatible but are ineligible for canonical ROAS.",
+      "minimum": 0,
+      "type": "number"
+    }
+  },
+  "title": "Event Custom Data",
+  "type": "object"
+}

@@ -74,13 +74,15 @@ from __future__ import annotations
 
 import functools
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from importlib import resources
-from typing import Any, ClassVar, Literal, NamedTuple, TypeVar
+from typing import Any, ClassVar, Literal, NamedTuple, TypeVar, Union
 
 import jsonschema
 from pydantic import BaseModel, ConfigDict, TypeAdapter
-from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError
+from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError, core_schema
+
+from adcp.types._runtime import RuleBound, refuse
 
 #: The package the emitter writes both the modules and the documents into.  One
 #: JSON file per document, at the document's own bundle-relative path, so
@@ -201,29 +203,26 @@ def _refuse(schema: dict, payload: Any, name: str) -> None:
     no checker installed asserts nothing, silently, which is why
     ``codegen.emit`` gates its type selection on the same set rather than on a
     list of formats someone wrote down.
+
+    The raise goes through ``_runtime.refuse``, which is also what the rule half
+    raises through (D6).  A keyword like ``not`` or ``dependencies`` is refused by
+    BOTH halves -- the schema half for a ``strict_validate`` caller, the
+    after-validator for a ``model_validate`` one -- and two spellings of one
+    refusal is one place for them to grow two error shapes for one keyword.
     """
     validator = jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
     errors = sorted(
         validator(schema, format_checker=validator.FORMAT_CHECKER).iter_errors(payload),
         key=lambda e: [str(p) for p in e.absolute_path],
     )
-    if not errors:
-        return
-    raise ValidationError.from_exception_data(
+    refuse(
         name,
         [
-            InitErrorDetails(
-                type=PydanticCustomError(
-                    e.validator if isinstance(e.validator, str) else "schema",
-                    # A fixed template with the text in the context: a jsonschema
-                    # message carries braces of its own ("{'a': 1} is not of type
-                    # 'string'") and a message used AS the template would be read
-                    # as placeholders.
-                    "{detail}",
-                    {"detail": e.message},
-                ),
-                loc=tuple(e.absolute_path),
-                input=e.instance,
+            (
+                e.validator if isinstance(e.validator, str) else "schema",
+                tuple(e.absolute_path),
+                e.message,
+                e.instance,
             )
             for e in errors
         ],
@@ -270,7 +269,15 @@ def strict_alias(ref: SchemaRef, symbol: str, alias: Any) -> Callable[[Any], Any
     return strict_validate
 
 
-class AdCPBaseModel(BaseModel):
+class AdCPBaseModel(RuleBound):
+    """The base every emitted class inherits.
+
+    ``RuleBound`` rather than ``BaseModel`` directly: it carries the one
+    ``model_validator(mode="after")`` that evaluates ``_adcp_rules``, so a class
+    the emitter writes a rule tuple onto needs no validator of its own and a class
+    with no rule inherits the empty tuple and pays one attribute lookup (D6).
+    """
+
     model_config = ConfigDict(extra="ignore", regex_engine=REGEX_ENGINE)
 
     #: Declared and not assigned: every emitted class writes its own, and a
@@ -295,3 +302,188 @@ class AdCPBaseModel(BaseModel):
         """
         _refuse(schema_at(cls.__adcp_schema__), payload, cls.__name__)
         return cls.model_validate(payload)
+
+
+class BranchDispatchMixin:
+    """A union root's base: receiving a payload resolves it to the branch it satisfies.
+
+    D2 makes a ``oneOf``/``anyOf`` root a base plus one subclass per branch, and the
+    ROOT'S name binds the base -- so every referrer imports one symbol, and a caller can
+    ``isinstance`` a received value against the arm it came back as.  Four parts, and each
+    one exists because one of the others does not reach a path.  Each claim below was
+    measured on this pydantic pin; the measurement is named beside it.
+
+    **1. :meth:`__get_pydantic_core_schema__` installs the union as the VALIDATOR.**  That
+    covers every path pydantic validates *through*: a nested field, a ``TypeAdapter``,
+    ``model_validate``.  Overriding ``model_validate`` reaches one of those three, and most
+    union roots are nested -- which is where an override leaves a document satisfying no
+    branch to parse as a loose base.
+
+    The schema returned is the base's OWN model schema wrapped in a function-wrap
+    validator that dispatches to the union, rather than the union itself.  Both validate
+    identically; the difference is what the class RENDERS.  A core schema that IS the union
+    renders ``{"anyOf": [...]}`` and so states none of the root's own facts -- no ``type``,
+    no ``description``, no ``additionalProperties`` -- and the schema comparison reads those
+    off ``model_json_schema()``.  Measured: the union-as-top-schema form reports
+    ``missing`` for ``/type`` and ``/description`` on every union root in the bundle, which
+    is a model that drops a fact its document states.  A function-wrap takes its JSON
+    schema from the schema it wraps, so wrapping the model schema states the root's facts
+    and dispatches to the branches, and nothing has to put the document back into the model
+    by hand.
+
+    **2. :meth:`__new__` covers ``Base(**data)``**, which no schema can reach:
+    ``BaseModel.__init__`` validates with ``self_instance=self``, so the object is already
+    allocated when validation runs.  Measured without this method: ``Base(kind="b")``
+    returns a ``Base`` -- validation passes, the union matched, and the instance is still
+    the base -- and pydantic warns ``A custom validator is returning a value other than
+    self``.  ``__new__`` asks the base's own validator, which IS that union, so all four
+    paths refuse and resolve identically.  Direct construction therefore validates twice
+    and is idempotent, and ``model_validate`` stays single-pass.
+
+    It dispatches only when it was given data, because ``model_construct``, ``copy`` and
+    pickle all call ``cls.__new__(cls)`` with none and must keep getting an allocation.
+    That costs no coverage: ``Base()`` is still refused, by ``__init__``'s own validation
+    against the union.
+
+    **3. The base is the class that DECLARES ``_branch_models``**
+    (``"_branch_models" not in cls.__dict__``).  A class that inherits it gets its own
+    shape back, and that is the whole of subclass support: a branch keeps its own schema,
+    and so does a consumer's refinement declared elsewhere
+    (``class GetProductsRequest(BuyerRequest, LibraryGetProductsRequest)``).  Membership
+    (``cls in cls._branch_models``) is NOT sufficient -- it admits both "is a branch" and
+    "is an unrelated subclass", and only the second matters once the schema is being
+    replaced.
+
+    **4. The union is the validator and never the serializer.**  Put it in the
+    serialization slot and the class has no serializer for an instance of itself: the
+    union's serializer matches no branch, falls back to inferring a model, finds the same
+    union and recurses.  Measured: ``model_dump_json`` on a base instance raises
+    ``PydanticSerializationError: Circular reference detected`` and ``model_dump()``
+    silently returns the model INSTANCE instead of a dict.  So the slot carries a wrap
+    serializer, and it is set on the schema the wrapper HOLDS -- when the base's own schema
+    comes back as a ``definitions`` node the key goes on the node inside it, because a
+    ``serialization`` key on a ``definitions`` node is not consulted.
+
+    Its inner schema is the branches' union with the base's own model schema as the LAST
+    member, not the base's model schema alone.  Measured three ways on one fixture: with no
+    slot, a base instance raises; with the base's model schema alone, a base instance dumps
+    but a BRANCH reached through a base-typed field comes back as
+    ``{"shared": null}`` -- the arm's own fields dropped silently; with the union plus the
+    base, both dump in full.  The base as the last member is what terminates, because it is
+    a plain model schema rather than this class's, so the fallback has somewhere to land.
+
+    The branches subclass the base, so they do not exist while the base is being built: the
+    hook returns the base's own schema then, and the declaring module calls
+    ``model_rebuild(force=True)`` after the branches are defined to install the union.
+
+    Two facts the emitter writes onto the base because they are not recoverable at runtime:
+
+    * :attr:`_ROOT_REQUIRED` -- the fields the ROOT requires, as opposed to the ones that
+      select a branch.  A combinator refusal reports every absent field with the two kinds
+      mixed together and no intersection over those errors separates them.
+    * :meth:`_branch_combinator` -- ``anyOf`` or ``oneOf``.  A refusal has to name a JSON
+      Schema keyword, and a document satisfying no branch fails each branch at FIELD
+      validation, where pydantic reports ``missing`` -- which is not in that vocabulary.
+      A method and not a field, for D7's reason: pydantic does not let a model field shadow
+      an attribute of the same name, so a document with a property called
+      ``_branch_combinator`` would read the wrong one.
+    """
+
+    #: The branch classes, assigned by the declaring module after they are defined.
+    #: Declared here so an inheriting class does not find it in its OWN ``__dict__``.
+    _branch_models: ClassVar[tuple[type[BaseModel], ...]] = ()
+    #: The root's own required fields, which a branch refusal must not be blamed on.
+    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        """The document's own union keyword.  The emitter overrides this per base."""
+        return "oneOf"
+
+    @classmethod
+    def _dispatching(cls) -> bool:
+        """Is ``cls`` the base whose shape the union replaces?  See part 3."""
+        return bool(cls.__dict__.get("_branch_models"))
+
+    @classmethod
+    def _branch_adapter(cls) -> TypeAdapter:
+        """A ``TypeAdapter`` over the branches, built once and held on the base.
+
+        Built lazily rather than as a bare ``SchemaValidator`` over the union core schema
+        the hook assembles: that schema references the branch models through definitions
+        held by the generator that is still running, so building a validator from it raises
+        ``SchemaError: definition ... was never filled``.  A ``TypeAdapter`` generates a
+        complete schema of its own, once per base.
+        """
+        got = cls.__dict__.get("_branch_adapter_cache")
+        if got is None:
+            got = TypeAdapter(Union[cls._branch_models])  # noqa: UP007 -- a runtime subscript
+            cls._branch_adapter_cache = got  # type: ignore[attr-defined]
+        return got
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source: Any, handler: Any) -> Any:
+        own = handler(source)
+        if not cls._dispatching():
+            return own
+        # The branches are generated through the handler so their definitions are
+        # registered in the schema this hook is contributing to; the VALIDATOR is the
+        # adapter above, which is complete on its own.
+        members = [handler.generate_schema(branch) for branch in cls._branch_models]
+        held = own["schema"] if own["type"] == "definitions" else own
+        wrapped = core_schema.no_info_wrap_validator_function(
+            lambda value, _handler: cls._dispatch(value),
+            held,
+            serialization=core_schema.wrap_serializer_function_ser_schema(
+                lambda value, nested: nested(value),
+                schema=core_schema.union_schema([*members, held]),
+            ),
+        )
+        return {**own, "schema": wrapped} if own["type"] == "definitions" else wrapped
+
+    @classmethod
+    def _dispatch(cls, value: Any) -> Any:
+        try:
+            return cls._branch_adapter().validate_python(value)
+        except ValidationError as err:
+            raise cls._no_branch(value, err) from None
+
+    @classmethod
+    def _no_branch(cls, value: Any, err: ValidationError) -> ValidationError:
+        """The refusal for a payload no branch admits, named in the DOCUMENT'S vocabulary.
+
+        A root-required field that is absent is reported as ``required`` at its own
+        location, because that is what the document refuses on and it is not the branches'
+        doing.  Anything else is the combinator: the payload reached the union and no
+        member took it.  ``err`` is not re-raised -- it carries one ``missing`` per field
+        per branch, which names a keyword the document does not use.
+        """
+        absent = (
+            [k for k in cls._ROOT_REQUIRED if k not in value] if isinstance(value, Mapping) else []
+        )
+        details = [
+            InitErrorDetails(
+                type=PydanticCustomError(
+                    "required", "{detail}", {"detail": f"{key!r} is a required property"}
+                ),
+                loc=(key,),
+                input=value,
+            )
+            for key in absent
+        ] or [
+            InitErrorDetails(
+                type=PydanticCustomError(
+                    cls._branch_combinator(),
+                    "{detail}",
+                    {"detail": f"is not valid under any of the {len(cls._branch_models)} branches"},
+                ),
+                loc=(),
+                input=value,
+            )
+        ]
+        return ValidationError.from_exception_data(cls.__name__, details)
+
+    def __new__(cls, *args: Any, **data: Any) -> Any:
+        if data and cls._dispatching():
+            return cls.__pydantic_validator__.validate_python(data)  # type: ignore[attr-defined]
+        return super().__new__(cls)

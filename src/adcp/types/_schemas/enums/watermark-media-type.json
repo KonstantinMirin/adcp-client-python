@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Media category of a content watermark. Identifies what kind of content the watermark is applied to, which determines the detection and verification methods required.",
+  "enum": [
+    "audio",
+    "image",
+    "video",
+    "text"
+  ],
+  "enumDescriptions": {
+    "audio": "Watermark applied to audio content (e.g., spread-spectrum, echo hiding)",
+    "image": "Watermark applied to image content (e.g., spatial domain, frequency domain)",
+    "text": "Watermark applied to text content (e.g., synonym substitution, structural modification)",
+    "video": "Watermark applied to video content (e.g., per-frame image watermarking, temporal watermarking)"
+  },
+  "title": "Watermark Media Type",
+  "type": "string"
+}

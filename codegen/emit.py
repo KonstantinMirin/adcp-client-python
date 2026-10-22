@@ -9,21 +9,31 @@ grades the tree against exactly this):
     python -m codegen.emit --bundle schemas/cache/3.2 $(python -c 'from pathlib \
       import Path; from codegen import bundle; b = Path("schemas/cache/3.2"); \
       print(*[d for d in bundle.portable(b) if bundle.is_leaf_object(bundle.read(b, d)) \
-      or bundle.references_a_property(bundle.read(b, d))])')
+      or bundle.references_a_property(bundle.read(b, d)) \
+      or bundle.composes_at_the_root(bundle.read(b, d))])')
 
 A document this command does not name is still emitted when a named one
 REFERENCES it: a module cannot import a symbol from a module no run wrote, so
 ``emit`` walks ``$ref`` transitively and the run emits the closure.
 
 **This module is the walk, and it decides; it writes no annotation text.**
-``docs/plan/rebuild-plan.md`` §1 puts the seam at the decision: everything here
-reads the schema and decides what a node IS -- a class, a type, a field, a
-constraint, a default, a name, what ``extra`` is -- and ``codegen.compiler``
-hands that decision to ``datamodel-code-generator``'s pydantic-v2 model layer,
-which writes the Python.  dmcg's parser never runs.  What this module still owns
-in the output is the MODULE around the classes: the header, the import block, the
-``__all__``, and the two statements a root-scalar alias needs, because no
-compiler template has a slot for a line beside an alias.
+``docs/plan/rebuild-plan.md`` §1 puts the seam at the decision: the walk reads the
+schema and decides what a node IS -- a class, a type, a field, a constraint, a
+default, a name, what ``extra`` is -- and ``codegen.compiler`` hands that decision
+to ``datamodel-code-generator``'s pydantic-v2 model layer, which writes the
+Python.  dmcg's parser never runs.
+
+**D13 divides the walk between this module and ``codegen.compiler``**, and the cut
+is the import rule rather than a taxonomy.  What is HERE is the CLI, the module
+writer (the header, the import block, the ``__all__``), the refusal report,
+:func:`decide_type` -- the per-node dispatch, because the answer for an array, a
+mapping or a multi-type node lives in a lowering -- and :data:`ROWS`, the dispatch
+table.  What is in ``compiler`` is everything a lowering is handed: the field
+builder, the class declarer, the alias declarer, the keyword screen, D3's name
+rules and the carriers.  A lowering under ``codegen/lower/`` therefore imports
+``codegen.compiler`` and ``codegen.refusal`` and never this module, which is what
+keeps ``python -m codegen.emit`` from binding this module twice under ``runpy``;
+``tests/test_import_rule.py`` asserts it by AST.
 
 The bundle directory is an argument (D9) and there is no default, so no version
 literal can enter this package.  The output path is a function of the document
@@ -63,32 +73,38 @@ does, with two hash seeds.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
-import keyword
 import sys
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
-from pydantic import BaseModel
-
-from adcp.types._base import SchemaRef
 from codegen import bundle, compiler, harness
+from codegen.compiler import (
+    BASE_MODULE,
+    CONSTRAINTS,
+    SCALAR,
+    Decided,
+    Module,
+    Target,
+    _no_binder,
+    check_keywords,
+    class_name,
+    declare_alias,
+    lower_object,
+)
+from codegen.lower import enum as lower_enum
+from codegen.lower import product as lower_product
+from codegen.lower import containers as lower_containers
+from codegen.lower import rules as lower_rules
+from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
 TREE = Path("src") / "adcp" / "types" / "_schemas"
 #: The import path of that tree, and of the hand-written base beside it.
 PACKAGE = "adcp.types._schemas"
-BASE_MODULE = "adcp.types._base"
-
-SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool"}
-
-#: The JSON Schema constraint keywords a scalar node can carry.  The spelling is
-#: the DOCUMENT'S, and it stays the document's all the way into the compiler --
-#: see ``compiler.CONSTRAINTS`` and gate 1 there.
-CONSTRAINTS = compiler.CONSTRAINTS
 
 #: **``format`` SELECTS A TYPE, and the schema half asserts it** (D5).
 #:
@@ -142,47 +158,6 @@ def asserted_formats(doc: dict) -> frozenset[str]:
     """
     return frozenset(harness.validator_for(doc).FORMAT_CHECKER.checkers)
 
-#: Keywords that annotate a node without constraining an instance.  ``default``
-#: and ``description`` are carried by the compiler (they are rendering, and
-#: rendering is what the compiler is for); the rest have nowhere to go and are
-#: never a reason to refuse.
-ANNOTATIONS = frozenset(
-    {
-        "$schema",
-        "$id",
-        "$comment",
-        "title",
-        "description",
-        "examples",
-        "example",
-        "default",
-        "deprecated",
-        "readOnly",
-        "writeOnly",
-    }
-)
-
-
-# --------------------------------------------------------------------------- #
-# names (D3)
-# --------------------------------------------------------------------------- #
-def class_name(title: str) -> str:
-    """``pascal_case`` that keeps an acronym: only the first letter of a word is
-    touched, so ``TMPX Chunk`` stays ``TMPXChunk`` and does not become
-    ``TmpxChunk``."""
-    words: list[str] = []
-    cur = ""
-    for ch in title:
-        if ch.isalnum():
-            cur += ch
-        elif cur:
-            words.append(cur)
-            cur = ""
-    if cur:
-        words.append(cur)
-    return "".join(w[:1].upper() + w[1:] for w in words)
-
-
 def module_path(document: str) -> str:
     """D1: the module is the document path with hyphens as underscores."""
     p = Path(document)
@@ -210,141 +185,9 @@ def relative_module(frm: str, to: str) -> str:
     return "." * (len(src) - common) + ".".join(dst[common:])
 
 
-def field_name(key: str) -> str:
-    """The Python field name for a property key, which is the key itself unless
-    pydantic cannot carry a field under that name.
-
-    A key is carried as-is or it is carried under an ALIAS, never dropped.  The
-    bundle has keys a Python attribute cannot spell (``$schema``) and keys
-    pydantic reads as something other than a field: a leading underscore makes a
-    private attribute and no field at all, so
-    ``core/truncation-sentinel.json``'s required ``_truncation`` was silently
-    absent from the model -- the model refused the document's own instance AND
-    accepted an instance omitting the required key, in the same class.
-
-    The alias is the ONLY accepted spelling (no ``populate_by_name``), so the
-    model's accepted set stays the document's: the wire name is accepted and the
-    Python name is not a second way in.
-    """
-    name = "".join(c if c.isalnum() or c == "_" else "_" for c in key).lstrip("_")
-    if not name or name[0].isdigit():
-        name = f"f_{name}"
-    while keyword.iskeyword(name) or name.startswith("model_") or hasattr(BaseModel, name):
-        name += "_"
-    return name
-
-
-def schema_ref(document: str, pointer: str) -> SchemaRef:
-    """The schema reference a class at ``pointer`` of ``document`` carries."""
-    return SchemaRef(document, f"#{pointer}")
-
-
 # --------------------------------------------------------------------------- #
 # the walk: what each node IS
 # --------------------------------------------------------------------------- #
-@dataclass(frozen=True)
-class Shape:
-    """One class's own field set: each property key's schema node, and which keys
-    are required.
-
-    Written by :func:`declare_object` for every class this emitter declares, and
-    carried to a lowering by :class:`Target`, so it is produced in ONE place and
-    a second copy cannot disagree about what a class declares.
-
-    It lives here rather than in a row's module for two reasons.  ``declare_object``
-    writes it and ``Target`` carries it, and both are trunk, so moving it into a
-    row would invert the dependency.  And it is read by TWO of D2's rows, not one:
-    the ``allOf`` row, and the union row for a branch whose root composes as well
-    -- a subclass has to know what it inherits in order not to restate it.
-
-    TRANSITIVE by construction: a class that itself composes records its inherited
-    keys here too, so a subclass reads one map rather than walking a chain of base
-    documents.
-    """
-
-    properties: Mapping[str, dict]
-    required: frozenset[str]
-
-
-@dataclass(frozen=True)
-class Target:
-    """What a resolved ``$ref`` gives the lowering that asked for it.
-
-    ``module`` and ``symbol`` are what an ANNOTATION needs.  ``shape`` is what an
-    ``allOf`` conjunct needs, and it is ``None`` when the target is not a class --
-    D2's root-scalar row is an ``Annotated`` alias, and subclassing one is a
-    ``TypeError`` at import, so a lowering refuses it as a base rather than
-    writing a module that cannot be imported.
-    """
-
-    module: str
-    symbol: str
-    shape: Shape | None = None
-
-
-def _no_binder(uri: str, pointer: str) -> Target:
-    """The default binder: a document lowered on its own resolves no reference.
-
-    ``emit`` supplies the real one, which owns the walk.  Lowering a document
-    without it refuses its references by name rather than inventing an import, so
-    there is no path on which a reference is silently dropped.
-    """
-    raise Refusal("$ref", pointer, f"no reference binder: {uri} cannot be resolved to a module")
-
-
-@dataclass
-class Module:
-    document: str
-    #: ``(uri, pointer) -> Target``; see ``emit``.
-    bind: Callable[[str, str], Target] = _no_binder
-    #: The formats this document's own draft asserts; see ``asserted_formats``.
-    #: Empty by default, so a node lowered outside ``lower_document`` selects no
-    #: format-derived type rather than one nothing checks.
-    asserted: frozenset[str] = frozenset()
-    imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
-    blocks: list[str] = field(default_factory=list)
-    names: set[str] = field(default_factory=set)
-    #: class name -> its :class:`Shape`, for a class declared in THIS module.
-    shapes: dict[str, Shape] = field(default_factory=dict)
-
-    def declare(self, name: str, pointer: str, block: str) -> None:
-        if name in self.names:
-            raise Refusal(
-                "title",
-                pointer,
-                f"two nodes in this document derive the class name {name!r}",
-            )
-        self.names.add(name)
-        self.blocks.append(block)
-
-
-def check_keywords(
-    node: dict,
-    pointer: str,
-    handled: set[str],
-    why: str = "this step lowers no such keyword (a later D2 row does)",
-) -> None:
-    for key in sorted(node):
-        if key in handled or key in ANNOTATIONS or key.startswith("x-"):
-            continue
-        raise Refusal(key, pointer, why)
-
-
-@dataclass(frozen=True)
-class Decided:
-    """What the walk decided one schema node IS.
-
-    ``format`` is set only when ``type`` does NOT already carry the format -- the
-    compiler then states it as an annotation rather than as a type.  Keeping the
-    two separate here is what makes the drop impossible to make by accident: a
-    format is either in the type or in this field, and never nowhere.
-    """
-
-    type: compiler.Type
-    constraints: dict[str, Any] = field(default_factory=dict)
-    format: str | None = None
-
-
 def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     """What one schema node IS: a Python type, and what constrains it.
 
@@ -375,6 +218,16 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
         mod.imports.add((target.module, target.symbol))
         return Decided(compiler.Type(target.symbol, local=True))
 
+    if "enum" in node:
+        # D2's enumeration row, reached before ``type`` is read at all: the base
+        # comes from the members (``lower.enum.BASES``), which is what admits the
+        # bundle's 164 typeless enum nodes.  A root enum reaches the same row
+        # through the dispatch table below.
+        check_keywords(node, pointer, lower_enum.HANDLED)
+        decided = lower_enum.decide(node, name_hint, pointer)
+        mod.add(name_hint, pointer, compiler.render_enum(decided))
+        return Decided(compiler.Type(name_hint, local=True))
+
     kind = node.get("type")
 
     if kind is None:
@@ -386,7 +239,7 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
         return Decided(compiler.Type("typing.Any"))  # D2's typeless row
 
     if isinstance(kind, list):
-        raise Refusal("type", pointer, f"a multi-type node ({kind}) is step 6")
+        return lower_containers.multi_type(node, pointer, name_hint, mod)
 
     if kind == "null":
         check_keywords(node, pointer, {"type"})
@@ -394,16 +247,20 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
 
     if kind == "object":
         if "properties" not in node:
-            raise Refusal("type", pointer, "an object node with no properties is a mapping, step 6")
+            return lower_containers.mapping(node, pointer, name_hint, mod)
         return Decided(compiler.Type(lower_object(node, name_hint, pointer, mod), local=True))
 
     if kind == "array":
-        raise Refusal("type", pointer, "an array node is step 6")
+        return lower_containers.array(node, pointer, name_hint, mod)
 
     if kind not in SCALAR:
         raise Refusal("type", pointer, f"unknown type {kind!r}")
 
-    check_keywords(node, pointer, {"type", "format", *CONSTRAINTS})
+    # ``rules.ON_A_VALUE`` is the step-7 keyword that can land on a node with no
+    # object to carry a rule tuple: a ``not`` over a ``const`` or an ``enum`` is an
+    # excluded VALUE, which D4 leaves to the schema half exactly as it leaves a
+    # conditional that narrows one.  Carrying it is not refusing it.
+    check_keywords(node, pointer, {"type", "format", *CONSTRAINTS, *lower_rules.ON_A_VALUE})
     constraints = {k: node[k] for k in CONSTRAINTS if k in node}
     fmt = node.get("format") if isinstance(node.get("format"), str) else None
     # A format SELECTS a type where one is named for it and the document's own
@@ -418,155 +275,16 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     return Decided(compiler.Type(SCALAR[kind]), constraints, format=fmt)
 
 
-def fields(
-    props: Mapping[str, Any],
-    required: Collection[str],
-    pointer: str,
-    name: str,
-    mod: Module,
-    *,
-    inherited: Collection[str] = (),
-    declared_at: Mapping[str, str] | None = None,
-) -> list[compiler.Property]:
-    """The decided properties for one property map, children declared first.
-
-    Shared with a composing row, which builds ONE property map out of a root's
-    own ``properties`` and an inline ``allOf`` conjunct's.  How a property is
-    decided is the same question wherever it was declared, and a second copy of
-    this loop is how two declarations of one field come to disagree about the
-    answer.
-
-    ``inherited`` names the keys a BASE CLASS already declares.  They are not
-    decided here -- the field is inherited, and a subclass that restated it would
-    shadow the base's type with whatever its own restatement happens to say --
-    but they do satisfy ``required``, because an inherited field is present on
-    the class.  The row decides what goes in it (the narrowing rule); this
-    function only honours it.  ``declared_at`` gives the pointer a key was
-    declared at where that is not ``<pointer>/properties/<key>``, which it is not
-    for a key that came from a conjunct.
-    """
-    undeclared = [r for r in required if r not in props and r not in inherited]
-    if undeclared:
-        raise Refusal(
-            "required",
-            pointer,
-            f"required names no property declares: {undeclared} (step 7's rule, not a field)",
-        )
-
-    decided: list[compiler.Property] = []
-    spelled: dict[str, str] = {}
-    where = declared_at or {}
-    for key, sub in props.items():
-        at = where.get(key, f"{pointer}/properties/{key}")
-        if not isinstance(sub, dict):
-            raise Refusal("properties", at, "property is not a schema")
-        fname = field_name(key)
-        if fname in spelled:
-            raise Refusal(
-                "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
-            )
-        spelled[fname] = key
-        decided_type = decide_type(sub, at, name + class_name(key), mod)
-        is_required = key in required
-        default = compiler.MISSING
-        if "default" in sub:
-            if is_required:
-                # No rendering carries it: a pydantic field with a default is not
-                # required, so transcribing one here would widen the model's
-                # accepted set to admit an instance omitting a key the document
-                # demands -- and the schema half of `strict_validate` would hide
-                # that in both acceptance directions.  5 of the bundle's 339
-                # property defaults sit on a required property; none is in this
-                # step's population, so this refusal is a guard rather than a
-                # measured behaviour, and the step whose population reaches one
-                # decides between `json_schema_extra` and refusing.
-                raise Refusal(
-                    "default",
-                    at,
-                    "a default on a REQUIRED property has no rendering that does not also "
-                    "make the property optional",
-                )
-            default = sub["default"]
-        doc = sub.get("description")
-        decided.append(
-            compiler.Property(
-                name=fname,
-                wire=key,
-                type=decided_type.type,
-                required=is_required,
-                default=default,
-                description=doc if isinstance(doc, str) and doc else None,
-                constraints=decided_type.constraints,
-                format=decided_type.format,
-            )
-        )
-    return decided
-
-
-def declare_object(
-    node: dict,
-    name: str,
-    pointer: str,
-    mod: Module,
-    props: Sequence[compiler.Property],
-    shape: Shape,
-    *,
-    bases: tuple[str, ...] = (),
-) -> str:
-    """Assemble one class out of decided properties, and record what it declares.
-
-    The other half shared with a composing row: D8's ``extra``, the description,
-    the ``__adcp_schema__`` the compiler writes, and the :class:`Shape` a later
-    subclass reads.  ``bases`` is empty for a node that composes nothing, and
-    then the base is ``AdCPBaseModel``; a composing row passes the symbols its
-    ``$ref`` conjuncts bound (D7 -- a base is DERIVED from what the document
-    composes, never classified by hand), and ``AdCPBaseModel`` arrives through
-    them.
-    """
-    if isinstance(node.get("additionalProperties"), dict):
-        raise Refusal("additionalProperties", pointer, "a typed additionalProperties is step 6")
-    description = node.get("description")
-    rendered = compiler.render(
-        compiler.Class(
-            name=name,
-            ref=schema_ref(mod.document, pointer),
-            properties=tuple(props),
-            description=description if isinstance(description, str) and description else None,
-            # D8; absent leaves the base's default in place
-            extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
-            bases=bases,
-        )
-    )
-    mod.imports |= rendered.imports
-    mod.shapes[name] = shape
-    mod.declare(name, pointer, rendered.text)
-    return name
-
-
-def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
-    """Append the class for an object node, children first, and return its name."""
-    check_keywords(node, pointer, {"type", "properties", "required", "additionalProperties"})
-    props = node["properties"]
-    if not isinstance(props, dict) or not props:
-        raise Refusal("properties", pointer, "an object node with no property declared")
-    required = node.get("required", [])
-    if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
-        raise Refusal("required", pointer, f"required is {required!r}, not a list of names")
-    decided = fields(props, required, pointer, name, mod)
-    return declare_object(
-        node, name, pointer, mod, decided, Shape(props, frozenset(required))
-    )
-
-
 # --------------------------------------------------------------------------- #
 # the module text (D8: the emitter owns its layout)
 # --------------------------------------------------------------------------- #
 def _import_rank(module: str) -> int:
-    """stdlib, the third-party library, this package's own base, then a sibling
-    module of this tree (always relative, so always ``.``-prefixed)."""
+    """stdlib, the third-party library, this package's own hand-written modules,
+    then a sibling module of this tree (always relative, so always
+    ``.``-prefixed)."""
     if module.startswith("."):
         return 3
-    if module == BASE_MODULE:
+    if module in (BASE_MODULE, lower_rules.RUNTIME_MODULE):
         return 2
     return 1 if module == "pydantic" else 0
 
@@ -591,6 +309,91 @@ def render(mod: Module, symbol: str) -> str:
     return "\n".join([*out, "", classes, "", "", f'__all__ = ["{symbol}"]', ""])
 
 
+# --------------------------------------------------------------------------- #
+# the dispatch table (D13, and §5 Layout)
+# --------------------------------------------------------------------------- #
+def _object_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
+    """D2's object row: a root declaring ``properties`` is a model named by its
+    title.  ``lower_object`` is the whole of it, and it is the compiler's because a
+    nested object is the same job at a different pointer."""
+    return lower_object(doc, name, pointer, mod)
+
+
+def _scalar_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
+    """D2's root-scalar row, which steps 1 and 2 need because a reference TARGET is
+    one 100 times over: ``core/creative-revision-id.json`` is a string with
+    ``minLength``/``maxLength`` and has no field to hang itself on.  An alias, not a
+    class -- a wrapper class would be a second name for the same node (P2) and would
+    make every referencing model carry an object where the document carries a
+    string.  ``compiler.declare_alias`` holds the rest, including its known
+    ceiling."""
+    return declare_alias(mod, name, doc, decide_type(doc, pointer, name, mod))
+
+
+def _enum_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
+    """D2's enumeration row at a document root (step 3).
+
+    The same decision an inline enum gets -- :func:`decide_type` reaches
+    ``lower.enum`` too -- with the module-level binding a root needs around it,
+    because ``Enum.jinja2`` has no ``class_body_lines`` slot for the
+    ``__adcp_schema__`` line and D9 forbids writing one in afterwards.
+    """
+    check_keywords(doc, pointer, lower_enum.HANDLED)
+    return compiler.bind_without_a_model(
+        mod, name, compiler.render_enum(lower_enum.decide(doc, name, pointer))
+    )
+
+
+def _union_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
+    """D2's union row (step 5): the base carrying ``BranchDispatchMixin``, one
+    subclass per branch, and the module trailer that installs the union."""
+    return lower_union.lower_union(doc, name, pointer, mod)
+
+
+#: **D2's rows, as the ``(selector, lowering)`` pairs D13 states, and the table is
+#: UNORDERED.**
+#:
+#: A selector reads a DOCUMENT and says whether this row lowers its root; the
+#: lowering declares the module and returns the symbol it exports.  A selector IS
+#: its step's population test in ``codegen.bundle``, so a row cannot come to claim
+#: a document its step does not count, and there is no second definition of a
+#: population to drift from.
+#:
+#: Unordered is the decision, not an omission.  :func:`lower_document` FAILS on a
+#: document two rows select rather than letting the table's order decide, because
+#: an ordered chain makes precedence a property of where a lane happened to insert
+#: its row -- invisible in review, and the same "last wins" this project refuses of
+#: an ``allOf`` member list.  Disjointness is a fact about the SELECTORS and belongs
+#: there: a collision is a selector defect and gets fixed in ``codegen.bundle``.
+#:
+#: Dispatch is on the ROOT KIND and not on the document's whole content, which is
+#: what makes the table a partition rather than a precedence puzzle: a root is
+#: exactly one kind.  The per-NODE walk is :func:`decide_type`, which every row
+#: shares and which reaches the nested rows; those arms are not rows here for the
+#: same reason ``decide_type`` is not one -- they are the walk, not a root's owner.
+#:
+#: ``emit`` imports each lowering, and no lowering imports ``emit`` (D13).
+ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str]], ...] = (
+    (bundle.is_object_root, _object_root),
+    (bundle.is_scalar_root, _scalar_root),
+    (bundle.is_enum_root, _enum_root),
+    (bundle.composes_at_the_root, lower_product.lower_root),
+    (bundle.union_root, _union_root),
+    (bundle.is_container_root, lower_containers.root),
+)
+
+
+class AmbiguousRoot(Exception):
+    """Two D2 rows select one document.
+
+    A BUILD FAILURE and not a ``Refusal``: a refusal is the designed outcome of a
+    keyword this emitter does not lower, and this is the emitter disagreeing with
+    itself about which row owns a root kind.  Recording it as a refusal would file
+    it against the document, where it would read as the bundle's fault, and the
+    build would pass.
+    """
+
+
 def lower_document(
     document: str, doc: dict, bind: Callable[[str, str], Target] = _no_binder
 ) -> tuple[Module, str]:
@@ -606,72 +409,19 @@ def lower_document(
     symbol = class_name(title)
     if not symbol.isidentifier():
         raise Refusal("title", "", f"the title {title!r} derives {symbol!r}, not an identifier")
-    mod = Module(document=document, bind=bind, asserted=asserted_formats(doc))
-    kind = doc.get("type")
-    rows = [row for row in lower.ROWS if row.selects(doc)]
-    if len(rows) > 1:
-        # NOT a Refusal: a document two rows claim is a defect in their
-        # SELECTORS, not a keyword this emitter does not lower, and a refusal
-        # would file it against the document and let the build pass.  Unreachable
-        # while fewer than two rows are registered, and it is here for exactly
-        # the five-parallel-lane failure it names -- see ``codegen.lower``.
-        raise AssertionError(
-            f"{document}: {len(rows)} rows select this document; their populations overlap "
-            "and the metric would count it twice"
+    mod = Module(
+        document=document, bind=bind, decide=decide_type, asserted=asserted_formats(doc)
+    )
+    claimed = [(selects, lower) for selects, lower in ROWS if selects(doc)]
+    if len(claimed) > 1:
+        raise AmbiguousRoot(
+            f"{document}: {', '.join(s.__name__ for s, _ in claimed)} all select this root; "
+            "the table is unordered, so two selectors claiming one document is a defect in "
+            "the selectors and the metric would count it twice"
         )
-    if rows:
-        rows[0].lower(doc, symbol, "", mod)
-    elif "properties" in doc and kind in (None, "object"):
-        lower_object(doc, symbol, "", mod)
-    elif isinstance(kind, str) and kind in SCALAR:
-        # D2's root-scalar row, which this step needs because a reference TARGET is
-        # one 100 times over: `core/creative-revision-id.json` is a string with
-        # `minLength`/`maxLength` and has no field to hang itself on.  An alias,
-        # not a class -- a wrapper class would be a second name for the same node
-        # (P2) and would make every referencing model carry an object where the
-        # document carries a string.  A root array and a root mapping are step 6's
-        # rows and still refuse below.
-        #
-        # The ANNOTATION is still the compiler's: the same field rendering a class
-        # property gets, read off the field instead of out of a class body, so a
-        # constraint on an alias and a constraint on a property cannot come to be
-        # spelled two ways.  What is ours is the two module-level STATEMENTS, and
-        # §1 says why: no compiler template has a slot for a line beside an alias.
-        #
-        # KNOWN CEILING: an alias has no ``ConfigDict``, so it cannot carry the
-        # per-class ``regex_engine`` a look-around pattern needs, and
-        # ``strict_alias`` builds its ``TypeAdapter`` at import.  A scalar root
-        # carrying look-around would therefore fail to IMPORT once the base stops
-        # forcing ``python-re``.  Measured over this step's population: 5 scalar
-        # roots, 2 carrying a ``pattern`` (both ``^[a-z0-9_]+$``, which the
-        # default engine compiles) and 0 carrying look-around, so no document
-        # here reaches it.  The failure is an ImportError at the gate rather than
-        # a silent widening, so the upgrade path is for the step whose population
-        # reaches one: either refuse such a document by name, or wrap the alias
-        # in a ``RootModel`` that has a config slot.
-        decided_type = decide_type(doc, "", symbol, mod)
-        description = doc.get("description")
-        rendered = compiler.render_alias(
-            symbol,
-            decided_type.type,
-            decided_type.constraints,
-            description=description if isinstance(description, str) and description else None,
-            format=decided_type.format,
-        )
-        mod.imports |= rendered.imports
-        mod.imports.add((BASE_MODULE, "strict_alias"))
-        ref = schema_ref(document, "")
-        mod.declare(
-            symbol,
-            "",
-            f"__adcp_schema__ = {ref!r}\n\n"
-            f"{rendered.text}\n\n\n"
-            f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
-        )
-    else:
-        raise Refusal(
-            "type", "", "this step emits an object root with properties, or a scalar root"
-        )
+    if not claimed:
+        raise Refusal("type", "", "no D2 row selects this root (a later step's row does)")
+    claimed[0][1](doc, symbol, "", mod)
     return mod, symbol
 
 
@@ -839,12 +589,13 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     # Through the PACKAGE, not through this copy of it.  ``python -m codegen.emit``
-    # executes this file as ``__main__`` under ``runpy``, and a row's module
-    # imports ``codegen.emit`` -- a SECOND module object.  ``Refusal`` already
-    # lives in a module no ``-m`` can name (D12), so the refusal report survives
-    # either way; what does not is anything else this module holds by identity,
-    # and a second ``Module``/``Shape``/``Target`` is the same trap one layer in.
-    # One entry point, so there is one of every class.
+    # executes this file as ``__main__`` under ``runpy``, so anything that reached
+    # ``codegen.emit`` by name would hold a SECOND module object.  D13 removed the
+    # one importer that did -- a lowering now imports ``codegen.compiler``, where
+    # ``Module``, ``Shape``, ``Target`` and ``Decided`` live, and ``Refusal``
+    # already lives in a module no ``-m`` can name (D12).  This re-entry is what
+    # keeps that true for ``ROWS`` and :func:`decide_type` as well: one entry
+    # point, so there is one of every row and one decider.
     from codegen.emit import main as _main
 
     sys.exit(_main())

@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "The kind of subject characterized by audience data or population-level evidence.",
+  "enum": [
+    "individual",
+    "household",
+    "business",
+    "contextual",
+    "none"
+  ],
+  "title": "Audience Subject Type",
+  "type": "string"
+}

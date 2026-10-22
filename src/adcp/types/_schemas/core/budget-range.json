@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "required": [
+        "min"
+      ]
+    },
+    {
+      "required": [
+        "max"
+      ]
+    }
+  ],
+  "description": "Extension-tolerant inclusive currency bounds used by legacy discovery filters. At least one bound is required; min MUST be less than or equal to max. The strict negotiation peer that rejects unknown members is media-buy/proposal-budget-constraint.json.",
+  "properties": {
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "max": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "min": {
+      "minimum": 0,
+      "type": "number"
+    }
+  },
+  "required": [
+    "currency"
+  ],
+  "title": "Budget Range",
+  "type": "object"
+}

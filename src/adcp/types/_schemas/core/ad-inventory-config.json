@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Break-based ad inventory configuration for an installment. Describes the ad breaks available within the content. For non-break ad formats (host reads, integrations, sponsorships), use product placements instead.",
+  "properties": {
+    "expected_breaks": {
+      "description": "Number of planned ad breaks in the installment",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "max_ad_duration_seconds": {
+      "description": "Maximum duration in seconds for a single ad within a break. Buyers need this to know whether their creative fits.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "supported_formats": {
+      "description": "Ad format types supported in breaks (e.g., 'video', 'audio', 'display')",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "total_ad_seconds": {
+      "description": "Total seconds of ad time across all breaks",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "unplanned_breaks": {
+      "description": "Whether ad breaks are dynamic and driven by live conditions (sports timeouts, election coverage). When false, all breaks are pre-defined.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "expected_breaks"
+  ],
+  "title": "Ad Inventory Configuration",
+  "type": "object"
+}

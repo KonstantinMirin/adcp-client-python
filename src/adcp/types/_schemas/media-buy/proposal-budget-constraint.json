@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "anyOf": [
+    {
+      "required": [
+        "min"
+      ]
+    },
+    {
+      "required": [
+        "max"
+      ]
+    }
+  ],
+  "description": "Strict inclusive budget bounds for proposal negotiation. At least one bound is required. When both are present, min MUST be less than or equal to max; implementations must enforce this semantic comparison because JSON Schema draft-07 cannot compare sibling values. The extension-tolerant legacy discovery peer is core/budget-range.json.",
+  "properties": {
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "max": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "min": {
+      "minimum": 0,
+      "type": "number"
+    }
+  },
+  "required": [
+    "currency"
+  ],
+  "title": "Proposal Budget Constraint",
+  "type": "object"
+}

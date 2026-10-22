@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "An industry-standard or market-specific identifier for an advertising creative (e.g., Ad-ID, ISCI, Clearcast clock number, IDcrea). These identifiers are managed by external registries or clearance bodies and used across the supply chain to track and reference specific creative assets. Add a PR to extend creative-identifier-type when another shared identifier scheme needs first-class support.",
+  "properties": {
+    "type": {
+      "enum": [
+        "isci",
+        "ad_id",
+        "idcrea",
+        "clearcast_clock"
+      ]
+    },
+    "value": {
+      "description": "The identifier value (e.g., 'ABCD1234000H' for Ad-ID). Preserve the value exactly as the traffic or clearance system expects it.",
+      "maxLength": 64,
+      "type": "string"
+    }
+  },
+  "required": [
+    "type",
+    "value"
+  ],
+  "title": "Industry Identifier",
+  "type": "object"
+}

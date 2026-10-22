@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Per-product assessment of whether the buyer's event source setup is sufficient for the product's optimization capabilities. Sellers evaluate this in the context of the buyer's account \u2014 the same product may show different readiness for different buyers depending on their event source configuration.",
+  "properties": {
+    "issues": {
+      "description": "Actionable issues preventing full measurement readiness. Sellers should limit to the top 3-5 most actionable items. Buyer agents should sort by severity rather than relying on array position.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "An actionable issue detected during a health or readiness assessment. Used by event source health and measurement readiness to surface problems and recommendations.",
+        "properties": {
+          "message": {
+            "description": "Human/agent-readable description of the issue and how to resolve it.",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "error",
+              "warning"
+            ]
+          }
+        },
+        "required": [
+          "message",
+          "severity"
+        ],
+        "title": "Diagnostic Issue",
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "missing_event_types": {
+      "description": "Event types this product requires that the buyer has not configured. Empty or absent when all required types are covered.",
+      "items": {
+        "enum": [
+          "lead",
+          "share",
+          "custom",
+          "donate",
+          "follow",
+          "refund",
+          "search",
+          "contact",
+          "purchase",
+          "schedule",
+          "page_view",
+          "subscribe",
+          "app_launch",
+          "add_to_cart",
+          "app_install",
+          "select_item",
+          "start_trial",
+          "viewed_cart",
+          "content_view",
+          "qualify_lead",
+          "view_content",
+          "select_content",
+          "add_to_wishlist",
+          "disqualify_lead",
+          "watch_milestone",
+          "add_payment_info",
+          "remove_from_cart",
+          "initiate_checkout",
+          "close_convert_lead",
+          "submit_application",
+          "complete_registration"
+        ]
+      },
+      "type": "array"
+    },
+    "notes": {
+      "description": "Seller explanation of the readiness assessment, recommendations for improvement, or context about what the buyer needs to change.",
+      "type": "string"
+    },
+    "required_event_types": {
+      "description": "Event types this product needs for effective optimization. Buyers should ensure their event sources cover these types.",
+      "items": {
+        "enum": [
+          "lead",
+          "share",
+          "custom",
+          "donate",
+          "follow",
+          "refund",
+          "search",
+          "contact",
+          "purchase",
+          "schedule",
+          "page_view",
+          "subscribe",
+          "app_launch",
+          "add_to_cart",
+          "app_install",
+          "select_item",
+          "start_trial",
+          "viewed_cart",
+          "content_view",
+          "qualify_lead",
+          "view_content",
+          "select_content",
+          "add_to_wishlist",
+          "disqualify_lead",
+          "watch_milestone",
+          "add_payment_info",
+          "remove_from_cart",
+          "initiate_checkout",
+          "close_convert_lead",
+          "submit_application",
+          "complete_registration"
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "good",
+        "minimum",
+        "excellent",
+        "insufficient"
+      ]
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "title": "Measurement Readiness",
+  "type": "object"
+}
