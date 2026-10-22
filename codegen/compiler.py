@@ -192,8 +192,25 @@ class Type:
     of: tuple[Type, ...] = ()
     #: A mapping's key, and only a mapping has one (D5 types it from the document).
     key: Type | None = None
+    #: D2's ``const`` row: the one value the node PINS, as a 1-tuple, and ``()`` for
+    #: every other node.  The walk decides the value and the compiler writes the
+    #: ``Literal``, which is §1's seam -- and here it is load-bearing rather than
+    #: tidy.  Written as ``Type("Literal[%r]" % value, local=True)`` instead, the
+    #: annotation reached dmcg as a ``Reference`` PATH, and ``treat_dot_as_module``
+    #: read the dot in a value like ``account.status_changed`` as a module qualifier
+    #: and kept the last segment: ``Literal['account.status_changed']`` rendered as
+    #: ``status_changed']``, a module that does not parse.  dmcg's own ``literals``
+    #: carrier renders the value, escapes it (``"quo'te"`` comes back
+    #: ``Literal["quo'te"]``) and reports the ``typing.Literal`` import itself.
+    #:
+    #: A tuple and not a bare value because ``const: null`` is a pinnable value, so
+    #: a ``None`` default could not be told from an absent one.  One member is all
+    #: a ``const`` has; the plural is dmcg's spelling of the slot.
+    literals: tuple[Any, ...] = ()
 
     def data_type(self) -> Any:
+        if self.literals:
+            return _TYPES.data_type(literals=list(self.literals))
         if self.container == "list":
             return _TYPES.data_type(is_list=True, data_types=[t.data_type() for t in self.of])
         if self.container == "dict":
@@ -921,7 +938,6 @@ def fields(
     *,
     inherited: Collection[str] = (),
     declared_at: Mapping[str, str] | None = None,
-    decided: Mapping[str, Decided] | None = None,
 ) -> list[Property]:
     """The decided properties for one property map, children declared first.
 
@@ -940,12 +956,13 @@ def fields(
     declared at where that is not ``<pointer>/properties/<key>``, which it is not
     for a key that came from a conjunct.
 
-    ``decided`` is a per-property type the CALLER has already decided, by property
-    key.  It exists so a lowering that owns a keyword for ONE position can apply it
-    there without claiming the keyword everywhere: the union row turns a branch's
-    ``const`` into a ``Literal``, and putting that into ``decide_type`` instead
-    would emit a ``const`` row for steps 1 and 2's own populations too and collide
-    with whichever step claims D2's ``const`` row in full.
+    There was a third keyword argument, ``decided``: a per-property type the CALLER
+    had already decided, so that the union row could turn a branch's ``const`` into a
+    ``Literal`` without claiming the keyword everywhere.  **It is gone, and so is the
+    scoping it existed for.**  D2's ``const`` row is ``codegen.lower.const`` and
+    ``decide_type`` reaches it for every node, so a branch's discriminating pin is
+    decided exactly the way every other property is -- which leaves one lowering for
+    the keyword instead of two that have to agree.
     """
     undeclared = [r for r in required if r not in props and r not in inherited]
     if undeclared:
@@ -968,7 +985,7 @@ def fields(
                 "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
             )
         spelled[fname] = key
-        decided_type = (decided or {}).get(key) or mod.decide(sub, at, name + class_name(key), mod)
+        decided_type = mod.decide(sub, at, name + class_name(key), mod)
         is_required = key in required
         default = MISSING
         if "default" in sub:
@@ -1079,15 +1096,15 @@ def lower_object(
     mod: Module,
     *,
     bases: tuple[str, ...] = (),
-    decided: Mapping[str, Decided] | None = None,
     body_lines: tuple[str, ...] = (),
 ) -> str:
     """Append the class for an object node, children first, and return its name.
 
-    The three keyword arguments are what a COMPOSITION needs and a leaf object does
+    The two keyword arguments are what a COMPOSITION needs and a leaf object does
     not, and each defaults to the leaf's answer, so steps 1 and 2's call sites are
-    unchanged and so is every module they emit.  :func:`fields` documents
-    ``decided``; ``bases`` and ``body_lines`` are :class:`Class`'s own.
+    unchanged and so is every module they emit.  Both are :class:`Class`'s own.  A
+    third, ``decided``, is gone with the union row's private ``const`` lowering --
+    :func:`fields` says why.
     """
     # D6's six families are handled HERE and not refused: a rule attaches to the
     # nearest class, so an object node is the only node that can carry one.  Imported
@@ -1160,7 +1177,7 @@ def lower_object(
     required = node.get("required", [])
     if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
         raise Refusal("required", pointer, f"required is {required!r}, not a list of names")
-    built = fields(props, required, pointer, name, mod, decided=decided)
+    built = fields(props, required, pointer, name, mod)
     return declare_object(
         node,
         name,

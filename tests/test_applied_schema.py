@@ -316,9 +316,7 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     """
     out = emit.emit(BUNDLE, bundle.portable(BUNDLE))
     assert len(out.emitted) + len(out.refusals) == 1054
-    # 407 and not 406: `salesagent-j3k2l.23` admits `notes` as the bundle annotation
-    # it is, which emits `enums/task-type.json`.
-    assert len(out.emitted) == 407
+    assert len(out.emitted) == 435
     assert [d for d, r in out.refusals.items() if "nothing enclosing it" in r["detail"]] == []
 
 

@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "An audience segment dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
+  "properties": {
+    "audience_id": {
+      "description": "Audience segment identifier for this forecast row.",
+      "type": "string",
+      "x-entity": "audience"
+    },
+    "audience_name": {
+      "description": "Human-readable audience segment name.",
+      "type": "string"
+    },
+    "audience_source": {
+      "enum": [
+        "synced",
+        "unknown",
+        "platform",
+        "lookalike",
+        "retargeting",
+        "third_party"
+      ]
+    },
+    "kind": {
+      "const": "audience",
+      "description": "Dimension family discriminator.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind",
+    "audience_id",
+    "audience_source"
+  ],
+  "title": "Audience Forecast Dimension",
+  "type": "object"
+}

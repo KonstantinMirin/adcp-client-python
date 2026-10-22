@@ -96,6 +96,7 @@ from codegen.compiler import (
     declare_alias,
     lower_object,
 )
+from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
 from codegen.lower import product as lower_product
 from codegen.lower import containers as lower_containers
@@ -164,7 +165,7 @@ PACKAGE = "adcp.types._schemas"
 #: fact, each naming itself.
 #:
 #: What follows is the reasoning for the type being ours rather than pydantic's at
-#: the https arm, which the amendment did not change.  D5 admits
+#: the https branch, which the amendment did not change.  D5 admits
 #: a STANDARD type only when it states the document's own facts AND accepts the
 #: document's own set, and no pydantic URL type passes: ``AnyUrl`` and
 #: ``AnyHttpUrl`` both render a ``minLength: 1`` no ``format: uri`` document
@@ -321,6 +322,17 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         decided = lower_enum.decide(node, name_hint, pointer)
         mod.add(name_hint, pointer, compiler.render_enum(decided))
         return Decided(compiler.Type(name_hint, local=True))
+
+    if "const" in node:
+        # D2's ``const`` row, IN FULL, and reached before ``type`` is read for the
+        # enum branch's reason: a ``const`` pins the VALUE, and the value's own JSON
+        # type is what the node admits whether the document spells a ``type`` word or
+        # not -- 832 of the bundle's 1,486 const nodes spell none.  A ``const`` is a
+        # single-member enumeration in JSON Schema's vocabulary and nothing in this
+        # bundle writes both (0 of the 1,486 carry an ``enum`` beside it), so the two
+        # branches do not overlap and their order here is not a precedence.
+        check_keywords(node, pointer, lower_const.HANDLED)
+        return lower_const.decide(node, pointer)
 
     kind = node.get("type")
 
@@ -733,6 +745,55 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             mod, symbol = lower_document(
                 document, doc, bind(document), named.get(document, frozenset())
             )
+            # **The document the package will carry has to be DECIDABLE, and that is
+            # checked here because a refusal belongs where every other one is.**  A
+            # ``$ref`` left in it is a schema nothing local can decide, so
+            # ``jsonschema`` fetches the target over the network; the write loop below
+            # says what that costs.  ``bundle.resolved`` is the one resolution, and it
+            # does not reach every position: ``resolve_all_refs`` descends
+            # ``SCHEMA_KEYS`` and ``SCHEMA_OBJECT_KEYS`` only, and ``definitions`` and
+            # ``$defs`` are in NEITHER -- by its own design, since a section asserts
+            # nothing about an instance and a generator has no reason to look inside
+            # one.  So a reference under a section survives resolution.
+            #
+            # Refused rather than shipped, and refused rather than excused: the
+            # emitter cannot certify that a position nothing validates through TODAY
+            # stays inert, and the alternative readings all weaken something -- a
+            # second resolver (forbidden, D10 and ``bundle.resolved``'s own reason), a
+            # post-generation strip of the section (forbidden, D9), or narrowing the
+            # invariant to reachable positions, which is a check relaxed to fit.
+            #
+            # Measured over the whole bundle: 1 of 1,054 documents has every reference
+            # under a section (``a2ui/si-catalog.json``, 24 of them), nothing in the
+            # bundle references it, and no ``$ref`` names any of its nodes -- so this
+            # refuses exactly one document and cascades to none.  It is reachable at
+            # all only because salesagent-j3k2l.20 declares section entries and D2's
+            # ``const`` row lowers the keyword that used to stop this document first.
+            #
+            # **CROSS-DOCUMENT only, and that is what makes the reason above true.**  A
+            # LOCAL reference names a node of the very document the package carries, so
+            # ``jsonschema`` resolves it against the referrer and fetches nothing --
+            # ``bundle.resolved`` skips adding one to the store for exactly that reason.
+            # It survives resolution under a section just as a cross-document one does,
+            # and refusing it would be refusing a document that IS locally decidable.
+            # Probed: without this clause the check refused ``core/chain.json``, the
+            # fixture salesagent-j3k2l.20 wrote for a forward local reference, on
+            # ``#/definitions/second``.
+            unresolved = [
+                (p, u)
+                for p, u in bundle.references(bundle.resolved(bundle_dir, document))
+                if bundle.split_ref(u)[0]
+            ]
+            if unresolved:
+                pointer, uri = unresolved[0]
+                raise Refusal(
+                    "$ref",
+                    pointer,
+                    f"{uri} is still unresolved after bundle.resolved, which leaves a "
+                    f"reference under a definitions/$defs section untouched ({len(unresolved)} "
+                    "here): the document the package would carry is not locally "
+                    "decidable, and jsonschema would fetch the target over the network",
+                )
         except Refusal as r:
             refused[document] = r
             raise

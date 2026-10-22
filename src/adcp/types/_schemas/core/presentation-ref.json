@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Immutable reference to a publisher-specific /schemas/core/placement-presentation.json document describing chrome, layout, safe areas, and disclosure positions needed to represent the placement offline. The referenced document is declarative data, not executable code. It remains in the publisher's namespace and applies only to the placement that declares it; it MUST NOT be copied onto a shared format entry or treated as a portable format contract.",
+  "properties": {
+    "digest": {
+      "description": "SHA-256 content digest. Consumers cache by uri@digest and MUST fail closed on a digest mismatch.",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "media_type": {
+      "const": "application/vnd.adcp.placement-presentation+json",
+      "description": "Media type of the referenced declarative presentation document.",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "description": "Version of /schemas/core/placement-presentation.json used to validate and compose the referenced document.",
+      "type": "string"
+    },
+    "uri": {
+      "description": "Publisher-controlled HTTPS URL for the presentation metadata. Consumers MUST apply the same SSRF, redirect, response-size, timeout, and DNS-rebinding protections used for format_schema fetches.",
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    }
+  },
+  "required": [
+    "uri",
+    "digest",
+    "media_type",
+    "schema_version"
+  ],
+  "title": "Placement Presentation Reference",
+  "type": "object"
+}

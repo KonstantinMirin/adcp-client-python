@@ -174,10 +174,8 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # refusal off the root -- it stopped at `$defs` before any of its 8 property
     # references was read -- so the closure now reaches the three enum documents its
     # earlier properties name. The row itself still moves N by 0.
-    # 219 and not 218: `salesagent-j3k2l.23` admits `notes` as the bundle annotation
-    # it is, so `enums/task-type.json` emits and the closure of this population
-    # reaches it through a reference. The row itself still moves N by 0.
-    assert len(with_row.emitted) == 219, "N, over a bundle of 1,054"
+    assert len(with_row.emitted) == 260, "N, over a bundle of 1,054"
+    assert len(with_row.emitted) == 260, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
@@ -190,8 +188,8 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # 34 and not 31: the three documents `salesagent-j3k2l.20` added to N above are
     # reached through `governance/policy-entry.json`, which this row's own population
     # is what reaches, so removing the row loses them too.
-    assert len(with_row.emitted) - len(without.emitted) == 34
-    assert len(set(composing()) & set(with_row.emitted)) == 22
+    assert len(with_row.emitted) - len(without.emitted) == 33
+    assert len(set(composing()) & set(with_row.emitted)) == 23
     assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
         with_row.emitted
     )

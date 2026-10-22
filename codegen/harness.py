@@ -179,6 +179,33 @@ def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrate
     return from_schema(schema, custom_formats=dict(custom_formats))
 
 
+def filtered_formats(schema: Any) -> tuple[str, ...]:
+    """Every position where a ``format`` and a ``pattern`` meet, with both values.
+
+    **The shape ``hypothesis_jsonschema`` cannot draw**, and the reason is in its own
+    source: ``string_schema`` takes the FORMAT's strategy and then applies the pattern
+    as a ``.filter()``, with the comment *"This isn't really supported, but we'll do
+    our best with a filter"*.  Where the pattern restricts the value beyond what the
+    format strategy happens to emit, every draw is filtered out and ``hypothesis``
+    raises ``Unsatisfiable`` over the WHOLE schema, naming no node.
+
+    So this names the nodes, derived from the document rather than guessed, and
+    :attr:`PairReport.no_instrument` reports them beside hypothesis's own message --
+    which carries the filtered-draw count.  Measured on the emitted population:
+    ``core/reference-renderer.json`` states ``format: uri`` beside
+    ``pattern: ^https://github\\.com/`` and 459 of 459 draws are filtered, at 10, 25
+    and 50 examples alike.
+
+    It is not gated on the format being ASSERTED, and that is deliberate: the filter
+    runs whether or not a checker is installed, so the drawing problem is the same.
+    """
+    return tuple(
+        f"{pointer or '/'}: format {node['format']!r} beside pattern {node['pattern']!r}"
+        for pointer, node in _nodes(schema)
+        if isinstance(node.get("format"), str) and isinstance(node.get("pattern"), str)
+    )
+
+
 def validator_for(schema: dict) -> Any:
     """The validator the document's own ``$schema`` names.
 
@@ -1189,6 +1216,15 @@ class RefusesResult:
     #: denominator came from one statement of it rather than all -- which is why
     #: it is recorded instead of left to be inferred from a smaller count.
     stepped_at: str = ""
+    #: Set where the WITNESS strategy admitted nothing: the check could not DRAW an
+    #: instance, so the obstruction is the GENERATOR and not the model.  ``harness``
+    #: carries the same text and still makes this a ``harness_error``; this field is
+    #: what :attr:`PairReport.no_instrument` reads to tell the two things
+    #: ``harness_error`` means apart -- "hypothesis has no instance for this shape"
+    #: and "the harness broke" -- which are not the same finding and do not have the
+    #: same owner.  Written only for a WITNESS step, exactly as
+    #: :attr:`unsatisfiable` is written only for a COMPLEMENT one.
+    undrawable: str = ""
 
     @property
     def outcome(self) -> str:
@@ -1462,9 +1498,34 @@ def _refuses_once(
             res.collides = contradicting(schema, step)
             named = ", ".join(res.collides) or "nothing at this instance location"
             res.harness = f"{detail} | contradicted by: {named}"[:300]
+            # **Only where NOTHING contradicts the step**, and that gate is the whole
+            # difference between the two things an empty witness means.  A keyword at
+            # the same instance location that contradicts it is a reason the harness
+            # could act on -- group the positions, step the other keyword -- so §6's
+            # rule stands and the pair's verdict is a refusal
+            # (``test_an_unsteppable_site_is_reported_rather_than_passed`` is exactly
+            # that site, a ``maxLength`` stepped against a conjunct's ``const``).
+            # With nothing contradicting it, the document forbids the witness nowhere
+            # and the strategy still produced none: that is the GENERATOR, and
+            # ``PairReport.no_instrument`` records it.
+            if not res.collides:
+                res.undrawable = f"nothing at this instance location contradicts the step; {_why(e)}"
     except Exception as e:
         res.harness = f"{type(e).__name__}: {e}"[:300]
     return res
+
+
+def _why(e: BaseException) -> str:
+    """``hypothesis``'s own reason, up to the point where it starts advising.
+
+    ``Unsatisfiable``'s message is the reason followed by advice -- *"Try making your
+    filters or assumes less strict, or rewrite using strategy parameters..."* -- and
+    the advice is for whoever wrote the test, not a fact about the document.  The
+    reason half carries the number this report needs (*"459 of 459 test cases failed
+    a .filter() or assume() condition"*), so the cut keeps the measurement and drops
+    the boilerplate that was pushing it past the truncation.
+    """
+    return f"{type(e).__name__}: {str(e).split(' Try making')[0].strip()}"[:200]
 
 
 def _dump(x: Any) -> str:
@@ -1733,9 +1794,37 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
     * **a ``type`` the node's own content already forces**, which
       :func:`_entails_type` decides from the document.  A typeless node with nothing
       forcing it is still reported.
+    * **a ``description`` AT A NODE THE DOCUMENT GIVES A ``const``.**  The same
+      resolver canonicalization as the bullet above, at a ONE-MEMBER enum written
+      as a ``const``: ``canonicalish`` reduces a node whose value set is finite to
+      that set alone and drops every annotation at it.  Measured directly --
+      ``{"type": "string", "const": "OKP", "description": "d"}`` inlined through a
+      ``$ref`` comes back ``{"const": "OKP"}``, and so does the same node written
+      ``{"enum": ["OKP"]}`` -- and measured on the live pair both ways round:
+      ``core/agent-encryption-key.json``'s ``kty`` keeps its ``type`` and its
+      ``description`` in its OWN resolved document, and keeps neither inside
+      ``core/authorized-agent-base.json``, which references it.
+
+      So a faithful class whose field carries the document's ``description``
+      states a fact its referrer's resolved document no longer does.  The
+      ``type`` half of the same drop is already decided, by
+      :func:`_entails_type`'s ``const`` branch; this row is the ``description``
+      half and nothing else.  **It is gated on the document stating a ``const``
+      at that node**, so it excuses nothing anywhere else, and a ``description``
+      changes no accepted set in any direction -- while the
+      ``missing``/``differs`` half still catches a dropped or wrong one, which
+      is the defect that matters.
+
+      Measured over the emitted population: **3 such facts at 1 pair**
+      (``core/authorized-agent-base.json``'s ``crv``, ``kty`` and ``use``), all
+      three a ``description``, and **0 elsewhere**.  A ``default`` or any other
+      annotation at a const node has no row and is still reported: 0 of the
+      bundle's 1,486 const nodes carries one.
     """
     if "enum" in doc:
         return _implied_by_an_enum(keyword, value, doc["enum"])
+    if keyword == "description":
+        return "const" in doc
     if keyword == "default":
         return value is None and "null" not in str(doc.get("type", ""))
     if keyword == "type":
@@ -2176,6 +2265,11 @@ class PairReport:
     comparison: ComparisonResult | None = None
     step_sites: int = 0
     missing_formats: list[str] = field(default_factory=list)
+    #: The DOCUMENT's own positions where a ``format`` and a ``pattern`` meet,
+    #: filled by :func:`check_pair` because a report does not hold the document it
+    #: graded.  Read by :attr:`no_instrument` to name the shape behind an accepts
+    #: check that could not draw.
+    accepts_filtered_formats: tuple[str, ...] = ()
 
     @property
     def graded_instances(self) -> int:
@@ -2185,6 +2279,46 @@ class PairReport:
         and is counted by the control instead.
         """
         return sum(r.refused + r.accepted_invalid for r in self.refuses)
+
+    @property
+    def no_instrument(self) -> tuple[str, ...]:
+        """Every check of this pair that could not DRAW, each with its CAUSE.
+
+        **Tracking, with no ratchet on it, and that is the decision rather than an
+        omission.**  A shrink-only count assumes a fixed or shrinking population and
+        the emitted tree GROWS every merge, so each new batch of documents can
+        legitimately contribute new undrawable pairs and a shrink-only gate would
+        redden on correct work.  It can only shrink once ``hypothesis`` draws these
+        shapes, which is unscheduled, so shrink-only is unachievable in principle and
+        not merely premature.
+
+        **The CAUSE matters more than the count**, because this is the population the
+        eventual generator work starts from, so each entry names a shape to act on
+        rather than "cannot draw":
+
+        * the ACCEPTS check reports hypothesis's own message -- which carries the
+          filtered-draw count -- beside the document's own positions where a
+          ``format`` and a ``pattern`` meet (:func:`filtered_formats`), because that
+          is the shape ``hypothesis_jsonschema``'s ``string_schema`` filters and
+          cannot satisfy.  The positions are DERIVED from the document, not guessed:
+          hypothesis raises over the whole schema and names no node.
+        * a REFUSES step reports its keyword and its position, and it lands here
+          only where NOTHING at that instance location contradicts it
+          (:attr:`RefusesResult.undrawable` says why). A step contradicted by a
+          NAMED keyword is a harness defect and still reddens the pair under §6's
+          rule -- that is what separates this from a tolerance.
+        """
+        out: list[str] = []
+        if self.accepts is not None and self.accepts.outcome == "strategy_error":
+            where = "; ".join(self.accepts_filtered_formats) or (
+                "no format-beside-pattern position in this document"
+            )
+            why = self.accepts.detail.split(" Try making")[0].strip()[:200]
+            out.append(f"accepts: {where}; {why}")
+        out += [
+            f"refuses {r.keyword!r} at {r.pointer or '/'}: {r.undrawable}" for r in self.refuses if r.undrawable
+        ]
+        return tuple(out)
 
     @property
     def outcome(self) -> str:
@@ -2202,13 +2336,27 @@ class PairReport:
         """
         if self.missing_formats:
             return "missing_formats"
-        if self.accepts is None or self.accepts.outcome != "pass":
-            return "accepts:" + (self.accepts.outcome if self.accepts else "unrun")
-        bad = [r.outcome for r in self.refuses if r.outcome not in ("pass", "no_evidence")]
+        if self.accepts is None:
+            return "accepts:unrun"
+        # ``strategy_error`` is held back here and answered by ``no_instrument``
+        # below: it says the GENERATOR produced nothing, which is not a verdict on
+        # the model.  Every other accepts outcome is a verdict and still wins.
+        if self.accepts.outcome not in ("pass", "strategy_error"):
+            return "accepts:" + self.accepts.outcome
+        bad = [
+            r.outcome
+            for r in self.refuses
+            if r.outcome not in ("pass", "no_evidence") and not r.undrawable
+        ]
         if bad:
             return "refuses:" + bad[0]
         if self.comparison is None or self.comparison.outcome not in ("pass", "no_evidence"):
             return "comparison:" + (self.comparison.outcome if self.comparison else "unrun")
+        # AFTER the comparison, so a model defect is never reported as an instrument
+        # one, and BEFORE the two zero-denominator verdicts, so a pair whose steps
+        # were all undrawable names that instead of "nothing was graded".
+        if self.no_instrument:
+            return "no_instrument"
         if not self.step_sites:
             return "no_constraint_to_step"  # the document states nothing to step
         if not self.graded_instances:
@@ -2228,6 +2376,7 @@ def check_pair(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
     )
     rep.missing_formats = sorted(missing_formats(pair.schema, custom_formats))
+    rep.accepts_filtered_formats = filtered_formats(pair.schema)
     rep.accepts = check_accepts(
         pair.schema, pair.accept, examples=accepts_examples, custom_formats=custom_formats
     )

@@ -204,9 +204,7 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     are the document's ``enum`` array, in order, exactly.
     """
     classes = emitted_enum_classes()
-    # 271 and 214, one more of each than before `salesagent-j3k2l.23`: admitting the
-    # `notes` beside `enums/task-type.json`'s enum emits its `TaskType`.
-    assert len(classes) == 271, len(classes)  # 214 roots + 57 inline
+    assert len(classes) == 280, len(classes)  # 213 roots + 13 inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -259,9 +257,7 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
             names += 1
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
-    # 1,992 and not 1,954: `TaskType` is 38 members, and it is a class the tree
-    # carries since `salesagent-j3k2l.23` admitted the `notes` beside its enum.
-    assert names == 1992, names
+    assert names == 2030, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -318,9 +314,7 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
                 nodes += 1
             else:  # the one colliding node's document refuses before this is read
                 assert document not in emit.emit(BUNDLE, population()).emitted, (document, pointer)
-    # 271 and not 270: `enums/task-type.json` emits since `salesagent-j3k2l.23`, so
-    # its root `enum` is one more node the walk reaches.
-    assert nodes == 271, nodes
+    assert nodes == 280, nodes
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -430,7 +424,7 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
             assert bound[0].__name__ in named, (g.ref.document, key)
             sites += 1
             documents.add(g.ref.document)
-    assert (sites, len(documents)) == (32, 21), (sites, len(documents))
+    assert (sites, len(documents)) == (39, 27), (sites, len(documents))
 
 
 # --------------------------------------------------------------------------- #
@@ -846,4 +840,4 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
             for alias in n.names:
                 assert alias.name in exported[target], (module, target, alias.name)
                 checked += 1
-    assert checked == 174, checked
+    assert checked == 196, checked
