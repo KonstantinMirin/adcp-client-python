@@ -19,13 +19,20 @@ The pointer is there because a nested class is a SUBSCHEMA of its document and
 has to grade against its own node rather than against the whole file.  A root
 class names ``"#"``.
 
-``AdCPBaseModel`` carries the config a document says nothing about.  D7 derives
-``extra`` from ``additionalProperties``, so a document declaring ``false`` or
-``true`` gets ``forbid`` or ``allow`` on its own class and never reaches this
-default.  ``ignore`` is what is left for a document that declares neither, and
-there the two accepted sets agree: the schema admits the unknown key and so does
-the model.  One retains it and one drops it, which is not a question about what
-is accepted.
+``AdCPBaseModel`` carries the config a document says nothing about.  D8 derives
+``extra`` from ``additionalProperties`` alone: ``false`` -> ``forbid``, ``true``
+-> ``allow``, and a document that declares neither gets this base's ``allow``,
+because JSON Schema permits an additional property by default.  ``allow`` rather
+than ``ignore``, so a field a newer sender adds survives a round trip instead of
+being dropped; the accepted set is the same either way, and which of the two is
+chosen is a question about retention.
+
+**Nothing here reads an environment and no generated class carries a policy its
+document does not state.**  A consumer wanting stricter or looser behaviour than
+the schema sets it on a subclass.  In this step's population exactly ONE object
+node is silent on ``additionalProperties`` (23 declare ``true``, 15 declare
+``false``), so this default decides one class and the other 43 decide
+themselves.
 
 Acceptance is decided by ``strict_validate``, which validates a payload against
 the DOCUMENT'S OWN JSON Schema and only then constructs through
@@ -46,7 +53,7 @@ presence and ``type`` governs value, which is the distinction the schema already
 draws and the schema half already enforces: a validator re-stating it in Python
 would re-implement a fact the document states exactly, on every one of the
 bundle's ~7,000 property annotations, and would cost pydantic's serialization
-fast path to do it.  The ``None`` arm of the annotation is live either way,
+fast path to do it.  The ``None`` branch of the annotation is live either way,
 because the attribute holds ``None`` for an omitted key, so ``x.field is None``
 means "not supplied".
 
@@ -210,7 +217,7 @@ class AdCPBaseModel(BaseModel):
     #: Python ``re``, so ``python-re`` is the engine whose accepted set is the
     #: document's.  Choosing the other engine would be this model deciding that a
     #: pattern the schema admits is unrepresentable.
-    model_config = ConfigDict(extra="ignore", regex_engine="python-re")
+    model_config = ConfigDict(extra="allow", regex_engine="python-re")
 
     #: Declared and not assigned: every emitted class writes its own, and a
     #: subclass of this base that writes none has no schema to be validated

@@ -51,16 +51,17 @@ all 142 property descriptions in the population it covered.
 ## The metric
 
 **N = portable documents emitted by `codegen.emit` AND graded green by
-`codegen.harness` against the schema the class itself names, on all three legs,
-with `N + refused == 1,054` asserted and every refusal named by document,
-pointer and keyword.**
+`codegen.harness` against the schema the class itself names, on all three
+checks, with emitted plus refused equal to the bundle's own size and every
+refusal named by document, pointer and keyword.**
 
 N is **43** in this tree, over the 334 documents steps 1 and 2 name (85 leaf
-objects, 249 referencing a property), with 331 refused. The third leg compares
-each class's own `model_json_schema()` to its document and is what grades the
-generated code: the two acceptance legs go through `strict_validate`, whose
-schema half answers first, so a model with `Any` on every field passes both over
-the same 75 instances a faithful one does.
+objects, 249 referencing a property), with 331 refused. The third check — the
+schema comparison — puts each class's own `model_json_schema()` against its
+document, and it is what grades the generated code: the accepts and refuses
+checks go through `strict_validate`, whose schema half answers first, so a model
+with `Any` on every field passes both over the same 75 instances a faithful one
+does.
 
 ## Getting started
 

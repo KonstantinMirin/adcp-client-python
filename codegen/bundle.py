@@ -44,7 +44,7 @@ def read(bundle: Path, document: str) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# the shape census this step's population is selected by
+# the census of node kinds this step's population is selected by
 # --------------------------------------------------------------------------- #
 # Descend only where a subschema can legally appear.  The same reason
 # ``harness.formats_used`` does: ``examples``, ``default``, ``const`` and ``enum``
@@ -110,7 +110,7 @@ def references(node: object) -> list[tuple[str, str]]:
 def document_for(uri: str, documents: Collection[str]) -> str | None:
     """The bundle document an absolute ``$ref`` URI names, or ``None``.
 
-    Derived from the bundle's own file set rather than from the URI's shape: the
+    Derived from the bundle's own file set rather than from the URI's spelling: the
     longest trailing run of path segments that IS a document in this bundle.  That
     is what keeps a version out of ``codegen/`` (D9).  Every reference in the 3.2
     bundle is spelled ``.../schemas/3.2.4/<path>``, and a rule that stripped "the

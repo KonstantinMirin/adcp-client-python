@@ -40,7 +40,7 @@ from pydantic import ValidationError
 
 from adcp.types._base import AdCPBaseModel, SchemaRef, schema_at
 from codegen import bundle, emit
-from codegen.harness import Pair, check_faithful, check_pair, steps
+from codegen.harness import Pair, check_pair, compare_schema, steps
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -84,7 +84,7 @@ def graded() -> list[Graded]:
 
     An alias is D2's root-scalar row: it is not a class, so its MODULE carries
     the ``__adcp_schema__`` and the ``strict_validate``, and the model is the one
-    name the module exports.  Both arms are asserted non-empty below, so neither
+    name the module exports.  Both cases are asserted non-empty below, so neither
     is graded by an empty loop.
     """
     import adcp.types._schemas as pkg
@@ -134,11 +134,20 @@ def pagination() -> Graded:
 # --------------------------------------------------------------------------- #
 def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     """A verdict read off a population nobody counted is a verdict over however
-    many documents there turned out to be, including none."""
-    assert len(bundle.portable(BUNDLE)) == 1054
+    many documents there turned out to be, including none.
+
+    **The bundle's size is read from the bundle**, never written here: it is a
+    property of the bundle version and the directory is an argument (D11), so a
+    literal total would be an assertion about one checkout of one version.  What
+    IS pinned is this step's own population, because that is the denominator the
+    step's result is stated over -- a silent change to the selectors would
+    otherwise move the result without moving any number anyone reads.
+    """
+    whole = bundle.portable(BUNDLE)
     assert len(leaves()) == 85
     assert len(referencing()) == 249
     assert len(population()) == 334
+    assert set(population()) < set(whole), "the step's population is not a part of the bundle"
     assert PAGINATION in leaves()
     assert "error-details/creative-revision-content-mismatch.json" in referencing()
 
@@ -187,23 +196,22 @@ def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
     roots = [g for g in rows if g.ref.pointer == "#"]
     assert sorted(g.ref.document for g in roots) == sorted(emitted)
     nested = [g for g in rows if g.ref.pointer != "#"]
-    assert nested, "no nested class was emitted; the pointer arm is graded by nothing"
+    assert nested, "no nested class was emitted; the pointer case is graded by nothing"
     for g in nested:
         assert schema_at(g.ref) != schema_at(SchemaRef(g.ref.document, "#")), g.ref
     aliases = [g for g in rows if not isinstance(g.model, type)]
-    assert aliases, "no root-scalar alias was emitted; that arm is graded by nothing"
+    assert aliases, "no root-scalar alias was emitted; that case is graded by nothing"
 
 
 # --------------------------------------------------------------------------- #
-# the three legs
+# the three checks
 # --------------------------------------------------------------------------- #
-def test_pagination_request_is_graded_green_on_all_three_legs() -> None:
+def test_pagination_request_passes_all_three_checks() -> None:
     """Step 1's own document, over EVERY constraint site it has.
 
-    The direction-2 denominator is asserted, not just the verdict: a model with
-    ``Any`` on every field is green in both directions on this document with a
-    denominator of zero (see the next test), so a green mark without the count
-    beside it says nothing.
+    The refuses check's denominator is asserted, not just the verdict: a green
+    mark without the count beside it says nothing, because a pair no instance
+    reached reports no failure either.
     """
     rep = check_pair(pair_of(pagination()), max_steps=None)
     assert rep.missing_formats == []
@@ -211,16 +219,16 @@ def test_pagination_request_is_graded_green_on_all_three_legs() -> None:
     assert rep.step_sites == 3, rep.step_sites  # minimum, maximum, additionalProperties
     assert [r.outcome for r in rep.refuses] == ["pass"] * 3
     assert rep.graded_instances == 75, rep.graded_instances
-    assert rep.faithful.outcome == "pass", (rep.faithful.missing, rep.faithful.differs)
-    assert rep.faithful.compared == 10, rep.faithful.compared
+    assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
+    assert rep.comparison.compared == 10, rep.comparison.compared
     assert rep.outcome == "pass"
 
 
 def test_the_compiler_carries_what_the_document_says_and_a_text_emitter_dropped() -> None:
     """By introspection, not by reading the emitted text.
 
-    These are the facts the faithfulness leg exists to grade, named here one at a
-    time so a failure says WHICH one moved.  All four were dropped by the
+    These are the facts the schema comparison exists to grade, named here one at
+    a time so a failure says WHICH one moved.  All four were dropped by the
     hand-rolled renderer this step replaces, and all four come out of the
     compiler for free.
     """
@@ -241,32 +249,32 @@ def test_the_compiler_carries_what_the_document_says_and_a_text_emitter_dropped(
     assert model.__adcp_schema__ == SchemaRef(PAGINATION, "#")
 
 
-def test_leg_3_grades_the_generated_code_and_the_acceptance_legs_do_not() -> None:
-    """The measurement that forces leg 3, as a test rather than as a note.
+def test_the_schema_comparison_grades_the_generated_code_and_the_other_two_do_not() -> None:
+    """The measurement that forces the schema comparison, as a test not a note.
 
     A model with ``Any`` on every field is wider than its document in every way
     an annotation can be.  Graded through the PRODUCTION entry point -- which
     validates against the document and only then constructs, and is therefore the
     only entry point grading acceptance says anything about -- it is
-    indistinguishable from a faithful model: direction 1 passes, all three
-    direction-2 steps pass, and the denominator is the SAME 75 instances the
-    faithful model is graded over.  The schema half refuses every stepped
+    indistinguishable from a faithful model: the accepts check passes, all three
+    steps of the refuses check pass, and the denominator is the SAME 75 instances
+    the faithful model is graded over.  The schema half refuses every stepped
     instance, so the verdict is the schema's and the annotations are never
     consulted.
 
-    **That is strictly worse than the plan's §4 states, and the correction
-    matters.**  §4 records this as a pass "with a direction-2 denominator of 0
-    instances", which would make the zero-denominator rule enough to catch it.
-    It is not: the 0 came from the probe's own hand-rolled entry point raising
-    ``jsonschema.ValidationError`` (which ``check_refuses`` does not catch, so
-    every step reported ``harness_error``) while the probe's verdict read
-    ``accepted_invalid == 0`` as green.  Measured both ways in the same process:
-    the FAITHFUL model gets the same denominator of 0 through that wrapper, so
-    the 0 was a property of the wrapper and not of the model.  Through the real
-    one, both models get 75.  So leg 3 is not a second opinion -- it is the only
-    thing that separates them.
+    **That is strictly worse than the specification's §6 states, and the
+    correction matters.**  §6 records this as a pass "with a refuses-check
+    denominator of zero instances", which would make the zero-denominator rule
+    enough to catch it.  It is not: the zero came from the probe's own
+    hand-rolled entry point raising ``jsonschema.ValidationError`` (which
+    ``check_refuses`` does not catch, so every step reported ``harness_error``)
+    while the probe's verdict read ``accepted_invalid == 0`` as green.  Measured
+    both ways in the same process: the FAITHFUL model gets the same zero through
+    that wrapper, so the zero was a property of the wrapper and not of the model.
+    Through the real one, both models get 75.  So the schema comparison is not a
+    second opinion -- it is the only thing that separates them.
 
-    Falsifiable here: delete leg 3 and a wide model passes this file.
+    Falsifiable here: delete the comparison and a wide model passes this file.
     """
     schema = schema_at(SchemaRef(PAGINATION, "#"))
 
@@ -285,31 +293,31 @@ def test_leg_3_grades_the_generated_code_and_the_acceptance_legs_do_not() -> Non
     assert [r.outcome for r in wide.refuses] == [r.outcome for r in faithful.refuses] == ["pass"] * 3
     assert wide.graded_instances == faithful.graded_instances == 75
 
-    assert faithful.faithful.outcome == "pass"
-    assert wide.faithful.outcome == "model_drops_a_fact"
-    missing = {m.split(":")[0] for m in wide.faithful.missing}
+    assert faithful.comparison.outcome == "pass"
+    assert wide.comparison.outcome == "model_drops_a_fact"
+    missing = {m.split(":")[0] for m in wide.comparison.missing}
     assert {
         "/properties/max_results/type",
         "/properties/max_results/minimum",
         "/properties/max_results/maximum",
     } <= missing
     # ``Any = None`` STATES a default, it just states the wrong one, so it is a
-    # difference and not an omission -- and leg 3 has to tell those apart,
+    # difference and not an omission -- and the comparison has to tell those apart,
     # because "the model says nothing" and "the model says something else" point
     # at different defects in the walk.
-    assert "/properties/max_results/default: the document says 50, the model None" in wide.faithful.differs
+    assert "/properties/max_results/default: the document says 50, the model None" in wide.comparison.differs
 
 
-def test_a_zero_direction_2_denominator_is_not_reportable_as_a_pass() -> None:
+def test_a_zero_refuses_check_denominator_is_not_reportable_as_a_pass() -> None:
     """The other half of the rule, and it needs its own fixture.
 
-    The rule is right -- a pair no instance reached is graded by nothing in
-    direction 2 -- and the test above shows it is not what catches a wide model.
-    So it is graded here on the thing that does produce a zero denominator: an
-    entry point that refuses with an exception ``check_refuses`` does not catch,
-    which is the shape the plan's own probe had.  Every step reports
-    ``harness_error``, the denominator is 0, and the pair's verdict is a refusal
-    rather than a pass.
+    The rule is right -- a pair no instance reached is graded by nothing in the
+    refuses check -- and the test above shows it is not what catches a wide
+    model.  So it is graded here on the thing that does produce a zero
+    denominator: an entry point that refuses with an exception
+    ``check_refuses`` does not catch, which is what the specification's own probe
+    did.  Every step reports ``harness_error``, the denominator is 0, and the
+    pair's verdict is a refusal rather than a pass.
     """
     import jsonschema
 
@@ -329,38 +337,66 @@ def test_a_zero_direction_2_denominator_is_not_reportable_as_a_pass() -> None:
 
 
 @pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
-def test_every_class_is_graded_green_on_all_three_legs(row: Graded) -> None:
+def test_every_class_passes_all_three_checks(row: Graded) -> None:
     """N: emitted AND graded green against the schema the class itself names.
 
     ``no_constraint_to_step`` is the one verdict other than ``pass`` allowed
     through, and only where the document genuinely states no keyword ``steps()``
     can step -- asserted here against ``steps()`` itself rather than taken on
-    trust.  Such a pair is still graded by direction 1 and by leg 3, and the
-    assertion below requires leg 3 to have compared something, so it is not a
-    pair nothing looked at.
+    trust.  Such a pair is still graded by the accepts check and by the schema
+    comparison, and the assertion below requires the comparison to have compared
+    something, so it is not a pair nothing looked at.
     """
     pair = pair_of(row)
     rep = check_pair(pair, max_steps=None)
     assert rep.missing_formats == []
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
-    assert rep.faithful.outcome == "pass", (rep.faithful.missing, rep.faithful.differs)
+    assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
     bad = [(r.keyword, r.pointer, r.outcome, r.counterexample, r.harness) for r in rep.refuses]
     assert [b for b in bad if b[2] not in ("pass", "no_evidence")] == []
     if rep.outcome != "pass":
         assert rep.outcome == "no_constraint_to_step", rep.outcome
         assert steps(pair.schema) == []
-        assert rep.faithful.compared > 0
+        assert rep.comparison.compared > 0
 
 
-def test_the_direction_2_denominator_is_counted_over_the_whole_population() -> None:
-    """One number for the step, with its denominator, because a per-pair green
+def test_the_step_result_is_counted_over_the_whole_population() -> None:
+    """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
     assert len(reports) == 44, len(reports)
     assert sum(1 for r in reports if r.outcome == "pass") == 42
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 2
-    assert sum(r.graded_instances for r in reports) == 3758
-    assert sum(r.faithful.compared for r in reports) == 486
+    assert sum(r.graded_instances for r in reports) == 3758  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 486  # facts compared
+
+
+def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
+    """D8, over the three cases the population actually contains.
+
+    The population is partitioned by what each object node SAYS, derived from the
+    bundle, and each part is required non-empty so none is graded by an empty
+    loop.  The silent part has exactly one member (``core/version-envelope.json``),
+    which is the whole reason the base's own default is asserted here rather than
+    left to follow from 43 classes that state their own.
+
+    ``allow`` and not ``ignore`` for the silent case: both accept the unknown
+    key, so this is a question about retention and not about the accepted set,
+    and ``allow`` keeps a field a newer sender adds instead of dropping it.
+    Nothing reads an environment to decide it.
+    """
+    assert AdCPBaseModel.model_config["extra"] == "allow"
+
+    counted = {"forbid": 0, "allow": 0, "silent": 0}
+    for row in graded():
+        if not isinstance(row.model, type):
+            continue  # an alias has no class config
+        declared = schema_at(row.ref).get("additionalProperties", "silent")
+        want = {False: "forbid", True: "allow", "silent": "allow"}[declared]
+        assert row.model.model_config["extra"] == want, (row.ref, declared)
+        counted["silent" if declared == "silent" else want] += 1
+    assert counted["forbid"] and counted["allow"], counted
+    assert counted["silent"] == 1, counted
 
 
 # --------------------------------------------------------------------------- #
@@ -392,7 +428,7 @@ def test_strict_validate_decides_acceptance_against_the_document() -> None:
 
 
 def test_a_class_pointed_at_another_document_grades_red() -> None:
-    """``__adcp_schema__`` is load-bearing and not decoration.
+    """``__adcp_schema__`` decides what is validated, and is not decoration.
 
     The same class body, pointed at a different document, must fail -- otherwise
     the reference is a comment and ``strict_validate`` is deciding acceptance
@@ -417,7 +453,7 @@ def test_a_class_pointed_at_another_document_grades_red() -> None:
 
     with pytest.raises(ValidationError):
         Misaimed.strict_validate({"max_results": 50})
-    assert check_faithful(schema_at(SchemaRef(other, "#")), Misaimed).outcome == "model_drops_a_fact"
+    assert compare_schema(schema_at(SchemaRef(other, "#")), Misaimed).outcome == "model_drops_a_fact"
 
 
 def test_a_pointer_names_one_node_of_a_document() -> None:
@@ -673,7 +709,7 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
 
 
 def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
-    """D11, graded through the entry point that breaks it.
+    """D12, graded through the entry point that breaks it.
 
     ``python -m codegen.emit`` runs the emitter as ``__main__``.  With ``Refusal``
     defined in that module, a lowering that imports ``codegen.emit`` to raise one

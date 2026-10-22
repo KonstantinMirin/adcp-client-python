@@ -1,16 +1,17 @@
-"""The compiler half: a decided shape in, Python out.
+"""The compiler half: a class declaration in, Python out.
 
 ``docs/plan/rebuild-plan.md`` §1 splits the pipeline at a DECISION rather than at
-a translation.  Our walk reads the JSON Schema and decides what each node is, what
-it is called, which fields it has and what constrains them.  This module takes
-that decision and nothing else, and hands it to
+a translation.  Our walk reads the JSON Schema and decides what each node becomes -- a class, an
+annotation, an enumeration or a rule -- what it is called, which fields it has
+and what constrains them.  This module takes that declaration and nothing else,
+and hands it to
 ``datamodel-code-generator``'s pydantic-v2 MODEL layer, which writes the Python.
 
 **dmcg's parser never runs.**  The parser is the half that decides names and
 structure from a schema, and that is our half -- it is where every judgement
 about AdCP's bundle lives, and no library has that knowledge.  What dmcg has that
 we would otherwise rewrite is the rendering: annotated constraints, defaults,
-descriptions, aliases, ``ConfigDict``, the ``| None`` arm of an optional, and the
+descriptions, aliases, ``ConfigDict``, the ``| None`` branch of an optional, and the
 import set each of those needs.  A hand-rolled text emitter dropped three of
 three schema defaults and all 142 property descriptions in the population it
 covered, not because anyone decided to, but because carrying them is rendering
@@ -106,7 +107,7 @@ class Type:
     paths.
 
     A local symbol is a REFERENCE to another model and not a custom type, and
-    that distinction is load-bearing: ``is_custom_type`` makes dmcg add
+    that distinction decides a config: ``is_custom_type`` makes dmcg add
     ``arbitrary_types_allowed=True`` to the class's ``ConfigDict``, which is a
     relaxation of pydantic nobody decided and which D7 does not derive.  Every
     local symbol here is something this pipeline emitted -- a sibling class or an
@@ -150,7 +151,7 @@ class Property:
     #: constraint sits beside it.  It then rides as ``json_schema_extra``, which
     #: states the fact without changing what is accepted: draft-07 ``format`` is
     #: an annotation and ``jsonschema`` asserts nothing for it.  Dropping it
-    #: instead loses a fact the document states, which the faithfulness leg
+    #: instead loses a fact the document states, which the schema comparison
     #: grades (measured: ``core/platform-extension-ref.json``'s ``uri`` carries
     #: ``format: uri`` beside a ``pattern``).
     format: str | None = None
@@ -223,14 +224,14 @@ def render_alias(
     has a slot for a line beside an alias.
 
     ``required=True``: an alias is the document's own type, with no presence
-    question to answer.  The ``| None`` arm belongs to an optional PROPERTY, and
+    question to answer.  The ``| None`` branch belongs to an optional PROPERTY, and
     a property referencing this alias gets it from its own field.
 
     The description rides in ``Field`` and not in a docstring, because an alias
     has no docstring slot: five of this step's documents are scalar roots whose
     root ``description`` was dropped for exactly that reason, and a
     ``Field(description=...)`` puts it in the alias's own JSON schema where the
-    faithfulness leg finds it.
+    schema comparison finds it.
     """
     fld = _field(
         Property(

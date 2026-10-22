@@ -1,4 +1,4 @@
-"""The one refusal type, in a module that is never an entry point.  D11.
+"""The one refusal type, in a module that is never an entry point.  D12.
 
 **Why it does not live in ``codegen/emit.py``.**  ``python -m codegen.emit`` runs
 under ``runpy``, which executes the named module as ``__main__`` -- and a lowering

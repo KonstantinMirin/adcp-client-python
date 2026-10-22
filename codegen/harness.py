@@ -24,29 +24,30 @@ generator or model package.  Its whole input is:
                   should have had one was graded wide and green.  The caller
                   knows which it is; this module does not and now does not guess.
 
-It answers three questions about that pair:
+It runs three checks over that pair:
 
-  direction 1 (``check_accepts``)
-      every instance the schema admits, the model admits.
+  the accepts check (``check_accepts``)
+      schema -> payload -> model: every instance the schema admits, the model
+      admits.
 
-  direction 2 (``check_refuses``)
-      for each constraint keyword in the document, an instance that violates
-      exactly that keyword is refused by the model.
+  the refuses check (``check_refuses``)
+      model -> mutated keyword -> schema: for each constraint keyword in the
+      document, an instance that violates exactly that keyword is refused.
 
-  faithfulness (``check_faithful``)
+  the schema comparison (``compare_schema``)
       every fact the document states about a value, the model's own
       ``model_json_schema()`` states too.
 
 **The third is not redundant and here is the measurement that forces it.**  Where
 ``accept`` validates against the document before constructing -- which is the
-production entry point and so the only honest thing to grade the first two
+production entry point and so the only honest thing to run the first two
 through -- its schema half refuses everything the document refuses, so the
 ANNOTATIONS are never exercised.  On ``core/pagination-request.json`` a model
-with ``Any`` on every field grades green in both directions with a direction-2
-denominator of **0 instances**, and so does deleting its base classes; a faithful
-model grades green with a denominator of 75.  Three lanes found that
-independently, by widening their own lowering and staying green.  Directions 1
-and 2 grade the entry point; ``check_faithful`` grades the generated code.
+with ``Any`` on every field passes both checks over the SAME 75 instances a
+faithful model is graded over, so no count of instances separates them.  Three
+lanes found that independently, by widening their own lowering and staying green.
+The accepts and refuses checks grade the entry point; ``compare_schema`` grades
+the generated code.
 
 Nothing is enumerated by hand.  The keyword comes from the document, the instance
 from ``hypothesis_jsonschema``, and the expected refusal is the keyword that was
@@ -191,7 +192,7 @@ def conforms(schema: dict, instance: Any, *, validator_cls=None) -> bool | None:
 def violated_keywords(schema: dict, instance: Any, *, validator_cls=None) -> list[str]:
     """Which keywords the ORIGINAL document rejects this instance on.
 
-    The step's own keyword is NOT a safe label for a direction-2 failure.  Two
+    The step's own keyword is NOT a safe label for a refuses-check failure.  Two
     reasons, both measured here: ``canonicalish`` DERIVES constraints while
     resolving (``uniqueItems: true`` over a 2-member enum became ``maxItems: 2``,
     so a "maxItems" step produced an instance the document refuses on
@@ -236,7 +237,7 @@ class Step:
 
         ``force`` makes the path down to the site mandatory (see ``force_path``).
         It is on because a site the generator never populates grades nothing;
-        ``force=False`` exists so a measurement can draw the unforced leg from
+        ``force=False`` exists so a measurement can draw the unforced case from
         the same inputs in the same process, and nothing else passes it.
         """
         doc = force_path(schema, self.pointer) if force else copy.deepcopy(schema)
@@ -678,7 +679,7 @@ def check_accepts(
     examples: int = 25,
     custom_formats: Mapping[str, Any] = (),
 ) -> AcceptsResult:
-    """Direction 1: every instance the schema admits, ``accept`` admits.
+    """The accepts check: every instance the schema admits, ``accept`` admits.
 
     This is where a model NARROWER than its document fails, and the annotations
     are load-bearing here even behind a schema check: the schema half passes an
@@ -728,7 +729,7 @@ def check_refuses(
     custom_formats: Mapping[str, Any] = (),
     force_path_to_site: bool = True,
 ) -> RefusesResult:
-    """Direction 2: an instance violating exactly ``step.keyword`` is refused.
+    """The refuses check: an instance violating exactly ``step.keyword`` is refused.
 
     ``force_path_to_site`` is passed to ``Step.materialize``; see ``force_path``
     for why the default is on and why it touches only the generated-from document.
@@ -739,7 +740,7 @@ def check_refuses(
     entry point validating against that same document with the same library must
     then refuse -- so a pass says the entry point's accepted set is the
     document's, which is the obligation, and says nothing about whether the
-    annotations underneath would have refused too.  ``check_faithful`` is what
+    annotations underneath would have refused too.  ``compare_schema`` is what
     grades those.
     """
     res = RefusesResult(keyword=step.keyword, pointer=step.pointer, describe=step.describe)
@@ -785,7 +786,7 @@ def _dump(x: Any) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# leg 3: the model's own schema against the document
+# the schema comparison: the model's own schema against the document
 # --------------------------------------------------------------------------- #
 #: What a document can STATE about a value, and therefore what the model has to
 #: state too.  Three groups, and the grouping is the reason this is one list:
@@ -820,8 +821,8 @@ FACTS = (
 
 
 @dataclass
-class FaithfulResult:
-    """Leg 3's verdict for one pair."""
+class ComparisonResult:
+    """The schema comparison's verdict for one pair."""
 
     compared: int = 0  # facts the document states that were looked for
     missing: list[str] = field(default_factory=list)  # the model states nothing
@@ -860,7 +861,7 @@ def _closed(x: Any) -> Any:
 
 
 def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
-    """The model's node for one position, in the document's own shape.
+    """The model's node for one position, written the way the document writes it.
 
     Three normalizations, and each one is forced by a decision this pipeline made
     rather than by anything arbitrary in pydantic:
@@ -869,15 +870,15 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
       cross-document reference is an IMPORT (P2), so pydantic hoists both into
       ``$defs`` and references them.  The document the class names is resolved,
       so the same facts are inline there.
-    * **An ``anyOf`` with a ``null`` arm.**  D4 renders an optional property
+    * **An ``anyOf`` with a ``null`` branch.**  D4 renders an optional property
       ``T | None``, because the attribute holds ``None`` for an omitted key.
       pydantic states that as a union; the document states the type and leaves
-      presence to ``required``.  Unwrapping the null arm compares like with
+      presence to ``required``.  Unwrapping the null branch compares like with
       like, and it is safe: a document that genuinely admits null says so with
       ``"type": ["string", "null"]`` or a union, which is a later step's row and
       arrives as a multi-member ``anyOf`` that is not unwrapped here.
     * **The outer keys win.**  ``default`` and ``description`` sit outside the
-      ``anyOf`` and the type facts inside it.
+      ``anyOf`` and the type facts inside the branch.
     """
     if depth > 16 or not isinstance(node, dict):  # a self-referential $defs chain
         return node if isinstance(node, dict) else {}
@@ -886,21 +887,21 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
         target = defs.get(name)
         outer = {k: v for k, v in node.items() if k != "$ref"}
         return {**_normalize(target, defs, depth + 1), **outer} if target is not None else outer
-    arms = node.get("anyOf")
-    if isinstance(arms, list) and len(arms) == 2:  # noqa: PLR2004 -- T | None, and nothing else
-        live = [a for a in arms if isinstance(a, dict) and a.get("type") != "null"]
-        nulls = [a for a in arms if isinstance(a, dict) and a.get("type") == "null"]
+    branches = node.get("anyOf")
+    if isinstance(branches, list) and len(branches) == 2:  # noqa: PLR2004 -- T | None only
+        live = [b for b in branches if isinstance(b, dict) and b.get("type") != "null"]
+        nulls = [b for b in branches if isinstance(b, dict) and b.get("type") == "null"]
         if len(live) == 1 and len(nulls) == 1:
             outer = {k: v for k, v in node.items() if k != "anyOf"}
             return {**_normalize(live[0], defs, depth + 1), **outer}
     return node
 
 
-def check_faithful(schema: dict, model: Any) -> FaithfulResult:
-    """Leg 3: every fact the document states, the model's own schema states.
+def compare_schema(schema: dict, model: Any) -> ComparisonResult:
+    """Every fact the document states, the model's own schema states too.
 
     One direction, and deliberately: the reverse -- the model stating a
-    constraint the document does not -- is what direction 1 fails on, because an
+    constraint the document does not -- is what the accepts check fails on, because an
     instance the schema admits and the annotation refuses is generated there.
     A model that states LESS than its document is invisible to both acceptance
     directions when the entry point checks the schema first, which is the hole
@@ -908,10 +909,10 @@ def check_faithful(schema: dict, model: Any) -> FaithfulResult:
 
     pydantic adds facts of its own (a ``title`` per class and per property, the
     ``minLength``/``maxLength`` that come with ``AnyUrl``).  Those are not
-    compared: an addition is either a narrowing, which direction 1 catches, or a
+    compared: an addition is either a narrowing, which the accepts check catches, or a
     name, which is not a fact about a value.
     """
-    res = FaithfulResult()
+    res = ComparisonResult()
     try:
         emitted = (
             model.model_json_schema()
@@ -984,13 +985,13 @@ class PairReport:
     model_repr: str = ""
     accepts: AcceptsResult | None = None
     refuses: list[RefusesResult] = field(default_factory=list)
-    faithful: FaithfulResult | None = None
+    comparison: ComparisonResult | None = None
     step_sites: int = 0
     missing_formats: list[str] = field(default_factory=list)
 
     @property
     def graded_instances(self) -> int:
-        """Direction 2's denominator: instances that actually reached the model.
+        """The refuses check's denominator: instances that reached the model.
 
         An instance the step failed to push out of the document grades nothing
         and is counted by the control instead.
@@ -1001,12 +1002,15 @@ class PairReport:
     def outcome(self) -> str:
         """One verdict for the pair, and **a zero denominator is a refusal**.
 
-        Measured, which is why it is structural here rather than a convention a
-        caller is trusted to apply: a model with ``Any`` on every field grades
-        green in both directions on ``core/pagination-request.json`` with
-        ``accepted_invalid + refused == 0``.  Reporting that as a pass is the
-        vacuous pass, and "no pair is reportable with a zero direction-2
-        denominator" is a rule a report can enforce and a reader cannot.
+        Structural here rather than a convention a caller is trusted to apply,
+        because a report can enforce it and a reader cannot.  What it guards is a
+        pair no instance reached: an entry point raising an exception this module
+        does not catch leaves every step at ``harness_error`` with nothing
+        graded.  It is NOT what catches a model wider than its document --
+        measured, a model with ``Any`` on every field passes the refuses check
+        over the same 75 instances a faithful one does, so the denominator is
+        identical and the schema comparison is the only check that separates
+        them.
         """
         if self.missing_formats:
             return "missing_formats"
@@ -1015,12 +1019,12 @@ class PairReport:
         bad = [r.outcome for r in self.refuses if r.outcome not in ("pass", "no_evidence")]
         if bad:
             return "refuses:" + bad[0]
-        if self.faithful is None or self.faithful.outcome not in ("pass", "no_evidence"):
-            return "faithful:" + (self.faithful.outcome if self.faithful else "unrun")
+        if self.comparison is None or self.comparison.outcome not in ("pass", "no_evidence"):
+            return "comparison:" + (self.comparison.outcome if self.comparison else "unrun")
         if not self.step_sites:
             return "no_constraint_to_step"  # the document states nothing to step
         if not self.graded_instances:
-            return "no_direction_2_evidence"
+            return "no_refuses_check_evidence"
         return "pass"
 
 
@@ -1052,7 +1056,7 @@ def check_pair(
                 custom_formats=custom_formats,
             )
         )
-    rep.faithful = check_faithful(pair.schema, pair.model)
+    rep.comparison = compare_schema(pair.schema, pair.model)
     return rep
 
 

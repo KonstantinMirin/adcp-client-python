@@ -45,8 +45,8 @@ a ``$ref`` to another document; and a scalar root, as the ``Annotated`` alias
 D2 gives it, because a reference TARGET is one.  A cross-document ``$ref``
 becomes an IMPORT of the target's symbol (P2) -- the target declares its type
 once and the referencing module names it, so no constraint of the target has a
-second spelling to drift from.  Every other shape is a later step's row in D2, and a document
-carrying one is REFUSED by name, pointer and keyword rather than emitted
+second spelling to drift from.  Every other kind of node is a later step's row in D2, and a
+document carrying one is REFUSED by name, pointer and keyword rather than emitted
 approximately.  A refusal is the designed outcome of a keyword this emitter does
 not lower: a model that quietly ignores a constraint is wider than its schema,
 which is the defect class P3 exists to remove.
@@ -90,21 +90,31 @@ SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool
 #: see ``compiler.CONSTRAINTS`` and gate 1 there.
 CONSTRAINTS = compiler.CONSTRAINTS
 
-#: ``format`` -> the dotted path of the Python type that admits exactly the
-#: format's values.  A format is in this table only when such a type exists and
-#: a document in the emitted population uses it.  ``hostname`` and ``email`` are
-#: deliberately ABSENT: neither has a type narrower than ``str`` here without
-#: adding a dependency or hand-writing a checker, and ``str`` is already the
-#: document's own accepted set, because draft-07 ``format`` is an annotation that
-#: ``jsonschema`` asserts nothing for.  Neither appears in this step's
-#: population (measured: it uses ``date-time`` 7 times, ``uri`` 5, ``date`` 2,
-#: and no other), so a format with no row here is not reached; the first step
-#: whose population includes one has to decide whether to carry the annotation
-#: into ``json_schema_extra`` or refuse the document, because the faithfulness
-#: leg grades ``format`` as a fact the document states.
+#: ``format`` -> the dotted path of the Python type that admits the format's
+#: values.  D5 asks for the type a standard library already names in preference
+#: to one of ours, so ``date-time`` is pydantic's ``AwareDatetime`` and ``uri``
+#: its ``AnyUrl``.
+#:
+#: Each of the three is NARROWER than the document as ``jsonschema`` grades it,
+#: because draft-07 ``format`` is an annotation that a validator asserts nothing
+#: for without a format checker: the document admits any string and these admit
+#: a parseable one.  ``AwareDatetime`` narrows it once more, to a value carrying
+#: a UTC offset, which is what RFC 3339 ``date-time`` requires and what
+#: ``datetime.datetime`` accepted without.  Neither narrowing is reached by the
+#: accepts check -- ``hypothesis_jsonschema`` honours the format and generated an
+#: offset in 200 of 200 instances -- so it is a difference the checks cannot see
+#: and it is recorded here instead.
+#:
+#: ``hostname`` and ``email`` are deliberately ABSENT: neither has a type
+#: narrower than ``str`` without adding a dependency or hand-writing a checker.
+#: Neither appears in this step's population (measured: ``date-time`` 7 times,
+#: ``uri`` 5, ``date`` 2, and no other), so a format with no row here is not
+#: reached; the first step whose population includes one has to decide whether to
+#: carry the annotation into ``json_schema_extra`` or refuse the document,
+#: because the schema comparison grades ``format`` as a fact the document states.
 FORMATS = {
     "date": "datetime.date",
-    "date-time": "datetime.datetime",
+    "date-time": "pydantic.AwareDatetime",
     "uri": "pydantic.AnyUrl",
 }
 
@@ -269,7 +279,7 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     """What one schema node IS: a Python type, and what constrains it.
 
     Nullability is NOT a question here (D4).  This returns the node's own type,
-    and the compiler adds the ``| None`` arm an OPTIONAL property needs for the
+    and the compiler adds the ``| None`` branch an OPTIONAL property needs for the
     value an omitted key leaves on the attribute -- which is a fact about
     presence, not a claim that the document admits an explicit null.
     ``AdCPBaseModel.strict_validate`` asks the document about that.
@@ -280,7 +290,7 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     """
     if "$ref" in node:
         # P2: a reference is a REFERENCE.  The target's own module declares its
-        # type once and this one names it; nothing of the target's shape is read
+        # type once and this one names it; nothing of the target's own schema is read
         # here, so nothing of it can be copied.
         #
         # A sibling beyond an annotation refuses, and the keyword it refuses on is
