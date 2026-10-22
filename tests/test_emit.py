@@ -1404,8 +1404,13 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 481, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 469
+    # 482 and 470, each one more than before `salesagent-j3k2l.23`: that bead admitted
+    # `notes` as the bundle annotation it is, which emits `enums/task-type.json` and so
+    # pairs `TaskType` with its document. One pair, one pass, 3 more document facts
+    # compared, and no change to `model_facts` or `url_typed` -- an enumeration states
+    # no URL type and the class states no fact its document does not.
+    assert len(reports) == 482, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 470
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
@@ -1424,7 +1429,7 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # have, and a test that fails when nothing changed teaches the next reader to
     # edit the number instead of reading it.
     assert sum(r.graded_instances for r in reports) >= 39500  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 4859  # document facts compared
+    assert sum(r.comparison.compared for r in reports) == 4862  # document facts compared
     assert sum(r.comparison.model_facts for r in reports) == 1128  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
     assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
@@ -2112,7 +2117,11 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         profile[row["keyword"]] = profile.get(row["keyword"], 0) + 1
     assert profile == {
         "allOf": 52,  # step 4
-        "$ref": 16,  # a bare-$ref branch has no node to declare a subclass from
+        # 17 and not 16, and the `enumMetadata` row below is GONE: `salesagent-j3k2l.23`
+        # admits that annotation globally, so `core/media-buy-available-action-id.json`
+        # no longer stops at a non-keyword at its root and refuses on the bare `$ref`
+        # at `/anyOf/0` this row already names for 16 others.
+        "$ref": 17,  # a bare-$ref branch has no node to declare a subclass from
         "properties": 13,  # a root conjunct; see lower/union.py's docstring
         "not": 7,  # step 7 (D6) at a position the rules row does not reach
         "uniqueItems": 6,  # step 7 (D6)
@@ -2123,7 +2132,6 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "oneOf": 1,
         "additionalProperties": 1,
         "type": 1,  # a root stating no type whose branch states none either
-        "enumMetadata": 1,
         "maxLength": 1,  # D5: a string bound beside a format: uri
         # **``type`` is 1 and was 12**: 10 of these roots declared ``type: object``
         # and were refused at a branch of their own combinator, which
