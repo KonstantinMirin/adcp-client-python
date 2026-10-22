@@ -23,10 +23,10 @@ import ast
 import functools
 import importlib
 import json
-import sys
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from codegen import bundle, emit
 from codegen.refusal import Refusal
@@ -632,10 +632,29 @@ def test_the_committed_tree_is_the_fresh_emission_of_the_derived_population() ->
     assert emit.emit(BUNDLE, [document]).files[rel] == (TREE / rel).read_text()
 
 
-def test_the_emitted_module_imports() -> None:
-    """The alias is real Python and the module still imports, which no AST assertion
-    above would catch -- a syntactically valid annotation can still fail at import."""
-    sys.path.insert(0, str(REPO / "src"))
+def test_the_emitted_module_imports_and_the_aliased_fields_still_decide() -> None:
+    """The aliases are real Python and the module still imports and still VALIDATES.
+
+    No AST assertion above catches either: an annotation can be syntactically valid
+    and fail at import, and a field whose type moved to an alias can import and then
+    accept what the document refuses.  So both bounds are exercised in both
+    directions, through ``strict_validate`` (the schema half, D4) and through the
+    constructor (the annotation).  The package is installed, so this imports it by
+    name rather than putting ``src`` on the path.
+    """
     mod = importlib.import_module("adcp.types._schemas.core.version_envelope")
-    assert mod.AdCPVersionEnvelope.model_validate({"adcp_version": "3.1"})
-    assert mod.AdCPVersionEnvelope.strict_validate({"adcp_version": "3.1"})
+    cls = mod.AdCPVersionEnvelope
+    assert cls.strict_validate({"adcp_version": "3.1", "adcp_major_version": 3})
+
+    # Each refusal names the FIELD whose constraint moved onto the alias, so none of
+    # these can pass on an incidental error.  Both halves fire and each uses its own
+    # vocabulary -- ``jsonschema``'s "does not match" and pydantic's "should match".
+    for refuse, key in (
+        (lambda: cls.strict_validate({"adcp_version": "3"}), "adcp_version"),
+        (lambda: cls(adcp_version="3"), "adcp_version"),
+        (lambda: cls.strict_validate({"adcp_major_version": 100}), "adcp_major_version"),
+        (lambda: cls(adcp_major_version=100), "adcp_major_version"),
+    ):
+        with pytest.raises(ValidationError) as err:
+            refuse()
+        assert key in str(err.value), (key, str(err.value)[:200])
