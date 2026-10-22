@@ -33,15 +33,16 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Annotated, Any, NamedTuple
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
+from pydantic import Field, TypeAdapter, ValidationError
 
 from adcp.types._base import AdCPBaseModel, SchemaRef, schema_at
 from codegen import bundle, emit
 from codegen.harness import (
     AcceptsResult,
+    check_accepts,
     ComparisonResult,
     Pair,
     PairReport,
@@ -436,6 +437,73 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
         assert rep.comparison.compared > 0
 
 
+def test_the_schema_comparison_sees_a_fact_the_model_adds_as_well() -> None:
+    """Both directions, because one of them was a hole of the other's shape.
+
+    The comparison was built to catch a model WIDER than its document, which the
+    accepts and refuses checks cannot see once the entry point validates the
+    schema first.  One-directional, it could not see the mirror image -- a model
+    NARROWER than its document -- and produced a report byte-identical to a
+    faithful model's for one that states four constraints its document does not.
+
+    Three cells, and the third is the one that matters:
+
+    * a model stating MORE is reported, with each added fact named;
+    * the accepts check also catches it, for a CONSTRAINT, by drawing an
+      instance the document admits and watching the annotation refuse it;
+    * a narrowing that states NO fact is invisible to both.  ``AwareDatetime``
+      renders a schema identical to ``{"type": "string", "format": "date-time"}``
+      and yet refuses a value that document admits, because ``jsonschema``
+      asserts nothing for a draft-07 ``format`` without a checker.  That cell is
+      asserted so the hole is measured rather than merely absent: a fact
+      comparison cannot close it, and neither can the accepts check, whose
+      generator honours the format.
+    """
+    import jsonschema
+    from pydantic import AwareDatetime
+
+    doc = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {"u": {"type": "string"}, "n": {"type": "integer"}},
+    }
+
+    class Faithful(AdCPBaseModel):
+        model_config = {"extra": "forbid"}
+        u: str | None = None
+        n: int | None = None
+
+    class Narrower(AdCPBaseModel):
+        model_config = {"extra": "forbid"}
+        u: Annotated[str, Field(min_length=1, pattern="^x")] | None = None
+        n: Annotated[int, Field(ge=5, le=9)] | None = None
+
+    faithful, narrower = compare_schema(doc, Faithful), compare_schema(doc, Narrower)
+    assert faithful.outcome == "pass"
+    assert narrower.outcome == "model_adds_a_fact"
+    assert faithful.compared == narrower.compared, "the two differ only in what they ADD"
+    assert {a.split(": ")[0] for a in narrower.added} == {
+        "/properties/n/minimum",
+        "/properties/n/maximum",
+        "/properties/u/minLength",
+        "/properties/u/pattern",
+    }
+
+    def accept(payload: Any) -> Any:
+        jsonschema.Draft7Validator(doc).validate(payload)
+        return Narrower.model_validate(payload)
+
+    assert check_accepts(doc, accept, examples=50).outcome == "model_refused_valid"
+
+    # The third cell: a narrowing with no fact behind it.
+    stamp = {"type": "string", "format": "date-time"}
+    assert compare_schema(stamp, AwareDatetime).outcome == "pass"
+    naive = "2020-01-01T00:00:00"
+    jsonschema.Draft7Validator(stamp).validate(naive)  # the document admits it
+    with pytest.raises(ValidationError):
+        TypeAdapter(AwareDatetime).validate_python(naive)  # and the model does not
+
+
 def test_a_format_states_a_fact_and_never_selects_a_python_type() -> None:
     """D5's format rule, over every format site the population has.
 
@@ -495,7 +563,9 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     assert sum(1 for r in reports if r.outcome == "pass") == 42
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 2
     assert sum(r.graded_instances for r in reports) == 3758  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 486  # facts compared
+    assert sum(r.comparison.compared for r in reports) == 486  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 57  # model-only facts examined
+    assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:

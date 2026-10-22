@@ -825,8 +825,10 @@ class ComparisonResult:
     """The schema comparison's verdict for one pair."""
 
     compared: int = 0  # facts the document states that were looked for
+    model_facts: int = 0  # facts the model states that the document does not
     missing: list[str] = field(default_factory=list)  # the model states nothing
     differs: list[str] = field(default_factory=list)  # the model states something else
+    added: list[str] = field(default_factory=list)  # the document states nothing
     detail: str = ""
 
     @property
@@ -835,6 +837,8 @@ class ComparisonResult:
             return "harness_error"
         if self.missing or self.differs:
             return "model_drops_a_fact"
+        if self.added:
+            return "model_adds_a_fact"
         if not self.compared:
             return "no_evidence"  # the document states nothing; nothing was graded
         return "pass"
@@ -843,6 +847,41 @@ class ComparisonResult:
 def _text(x: Any) -> Any:
     """A description compared by its words, not by its line breaks."""
     return " ".join(x.split()) if isinstance(x, str) else x
+
+
+def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
+    """Does a model-only fact narrow the document's accepted set, or not?
+
+    A fact the model states and the document does not is reported, because that
+    is how a model NARROWER than its document shows up.  Two kinds narrow
+    nothing, and they are 57 of the 57 model-only facts this population has:
+
+    * **``default: null``**, 56 of them.  D4 renders an optional property
+      ``T | None = None``, because a Python attribute holds ``None`` for an
+      omitted key, and pydantic reports that as a default.  It is how absence is
+      spelled in Python, not a claim about the document: presence is the schema's
+      ``required`` axis and that is compared in both directions.  A model-only
+      ``default`` with any OTHER value IS an added claim and is reported -- the
+      difference between "absent renders as None" and "the generator invented a
+      default".
+    * **``additionalProperties: true``**, 1 of them.  Silence permits an
+      additional property, so ``true`` permits exactly as much and forbids
+      nothing.  It arises from the resolver: ``resolve_all_refs`` drops a
+      redundant ``additionalProperties: true`` while inlining, so
+      ``core/installment-ref.json``'s resolved ``collection_ref`` states nothing
+      where ``core/collection-ref.json`` states ``true`` and the imported class
+      carries ``allow``.  The same resolver rewrites ``false`` into
+      ``{"not": {}}`` (see ``_closed``), so this is the second half of one
+      canonicalization rather than a second phenomenon.
+
+      ``additionalProperties: false`` model-only is NOT excused: it forbids what
+      silence permits, which is a narrowing, and it is also how a class that
+      forbids where its own document is silent would show up -- D8 maps silence
+      to ``ignore``, which states nothing.
+    """
+    if keyword == "default":
+        return value is None and "null" not in str(doc.get("type", ""))
+    return keyword == "additionalProperties" and value is True
 
 
 def _closed(x: Any) -> Any:
@@ -898,19 +937,35 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
 
 
 def compare_schema(schema: dict, model: Any) -> ComparisonResult:
-    """Every fact the document states, the model's own schema states too.
+    """The document's facts and the model's, compared in BOTH directions.
 
-    One direction, and deliberately: the reverse -- the model stating a
-    constraint the document does not -- is what the accepts check fails on, because an
-    instance the schema admits and the annotation refuses is generated there.
-    A model that states LESS than its document is invisible to both acceptance
-    directions when the entry point checks the schema first, which is the hole
-    this closes.
+    * ``missing`` / ``differs`` -- the document states a fact and the model
+      states nothing, or something else.  That is a model WIDER than its
+      document, which neither the accepts nor the refuses check can see once the
+      entry point validates the schema first.
+    * ``added`` -- the model states a fact and the document does not.  That is a
+      model NARROWER than its document.
 
-    pydantic adds facts of its own (a ``title`` per class and per property, the
-    ``minLength``/``maxLength`` that come with ``AnyUrl``).  Those are not
-    compared: an addition is either a narrowing, which the accepts check catches, or a
-    name, which is not a fact about a value.
+    **This was one-directional, and that was a hole of the same shape as the one
+    it was built to close.**  Measured: a model declaring ``min_length=1`` and
+    ``pattern="^x"`` on a property whose document says only
+    ``{"type": "string"}`` produced a report byte-identical to a faithful
+    model's -- 4 facts compared, nothing missing, nothing differing, ``pass``.
+
+    The accepts check is supposed to catch that, and for a CONSTRAINT it does:
+    it draws an instance the document admits and the narrower annotation refuses
+    it (measured on the same probe: ``model_refused_valid`` at
+    ``greater_than_equal``).  It does not catch a narrowing that comes from a
+    ``format``, because ``hypothesis_jsonschema`` honours the format when
+    generating -- 200 of 200 instances carried a UTC offset for
+    ``format: date-time``.  So for ``format`` there was no check at all in
+    either direction, and ``AnyUrl`` passed for the wrong reason: it renders a
+    ``minLength: 1`` its document does not state.
+
+    ``title`` is in neither direction: pydantic derives one for every class and
+    every property, so it is a name the compiler makes up rather than a fact
+    about a value.  The one other systematic model-only fact is D4's rendering
+    of absence, and ``_narrows_nothing`` says exactly which and why.
     """
     res = ComparisonResult()
     try:
@@ -948,9 +1003,17 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
                 b = sorted(b) if isinstance(b, list) else [b]
             if a != b:
                 res.differs.append(f"{where}: the document says {doc[kw]!r}, the model {got[kw]!r}")
-        props = doc.get("properties")
+        for kw in FACTS:
+            if kw in doc or kw not in got:
+                continue
+            res.model_facts += 1
+            if _narrows_nothing(kw, got[kw], doc):
+                continue
+            res.added.append(f"{pointer}/{kw}: the model says {got[kw]!r}, the document nothing")
+
+        props = doc.get("properties") or {}
+        mine = got.get("properties") if isinstance(got.get("properties"), dict) else {}
         if isinstance(props, dict):
-            mine = got.get("properties") if isinstance(got.get("properties"), dict) else {}
             for key in sorted(props):
                 at = f"{pointer}/properties/{_esc(key)}"
                 if key not in mine:
@@ -958,6 +1021,11 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
                     res.missing.append(f"{at}: the model declares no such property")
                     continue
                 compare(props[key], mine[key], at)
+        for key in sorted(set(mine) - set(props)):
+            res.model_facts += 1
+            res.added.append(
+                f"{pointer}/properties/{_esc(key)}: the document declares no such property"
+            )
         if isinstance(doc.get("items"), dict):
             compare(doc["items"], got.get("items"), f"{pointer}/items")
 
