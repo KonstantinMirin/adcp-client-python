@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl
 
+from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
@@ -82,6 +83,7 @@ class ValidatePropertyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     results: Annotated[list[ValidationResult], Field(description='Per-record validation results. By default only includes non_compliant and unknown records. Set include_compliant=true to include all records.')]
     validated_at: Annotated[AwareDatetime, Field(description='Timestamp when validation was performed')]
     list_resolved_at: Annotated[AwareDatetime | None, Field(description='Timestamp of the property list resolution used for validation')] = None
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 

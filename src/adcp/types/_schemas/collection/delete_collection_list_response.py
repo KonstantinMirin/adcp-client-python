@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 
+from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
@@ -22,6 +23,7 @@ class DeleteCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/delete-collection-list-response.json', pointer='#')
     deleted: Annotated[bool, Field(description='Whether the list was successfully deleted')]
     list_id: Annotated[str, Field(description='ID of the deleted list')]
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 

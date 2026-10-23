@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import SchemaRef
 
+from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
@@ -24,6 +25,7 @@ class ReportUsageResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     accepted: Annotated[NonNegativeInt, Field(description='Number of usage records successfully stored.')]
     errors: Annotated[list[Error] | None, Field(description="Validation errors for individual records. The field property identifies which record failed (e.g., 'usage[1].pricing_option_id').")] = None
     sandbox: Annotated[bool | None, Field(description='When true, the account is a sandbox account and no billing occurred.')] = None
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 

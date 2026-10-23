@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 from ..core.content_rating import ContentRating
+from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.pagination_response import PaginationResponse
 from ..core.protocol_envelope import ProtocolEnvelope
@@ -66,6 +67,7 @@ class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     resolved_at: Annotated[AwareDatetime | None, Field(description='When the list was resolved')] = None
     cache_valid_until: Annotated[AwareDatetime | None, Field(description='Cache expiration timestamp. Re-fetch the list after this time to get updated collections.')] = None
     coverage_gaps: Annotated[dict[str, list[GetCollectionListResponseCoverageGapsValueItem]] | None, Field(description="Collections included in the list despite missing metadata for a filtered dimension. Maps dimension name (e.g., 'genre', 'content_rating') to arrays of distribution identifiers for collections not covered. Only present when filters are applied and some collections lack the filtered metadata.")] = None
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 
