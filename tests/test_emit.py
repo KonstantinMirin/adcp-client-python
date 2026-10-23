@@ -250,11 +250,15 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     assert len(leaves()) == 85
     assert len(referencing()) == 249
     assert len(enums()) == 535
-    assert len(composing()) == 287
+    # 301 and not 287: ``composes_at_the_root`` reads "a union beside the allOf"
+    # through ``union_root`` now, so a root carrying ``allOf`` beside a
+    # PRESENCE-ONLY ``anyOf`` is step 4's rather than nobody's -- 14 documents that
+    # both this row and step 5's used to refuse.
+    assert len(composing()) == 301
     # Not the sum: the selectors OVERLAP, and the overlaps are counted below
     # rather than assumed.  The union is the denominator; no selector here is a
     # ROW for another's shape, so nothing is counted twice by the table.
-    assert len(population()) == 981
+    assert len(population()) == 991
     assert set(population()) < set(whole), "the step's population is not a part of the bundle"
     assert PAGINATION in leaves()
     assert "error-details/creative-revision-content-mismatch.json" in referencing()
@@ -1131,7 +1135,23 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             if not isinstance(fmt, str):
                 continue
             seen[fmt] = seen.get(fmt, 0) + 1
-            assert node["type"] in emit.SCALAR, (document, pointer)
+            # **A MULTI-TYPE node carries a format too, and this used to RAISE on
+            # one.**  ``node["type"] in emit.SCALAR`` hashes the value, and a list is
+            # unhashable, so the site died with a ``TypeError`` rather than failing an
+            # assertion -- latent until a document declaring ``["string", "null"]``
+            # beside a ``format`` emitted (``salesagent-j3k2l.21``).  D5's rule is
+            # per-ARM: ``lower.containers.multi_type`` cuts the node to one type at a
+            # time carrying only what that type can hold (``ARM["string"]`` holds
+            # ``format``), so the format selects the type of the arm that defines it
+            # and the ``null`` arm takes none of it.  Asserted over the arms, which is
+            # what the emitter actually reads.
+            kinds = node["type"] if isinstance(node["type"], list) else [node["type"]]
+            assert [k for k in kinds if k != "null"], (document, pointer, kinds)
+            assert all(k in emit.SCALAR or k == "null" for k in kinds), (
+                document,
+                pointer,
+                kinds,
+            )
             # The chooser is asked with THIS NODE, because D5 makes a `uri` field's
             # type a function of the document's own `pattern` -- so a test that read
             # one path per format would grade only whichever arm it happened to
@@ -1147,7 +1167,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert fmt not in annotated_formats, (document, pointer, fmt)
                 arms.setdefault(fmt, set()).add(name)
 
-    assert seen == {"date-time": 43, "uri": 35, "email": 2, "date": 4}, seen
+    assert seen == {"date-time": 30, "uri": 29, "email": 2, "date": 4}, seen
     # **BOTH arms of D5's `uri` row are reached by this population**, so neither is
     # graded by an empty loop: `AdCPUrl` at the one position whose document states
     # `^https://` (core/platform-extension-ref.json) and `HttpUrl` at the other 26.
@@ -1176,7 +1196,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _unwrap(emitted["properties"][compiler.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 84, stated
+    assert stated == 65, stated
 
 
 def _model_schema(model: Any) -> dict:
@@ -1343,7 +1363,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (37, 110), distinct
+    assert (len(distinct), sum(distinct.values())) == (30, 86), distinct
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -1369,8 +1389,8 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
         where[pattern] = sites
 
     assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
-    assert (len(diverges), sum(diverges.values())) == (35, 104), diverges
-    assert (len(agrees), sum(agrees.values())) == (1, 4), agrees
+    assert (len(diverges), sum(diverges.values())) == (28, 83), diverges
+    assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
     # The one that agrees is the one with no `$` to disagree about.
     assert "$" not in next(iter(agrees)), agrees
     assert all("$" in p for p in diverges), diverges
@@ -1480,32 +1500,9 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 529, len(reports)
-    # 507 + 17 + 4 = 528, which is the partition asserted below. Measured by
-    # ``codegen.report`` over one emit, and its ``facts_compared`` (5,878) and
-    # ``model_only_facts`` (1,352) agree exactly with a comparison-only pass run
-    # separately -- two instruments, one answer.
-    assert sum(1 for r in reports if r.outcome == "pass") == 508
-    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 17
-    # **`no_instrument` IS COUNTED AND IS NOT RATCHETED**, and that is the decision
-    # rather than a gap. The three outcomes PARTITION the population, which is the
-    # invariant asserted here; the no_instrument COUNT is reported by the partition
-    # and bounded by nothing. A shrink-only bound assumes a fixed or shrinking
-    # population and the emitted tree grows every merge, so a new batch of documents
-    # can legitimately bring new undrawable pairs and the bound would redden on
-    # correct work. It can only shrink once `hypothesis` draws these shapes, which is
-    # unscheduled, so shrink-only is unachievable in principle and not merely early.
-    #
-    # What IS asserted of each one is that it names a CAUSE specific enough to act
-    # on, because this is the population the eventual generator work starts from.
-    instrument = [r for r in reports if r.outcome == "no_instrument"]
-    assert sum(1 for r in reports if r.outcome in ("pass", "no_constraint_to_step")) + len(
-        instrument
-    ) == len(reports), sorted({r.outcome for r in reports})
-    for rep in instrument:
-        assert rep.no_instrument, rep.name
-        for cause in rep.no_instrument:
-            _grades_a_cause(cause, rep.name)
+    assert len(reports) == 503, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 491
+    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
     # rather than schema facts, and seven careful readings of it, on trees whose
@@ -1522,21 +1519,24 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # reddens. An equality would assert a reproducibility the instrument does not
     # have, and a test that fails when nothing changed teaches the next reader to
     # edit the number instead of reading it.
-    assert sum(r.graded_instances for r in reports) >= 39500  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 6252  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 1505  # model-only facts examined
+    # Re-measured on the merged tree rather than carried over or minimised: this run
+    # reads 49,766, and the floor sits ~0.7% under it -- about twice the 0.4% spread
+    # the seven readings above show -- so a collapse reddens and a reread does not.
+    assert sum(r.graded_instances for r in reports) >= 49400  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 6167  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 1624  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
     assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
     assert sum(len(r.comparison.differs) for r in reports) == 0
     # D5's URL-type rows, the one category that excuses a fact the model does not
-    # state, and 72 is the sum of its three: 36 `minLength: 1` (every URL type
-    # renders it), 35 `maxLength: 2083` (`HttpUrl` renders it, and 35 of the 36
+    # state, and 74 is the sum of its three: 37 `minLength: 1` (every URL type
+    # renders it), 36 `maxLength: 2083` (`HttpUrl` renders it, and 36 of the 37
     # positions take that arm), and the ONE `pattern` the bundle states on a
     # `format: uri` node -- `core/platform-extension-ref.json`, which is also the
     # one position on the `AdCPUrl` arm and so the one with no `maxLength`.
     # A position inside a nested class is graded twice, at its own pair and at its
-    # parent's, so 36 is larger than the 27 annotation sites the tree has.
-    assert sum(len(r.comparison.url_typed) for r in reports) == 104
+    # parent's, so it is larger than the annotation sites the tree has.
+    assert sum(len(r.comparison.url_typed) for r in reports) == 76
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
@@ -2617,8 +2617,13 @@ def test_the_dispatch_table_is_a_partition_and_a_collision_is_a_build_failure() 
         n = sum(1 for selector, _ in emit.ROWS if selector(doc))
         by_count[n] = by_count.get(n, 0) + 1
     assert sorted(by_count) == [0, 1], by_count  # never two
-    assert by_count[1] == 1033, by_count  # the six rows' own population
-    assert by_count[0] == 21, by_count  # no row yet: a later step's
+    assert by_count[1] == 1047, by_count  # the six rows' own population
+    # 7 and not 21: closing ``composes_at_the_root``'s two-reading hole moved 14 of
+    # them onto step 4's row.  **The 7 that remain are not waiting for a row** -- four
+    # are DATA documents with no schema keyword at the root, two are conditional-only
+    # and one is a bare root ``$ref`` -- and ``emit.lower_document`` refuses each on
+    # the keyword its kind is read from rather than on the absence of a row.
+    assert by_count[0] == 7, by_count
 
     both = {"title": "Both", "type": "object", "properties": {"a": {"type": "string"}}}
     assert bundle.is_object_root(both)
@@ -2671,8 +2676,8 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
     # array node: an array nested inside another array's ``items`` has no property
     # node of its own to compare at and is graded by the schema comparison instead.
     # Stated so the number is not read as "every array".
-    assert arrays == 109, arrays
-    assert bounded == 62, bounded
+    assert arrays == 70, arrays
+    assert bounded == 30, bounded
 
 
 def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it() -> None:
@@ -2812,7 +2817,7 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
                 mappings += 1
                 constrained += bool({"propertyNames", "patternProperties"} & set(node))
                 del pointer
-    assert mappings == 152, mappings
+    assert mappings == 191, mappings
     assert constrained == 0, constrained
 
     # A $ref key: the key IS that type, imported, and it refuses what the type
@@ -2985,16 +2990,26 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         for key, sub in (schema_at(row.ref).get("properties") or {}).items()
         if isinstance(sub.get("type"), list)
     ]
-    assert len(live) == 2, live
+    # 6 and not 2: core/webhook-activity-record.json and core/registry-event.json
+    # carry a DECLARED null beside their type and emit now, so the live sites are no
+    # longer only error-details/conflict.json's two ['number', 'string'].
+    assert len(live) == 6, live
     for ref, key in live:
         doc = schema_at(ref)
         model = next(r.model for r in graded() if r.ref == ref)
         node = model.model_json_schema()["properties"][compiler.field_name(key)]
+        declared = doc["properties"][key]["type"]
         # pydantic has no spelling for a type LIST but a union, so the document's
-        # ``["number", "string"]`` comes back as branches.  Compared on the branch
-        # types, with D4's null branch (presence, not a type claim) dropped.
-        branches = [b["type"] for b in node["anyOf"] if b.get("type") != "null"]
-        assert sorted(branches) == sorted(doc["properties"][key]["type"]), (ref, key, node)
+        # types come back as branches.  **A ``null`` the DOCUMENT DECLARES is one of
+        # them**, and D4's null for a merely optional property is not -- the two are
+        # the same branch and different facts, which is the conflation
+        # ``test_a_declared_null_is_never_read_as_absence`` grades.  So the branch set
+        # is compared against the document's own list, and the presence branch is
+        # dropped only where the document declares no null to account for it.
+        branches = [b["type"] for b in node["anyOf"]]
+        if "null" not in declared:
+            branches = [b for b in branches if b != "null"]
+        assert sorted(branches) == sorted(declared), (ref, key, node)
         # ... and the harness's own normalization folds it to the document's spelling,
         # which is what makes the schema comparison pass on these two.
         assert compare_schema(doc, model).outcome == "pass", compare_schema(doc, model).missing
@@ -3088,8 +3103,12 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         emit.lower_document("ms.json", armed)
     assert caught.value.keyword == "minLength", caught.value.keyword
     assert "every branch is a bare type" in caught.value.detail, caught.value.detail
-    # And it costs no document: 0 multi-type node in an EMITTED document states
-    # anything beyond its ``type``, which is why this is graded on a constructed one.
+    # And it costs no document: 0 multi-type node in an EMITTED document states a
+    # constraint WITH TWO OR MORE LIVE ARMS, which is why this is graded on a
+    # constructed one. The live count is the whole of the condition -- with one live
+    # arm the node is ``T | None``, which the comparison reads exactly (see
+    # ``test_a_declared_null_is_never_read_as_absence``) -- so a node with one live
+    # arm and a constraint is emitted and is NOT a violation here.
     from codegen.lower import containers as lower_containers
 
     emitted = emit.emit(BUNDLE, population()).emitted
@@ -3098,21 +3117,21 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         (d, p)
         for d in emitted
         for p, node in bundle.nodes(bundle.read(BUNDLE, d))
-        if isinstance(node.get("type"), list) and set(node) & carried
+        if isinstance(node.get("type"), list)
+        and set(node) & carried
+        and len([k for k in node["type"] if k != "null"]) > 1
     ] == []
 
-    # A null branch refuses too, and for the grader rather than the rendering.
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "mn.json",
-            {
-                "title": "MN",
-                "type": "object",
-                "properties": {"v": {"type": ["string", "null"]}},
-            },
-        )
-    assert caught.value.keyword == "type"
-    assert "cannot tell a DECLARED null" in caught.value.detail
+    # **A null arm no longer refuses: it is an ARM.** The refusal stood on the
+    # grader, and the grader reads it now -- so the cell asserts the EMISSION and the
+    # annotation, because a cell that only stopped asserting the refusal would pass
+    # for a row that silently dropped the arm.
+    mod, symbol = emit.lower_document(
+        "mn.json",
+        {"title": "MN", "type": "object", "properties": {"v": {"type": ["string", "null"]}}},
+    )
+    assert symbol == "MN"
+    assert "v: str | None" in "\n".join(mod.blocks), mod.blocks
 
     # A keyword no arm can carry constrains nothing, so it refuses by name.
     with pytest.raises(Refusal) as caught:
@@ -3125,6 +3144,103 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
             },
         )
     assert caught.value.keyword in ("minLength", "type"), caught.value.keyword
+
+
+def test_a_declared_null_is_never_read_as_absence() -> None:
+    """``["string", "null"]`` and an OPTIONAL ``{"type": "string"}`` are different
+    documents, and D4 renders BOTH as ``str | None``.
+
+    So the model's own schema does not say which document it came from, and the
+    comparison used to decide by unwrapping any single ``null`` branch as absence
+    -- which erased the declared fact and made the two cases one cell. A faithful
+    model was reported as dropping its ``type``, and a model that DROPPED the
+    declared null was reported identically, so neither could be graded.
+    ``lower.containers.multi_type`` refused a ``null`` arm by name for exactly
+    that reason.
+
+    **This is the test that reddens if a declared null is ever read as absence
+    again**, and it is written as the pairs the two readings disagree about rather
+    than as an assertion about ``_normalize``'s internals: the fix has to keep the
+    unwrap that D4 needs AND report a dropped declaration, and only a test holding
+    both at once can tell a correct fold from a silencer.
+    """
+    declared = {
+        "title": "D",
+        "type": "object",
+        "required": ["v"],
+        "properties": {"v": {"type": ["string", "null"]}},
+    }
+    optional = {"title": "O", "type": "object", "properties": {"v": {"type": "string"}}}
+    optional_nullable = {
+        "title": "ON",
+        "type": "object",
+        "properties": {"v": {"type": ["string", "null"]}},
+    }
+    four = {
+        "title": "F",
+        "type": "object",
+        "required": ["v"],
+        "properties": {"v": {"type": ["string", "number", "boolean", "null"]}},
+    }
+
+    class ReqNullable(AdCPBaseModel):
+        v: str | None
+
+    class OptNullable(AdCPBaseModel):
+        v: str | None = None
+
+    class NullDropped(AdCPBaseModel):
+        v: str
+
+    class Four(AdCPBaseModel):
+        v: str | float | bool | None
+
+    class FourNullDropped(AdCPBaseModel):
+        v: str | float | bool
+
+    # The two documents that render the same annotation both pass, which is the
+    # whole point: the comparison now tells them apart instead of conflating them.
+    assert compare_schema(declared, ReqNullable).outcome == "pass"
+    assert compare_schema(optional, OptNullable).outcome == "pass"
+    assert compare_schema(optional_nullable, OptNullable).outcome == "pass"
+    assert compare_schema(four, Four).outcome == "pass"
+
+    # **AND THE FOLD IS NOT A SILENCER.** A model that drops the document's own
+    # declared ``null`` is reported, in both shapes of the fold -- one live branch
+    # beside the null, and three.
+    for doc, model in ((declared, NullDropped), (optional_nullable, NullDropped),
+                       (four, FourNullDropped)):
+        res = compare_schema(doc, model)
+        assert res.outcome == "model_drops_a_fact", (doc["title"], res)
+        assert [d.split(": ")[0] for d in res.differs] == ["/properties/v/type"], res.differs
+
+    # The SECOND half, and the one the bead does not name: the ``default`` D4
+    # renders for an optional property. ``_narrows_nothing`` read the node's
+    # declared null as a proxy for the REQUIRED axis, and the proxy is wrong in
+    # both directions -- so it reads ``required`` now. Four cells of one rule.
+    for kind in (["string", "null"], "string"):
+        assert harness._narrows_nothing(  # noqa: SLF001 -- the rule under test
+            "default", None, {"type": kind}, required=False
+        ), kind
+        assert not harness._narrows_nothing(  # noqa: SLF001 -- the rule under test
+            "default", None, {"type": kind}, required=True
+        ), kind
+    # An invented value is still an added claim whatever the presence axis says.
+    assert not harness._narrows_nothing(  # noqa: SLF001 -- the rule under test
+        "default", "x", {"type": "string"}, required=False
+    )
+
+    # And the axis reaches the rule from the comparison rather than sitting there
+    # inert: a model stating ``default: null`` at a key the document DEMANDS is
+    # reported. ``json_schema_extra`` is how a required field renders one at all --
+    # a pydantic field with a real default is not required, which is the same
+    # reason ``compiler.fields`` refuses a document default on a required property.
+    class ReqDefaulted(AdCPBaseModel):
+        v: str | None = Field(..., json_schema_extra={"default": None})
+
+    res = compare_schema(declared, ReqDefaulted)
+    assert res.outcome == "model_adds_a_fact", res
+    assert [a.split(": ")[0] for a in res.added] == ["/properties/v/default"], res.added
 
 
 def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -> None:
@@ -3328,13 +3444,13 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
     # The denominators, so neither direction can pass over an empty set: every
     # alias is reachable at this one path and nowhere else (no flat root, no
     # second spelling), and the module is not a dumping ground.
-    assert len(declared) == 73, len(declared)  # 60 derived + AdCPUrl + the HttpUrl re-export
+    assert len(declared) == 67, len(declared)  # the derived shapes + AdCPUrl + HttpUrl
     # (module, alias) pairs, which is NOT the site count: a module importing one
     # alias for five of its fields contributes one pair.
-    assert sum(len(where) for where in imported.values()) == 238, imported
+    assert sum(len(where) for where in imported.values()) == 211, imported
     # And the one name that is a decision really is annotating fields.
-    assert len(imported[constraints_module.URL]) == 3, sorted(imported[constraints_module.URL])
-    assert len(imported[constraints_module.HTTP_URL]) == 25, sorted(imported[constraints_module.HTTP_URL])
+    assert len(imported[constraints_module.URL]) == 1, sorted(imported[constraints_module.URL])
+    assert len(imported[constraints_module.HTTP_URL]) == 24, sorted(imported[constraints_module.HTTP_URL])
 
 
 def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:

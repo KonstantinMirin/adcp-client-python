@@ -1740,7 +1740,7 @@ def _schema_half_enforces(keyword: str, doc: Mapping[str, Any], got: Mapping[str
     return keyword == "pattern"
 
 
-def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
+def _narrows_nothing(keyword: str, value: Any, doc: dict, *, required: bool = False) -> bool:
     """Does a model-only fact narrow the document's accepted set, or not?
 
     A fact the model states and the document does not is reported, because that
@@ -1748,14 +1748,37 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
     nothing; two of them are 57 of the 57 model-only facts step 1's and step 2's
     population has, and the third arrived with step 5's union roots:
 
-    * **``default: null``**, 56 of them.  D4 renders an optional property
-      ``T | None = None``, because a Python attribute holds ``None`` for an
-      omitted key, and pydantic reports that as a default.  It is how absence is
-      spelled in Python, not a claim about the document: presence is the schema's
-      ``required`` axis and that is compared in both directions.  A model-only
-      ``default`` with any OTHER value IS an added claim and is reported -- the
-      difference between "absent renders as None" and "the generator invented a
-      default".
+    * **``default: null`` AT A KEY THE DOCUMENT DOES NOT DEMAND**, 56 of them.  D4
+      renders an optional property ``T | None = None``, because a Python attribute
+      holds ``None`` for an omitted key, and pydantic reports that as a default.
+      It is how absence is spelled in Python, not a claim about the document:
+      presence is the schema's ``required`` axis and that is compared in both
+      directions.  A model-only ``default`` with any OTHER value IS an added claim
+      and is reported -- the difference between "absent renders as None" and "the
+      generator invented a default".
+
+      **``required`` is the axis, and this clause used to read the node's declared
+      ``null`` as a proxy for it.**  The proxy was
+      ``"null" not in str(doc.get("type", ""))``, introduced in ``296175436`` with
+      no measurement naming it and with **0 sites** -- every nullable node in the
+      bundle was refused at the time, so it was never graded.  It is wrong in both
+      directions, and each cell was measured:
+
+      * at an OPTIONAL property the document declares ``["string", "null"]`` for,
+        the default is still D4's spelling of absence and nothing else, and the
+        proxy reported it.  That is what blocked
+        ``core/webhook-activity-record.json`` and ``core/delivery-metrics.json``
+        from emitting, at ``added`` rather than at the ``type`` the row is about.
+      * at a REQUIRED property the proxy ADMITTED one, and a default on a key the
+        document demands makes that key omissible -- which is the model inventing
+        a default, the very thing the ``value is None`` gate exists for.
+        ``compiler.fields`` refuses a document default on a required property for
+        exactly this reason, so a model-only one is the same defect arriving from
+        the other side.
+
+      So the clause reads ``required``, which the comparison knows and this
+      function was not being told.  One rule with the parameter it was missing,
+      not a second rule beside it.
     * **``additionalProperties: true``**, 1 of them.  Silence permits an
       additional property, so ``true`` permits exactly as much and forbids
       nothing.  It arises from the resolver: ``resolve_all_refs`` drops a
@@ -1826,7 +1849,7 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
     if keyword == "description":
         return "const" in doc
     if keyword == "default":
-        return value is None and "null" not in str(doc.get("type", ""))
+        return value is None and not required
     if keyword == "type":
         return _entails_type(doc, value)
     return keyword == "additionalProperties" and value is True
@@ -1966,7 +1989,26 @@ def _closed(x: Any) -> Any:
     return False if x == {"not": {}} else x
 
 
-def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
+def _declares_null(doc: Any) -> bool:
+    """Does the DOCUMENT declare ``null`` among this node's types?
+
+    The one question :func:`_normalize` cannot answer from the model, and the one
+    it has to ask: ``{"type": ["string", "null"]}`` and an OPTIONAL
+    ``{"type": "string"}`` are different documents that D4 renders as the same
+    ``str | None``, so the model's own schema does not say which it came from.
+    Read off the document, which does.
+
+    A list, because that is the only spelling a multi-type node has; the lone
+    ``{"type": "null"}`` is included for completeness and has no site in the
+    bundle.
+    """
+    kind = doc.get("type") if isinstance(doc, Mapping) else None
+    return "null" in kind if isinstance(kind, list) else kind == "null"
+
+
+def _normalize(
+    node: Any, defs: Mapping[str, Any], depth: int = 0, *, declared_null: bool = False
+) -> dict:
     """The model's node for one position, written the way the document writes it.
 
     Three normalizations, and each one is forced by a decision this pipeline made
@@ -1976,11 +2018,35 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
       cross-document reference is an IMPORT (P2), so pydantic hoists both into
       ``$defs`` and references them.  The document the class names is resolved,
       so the same facts are inline there.
-    * **An ``anyOf`` with a ``null`` branch.**  D4 renders an optional property
-      ``T | None``, because the attribute holds ``None`` for an omitted key.
-      pydantic states that as a union; the document states the type and leaves
-      presence to ``required``.  Unwrapping the null branch compares like with
-      like.
+    * **An ``anyOf`` with a ``null`` branch, AND WHICH OF THE TWO THINGS IT IS.**
+      D4 renders an optional property ``T | None``, because the attribute holds
+      ``None`` for an omitted key.  pydantic states that as a union; the document
+      states the type and leaves presence to ``required``.  Unwrapping the null
+      branch compares like with like.
+
+      **A document that DECLARES ``null`` renders the same union, and unwrapping
+      that one erased the document's own fact.**  ``["string", "null"]`` is
+      ``str | None``, which is what D4 renders for an optional ``{"type":
+      "string"}`` as well -- so one model schema stood for two different
+      documents, and the comparison reported a faithful model as dropping its
+      ``type`` while a model that DROPPED the declared null compared the same way.
+      Neither could be graded, which is why ``lower.containers.multi_type``
+      refused a ``null`` arm by name rather than emit a node no check reads.
+
+      The distinction is not available on the model's side at all, so it comes
+      from ``declared_null``, which the caller reads off the DOCUMENT
+      (:func:`_declares_null`).  Where the document declares null the branch is a
+      type fact and is folded INTO the type list; where it does not, the branch is
+      presence and is unwrapped exactly as before.  Measured on
+      ``core/webhook-activity-record.json``'s ``completed_at``
+      (``["string", "null"]``, ``format: date-time``),
+      ``core/delivery-metrics.json``'s ``completion_rate`` and
+      ``core/error.json``'s discriminator ``value``
+      (``["string", "number", "boolean", "null"]``).
+
+      A model that drops the declared null folds into nothing -- with no null
+      branch neither arm of this fold applies -- so it is still reported, which is
+      the half ``tests/test_emit.py`` reddens on.
     * **A union of BARE types is a ``type`` LIST.**  draft-07 lets a node name
       several types at once and pydantic has no spelling for that but a union, so
       ``{"type": ["number", "string"]}`` comes back
@@ -2006,6 +2072,13 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
     if "$ref" in node:
         name = str(node["$ref"]).rsplit("/", 1)[-1]
         target = defs.get(name)
+        # ``declared_null`` deliberately does NOT travel through here.  It would be an
+        # arm with no site: measured over the graded population, 5 positions have a
+        # document declaring ``null`` and **all 5 render as an ``anyOf``, 0 as a
+        # ``$ref``** -- pydantic names a nested CLASS that way, and a class is not a
+        # null arm.  A derivation matching nothing is green for free, and this one
+        # also fails SAFE if such a position ever appears: the fold does not fire, so
+        # the document's ``type`` reads as missing and the pair reddens.
         outer = {k: v for k, v in node.items() if k != "$ref"}
         return {**_normalize(target, defs, depth + 1), **outer} if target is not None else outer
     branches = node.get("anyOf")
@@ -2014,9 +2087,13 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
         nulls = [b for b in branches if b.get("type") == "null"]
         outer = {k: v for k, v in node.items() if k != "anyOf"}
         if len(nulls) == 1 and len(live) == 1:
-            return {**_normalize(live[0], defs, depth + 1), **outer}
+            one = {**_normalize(live[0], defs, depth + 1), **outer}
+            if declared_null and isinstance(one.get("type"), str):
+                return {**one, "type": [one["type"], "null"]}
+            return one
         if len(nulls) <= 1 and len(live) > 1 and all(set(b) == {"type"} for b in live):
-            return {"type": [b["type"] for b in live], **outer}
+            kinds = [b["type"] for b in live]
+            return {"type": [*kinds, "null"] if declared_null and nulls else kinds, **outer}
     return node
 
 
@@ -2160,7 +2237,14 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
         return res
     defs = emitted.get("$defs", {})
 
-    def compare(doc: Any, got: Any, pointer: str) -> None:
+    def compare(doc: Any, got: Any, pointer: str, *, required: bool = False) -> None:
+        """``required`` is whether the PARENT document demands this key.
+
+        Two of this function's decisions need it and neither can derive it from the
+        node: ``_narrows_nothing`` asks it of a model-only ``default``, and a
+        non-property position (a root, an ``items``, a mapping's value) has no
+        presence question at all, which is what the ``False`` default states.
+        """
         if not isinstance(doc, dict):
             return
         # The document side is read the way the schema half reads it: a conjunct's
@@ -2168,7 +2252,10 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
         # the root -- a property's own node composes too, and the pydantic side is
         # flattened at every depth, so one call in the recursion is the whole of it.
         doc = _composed(doc)
-        got = _normalize(got, defs)
+        # The DOCUMENT decides whether a null branch on the model's side is a type
+        # fact or D4's spelling of absence, so the document is read first and the
+        # model's node is normalized against it.
+        got = _normalize(got, defs, declared_null=_declares_null(doc))
         doc, rewritten = _uncanonicalized(doc)
         for kw in FACTS:
             if kw not in doc:
@@ -2250,7 +2337,7 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
                 )
                 continue
             if (
-                _narrows_nothing(kw, got[kw], doc)
+                _narrows_nothing(kw, got[kw], doc, required=required)
                 or (rewritten and kw == "description")
                 or (rewritten and kw == "default" and _admitted(got[kw], doc))
             ):
@@ -2259,6 +2346,7 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
 
         props = doc.get("properties") or {}
         mine = got.get("properties") if isinstance(got.get("properties"), dict) else {}
+        demanded = doc.get("required") if isinstance(doc.get("required"), list) else []
         if isinstance(props, dict):
             for key in sorted(props):
                 at = f"{pointer}/properties/{_esc(key)}"
@@ -2266,7 +2354,7 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
                     res.compared += 1
                     res.missing.append(f"{at}: the model declares no such property")
                     continue
-                compare(props[key], mine[key], at)
+                compare(props[key], mine[key], at, required=key in demanded)
         for key in sorted(set(mine) - set(props)):
             res.model_facts += 1
             res.added.append(

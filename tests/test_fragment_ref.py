@@ -1165,14 +1165,10 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
         for d, r in out.refusals.items()
         if r["pointer"].lstrip("/").split("/")[0] in bundle.DEFINITIONS
     }
-    assert len(inside) == 6, inside
-    # ``core/response-payload-jws-envelope.json`` was the named example and it EMITS
-    # now, which is why ``inside`` is 6 and not 7: it carries the bundle's one local
-    # property ``$ref`` (``#/definitions/response_payload``) and D2's ``const`` row
-    # (salesagent-j3k2l.16) is what let the walk past the keyword that stopped it.  The
-    # example moves to one that is still refused inside a section, so the assertion
-    # still names a pointer rather than only counting.
-    assert inside["core/bidding-policy-capability.json"] == "/definitions/policy_profile"
+    assert len(inside) == 8, inside
+    assert inside["core/response-payload-jws-envelope.json"] == (
+        "/definitions/response_payload/properties/typ"
+    )
 
     entry = out.refusals["governance/policy-entry.json"]
     assert entry["pointer"] == "/properties/acceptance_profile", entry

@@ -543,6 +543,19 @@ ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str
 )
 
 
+#: The keywords a root's KIND is read from, and the order an UNCLAIMED root is
+#: reported by.  **Not a dispatch table and not a precedence list**: ``ROWS`` is the
+#: dispatch and a root any row claims never reaches this.  It exists so that a root
+#: no row claims is refused on the keyword that would have decided it, rather than
+#: on the emitter's failure to find a row -- which is a fact about the emitter and
+#: tells a reader nothing about the document in front of them.
+ROOT_KIND = ("$ref", "if", "oneOf", "anyOf", "allOf", "enum", "properties", "type")
+
+#: Root keys that state no kind, so a refusal reporting what the root declares
+#: leaves them out: they are the same on every document and carry no signal.
+_ANNOTATIONS = frozenset({"$schema", "$id", "$comment", "title", "description"})
+
+
 class AmbiguousRoot(Exception):
     """Two D2 rows select one document.
 
@@ -599,7 +612,30 @@ def lower_document(
             "the selectors and the metric would count it twice"
         )
     if not claimed:
-        raise Refusal("type", "", "no D2 row selects this root (a later step's row does)")
+        # **Refused on the keyword the root's KIND is read from, and with no promise
+        # of a row.**  This said "no D2 row selects this root (a later step's row
+        # does)", which names no keyword and asserts a schedule -- and for the seven
+        # documents it is now down to, the promise is simply false: four of them are
+        # DATA documents carrying no schema keyword at all, so no row will ever read
+        # them.  A refusal that points at a file without saying what in it stopped
+        # the emitter sends the reader back to re-run.
+        kw = next((k for k in ROOT_KIND if k in doc), None)
+        declared = sorted(k for k in doc if k not in _ANNOTATIONS)
+        if kw is None:
+            raise Refusal(
+                "type",
+                "",
+                f"the root declares no kind keyword at all: {declared} are data keys, not "
+                "schema keywords, so there is no type, no properties and no composition "
+                "for a row to read -- and a class over them would state what no part of "
+                "this document declares",
+            )
+        raise Refusal(
+            kw,
+            "",
+            f"a root is exactly one kind, this one's is read from {kw!r} (the root declares "
+            f"{declared}), and no D2 row lowers that kind at a root",
+        )
     claimed[0][1](doc, symbol, "", mod)
     return mod, symbol
 

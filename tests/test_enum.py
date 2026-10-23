@@ -155,8 +155,8 @@ def test_the_dispatch_table_is_unordered_because_no_document_is_claimed_twice() 
     assert [s for s, _ in emit.ROWS if getattr(bundle, s.__name__, None) is not s] == []
     claimed = [sum(1 for selects, _ in emit.ROWS if selects(doc)) for doc in documents]
     assert [n for n in claimed if n > 1] == []
-    assert sum(1 for n in claimed if n == 1) == 1033, sum(1 for n in claimed if n == 1)
-    assert sum(1 for n in claimed if n == 0) == 21  # the rows that have not landed
+    assert sum(1 for n in claimed if n == 1) == 1047, sum(1 for n in claimed if n == 1)
+    assert sum(1 for n in claimed if n == 0) == 7  # the roots no row describes at all
 
     def scalar_without_the_exclusion(doc: dict) -> bool:
         return isinstance(doc.get("type"), str) and doc["type"] in emit.SCALAR
@@ -204,7 +204,7 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     are the document's ``enum`` array, in order, exactly.
     """
     classes = emitted_enum_classes()
-    assert len(classes) == 281, len(classes)  # 213 roots + 13 inline
+    assert len(classes) == 277, len(classes)  # 213 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -257,7 +257,7 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
             names += 1
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
-    assert names == 2000, names
+    assert names == 1974, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -314,7 +314,7 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
                 nodes += 1
             else:  # the one colliding node's document refuses before this is read
                 assert document not in emit.emit(BUNDLE, population()).emitted, (document, pointer)
-    assert nodes == 281, nodes
+    assert nodes == 277, nodes
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -420,7 +420,7 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
             assert bound[0].__name__ in named, (g.ref.document, key)
             sites += 1
             documents.add(g.ref.document)
-    assert (sites, len(documents)) == (42, 29), (sites, len(documents))
+    assert (sites, len(documents)) == (33, 22), (sites, len(documents))
 
 
 # --------------------------------------------------------------------------- #
@@ -836,4 +836,4 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
             for alias in n.names:
                 assert alias.name in exported[target], (module, target, alias.name)
                 checked += 1
-    assert checked == 229, checked
+    assert checked == 203, checked
