@@ -443,7 +443,7 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
     It is reached from ``emit.decide_type`` and NOT through ``emit.ROWS``, for the
     reason the nested ``allOf`` arm beside it is: ``ROWS`` dispatches on ROOT KIND and
     is a partition by it, so a keyword at a position no root selector sees has no row to
-    be and no selector to select it.  Measured on the 3.2 bundle: of the 33 documents
+    be and no selector to select it.  Measured on the 3.2 bundle: of the 32 documents
     whose nested combinator was being deferred, **0 are claimed by
     ``bundle.union_root``** -- a row would have claimed none of them -- and 4 of the 48
     deferrals sit at a root, all 4 on ``uniqueItems`` at a root ARRAY, a kind
@@ -636,8 +636,10 @@ def _refuse_a_shape_the_comparison_cannot_read(node: dict, kw: str, pointer: str
     two live branches at least one of which states more than a type word -- a ``$ref``, an
     object, a constrained scalar, an array.  Neither arm folds it, the model's node stays
     an ``anyOf``, ``anyOf`` is not in ``harness.FACTS``, and each branch that became a
-    class is graded at its own pair through its own ``__adcp_schema__``.  12 of the 14
-    documents this row gains are in that position.
+    class is graded at its own pair through its own ``__adcp_schema__``.  **8 of the 32
+    documents in this family emit, and every one of the 8 is in that position**; the
+    row's whole gain is 12 documents, the 10 of the 48 that emit plus 2 of the 30
+    chained-pending refusals that cleared into emissions.
     """
     branches = [b for b in node[kw] if isinstance(b, dict)]
     nulls = [b for b in branches if _bare_type(b) == "null"]

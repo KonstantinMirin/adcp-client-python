@@ -4579,18 +4579,25 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # transitive).
     #
     # **48 -> 0, 30 -> 0 and 975 -> 1053, moved by `salesagent-j3k2l.26`.**  All 48 of
-    # the deferred set were that bead's, and they were FIVE mechanisms rather than the
-    # one its title names: `uniqueItems` on an array no class holds (7), a combinator of
-    # SHAPES at a nested pointer (29), a `oneOf` of `{required, not}` groups at a
-    # composing node (5, of which 4 cleared as conjunction verdicts and 1 by the new
-    # composing-row refusal), `contains` on an array (5) and a union BRANCH carrying an
-    # `enum` (2).  Of the 48: **14 documents now EMIT** and the rest are verdicts naming
-    # the keyword and pointer they state.  The 30 chained-pending refusals all cleared
-    # with them, because every target they chain onto is now a verdict or an emission.
+    # the deferred set were that bead's, and they were SIX mechanisms rather than the
+    # one its title names.  Partitioned by WHICH ARM of the walk refused -- which is
+    # what says whether a lowering exists to be written -- and not by the keyword tally:
+    #
+    #      7  uniqueItems on an array no class holds     ->  0 emit,  7 verdict
+    #     32  a combinator of SHAPES at a nested pointer ->  8 emit, 24 verdict
+    #      1  a combinator beside an allOf (composing)   ->  0 emit,  1 verdict
+    #      5  contains on an array                       ->  2 emit,  3 verdict
+    #      2  an enum on a union BRANCH                  ->  0 emit,  2 verdict
+    #      1  a composing ARRAY, refused on items        ->  0 emit,  1 verdict
+    #     48                                                10 emit, 38 verdict
+    #
+    # The row's whole gain is 12 documents: those 10, plus 2 of the 30 chained-pending
+    # refusals that cleared into emissions.  The other 28 chained-pending refusals became
+    # verdicts, because every target they chain onto is now a verdict or an emission.
     #
     # `ROWS` stayed SIX and `codegen/bundle.py` was not touched: 4 of the 48 sat at a
     # root, all 4 on `uniqueItems` at a root ARRAY, a kind `bundle.is_container_root`
-    # already claims, and 0 of the 29 nested combinators are claimed by
+    # already claims, and 0 of the 32 nested combinators are claimed by
     # `bundle.union_root` -- so a row would have claimed none of them.
     #
     # All four pins are set to the value MEASURED on this tree and each was fire-probed
