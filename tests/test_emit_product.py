@@ -199,7 +199,11 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # at a composing root -- rather than deferring them.  The previous revision of this
     # comment said trunk and the branch agreed, which was true of the branch it was
     # written on and is not true of this one.
-    assert len(with_row.emitted) == 566, "N, over a bundle of 1,054"
+    # Re-pinned 566 -> 576 on bcb0b8ca8. Measured, not read off the failure: three
+    # agents and the integrator each took it independently and agreed, and each
+    # A/B'd it against the base's codegen to confirm it is stale rather than a
+    # regression. It drifted because every row that claims documents moves it.
+    assert len(with_row.emitted) == 576, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
