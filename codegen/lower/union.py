@@ -30,9 +30,11 @@ base's own schema then, and the rebuild after the branch definitions is what ins
 union.
 
 WHAT A BRANCH IS.  A branch is a class this module DECLARES, from the branch's own
-``properties``.  Everything else refuses by name, pointer and keyword, because §7's
-done-when for this step is *one subclass per branch* and each of these has no subclass to
-give:
+``properties`` -- or, where the branch COMPOSES, from ``compiler.lower_composition`` with
+this base as its ``bases``, which is the one case that was on the list below and left it
+(``salesagent-j3k2l.40``).  Everything else refuses by name, pointer and keyword, because
+§7's done-when for this step is *one subclass per branch* and each of these has no
+subclass to give:
 
 * a bare ``$ref`` branch.  Its member would be the TARGET's class, which does not descend
   from this base, so ``isinstance(payload, Base)`` would be false for that arm; declaring
@@ -46,13 +48,17 @@ give:
   the ``const`` pins the branch's whole value, so there is no property map to declare a
   subclass from.  D2's ``const`` row (``codegen.lower.const``) decides a branch's
   PROPERTIES, which is where the discriminating pin sits, and this module no longer
-  carries a copy of it;
-* an ``allOf`` conjunct list.  That one is lowerable and is refused for a reason of its
-  own, stated at the refusal in :func:`_plan`: the conjuncts sit at the branch's own
-  node, so the grader has a pointer for them, and what is missing is only that the
-  conjunct reader is the product row's and D13 keeps it out of reach.  It is checked
-  AFTER the branch's ``type``, because a branch whose type is not an object cannot be a
-  class whatever else it states -- see :func:`_plan`.
+  carries a copy of it.
+
+An ``allOf`` conjunct list used to be the fourth entry here and is not one: it was never
+unlowerable, only unreachable.  The conjuncts sit at the branch's own node, so the grader
+has a pointer for every one of them, and what was missing was that the conjunct reader
+lived in the product row where D13 keeps a lowering from importing it.  The reader is
+``compiler.lower_composition`` now, so a composing branch is a class like any other --
+the union base FIRST, because ``isinstance(payload, Base)`` depends on it, and the
+conjuncts' own bases after.  The branch's ``type`` is still read BEFORE its conjunct
+list, because a branch whose type is not an object cannot be a class whatever else it
+states -- see :func:`_plan`.
 
 WHAT THE ROOT MAY NOT CARRY, and this is the one refusal that is about the GRADER rather
 than about a missing lowering.  A root ``allOf``, ``properties``, ``required`` or
