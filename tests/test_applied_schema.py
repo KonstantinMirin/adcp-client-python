@@ -50,29 +50,30 @@ BUNDLE = REPO / "schemas" / "cache" / "3.2"
 
 DRAFT = "http://json-schema.org/draft-07/schema#"
 
-#: The three documents the fix moved from refused to emitted, which is its whole
-#: effect on the committed tree: two were refused at a branch their own root
-#: constrains to an object, and ``core/deployment.json`` chained off the first through
-#: a ``$ref``.
+#: The documents the fix moved from refused to emitted, re-measured at 16052ffb0.
+#: It began as three -- two refused at a branch their own root constrains to an
+#: object, and ``core/deployment.json`` chaining off the first through a ``$ref`` --
+#: and the later rows named under ``STILL_REFUSED`` have grown it to ten.
 NOW_EMITTED = (
+    "core/account-ref.json",
     "core/activation-key.json",
     "core/canonical-account-ref.json",
     "core/canonical-reporting-commitment.json",
+    "core/committed-metric.json",
     "core/deployment.json",
+    "core/missing-metric.json",
+    "core/performance-feedback-metric.json",
     "core/reporting-write-destination.json",
     "media-buy/acceptance-policy-requirement.json",
 )
 
-#: The other 8 of the 10, with the keyword and pointer each one reports NOW.  Every
-#: one is a later D2/D6 row -- a ``$ref`` whose target refuses, a ``maxLength`` beside
-#: a ``format: uri``, a ``uniqueItems`` -- so this is the residue of OTHER steps, and
+#: The residue, with the keyword and pointer it reports NOW.  Each entry is a later
+#: D2/D6 row -- a ``$ref`` whose target refuses, a ``maxLength`` beside a
+#: ``format: uri``, a ``uniqueItems`` -- so this is the residue of OTHER steps, and
 #: pinning it here means a step that closes one of them shows up as this going stale
-#: rather than as a silent change of population.
+#: rather than as a silent change of population.  It held 8, then 5, and holds 1 at
+#: 16052ffb0: the four ``$ref`` rows left because each one's target emits now.
 STILL_REFUSED = {
-    "core/account-ref.json": ("$ref", "/oneOf/1/properties/brand"),
-    "core/committed-metric.json": ("$ref", "/oneOf/1/properties/vendor"),
-    "core/missing-metric.json": ("$ref", "/oneOf/1/properties/vendor"),
-    "core/performance-feedback-metric.json": ("$ref", "/oneOf/1/properties/vendor"),
     "error-details/governance-agent-not-accepted.json": (
         "maxLength",
         "/oneOf/0/properties/attempted_agent_origin",
@@ -269,10 +270,18 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
         and g.ref.pointer.lstrip("#")
         in bundle.constrained_to_object(bundle.read(BUNDLE, g.ref.document))
     ]
-    assert len(rows) == 27, [g.ref for g in rows]
+    assert len(rows) == 35, [g.ref for g in rows]
     assert {g.ref.document for g in rows} == {
         "core/activation-key.json",
         "core/reporting-write-destination.json",
+        # Four more at 16052ffb0, and they are the four documents that left
+        # ``STILL_REFUSED`` below: each refused on a ``$ref`` into a document that
+        # now emits, so each one's two branch classes join this population.  The
+        # per-row loop grades all 35 and reported nothing new.
+        "core/account-ref.json",
+        "core/committed-metric.json",
+        "core/missing-metric.json",
+        "core/performance-feedback-metric.json",
         # Third since `salesagent-j3k2l.20`: the document emits now that a
         # `definitions` section no longer refuses it, and it carries a class at a
         # node its own root constrains -- so it joins this population rather than
@@ -297,28 +306,37 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
             g.accept("a string")
 
 
-def test_six_of_the_eleven_emit_and_the_other_five_refuse_on_another_rows_keyword() -> None:
+def test_ten_of_the_eleven_emit_and_the_last_one_refuses_on_another_rows_keyword() -> None:
     """The outcome, with the honest residue.
 
     10 documents were refused at a node their own root constrains to an object.
-    **6 of the 11 named here now emit and 5 still refuse** -- every one of the 5 on a
-    keyword of a later row, measured here by name.  "Every document whose root
-    constrains the instance to an object emits" is therefore true of THIS refusal and
-    not of those 5 documents, and that distinction is the content of this assertion.
+    **10 of the 11 named here now emit and 1 still refuses** -- on a keyword of a
+    later row, measured here by name.  "Every document whose root constrains the
+    instance to an object emits" is therefore true of THIS refusal and not of that
+    one document, and that distinction is the content of this assertion.
 
-    It was 3 and 8 until `salesagent-j3k2l.19` lowered `uniqueItems` on the class
-    holding the array: `media-buy/acceptance-policy-requirement.json` refused on that
-    keyword directly, and `core/canonical-account-ref.json` and
-    `core/canonical-reporting-commitment.json` chain off newly emitted targets.  The
-    residue shrinking is what a later row landing looks like from here, which is why
-    this is pinned by NAME rather than by a count alone -- and the test's own name
-    carries the two numbers, so it moved with them.
+    It was 3 and 8, then 6 and 5 once `salesagent-j3k2l.19` lowered `uniqueItems` on
+    the class holding the array, and it is 10 and 1 at 16052ffb0: the four `$ref`
+    rows left the residue because each one's target emits now.  The residue
+    shrinking is what a later row landing looks like from here, which is why this is
+    pinned by NAME rather than by a count alone -- and the test's own name carries
+    the two numbers, so it moved with them.
+
+    The partition is closed below rather than left as two subset checks: a document
+    the emitter neither built nor refused would otherwise satisfy both halves.
     """
-    out = emit.emit(BUNDLE, sorted(set(NOW_EMITTED) | set(STILL_REFUSED)))
+    eleven = sorted(set(NOW_EMITTED) | set(STILL_REFUSED))
+    assert len(eleven) == 11, eleven
+    out = emit.emit(BUNDLE, eleven)
     assert set(NOW_EMITTED) <= set(out.emitted), sorted(set(NOW_EMITTED) - set(out.emitted))
     for document, (keyword, pointer) in STILL_REFUSED.items():
         row = out.refusals[document]
         assert (row["keyword"], row["pointer"]) == (keyword, pointer), (document, row)
+    # Restricted to the eleven: ``emit`` walks the ``$ref`` closure, so
+    # ``out.emitted`` carries targets that were never in this population.
+    assert [d for d in eleven if d in out.emitted or d in out.refusals] == eleven, [
+        d for d in eleven if d not in out.emitted and d not in out.refusals
+    ]
 
 
 def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
@@ -330,7 +348,7 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     """
     out = emit.emit(BUNDLE, bundle.portable(BUNDLE))
     assert len(out.emitted) + len(out.refusals) == 1054
-    assert len(out.emitted) == 425
+    assert len(out.emitted) == 674
     assert [d for d, r in out.refusals.items() if "nothing enclosing it" in r["detail"]] == []
 
 
