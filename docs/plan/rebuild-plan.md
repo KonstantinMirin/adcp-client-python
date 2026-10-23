@@ -744,6 +744,80 @@ gating step 9:
 | `.23` | a bundle annotation (`notes`, `enumMetadata`, `last_updated`) is IGNORED, not lowered — there is nothing to lower | 4 |
 | `.24` | read a branch's type from its root before refusing the branch — **closed**; a bug, not a row | 10 |
 
+### 7.1 Where the metric actually stands, and the counts above are not it
+
+**The counts in the table above are the refusals each row was FILED against, not the work
+remaining.** They were measured on different trees over several days, they overlap (one document
+is refused once but blocked by several rows), and four of the rows have since closed. Read them
+as the reason each row exists. Read the table below as the state.
+
+Measured on trunk `ac8a64fb1`, by the constants the refusal producers emit
+(`refusal.DEFERRED_TO_A_LATER_ROW`, `refusal.UNRESOLVED_TARGET`, `refusal.is_a_verdict`) and
+not by matching a detail string — a regex over those details gave 404/41/31 against the truth
+of 176/1/299 on an earlier tree, because the pattern matched `"D2 row"` inside the VERDICT
+sentence:
+
+| | documents | |
+|---|---|---|
+| emitted and graded | 580 | |
+| refused by a VERDICT naming a keyword this emitter will not lower | 371 | |
+| **accounted for** | **951** | of 1,054 |
+| deferred — a draft-07 keyword no row lowers yet | 102 | pending, not refused |
+| transitive — waiting on one of those through a `$ref` | 1 | pending |
+
+**`emitted + refused == 1054` is green and has been all along, which is why it is not the
+condition.** "Refused" admits "not built yet": the metric's own arithmetic held while part of
+that 476 was unwritten work. `test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending`
+now partitions it, with `deferred` and `transitive` pinned shrink-only and `accounted` grow-only,
+so a row landing moves all three one way and anything else reddens.
+
+The 102 deferrals partition by the keyword each waits on, and every one is owned:
+
+| keyword | documents | owner |
+|---|---|---|
+| `anyOf` | 26 | `.26` |
+| `not` | 22 | `.22` |
+| `oneOf` | 12 | `.26` |
+| `dependencies` | 10 | `.22` |
+| `minProperties` | 7 | `.22` |
+| `if` | 7 | `.17` |
+| `uniqueItems` | 6 | `.26` |
+| `maxProperties` | 5 | `.22` |
+| the remainder | 7 | `.26`, `.17` |
+
+`.26` exists because **`ROWS` partitions by ROOT KIND.** Every keyword it owns already has a
+CLOSED row — `.5` for union roots, `.19` for `uniqueItems`, `.3` for enums, `.12` for named
+constrained types — and those rows are not defective. A row selected on a root claims a document
+whose root composes; the same keyword at `/properties/x/items` is a different position that no
+root selector sees. Do not reopen a closed row to swallow both.
+
+### 7.2 The rows that are not keyword rows
+
+Four issues were filed after this table and none of them adds a lowering:
+
+| | what it is | state |
+|---|---|---|
+| `.25` | the suite's wall-clock: the `canonicalish` memo, 1.27× measured | superseded in part by `.27` |
+| `.27` | two tests per class instead of 25 per step site — **63× on the reference pair** | the constructed-witness upgrade is deferred, not cancelled |
+| `.28` | the symmetric comparison is red: 10 no-op facts to fold by shape, 13 `description` divergences to fix | open |
+| `.26` | the keywords above, below a root | open |
+
+**`.27` is why any of this is verifiable.** `refuses_examples` is per STEP SITE, so 25 over the
+13,123 sites this suite steps drew 328,075 instances and the suite ran about six hours at eight
+workers. Three full-suite runs were launched and killed in one day, and `.21` was committed with
+its verification explicitly in flight. The ceiling that buys the 63× is stated on `check_pair`
+itself: a site whose single instance does not happen to violate the stepped keyword reports as a
+control rather than a grade.
+
+**`.28` is a fidelity gap and not a safety defect, and the distinction is the whole of it.**
+`added` is **0** over the whole population — the model narrows nothing anywhere, which is the
+half that could admit an invalid instance. The 10 missing facts are `required: []` and
+`enum: [false, true]` on a boolean, which constrain nothing; the 13 differs are all
+`/properties/context/description`, where the emitter takes the `$ref` target's description
+instead of the referring document's. Attribution was measured, not assumed: pre-`.21` trunk
+graded 734 pairs with 1 discrepancy, post-`.21` grades 808 with 23, so `.21` made 74 more
+documents emittable and they exercise a defect that was already there.
+
 **A row's refusal count is not its value.** Measured by an independent audit over the 179
 `-request`/`-response` documents — the only ones a consumer imports — `notes` is rank 20 by
 refusal count and **gates 35** of the 167 uncovered, while `const` is rank 1 and gates 3. Two
