@@ -709,6 +709,23 @@ finite-type fold admits a model-only `description` at a rewritten node and nowhe
 beside `uniqueItems: true`. A fold that cannot state the equality it rests on is a widening
 wearing this category's clothes.
 
+**Number 3 is applied to an `allOf` CONJUNCT as well as to the node, and before the conjunct's
+facts are folded in.** A conjunct is an inlined base and arrives already resolved, so the
+rewrite has dropped the `type` off any boolean the base declared. Gap-filling that conjunct's
+`enum` left the merged node carrying an enum and no type — neither spelling of the fact, and a
+shape no document states — so the rewrite could be undone at neither end: `_uncanonicalized`
+matches an exactly-canonical node and the fifth fold's gate correctly demands
+`type == "boolean"`. Measured at 9 facts over 5 `formats/canonical` documents, each restating an
+inherited boolean with nothing but a `default` and a `description`
+(`salesagent-j3k2l.28`). Reading the conjunct through the same canonicalization hands the fold
+`{"type": "boolean"}` — the document's own spelling of the same accepted set — and the pair
+grades the accepted set as a `type`. **This is the fold moving to the canonicalization that owns
+the rewrite, not a gate being widened**; the fifth fold's `enum` arm is left exactly as it was,
+and its bundle population is now 0 because all 5 of its sites were conjunct-supplied enums
+(`/properties/replayed`, five response documents). The arm stays for the shape it is for — a
+document stating the pair in its own node, which draft-07 permits — graded by its 3 positive and
+12 negative hand-written cases rather than by the bundle.
+
 **Expect more of these, and expect each to appear when a document first reaches it.** Number 3
 was unreachable until a referenced plain boolean emitted and number 4 until a document carrying
 `uniqueItems` did, so the arrival of a fifth is a sign the emitted population grew rather than
