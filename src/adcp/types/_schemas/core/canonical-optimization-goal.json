@@ -1,0 +1,517 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Canonical 3.2 optimization objective. Monetary execution policy belongs in BiddingPolicy; legacy monetary targets and unbound attention metrics are excluded.",
+  "discriminator": {
+    "propertyName": "kind"
+  },
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "viewable_rate"
+              }
+            },
+            "required": [
+              "metric"
+            ]
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "properties": {
+                  "value": {
+                    "maximum": 1
+                  }
+                }
+              }
+            },
+            "required": [
+              "standard"
+            ]
+          }
+        },
+        {
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "standard"
+                  ]
+                },
+                {
+                  "required": [
+                    "vendor"
+                  ]
+                }
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "metric": {
+                "enum": [
+                  "viewable_rate",
+                  "viewed_seconds"
+                ]
+              }
+            },
+            "required": [
+              "metric"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "kind": {
+          "const": "metric",
+          "type": "string"
+        },
+        "metric": {
+          "enum": [
+            "clicks",
+            "views",
+            "completed_views",
+            "viewed_seconds",
+            "viewable_rate",
+            "engagements",
+            "follows",
+            "saves",
+            "profile_visits",
+            "reach"
+          ],
+          "type": "string"
+        },
+        "priority": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "reach_unit": {
+          "enum": [
+            "custom",
+            "cookies",
+            "devices",
+            "accounts",
+            "households",
+            "individuals"
+          ]
+        },
+        "standard": {
+          "enum": [
+            "mrc",
+            "groupm"
+          ]
+        },
+        "target": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "threshold_rate",
+              "type": "string"
+            },
+            "value": {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        "target_frequency": {
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "min"
+              ]
+            },
+            {
+              "required": [
+                "max"
+              ]
+            }
+          ],
+          "properties": {
+            "max": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "min": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "window": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+              "maxProperties": 2,
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "enum": [
+                    "days",
+                    "hours",
+                    "minutes",
+                    "seconds",
+                    "campaign"
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            }
+          },
+          "required": [
+            "window"
+          ],
+          "type": "object"
+        },
+        "vendor": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+          "maxProperties": 3,
+          "properties": {
+            "brand_id": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+              "examples": [
+                "tide",
+                "cheerios",
+                "air_jordan",
+                "nike",
+                "pampers"
+              ],
+              "pattern": "^[a-z0-9_]+$",
+              "title": "Brand ID",
+              "type": "string",
+              "x-entity": "advertiser_brand"
+            },
+            "countries": {
+              "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+              "items": {
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "domain": {
+              "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "domain"
+          ],
+          "title": "Brand Key",
+          "type": "object"
+        },
+        "view_duration_seconds": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "metric"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "attribution_window": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Describes the attribution methodology and lookback windows used for conversion measurement. Enables cross-platform comparison by making attribution methodology transparent. Used as a `$ref` from `optimization-goal.json` (buyer's optimization-time attribution choice), `get-media-buy-delivery-response.json` (seller-declared attribution methodology in delivery reports), and similar surfaces. All fields are optional individually but at least one of `post_click`, `post_view`, or `model` SHOULD be populated; absence of `model` means the seller's default attribution model applies (typically `last_touch` per industry convention) \u2014 sellers SHOULD populate `model` explicitly when committing to a specific methodology.",
+          "properties": {
+            "model": {
+              "enum": [
+                "linear",
+                "last_touch",
+                "time_decay",
+                "data_driven",
+                "first_touch"
+              ]
+            },
+            "post_click": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Post-click attribution window. Conversions occurring within this duration after a click are attributed to the ad.",
+              "maxProperties": 2,
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "enum": [
+                    "days",
+                    "hours",
+                    "minutes",
+                    "seconds",
+                    "campaign"
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            },
+            "post_view": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Post-view attribution window. Conversions occurring within this duration after an ad impression (without click) are attributed to the ad.",
+              "maxProperties": 2,
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "enum": [
+                    "days",
+                    "hours",
+                    "minutes",
+                    "seconds",
+                    "campaign"
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            }
+          },
+          "title": "Attribution Window",
+          "type": "object"
+        },
+        "event_sources": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "custom_event_name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "event_source_id": {
+                "minLength": 1,
+                "type": "string",
+                "x-entity": "event_source"
+              },
+              "event_type": {
+                "enum": [
+                  "lead",
+                  "share",
+                  "custom",
+                  "donate",
+                  "follow",
+                  "refund",
+                  "search",
+                  "contact",
+                  "purchase",
+                  "schedule",
+                  "page_view",
+                  "subscribe",
+                  "app_launch",
+                  "add_to_cart",
+                  "app_install",
+                  "select_item",
+                  "start_trial",
+                  "viewed_cart",
+                  "content_view",
+                  "qualify_lead",
+                  "view_content",
+                  "select_content",
+                  "add_to_wishlist",
+                  "disqualify_lead",
+                  "watch_milestone",
+                  "add_payment_info",
+                  "remove_from_cart",
+                  "initiate_checkout",
+                  "close_convert_lead",
+                  "submit_application",
+                  "complete_registration"
+                ]
+              },
+              "value_factor": {
+                "default": 1,
+                "type": "number"
+              },
+              "value_field": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "event_source_id",
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "kind": {
+          "const": "event",
+          "type": "string"
+        },
+        "priority": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "target": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "maximize_value",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "event_sources"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "vendor_metric",
+          "type": "string"
+        },
+        "metric_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Identifier for a vendor-defined metric within the vendor's vocabulary. Stable lookup key; the vendor publishes the canonical list (with category, methodology, and standard alignment) in `brand.json` `agents[type='measurement']`. Lowercase with underscores so a future enum promotion into `available-metric.json` is a literal string lift. Identifier is namespaced by the vendor \u2014 the same `metric_id` may mean different things in different vendors' vocabularies.",
+          "examples": [
+            "attention_units",
+            "gco2e_per_impression",
+            "demographic_reach",
+            "co_view_index",
+            "incremental_lift_percent"
+          ],
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Vendor Metric ID",
+          "type": "string",
+          "x-entity": "vendor_metric"
+        },
+        "priority": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "target": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "threshold_rate",
+              "type": "string"
+            },
+            "value": {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        "vendor": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+          "maxProperties": 3,
+          "properties": {
+            "brand_id": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+              "examples": [
+                "tide",
+                "cheerios",
+                "air_jordan",
+                "nike",
+                "pampers"
+              ],
+              "pattern": "^[a-z0-9_]+$",
+              "title": "Brand ID",
+              "type": "string",
+              "x-entity": "advertiser_brand"
+            },
+            "countries": {
+              "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+              "items": {
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "domain": {
+              "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "domain"
+          ],
+          "title": "Brand Key",
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "vendor",
+        "metric_id"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "Canonical Optimization Goal"
+}

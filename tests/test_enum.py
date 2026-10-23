@@ -874,9 +874,11 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
     assert all(d in out.emitted for d in enum_rooted)
 
     # The price. ``compiler.ANNOTATIONS`` is the set ``check_keywords`` reads; the
-    # two modules that bind it at import (``lower.rules``, ``lower.product``) ask a
-    # different question of it -- what a node DECLARES -- and patching those as well
-    # was measured to give the same three documents, so this patches the one.
+    # one module that still binds it at import (``lower.rules``) asks a
+    # different question of it -- what a node DECLARES -- and patching that as well
+    # was measured to give the same three documents, so this patches the one.  The
+    # second such binder was ``lower.product``, which is ``compiler``'s own
+    # ``lower_composition`` now and reads the name it patches.
     without = frozenset(compiler.ANNOTATIONS - {"enumMetadata"})
     original = compiler.ANNOTATIONS
     try:

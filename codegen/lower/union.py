@@ -162,8 +162,10 @@ ROOT_CONJUNCTS = ("allOf", "properties", "required", "additionalProperties")
 #: ``format: date-time``, both scalars.
 #:
 #: ``allOf`` at the BRANCH node is a conjunct list the branch's own pointer addresses,
-#: so unlike the root case it is genuinely lowerable; :func:`_plan` refuses it on the
-#: one thing it lacks, which is the conjunct reader D13 keeps in the product row.
+#: so unlike the root case it is genuinely lowerable -- and it IS lowered:
+#: :func:`lower_union` hands such a branch to ``compiler.lower_composition`` with the
+#: union base as ``bases``.  The keyword is in this set so the screen admits it; the
+#: dispatch at the bottom of :func:`lower_union` is what reads it.
 #:
 #: ``enum`` is here for ``const``'s reason exactly, and the module docstring already
 #: lists an ``enum`` branch among those that have no subclass to give: it pins the
@@ -402,7 +404,14 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
     mod.add(symbol, pointer, rendered)
 
     for plan in planned:
-        compiler.lower_object(plan.node, plan.name, plan.pointer, mod, bases=(symbol,))
+        # A branch that composes is lowered by the conjunct reader and a branch that
+        # does not by the object row, and both take the union base as ``bases`` -- the
+        # one argument that makes the branch answer ``isinstance(payload, Base)``.  The
+        # dispatch is on the keyword the branch carries and not on a field of
+        # :class:`Branch`: ``_plan`` has already admitted the keyword set, so the node
+        # is the only thing that decides which reader reads it.
+        lower = compiler.lower_composition if "allOf" in plan.node else compiler.lower_object
+        lower(plan.node, plan.name, plan.pointer, mod, bases=(symbol,))
 
     # The module trailer.  Two statements beside the classes, which is the module writer's
     # own text (§3: no compiler template has a slot for a line beside a class), and they
@@ -744,36 +753,31 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict) -> Branch:
         # the comparison has a pointer for every one of them -- none of the root case's
         # unreportability applies here.
         #
-        # What it needs is the conjuncts BOUND: a branch class's bases are already the
-        # union base (§4, and ``isinstance(payload, Base)`` depends on it), so a
-        # composing branch wants that base AND whatever its conjuncts name.  The reader
-        # that binds a conjunct list is the product row's, and a lowering imports
-        # ``codegen.compiler`` and ``codegen.refusal`` and nothing else of this package
-        # (D13), so this row cannot reach it -- a branch composes once that reader is
-        # shared machinery in ``compiler``, which is where D13 puts machinery two rows
-        # need.  ``mod.decide`` is not the way round it: it would declare a composition
-        # class that does not descend from this base, so the branch would not answer
-        # ``isinstance``, which is the same reason a bare ``$ref`` branch refuses above.
+        # What it needs is the conjuncts BOUND, and it has them: a branch class's bases
+        # are already the union base (§4, and ``isinstance(payload, Base)`` depends on
+        # it), so a composing branch wants that base AND whatever its conjuncts name --
+        # which is ``compiler.lower_composition``'s ``bases`` argument, prepending the
+        # union base to the conjuncts' own.  ``mod.decide`` is not the way to it and
+        # never was: it would declare a composition class that does not descend from
+        # this base, so the branch would not answer ``isinstance``, which is the same
+        # reason a bare ``$ref`` branch refuses above.
         #
-        # **The reachable population of that move is 0 TODAY, measured by making this
-        # refusal fail.**  Probed by removing it and lowering each branch with its
-        # conjuncts DROPPED -- which is what the move would supply -- over all 9
-        # documents in this position: 0 emit.  They refuse on ``uniqueItems`` (3), a
-        # ``$ref`` chain (2), a branch ``type`` (2), an ``allOf`` whose base is an alias
-        # (1) and a class-name collision (1).  So hoisting the reader into ``compiler``
-        # would be a derivation matching nothing (D14), and the step whose own keyword
-        # unblocks one of these 9 is the step that should do it.  2 of the 9 compose
-        # nothing but bare ``$ref`` conjuncts and are the two to re-measure then.
-        raise Refusal(
-            "allOf",
-            pointer,
-            "a branch that composes needs the bases its conjuncts name as well as the "
-            "union base this row gives it, and the conjunct reader that binds them is "
-            "the product row's: a lowering imports codegen.compiler and codegen.refusal "
-            "and nothing else of this package (D13), so a branch composes once that "
-            "reader is shared machinery in codegen.compiler",
-            kind=Kind.DEFERRED,
-        )
+        # The reader used to live in ``lower/product.py``, which a lowering may not
+        # import (D13), and this row refused on that alone -- with a comment claiming
+        # "the reachable population of that move is 0 TODAY" over 9 documents.  **That
+        # measurement was taken before the branch rows landed and was stale when it was
+        # read.** Re-run at ``c9bfb5133``, the same probe over the population it had
+        # grown to: of 10 documents here, 4 EMIT, 5 become verdicts (2 an alias base, 1
+        # a class-name collision, 2 through a chain) and 1 defers to step 7's row, and
+        # 12 more documents chained onto this refusal release with them.  So the move
+        # was a derivation matching 9 of 10, and ``docs/plan/j3k2l40-prediction.md``
+        # carries both runs.
+        #
+        # ``properties`` is NOT required of a composing branch, which is why the check
+        # below sits after this one: a branch whose fields all come from its conjuncts
+        # declares none of its own, and ``lower_composition`` reads the conjunct list
+        # for them.
+        return Branch(name=branch_name(branch, root, pointer, doc), pointer=pointer, node=branch)
     if "properties" not in branch:
         raise Refusal(
             "required" if "required" in branch else "type",

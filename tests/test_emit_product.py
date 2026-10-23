@@ -43,7 +43,6 @@ from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, compare_schema, steps
-from codegen.lower import product
 from codegen.refusal import Refusal
 
 REPO = Path(__file__).resolve().parents[1]
@@ -205,7 +204,14 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # regression. It drifted because every row that claims documents moves it.
     # CONFIRMED at 64131600f by ``salesagent-j3k2l.29``, in one pass with every
     # other quantity this test asserts: 576, and ``without`` is 348.
-    assert len(with_row.emitted) == 576, "N, over a bundle of 1,054"
+    # 576 -> 581 at ``salesagent-j3k2l.40``, which is the UNION row and not this one:
+    # sharing the conjunct reader let a composing BRANCH lower, and 5 documents of
+    # this population emit that did not.  Re-measured in one pass with every other
+    # quantity below, and **this is the only one that moved** -- the delta (228), the
+    # row's own contribution (147), the cleared set (151) and the attribution
+    # histogram (279 + 14 + 8) are all unchanged, which is what says the +5 belongs
+    # to another row.  ``without`` moves with it, so the delta holds.
+    assert len(with_row.emitted) == 581, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
@@ -310,7 +316,7 @@ def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzz
     assert bundle.composes_at_the_root(doc)
     saved = emit.ROWS
     try:
-        emit.ROWS = (*saved, (bundle.composes_at_the_root, product.lower_composition))
+        emit.ROWS = (*saved, (bundle.composes_at_the_root, compiler.lower_composition))
         with pytest.raises(emit.AmbiguousRoot, match="composes_at_the_root"):
             emit.lower_document("media-buy/get-products-request.json", doc)
     finally:
@@ -610,7 +616,7 @@ def test_a_lost_inherited_fact_is_reported_as_missing(tmp_path, monkeypatch) -> 
     at its own pointer.
     """
     monkeypatch.setattr(
-        product,
+        compiler,
         "_reused",
         lambda key, held, source, pointer, mod: compiler.Property(
             name=key, wire=key, type=compiler.Type("typing.Any"), required=False
@@ -721,7 +727,7 @@ def test_the_wrong_text_at_that_pointer_is_reported_as_a_differs(
     declares. The same probe bundle, the same comparison, two emitters -- and the
     comparison separates them by name, pointer and both texts.
     """
-    monkeypatch.setattr(product, "_annotates_differently", lambda child, base: False)
+    monkeypatch.setattr(compiler, "_annotates_differently", lambda child, base: False)
     cls, text, schema = _emit_probe(
         tmp_path,
         monkeypatch,
@@ -872,7 +878,7 @@ def test_the_accepts_and_refuses_checks_are_green_with_a_denominator(
 # what refuses, by name, pointer and keyword
 # --------------------------------------------------------------------------- #
 def _lower(doc: dict, binder=emit._no_binder) -> str:  # noqa: SLF001 -- the test is the caller
-    return product.lower_composition(doc, "Probe", "", emit.Module(document="probe.json", bind=binder))
+    return compiler.lower_composition(doc, "Probe", "", emit.Module(document="probe.json", bind=binder))
 
 
 def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> None:
@@ -905,14 +911,14 @@ def test_the_rule_is_symmetric_so_the_order_the_declarations_are_read_in_cannot_
     itself, over the four outcomes it has to distinguish.
     """
     typed = {"type": "integer", "minimum": 1}
-    assert product._restatement({"default": 1}, typed) is False  # annotation-only: inherited
-    assert product._restatement(dict(typed), typed) is False  # identical: inherited
-    assert product._restatement({**typed, "maximum": 9}, typed) is True  # narrows
-    assert product._restatement({"type": "integer", "minimum": 2}, typed) is None  # conflicts
+    assert compiler._restatement({"default": 1}, typed) is False  # annotation-only: inherited
+    assert compiler._restatement(dict(typed), typed) is False  # identical: inherited
+    assert compiler._restatement({**typed, "maximum": 9}, typed) is True  # narrows
+    assert compiler._restatement({"type": "integer", "minimum": 2}, typed) is None  # conflicts
     # symmetric: swapping the arguments of a conflict is still a conflict, and
     # swapping a narrowing reports the other direction rather than agreeing
-    assert product._restatement(typed, {"type": "integer", "minimum": 2}) is None
-    assert product._restatement(typed, {**typed, "maximum": 9}) is None
+    assert compiler._restatement(typed, {"type": "integer", "minimum": 2}) is None
+    assert compiler._restatement(typed, {**typed, "maximum": 9}) is None
 
 
 @pytest.mark.parametrize(
@@ -1024,6 +1030,6 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
             keyword: value,
             **also,
         }
-        product.lower_composition(doc, "Probe", "", mod)
+        compiler.lower_composition(doc, "Probe", "", mod)
         assert mod.declared[""] == "Probe", (keyword, mod.declared)
         assert [b for b in mod.blocks if "_adcp_rules" in b], keyword

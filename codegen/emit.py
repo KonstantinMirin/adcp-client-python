@@ -95,11 +95,11 @@ from codegen.compiler import (
     check_keywords,
     class_name,
     declare_alias,
+    lower_composition,
     lower_object,
 )
 from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
-from codegen.lower import product as lower_product
 from codegen.lower import containers as lower_containers
 from codegen.lower import rules as lower_rules
 from codegen.lower import union as lower_union
@@ -390,7 +390,7 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # array element.
         return Decided(
             compiler.Type(
-                lower_product.lower_composition(node, name_hint, pointer, mod), local=True
+                lower_composition(node, name_hint, pointer, mod), local=True
             )
         )
 
@@ -602,7 +602,7 @@ def exported(mod: Module, symbol: str, composed: frozenset[str] = frozenset()) -
        subclass inherits the base's fields and may restate one, and the plan's
        description-authority clause 2 says a restatement is then the base's FIELD wearing
        this document's annotations -- so the base's own field TYPES cross into every
-       module that composes it (``lower.product``'s ``inherited_fields``, read off
+       module that composes it (``compiler.lower_composition``'s ``inherited_fields``, read off
        ``Target.shape.decided``).  ``formats/canonical/_base.py``'s
        ``CanonicalFormatBaseSlotsItem`` is one: 7 modules import it and no ``$ref``
        names it.  Re-deciding the base's node instead was measured and is wrong -- it
@@ -732,7 +732,7 @@ ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str
     (bundle.is_object_root, _object_root),
     (bundle.is_scalar_root, _scalar_root),
     (bundle.is_enum_root, _enum_root),
-    (bundle.composes_at_the_root, lower_product.lower_composition),
+    (bundle.composes_at_the_root, lower_composition),
     (bundle.union_root, _union_root),
     (bundle.is_container_root, lower_containers.root),
 )

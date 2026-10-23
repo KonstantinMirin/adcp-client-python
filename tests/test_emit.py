@@ -4918,11 +4918,11 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     ``Kind``, ``refusal.is_a_verdict`` takes one and holds no string, and this test
     partitions by ``resolved`` rather than by any spelling it could invent.
 
-    Measured on the tree that made the kind structural: of 368 refusals, **149**
-    declare ``VERDICT``, **47** declare ``DEFERRED``, **1** declares
-    ``UNRESOLVED`` and **171** declare ``CHAINED``; resolving the chains through
-    ``through=`` gives **281 VERDICT**, **86 DEFERRED** and **1 UNRESOLVED**.  So
-    the exit condition stands at 686 + 281 = **967 of 1054**, with 87 pending.
+    Measured on the tree that shared the conjunct reader: of 363 refusals, **155**
+    declare ``VERDICT``, **38** declare ``DEFERRED``, **1** declares
+    ``UNRESOLVED`` and **169** declare ``CHAINED``; resolving the chains through
+    ``through=`` gives **297 VERDICT**, **65 DEFERRED** and **1 UNRESOLVED**.  So
+    the exit condition stands at 691 + 297 = **988 of 1054**, with 66 pending.
 
     **A FIFTH KIND CANNOT BE ABSORBED, which is the thing this test exists for.**
     It asserted ``deferred + transitive + chained_pending + verdicts == total``
@@ -4982,16 +4982,23 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # The old reading took a chained refusal's outer sentence and called all 171 of
     # them verdicts; the reading before that recursed into the quoted text.  Neither
     # is here: the producer passes ``through=`` the target's own refusal and
-    # ``Refusal.resolved`` carries the target's answer.  Measured on this tree, 171
-    # refusals are chained and they split **132 verdict / 39 deferred** -- so a
-    # ``through=`` dropped at that producer would make all 171 resolve to
+    # ``Refusal.resolved`` carries the target's answer.  Measured on this tree, 169
+    # refusals are chained and they split **142 verdict / 27 deferred** -- so a
+    # ``through=`` dropped at that producer would make all 169 resolve to
     # ``CHAINED``, which the assertion above refuses, and a ``through=`` pointed at
     # the wrong refusal would move this split.
+    #
+    # All three moved with ``salesagent-j3k2l.40``, and the DIRECTIONS are the point:
+    # 2 chained refusals became emissions (171 -> 169), and 12 that resolved to
+    # DEFERRED now resolve elsewhere -- 10 to VERDICT (132 -> 142) and 2 of them out
+    # of the refusal set entirely (39 -> 27).  A chain's floor on the DEFERRED side
+    # falls as rows land, so it is re-measured rather than held; what it grades is
+    # that both answers still occur, with a denominator beside each.
     chained = {d: r for d, r in out.refusals.items() if r["kind"] == refusal_module.Kind.CHAINED}
-    assert len(chained) >= 171, len(chained)
+    assert len(chained) >= 169, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 132, dict(split)
-    assert split[refusal_module.Kind.DEFERRED] >= 39, dict(split)
+    assert split[refusal_module.Kind.VERDICT] >= 142, dict(split)
+    assert split[refusal_module.Kind.DEFERRED] >= 27, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
         max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values())
@@ -5011,15 +5018,25 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # `union.py`'s "a branch composes once that reader is shared" (10) and
     # `compiler.py`'s default-on-a-required-property (1 directly, 5 through chains).
     #
+    # **967 -> 988 and 87 -> 66, moved by `salesagent-j3k2l.40`**, which shared the
+    # conjunct reader: a union BRANCH that composes is lowered by
+    # `compiler.lower_composition` with the union base as `bases`, so all 10
+    # documents waiting on "a branch composes once that reader is shared" cleared
+    # that row -- 3 emitted, 6 accounted as verdicts, and 1 (`adagents.json`) moved
+    # on to the NEXT gap, which is why the product row's deferral reads 13 here and
+    # 12 before.  12 chained refusals released with them.  `comparison.added` is 0
+    # on both trees, measured over every pair of the regenerated tree.
+    # `docs/plan/j3k2l40-prediction.md` carries the prediction and its grade.
+    #
     # Each pin is the value MEASURED on this tree and each was fire-probed one step
-    # tighter (`deferred <= 85`, `unresolved <= 0`, `accounted >= 968`,
-    # `chained >= 172`), so each is known to grade rather than to sit loose.
-    assert resolved[refusal_module.Kind.DEFERRED] <= 86, resolved[refusal_module.Kind.DEFERRED]
+    # tighter (`deferred <= 64`, `unresolved <= 0`, `accounted >= 989`,
+    # `chained >= 170`), so each is known to grade rather than to sit loose.
+    assert resolved[refusal_module.Kind.DEFERRED] <= 65, resolved[refusal_module.Kind.DEFERRED]
     assert resolved[refusal_module.Kind.UNRESOLVED] <= 1, resolved[refusal_module.Kind.UNRESOLVED]
 
     # Grow-only: what the exit condition actually counts.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 967, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 988, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
     pending = sum(resolved[k] for k in refusal_module.PENDING_KINDS)
