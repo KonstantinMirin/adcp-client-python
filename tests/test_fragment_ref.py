@@ -1154,13 +1154,14 @@ def test_no_document_of_the_bundle_refuses_on_a_definition_section_any_more() ->
 def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     """The POSITIVE path on the real bundle, which the committed tree cannot grade.
 
-    0 of the 40 documents emit yet -- each is held by a keyword another step owns
-    (``if`` 10, ``const`` 7, ``$ref`` 4, ``anyOf`` 3, ``properties`` 3, and 13 more
-    across eight keywords) -- so no section entry reaches the committed tree and the
-    constructed bundles above are what grade the declaration itself.  What the real
-    bundle grades is the WALK, in the two places it is observable:
+    15 of the 45 documents emit at 0130e5fc9 -- it was 6 at 16052ffb0 and 0 of 40
+    when this was written -- and the other 30 are each held by a keyword another
+    step owns (``$ref`` 9, ``oneOf`` 5, ``allOf`` 4, ``anyOf`` 4,
+    ``discriminator`` 3, ``properties`` 3, ``uniqueItems`` 2).  The constructed
+    bundles above are what grade the declaration itself.  What the real bundle
+    grades is the WALK, in the two places it is observable:
 
-    * a refusal at a pointer INSIDE a section is proof the walk descended one.  7
+    * a refusal at a pointer INSIDE a section is proof the walk descended one.  8
       documents are in that position, and none was before: every pointer under
       ``definitions`` used to be unreachable.
     * a refusal that moved from the root to a property means the walk got FURTHER, and
@@ -1178,8 +1179,16 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
         if r["pointer"].lstrip("/").split("/")[0] in bundle.DEFINITIONS
     }
     assert len(inside) == 8, inside
-    assert inside["core/response-payload-jws-envelope.json"] == (
-        "/definitions/response_payload/properties/typ"
+    # Pinned by name because a count alone cannot say the pointer went INTO a
+    # section.  This was ``core/response-payload-jws-envelope.json`` at
+    # ``/definitions/response_payload/properties/typ``; that document EMITS as of
+    # 16052ffb0, so it left this population and the pin moved to the deepest
+    # section pointer the bundle still refuses at -- three hops past the section
+    # name, which is what makes it evidence of a descent rather than of the
+    # section being read.  It held across 0130e5fc9, where the membership of the
+    # other seven changed and the count went 7 -> 8.
+    assert inside["core/account-identity-change-preview.json"] == (
+        "/definitions/nonblocking_impacts/items/allOf/0"
     )
 
     entry = out.refusals["governance/policy-entry.json"]
