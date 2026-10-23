@@ -30,14 +30,16 @@ Two things come out of one conjunct list, and a third is deliberately absent:
 
 Anything else refuses by name, pointer and keyword.
 
-**A subclass never restates an inherited field.**  That is this module's one merge
-rule: a restatement is admitted only when it NARROWS, meaning it keeps every
-keyword the inherited declaration states, with the same value, and adds at least
-one more.  Everything else is either nothing (the field is inherited, and the
-subclass declares no field at all) or a conflict (the document is refused).
-:func:`_restatement` is the whole decision, and it is SYMMETRIC, so there is no
-order-dependent "last wins" to come back to -- a generator that let the later
-conjunct win made its accepted set a function of member order.
+**A subclass never restates an inherited field's TYPE.**  That is this module's one
+merge rule: a restatement states the field only when it NARROWS, meaning it keeps
+every keyword the inherited declaration states, with the same value, and adds at
+least one more.  A restatement that says something DIFFERENT about the instance is a
+conflict and the document is refused.  A restatement that says the same thing or
+nothing is the subclass's field by its ANNOTATIONS alone, over the base's own type:
+the node where the two agree, the base's decided field where the restatement states
+no constraint at all.  :func:`_restatement` is the whole of that decision, and it is
+SYMMETRIC, so there is no order-dependent "last wins" to come back to -- a generator
+that let the later conjunct win made its accepted set a function of member order.
 
 MEASURED over this step's 287 documents, 100 sites restate an inherited property:
 51 restate it identically, 31 state nothing but ``default`` and ``description``,
@@ -48,8 +50,11 @@ classes.  ``formats/canonical/responsive_creative.json`` is the control shape:
 it restates ``experimental``, ``v1_translatable`` and ``slots`` with nothing but a
 default and a description, while ``formats/canonical/_base.json`` types them
 ``boolean``, ``boolean`` and ``array``, so a restatement lowered on its own is
-``Any | None`` shadowing a typed base field.  Inheriting instead makes the shadow
-UNSPELLABLE rather than caught.
+``Any | None`` shadowing a typed base field.  **Re-using the base's decided field
+makes the shadow unspellable AND carries the document's own annotation**, which
+inheriting the field entirely did not: that left the class stating the BASE's
+``default`` and ``description`` at a pointer its own document declares, the 28
+``differs`` of ``salesagent-j3k2l.36`` and two of them inversions.
 
 The same rule closes the inventory's "41 subclass fields optional where their base
 requires them" by construction: a field the subclass does not declare keeps the
@@ -59,12 +64,16 @@ field it DOES narrow keeps it too -- the inherited required set is unioned in.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from codegen.compiler import (
     ANNOTATIONS,
     Module,
+    Property,
     Shape,
+    Target,
+    Type,
     check_keywords,
     conditional_only,
     declare_object,
@@ -170,6 +179,11 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
     bases: list[str] = []
     inherited: dict[str, dict] = {}
     inherited_required: set[str] = set()
+    #: The FIELD each inherited key came out as on the base that declares it, and the
+    #: base it came from.  Read only by the annotation-only arm below, which re-uses
+    #: the field rather than re-deciding the node; ``compiler.Shape.decided`` says why.
+    inherited_fields: dict[str, Property] = {}
+    inherited_from: dict[str, Target] = {}
     #: Every LOCAL declaration that won its key, and where it was declared.  The
     #: root's own properties and an inline conjunct's land in the SAME map,
     #: because draft-07 applies both to the same instance.
@@ -224,6 +238,8 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
             mod.imports.add((target.module, target.symbol))
             bases.append(target.symbol)
             inherited.update(target.shape.properties)
+            inherited_fields.update(target.shape.decided)
+            inherited_from.update(dict.fromkeys(target.shape.properties, target))
             inherited_required |= target.shape.required
             continue
         if "properties" in keys and keys <= INLINE:
@@ -288,6 +304,8 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
     conditional_only(stated, {*local, *inherited}, pointer)
 
     own: dict[str, dict] = {}
+    #: The keys whose field is the inherited one wearing this document's annotations.
+    reuse: dict[str, Property] = {}
     for key, node in local.items():
         if key not in inherited:
             own[key] = node
@@ -315,32 +333,59 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
             # on ``core/protocol-envelope.json`` and required at their own root -- and
             # they were the last 2 ``added`` facts of the symmetric comparison.
             own[key] = node
-        elif _constraining(node) and _annotates_differently(node, inherited[key]):
+        elif _annotates_differently(node, inherited[key]):
             # **It states the same thing about the INSTANCE and a different thing to the
             # READER**, so the subclass states the field: a document's own declaration
             # governs the annotation at its own pointer (the description-authority rule,
             # ``docs/plan/rebuild-plan.md`` §6), and a base's must not stand where the
             # document declares one itself.
             #
-            # Gated on ``_constraining(node)`` being NON-EMPTY, and that gate is the
-            # whole of this branch's safety.  Non-empty and ``_restatement`` False means
-            # it equals the base's, so ``decide_type`` reads the base's own constraining
-            # content and decides the base's type -- the field is the inherited field
-            # with a different annotation, and there is no shadow to be had.  An
-            # annotation-ONLY restatement over a typed base is the other shape and stays
-            # inherited below: lowering it on its own would type it ``Any`` and drop
-            # every fact the base states, which is the 31-site shadow this module's
-            # docstring measures (and ``salesagent-j3k2l.22`` owns its 28 remaining
-            # facts).
+            # ``_restatement`` returned False here, so the restatement's own
+            # constraining content is either EQUAL to the base's or EMPTY, and the two
+            # reach the base's content by different routes:
             #
-            # Measured on this tree: 15 pairs and 15 documents, every one a response
-            # root composing ``core/protocol-envelope.json`` and declaring ``context``
-            # itself as a bare ``$ref`` to ``core/context.json``.  The envelope states
-            # the long "Relationship to per-task body-level ``context`` declarations"
-            # text as a SIBLING of its own ``$ref``; the 15 documents state the target's
-            # own short text at the pointer the comparison grades, and were 15 of the
-            # 43 ``differs``.
+            # * **EQUAL** -- the node says what the base says about the instance, so
+            #   ``decide_type`` reading the node decides the base's own type and there
+            #   is no shadow to be had.  15 pairs and 15 documents, every one a response
+            #   root composing ``core/protocol-envelope.json`` and declaring ``context``
+            #   itself as a bare ``$ref`` to ``core/context.json``: the envelope states
+            #   the long "Relationship to per-task body-level ``context`` declarations"
+            #   text as a SIBLING of its own ``$ref``, the 15 documents state the
+            #   target's own short text at the pointer the comparison grades, and they
+            #   were 15 of the 43 ``differs``.
+            # * **EMPTY** -- the node says nothing about the instance, so it is the
+            #   inherited FIELD that stands and only the annotations are this
+            #   document's.  A previous reading left this shape inherited entirely, on
+            #   the ground that lowering the restatement ALONE types it ``Any`` and
+            #   drops every fact the base states.  That is true of the restatement
+            #   alone, and the answer is to not lower it alone: the base's decided
+            #   field is re-used (``compiler.Shape.decided``, and ``fields``' ``reuse``
+            #   says why the node cannot simply be merged and re-decided).  Measured as
+            #   the whole of ``salesagent-j3k2l.22``'s residue: 28 ``differs`` over 7
+            #   ``formats/canonical/*.json`` at ``experimental``, ``v1_translatable``
+            #   and ``slots``, two of them INVERSIONS where the base defaults a boolean
+            #   the opposite way from the document's own declaration.
+            #
+            # **The two also differ about SILENCE**, and each takes the reading under
+            # which the model states what the COMPOSED DOCUMENT states at that pointer.
+            # An EQUAL restatement's node resolves to something of its own -- all 15 are
+            # a bare ``$ref``, and the resolved document carries the target's
+            # annotations inline there -- so the document's conjunction gap-fills
+            # nothing and the base's annotation must not stand
+            # (:func:`_annotates_differently`).  An EMPTY one resolves to nothing of its
+            # own, so under ``allOf`` the base's declaration is the one that applies
+            # where the restatement is silent, and the composed document states it:
+            # measured on ``formats/canonical/responsive_creative.json``, whose
+            # ``slots`` restates a ``default`` and no ``description``, where reading the
+            # restatement's silence as an answer left the base's description reported
+            # ``missing`` instead of zero facts.
             own[key] = node
+            if not _constraining(node):
+                reuse[key] = _reused(key, inherited_fields, inherited_from, at[key], mod)
+                own[key] = {
+                    **{k: v for k, v in inherited[key].items() if k in RENDERED},
+                    **node,
+                }
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
 
     decided = fields(
@@ -355,6 +400,7 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
         # it is this one or a rule-bearing conjunct: the rule tuple and the strip are
         # two halves of one claim, so the row that writes the tuple passes the keys.
         distinct=stated.distinct,
+        reuse=reuse,
     )
     return declare_object(
         doc,
@@ -362,7 +408,15 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
         pointer,
         mod,
         decided,
-        Shape({**inherited, **own}, frozenset(required | inherited_required)),
+        # ``decided`` is what this class INHERITS; ``declare_object`` overlays the
+        # fields it is handed, which are this class's own.  Passing the inherited ones
+        # is what makes :attr:`Shape.decided` transitive the way ``properties`` is, so
+        # a sub-subclass restating a key its grandparent declares reads one map.
+        Shape(
+            {**inherited, **own},
+            frozenset(required | inherited_required),
+            decided=inherited_fields,
+        ),
         bases=tuple(bases),
         rule_nodes=conjunct_rules,
     )
@@ -373,6 +427,66 @@ def _required(node: dict, pointer: str) -> list[str]:
     if not isinstance(req, list) or not all(isinstance(r, str) for r in req):
         raise Refusal("required", pointer, f"required is {req!r}, not a list of names")
     return req
+
+
+def _reused(
+    key: str,
+    inherited_fields: Mapping[str, Property],
+    inherited_from: Mapping[str, Target],
+    pointer: str,
+    mod: Module,
+) -> Property:
+    """The inherited field an annotation-only restatement re-states, importable here.
+
+    A re-used type names symbols, and each one has to be IMPORTABLE from this module
+    or the class is an undefined name at import.  The only module this row knows for
+    the key is the one its ``$ref`` conjunct bound, so a symbol that module DECLARES
+    is imported from it and anything else refuses by name.  The second case is a
+    re-export -- the base merely imported the symbol itself -- and section 2's import
+    rule is an import of a symbol the target declares; ``emit.emit``'s binder refuses
+    the same shape for a fragment ``$ref``, with the same reasoning.
+
+    Measured over this step's population: 3 keys re-use a field, all 3 on
+    ``formats/canonical/_base.json`` -- ``experimental`` and ``v1_translatable`` name
+    no symbol at all (``bool``), and ``slots`` names ``CanonicalFormatBaseSlotsItem``,
+    which ``_base`` declares.  **0** re-use a type naming a re-exported symbol, so the
+    refusal below fires on nothing today and is the loud answer when a document first
+    reaches one.
+    """
+    held, source = inherited_fields.get(key), inherited_from.get(key)
+    if held is None or source is None:
+        raise Refusal(
+            "properties",
+            pointer,
+            f"{key!r} restates an inherited declaration with nothing but annotations, "
+            f"and the base declaring it recorded no decided field for it, so there is "
+            f"no type to re-use and lowering the restatement alone would type it Any",
+        )
+    wanted = _symbols(held.type)
+    unplaceable = sorted(wanted - source.shape.declares) if source.shape else sorted(wanted)
+    if unplaceable:
+        raise Refusal(
+            "properties",
+            pointer,
+            f"{key!r} re-uses the field of {source.symbol}, whose type names "
+            f"{unplaceable} -- symbols that module imports rather than declares, so "
+            f"importing them from it would be a re-export",
+        )
+    mod.imports |= {(source.module, symbol) for symbol in wanted}
+    return held
+
+
+def _symbols(decided: Type) -> set[str]:
+    """Every symbol a decided type names in the module that decided it.
+
+    Read off the :class:`compiler.Type` TREE rather than off its rendered text: a
+    local arm is marked ``local`` where it is decided, so this enumerates the symbols
+    instead of matching identifiers in an annotation and guessing which are types.
+    """
+    found = {decided.path} if decided.local and decided.path else set()
+    for inner in (*decided.of, *([decided.key] if decided.key is not None else [])):
+        found |= _symbols(inner)
+    return found
 
 
 def _constraining(node: dict) -> dict:

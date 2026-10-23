@@ -75,7 +75,7 @@ from __future__ import annotations
 import keyword
 from collections import defaultdict
 from collections.abc import Callable, Collection, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from datamodel_code_generator import PythonVersion
@@ -790,10 +790,32 @@ class Shape:
     TRANSITIVE by construction: a class that itself composes records its inherited
     keys here too, so a subclass reads one map rather than walking a chain of base
     documents.
+
+    ``decided`` is the FIELD each key came out as, beside the node it came from, and
+    it exists for one shape the node alone cannot answer: a subclass restating a key
+    with nothing but annotations keeps the base's TYPE, and that type cannot be
+    re-decided from the base's node here.  Re-deciding it declares the nested classes
+    again, in the subclass's module and **at a pointer the subclass's document does not
+    have** -- measured, ``formats/canonical/image_carousel.json``'s merged ``slots``
+    emits a second ``...SlotsItem`` stamped
+    ``#/properties/slots/items``, where that document's own ``properties/slots`` carries
+    only a ``default`` and a ``description`` and ``schema_at`` raises ``KeyError``.  So
+    the field is REUSED rather than re-derived.
+
+    ``declares`` is the set of symbols the class's own module declared by the time the
+    class was, which is what lets a reuser tell a symbol it may import from the base's
+    module from one that module merely imported itself -- a re-export, which section 2's
+    import rule refuses (``emit.emit``'s binder refuses the same shape for a fragment
+    ``$ref``, and for the same reason).
     """
 
     properties: Mapping[str, dict]
     required: frozenset[str]
+    #: ``key -> Property``; see above.  Overlaid by :func:`declare_object` with the
+    #: props it is handed, so every declaring row records it in one place.
+    decided: Mapping[str, "Property"] = field(default_factory=dict)
+    #: The symbols the declaring module had declared; see above.
+    declares: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -1139,6 +1161,7 @@ def fields(
     inherited: Collection[str] = (),
     declared_at: Mapping[str, str] | None = None,
     distinct: Collection[str] = (),
+    reuse: Mapping[str, Property] | None = None,
 ) -> list[Property]:
     """The decided properties for one property map, children declared first.
 
@@ -1157,13 +1180,25 @@ def fields(
     declared at where that is not ``<pointer>/properties/<key>``, which it is not
     for a key that came from a conjunct.
 
-    There was a third keyword argument, ``decided``: a per-property type the CALLER
-    had already decided, so that the union row could turn a branch's ``const`` into a
-    ``Literal`` without claiming the keyword everywhere.  **It is gone, and so is the
-    scoping it existed for.**  D2's ``const`` row is ``codegen.lower.const`` and
-    ``decide_type`` reaches it for every node, so a branch's discriminating pin is
-    decided exactly the way every other property is -- which leaves one lowering for
-    the keyword instead of two that have to agree.
+    ``reuse`` names the keys whose FIELD is one an enclosing class already decided,
+    and hands it over: its type, its constraints, its format and its ``uniqueItems``.
+    Everything else about the field is still read off ``props`` here -- the default,
+    the description, the requiredness, the attribute spelling -- so a reused key is a
+    field of this class stating the DOCUMENT's own annotations over an inherited type.
+
+    **This is not the ``decided`` argument that was removed, and the reason it was
+    removed does not reach it.**  That one carried a per-property type the caller had
+    already decided so the union row could turn a branch's ``const`` into a
+    ``Literal``; it went because ``decide_type`` reaches ``codegen.lower.const`` for
+    every node, so the type WAS derivable here and two lowerings had to agree about
+    one keyword.  A reused type is the other case: it is not derivable here, because
+    deciding it declares the nested classes AGAIN and in this module, at a pointer
+    **this document does not have** -- measured on
+    ``formats/canonical/image_carousel.json``, whose merged ``slots`` emits a second
+    ``...SlotsItem`` stamped ``#/properties/slots/items`` where that document's own
+    ``properties/slots`` carries a ``default`` and a ``description`` and nothing else,
+    and ``schema_at`` raises ``KeyError: 'items'``.  There is still exactly one
+    lowering of the node: the base's.
 
     ``distinct`` is the same "one position, not everywhere" shape that ``decided``
     had, and it survives because its keyword has no such row: it names the keys whose
@@ -1175,7 +1210,9 @@ def fields(
     whose declaration is not an array with ``uniqueItems: true`` is a caller defect,
     so nothing is silently stripped: the strip is read off the declaration and the
     flag off this set, and the two agreeing is asserted by the rules lowering's own
-    gate.
+    gate.  A REUSED key takes the flag off the field it reuses instead: the
+    ``uniqueItems`` was claimed by the rule on the class that decided it, which a
+    subclass inherits, so the subclass's own rules do not name the key.
     """
     undeclared = [r for r in required if r not in props and r not in inherited]
     if undeclared:
@@ -1188,6 +1225,7 @@ def fields(
     built: list[Property] = []
     spelled: dict[str, str] = {}
     where = declared_at or {}
+    reuse = reuse or {}
     for key, sub in props.items():
         at = where.get(key, f"{pointer}/properties/{key}")
         if not isinstance(sub, dict):
@@ -1204,7 +1242,12 @@ def fields(
             # the array row carries no ``uniqueItems`` and refuses one by name, which
             # is what keeps an array NO class holds refused rather than widened.
             sub = {k: v for k, v in sub.items() if k != "uniqueItems"}
-        decided_type = mod.decide(sub, at, name + class_name(key), mod)
+        if key in reuse:
+            held = reuse[key]
+            decided_type = Decided(held.type, dict(held.constraints), held.format)
+            is_distinct = held.distinct
+        else:
+            decided_type = mod.decide(sub, at, name + class_name(key), mod)
         is_required = key in required
         default = MISSING
         if "default" in sub:
@@ -1320,7 +1363,16 @@ def declare_object(
             body_lines=body_lines,
         )
     )
-    mod.shapes[name] = shape
+    # :attr:`Shape.decided` and :attr:`Shape.declares` are written HERE and by no
+    # caller, for the reason the rule tuple above is: this is the one funnel a class
+    # with fields passes through, so a row cannot forget to record what it decided.
+    # The caller's own ``decided`` is what the class INHERITS (a composing row passes
+    # its bases'), and the props it is handed are this class's own and win the key.
+    mod.shapes[name] = replace(
+        shape,
+        decided={**shape.decided, **{p.wire: p for p in props}},
+        declares=frozenset(mod.declared.values()) | {name},
+    )
     if imports:
         mod.imports |= imports
     mod.add(name, pointer, rendered)
