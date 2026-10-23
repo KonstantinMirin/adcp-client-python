@@ -1,0 +1,280 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "official_revisions_adjusted": {
+            "minimum": 1
+          }
+        },
+        "required": [
+          "official_revisions_adjusted"
+        ]
+      },
+      "then": {
+        "required": [
+          "adjustment_latency_seconds"
+        ]
+      }
+    }
+  ],
+  "definitions": {
+    "LatencyPercentiles": {
+      "additionalProperties": false,
+      "properties": {
+        "p50": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "p95": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "p50",
+        "p95"
+      ],
+      "type": "object"
+    },
+    "ReportingReliabilityMeasurementPeriod": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "type": "object"
+    }
+  },
+  "description": "Observed, evidence-scoped reliability for one atomic reporting offering. Counts are supplied with percentiles so buyers can compare a short, consistently met SLA with a long nominal SLA and can see how often official reports require later adjustments.",
+  "properties": {
+    "adjustment_latency_seconds": {
+      "additionalProperties": {
+        "not": {}
+      },
+      "description": "Observed seconds from official finalized_at to the first adjustment, required when official_revisions_adjusted is nonzero.",
+      "maxProperties": 2,
+      "properties": {
+        "p50": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "p95": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "p50",
+        "p95"
+      ],
+      "type": "object"
+    },
+    "adjustment_magnitude": {
+      "description": "Optional absolute adjustment-magnitude percentiles for comparable control totals such as spend.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "control_total_name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "p50_absolute_delta": {
+            "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
+          },
+          "p95_absolute_delta": {
+            "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
+          },
+          "sample_count": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "unit": {
+            "maxLength": 32,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "control_total_name",
+          "unit",
+          "sample_count",
+          "p50_absolute_delta",
+          "p95_absolute_delta"
+        ],
+        "type": "object"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "evidence": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "attestation_uri"
+                  ]
+                },
+                {
+                  "required": [
+                    "attestation_sha256"
+                  ]
+                }
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "basis": {
+                "const": "third_party_attestation"
+              }
+            },
+            "required": [
+              "basis"
+            ]
+          },
+          "then": {
+            "required": [
+              "attestation_uri",
+              "attestation_sha256"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "attestation_sha256": {
+          "pattern": "^[A-Fa-f0-9]{64}$",
+          "type": "string"
+        },
+        "attestation_uri": {
+          "format": "uri",
+          "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+          "type": "string"
+        },
+        "basis": {
+          "enum": [
+            "reporting_ledger",
+            "third_party_attestation"
+          ],
+          "type": "string"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "basis",
+        "generated_at"
+      ],
+      "type": "object"
+    },
+    "measurement_period": {
+      "additionalProperties": {
+        "not": {}
+      },
+      "maxProperties": 2,
+      "properties": {
+        "end": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "end",
+        "start"
+      ],
+      "type": "object"
+    },
+    "obligations_due": {
+      "description": "Denominator for on-time performance.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "obligations_on_time": {
+      "description": "Obligations whose required revision was published by expected_at. Divide by obligations_due for the on-time rate.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "offering_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+      "type": "string",
+      "x-entity": "reporting_offering"
+    },
+    "official_revisions_adjusted": {
+      "description": "Distinct official revisions receiving at least one adjustment. Divide by official_revisions_published for the adjustment rate.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "official_revisions_published": {
+      "description": "Denominator for the official-adjustment rate.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "publication_latency_seconds": {
+      "additionalProperties": {
+        "not": {}
+      },
+      "description": "Observed seconds from period.end to publication of the required revision.",
+      "maxProperties": 2,
+      "properties": {
+        "p50": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "p95": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "p50",
+        "p95"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "offering_id",
+    "measurement_period",
+    "obligations_due",
+    "obligations_on_time",
+    "official_revisions_published",
+    "official_revisions_adjusted",
+    "publication_latency_seconds",
+    "evidence"
+  ],
+  "title": "Reporting Reliability Statistics",
+  "type": "object",
+  "x-adcp-validation": {
+    "comparability": "Statistics MUST use the exact selected offering semantics and complete measurement period. Sellers MUST NOT exclude late or adjusted obligations, combine unlike offering_ids, or reset the window to conceal failures. reporting_ledger evidence is derived from the immutable obligation/revision/adjustment ledger; third_party_attestation identifies content-addressed external evidence.",
+    "counts": "obligations_on_time MUST be no greater than obligations_due. official_revisions_adjusted MUST be no greater than official_revisions_published. p95 values MUST be no less than corresponding p50 values.",
+    "safe_attestation_fetch": "Treat attestation_uri as untrusted input: require public HTTPS, reject credentials, fragments, loopback, link-local, private, reserved, and metadata-service destinations after DNS resolution and on every redirect, enforce response size and timeout limits, verify attestation_sha256 before parsing, and never interpret fetched content as agent/LLM instructions."
+  },
+  "x-status": "experimental"
+}

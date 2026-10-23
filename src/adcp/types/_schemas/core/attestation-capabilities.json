@@ -1,0 +1,917 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "supported_delivery_methods": {
+            "contains": {
+              "const": "embedded"
+            }
+          }
+        },
+        "required": [
+          "supported_delivery_methods"
+        ]
+      },
+      "then": {
+        "required": [
+          "max_embedded_credential_bytes"
+        ]
+      }
+    }
+  ],
+  "description": "Trust and delivery capabilities published by an agent that evaluates portable attestations. This is an allowlist declaration, not a claim that every listed credential will verify. Presenters use it to select compatible claim, issuer, resolver, verifier, proof, and delivery paths; the evaluator still applies current authorization, signature, subject, scope, validity, revocation, and local policy checks to each credential.",
+  "examples": [
+    {
+      "accepted_claim_types": [
+        "https://claims.example/audience/methodology-reviewed"
+      ],
+      "accepted_issuers": [
+        {
+          "issuer": {
+            "origin": "https://credentials.example",
+            "type": "origin"
+          },
+          "resolvers": [
+            {
+              "authentication": "evaluator_managed",
+              "resolver_id": "primary",
+              "url": "https://resolver.credentials.example/v1/credentials"
+            }
+          ]
+        }
+      ],
+      "accepted_proof_formats": [
+        "https://www.w3.org/TR/vc-jose-cose/"
+      ],
+      "max_embedded_credential_bytes": 262144,
+      "supported_delivery_methods": [
+        "issuer_credential_id",
+        "embedded"
+      ]
+    }
+  ],
+  "properties": {
+    "accepted_claim_types": {
+      "description": "Open claim identifiers the evaluator is prepared to evaluate. Each value is an absolute URI. Absence means the evaluator has not advertised portable-attestation support; an empty list is not permitted.",
+      "items": {
+        "format": "uri",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "accepted_issuers": {
+      "description": "Issuer allowlist and resolver policy. Matching is on the canonical AttestationIssuer identity. A presenter-supplied issuer or credential URI that does not match this policy is rejected without an outbound request.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "claim_types": {
+            "description": "Optional subset of accepted_claim_types this issuer may assert. Omit to allow any globally accepted claim type for this issuer.",
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "credential_origins": {
+            "description": "Canonical HTTPS origins from which credential_uri locators may be fetched for this issuer. Exact origin matching happens after URL canonicalization and before DNS resolution. Paths in the credential URI may vary; userinfo is forbidden.",
+            "items": {
+              "format": "uri",
+              "pattern": "^https://[^/?#@]+$",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "ext": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            "title": "Extension Object",
+            "type": "object"
+          },
+          "issuer": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Canonical identity of the party that issued an attestation credential. The discriminator selects an existing AdCP identity when one exists and falls back to an HTTPS origin for other attestors. This identity is a claim carried by the presentation; evaluators MUST match it against their configured trust policy and verify it from the resolved or embedded credential before relying on it.",
+            "discriminator": {
+              "propertyName": "type"
+            },
+            "examples": [
+              {
+                "brand": {
+                  "brand_id": "nova_motors",
+                  "domain": "nova-brands.example"
+                },
+                "type": "brand"
+              },
+              {
+                "agent_url": "https://attestor.example/adcp",
+                "type": "agent"
+              },
+              {
+                "origin": "https://credentials.example",
+                "type": "origin"
+              }
+            ],
+            "oneOf": [
+              {
+                "additionalProperties": {
+                  "not": {}
+                },
+                "maxProperties": 3,
+                "properties": {
+                  "agent_url": {
+                    "description": "Canonical HTTPS endpoint of the issuing agent. Evaluators compare it using AdCP URL canonicalization rules.",
+                    "format": "uri",
+                    "pattern": "^https://[^/?#@]+(?:/[^?#]*)?(?:\\?[^#]*)?$",
+                    "type": "string"
+                  },
+                  "ext": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                    "title": "Extension Object",
+                    "type": "object"
+                  },
+                  "type": {
+                    "const": "agent"
+                  }
+                },
+                "required": [
+                  "agent_url",
+                  "type"
+                ],
+                "title": "AttestationAgentIssuer",
+                "type": "object"
+              },
+              {
+                "additionalProperties": {
+                  "not": {}
+                },
+                "maxProperties": 3,
+                "properties": {
+                  "brand": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "additionalProperties": {
+                      "not": {}
+                    },
+                    "description": "Reference to a brand by domain and optional brand_id. The domain hosts /.well-known/brand.json or is registered in the brand registry. For single-brand domains, brand_id can be omitted. For house-of-brands domains, brand_id identifies the specific brand. For creative production, brand.json is the canonical source of master brand identity (logo, palette, fonts, voice, and visual guidelines), subject only to the supported per-call fields in brand_kit_override. Catalogs supply product or item payload; catalog item asset groups, including property- or franchise-level logos, are item identity and do not override these master brand fields.",
+                    "examples": [
+                      {
+                        "brand_id": "spark",
+                        "domain": "nova-brands.com"
+                      },
+                      {
+                        "brand_id": "glow",
+                        "domain": "nova-brands.com"
+                      },
+                      {
+                        "domain": "acme-corp.com"
+                      },
+                      {
+                        "countries": [
+                          "NL"
+                        ],
+                        "domain": "nova-athletics.example"
+                      }
+                    ],
+                    "maxProperties": 6,
+                    "properties": {
+                      "brand_id": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
+                        "examples": [
+                          "tide",
+                          "cheerios",
+                          "air_jordan",
+                          "nike",
+                          "pampers"
+                        ],
+                        "pattern": "^[a-z0-9_]+$",
+                        "title": "Brand ID",
+                        "type": "string",
+                        "x-entity": "advertiser_brand"
+                      },
+                      "brand_kit_override": {
+                        "description": "Inline override for brand-kit fields normally resolved from `/.well-known/brand.json` on `domain` (logo, colors, voice, tagline). Use when brand.json is missing, stale, or inappropriate for this specific call \u2014 e.g., a campaign-scoped tagline, a co-branded creative, a freshly-rebranded color palette the brand.json hasn't shipped yet. Same inline-override pattern as `industries` and `data_subject_contestation` above: brand.json is canonical, the override is per-call. Adopters needing to override fields outside this subset (`voice_attributes`, `prohibited_terms`, etc.) MUST publish a different brand.json and reference it via a different `domain` \u2014 the inline override is intentionally narrow to a small high-traffic subset.\n\n**Merge semantics (normative).** The merge is **field-level**, not whole-object replacement. Each field within `brand_kit_override` (`logo`, `colors`, `voice`, `tagline`) is evaluated independently \u2014 when a field is present on the override the override value applies; when a field is absent the brand.json value applies (or is absent if brand.json doesn't carry one either). For composite fields (`colors.primary`, `colors.secondary`, `colors.accent`), the merge is one level deeper: each color slot is evaluated independently \u2014 a producer can override `colors.primary` while still inheriting `colors.secondary` from brand.json. SDKs MUST NOT treat a present `brand_kit_override.colors` as wiping the brand.json `colors` block entirely; only the per-slot fields present in the override take precedence. Without this rule, a partial-override semantics would diverge across SDKs and produce inconsistent rendering for the same payload.",
+                        "properties": {
+                          "colors": {
+                            "description": "Override brand colors (hex strings).",
+                            "properties": {
+                              "accent": {
+                                "pattern": "^#[0-9a-fA-F]{6}$",
+                                "type": "string"
+                              },
+                              "primary": {
+                                "pattern": "^#[0-9a-fA-F]{6}$",
+                                "type": "string"
+                              },
+                              "secondary": {
+                                "pattern": "^#[0-9a-fA-F]{6}$",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "logo": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
+                            "description": "Override logo asset.",
+                            "properties": {
+                              "alt_text": {
+                                "description": "Alternative text for accessibility",
+                                "type": "string",
+                                "x-accessibility": true
+                              },
+                              "asset_type": {
+                                "const": "image"
+                              },
+                              "breakpoint_id": {
+                                "description": "Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one breakpoint declared on the selected state (semantic validators resolve it). Omit for ordinary image slots.",
+                                "type": "string"
+                              },
+                              "file_size_bytes": {
+                                "description": "Image file size in bytes. Required by agents that advertise a max_file_size_kb constraint.",
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "focal_point": {
+                                "description": "Normalized `[x, y]` coordinates (0\u20131 from top-left) of the image's visual anchor. Seller-side renderers crop toward the focal point when deriving renditions across breakpoints and aspect ratios; absent, cropping falls back to center-weighted defaults.",
+                                "items": {
+                                  "maximum": 1,
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "maxItems": 2,
+                                "minItems": 2,
+                                "type": "array"
+                              },
+                              "format": {
+                                "description": "Image file format (jpg, png, gif, webp, etc.)",
+                                "type": "string"
+                              },
+                              "height": {
+                                "description": "Height in pixels",
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "pixel_ratio": {
+                                "description": "Intrinsic pixels per logical render pixel (for example `2` for a 600\u00d7500 image intended to render at 300\u00d7250). Optional because a validator can infer the ratio when the target format declares logical dimensions. When supplied, it MUST agree with both `width / logical_width` and `height / logical_height`; it is never a substitute for the intrinsic `width` and `height` fields.",
+                                "exclusiveMinimum": 0,
+                                "type": "number"
+                              },
+                              "provenance": {
+                                "$schema": "http://json-schema.org/draft-07/schema#",
+                                "description": "Provenance metadata for this asset, overrides manifest-level provenance",
+                                "properties": {
+                                  "ai_tool": {
+                                    "description": "AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.",
+                                    "properties": {
+                                      "name": {
+                                        "description": "Name of the AI tool or model (e.g., 'DALL-E 3', 'Stable Diffusion XL', 'Gemini')",
+                                        "type": "string"
+                                      },
+                                      "provider": {
+                                        "description": "Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')",
+                                        "type": "string"
+                                      },
+                                      "version": {
+                                        "description": "Version identifier for the AI tool or model (e.g., '25.1', '0125', '2.1'). For generative models, use the model version rather than the API version.",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "name"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "c2pa": {
+                                    "description": "C2PA sidecar manifest reference. Links to a detached cryptographic provenance manifest for this content. Note: file-level C2PA bindings break when ad servers transcode, resize, or re-encode assets. For pipelines with intermediaries, consider embedded_provenance as the primary provenance mechanism.",
+                                    "properties": {
+                                      "manifest_url": {
+                                        "description": "URL to the C2PA manifest store for this content",
+                                        "format": "uri",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "manifest_url"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "created_time": {
+                                    "description": "When this content was created or generated (ISO 8601)",
+                                    "format": "date-time",
+                                    "type": "string"
+                                  },
+                                  "declared_at": {
+                                    "description": "When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance.",
+                                    "format": "date-time",
+                                    "type": "string"
+                                  },
+                                  "declared_by": {
+                                    "description": "Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.",
+                                    "properties": {
+                                      "agent_url": {
+                                        "description": "URL of the agent or service that declared this provenance",
+                                        "format": "uri",
+                                        "type": "string"
+                                      },
+                                      "role": {
+                                        "enum": [
+                                          "tool",
+                                          "agency",
+                                          "creator",
+                                          "platform",
+                                          "advertiser"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "role"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "digital_source_type": {
+                                    "enum": [
+                                      "human_edits",
+                                      "digital_capture",
+                                      "digital_creation",
+                                      "algorithmic_media",
+                                      "composite_capture",
+                                      "data_driven_media",
+                                      "composite_synthetic",
+                                      "trained_algorithmic_media",
+                                      "composite_with_trained_algorithmic_media"
+                                    ]
+                                  },
+                                  "disclosure": {
+                                    "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
+                                    "properties": {
+                                      "jurisdictions": {
+                                        "description": "Jurisdictions where disclosure obligations apply",
+                                        "items": {
+                                          "properties": {
+                                            "country": {
+                                              "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')",
+                                              "type": "string"
+                                            },
+                                            "label_text": {
+                                              "description": "Required disclosure label text for this jurisdiction, in the local language",
+                                              "type": "string"
+                                            },
+                                            "region": {
+                                              "description": "Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)",
+                                              "type": "string"
+                                            },
+                                            "regulation": {
+                                              "description": "Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')",
+                                              "type": "string"
+                                            },
+                                            "render_guidance": {
+                                              "description": "How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.",
+                                              "minProperties": 1,
+                                              "properties": {
+                                                "ext": {
+                                                  "$schema": "http://json-schema.org/draft-07/schema#",
+                                                  "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                                                  "title": "Extension Object",
+                                                  "type": "object"
+                                                },
+                                                "min_duration_ms": {
+                                                  "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
+                                                  "minimum": 1,
+                                                  "type": "integer"
+                                                },
+                                                "persistence": {
+                                                  "enum": [
+                                                    "initial",
+                                                    "flexible",
+                                                    "continuous"
+                                                  ]
+                                                },
+                                                "positions": {
+                                                  "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
+                                                  "items": {
+                                                    "enum": [
+                                                      "audio",
+                                                      "footer",
+                                                      "overlay",
+                                                      "end_card",
+                                                      "pre_roll",
+                                                      "subtitle",
+                                                      "companion",
+                                                      "prominent"
+                                                    ]
+                                                  },
+                                                  "maxItems": 8,
+                                                  "minItems": 1,
+                                                  "type": "array",
+                                                  "uniqueItems": true
+                                                }
+                                              },
+                                              "type": "object"
+                                            }
+                                          },
+                                          "required": [
+                                            "country",
+                                            "regulation"
+                                          ],
+                                          "type": "object"
+                                        },
+                                        "minItems": 1,
+                                        "type": "array"
+                                      },
+                                      "required": {
+                                        "enum": [
+                                          false,
+                                          true
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "required"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "embedded_provenance": {
+                                    "description": "Provenance metadata embedded within the content stream. Each entry declares one embedding layer: structured provenance data carried inside the content itself, as distinct from sidecar references (c2pa.manifest_url). Embedded provenance survives operations that break sidecar and file-level bindings: ad-server transcoding, CMS ingestion, copy-paste, reformatting, and CDN re-encoding. For ad-tech pipelines where content passes through multiple intermediaries, embedded provenance is the reliable path for provenance that persists from declaration through delivery. This is a declaration by the embedding party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).",
+                                    "items": {
+                                      "properties": {
+                                        "embedded_at": {
+                                          "description": "When the provenance data was embedded (ISO 8601)",
+                                          "format": "date-time",
+                                          "type": "string"
+                                        },
+                                        "method": {
+                                          "enum": [
+                                            "manifest_wrapper",
+                                            "provenance_markers"
+                                          ]
+                                        },
+                                        "provider": {
+                                          "description": "Organization that performed the embedding (e.g., 'Encypher', 'Digimarc'). Display label and audit context \u2014 not a wire identifier.",
+                                          "type": "string"
+                                        },
+                                        "standard": {
+                                          "description": "Standard the embedding conforms to, if any (e.g., 'c2pa' for C2PA Section A.7 text manifest embedding)",
+                                          "type": "string"
+                                        },
+                                        "verify_agent": {
+                                          "additionalProperties": {
+                                            "not": {}
+                                          },
+                                          "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
+                                          "maxProperties": 2,
+                                          "properties": {
+                                            "agent_url": {
+                                              "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
+                                              "format": "uri",
+                                              "pattern": "^https://",
+                                              "type": "string"
+                                            },
+                                            "feature_id": {
+                                              "description": "Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `encypher.markers_present_v2`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.",
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "agent_url"
+                                          ],
+                                          "type": "object"
+                                        }
+                                      },
+                                      "required": [
+                                        "method",
+                                        "provider"
+                                      ],
+                                      "type": "object"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array"
+                                  },
+                                  "ext": {
+                                    "$schema": "http://json-schema.org/draft-07/schema#",
+                                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                                    "title": "Extension Object",
+                                    "type": "object"
+                                  },
+                                  "human_oversight": {
+                                    "enum": [
+                                      "none",
+                                      "edited",
+                                      "directed",
+                                      "selected",
+                                      "prompt_only"
+                                    ]
+                                  },
+                                  "synthetic_depiction": {
+                                    "enum": [
+                                      false,
+                                      true
+                                    ]
+                                  },
+                                  "verification": {
+                                    "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                    "items": {
+                                      "properties": {
+                                        "confidence": {
+                                          "description": "Confidence score of the verification result (0.0 to 1.0)",
+                                          "maximum": 1,
+                                          "minimum": 0,
+                                          "type": "number"
+                                        },
+                                        "details_url": {
+                                          "description": "URL to the full verification report",
+                                          "format": "uri",
+                                          "type": "string"
+                                        },
+                                        "result": {
+                                          "enum": [
+                                            "authentic",
+                                            "ai_modified",
+                                            "ai_generated",
+                                            "inconclusive"
+                                          ]
+                                        },
+                                        "verified_by": {
+                                          "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')",
+                                          "type": "string"
+                                        },
+                                        "verified_time": {
+                                          "description": "When the verification was performed (ISO 8601)",
+                                          "format": "date-time",
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "result",
+                                        "verified_by"
+                                      ],
+                                      "type": "object"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array"
+                                  },
+                                  "watermarks": {
+                                    "description": "Content watermarks applied to this asset. Each entry declares one watermarking layer: a content modification that encodes an identifier or fingerprint within the asset. Watermarks differ from embedded provenance: a watermark encodes an identifier (who generated it, who owns it), while embedded provenance carries or references a structured provenance record (the full chain of custody). A single asset may carry both. Aligns with C2PA action taxonomy: c2pa.watermarked.bound (watermark linked to a C2PA manifest) and c2pa.watermarked.unbound (watermark independent of any manifest). This is a declaration by the watermarking party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).",
+                                    "items": {
+                                      "properties": {
+                                        "c2pa_action": {
+                                          "enum": [
+                                            "c2pa.watermarked.bound",
+                                            "c2pa.watermarked.unbound"
+                                          ]
+                                        },
+                                        "embedded_at": {
+                                          "description": "When the watermark was applied (ISO 8601)",
+                                          "format": "date-time",
+                                          "type": "string"
+                                        },
+                                        "media_type": {
+                                          "enum": [
+                                            "text",
+                                            "audio",
+                                            "image",
+                                            "video"
+                                          ]
+                                        },
+                                        "provider": {
+                                          "description": "Organization that applied the watermark (e.g., 'Imatag', 'Steg.AI', 'Encypher'). Display label and audit context \u2014 not a wire identifier.",
+                                          "type": "string"
+                                        },
+                                        "verify_agent": {
+                                          "additionalProperties": {
+                                            "not": {}
+                                          },
+                                          "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
+                                          "maxProperties": 2,
+                                          "properties": {
+                                            "agent_url": {
+                                              "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
+                                              "format": "uri",
+                                              "pattern": "^https://",
+                                              "type": "string"
+                                            },
+                                            "feature_id": {
+                                              "description": "Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `imatag.watermark_detected`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.",
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "agent_url"
+                                          ],
+                                          "type": "object"
+                                        }
+                                      },
+                                      "required": [
+                                        "media_type",
+                                        "provider"
+                                      ],
+                                      "type": "object"
+                                    },
+                                    "minItems": 1,
+                                    "type": "array"
+                                  }
+                                },
+                                "title": "Provenance",
+                                "type": "object"
+                              },
+                              "state_id": {
+                                "description": "Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one declared `states[].state_id` (semantic validators resolve it). Omit for ordinary image slots.",
+                                "type": "string"
+                              },
+                              "url": {
+                                "description": "URL to the image asset",
+                                "format": "uri",
+                                "type": "string"
+                              },
+                              "width": {
+                                "description": "Width in pixels",
+                                "minimum": 1,
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "asset_type",
+                              "height",
+                              "url",
+                              "width"
+                            ],
+                            "title": "Image Asset",
+                            "type": "object"
+                          },
+                          "tagline": {
+                            "description": "Override tagline.",
+                            "type": "string"
+                          },
+                          "voice": {
+                            "description": "Override brand-voice description for surface-composed text/audio output.",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "countries": {
+                        "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit for a global/default identity. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account identity and is not delivery targeting.",
+                        "items": {
+                          "pattern": "^[A-Z]{2}$",
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      },
+                      "data_subject_contestation": {
+                        "additionalProperties": {
+                          "not": {}
+                        },
+                        "anyOf": [
+                          {
+                            "required": [
+                              "email"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "url"
+                            ]
+                          }
+                        ],
+                        "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand \u2192 house \u2192 missing.",
+                        "maxProperties": 3,
+                        "properties": {
+                          "email": {
+                            "format": "email",
+                            "type": "string"
+                          },
+                          "languages": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "url": {
+                            "format": "uri",
+                            "pattern": "^https://",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "domain": {
+                        "description": "Domain where /.well-known/brand.json is hosted, or the brand's operating domain",
+                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                        "type": "string"
+                      },
+                      "industries": {
+                        "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "domain"
+                    ],
+                    "title": "Brand Reference",
+                    "type": "object"
+                  },
+                  "ext": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                    "title": "Extension Object",
+                    "type": "object"
+                  },
+                  "type": {
+                    "const": "brand"
+                  }
+                },
+                "required": [
+                  "brand",
+                  "type"
+                ],
+                "title": "AttestationBrandIssuer",
+                "type": "object"
+              },
+              {
+                "additionalProperties": {
+                  "not": {}
+                },
+                "maxProperties": 3,
+                "properties": {
+                  "ext": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                    "title": "Extension Object",
+                    "type": "object"
+                  },
+                  "origin": {
+                    "description": "Canonical HTTPS origin with no path, query, fragment, or userinfo. This identifies the issuer; it does not authorize a fetch.",
+                    "format": "uri",
+                    "pattern": "^https://[^/?#@]+$",
+                    "type": "string"
+                  },
+                  "type": {
+                    "const": "origin"
+                  }
+                },
+                "required": [
+                  "origin",
+                  "type"
+                ],
+                "title": "AttestationOriginIssuer",
+                "type": "object"
+              }
+            ],
+            "title": "Attestation Issuer"
+          },
+          "proof_formats": {
+            "description": "Optional subset of accepted_proof_formats allowed for this issuer. Omit to allow any globally accepted proof format for this issuer.",
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "resolvers": {
+            "description": "Evaluator-approved resolver endpoints for issuer_credential_id delivery. Presentations carry only resolver_id; they cannot replace url or authentication policy.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "authentication": {
+                  "description": "Whether the resolver is public or uses credentials managed outside AdCP task payloads. Presenter-supplied credentials are never accepted.",
+                  "enum": [
+                    "none",
+                    "evaluator_managed"
+                  ],
+                  "type": "string"
+                },
+                "resolver_id": {
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9._:-]+$",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "Evaluator-configured HTTPS resolver endpoint. Calls use POST with Content-Type application/json and a body containing only credential_id; query-string and path interpolation are forbidden. The evaluator still applies the attestation fetch contract before every call.",
+                  "format": "uri",
+                  "pattern": "^https://[^/?#@]+(?:/[^?#]*)?(?:\\?[^#]*)?$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "resolver_id",
+                "url",
+                "authentication"
+              ],
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "issuer"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "accepted_proof_formats": {
+      "description": "Open credential/proof format identifiers the evaluator can verify. Values are absolute URIs rather than a protocol enum so issuers can adopt new formats without AdCP endorsement.",
+      "items": {
+        "format": "uri",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "accepted_verifiers": {
+      "description": "Verifier agents the evaluator may call. A presenter's verify_agent nomination must match one of these canonicalized URLs, but the evaluator remains verifier-of-record and chooses whether to use the nominated agent, another accepted agent, or local verification.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_url": {
+            "format": "uri",
+            "pattern": "^https://[^/?#@]+(?:/[^?#]*)?(?:\\?[^#]*)?$",
+            "type": "string"
+          },
+          "claim_types": {
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "ext": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            "title": "Extension Object",
+            "type": "object"
+          },
+          "proof_formats": {
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "agent_url"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "max_embedded_credential_bytes": {
+      "description": "Maximum UTF-8 byte size accepted for one embedded credential. Evaluators MUST enforce this limit before parsing the credential. The protocol ceiling is 1 MiB.",
+      "maximum": 1048576,
+      "minimum": 1024,
+      "type": "integer"
+    },
+    "supported_delivery_methods": {
+      "description": "Credential delivery paths this evaluator supports. credential_uri resolves an HTTPS credential URI from the presentation; issuer_credential_id combines issuer, credential_id, and an evaluator-published resolver_id; embedded accepts an inline credential.",
+      "items": {
+        "enum": [
+          "credential_uri",
+          "issuer_credential_id",
+          "embedded"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "accepted_claim_types",
+    "accepted_proof_formats",
+    "supported_delivery_methods",
+    "accepted_issuers"
+  ],
+  "title": "Attestation Capabilities",
+  "type": "object"
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Compact account-anchored readiness doorbell registered through sync_accounts notification_configs using reporting.delivery_ready. Managed-delivery tier only: it names a materialization at a destination, so Core (API-delivered) configurations never fire it \u2014 Core consumers subscribe to reporting.status_changed and poll get_reporting_status. The named revision/materialization MUST already be observable through the intended consumer path. Transport retries are deduplicated by (authenticated sender, idempotency_key); downstream ingestion is deduplicated independently by reporting_revision_id and reporting_materialization_id. Ordering is unconstrained and receivers repair through authenticated get_reporting_status. The event MUST be signed using the advertised AdCP webhook-signing profile and MUST NOT contain rows, object lists, signed URLs, activation URLs, credentials, or access tokens.",
+  "properties": {
+    "account_id": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "account"
+    },
+    "data_through": {
+      "format": "date-time",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "delivery_config_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string",
+      "x-entity": "reporting_delivery_config"
+    },
+    "delivery_config_version": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "feed_purpose": {
+      "enum": [
+        "pacing",
+        "billing",
+        "analytics"
+      ]
+    },
+    "finality": {
+      "enum": [
+        "official",
+        "snapshot"
+      ]
+    },
+    "fired_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "idempotency_key": {
+      "description": "Stable across transport retries of this fire; new for a later re-emission.",
+      "maxLength": 255,
+      "minLength": 16,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "type": "string"
+    },
+    "notification_id": {
+      "description": "Stable for this logical materialization-ready event across re-emissions.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string"
+    },
+    "notification_type": {
+      "const": "reporting.delivery_ready",
+      "type": "string"
+    },
+    "readiness": {
+      "enum": [
+        "available",
+        "delivered"
+      ],
+      "type": "string"
+    },
+    "reporting_materialization_id": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_materialization"
+    },
+    "reporting_revision_id": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_revision"
+    },
+    "subscriber_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "idempotency_key",
+    "notification_id",
+    "notification_type",
+    "fired_at",
+    "subscriber_id",
+    "account_id",
+    "delivery_config_id",
+    "delivery_config_version",
+    "feed_purpose",
+    "reporting_revision_id",
+    "reporting_materialization_id",
+    "readiness",
+    "finality",
+    "data_through"
+  ],
+  "title": "Reporting Delivery Ready Webhook",
+  "type": "object",
+  "x-adcp-validation": {
+    "authorization": "The authenticated webhook signer, subscriber_id, account_id, configuration generation, revision, and materialization MUST belong to one caller/account binding; receivers MUST repair through an authenticated status read rather than trusting event contents alone.",
+    "deduplication": "Deduplicate transport retries by (authenticated sender, idempotency_key), then deduplicate ingestion independently by reporting_revision_id and reporting_materialization_id."
+  },
+  "x-status": "experimental"
+}

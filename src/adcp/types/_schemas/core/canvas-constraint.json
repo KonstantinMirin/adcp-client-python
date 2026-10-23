@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "dependencies": {
+    "breakpoint_id": [
+      "state_id"
+    ]
+  },
+  "description": "Rectangular rule applied to buyer artwork. State and breakpoint selectors are optional so the same shape can constrain a coordinated-placement component or a specific stateful-display canvas.",
+  "properties": {
+    "breakpoint_id": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "type": "string"
+    },
+    "constraint": {
+      "enum": [
+        "safe_area",
+        "reserved_region",
+        "decoration_only_edge",
+        "no_text_or_logos"
+      ],
+      "type": "string"
+    },
+    "region": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "percent"
+              }
+            },
+            "required": [
+              "unit"
+            ]
+          },
+          "then": {
+            "properties": {
+              "height": {
+                "maximum": 100
+              },
+              "width": {
+                "maximum": 100
+              },
+              "x": {
+                "maximum": 100
+              },
+              "y": {
+                "maximum": 100
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "height": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "unit": {
+          "default": "px",
+          "enum": [
+            "px",
+            "percent"
+          ],
+          "type": "string"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "x": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "y": {
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "type": "object"
+    },
+    "state_id": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "constraint",
+    "region"
+  ],
+  "title": "Canvas Constraint",
+  "type": "object",
+  "x-adcp-validation": {
+    "spec": "docs/creative/canonical-formats.mdx#premium-display-in-32",
+    "verifier_constraints": {
+      "region_bounds": "percent regions satisfy x + width <= 100 and y + height <= 100; pixel regions fit within every selected canvas",
+      "selector_resolution": "state_id and breakpoint_id resolve against the containing seller_rendered_stateful_display declaration; coordinated_placements component constraints omit both selectors"
+    }
+  }
+}

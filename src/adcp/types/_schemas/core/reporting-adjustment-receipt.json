@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "not": {
+          "required": [
+            "rejection_codes"
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "status": {
+            "const": "rejected"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "rejection_codes"
+        ]
+      }
+    }
+  ],
+  "definitions": {
+    "ReportingAdjustmentRejectionCode": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "type": "string"
+    }
+  },
+  "description": "Authenticated consumer acceptance or rejection of one exact post-official adjustment. It does not alter the original official revision or its receipt.",
+  "properties": {
+    "adjusts_reporting_revision_id": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_revision"
+    },
+    "observed_adjustment_sha256": {
+      "description": "Digest recomputed from the adjustment using its canonical evidence rule.",
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "received_at": {
+      "format": "date-time",
+      "readOnly": true,
+      "type": "string"
+    },
+    "rejection_codes": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Z][A-Z0-9_]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "reporting_adjustment_id": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_adjustment"
+    },
+    "reporting_receipt_id": {
+      "maxLength": 255,
+      "minLength": 16,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "type": "string",
+      "x-entity": "reporting_receipt"
+    },
+    "status": {
+      "enum": [
+        "accepted",
+        "rejected"
+      ],
+      "type": "string"
+    },
+    "supersedes_reporting_receipt_id": {
+      "description": "Optional immutable rejected receipt replaced by this new receipt for the same adjustment. Accepted current receipts are terminal.",
+      "maxLength": 255,
+      "minLength": 16,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "type": "string",
+      "x-entity": "reporting_receipt"
+    }
+  },
+  "required": [
+    "reporting_receipt_id",
+    "reporting_adjustment_id",
+    "adjusts_reporting_revision_id",
+    "status",
+    "observed_adjustment_sha256",
+    "observed_at"
+  ],
+  "title": "Reporting Adjustment Receipt",
+  "type": "object",
+  "x-adcp-validation": {
+    "acceptance_match": "accepted requires observed_adjustment_sha256 to equal the referenced adjustment's canonical_adjustment_sha256 and adjusts_reporting_revision_id to equal its target. A digest or semantic disagreement is rejected with stable rejection_codes.",
+    "authorization": "Derive consumer identity from authenticated transport. The adjustment and its official revision must be visible to that caller/account; unavailable and unauthorized identifiers are indistinguishable.",
+    "immutability": "A reporting_receipt_id is immutable. Exact retries are idempotent; reuse with different content is a conflict. A new ID may supersede only the current rejected receipt for this adjustment; history remains append-only and an accepted current leaf is terminal."
+  },
+  "x-status": "experimental"
+}

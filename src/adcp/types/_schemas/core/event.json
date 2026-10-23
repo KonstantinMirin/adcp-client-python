@@ -1,0 +1,472 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "watch_milestone"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "custom_data": {
+            "allOf": [
+              {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Event-specific data for attribution and reporting",
+                "properties": {
+                  "content_category": {
+                    "description": "Category of the product or content",
+                    "type": "string"
+                  },
+                  "content_ids": {
+                    "description": "Item identifiers for catalog attribution. Values are matched against catalog items using the identifier type declared by the catalog's content_id_type field (e.g., SKUs, GTINs, or vertical-specific IDs like job_id).",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "content_name": {
+                    "description": "Name of the product or content",
+                    "type": "string"
+                  },
+                  "content_type": {
+                    "description": "Category of content associated with the event (e.g., 'product', 'job', 'hotel'). Corresponds to the catalog type when used for catalog attribution.",
+                    "type": "string"
+                  },
+                  "contents": {
+                    "description": "Per-item details for e-commerce events",
+                    "items": {
+                      "properties": {
+                        "brand": {
+                          "description": "Brand name of this item",
+                          "type": "string"
+                        },
+                        "id": {
+                          "description": "Product or content identifier",
+                          "type": "string"
+                        },
+                        "price": {
+                          "description": "Price per unit of this item",
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "quantity": {
+                          "description": "Quantity of this item",
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "currency": {
+                    "description": "ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.",
+                    "pattern": "^[A-Z]{3}$",
+                    "type": "string"
+                  },
+                  "ext": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                    "title": "Extension Object",
+                    "type": "object"
+                  },
+                  "num_items": {
+                    "description": "Number of items in the event",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "order_id": {
+                    "description": "Unique order or transaction identifier",
+                    "type": "string"
+                  },
+                  "progress_percent": {
+                    "description": "Content progress percentage reached, primarily for `watch_milestone` events. Use 25, 50, 75, or 100 for quartiles, or another publisher-defined threshold. Do not use `value` for non-monetary progress.",
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "progress_seconds": {
+                    "description": "Content progress duration reached in seconds, primarily for `watch_milestone` events. Use when the milestone is time-based rather than percentage-based.",
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "search_string": {
+                    "description": "Search query for search events",
+                    "type": "string"
+                  },
+                  "value": {
+                    "description": "Monetary value of the event. For an event source that declares value_currencies, currency is required and MUST appear in that list. Legacy sources without the new contract remain schema-compatible but are ineligible for canonical ROAS.",
+                    "minimum": 0,
+                    "type": "number"
+                  }
+                },
+                "title": "Event Custom Data",
+                "type": "object"
+              },
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "progress_percent"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "progress_seconds"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "custom_data"
+        ]
+      }
+    }
+  ],
+  "description": "A marketing event (conversion, engagement, or custom) for attribution and optimization",
+  "properties": {
+    "action_source": {
+      "enum": [
+        "app",
+        "chat",
+        "email",
+        "other",
+        "offline",
+        "website",
+        "in_store",
+        "phone_call",
+        "system_generated"
+      ]
+    },
+    "custom_data": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Event-specific data (value, currency, items, etc.)",
+      "properties": {
+        "content_category": {
+          "description": "Category of the product or content",
+          "type": "string"
+        },
+        "content_ids": {
+          "description": "Item identifiers for catalog attribution. Values are matched against catalog items using the identifier type declared by the catalog's content_id_type field (e.g., SKUs, GTINs, or vertical-specific IDs like job_id).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "content_name": {
+          "description": "Name of the product or content",
+          "type": "string"
+        },
+        "content_type": {
+          "description": "Category of content associated with the event (e.g., 'product', 'job', 'hotel'). Corresponds to the catalog type when used for catalog attribution.",
+          "type": "string"
+        },
+        "contents": {
+          "description": "Per-item details for e-commerce events",
+          "items": {
+            "properties": {
+              "brand": {
+                "description": "Brand name of this item",
+                "type": "string"
+              },
+              "id": {
+                "description": "Product or content identifier",
+                "type": "string"
+              },
+              "price": {
+                "description": "Price per unit of this item",
+                "minimum": 0,
+                "type": "number"
+              },
+              "quantity": {
+                "description": "Quantity of this item",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "currency": {
+          "description": "ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.",
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "ext": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "title": "Extension Object",
+          "type": "object"
+        },
+        "num_items": {
+          "description": "Number of items in the event",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "order_id": {
+          "description": "Unique order or transaction identifier",
+          "type": "string"
+        },
+        "progress_percent": {
+          "description": "Content progress percentage reached, primarily for `watch_milestone` events. Use 25, 50, 75, or 100 for quartiles, or another publisher-defined threshold. Do not use `value` for non-monetary progress.",
+          "maximum": 100,
+          "minimum": 0,
+          "type": "number"
+        },
+        "progress_seconds": {
+          "description": "Content progress duration reached in seconds, primarily for `watch_milestone` events. Use when the milestone is time-based rather than percentage-based.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "search_string": {
+          "description": "Search query for search events",
+          "type": "string"
+        },
+        "value": {
+          "description": "Monetary value of the event. For an event source that declares value_currencies, currency is required and MUST appear in that list. Legacy sources without the new contract remain schema-compatible but are ineligible for canonical ROAS.",
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "title": "Event Custom Data",
+      "type": "object"
+    },
+    "custom_event_name": {
+      "description": "Name for custom events (used when event_type is 'custom')",
+      "type": "string"
+    },
+    "event_id": {
+      "description": "Unique identifier for deduplication (scoped to event_type + event_source_id)",
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_source_url": {
+      "description": "URL where the event occurred (required when action_source is 'website')",
+      "format": "uri",
+      "type": "string"
+    },
+    "event_time": {
+      "description": "ISO 8601 timestamp when the event occurred",
+      "format": "date-time",
+      "type": "string"
+    },
+    "event_type": {
+      "enum": [
+        "lead",
+        "share",
+        "custom",
+        "donate",
+        "follow",
+        "refund",
+        "search",
+        "contact",
+        "purchase",
+        "schedule",
+        "page_view",
+        "subscribe",
+        "app_launch",
+        "add_to_cart",
+        "app_install",
+        "select_item",
+        "start_trial",
+        "viewed_cart",
+        "content_view",
+        "qualify_lead",
+        "view_content",
+        "select_content",
+        "add_to_wishlist",
+        "disqualify_lead",
+        "watch_milestone",
+        "add_payment_info",
+        "remove_from_cart",
+        "initiate_checkout",
+        "close_convert_lead",
+        "submit_application",
+        "complete_registration"
+      ]
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "surface": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Optional structured surface context for the event, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements `action_source`; use it when optimization-relevant meaning would otherwise live only in platform-specific `ext` metadata.",
+      "properties": {
+        "category": {
+          "enum": [
+            "app",
+            "chat",
+            "email",
+            "other",
+            "offline",
+            "website",
+            "in_store",
+            "phone_call",
+            "owned_property",
+            "system_generated"
+          ]
+        },
+        "ext": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "title": "Extension Object",
+          "type": "object"
+        },
+        "namespace": {
+          "description": "Platform, publisher, or system namespace for the property, such as `video_platform`, `short_video_app`, `audio_service`, or a seller-defined namespace. This is intentionally not an enum.",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "property_id": {
+          "description": "Optional identifier for the property within `namespace`.",
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string",
+          "x-entity": "property"
+        },
+        "property_type": {
+          "description": "Open vocabulary describing the kind of property, for example `channel`, `profile`, `feed`, `list`, `podcast`, `playlist`, or `newsletter`. Required by convention when `category` is `owned_property`; optional for other categories.",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "category"
+      ],
+      "title": "Event Surface",
+      "type": "object"
+    },
+    "user_match": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "required": [
+            "click_id"
+          ]
+        },
+        {
+          "required": [
+            "client_ip",
+            "client_user_agent"
+          ]
+        },
+        {
+          "required": [
+            "hashed_email"
+          ]
+        },
+        {
+          "required": [
+            "hashed_phone"
+          ]
+        },
+        {
+          "required": [
+            "uids"
+          ]
+        }
+      ],
+      "description": "User identifiers for attribution matching",
+      "properties": {
+        "click_id": {
+          "description": "Platform click identifier (fbclid, gclid, ttclid, ScCid, etc.)",
+          "type": "string"
+        },
+        "click_id_type": {
+          "description": "Type of click identifier (e.g. fbclid, gclid, ttclid, msclkid, ScCid)",
+          "type": "string"
+        },
+        "client_ip": {
+          "description": "Client IP address for probabilistic matching",
+          "type": "string"
+        },
+        "client_user_agent": {
+          "description": "Client user agent string for probabilistic matching",
+          "type": "string"
+        },
+        "ext": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "title": "Extension Object",
+          "type": "object"
+        },
+        "hashed_email": {
+          "description": "SHA-256 hash of lowercase, trimmed email address. Buyer must normalize before hashing: lowercase, trim whitespace. Pseudonymous PII, not anonymous \u2014 the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "hashed_phone": {
+          "description": "SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Buyer must normalize to E.164 before hashing. Pseudonymous PII, not anonymous \u2014 the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "uids": {
+          "description": "Universal ID values for user matching",
+          "items": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "id5",
+                  "euid",
+                  "maid",
+                  "uid2",
+                  "other",
+                  "pairid",
+                  "rampid",
+                  "hashed_email",
+                  "rampid_derived",
+                  "world_id_nullifier",
+                  "publisher_first_party"
+                ]
+              },
+              "value": {
+                "description": "Universal ID value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "value"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "title": "User Match",
+      "type": "object"
+    }
+  },
+  "required": [
+    "event_id",
+    "event_type",
+    "event_time"
+  ],
+  "title": "Event",
+  "type": "object"
+}

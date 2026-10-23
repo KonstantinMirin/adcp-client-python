@@ -1,0 +1,189 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "relationship_kind": {
+            "const": "package"
+          }
+        },
+        "required": [
+          "relationship_kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "package_id"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "relationship_kind": {
+            "const": "creative_assignment"
+          }
+        },
+        "required": [
+          "relationship_kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "package_id",
+          "creative_id"
+        ]
+      }
+    }
+  ],
+  "description": "Account-anchored invalidation fired when the semantic indicator snapshot or its evaluation coverage changes on a media buy, package, or package\u2013creative assignment. Registered prospectively through sync_accounts notification_configs with event_types: [\"indicators.changed\"]; activation does not replay current indicators, so buyers establish a complete get_media_buys baseline by enumerating known IDs or requesting every media-buy status and exhausting pagination, without an indicator filter. The payload is not authoritative indicator state: receivers verify signing, dedupe by idempotency_key, then use get_media_buys without an indicator filter. Re-evaluation that changes only indicators_as_of MUST NOT fire; a material in-place creative update invalidates prior assignment evaluations and MUST fire.",
+  "examples": [
+    {
+      "data": {
+        "account_id": "acc_example",
+        "change_kind": "asserted",
+        "changed_indicator_types": [
+          "creative_fatigue"
+        ],
+        "creative_id": "cr_summer_video",
+        "fired_at": "2026-08-04T12:01:00Z",
+        "idempotency_key": "whk_01K2INDICATOR4EXAMPLE8Q7M5",
+        "media_buy_id": "mb_a",
+        "notification_id": "indchg_mb_a_pkg_social_cr_video_17",
+        "notification_type": "indicators.changed",
+        "observed_at": "2026-08-04T12:00:00Z",
+        "package_id": "pkg_social",
+        "relationship_kind": "creative_assignment",
+        "subscriber_id": "buyer-primary"
+      },
+      "description": "Creative fatigue changed for one assignment"
+    }
+  ],
+  "properties": {
+    "account_id": {
+      "type": "string",
+      "x-entity": "account"
+    },
+    "change_kind": {
+      "description": "Coarse invalidation reason. Buyers MUST reread rather than applying this value as state. invalidated is emitted when a material creative-content update retires the prior evaluation and the relationship becomes unknown until reevaluated. assignment_removed is emitted to indicator subscribers when deletion retires keys for a package\u2013creative relationship.",
+      "enum": [
+        "asserted",
+        "cleared",
+        "updated",
+        "invalidated",
+        "coverage_changed",
+        "assignment_removed"
+      ],
+      "type": "string"
+    },
+    "changed_indicator_types": {
+      "description": "Types known to be affected. This is a reread hint, not a complete current set.",
+      "items": {
+        "enum": [
+          "pacing_risk",
+          "creative_fatigue",
+          "budget_constrained",
+          "audience_saturation",
+          "creative_diversity_low",
+          "creative_quality_opportunity",
+          "inventory_shortfall_forecast"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "creative_id": {
+      "type": "string",
+      "x-entity": "creative"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "fired_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "idempotency_key": {
+      "description": "Random fire identifier reused across retries. Receivers dedupe within the authenticated sender scope.",
+      "maxLength": 255,
+      "minLength": 16,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "type": "string"
+    },
+    "media_buy_id": {
+      "type": "string",
+      "x-entity": "media_buy"
+    },
+    "notification_id": {
+      "description": "Stable identity for this logical snapshot change across re-emissions. A later semantic change receives a new value.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string"
+    },
+    "notification_type": {
+      "const": "indicators.changed",
+      "type": "string"
+    },
+    "observed_at": {
+      "description": "When the seller observed the semantic snapshot change.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "package_id": {
+      "type": "string",
+      "x-entity": "package"
+    },
+    "relationship_kind": {
+      "description": "Identifies which indicator-bearing snapshot changed.",
+      "enum": [
+        "media_buy",
+        "package",
+        "creative_assignment"
+      ],
+      "type": "string"
+    },
+    "subscriber_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "idempotency_key",
+    "notification_id",
+    "notification_type",
+    "fired_at",
+    "subscriber_id",
+    "account_id",
+    "relationship_kind",
+    "media_buy_id",
+    "change_kind",
+    "changed_indicator_types",
+    "observed_at"
+  ],
+  "title": "Indicators Changed Webhook",
+  "type": "object",
+  "x-adcp-validation": {
+    "spec": "specs/relationship-scoped-indicators.md#webhook-contract",
+    "verifier_constraints": {
+      "lifecycle_event_fires": {
+        "assertion_set_changed": [
+          "indicators.changed"
+        ],
+        "creative_content_materially_changed": [
+          "indicators.changed"
+        ],
+        "indicators_as_of_only_changed": [],
+        "subscriber_activated": []
+      }
+    }
+  }
+}

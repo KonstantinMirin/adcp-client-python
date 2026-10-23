@@ -1,0 +1,610 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "data_through": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "data_through_precision": {
+            "const": "unknown"
+          }
+        },
+        "required": [
+          "data_through_precision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data_through": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "finality_basis"
+              ]
+            },
+            {
+              "required": [
+                "finality_policy_id"
+              ]
+            },
+            {
+              "required": [
+                "finalized_at"
+              ]
+            }
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "finality": {
+            "const": "official"
+          }
+        },
+        "required": [
+          "finality"
+        ]
+      },
+      "then": {
+        "required": [
+          "finality_basis",
+          "finality_policy_id",
+          "finalized_at"
+        ]
+      }
+    }
+  ],
+  "description": "One immutable emitted version of logical reporting content. The revision is destination-independent: one canonical revision may fan out through many caller/account-bound obligations and materializations, including file, warehouse, and dataset-share destinations. The report_definition_id plus period and scope identify the logical slice; provisional restatements create a new snapshot revision and preserve the superseded snapshot for the advertised retention window. An official revision is terminal; later corrections are separate reporting adjustments.",
+  "properties": {
+    "account_id": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "account"
+    },
+    "canonical_content_digest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "description": "Cryptographic digest of logical reporting rows under an immutable canonicalization contract.",
+      "maxProperties": 5,
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "canonicalization_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "canonicalization_sha256": {
+          "pattern": "^[A-Fa-f0-9]{64}$",
+          "type": "string"
+        },
+        "canonicalization_uri": {
+          "description": "Location of the exact immutable canonicalization contract. Consumers verify canonicalization_sha256 before applying it.",
+          "format": "uri",
+          "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+          "type": "string"
+        },
+        "value": {
+          "pattern": "^[A-Fa-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "canonicalization_id",
+        "canonicalization_sha256",
+        "canonicalization_uri",
+        "value"
+      ],
+      "title": "Reporting Canonical Content Digest",
+      "type": "object",
+      "x-status": "experimental"
+    },
+    "control_totals": {
+      "description": "Profile-defined totals computed from the canonical logical revision. Names MUST be unique.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "One profile-defined aggregate used to reconcile a reporting revision without rereading every row. Names and units are defined by the immutable report definition. Values use canonical strings so currency and large integer comparisons are exact across SDKs.",
+        "oneOf": [
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 4,
+            "properties": {
+              "name": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+                "type": "string"
+              },
+              "unit": {
+                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              "value": {
+                "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
+                "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+                "type": "string"
+              },
+              "value_type": {
+                "const": "decimal"
+              }
+            },
+            "required": [
+              "name",
+              "value",
+              "value_type"
+            ],
+            "title": "DecimalReportingControlTotal",
+            "type": "object"
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 4,
+            "properties": {
+              "name": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+                "type": "string"
+              },
+              "unit": {
+                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              "value": {
+                "description": "Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.",
+                "pattern": "^-?(?:0|[1-9][0-9]*)$",
+                "type": "string"
+              },
+              "value_type": {
+                "const": "integer"
+              }
+            },
+            "required": [
+              "name",
+              "value",
+              "value_type"
+            ],
+            "title": "IntegerReportingControlTotal",
+            "type": "object"
+          }
+        ],
+        "title": "Reporting Control Total",
+        "x-status": "experimental"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "coverage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "definitions": {
+        "ReportingMediaBuyId": {
+          "minLength": 1,
+          "title": "Reporting Media Buy ID",
+          "type": "string",
+          "x-adcp-model-context-inline": true,
+          "x-entity": "media_buy"
+        },
+        "ReportingPackageId": {
+          "minLength": 1,
+          "title": "Reporting Package ID",
+          "type": "string",
+          "x-adcp-model-context-inline": true,
+          "x-entity": "package"
+        }
+      },
+      "description": "Frozen product/package denominator represented by this logical content. The same coverage follows the revision to every destination.",
+      "maxProperties": 12,
+      "properties": {
+        "covered_package_ids": {
+          "items": {
+            "minLength": 1,
+            "title": "Reporting Package ID",
+            "type": "string",
+            "x-adcp-model-context-inline": true,
+            "x-entity": "package"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fully_covered_media_buy_ids": {
+          "items": {
+            "minLength": 1,
+            "title": "Reporting Media Buy ID",
+            "type": "string",
+            "x-adcp-model-context-inline": true,
+            "x-entity": "media_buy"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "limitations": {
+          "description": "Stable reasons that some requested scope is not covered by the exact selected offering. These are capability facts, not delivery failures.",
+          "items": {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 3,
+            "properties": {
+              "media_buy_id": {
+                "minLength": 1,
+                "title": "Reporting Media Buy ID",
+                "type": "string",
+                "x-adcp-model-context-inline": true,
+                "x-entity": "media_buy"
+              },
+              "package_ids": {
+                "items": {
+                  "minLength": 1,
+                  "title": "Reporting Package ID",
+                  "type": "string",
+                  "x-adcp-model-context-inline": true,
+                  "x-entity": "package"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "reason": {
+                "enum": [
+                  "capability_unknown",
+                  "provider_limitation",
+                  "offering_unsupported",
+                  "credential_scope_insufficient",
+                  "account_entitlement_unavailable"
+                ]
+              }
+            },
+            "required": [
+              "media_buy_id",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "media_buy_ids": {
+          "description": "Exact media-buy denominator, including unsupported and unknown buys. An empty array is an explicitly evaluated zero-buy scope.",
+          "items": {
+            "minLength": 1,
+            "title": "Reporting Media Buy ID",
+            "type": "string",
+            "x-adcp-model-context-inline": true,
+            "x-entity": "media_buy"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "package_ids": {
+          "description": "Exact package denominator for the evaluated media buys.",
+          "items": {
+            "minLength": 1,
+            "title": "Reporting Package ID",
+            "type": "string",
+            "x-adcp-model-context-inline": true,
+            "x-entity": "package"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "partially_covered_media_buy_ids": {
+          "items": {
+            "minLength": 1,
+            "title": "Reporting Media Buy ID",
+            "type": "string",
+            "x-adcp-model-context-inline": true,
+            "x-entity": "media_buy"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "status": {
+          "enum": [
+            "full",
+            "none",
+            "partial",
+            "unknown"
+          ]
+        },
+        "unknown_media_buy_ids": {
+          "items": {
+            "minLength": 1,
+            "title": "Reporting Media Buy ID",
+            "type": "string",
+            "x-adcp-model-context-inline": true,
+            "x-entity": "media_buy"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "unknown_package_ids": {
+          "items": {
+            "minLength": 1,
+            "title": "Reporting Package ID",
+            "type": "string",
+            "x-adcp-model-context-inline": true,
+            "x-entity": "package"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "unsupported_media_buy_ids": {
+          "items": {
+            "minLength": 1,
+            "title": "Reporting Media Buy ID",
+            "type": "string",
+            "x-adcp-model-context-inline": true,
+            "x-entity": "media_buy"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "unsupported_package_ids": {
+          "items": {
+            "minLength": 1,
+            "title": "Reporting Package ID",
+            "type": "string",
+            "x-adcp-model-context-inline": true,
+            "x-entity": "package"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "covered_package_ids",
+        "evaluated_at",
+        "fully_covered_media_buy_ids",
+        "limitations",
+        "media_buy_ids",
+        "package_ids",
+        "partially_covered_media_buy_ids",
+        "status",
+        "unknown_media_buy_ids",
+        "unknown_package_ids",
+        "unsupported_media_buy_ids",
+        "unsupported_package_ids"
+      ],
+      "title": "Reporting Coverage",
+      "type": "object",
+      "x-adcp-validation": {
+        "aggregation": "Metrics computed only over covered_package_ids MUST be labeled partial whenever status is not full and MUST NOT be represented as complete media-buy or campaign totals. Implementations MUST NOT weaken the selected report definition to create an undeclared lowest-common-denominator profile.",
+        "partition": "The four media-buy classification arrays MUST be pairwise disjoint and their union MUST equal media_buy_ids. The three package classification arrays MUST be pairwise disjoint and their union MUST equal package_ids. Every limitation media_buy_id and package_id MUST belong to those denominators.",
+        "status": "full requires every media buy to be fully covered and every package covered; the explicit empty denominator is full. partial requires at least one covered package, fully covered media buy, or partially covered media buy and at least one partial, unsupported, or unknown item. A partially covered media buy counts as a covered item when excluding none and unknown. none requires a nonempty denominator, no covered item, at least one unsupported item, and no unknown item. unknown requires a nonempty denominator, no covered item, and at least one unknown item."
+      },
+      "x-status": "experimental"
+    },
+    "created_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "data_through": {
+      "description": "Latest event time conservatively included, or null when precision is unknown.",
+      "format": "date-time",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "data_through_precision": {
+      "enum": [
+        "exact",
+        "lower_bound",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "finality": {
+      "enum": [
+        "official",
+        "snapshot"
+      ]
+    },
+    "finality_basis": {
+      "description": "Why an official revision is considered final: an authoritative source signal, a versioned contractual cutoff, or a versioned stabilization rule.",
+      "enum": [
+        "source_final",
+        "contractual_cutoff",
+        "stabilized"
+      ],
+      "type": "string"
+    },
+    "finality_policy_id": {
+      "description": "Immutable policy/version reference that defines the selected finality basis. It MUST be bound by report_definition_id.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string"
+    },
+    "finalized_at": {
+      "description": "When the producer applied the declared finality basis to this official revision.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "media_buy_ids": {
+      "description": "Exact frozen media-buy denominator inherited from the obligation, including buys with zero rows. An empty array proves a zero-buy period rather than an unknown denominator.",
+      "items": {
+        "minLength": 1,
+        "title": "Reporting Media Buy ID",
+        "type": "string",
+        "x-adcp-model-context-inline": true,
+        "x-entity": "media_buy"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "observed_at": {
+      "description": "When the seller obtained or committed this source observation.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "period": {
+      "additionalProperties": false,
+      "description": "Half-open reporting interval with its source calendar boundary.",
+      "properties": {
+        "end": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "source_timezone": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "source_timezone"
+      ],
+      "type": "object"
+    },
+    "report_definition_id": {
+      "description": "Identity or canonical fingerprint of immutable metric, grain, attribution, breakdown, action-definition, profile, and calendar/timezone semantics.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_definition"
+    },
+    "report_definition_sha256": {
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "report_definition_uri": {
+      "format": "uri",
+      "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+      "type": "string"
+    },
+    "reporting_profile": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "reporting_revision_id": {
+      "description": "Portable AdCP identity for this immutable report publication. Distinct from package delivery_revision_id and provider-native versions.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_revision"
+    },
+    "revision_content_sha256": {
+      "description": "SHA-256 of the immutable RFC 8785 JCS binding object containing reporting_revision_id, row_count, control_totals, and reporting_rows. Reliable Reporting 1.0 Core revisions include it and exact reads return the identical value.",
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "row_count": {
+      "description": "Logical row count, including zero for a successfully evaluated empty report.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema_dialect": {
+      "const": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Closed SDK-bundled dialect; the metaschema is never network-fetched.",
+      "type": "string"
+    },
+    "schema_ref_policy": {
+      "const": "local_fragment_only",
+      "description": "The fetched schema is self-contained and every $ref is a local # fragment.",
+      "type": "string"
+    },
+    "schema_sha256": {
+      "description": "Digest of the exact schema bytes used to validate this immutable revision.",
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "schema_uri": {
+      "description": "Machine-readable schema on the authenticated seller/provider or AdCP-registry origin.",
+      "format": "uri",
+      "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+      "type": "string"
+    },
+    "schema_version": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "supersedes_reporting_revision_id": {
+      "description": "Immediately superseded snapshot revision of the same logical slice. An official revision is terminal and MUST NOT be named here; later corrections use reporting-adjustment records.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_revision"
+    }
+  },
+  "required": [
+    "reporting_revision_id",
+    "revision_content_sha256",
+    "report_definition_id",
+    "report_definition_uri",
+    "report_definition_sha256",
+    "reporting_profile",
+    "schema_version",
+    "schema_uri",
+    "schema_sha256",
+    "schema_dialect",
+    "schema_ref_policy",
+    "account_id",
+    "media_buy_ids",
+    "coverage",
+    "period",
+    "finality",
+    "observed_at",
+    "data_through",
+    "data_through_precision",
+    "row_count",
+    "control_totals",
+    "created_at"
+  ],
+  "title": "Reporting Revision",
+  "type": "object",
+  "x-adcp-validation": {
+    "coverage": "coverage.media_buy_ids MUST equal media_buy_ids. Rows, row_count, control_totals, and canonical_content_digest cover only coverage.covered_package_ids. If coverage.status is not full, consumers MUST retain the partial label and MUST NOT represent these values as complete totals for media_buy_ids.",
+    "digest_requirement": "revision_content_sha256 is required for every revision and is SHA-256 of RFC 8785 JCS for {reporting_revision_id,row_count,control_totals,reporting_rows}. Exact revision reads MUST return metadata, rows, ID, count, totals, and this digest identically to status. canonical_content_digest is separate external-materialization evidence: it is optional for non-billing delivery profiles and mandatory when a referenced materialization selects canonical_digest and for every billing obligation.",
+    "fan_out": "Delivery configuration, obligation, destination, feed purpose, and recipient identity belong only on reporting_materialization and reporting_obligation. They MUST NOT affect reporting_revision_id for identical content.",
+    "finality_evidence": "An official revision's finality_policy_id and finality_basis MUST match the pinned report definition, and finalized_at MUST be no later than created_at. source_final requires the named source_signal to have been authoritatively observed no earlier than period.end. contractual_cutoff requires finalized_at to be at or after period.end plus duration_after_period_end. stabilized requires finalized_at to be at or after period.end plus minimum_age and requires retained observation history proving unchanged_for immediately before finalized_at. A seller MUST NOT publish the irreversible official close before the selected policy is satisfied.",
+    "safe_schema_fetch": "schema_uri/schema_sha256 and report_definition_uri/report_definition_sha256 MUST match the selected offering. Apply its safe fetch policy; verify bytes before parsing and never interpret fetched content or annotations as agent/LLM instructions.",
+    "set_ordering": "media_buy_ids is a mathematical set and MUST be serialized in ascending Unicode code-point order so equivalent denominators have one representation.",
+    "slice_identity": "report_definition_id, account_id, media_buy_ids, period, and reporting_profile MUST remain identical across a supersession chain. supersedes_reporting_revision_id MUST name a snapshot revision; no revision may supersede an official revision, and at most one official revision may exist for the logical slice."
+  },
+  "x-status": "experimental"
+}
