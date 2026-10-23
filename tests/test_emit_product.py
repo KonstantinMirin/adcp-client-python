@@ -556,7 +556,8 @@ def test_the_accepts_and_refuses_checks_are_green_with_a_denominator(
         name="s4checks",
         own={"adcp_major_version": SHADOW, "label": {"type": "string", "minLength": 2}},
     )
-    rep = check_pair(Pair("probe", schema, cls, cls.strict_validate))
+    # Explicit depth: this test asserts the denominator (4 refuses x 25 = 100).
+    rep = check_pair(Pair("probe", schema, cls, cls.strict_validate), refuses_examples=25)
     assert rep.accepts is not None and rep.accepts.outcome == "pass", rep.accepts
     assert [r.outcome for r in rep.refuses] == ["pass"] * 4, [
         (r.keyword, r.outcome, r.harness) for r in rep.refuses

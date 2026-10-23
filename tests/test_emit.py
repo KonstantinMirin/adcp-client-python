@@ -405,7 +405,10 @@ def test_pagination_request_passes_all_three_checks() -> None:
     mark without the count beside it says nothing, because a pair no instance
     reached reports no failure either.
     """
-    rep = check_pair(pair_of(pagination()), max_steps=None)
+    # ``refuses_examples=25`` EXPLICITLY, because this test asserts the DENOMINATOR
+    # (3 sites x 25 = 75) and not just the pass mark.  check_pair defaults to 1 per
+    # site since salesagent-j3k2l.27, so a test that cares about depth states it.
+    rep = check_pair(pair_of(pagination()), max_steps=None, refuses_examples=25)
     assert rep.missing_formats == []
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
     assert rep.step_sites == 3, rep.step_sites  # minimum, maximum, additionalProperties
@@ -477,9 +480,13 @@ def test_the_schema_comparison_grades_the_generated_code_and_the_other_two_do_no
         cursor: Any = None
 
     wide = check_pair(
-        Pair(name="wide", schema=schema, model=Wide, accept=Wide.strict_validate), max_steps=None
+        Pair(name="wide", schema=schema, model=Wide, accept=Wide.strict_validate),
+        max_steps=None,
+        refuses_examples=25,
     )
-    faithful = check_pair(pair_of(pagination()), max_steps=None)
+    # Both at the same explicit depth: the point of this test is that the two
+    # denominators are IDENTICAL, so neither may depend on check_pair's default.
+    faithful = check_pair(pair_of(pagination()), max_steps=None, refuses_examples=25)
 
     assert wide.accepts.outcome == faithful.accepts.outcome == "pass"
     assert [r.outcome for r in wide.refuses] == [r.outcome for r in faithful.refuses] == ["pass"] * 3
