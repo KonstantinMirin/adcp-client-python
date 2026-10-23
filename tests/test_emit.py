@@ -214,11 +214,22 @@ def graded() -> list[Graded]:
 
 
 def pair_of(g: Graded) -> Pair:
+    """The pair, and the document ROOT beside the node.
+
+    ``schema`` is the node the class names and is what the pair is graded against.
+    ``document`` is the scope a LOCAL ``$ref`` on the document side is relative to,
+    which a nested pair's node does not contain -- ``core/bidding-policy-capability.json``'s
+    ``#/definitions/scope_capability`` references ``#/definitions/policy_profile``,
+    a sibling in the root's own ``definitions`` section.  Read through the same
+    ``schema_at`` as the node, so one function answers "what does this document
+    say" for both.
+    """
     return Pair(
         name=f"{g.ref.document}{g.ref.pointer}",
         schema=schema_at(g.ref),
         model=g.model,
         accept=g.accept,
+        document=schema_at(SchemaRef(g.ref.document, "#")),
     )
 
 
