@@ -64,10 +64,77 @@ from codegen.refusal import Refusal
 #: ``list[str]`` -- because pydantic v2 removed ``unique_items``.  Carrying the
 #: keyword through ``constraints=`` would therefore be a model wider than its
 #: document, silently.  D6 already puts ``uniqueItems`` in step 7's rule set; this
-#: says what the alternative costs.  Absent from this set, it falls through
-#: ``compiler.check_keywords`` with no special case, which is where every keyword a row
-#: does not lower is refused.
+#: says what the alternative costs.
+#:
+#: It is absent from this set and ADMITTED BY THE SCREEN anyway
+#: (:data:`_ARRAY_HANDLED`), so that :data:`_DISTINCT_HAS_NOWHERE_TO_LIVE` is what
+#: reports it -- the ``union.ROOT_HANDLED`` shape, and for that comment's reason.
 BOUNDS = ("minItems", "maxItems")
+
+#: What the array row's screen ADMITS, which is its bounds plus the one keyword it
+#: refuses by name.  ``uniqueItems`` is in here and lowered nowhere: left out, it
+#: refused through ``compiler.check_keywords``, whose answer for a draft-07 keyword is
+#: ``DEFERRED_TO_A_LATER_ROW`` -- a promise of a later row, which the two measurements
+#: in :data:`_DISTINCT_HAS_NOWHERE_TO_LIVE` say will never be written.  Admitted here,
+#: the explicit refusal below is what reports it, with the reason.
+#:
+#: ``contains`` is in here and lowered nowhere either, and for the OPPOSITE reason to
+#: ``uniqueItems``: it is CARRIED rather than refused.  ``contains: S`` says at least one
+#: element matches ``S``, which is a statement about which VALUES the array admits -- so
+#: D4 leaves it to the schema half exactly as ``lower.rules.ON_A_VALUE`` leaves a ``not``
+#: over a ``const`` and ``lower/rules.py`` leaves a conditional that narrows one.
+#: ``strict_validate`` validates the payload against the document's own schema and
+#: therefore enforces it; it is not in ``harness.FACTS``, so there is no fact for the
+#: comparison to find missing; and pydantic has no spelling for it, so there is nothing
+#: to render and nothing to drop.
+#:
+#: **The ceiling, named here rather than discovered later.**  The ``model_validate``
+#: CONSTRUCTOR does not enforce it, and no D6 rule can: ``RuleBound`` reads
+#: ``__pydantic_fields_set__``, which answers which KEYS are present, and ``contains``
+#: is about an array's elements.  So ``X.model_validate(["a"])`` builds for a document
+#: whose ``contains`` demands a ``"b"`` while ``X.strict_validate`` of the same payload
+#: refuses -- the identical pair ``lower/rules.py`` records for
+#: ``core/canvas-constraint.json``.
+#:
+#: Measured over every node of every portable document: 120 ``contains`` sites in 46
+#: documents, **18 on a node whose ``type`` is ``array``** -- what this set admits -- and
+#: 102 on a TYPELESS node, which is a ``contains``-only ``allOf`` conjunct or a node
+#: inside another ``contains``.  Those 102 are not admitted here and are not this row's
+#: position; no document of the deferred population is blocked at one.
+_ARRAY_HANDLED = frozenset({"type", "items", "uniqueItems", "contains", *BOUNDS})
+
+#: Why ``uniqueItems`` on an array NO CLASS HOLDS is a VERDICT and not a deferral.
+#:
+#: D6's rule is where the keyword lives (``lower.rules._distinct``), and a rule lives on
+#: a CLASS: ``compiler.fields`` strips the keyword off a property's declaration and
+#: carries it on ``Property.distinct``, so 467 of the bundle's 485 sites never reach this
+#: row at all.  The 18 that do are the positions with no class above them -- a document
+#: root, a ``definitions`` entry, a mapping value, a combinator branch -- and
+#: ``lower/rules.py``'s own docstring already states that those keep refusing by name
+#: "because a rule has nowhere to live there".
+#:
+#: The other half is this module's :data:`BOUNDS` comment, measured on the pinned
+#: compiler: pydantic v2 removed ``unique_items``, so ``Constraints(uniqueItems=True)``
+#: renders bare ``list[str]`` and carrying the keyword through ``constraints=`` would be
+#: a model wider than its document, silently.
+#:
+#: So there is no row to schedule: the one mechanism that enforces the keyword needs a
+#: class the position does not have, and the one annotation channel drops it. Measured
+#: over every node of every portable document: 485 sites, **all 485 state ``True``**, so
+#: there is no ``uniqueItems: false`` arm here and none is written -- a ``false`` is the
+#: keyword's own default and would state nothing, and a branch for it would be a
+#: derivation matching nothing (D14).
+_DISTINCT_HAS_NOWHERE_TO_LIVE = (
+    "uniqueItems is enforced by D6's rule on the CLASS holding the array "
+    "(lower.rules._distinct, and compiler.fields strips the keyword off the "
+    "declaration to carry it there), and this array has no class above it -- it is a "
+    "document root, a definitions entry, a mapping value or a combinator branch, which "
+    "is 18 of the bundle's 485 sites.  The one other channel is the annotation, and "
+    "pydantic v2 removed unique_items: Constraints(uniqueItems=True) renders bare "
+    "list[X], so carrying it there would be a model wider than its document and "
+    "silently so.  Neither mechanism reaches this position, so this is a keyword no "
+    "row lowers rather than one a later row will"
+)
 
 #: A MAPPING's own bounds -- how many keys it may carry -- in the document's spelling,
 #: and the ones a field holding the mapping can carry.  The same shape as
@@ -146,7 +213,11 @@ def array(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     spells a list's length bound the way it spells a string's, and the document does
     not, which is exactly why the two are decided here and spelled by the compiler.
     """
-    compiler.check_keywords(node, pointer, {"type", "items", *BOUNDS})  # the walk's own check
+    compiler.check_keywords(node, pointer, set(_ARRAY_HANDLED))  # the walk's own check
+    if "uniqueItems" in node:
+        # AFTER the screen, so an array carrying BOTH this and a keyword no row lowers
+        # is reported on the other one: this refusal is final and that one may not be.
+        raise Refusal("uniqueItems", pointer, _DISTINCT_HAS_NOWHERE_TO_LIVE)
     bounds = {k: node[k] for k in BOUNDS if k in node}
     items = node.get("items")
     if items is None:

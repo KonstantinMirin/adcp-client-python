@@ -88,6 +88,53 @@ INLINE = frozenset({"type", "properties", "required"})
 #: combinator of shapes admitted here would emit a class that drops it silently.
 COMPOSING = frozenset({"type", "allOf", "properties", "required", "additionalProperties"})
 
+#: The two combinators, asked about by name because a composing node can carry one.
+_COMBINATORS = ("oneOf", "anyOf")
+
+
+def _refuse_a_combinator_of_shapes(doc: dict, pointer: str, screen: frozenset[str]) -> None:
+    """A node that COMPOSES and also carries a combinator of SHAPES.
+
+    Both halves are conjunctions with the same instance in draft-07 -- that is D7's own
+    wording for ``allOf`` -- and a class can carry the conjuncts, as bases and as fields,
+    while nothing on a class carries the combinator: the branches are satisfied by SOME
+    instance, so neither a base nor a field states one.  So this is ``union.ROOT_CONJUNCTS``
+    read from the other side, and the refusal is the same shape: emitting it needs a row
+    that can NAME the conjunction of a conjunct list with a branch list, and there is no
+    JSON pointer to that conjunction for the class to name.
+
+    **Asked of ``rules_at``'s own screen and not of a second predicate.**  A
+    ``oneOf``/``anyOf`` is a RULE where every branch states only which keys are present
+    and a union of shapes otherwise; ``rules.presence_only`` is that one test and
+    ``compiler.rules_at`` subtracts the two combinators from the screen when it fails.
+    Reading the screen is how this row asks the question without importing a sibling
+    lowering (D13), and it is why there is no second reading to drift from.
+
+    **What this changes is the REASON and not the accepted set.**  A combinator the screen
+    subtracted was already refused by ``check_keywords`` below -- with
+    ``DEFERRED_TO_A_LATER_ROW``, which promises a row for a position that needs a
+    pointer no document has.  Measured: ``creative/list-creatives-response.json``
+    ``#/properties/creatives/items`` is the one document of the deferred population here,
+    and its two branches are ``{"required": [...], "not": {...}}`` -- every one of which
+    constrains only which keys are present, so what sends it down this path is
+    ``rules._required_only`` admitting ``{"required"}`` ALONE.  Widening that predicate
+    moves ``rules.presence_only``, which ``bundle.states_an_object_rule`` is BUILT ON as a
+    row's selector, so it is a change to a population and not to this row.
+    """
+    for keyword in _COMBINATORS:
+        if isinstance(doc.get(keyword), list) and keyword not in screen:
+            raise Refusal(
+                keyword,
+                pointer,
+                f"this node composes AND carries a {keyword} whose branches are shapes "
+                "rather than presence groups (rules.presence_only), and both are "
+                "conjunctions with the same instance: a class carries the conjuncts as "
+                "bases and fields, and nothing on a class carries a branch list, because "
+                "a branch is satisfied by SOME instance.  There is no pointer to the "
+                "conjunction of the two for the class to name, which is what "
+                "union.ROOT_CONJUNCTS refuses a root union's own conjuncts for",
+            )
+
 
 def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
     """Append the class for an ``allOf`` node and return its name.
@@ -103,10 +150,22 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
     reason ``compiler.Rules`` states: a rule naming a key the class has no field for
     refuses a payload the document admits.
     """
-    stated = rules_at(doc)
-    check_keywords(doc, pointer, COMPOSING | stated.screen)
+    # **The TYPE first, BEFORE the keyword screen**, and the order is measured rather
+    # than preferred: a node stating a non-object ``type`` composes no object whatever
+    # else it states, so the type is the reason and a keyword it carries is not.  It sat
+    # after the screen, and ``compiler.check_keywords`` walks ``sorted(node)`` -- so
+    # ``media-buy/legacy-purchase-continuation-input.json#/properties/accepted_losses``,
+    # a composing ARRAY, was reported on ``items`` with "a later D2 row does", which
+    # promises a row for an array keyword at a node no array row will ever see.  The same
+    # misattribution ``union.ROOT_HANDLED`` measured at 55 of 156 and fixed the same way.
+    # Measured over every node of every portable document: **4 composing nodes state a
+    # non-object type and all 4 state ``array``**; all 4 already refused here, so the
+    # order moves no document and changes the reported keyword for one.
     if doc.get("type") not in (None, "object"):
         raise Refusal("type", pointer, f"an allOf of type {doc['type']!r} composes no object")
+    stated = rules_at(doc)
+    _refuse_a_combinator_of_shapes(doc, pointer, stated.screen)
+    check_keywords(doc, pointer, COMPOSING | stated.screen)
 
     bases: list[str] = []
     inherited: dict[str, dict] = {}

@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "A time window for daypart targeting. Specifies days of week, an hour range, and the civil-time clock used to evaluate it. start_hour is inclusive, end_hour is exclusive (e.g., 6-10 = 6:00am to 10:00am). Follows the Google Ads AdScheduleInfo / DV360 DayPartTargeting pattern.",
+  "properties": {
+    "days": {
+      "description": "Days of week this window applies to. Use multiple days for compact targeting (e.g., monday-friday in one object).",
+      "items": {
+        "enum": [
+          "friday",
+          "monday",
+          "sunday",
+          "tuesday",
+          "saturday",
+          "thursday",
+          "wednesday"
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "end_hour": {
+      "description": "End hour (exclusive), 1-24 in 24-hour format. 10 = 10:00am, 24 = midnight. Must be greater than start_hour.",
+      "maximum": 24,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "label": {
+      "description": "Optional human-readable name for this time window (e.g., 'Morning Drive', 'Prime Time')",
+      "type": "string"
+    },
+    "start_hour": {
+      "description": "Start hour (inclusive), 0-23 in 24-hour format. 0 = midnight, 6 = 6:00am, 18 = 6:00pm.",
+      "maximum": 23,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "timezone": {
+      "anyOf": [
+        {
+          "const": "inventory_local",
+          "type": "string"
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Concrete timezone identifier in the implementation's supported IANA Time Zone Database, such as America/New_York, CET, or UTC.",
+          "maxLength": 255,
+          "minLength": 1,
+          "not": {
+            "const": "inventory_local"
+          },
+          "pattern": "^[A-Za-z0-9._+-]+(?:/[A-Za-z0-9._+-]+)*$",
+          "title": "IANA Timezone Identifier",
+          "type": "string",
+          "x-adcp-validation": {
+            "iana_timezone": "value_must_resolve_in_the_implementations_supported_IANA_TZDB"
+          },
+          "x-added-in": "3.2.0"
+        }
+      ],
+      "default": "inventory_local",
+      "description": "Civil-time clock used to evaluate this window. 'inventory_local' evaluates the hours in the seller-assigned local timezone of each inventory unit that can deliver the impression, such as a screen, venue, station, or publisher property; it never means the buyer, account, or server timezone. A concrete IANA timezone identifier (for example, 'America/New_York', 'CET', or 'UTC') evaluates one shared civil-time clock across the targeted inventory. Omission defaults to 'inventory_local'. Buyers that begin with a user or account preference MUST resolve it to a concrete IANA identifier before sending the daypart; 'user_timezone' and 'account_timezone' are not wire values. For each candidate delivery instant, convert the instant into this clock and compare its resulting local day and hour with the half-open window: a skipped DST hour has no matching instants, while both occurrences of a repeated hour match. This delivery clock is independent of reporting_capabilities.timezone.",
+      "x-added-in": "3.2.0"
+    }
+  },
+  "required": [
+    "days",
+    "start_hour",
+    "end_hour"
+  ],
+  "title": "Daypart Target",
+  "type": "object"
+}
