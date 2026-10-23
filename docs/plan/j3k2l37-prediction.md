@@ -167,3 +167,85 @@ these figures.
    a refusal chained onto a `DEFERRED` target reports `resolved == DEFERRED`.
 3. **`is_a_verdict` reads no text.** Its parameter is a `Kind`; there is no
    string in its body and no constant for it to compare against.
+
+---
+
+# The grade
+
+Measured on `5ca563edb`, by `refusal.Kind`, over the same population and the same
+instrument.
+
+## Every number was predicted correctly
+
+| | predicted | measured |
+|---|---|---|
+| declared VERDICT | 149 | 149 |
+| declared DEFERRED | 47 | 47 |
+| declared UNRESOLVED | 1 | 1 |
+| declared CHAINED | 171 | 171 |
+| resolved VERDICT | 281 | 281 |
+| resolved DEFERRED | 86 | 86 |
+| resolved UNRESOLVED | 1 | 1 |
+| emitted | 686 | 686 |
+| accounted | 967 | 967 |
+| pending | 87 | 87 |
+| chains resolving to DEFERRED | 39 | 39 |
+| chains resolving to VERDICT | 132 | 132 |
+
+The invariants hold, and by a stronger instrument than the one predicted: a hash
+manifest of the emitted set, every emitted byte, D5's alias module and every
+refusal's keyword, pointer and detail is **identical** to `d9989750c`. So
+`comparison.added` is 0 on both trees by construction rather than by a second
+grading run, and `emitted` is 686 on the `portable()` population — not 677, which
+is what the committed tree holds and is a different measurement.
+
+## Three predictions were wrong
+
+**1. `compiler.py:1148` is two raise sites after the change, not one.** The table
+above lists it as one producer of 19. `check_keywords` had a single
+`raise Refusal(key, pointer, why or _why(key))`; because the kind has to travel
+with the reason there, it is now two raises — one for a caller's own `why`
+(18 documents) and one for the generic answer (1). The TOTAL of 19 was right and
+the attribution was not.
+
+**2. The probe's second half passed vacuously, and the prediction did not see it
+coming.** "Add a producer with a new kind" was written without asking whether the
+producer FIRES. The first one used — `enum.py`'s "an empty enum admits no
+instance" — raises on **0 of 1054 documents**, so naming the new kind as PENDING
+moved no document and the `accounted >= 967` pin stayed green while looking like
+it had been exercised. The set-coverage assertion reddened correctly either way,
+because it reads `Kind` and not the population. Re-probed on `product.py`'s "an
+`allOf` of type array composes no object", which fires on exactly 1: accounted
+falls to 966 and the pin reddens. Both halves of the probe are now known to
+grade, and the first reading of the second half was worth nothing.
+
+**3. One assertion written for the chained bucket was a derivation that broke for
+the wrong reason.** It read
+`{resolved for chained} == RESOLVED_KINDS - {UNRESOLVED}`, which is true today and
+has nothing to do with the chain: under the fifth-kind probe it failed because
+`RESOLVED_KINDS` had grown, not because the split had moved. Replaced with the
+thing it was meant to say — a floor on each of the two kinds the chains resolve
+to (132 verdict, 39 deferred), each fire-probed one step tighter.
+
+## The classification rows that are arguable, named rather than buried
+
+Three sites were decided against the rule with less confidence than the rest, and
+all three were decided VERDICT, which is the direction that keeps `accounted`
+HIGHER — so each is a place the number may still be too optimistic:
+
+* `emit.py:950` (1 document). A local reference reaching the binder. The sentence
+  names `compiler.local_reference` as what resolves one, and that already exists,
+  so no row is missing — but the position is reachable, which arguably makes this
+  a defect rather than a limit.
+* `containers.py:385` (0 documents). `propertyNames` with an `enum`. The primary
+  claim is D5's reading of a closed key set, which is final; the tail
+  ("whose document refuses on enum") is about another document's state.
+* `product.py:214` (0 documents). Two local declarations neither of which narrows
+  the other. `_restatement`'s own docstring says the intersection is not
+  expressible, which is a verdict; a comment four lines up names step 3's enum
+  lowering as what the enum case would need, which is a deferral. The docstring
+  won because it is the authority on the condition.
+
+A future reader who disagrees with any of the three changes one argument, at the
+raise site, where the change is visible in a diff — which is the whole difference
+between this and the four readings before it.
