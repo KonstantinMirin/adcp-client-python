@@ -618,7 +618,9 @@ A step that wants to change one of these reports it and stops.
   prevents it is structural, or it is accepted and named in §9.
 
 **Layout.** `codegen/emit.py` holds the CLI, the module writer and the refusal report;
-`codegen/compiler.py` drives the compiler; `codegen/lower/<kind>.py` is one module per D2 row. A
+`codegen/compiler.py` drives the compiler AND holds the lowerings two rows read -- the object
+row and the conjunct reader -- for the reason D13 gives; `codegen/lower/<kind>.py` is one module
+per D2 row that only one row reads. A
 dispatch table of `(selector, lowering)` pairs connects them, and a document selected by two
 rows is a build failure rather than a question of precedence. A selector is its step's
 population test, so a row cannot claim a document its step does not count.
@@ -636,10 +638,10 @@ refusal list is its complement.
 PARTITION is total and disjoint — `emitted | refusals == portable`, 0 unaccounted — and that is
 **1054**. The GOAL is `emitted + VERDICTS`, because the condition above is "refused by name,
 pointer and keyword" and a refusal still waiting on something is not a verdict; that is
-**967**. Measured together on `sdk/j3k2l37-refusal-kind`: portable 1054, emitted 686, refused
-368, of which 281 are verdicts and 87 are pending (86 `DEFERRED`, 1 `UNRESOLVED`). Reporting
-1054 for the goal overstates it by 87 and reporting 967 for the partition looks like 87 lost
-documents; both have been said of the same run.
+**988**. Measured together on `sdk/j3k2l40-conjunct-reader`: portable 1054, emitted 691,
+refused 363, of which 297 are verdicts and 66 are pending (65 `DEFERRED`, 1 `UNRESOLVED`).
+Reporting 1054 for the goal overstates it by 66 and reporting 988 for the partition looks like
+66 lost documents; both have been said of the same run.
 
 **A refusal's KIND is an argument its producer passes (`refusal.Kind`) and is never read off
 its detail.** Four separate readings of that English each made this number too high — see
@@ -873,20 +875,28 @@ remaining.** They were measured on different trees over several days, they overl
 is refused once but blocked by several rows), and four of the rows have since closed. Read them
 as the reason each row exists. Read the table below as the state.
 
-Measured on `sdk/j3k2l37-refusal-kind`, by **the `refusal.Kind` each producer declares** —
-never by reading a detail string, and no longer by comparing one against a constant either:
+Measured on `sdk/j3k2l40-conjunct-reader`, by **the `refusal.Kind` each producer declares**
+— never by reading a detail string, and no longer by comparing one against a constant either:
 
 | | documents | |
 |---|---|---|
-| emitted and graded | 686 | |
-| refused by a VERDICT naming a keyword this emitter will not lower | 281 | |
-| **accounted for** | **967** | of 1,054 |
-| deferred — the lowering for the position is not written, or is not reachable from this row | 86 | pending, not refused |
+| emitted and graded | 691 | |
+| refused by a VERDICT naming a keyword this emitter will not lower | 297 | |
+| **accounted for** | **988** | of 1,054 |
+| deferred — the lowering for the position is not written, or is not reachable from this row | 65 | pending, not refused |
 | unresolved — a `$ref` the bundle's one resolution did not reach | 1 | pending |
 
-Of the 368 refusals, 149 DECLARE `VERDICT`, 47 declare `DEFERRED`, 1 declares `UNRESOLVED`
-and 171 declare `CHAINED`; a chained refusal carries the target's refusal (`through=`), so its
-`resolved` kind is the target's and the 171 split 132 verdict / 39 deferred.
+Of the 363 refusals, 155 DECLARE `VERDICT`, 38 declare `DEFERRED`, 1 declares `UNRESOLVED`
+and 169 declare `CHAINED`; a chained refusal carries the target's refusal (`through=`), so its
+`resolved` kind is the target's and the 169 split 142 verdict / 27 deferred.
+
+**967 → 988 and 87 → 66 is `salesagent-j3k2l.40`**, which moved the conjunct reader into
+`codegen/compiler.py` so that a union BRANCH that composes could reach it — D13's own rule,
+which says shared machinery lives there. All 10 documents waiting on "a branch composes once
+that reader is shared" cleared that row (3 emitted, 6 accounted as verdicts, 1 moved on to the
+conjunct-SHAPE gap the product row's 12 are on, taking it to 13), and 12 chained refusals
+released with them. `comparison.added` stays 0, measured over every pair of the regenerated
+tree. The remaining 66 are enumerated in `docs/plan/j3k2l40-prediction.md`.
 
 **`emitted + refused == 1054` is green and has been all along, which is why it is not the
 condition.** "Refused" admits "not built yet": the metric's own arithmetic held while part of
@@ -1002,7 +1012,7 @@ refusal partition and the task surface beside the total.
 | 1 (`salesagent-j3k2l.1`) | **One leaf object document, end to end** — `core/pagination-request.json`: our walk decides what the node becomes, the compiler renders it, the class carries `__adcp_schema__`, `strict_validate` reads it, the harness runs all three checks off it | the module imports; `max_results` carries `ge=1, le=100` **and `= 50`**; the schema comparison passes; all three checks are generic over any class | no — runs alone |
 | 2 (`salesagent-j3k2l.2`) | **A cross-document `$ref`** — the referencing module imports its target's type and copies no constraint, asserted on the AST; the target emits as an alias | both documents pass all three checks | no — runs alone |
 | 3 (`salesagent-j3k2l.3`) | **Enumerations**, root and inline — members upper-cased, since `pass` and `global` are live values and a lower-cased member emits a module that does not parse; the injectivity check binds to the name function the compiler runs | every root enum emits or is refused by name; `enumDescriptions` carried | yes — `lower/enum.py` |
-| 4 (`salesagent-j3k2l.4`) | **`allOf` roots** — `$ref` conjuncts become bases; composed constraints on one property intersect; a requiredness-tightening overlay redeclares the field with the base's type and no default, and that is the only permitted redeclaration (D7) | no emitted field shadows a typed base field EXCEPT a requiredness tightening, which 37 documents need; a composed `ge`/`le` inherits; a composed enum is the intersection of its members and an empty one refuses | yes — `lower/product.py` |
+| 4 (`salesagent-j3k2l.4`) | **`allOf` roots** — `$ref` conjuncts become bases; composed constraints on one property intersect; a requiredness-tightening overlay redeclares the field with the base's type and no default, and that is the only permitted redeclaration (D7) | no emitted field shadows a typed base field EXCEPT a requiredness tightening, which 37 documents need; a composed `ge`/`le` inherits; a composed enum is the intersection of its members and an empty one refuses | yes — `compiler.lower_composition` (it was `lower/product.py` until `salesagent-j3k2l.40`, which moved it where D13 puts machinery two rows read) |
 | 5 (`salesagent-j3k2l.5`) | **Union roots** — the base carries `BranchDispatchMixin` and declares `_branch_models`, `_ROOT_REQUIRED` and `_branch_combinator`; one subclass per branch; the declaring module calls `model_rebuild(force=True)`; the root name binds the base (§4) | a payload resolves to its branch on all four paths — nested field, `TypeAdapter`, `model_validate`, `Base(**data)`; a consumer's subclass of the base keeps its own schema; `model_dump_json` on a base instance does not raise; a branch with no derivable name refuses its document by name and pointer | yes — `lower/union.py` |
 | 6 (`salesagent-j3k2l.6`) | **Containers and mappings** — a constrained container value is a named type (D5), so a mapping is a plain reference; a mapping's key is typed from `propertyNames`; a multi-type property applies each keyword to its own branch | a mapping value's bound survives into the annotation, and a key the document constrains is not `str` | yes — `lower/containers.py` |
 | 7 (`salesagent-j3k2l.7`) | **Rules** — D6's six keyword families as class-level tuples read by `_runtime.py` | the harness steps every one of the six | yes — `lower/rules.py` |

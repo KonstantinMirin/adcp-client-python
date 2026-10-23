@@ -43,7 +43,6 @@ from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, compare_schema, steps
-from codegen.lower import product
 from codegen.refusal import Refusal
 
 REPO = Path(__file__).resolve().parents[1]
@@ -205,7 +204,14 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # regression. It drifted because every row that claims documents moves it.
     # CONFIRMED at 64131600f by ``salesagent-j3k2l.29``, in one pass with every
     # other quantity this test asserts: 576, and ``without`` is 348.
-    assert len(with_row.emitted) == 576, "N, over a bundle of 1,054"
+    # 576 -> 581 at ``salesagent-j3k2l.40``, which is the UNION row and not this one:
+    # sharing the conjunct reader let a composing BRANCH lower, and 5 documents of
+    # this population emit that did not.  Re-measured in one pass with every other
+    # quantity below, and **this is the only one that moved** -- the delta (228), the
+    # row's own contribution (147), the cleared set (151) and the attribution
+    # histogram (279 + 14 + 8) are all unchanged, which is what says the +5 belongs
+    # to another row.  ``without`` moves with it, so the delta holds.
+    assert len(with_row.emitted) == 581, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
@@ -310,7 +316,7 @@ def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzz
     assert bundle.composes_at_the_root(doc)
     saved = emit.ROWS
     try:
-        emit.ROWS = (*saved, (bundle.composes_at_the_root, product.lower_composition))
+        emit.ROWS = (*saved, (bundle.composes_at_the_root, compiler.lower_composition))
         with pytest.raises(emit.AmbiguousRoot, match="composes_at_the_root"):
             emit.lower_document("media-buy/get-products-request.json", doc)
     finally:
@@ -610,7 +616,7 @@ def test_a_lost_inherited_fact_is_reported_as_missing(tmp_path, monkeypatch) -> 
     at its own pointer.
     """
     monkeypatch.setattr(
-        product,
+        compiler,
         "_reused",
         lambda key, held, source, pointer, mod: compiler.Property(
             name=key, wire=key, type=compiler.Type("typing.Any"), required=False
@@ -721,7 +727,7 @@ def test_the_wrong_text_at_that_pointer_is_reported_as_a_differs(
     declares. The same probe bundle, the same comparison, two emitters -- and the
     comparison separates them by name, pointer and both texts.
     """
-    monkeypatch.setattr(product, "_annotates_differently", lambda child, base: False)
+    monkeypatch.setattr(compiler, "_annotates_differently", lambda child, base: False)
     cls, text, schema = _emit_probe(
         tmp_path,
         monkeypatch,
@@ -872,7 +878,7 @@ def test_the_accepts_and_refuses_checks_are_green_with_a_denominator(
 # what refuses, by name, pointer and keyword
 # --------------------------------------------------------------------------- #
 def _lower(doc: dict, binder=emit._no_binder) -> str:  # noqa: SLF001 -- the test is the caller
-    return product.lower_composition(doc, "Probe", "", emit.Module(document="probe.json", bind=binder))
+    return compiler.lower_composition(doc, "Probe", "", emit.Module(document="probe.json", bind=binder))
 
 
 def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> None:
@@ -905,14 +911,14 @@ def test_the_rule_is_symmetric_so_the_order_the_declarations_are_read_in_cannot_
     itself, over the four outcomes it has to distinguish.
     """
     typed = {"type": "integer", "minimum": 1}
-    assert product._restatement({"default": 1}, typed) is False  # annotation-only: inherited
-    assert product._restatement(dict(typed), typed) is False  # identical: inherited
-    assert product._restatement({**typed, "maximum": 9}, typed) is True  # narrows
-    assert product._restatement({"type": "integer", "minimum": 2}, typed) is None  # conflicts
+    assert compiler._restatement({"default": 1}, typed) is False  # annotation-only: inherited
+    assert compiler._restatement(dict(typed), typed) is False  # identical: inherited
+    assert compiler._restatement({**typed, "maximum": 9}, typed) is True  # narrows
+    assert compiler._restatement({"type": "integer", "minimum": 2}, typed) is None  # conflicts
     # symmetric: swapping the arguments of a conflict is still a conflict, and
     # swapping a narrowing reports the other direction rather than agreeing
-    assert product._restatement(typed, {"type": "integer", "minimum": 2}) is None
-    assert product._restatement(typed, {**typed, "maximum": 9}) is None
+    assert compiler._restatement(typed, {"type": "integer", "minimum": 2}) is None
+    assert compiler._restatement(typed, {**typed, "maximum": 9}) is None
 
 
 @pytest.mark.parametrize(
@@ -1024,6 +1030,160 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
             keyword: value,
             **also,
         }
-        product.lower_composition(doc, "Probe", "", mod)
+        compiler.lower_composition(doc, "Probe", "", mod)
         assert mod.declared[""] == "Probe", (keyword, mod.declared)
         assert [b for b in mod.blocks if "_adcp_rules" in b], keyword
+
+
+# --------------------------------------------------------------------------- #
+# the reader's SECOND caller: a union branch that composes
+# --------------------------------------------------------------------------- #
+#: A two-document bundle whose union branch 0 composes a ``$ref`` conjunct AND
+#: declares a property of its own, so one probe reaches both arms of the reader's
+#: classification.  Hand-built, because the reachable population of the ``$ref``
+#: arm at a BRANCH is **0 today**: all 3 composing branches the 3.2 bundle emits
+#: carry inline conjuncts only, so the committed tree has no class whose bases are
+#: a union base plus a conjunct's and a test over the bundle would grade the
+#: prepend by reading nothing.  That number is why this is here and not a
+#: `# measured 0` note: `salesagent-j3k2l.40` added the ``bases`` argument and the
+#: bundle does not yet exercise it, so the probe is the only thing that says the
+#: order is the one `isinstance` needs.
+def _union_probe(tmp_path: Path, name: str) -> Path:
+    at = tmp_path / name
+    (at / "core").mkdir(parents=True)
+    (at / "core/probe-marker.json").write_text(
+        json.dumps(
+            {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "title": "Probe Marker",
+                "type": "object",
+                "required": ["kind"],
+                "properties": {"kind": {"type": "string", "description": "the marker"}},
+            },
+            indent=2,
+        )
+    )
+    (at / "core/probe-union.json").write_text(
+        json.dumps(
+            {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "title": "Probe Union",
+                "description": "the union probe",
+                "type": "object",
+                "oneOf": [
+                    {
+                        "title": "Composing Arm",
+                        "type": "object",
+                        "allOf": [
+                            {"$ref": REF.format("core/probe-marker.json")},
+                            {"type": "object", "properties": {"inline": {"type": "string"}}},
+                        ],
+                        "properties": {"label": {"type": "string"}},
+                        "required": ["label"],
+                    },
+                    {
+                        "title": "Plain Arm",
+                        "type": "object",
+                        "properties": {"other": {"type": "string"}},
+                        "required": ["other"],
+                    },
+                ],
+            },
+            indent=2,
+        )
+    )
+    return at
+
+
+def _emit_union_probe(tmp_path: Path, monkeypatch, name: str):
+    """Emit the union probe, import its tree, and return (base, branch, marker, text)."""
+    at = _union_probe(tmp_path, name)
+    documents = sorted(str(p.relative_to(at)) for p in at.rglob("*.json"))
+    out = emit.emit(at, documents)
+    assert out.refusals == {}, out.refusals
+    tree = tmp_path / "pkg" / name
+    emit.write(out, tree)
+    monkeypatch.setattr(
+        _base, "_document", lambda document: json.loads((tree / document).read_text())
+    )
+    monkeypatch.syspath_prepend(str(tmp_path / "pkg"))
+    module = importlib.import_module(f"{name}.core.probe_union")
+    marker = importlib.import_module(f"{name}.core.probe_marker")
+    for mod in [m for m in sys.modules if m.startswith(name)]:
+        monkeypatch.delitem(sys.modules, mod, raising=False)
+    return (
+        module.ProbeUnion,
+        module.ComposingArm,
+        marker.ProbeMarker,
+        (tree / "core/probe_union.py").read_text(),
+    )
+
+
+def test_a_composing_branch_gains_the_union_base_and_its_conjuncts_bases(
+    tmp_path, monkeypatch
+) -> None:
+    """The ``bases`` argument, graded on the one thing it decides: the ORDER.
+
+    A branch class's identity is the union base -- ``isinstance(payload, Base)`` is
+    what §4 is for, and ``BranchDispatchMixin``'s dispatch is reached through it --
+    and a composing branch wants that base AND whatever its conjuncts name.  Both
+    orders give a legal MRO, so neither is refused at import and a test that only
+    asserted membership would pass on either; what this asserts is that the union
+    base comes FIRST, so the mixin's methods are the ones the branch answers with.
+
+    The inherited field is asserted beside it, because bases in the right order
+    with no inheritance would be the reader having run and bound nothing.
+    """
+    base, branch, marker, text = _emit_union_probe(tmp_path, monkeypatch, name="s4union")
+
+    assert branch.__bases__ == (base, marker), branch.__bases__
+    assert branch.__mro__.index(base) < branch.__mro__.index(marker), branch.__mro__
+    assert f"class ComposingArm({base.__name__}, {marker.__name__}):" in text, text
+
+    # The conjuncts BOUND, from both arms: ``kind`` is inherited through the ``$ref``
+    # conjunct's base, ``inline`` is declared by the inline conjunct as a field of
+    # this node, and ``label`` is the branch's own.
+    assert {"kind", "inline", "label"} <= set(branch.model_fields), sorted(branch.model_fields)
+    assert "kind" not in branch.__annotations__, branch.__annotations__  # inherited, not restated
+
+    # And the identity the order exists for still answers, through the root's name.
+    payload = {"kind": "k", "label": "l"}
+    assert isinstance(base.model_validate(payload), branch)
+    assert base.model_validate(payload).kind == "k"
+
+
+def test_breaking_the_shared_reader_reddens_the_product_row_and_the_union_row(
+    tmp_path, monkeypatch
+) -> None:
+    """ONE break, BOTH callers, which is the whole claim of ``salesagent-j3k2l.40``.
+
+    The reader moved to ``compiler`` so that two rows could read one; a reader two
+    rows call and one test reaches is half-graded, and the half nobody reaches is
+    the half that rots.  So the ``$ref``-conjunct arm is broken once -- ``$ref``
+    added to ``compiler.ANNOTATIONS``, which makes a bare-``$ref`` conjunct carry no
+    live keyword at all -- and both callers must report the reader's own last-arm
+    deferral at the conjunct's own pointer.
+
+    Broken in the READER and not in either caller on purpose: a break either caller
+    could absorb would say nothing about the other.
+    """
+    product_at = _probe(tmp_path, own={"label": {"type": "string"}}, name="brkprod")
+    union_at = _union_probe(tmp_path, "brkunion")
+    documents = lambda at: sorted(str(p.relative_to(at)) for p in at.rglob("*.json"))  # noqa: E731
+
+    # The control, so a red below is the break and not the probe.
+    assert emit.emit(product_at, documents(product_at)).refusals == {}
+    assert emit.emit(union_at, documents(union_at)).refusals == {}
+
+    monkeypatch.setattr(compiler, "ANNOTATIONS", compiler.ANNOTATIONS | {"$ref"})
+    product = emit.emit(product_at, documents(product_at)).refusals
+    union = emit.emit(union_at, documents(union_at)).refusals
+
+    LAST_ARM = "this step lowers a $ref conjunct (a base) or an inline conjunct with properties"
+    assert "core/probe-composing.json" in product, product
+    assert product["core/probe-composing.json"]["detail"].startswith(LAST_ARM), product
+    assert product["core/probe-composing.json"]["pointer"] == "/allOf/0", product
+
+    assert "core/probe-union.json" in union, union
+    assert union["core/probe-union.json"]["detail"].startswith(LAST_ARM), union
+    assert union["core/probe-union.json"]["pointer"] == "/oneOf/0/allOf/0", union

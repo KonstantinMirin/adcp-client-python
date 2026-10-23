@@ -349,10 +349,13 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     out = emit.emit(BUNDLE, bundle.portable(BUNDLE))
     assert len(out.emitted) + len(out.refusals) == 1054
     # Re-pinned 674 -> 686 on bcb0b8ca8, and this is the EMITTED count over all
-    # 1,054 portable documents -- NOT the 677 the committed tree holds, which is
+    # 1,054 portable documents -- NOT the 682 the committed tree holds, which is
     # the population() run. Those two populations have been confused in three
-    # briefings; read 686 as a module count and the tree looks stale by nine.
-    assert len(out.emitted) == 686
+    # briefings; read 691 as a module count and the tree looks stale by nine.
+    # 686 -> 691 at ``salesagent-j3k2l.40``: a union BRANCH that composes is lowered
+    # by ``compiler.lower_composition`` now, so 3 of the 10 documents waiting on the
+    # shared conjunct reader emit and 2 chained onto them follow.
+    assert len(out.emitted) == 691
     assert [d for d, r in out.refusals.items() if "nothing enclosing it" in r["detail"]] == []
 
 

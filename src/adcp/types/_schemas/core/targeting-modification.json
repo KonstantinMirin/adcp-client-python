@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Sparse, buyer-reviewable change from targeting requested in get_products to targeting bound to a returned configured product. Entries are applied in array order to the original targeting_overlay; after every entry, the complete result MUST validate against targeting.json. A seller MUST NOT emit two replace operations for the same path or combine replace and remove_values on the same path. Selecting the configured product_id accepts the ordered result.",
+  "discriminator": {
+    "propertyName": "operation"
+  },
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "applied": {
+          "description": "Complete replacement value. It MUST validate against targeting.json at path; the seller then validates the complete effective overlay. This operation may narrow or broaden only as an explicit buyer-visible proposal."
+        },
+        "ext": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "title": "Extension Object",
+          "type": "object"
+        },
+        "operation": {
+          "const": "replace",
+          "type": "string"
+        },
+        "path": {
+          "description": "RFC 6901 JSON Pointer to one complete targeting value relative to targeting_overlay, for example /demographics/age. Array indexes are forbidden by protocol semantics even if syntactically valid JSON Pointer; target a stable whole dimension instead.",
+          "pattern": "^(?:/(?:[^~/]|~[01])*)+$",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation",
+        "path",
+        "applied",
+        "reason"
+      ],
+      "title": "Replace targeting value",
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "required": [
+                "selector"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "path": {
+                "enum": [
+                  "/geo_postal_areas",
+                  "/geo_postal_areas_exclude"
+                ]
+              }
+            },
+            "required": [
+              "path"
+            ]
+          },
+          "then": {
+            "required": [
+              "selector"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "ext": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "title": "Extension Object",
+          "type": "object"
+        },
+        "operation": {
+          "const": "remove_values",
+          "type": "string"
+        },
+        "path": {
+          "description": "Supported targeting field with string-set semantics. Postal-area paths identify their group with selector; direct top-level sets omit selector.",
+          "enum": [
+            "/geo_countries",
+            "/geo_countries_exclude",
+            "/geo_regions",
+            "/geo_regions_exclude",
+            "/geo_postal_areas",
+            "/geo_postal_areas_exclude",
+            "/audience_include",
+            "/audience_exclude",
+            "/device_platform",
+            "/device_platform_exclude",
+            "/device_type",
+            "/device_type_exclude",
+            "/browser",
+            "/browser_exclude",
+            "/language"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "selector": {
+          "additionalProperties": false,
+          "description": "Stable identity of exactly one postal-area group in the requested array. Required only for postal-area paths. Zero or multiple matches make the modification invalid.",
+          "properties": {
+            "country": {
+              "pattern": "^[A-Z]{2}$",
+              "type": "string"
+            },
+            "system": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "country",
+            "system"
+          ],
+          "type": "object"
+        },
+        "values": {
+          "description": "Values removed from the requested set. Values absent from that set are invalid rather than no-ops.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "operation",
+        "path",
+        "values",
+        "reason"
+      ],
+      "title": "Remove targeting set values",
+      "type": "object"
+    }
+  ],
+  "title": "Targeting Modification",
+  "type": "object"
+}

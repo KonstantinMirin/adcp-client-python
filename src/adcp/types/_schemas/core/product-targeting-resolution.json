@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Discovery-only targeting resolution bound to a configured Product. modifications sparsely disclose product-specific differences from get_products.targeting_overlay. Request-level brief interpretation and package execution details are not valid here.",
+  "properties": {
+    "effective_targeting_digest": {
+      "description": "Optional digest of the canonical effective targeting overlay. Until AdCP defines a cross-implementation canonicalization algorithm, this value is an opaque seller audit handle and buyers MUST NOT attempt to reproduce or compare it across sellers.",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "modifications": {
+      "description": "Ordered changes applied to the requested targeting_overlay. Sellers apply entries in array order and MUST validate the complete resulting overlay before returning the product.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Sparse, buyer-reviewable change from targeting requested in get_products to targeting bound to a returned configured product. Entries are applied in array order to the original targeting_overlay; after every entry, the complete result MUST validate against targeting.json. A seller MUST NOT emit two replace operations for the same path or combine replace and remove_values on the same path. Selecting the configured product_id accepts the ordered result.",
+        "discriminator": {
+          "propertyName": "operation"
+        },
+        "oneOf": [
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "anyOf": [
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "path": {
+                          "enum": [
+                            "/geo_postal_areas",
+                            "/geo_postal_areas_exclude"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "path"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "required": [
+                        "selector"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "path": {
+                    "enum": [
+                      "/geo_postal_areas",
+                      "/geo_postal_areas_exclude"
+                    ]
+                  }
+                },
+                "required": [
+                  "path",
+                  "selector"
+                ]
+              }
+            ],
+            "maxProperties": 6,
+            "properties": {
+              "ext": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                "title": "Extension Object",
+                "type": "object"
+              },
+              "operation": {
+                "const": "remove_values"
+              },
+              "path": {
+                "enum": [
+                  "/browser",
+                  "/language",
+                  "/device_type",
+                  "/geo_regions",
+                  "/geo_countries",
+                  "/browser_exclude",
+                  "/device_platform",
+                  "/audience_exclude",
+                  "/audience_include",
+                  "/geo_postal_areas",
+                  "/device_type_exclude",
+                  "/geo_regions_exclude",
+                  "/geo_countries_exclude",
+                  "/device_platform_exclude",
+                  "/geo_postal_areas_exclude"
+                ]
+              },
+              "reason": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "selector": {
+                "additionalProperties": {
+                  "not": {}
+                },
+                "description": "Stable identity of exactly one postal-area group in the requested array. Required only for postal-area paths. Zero or multiple matches make the modification invalid.",
+                "maxProperties": 2,
+                "properties": {
+                  "country": {
+                    "pattern": "^[A-Z]{2}$",
+                    "type": "string"
+                  },
+                  "system": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "country",
+                  "system"
+                ],
+                "type": "object"
+              },
+              "values": {
+                "description": "Values removed from the requested set. Values absent from that set are invalid rather than no-ops.",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "operation",
+              "path",
+              "reason",
+              "values"
+            ],
+            "title": "Remove targeting set values",
+            "type": "object"
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 5,
+            "properties": {
+              "applied": {
+                "description": "Complete replacement value. It MUST validate against targeting.json at path; the seller then validates the complete effective overlay. This operation may narrow or broaden only as an explicit buyer-visible proposal."
+              },
+              "ext": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                "title": "Extension Object",
+                "type": "object"
+              },
+              "operation": {
+                "const": "replace"
+              },
+              "path": {
+                "description": "RFC 6901 JSON Pointer to one complete targeting value relative to targeting_overlay, for example /demographics/age. Array indexes are forbidden by protocol semantics even if syntactically valid JSON Pointer; target a stable whole dimension instead.",
+                "pattern": "^(?:/(?:[^~/]|~[01])*)+$",
+                "type": "string"
+              },
+              "reason": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "applied",
+              "operation",
+              "path",
+              "reason"
+            ],
+            "title": "Replace targeting value",
+            "type": "object"
+          }
+        ],
+        "title": "Targeting Modification",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "modifications"
+  ],
+  "title": "Product Targeting Resolution",
+  "type": "object"
+}

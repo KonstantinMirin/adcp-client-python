@@ -1161,7 +1161,7 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     bundles above are what grade the declaration itself.  What the real bundle
     grades is the WALK, in the two places it is observable:
 
-    * a refusal at a pointer INSIDE a section is proof the walk descended one.  8
+    * a refusal at a pointer INSIDE a section is proof the walk descended one.  9
       documents are in that position, and none was before: every pointer under
       ``definitions`` used to be unreachable.
     * a refusal that moved from the root to a property means the walk got FURTHER, and
@@ -1178,7 +1178,12 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
         for d, r in out.refusals.items()
         if r["pointer"].lstrip("/").split("/")[0] in bundle.DEFINITIONS
     }
-    assert len(inside) == 8, inside
+    # 8 -> 9 at ``salesagent-j3k2l.40``, and the ninth is the walk getting FURTHER
+    # rather than a new kind of refusal: ``brand.json`` refused at ``/oneOf/4`` on the
+    # branch that composes, and now that a composing branch is lowered it refuses at
+    # ``/definitions/default_language/allOf/0`` -- a verdict, on a base that is an
+    # alias, three hops inside a section.  No member left; the other 8 are unchanged.
+    assert len(inside) == 9, inside
     # Pinned by name because a count alone cannot say the pointer went INTO a
     # section.  This was ``core/response-payload-jws-envelope.json`` at
     # ``/definitions/response_payload/properties/typ``; that document EMITS as of
@@ -1186,7 +1191,8 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     # section pointer the bundle still refuses at -- three hops past the section
     # name, which is what makes it evidence of a descent rather than of the
     # section being read.  It held across 0130e5fc9, where the membership of the
-    # other seven changed and the count went 7 -> 8.
+    # other seven changed and the count went 7 -> 8, and across
+    # ``salesagent-j3k2l.40``, where ``brand.json`` joined and took it 8 -> 9.
     assert inside["core/account-identity-change-preview.json"] == (
         "/definitions/nonblocking_impacts/items/allOf/0"
     )
