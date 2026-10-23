@@ -215,7 +215,9 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     are the document's ``enum`` array, in order, exactly.
     """
     classes = emitted_enum_classes()
-    assert len(classes) == 447, len(classes)  # 214 roots, the rest inline
+    # 447 -> 482 on fe0e185f9: every count in this file is over the documents
+    # ``population()`` names, so each moved as the emitted population grew.
+    assert len(classes) == 482, len(classes)  # 214 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -268,7 +270,7 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
             names += 1
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
-    assert names == 2692, names
+    assert names == 2892, names  # 2692 -> 2892 on fe0e185f9, population growth
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -330,7 +332,7 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
     # equal at 277 and again at 333 and that was a coincidence of the populations,
     # not a rule -- a node under a position that reuses an already-declared class
     # is reached without adding one.  Neither number is derived from the other.
-    assert nodes == 501, nodes
+    assert nodes == 541, nodes  # 501 -> 541 on fe0e185f9, population growth
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -471,7 +473,21 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
     # ``inherited`` is pinned so the branch above is not graded by an empty set:
     # if the composition row stopped inheriting, the AST half would silently go
     # back to reading only each document's own module.
-    assert (sites, len(documents), inherited) == (124, 76, 2), (
+    # (124, 76, 2) -> (128, 78, 0) on fe0e185f9. `sites` and `documents` moved for
+    # population growth. `inherited` FELL TO ZERO, and that is a design change rather
+    # than drift: salesagent-j3k2l.36 made a composing subclass RE-USE its base's
+    # decided field, so the two sites that were inherited through ProtocolEnvelope --
+    # core/tasks-get-response.json and protocol/get-task-status-response.json, both on
+    # `status` -- now declare the field in their own module.
+    #
+    # SO THE `inherited` ARM NOW GRADES A POPULATION OF 0, and it is pinned at 0
+    # rather than dropped: the shape it covers -- a root enum bound through a base's
+    # field -- is still reachable if a later row inherits again, and a pin at 0 says
+    # loudly that nothing exercises it today. This is the same treatment
+    # salesagent-j3k2l.28 gave the fifth fold's `enum` arm when its population went to
+    # zero: label the dormancy, do not delete a legitimate shape or let a dead arm read
+    # as live.
+    assert (sites, len(documents), inherited) == (128, 78, 0), (
         sites,
         len(documents),
         inherited,
