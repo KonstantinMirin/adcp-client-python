@@ -1617,6 +1617,12 @@ class ComparisonResult:
     #: never folded into ``missing`` or into the implied-fact rows, so a reader can
     #: see how many facts this row excuses and at which positions.
     url_typed: list[str] = field(default_factory=list)
+    #: The fifth resolver canonicalization: a DOCUMENT fact that constrains
+    #: nothing, so the model omitting it is not a drop -- see
+    #: :func:`_constrains_nothing`.  Counted separately for the same reason
+    #: ``url_typed`` is: a fold that disappears into a green ``missing`` is
+    #: invisible and permanent, and this one must stay auditable at its positions.
+    constrains_nothing: list[str] = field(default_factory=list)
     detail: str = ""
 
     @property
@@ -1712,6 +1718,55 @@ def _url_typed(got: Mapping[str, Any]) -> bool:
     return (
         got.get("type") == "string" and got.get("format") == "uri" and got.get("minLength") == 1
     )
+
+
+def _constrains_nothing(keyword: str, doc: Mapping[str, Any]) -> bool:
+    """Does a DOCUMENT fact constrain its accepted set, or not?
+
+    The fifth resolver canonicalization, and the mirror of :func:`_narrows_nothing`:
+    that one asks whether a MODEL-only fact narrows the document, this one asks
+    whether a DOCUMENT-only fact constrains anything at all.  A fact that admits
+    exactly what its absence admits is not dropped by a model that omits it, so
+    reporting it as ``missing`` says the model is wider than its schema when it is
+    not.  Measured on the 1,054-document bundle: 10 facts in 2 shapes, and nothing
+    else reaches this.
+
+    * **``required: []``** -- an empty list demands no key, which is what silence
+      demands.  5 sites.
+    * **``enum: [false, true]`` at a node the document declares ``boolean``** --
+      the two members are the whole of the boolean domain, so the enum admits
+      exactly what ``boolean`` admits.  5 sites.
+
+    **Each clause is gated to ITS OWN SHAPE and the gates are the whole of this
+    function's correctness.**  A fold that matches one real constraint is invisible
+    and permanent, which is why section 6 gates the other four by shape rather than
+    by keyword name:
+
+    * ``enum: [false]`` on a boolean PINS the value and must still compare.  So
+      must ``enum: [true]``.  The membership test is on the SET, so
+      ``[true, false]`` folds and ``[false]`` does not.
+    * ``enum: [false, true]`` where the document does NOT declare ``boolean``
+      restricts a wider domain -- a bare node, or ``["boolean", "null"]``, admits
+      ``null`` that the enum forbids -- so the type is required to be exactly
+      ``"boolean"`` and a list spelling does not qualify.
+    * ``required: ["x"]`` demands a key and must still compare, so the value is
+      required to be empty rather than merely a list.
+
+    This is NOT the place to excuse a fact that is merely hard to render.  A
+    document fact the model cannot express is ``missing``, and that is the report
+    the specification wants.
+    """
+    if keyword == "required":
+        return doc.get("required") == []
+    if keyword == "enum":
+        members = doc.get("enum")
+        return (
+            doc.get("type") == "boolean"
+            and isinstance(members, list)
+            and {type(m) for m in members} == {bool}
+            and set(members) == {True, False}
+        )
+    return False
 
 
 def _schema_half_enforces(keyword: str, doc: Mapping[str, Any], got: Mapping[str, Any]) -> bool:
@@ -2303,6 +2358,15 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
                     res.url_typed.append(
                         f"{where}: the document says {doc[kw]!r}; the model is a URL type "
                         "and the schema half enforces it"
+                    )
+                    continue
+                # The fifth canonicalization: a document fact that constrains
+                # nothing is not dropped by a model that omits it.  Counted apart
+                # from ``missing`` so the fold stays auditable at its positions.
+                if _constrains_nothing(kw, doc):
+                    res.constrains_nothing.append(
+                        f"{where}: the document says {doc[kw]!r}, which admits exactly "
+                        "what its absence admits"
                     )
                     continue
                 res.missing.append(f"{where}: the document says {doc[kw]!r}")
