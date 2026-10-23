@@ -38,11 +38,13 @@ constraint the accepted set already enforces.  The ceiling is a committed test, 
 docstring: the constructor builds the violating payload and the schema half rejects the
 same payload on ``maximum``.
 
-``uniqueItems`` has no rule kind here, on purpose.  It constrains the MEMBERS of an
-array; the array lowering is step 6's row and another module's file, and a rule no
-emitted class can carry is dead code that no instrument can grade.  The keyword's
-instrument -- a ``harness.steps()`` step, which had never existed -- lands in this
-step; the rule lands with the lowering that can reach it.
+``uniqueItems`` is :class:`UniqueItems`, and it is the one family of the six whose
+keyword sits on a node BELOW the class that carries the rule -- the array held by a
+field, which is where 467 of the bundle's 485 occurrences are.  D2 says the rule is
+*on the nearest class*, so the class that holds the array is the one that states it,
+and an array with no class above it (a mapping value, a document root, a combinator
+branch) is refused by name rather than carried.  This module had no such kind while
+there was no array lowering to reach one; there is now.
 """
 
 from __future__ import annotations
@@ -131,10 +133,16 @@ class Dependencies:
 class PropertyCount:
     """``minProperties`` / ``maxProperties``, counted over the keys that arrived.
 
-    KNOWN CEILING: a class whose document declares no ``additionalProperties`` gets
+    A class whose document declares no ``additionalProperties`` gets
     ``extra="ignore"`` (D8), so a key the document would COUNT and the model drops is
-    not counted here.  ``strict_validate`` counts the payload and is unaffected; this
-    rule sees the constructed object, which is all the ``model_validate`` path has.
+    not counted here -- and that is why ``codegen.lower.rules._count`` writes the
+    MINIMUM only where the document states ``additionalProperties`` at all.  Under
+    ``ignore`` a dropped key makes this count LOWER than the document's, which turns a
+    minimum into a refusal of an instance the document ACCEPTS (measured on
+    ``core/provenance.json``'s ``render_guidance``, which the document satisfies with
+    one undeclared key) and leaves a maximum merely under-refusing, which is what D4
+    says the constructor may do.  So a ``minimum`` here always counts declared fields
+    or extras the class kept.
     """
 
     minimum: int | None = None
@@ -215,6 +223,61 @@ class RequiredGroups:
                 f"{spelled}",
                 None,
             )
+
+
+def _same(a: Any, b: Any) -> bool:
+    """Are these the same JSON value?  draft-07's equality, not Python's.
+
+    ``==`` is draft-07's rule for every value this bundle puts in an array -- a
+    string, a number, a null, an object, and a model or an enum member standing for
+    one -- with ONE exception Python forces: ``True == 1`` and draft-07 says
+    ``true`` and ``1`` are different values.  So the boolean-ness of both sides is
+    tested first.  There is nothing else to reconcile: draft-07 and Python agree
+    that ``1`` and ``1.0`` ARE the same number.
+    """
+    if isinstance(a, bool) != isinstance(b, bool):
+        return False
+    return bool(a == b)
+
+
+@dataclass(frozen=True)
+class UniqueItems:
+    """``uniqueItems: true`` on the array one field holds: its members are distinct.
+
+    The key is the DOCUMENT'S property name, like every other rule here, so it reads
+    off ``supplied``'s mapping whether or not the field carries an alias.
+
+    KNOWN CEILING: the comparison is PAIRWISE and so O(n^2), not a hash set. An item
+    can be a pydantic model or a ``dict`` and neither is hashable -- the same
+    measurement that rules out ``set[X]`` as the annotation, where pydantic refuses
+    every instance with ``set_item_not_hashable``. The arrays in this bundle are
+    small (a ``maxItems`` where one is stated is in the tens); the upgrade path is a
+    hash set behind an ``isinstance`` test for the hashable cases, never a weaker
+    comparison.
+
+    A value that is not a list gets no verdict: the field may be a union with a
+    non-array arm, and a rule that refused there would be stronger than the
+    document, which applies ``uniqueItems`` only to an array.
+    """
+
+    key: str
+
+    def errors(self, keys: frozenset[str], values: Mapping[str, Any]) -> Iterator[Error]:
+        if self.key not in keys:
+            return
+        items = values.get(self.key)
+        if not isinstance(items, list):
+            return
+        for i, item in enumerate(items):
+            if any(_same(item, earlier) for earlier in items[:i]):
+                yield (
+                    "uniqueItems",
+                    (self.key, i),
+                    f"item {i} repeats an earlier one, and the document requires the "
+                    f"items of {self.key!r} to be distinct",
+                    item,
+                )
+                return  # one refusal per field: the keyword bit, and where
 
 
 @dataclass(frozen=True)

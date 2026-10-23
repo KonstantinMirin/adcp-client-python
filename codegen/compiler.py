@@ -87,9 +87,11 @@ from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
 from datamodel_code_generator.model.pydantic_v2.types import DataTypeManager
 from datamodel_code_generator.reference import Reference
 from datamodel_code_generator.types import DataType
+from jsonschema import Draft7Validator
 from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._base import SchemaRef
+from codegen import refusal
 from codegen.refusal import Refusal
 
 #: The import path of the hand-written base every emitted module imports from.
@@ -191,8 +193,25 @@ class Type:
     of: tuple[Type, ...] = ()
     #: A mapping's key, and only a mapping has one (D5 types it from the document).
     key: Type | None = None
+    #: D2's ``const`` row: the one value the node PINS, as a 1-tuple, and ``()`` for
+    #: every other node.  The walk decides the value and the compiler writes the
+    #: ``Literal``, which is §1's seam -- and here it is load-bearing rather than
+    #: tidy.  Written as ``Type("Literal[%r]" % value, local=True)`` instead, the
+    #: annotation reached dmcg as a ``Reference`` PATH, and ``treat_dot_as_module``
+    #: read the dot in a value like ``account.status_changed`` as a module qualifier
+    #: and kept the last segment: ``Literal['account.status_changed']`` rendered as
+    #: ``status_changed']``, a module that does not parse.  dmcg's own ``literals``
+    #: carrier renders the value, escapes it (``"quo'te"`` comes back
+    #: ``Literal["quo'te"]``) and reports the ``typing.Literal`` import itself.
+    #:
+    #: A tuple and not a bare value because ``const: null`` is a pinnable value, so
+    #: a ``None`` default could not be told from an absent one.  One member is all
+    #: a ``const`` has; the plural is dmcg's spelling of the slot.
+    literals: tuple[Any, ...] = ()
 
     def data_type(self) -> Any:
+        if self.literals:
+            return _TYPES.data_type(literals=list(self.literals))
         if self.container == "list":
             return _TYPES.data_type(is_list=True, data_types=[t.data_type() for t in self.of])
         if self.container == "dict":
@@ -239,6 +258,16 @@ class Property:
     #: never in both and never nowhere.  Dropping it would lose a fact the
     #: document states.
     format: str | None = None
+    #: D6's ``uniqueItems`` on the array this field holds.  The RULE is what enforces
+    #: it on the constructor (``adcp.types._runtime.UniqueItems``); this flag is the
+    #: other half, and it rides the same ``json_schema_extra`` channel as
+    #: :attr:`format` and for the same reason -- pydantic removed ``unique_items`` in
+    #: v2, so no annotation states the fact, and the schema comparison reads
+    #: ``uniqueItems`` off a model's rendered schema (``harness.FACTS``).  Rendering
+    #: it where the document states it is what keeps the comparison symmetric: the
+    #: fact is TRUE of the model, because the schema half and the rule both enforce
+    #: it, so no admission row is needed in either direction.
+    distinct: bool = False
 
 
 @dataclass(frozen=True)
@@ -290,8 +319,15 @@ def _field(prop: Property) -> DataModelField:
     extras: dict[str, Any] = {}
     if prop.description:
         extras["description"] = prop.description
-    if prop.format:
-        extras["json_schema_extra"] = {"format": prop.format}
+    # One ``json_schema_extra`` dict, two facts that can both be true of one field:
+    # a ``format`` no type was selected for, and D6's ``uniqueItems``.  Assigning
+    # rather than merging dropped whichever came second.
+    extra_schema = {
+        **({"format": prop.format} if prop.format else {}),
+        **({"uniqueItems": True} if prop.distinct else {}),
+    }
+    if extra_schema:
+        extras["json_schema_extra"] = extra_schema
     constraints = {k: v for k, v in prop.constraints.items() if k in CONSTRAINTS}
     kwargs: dict[str, Any] = {}
     if prop.default is not MISSING:
@@ -528,11 +564,11 @@ def render(decided: Class) -> Rendered:
 # --------------------------------------------------------------------------- #
 # the machinery a lowering is handed (D13)
 # --------------------------------------------------------------------------- #
-#: Keywords that annotate a node without constraining an instance.  ``default``
-#: and ``description`` are carried by the compiler (they are rendering, and
-#: rendering is what the compiler is for); the rest have nowhere to go and are
-#: never a reason to refuse.
-ANNOTATIONS = frozenset(
+#: DRAFT-07's own annotation keywords: names the draft DEFINES and that annotate a
+#: node without constraining an instance.  ``default`` and ``description`` are
+#: carried by the compiler (they are rendering, and rendering is what the compiler
+#: is for); the rest have nowhere to go and are never a reason to refuse.
+_DRAFT_ANNOTATIONS = frozenset(
     {
         "$schema",
         "$id",
@@ -547,6 +583,65 @@ ANNOTATIONS = frozenset(
         "writeOnly",
     }
 )
+
+#: THE BUNDLE'S OWN annotation names: names draft-07 does not define at all, which
+#: this bundle uses to annotate a node, ENUMERATED and never derived from a prefix.
+#:
+#: An unknown keyword that COULD CONSTRAIN an instance must keep refusing, because
+#: that refusal is what keeps the generator from emitting a class quietly wider than
+#: its author meant.  So membership here is by name and by measurement.
+#:
+#: **The census, over all 1,054 portable documents** (every key at a schema position
+#: that draft-07 does not define, is not ``x-*``, and is not already admitted; all
+#: 1,054 declare draft-07, so one draft decides the vocabulary): 24 names over 251
+#: sites.  Two are admitted here:
+#:
+#: * ``notes`` -- 2 sites, 2 documents, both at a root, a list of English sentences
+#:   in each.  It annotates the document for a reader.
+#: * ``enumMetadata`` -- 4 sites, 4 documents, all at a root.  ``lower.enum.HANDLED``
+#:   already admitted it on the reason written there -- it states nothing about an
+#:   instance, the ``enum`` having already closed the value set -- for the three
+#:   whose root IS an enum.  The fourth (``core/media-buy-available-action-id.json``)
+#:   is a UNION root, which that set does not reach.  Admitting it HERE is the same
+#:   decision in one place rather than two, so it is removed from that set.
+#:
+#: And twenty-two are not, each for a stated reason:
+#:
+#: * ``enumDescriptions`` (137 sites, 135 documents) is CARRIED, not ignored: the
+#:   enum row reads it into the member docstrings.  Admitting it here would delete a
+#:   fact the SDK emits.
+#: * ``discriminator`` (81 sites, 73 documents, 7 refusals) COULD CONSTRAIN AN
+#:   INSTANCE -- in OpenAPI it selects which branch a payload resolves to, a job §4
+#:   gives to ``DataType.discriminator``.  It keeps refusing.
+#: * ``errorMessage`` (2 sites, 1 document) constrains nothing, and its document
+#:   refuses on ``if`` first, so admitting it would change no outcome.  Nothing is
+#:   admitted on no evidence.
+#: * The other 19 -- ``version``, ``lastUpdated``, ``last_updated``, ``mappings``,
+#:   ``vocabulary``, ``governance``, ``extensions``, ``_generated``,
+#:   ``_generatedAt``, ``adcp_version``, ``architecture``, ``asset_types``,
+#:   ``baseUrl``, ``prerelease``, ``protocol_layers``, ``published_version``,
+#:   ``stability``, ``usage_notes``, ``versioning`` -- ARE NOT ANNOTATIONS.  They are
+#:   a document's own INSTANCE DATA at a schema root: five registry, vocabulary and
+#:   index documents carry their payload beside their schema.  Measured: 4 of those 5
+#:   refuse on ``type`` ("no D2 row selects this root") and not on a payload key at
+#:   all, so admitting the 19 changes nothing for them and buys the fifth
+#:   (``registries/v1-canonical-mapping.json``) by calling a registry's 300-line
+#:   ``mappings`` payload an annotation.  That is the blanket allowance in another
+#:   shape, and the set would then grow by a data field name per registry.  The fifth
+#:   stays refused, which is a designed outcome.
+BUNDLE_ANNOTATIONS = frozenset({"notes", "enumMetadata"})
+
+#: The ONE set every reader asks, so the two halves above cannot drift apart from a
+#: second literal.  Read by :func:`check_keywords` and by the three places that ask
+#: what a node DECLARES (``lower.union._plan``, ``lower.product._own``,
+#: ``lower.rules._own``) -- the same question, since a key that annotates without
+#: constraining is not a declaration either.
+ANNOTATIONS = _DRAFT_ANNOTATIONS | BUNDLE_ANNOTATIONS
+
+#: Every name draft-07 DEFINES, read off the draft's own meta-schema rather than
+#: typed here, and used for one thing: to tell a keyword no row lowers YET from a
+#: name no row can EVER lower (:func:`check_keywords`).
+DRAFT07 = frozenset(Draft7Validator.META_SCHEMA["properties"])
 
 #: **D6's six keyword families, as the set a keyword screen admits.**
 #:
@@ -761,6 +856,17 @@ class Module:
     #: rule for a ``~0``/``~1`` in a key.  Empty by default: a document lowered outside
     #: ``lower_document`` resolves no local reference rather than inventing a symbol.
     local: Mapping[str, dict] = field(default_factory=dict)
+
+    #: The pointers of this document's nodes an ENCLOSING node already constrains to
+    #: ``type: "object"``; see ``bundle.constrained_to_object``.  A fact about the
+    #: DOCUMENT, computed once per document rather than re-derived per node, which is
+    #: the same arrangement as ``named`` and for the same reason: a lowering reads a
+    #: set and no two readings of the enclosing structure can disagree.
+    #:
+    #: Empty by default, which refuses rather than admits -- a node lowered outside
+    #: ``lower_document`` states its own ``type`` or is refused, which is exactly what
+    #: :func:`lower_object` did before this set existed.
+    object_constrained: frozenset[str] = frozenset()
     imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
     blocks: list[str] = field(default_factory=list)
     names: set[str] = field(default_factory=set)
@@ -901,18 +1007,44 @@ def rules_at(node: dict, *also: dict) -> Rules:
     )
 
 
+def _why(key: str) -> str:
+    """Why this key stopped the walk, and the two answers are not the same claim.
+
+    A key draft-07 DEFINES is a keyword some D2 row owns, so "a later row does" is
+    a schedule and the bead for it exists.  A key draft-07 does not define has no
+    row to be scheduled -- it is not a schema keyword, so there is no lowering to
+    write -- and answering "a later D2 row does" about one PROMISES AN UNSCHEDULED
+    ROW.  Measured on the base tree (``5d92cf2c0``, 406 emitted and 648 refused of
+    1,054): 11 of the 648 refusals answered that about a
+    non-keyword (``discriminator`` 7, ``notes`` 2, ``enumMetadata`` 1,
+    ``last_updated`` 1), and the four this bead names were three distinct names at
+    a root with no row anywhere that could ever claim them.
+
+    So the admission decision and the refusal REASON are the one bug read twice:
+    :data:`BUNDLE_ANNOTATIONS` names the non-keywords that annotate, and this names
+    what a refusal says about the rest.
+    """
+    if key in DRAFT07:
+        return refusal.DEFERRED_TO_A_LATER_ROW
+    return (
+        "draft-07 defines no such keyword, so no D2 row lowers it and none is "
+        "scheduled; a non-keyword that ANNOTATES a node is named in "
+        "compiler.BUNDLE_ANNOTATIONS and this is not one of those names"
+    )
+
+
 def check_keywords(
     node: dict,
     pointer: str,
     handled: set[str],
-    why: str = "this step lowers no such keyword (a later D2 row does)",
+    why: str | None = None,
 ) -> None:
     for key in sorted(node):
         if key in handled or key in ANNOTATIONS or key in DEFINITION_SECTIONS:
             continue
         if key.startswith("x-"):
             continue
-        raise Refusal(key, pointer, why)
+        raise Refusal(key, pointer, why or _why(key))
 
 
 # --------------------------------------------------------------------------- #
@@ -927,7 +1059,7 @@ def fields(
     *,
     inherited: Collection[str] = (),
     declared_at: Mapping[str, str] | None = None,
-    decided: Mapping[str, Decided] | None = None,
+    distinct: Collection[str] = (),
 ) -> list[Property]:
     """The decided properties for one property map, children declared first.
 
@@ -946,12 +1078,25 @@ def fields(
     declared at where that is not ``<pointer>/properties/<key>``, which it is not
     for a key that came from a conjunct.
 
-    ``decided`` is a per-property type the CALLER has already decided, by property
-    key.  It exists so a lowering that owns a keyword for ONE position can apply it
-    there without claiming the keyword everywhere: the union row turns a branch's
-    ``const`` into a ``Literal``, and putting that into ``decide_type`` instead
-    would emit a ``const`` row for steps 1 and 2's own populations too and collide
-    with whichever step claims D2's ``const`` row in full.
+    There was a third keyword argument, ``decided``: a per-property type the CALLER
+    had already decided, so that the union row could turn a branch's ``const`` into a
+    ``Literal`` without claiming the keyword everywhere.  **It is gone, and so is the
+    scoping it existed for.**  D2's ``const`` row is ``codegen.lower.const`` and
+    ``decide_type`` reaches it for every node, so a branch's discriminating pin is
+    decided exactly the way every other property is -- which leaves one lowering for
+    the keyword instead of two that have to agree.
+
+    ``distinct`` is the same "one position, not everywhere" shape that ``decided``
+    had, and it survives because its keyword has no such row: it names the keys whose
+    array D6's rule lowering has CLAIMED the ``uniqueItems`` of
+    (``lower.rules._distinct``).  The keyword is stripped off the declaration here so
+    the array row never sees it -- which is what leaves that row's screen refusing an
+    array no class holds rather than widening it -- and :attr:`Property.distinct`
+    carries the fact onto the field, where ``_field`` renders it.  A key named here
+    whose declaration is not an array with ``uniqueItems: true`` is a caller defect,
+    so nothing is silently stripped: the strip is read off the declaration and the
+    flag off this set, and the two agreeing is asserted by the rules lowering's own
+    gate.
     """
     undeclared = [r for r in required if r not in props and r not in inherited]
     if undeclared:
@@ -974,7 +1119,13 @@ def fields(
                 "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
             )
         spelled[fname] = key
-        decided_type = (decided or {}).get(key) or mod.decide(sub, at, name + class_name(key), mod)
+        is_distinct = key in distinct
+        if is_distinct:
+            # D6 owns the keyword at this position, so the walk below must not see it:
+            # the array row carries no ``uniqueItems`` and refuses one by name, which
+            # is what keeps an array NO class holds refused rather than widened.
+            sub = {k: v for k, v in sub.items() if k != "uniqueItems"}
+        decided_type = mod.decide(sub, at, name + class_name(key), mod)
         is_required = key in required
         default = MISSING
         if "default" in sub:
@@ -1005,6 +1156,7 @@ def fields(
                 description=doc if isinstance(doc, str) and doc else None,
                 constraints=decided_type.constraints,
                 format=decided_type.format,
+                distinct=is_distinct,
             )
         )
     return built
@@ -1103,15 +1255,15 @@ def lower_object(
     mod: Module,
     *,
     bases: tuple[str, ...] = (),
-    decided: Mapping[str, Decided] | None = None,
     body_lines: tuple[str, ...] = (),
 ) -> str:
     """Append the class for an object node, children first, and return its name.
 
-    The three keyword arguments are what a COMPOSITION needs and a leaf object does
+    The two keyword arguments are what a COMPOSITION needs and a leaf object does
     not, and each defaults to the leaf's answer, so steps 1 and 2's call sites are
-    unchanged and so is every module they emit.  :func:`fields` documents
-    ``decided``; ``bases`` and ``body_lines`` are :class:`Class`'s own.
+    unchanged and so is every module they emit.  Both are :class:`Class`'s own.  A
+    third, ``decided``, is gone with the union row's private ``const`` lowering --
+    :func:`fields` says why.
     """
     # D6's six families are handled HERE and not refused: a rule attaches to the
     # nearest class, so a node with fields is the only node that can carry one.  The
@@ -1131,7 +1283,8 @@ def lower_object(
             *stated.screen,
         },
     )
-    if node.get("type") != "object":
+    declared = node.get("type")
+    if declared != "object" and not (declared is None and pointer in mod.object_constrained):
         # A node carrying ``properties`` and no ``type`` ADMITS A NON-OBJECT: JSON
         # Schema applies ``properties`` only to objects and asserts nothing about
         # anything else, so ``{"properties": {"a": {"type": "string"}}, "required":
@@ -1146,12 +1299,27 @@ def lower_object(
         # and they reach it in the worst way: the accepts check reports
         # ``model_type`` on a valid instance, which is the model refusing a payload
         # the document admits.
+        #
+        # **``mod.object_constrained`` is what keeps it from reading the node in
+        # ISOLATION, which was the other half of the defect.**  draft-07 applies a
+        # root's assertions and its combinator branch's to the SAME instance, so
+        # ``{"type": "object", "oneOf": [{"properties": ...}]}`` admits only objects
+        # and the branch at ``/oneOf/0`` restates nothing: there is no non-object for
+        # the class to be narrower than.  This refusal fired for 11 documents whose
+        # own root declares ``type: object`` three lines above the branch, and for 33
+        # whose node is a PROPERTY's own schema -- where nothing constrains the value
+        # and the refusal is right.  ``bundle.constrained_to_object`` is the one
+        # reading of which is which.
+        #
+        # A node declaring a type that is NOT ``object`` is still refused whatever
+        # encloses it: a conjunction of ``object`` and ``string`` admits nothing, and
+        # a class for it would accept what the document refuses.
         raise Refusal(
             "type",
             pointer,
             f"an object node must declare type: object; this one declares "
-            f"{node.get('type', '<absent>')!r}, so the document admits a non-object that "
-            "no class can",
+            f"{node.get('type', '<absent>')!r} and nothing enclosing it constrains the "
+            "instance to an object, so the document admits a non-object that no class can",
         )
     props = node["properties"]
     if not isinstance(props, dict) or not props:
@@ -1166,7 +1334,7 @@ def lower_object(
     required = node.get("required", [])
     if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
         raise Refusal("required", pointer, f"required is {required!r}, not a list of names")
-    built = fields(props, required, pointer, name, mod, decided=decided)
+    built = fields(props, required, pointer, name, mod, distinct=stated.distinct)
     return declare_object(
         node,
         name,

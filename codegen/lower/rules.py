@@ -23,11 +23,15 @@ rule, so ``CanvasConstraint.model_validate({"unit": "percent", "x": 101})`` buil
 ``CanvasConstraint.strict_validate`` of the same payload refuses on ``maximum``.  That
 pair is a committed test, so the ceiling is measured rather than claimed.
 
-``uniqueItems`` is read and carried nowhere, for a different reason: it constrains the
-MEMBERS of an array, the array lowering is step 6's row and another module's file, and a
-rule no emitted class can carry is dead code no instrument can grade.  It is in
-:data:`KEYWORDS` so that it does not block the lowering that will reach it, and its
-instrument -- a ``harness.steps()`` step, which had never existed -- is in this step.
+``uniqueItems`` is the one family whose keyword sits on a node BELOW the class that
+carries the rule: the array a FIELD holds.  467 of the bundle's 485 occurrences are at a
+``properties/<name>`` slot, so D2's *a rule on the nearest class* makes the class holding
+the array the one that states it, and :func:`_distinct` reads it off this node's own
+``properties`` -- the same reach :func:`conditional_properties` already makes into
+``if``/``then``/``else``.  The array row's own keyword screen is left alone, which is the
+decision rather than an omission: an array with no class above it (a mapping value, a
+document root, a combinator branch -- 18 of the 485) keeps refusing on ``uniqueItems`` by
+name, and that is the true reason, because a rule has nowhere to live there.
 
 **The step-5 boundary, and why it is a predicate and not a precedence rule.**  A
 ``oneOf``/``anyOf`` whose branches are SHAPES is a union root: a base, one subclass per
@@ -104,6 +108,13 @@ class Lowered:
     rules: list[str] = field(default_factory=list)
     properties: dict[str, dict] = field(default_factory=dict)
     imports: set[tuple[str, str]] = field(default_factory=set)
+    #: The property keys whose array this node states is DISTINCT, in document order.
+    #: Names only, because the keyword's two consequences belong to the compiler: it
+    #: is stripped off the declaration before the array row sees it, and it is
+    #: rendered onto the field so the schema comparison grades it
+    #: (``compiler.fields``, ``compiler.Property.distinct``).  A declaration re-cut
+    #: here instead would put the walk's input in two modules.
+    distinct: tuple[str, ...] = ()
 
 
 def lower(node: dict) -> Lowered:
@@ -114,6 +125,7 @@ def lower(node: dict) -> Lowered:
     _negated(node, out)
     _combinator(node, out)
     _conditional(node, out)
+    _distinct(node, out)
     for name, declaration in conditional_properties(node).items():
         if name not in (node.get("properties") or {}):
             out.properties[name] = declaration
@@ -195,7 +207,28 @@ def _depends(node: dict, out: Lowered) -> None:
 
 
 def _count(node: dict, out: Lowered) -> None:
+    """``minProperties`` / ``maxProperties``, counted over the keys that arrived.
+
+    **The MINIMUM is written only where the class KEEPS every key the document would
+    count**, and that is a correctness gate rather than a refinement.  D8 maps a
+    silent ``additionalProperties`` to ``extra="ignore"``, so a key the document
+    counts and the model drops is not counted by the rule -- and a ``minProperties``
+    rule then REFUSES AN INSTANCE THE DOCUMENT ACCEPTS, which is a model narrower
+    than its schema and the one direction D4 does not permit.  Measured, on the pair
+    that found it: ``core/provenance.json``'s ``render_guidance`` states
+    ``minProperties: 1`` and declares four properties, the document accepts
+    ``{"": null}``, and the class dropped the undeclared key and refused on
+    ``minProperties``.  So the minimum rides only where ``additionalProperties`` is
+    STATED -- ``false`` gives ``forbid`` and every counted key is a declared field,
+    ``true`` or a typed one gives ``allow`` and ``supplied`` reads the extras too.
+
+    The MAXIMUM needs no gate, in either direction: a dropped key can only make the
+    model's count LOWER than the document's, so the rule can under-refuse and never
+    over-refuse.  Under-refusing is what D4 already says the constructor may do.
+    """
     lo, hi = (_whole(node.get(k)) for k in ("minProperties", "maxProperties"))
+    if "additionalProperties" not in node:
+        lo = None
     if lo is None and hi is None:
         return
     out.rules.append(f"PropertyCount(minimum={lo!r}, maximum={hi!r})")
@@ -232,6 +265,34 @@ def _combinator(node: dict, out: Lowered) -> None:
             continue
         out.rules.append(f"RequiredGroups({groups!r}, {keyword!r})")
         out.imports.add((RUNTIME_MODULE, "RequiredGroups"))
+
+
+def _distinct(node: dict, out: Lowered) -> None:
+    """``uniqueItems: true`` on an array this node holds as a property.
+
+    The one keyword here that is read one level down, because D2 puts the rule on the
+    NEAREST CLASS and the keyword's node -- an array -- is never a class.  Document
+    order, so the emitted tuple is a function of the document's content (P7).
+
+    Gated on ``type: array`` and on the value being exactly ``true``: draft-07 applies
+    ``uniqueItems`` to an array and ignores it for every other instance, so a
+    ``uniqueItems`` on a string property says nothing and must not become a rule, and
+    ``uniqueItems: false`` is the keyword's own default and states nothing either.  A
+    node this declines leaves the keyword on the declaration, where the array row
+    refuses it by name.
+    """
+    claimed = [
+        key
+        for key, declaration in (node.get("properties") or {}).items()
+        if isinstance(declaration, dict)
+        and declaration.get("type") == "array"
+        and declaration.get("uniqueItems") is True
+    ]
+    if not claimed:
+        return
+    out.distinct = tuple(claimed)
+    out.rules.extend(f"UniqueItems({key!r})" for key in claimed)
+    out.imports.add((RUNTIME_MODULE, "UniqueItems"))
 
 
 def _conditional(node: dict, out: Lowered) -> None:

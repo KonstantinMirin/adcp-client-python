@@ -262,21 +262,22 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
     accepted set IS the document's. The refusal stands on the GRADER instead, and the
     body below carries the measurement.
 
-    **A ``null`` arm REFUSES, and the reason is the grader rather than the
-    rendering.**  ``None`` is a perfectly good arm and the compiler folds it with
-    D4's own ``| None`` on an optional property, so ``str | None`` comes out either
-    way.  What has no answer is grading it: the schema comparison reads a model's
-    ``anyOf`` with one ``null`` branch as D4's rendering of ABSENCE and unwraps it,
-    because that is what it is at every site the bundle has -- so a document that
-    genuinely declares ``["string", "null"]`` and a model that merely has an
-    optional property compare identically, and a model that dropped the declared
-    null would pass.  Emitting a node no check can grade is the widening this
-    pipeline exists to remove, so it refuses by name.  Measured: 0 of the 2
-    multi-type sites in the emitted population carry ``null`` (both are
-    ``["number", "string"]``), and 31 more sit in documents refused for another
-    reason, so this costs no document today.  It is lifted by teaching the
-    comparison to tell a declared null from D4's, which needs the DOCUMENT at the
-    normalization and is the harness's row, not this one's.
+    **A ``null`` arm is an ARM, and it used to refuse on the grader.**  ``None``
+    was always a perfectly good arm and the compiler always folded it with D4's own
+    ``| None`` on an optional property, so ``str | None`` came out either way; what
+    had no answer was GRADING it.  The schema comparison read a model's ``anyOf``
+    with one ``null`` branch as D4's rendering of ABSENCE and unwrapped it, so a
+    document declaring ``["string", "null"]`` and a document with a merely optional
+    ``{"type": "string"}`` compared identically -- and a model that dropped the
+    declared null compared identically too.  That is the instrument defect
+    ``salesagent-j3k2l.21`` names, and it is fixed where it lived: the comparison
+    reads the DOCUMENT at the normalization (``harness._declares_null``) and folds
+    the branch into the type list where the document declares one.  So the node is
+    graded and the refusal is retired rather than restated with a new reason.
+
+    It was worth 3 documents -- ``core/delivery-metrics.json``,
+    ``core/error.json`` and ``core/webhook-activity-record.json`` -- and
+    ``["string", "null"]`` is ``str | None``, the most ordinary thing pydantic has.
     """
     kinds = node["type"]
     if not kinds or len(set(kinds)) != len(kinds) or not all(isinstance(k, str) for k in kinds):
@@ -284,15 +285,6 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
     unknown = sorted(set(kinds) - set(ARM))
     if unknown:
         raise Refusal("type", pointer, f"unknown type(s) {unknown}")
-    if "null" in kinds and len(kinds) > 1:
-        raise Refusal(
-            "type",
-            pointer,
-            f"{sorted(kinds)} declares null beside {len(kinds) - 1} other type(s), and the "
-            "schema comparison cannot tell a DECLARED null from D4's rendering of an "
-            "optional property -- it unwraps a single null branch as absence -- so the "
-            "node would be emitted ungraded",
-        )
     carried = frozenset().union(*(ARM[k] for k in kinds))
     compiler.check_keywords(  # the walk's own check
         node,
@@ -301,36 +293,51 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
         f"no arm of {sorted(kinds)} can carry it, so it constrains nothing",
     )
     stated = sorted(set(node) & carried)
-    if stated:
-        # **A CONSTRAINED arm refuses, and the reason is now the GRADER rather than
-        # the rendering.**  D5's alias module removed the rendering obstacle -- the
-        # arm's own type carries its own bound, so ``StrMinLen4 | int`` is what this
-        # lowers to and the string's keyword no longer reaches the field and bounds
-        # the integer arm.  Measured: that model's accepted set IS the document's.
+    live = [k for k in kinds if k != "null"]
+    if stated and len(live) > 1:
+        # **A CONSTRAINED arm refuses WHERE MORE THAN ONE ARM IS LIVE, and the reason
+        # is the GRADER rather than the rendering.**  D5's alias module removed the
+        # rendering obstacle -- the arm's own type carries its own bound, so
+        # ``StrMinLen4 | int`` is what this lowers to and the string's keyword no
+        # longer reaches the field and bounds the integer arm.  Measured: that
+        # model's accepted set IS the document's.
         #
-        # What has no answer is grading it.  ``harness._normalize`` folds a model's
-        # ``anyOf`` back into the document's ``type`` LIST only where EVERY branch is
-        # a bare ``{"type": X}`` -- a constrained branch is not one, and folding it
-        # would throw that branch's constraint away -- so the comparison reads such a
-        # model as stating neither the ``type`` list nor the constraint, and reports a
-        # faithful node as dropping two facts.  Measured on exactly the document this
-        # paragraph describes.
+        # What has no answer is grading THAT shape.  ``harness._normalize`` folds a
+        # model's ``anyOf`` back into the document's ``type`` LIST only where EVERY
+        # branch is a bare ``{"type": X}`` -- a constrained branch is not one, and
+        # folding it would throw that branch's constraint away -- so the comparison
+        # reads such a model as stating neither the ``type`` list nor the constraint,
+        # and reports a faithful node as dropping two facts.  Re-measured on
+        # ``{"type": ["string", "integer"], "minLength": 4}`` and on the same node
+        # with a ``null`` beside it: ``model_drops_a_fact`` both times, missing
+        # ``/type`` and ``/minLength``.
+        #
+        # **``len(live) > 1`` is the whole of what changed, and it is a measurement.**
+        # With exactly ONE live arm the node is ``T | None``, which is case 1 of the
+        # fold rather than case 2 -- and case 1 keeps the live branch's OWN keys, so
+        # the constraint is compared where it sits.  Measured in both directions on
+        # the two documents this gains: ``{"type": ["number", "null"], "minimum": 0,
+        # "maximum": 1}`` passes against a faithful model, reports ``/minimum`` and
+        # ``/maximum`` against one that drops them and ``/maximum`` against one that
+        # widens to ``ge=0`` alone; ``{"type": ["string", "null"], "format":
+        # "date-time"}`` passes against ``AwareDatetime | None`` and reports
+        # ``/format`` against ``str | None``.  So the node is graded in that shape and
+        # refusing it would refuse a document the instrument reads.
         #
         # Emitting a node no check can grade is the widening this pipeline exists to
-        # remove, which is the same reasoning the ``null`` arm below refuses on. It
-        # costs no document: of the 56 multi-type nodes in the named population's
-        # documents, **0 in an EMITTED document state anything beyond ``type``**, and
-        # the 36 that do sit in documents refused for another reason. It is lifted by
-        # teaching the comparison to compare a constrained union branch-wise, which
-        # is the harness's row and not this one's.
+        # remove, and it still costs no document in the blind shape: 0 multi-type node
+        # with two live arms and a constraint sits in a document the emitter reaches.
+        # It is lifted the rest of the way by teaching the comparison to compare a
+        # constrained union branch-wise, which is the harness's row and not this one's.
         raise Refusal(
             stated[0],
             pointer,
-            f"{sorted(kinds)} states {stated}, which D5's alias module can now put on "
-            "the arm's own type -- but the schema comparison folds a model's anyOf "
-            "back into a type LIST only where every branch is a bare type, so a "
-            "constrained branch reads as dropping both the type list and the "
-            "constraint and the node would be emitted ungraded",
+            f"{sorted(kinds)} states {stated} with {len(live)} live arms, which D5's "
+            "alias module can now put on an arm's own type -- but the schema "
+            "comparison folds a model's anyOf back into a type LIST only where every "
+            "branch is a bare type, so a constrained branch beside another live arm "
+            "reads as dropping both the type list and the constraint and the node "
+            "would be emitted ungraded",
         )
     arms: list[compiler.Type] = []
     for kind in kinds:

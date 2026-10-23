@@ -89,11 +89,17 @@ from codegen.refusal import Refusal
 #: instance -- ``enum`` has already closed the value set -- and an enumeration has
 #: no slot for a per-value metadata block, so the three documents carrying one
 #: (``enums/error-code.json``, ``enums/media-buy-valid-action.json``,
-#: ``enums/request-signing-error-code.json``) emit without it.  Refusing it
-#: instead is one row out of this set and costs those three documents and no
-#: cascade; it is a ceiling because the block carries normative consumer guidance
-#: ("SDKs MUST consume this block") that this SDK does not surface.
-HANDLED = frozenset({"type", "enum", "enumDescriptions", "enumMetadata", "default"})
+#: ``enums/request-signing-error-code.json``) emit without it.  It is a ceiling
+#: because the block carries normative consumer guidance ("SDKs MUST consume this
+#: block") that this SDK does not surface.
+#:
+#: **That admission is no longer this row's**, and that is the whole of
+#: `salesagent-j3k2l.23`: the reason above is a fact about the KEYWORD and not about
+#: an enum root, so it holds at the fourth document carrying one
+#: (``core/media-buy-available-action-id.json``, a UNION root, which this set does
+#: not reach).  ``compiler.BUNDLE_ANNOTATIONS`` names it once for every position, so
+#: a second entry here would be a second place for one decision to drift.
+HANDLED = frozenset({"type", "enum", "enumDescriptions", "default"})
 
 #: What a member name takes when the value's own text cannot begin an identifier.
 #: 17 string values (``1.0``, ``4:2:0``, ``3d_render``, ...) and 6 integer values

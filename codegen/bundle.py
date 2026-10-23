@@ -17,6 +17,8 @@ import json
 from collections.abc import Collection, Iterator
 from pathlib import Path
 
+from adcp.types._base import applied_schema
+
 from codegen import compiler
 from codegen.harness import resolve
 from codegen.lower import rules, union
@@ -230,6 +232,46 @@ def named_nodes(bundle_dir: Path) -> dict[str, frozenset[str]]:
             if target is not None:
                 out.setdefault(target, set()).add(pointer)
     return {d: frozenset(p) for d, p in out.items()}
+
+
+def constrained_to_object(doc: dict) -> frozenset[str]:
+    """The pointers of nodes that state no ``type`` and that the DOCUMENT applies
+    ``type: "object"`` to anyway.
+
+    draft-07 applies a root's assertions and its combinator branch's to the SAME
+    instance, so ``{"type": "object", "oneOf": [{"properties": {...}}]}`` admits only
+    objects and the branch at ``/oneOf/0`` does not have to restate it.  Read in
+    ISOLATION that branch admits a non-object, which is what ``compiler.lower_object``
+    refused it for -- a fact three lines up in its own document.  10 documents of the
+    3.2 bundle were refused for exactly that, and another 34 chained off them through
+    a ``$ref``.
+
+    **The rule is ``_base.applied_schema``'s and is not restated here.**  That
+    function is what the RUNTIME resolves a class's ``__adcp_schema__`` through, so
+    deriving the lowering's answer from it is what makes it impossible for the
+    emitter to admit a node whose class would then be narrower than the schema it
+    names.  Two spellings of "which hop keeps the instance" is precisely how that
+    divergence would arrive, and it would arrive silently.
+
+    A function of the DOCUMENT alone, like every other derived fact here, over
+    :func:`nodes` -- the one walk -- so there is no second table of what a schema
+    position is either.
+
+    The node's own ``type`` always wins, so this set holds only nodes that declare
+    none: a node declaring ``string`` under a root declaring ``object`` states a
+    contradiction and stays refused rather than being quietly rewritten.  A
+    ``["object", "null"]`` enclosing type admits a null, so it is not a string and
+    constrains nothing here.
+
+    Measured on the 3.2 bundle over all 1,054 portable documents: 1,390 nodes declare
+    a non-empty ``properties`` without ``type: "object"``; 556 of them, in 151
+    documents, are in this set and 834, in 206 documents, are not.
+    """
+    return frozenset(
+        p
+        for p, n in nodes(doc)
+        if "type" not in n and applied_schema(doc, p).get("type") == "object"
+    )
 
 
 def resolved(bundle_dir: Path, document: str) -> dict:
@@ -458,7 +500,7 @@ def carries_an_enum(doc: dict) -> bool:
 def composes_at_the_root(doc: dict) -> bool:
     """Step 4's population: a root carrying ``allOf`` with NO union beside it.
 
-    **287 documents**, and the definition is what lands on that number: the other
+    **301 documents**, and the definition is what lands on that number: the other
     readings give 342 (any root ``allOf``, union or not), 401 (``allOf`` anywhere
     in the document) and 257 (``allOf`` at the root and nowhere else).  A verdict
     read off a population nobody counted is a verdict over however many documents
@@ -469,13 +511,30 @@ def composes_at_the_root(doc: dict) -> bool:
     document applies to the whole instance and therefore to every branch, and a
     row that lowered the conjuncts without the branches would apply the bases to
     some branches and not others.  So the two populations are DISJOINT by this
-    clause -- 55 documents carry both -- and ``emit.lower_document`` fails on a
-    document two rows select rather than letting a table order decide.
+    clause and ``emit.lower_document`` fails on a document two rows select rather
+    than letting a table order decide.
+
+    **"A union beside it" IS :func:`union_root`, and reading it any other way left
+    a 14-document hole in the partition.**  This clause used to ask whether the key
+    ``oneOf`` or ``anyOf`` was PRESENT, while ``union_root`` asks the lowering
+    (``union.keyword`` plus ``rules.presence_only``) and answers no for a
+    combinator of ``required`` GROUPS -- which is a rule on one class, not a union
+    of shapes.  So a root carrying ``allOf`` beside a presence-only ``anyOf`` was
+    refused by this row for having a union and by step 5's row for not having one,
+    and ``emit.lower_document`` reported "no D2 row selects this root" for all 14
+    of them.  Those 14 were 14 of the 21 documents ``salesagent-j3k2l.21`` was
+    filed over.
+
+    The fix is the one ``union_root``'s own docstring already states for the other
+    direction -- ONE implementation of the keyword read, and it is the LOWERING'S.
+    Measured over all 1,054 portable documents: 287 -> 301, **0 documents lost**,
+    and **0 of the 301 claimed by any other row**, so the table is still a
+    partition.
 
     This is the row's selector and the predicate its metric is stated over, so it
     cannot come to claim a document the step does not count.
     """
-    return isinstance(doc.get("allOf"), list) and not any(k in doc for k in ("oneOf", "anyOf"))
+    return isinstance(doc.get("allOf"), list) and not union_root(doc)
 
 
 def union_root(doc: dict) -> bool:

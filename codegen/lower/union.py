@@ -41,19 +41,33 @@ give:
   the 44 documents that pass this module's keyword screen, all five entirely bare-ref;
 * a ``required``-only overlay, which constrains requiredness and nothing else: that is a
   rule on the root's class (D2, D6), step 7's row;
-* an ``allOf`` conjunct (step 4), a scalar or array branch (step 6, D2), a nested
-  ``oneOf``/``anyOf``/``not``/``if``, an ``enum`` or a bare ``const``.
+* a scalar or array branch (step 6, D2), a nested ``oneOf``/``anyOf``/``not``/``if``, or an
+  ``enum``.  A branch carrying a bare ``const`` is a SCALAR branch and is refused as one:
+  the ``const`` pins the branch's whole value, so there is no property map to declare a
+  subclass from.  D2's ``const`` row (``codegen.lower.const``) decides a branch's
+  PROPERTIES, which is where the discriminating pin sits, and this module no longer
+  carries a copy of it;
+* an ``allOf`` conjunct list.  That one is lowerable and is refused for a reason of its
+  own, stated at the refusal in :func:`_plan`: the conjuncts sit at the branch's own
+  node, so the grader has a pointer for them, and what is missing is only that the
+  conjunct reader is the product row's and D13 keeps it out of reach.  It is checked
+  AFTER the branch's ``type``, because a branch whose type is not an object cannot be a
+  class whatever else it states -- see :func:`_plan`.
 
 WHAT THE ROOT MAY NOT CARRY, and this is the one refusal that is about the GRADER rather
-than about a missing lowering.  A root ``properties``, ``required`` or
+than about a missing lowering.  A root ``allOf``, ``properties``, ``required`` or
 ``additionalProperties`` applies to the whole document in draft-07, so it is a
-CONJUNCTION with every branch -- the same fact D7 records for a root ``allOf``.  A branch
+CONJUNCTION with every branch -- and for ``allOf`` that is D7's own wording.  A branch
 class inheriting those fields is the faithful reading of the document, and it is also
 unreportable: the branch's own ``__adcp_schema__`` names ``#/<kw>/<i>``, that node states
 none of the root's facts, and the schema comparison correctly reports the inherited ones
 as facts the model adds.  There is no JSON pointer to the conjunction, so there is nothing
 for the branch to name instead.  Emitting it is the row for a step that can name a
-conjunction; here it refuses.  Measured cost: 4 of the 44.
+conjunction; here it refuses.  Measured cost: 4 of the 44 for the three object facts, and
+41 documents for ``allOf`` -- 37 of whose conjuncts reference ``core/version-envelope.json``
+and 33 ``core/protocol-envelope.json``, which is D7's envelope pair on the task-response
+documents D7 names.  **D7 reads the other way about those 41, so the conflict is recorded
+at ``ROOT_CONJUNCTS`` with the probe that decided it rather than resolved by preference.**
 
 The consequence is that ``_ROOT_REQUIRED`` is ``()`` for every document this step emits --
 a root with required fields declares the properties they name, and that refuses above.  It
@@ -67,8 +81,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-import jsonschema
-
 from codegen import compiler
 from codegen.refusal import Refusal
 
@@ -76,19 +88,55 @@ from codegen.refusal import Refusal
 #: draft-07 -- ``jsonschema`` has no validator for it, so ignoring it cannot make the model
 #: wider than its document -- and it is READ here, as the property D3's rule 2 takes a
 #: branch's name from.
-#: The three conjuncts are HANDLED here so that the explicit refusal below is what reports
+#: The four conjuncts are HANDLED here so that the explicit refusal below is what reports
 #: them, after every other keyword has been checked.  Left out of this set, they refuse
-#: through ``_check_keywords``, which walks ``sorted(node)`` -- so a root carrying both
-#: ``additionalProperties`` and ``allOf`` was reported against ``additionalProperties``,
-#: this module's own grader-driven refusal, when the reason it is not emitted is step 4's
-#: ``allOf``.  Measured: the by-keyword profile over the 156 read 55 ``additionalProperties``
-#: / 42 ``allOf`` that way, and 0 / 55 this way.  Attribution is the point of a refusal
-#: report, and the same principle ``harness.violated_keywords`` is built on.
-ROOT_HANDLED = frozenset({"type", "discriminator", "properties", "required", "additionalProperties"})
+#: through ``compiler.check_keywords``, which walks ``sorted(node)`` -- so a root carrying
+#: both ``additionalProperties`` and ``oneOf`` branches blocked by a later step's keyword
+#: was reported against ``additionalProperties``, this module's own grader-driven refusal,
+#: rather than against the keyword that is the reason.  Measured: the by-keyword profile
+#: over the 156 read 55 ``additionalProperties`` / 42 ``allOf`` that way, and 0 / 55 this
+#: way.  Attribution is the point of a refusal report, and the same principle
+#: ``harness.violated_keywords`` is built on.
+ROOT_HANDLED = frozenset(
+    {"type", "discriminator", "properties", "required", "additionalProperties", "allOf"}
+)
 
-#: The root object facts whose refusal is explained in the module docstring.  Checked after
-#: ``_check_keywords``, so a root blocked by a later step's keyword is reported against it.
-ROOT_CONJUNCTS = ("properties", "required", "additionalProperties")
+#: The root facts whose refusal is explained in the module docstring.  Checked after
+#: ``compiler.check_keywords``, so a root blocked by a later step's keyword is reported
+#: against it.
+#:
+#: **``allOf`` IS ONE OF THEM, and it was the entry that read as step 4's.**  A root
+#: ``allOf`` is a conjunction with every branch for precisely the reason the other three
+#: are -- D7 states it in those words -- so a branch class inheriting the conjuncts'
+#: classes states facts its own ``#/<kw>/<i>`` node does not, and there is no pointer to
+#: the conjunction for it to name.  It sat outside this tuple and refused through the
+#: keyword screen with "a later D2 row does", which pointed at step 4's product row;
+#: measured, that row claims 0 of these documents -- ``bundle.composes_at_the_root``
+#: excludes a root carrying a union -- so the deferral named a row that was never going
+#: to see them.
+#:
+#: FIRST in the tuple, so the keyword each of those documents is reported on does not
+#: move: ``allOf`` is the structural fact (the document composes) where the other three
+#: are the root's own inline facts, and it is the keyword D7 names.  Measured over the 41:
+#: 30 declare ``properties: {}``, 2 declare no ``properties``, 9 declare a non-empty one.
+#:
+#: **Measured rather than assumed: binding the conjuncts as bases emits none of them.**
+#: Probed by patching this row to do exactly that over all 41 -- 0 emit, and the blockers
+#: are elsewhere: 35 refuse on the root ``properties`` below, 4 on a branch ``not``, 1 on a
+#: branch ``type`` and 1 on ``dependencies``.  So the reachable population of a
+#: conjunct-binding branch here is 0 today, which is the same ground D5 refuses an ``enum``
+#: under ``propertyNames`` on and the product row omits a ``required``-only conjunct on.
+#:
+#: **And this entry is what keeps that honest once a branch stops refusing.**  Probed the
+#: other way, by removing ``allOf`` from this tuple while the keyword screen above still
+#: admits it: nothing emits today either, so the entry changes no accepted set now -- what
+#: it changes is the REASON 37 documents are refused, from a deferral naming a row that
+#: claims none of them to the fact above.  The widening it forecloses becomes reachable at
+#: the first branch repair: ``_base.applied_schema`` conjoins an enclosing ``type``, which
+#: by itself unblocks a branch in 17 of these 41, and without this entry such a document
+#: would emit a base that drops its composed bases -- caught by the comparison as a
+#: ``missing``, so a red gate rather than a named refusal.
+ROOT_CONJUNCTS = ("allOf", "properties", "required", "additionalProperties")
 
 #: What a BRANCH may carry and still be a class this module declares.
 #:
@@ -99,7 +147,26 @@ ROOT_CONJUNCTS = ("properties", "required", "additionalProperties")
 #: One predicate decides both (``rules.presence_only``, reached through the compiler
 #: because a lowering cannot import a sibling lowering), so there is no second reading
 #: for the two to disagree through.
-BRANCH_HANDLED = frozenset({"type", "properties", "required", "additionalProperties"})
+#:
+#: ``const`` and ``allOf`` are both in the set for ``ROOT_HANDLED``'s reason, and
+#: neither because this module lowers one: left out, the keyword screen reports them
+#: first with the generic "a later D2 row does", and an explicit refusal below says
+#: what each actually is.  Attribution is the point of a refusal report.
+#:
+#: ``const`` at the BRANCH node pins the branch's whole VALUE, so the branch is a
+#: scalar and the refusal that says so is :func:`_plan`'s ``type`` check.  The generic
+#: deferral pointed at a row that already exists (D2's ``const`` row is
+#: ``codegen.lower.const``, reached for every PROPERTY of a branch), which sent the
+#: reader looking for the wrong thing.  Measured: 1 document,
+#: ``core/start-timing.json``, whose two branches are a ``const`` and a
+#: ``format: date-time``, both scalars.
+#:
+#: ``allOf`` at the BRANCH node is a conjunct list the branch's own pointer addresses,
+#: so unlike the root case it is genuinely lowerable; :func:`_plan` refuses it on the
+#: one thing it lacks, which is the conjunct reader D13 keeps in the product row.
+BRANCH_HANDLED = frozenset(
+    {"type", "properties", "required", "additionalProperties", "const", "allOf"}
+)
 
 
 #: The two union keywords, in the order a root carrying one is read.
@@ -192,12 +259,18 @@ def branch_name(branch: dict, root: str, pointer: str, doc: dict) -> str:
 # --------------------------------------------------------------------------- #
 @dataclass(frozen=True)
 class Branch:
-    """One branch's decided class: its name, its node, and the types already decided."""
+    """One branch's decided class: its name and its node.
+
+    It carried a third field -- a per-property type this module had already decided,
+    for the ``const`` on the discriminating property -- and that is gone with
+    ``_literal``: D2's ``const`` row is ``codegen.lower.const`` now and the walk
+    reaches it for every node, so a branch's properties are decided the way every
+    other object's are.
+    """
 
     name: str
     pointer: str
     node: dict
-    decided: dict[str, compiler.Decided]
 
 
 def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> str:
@@ -232,8 +305,10 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
                 name,
                 pointer,
                 f"a root {name!r} is a conjunction with every branch (draft-07), and a "
-                f"branch class carrying it states a fact its own #{'/' + kw}/<i> node "
-                "does not: there is no pointer to the conjunction for it to name",
+                f"branch class that carries it -- as a field of its own, or as a base "
+                f"inherited through the root's class -- states a fact its own "
+                f"#{'/' + kw}/<i> node does not: there is no pointer to the conjunction "
+                "for it to name",
             )
     if doc.get("type") not in (None, "object"):
         raise Refusal("type", pointer, f"a union root of type {doc['type']!r} is step 6")
@@ -244,7 +319,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
         )
 
     planned = [
-        _plan(branches[i], f"{pointer}/{kw}/{i}", symbol, doc, mod) for i in range(len(branches))
+        _plan(branches[i], f"{pointer}/{kw}/{i}", symbol, doc) for i in range(len(branches))
     ]
     names = [p.name for p in planned]
     if len(set(names)) != len(names):
@@ -286,9 +361,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
     mod.add(symbol, pointer, rendered)
 
     for plan in planned:
-        compiler.lower_object(
-            plan.node, plan.name, plan.pointer, mod, bases=(symbol,), decided=plan.decided
-        )
+        compiler.lower_object(plan.node, plan.name, plan.pointer, mod, bases=(symbol,))
 
     # The module trailer.  Two statements beside the classes, which is the module writer's
     # own text (§3: no compiler template has a slot for a line beside a class), and they
@@ -299,7 +372,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
     return symbol
 
 
-def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module) -> Branch:
+def _plan(branch: Any, pointer: str, root: str, doc: dict) -> Branch:
     """What one branch becomes, or the refusal that says why it becomes nothing."""
     if not isinstance(branch, dict):
         raise Refusal("oneOf", pointer, f"a branch is {type(branch).__name__}, not a schema")
@@ -317,6 +390,56 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
     compiler.check_keywords(  # the walk's own check
         branch, pointer, BRANCH_HANDLED | compiler.rules_at(branch).screen
     )
+    # The TYPE first, and the property map after it.  A branch's type decides whether
+    # it can be a class AT ALL; whether it declares properties is a question only an
+    # object branch has.  The other order reported a scalar branch against
+    # ``properties`` -- "constrains only requiredness", of a node that constrains a
+    # value -- which is the same misattribution ``ROOT_HANDLED`` is ordered to avoid.
+    if branch.get("type") not in (None, "object"):
+        raise Refusal("type", pointer, f"a branch of type {branch['type']!r} is step 6")
+    # **The composition AFTER the type, for that same reason**, and the order is
+    # measured rather than preferred: a branch stating a non-object type cannot be a
+    # class whatever else it states, so the type is the reason and the conjunct list is
+    # not.  Measured over the portable population: 0 branches of a root union carry
+    # both a non-object ``type`` and an ``allOf``, so the order moves no document today
+    # -- it is written this way so that the first one to carry both is reported on the
+    # keyword that is the reason.
+    if "allOf" in branch:
+        # **A branch that COMPOSES, which is a different position from a root ``allOf``
+        # and is genuinely lowerable.**  The conjunct sits AT the branch's own node, so
+        # ``harness._composed`` folds its facts into the node the branch class names and
+        # the comparison has a pointer for every one of them -- none of the root case's
+        # unreportability applies here.
+        #
+        # What it needs is the conjuncts BOUND: a branch class's bases are already the
+        # union base (§4, and ``isinstance(payload, Base)`` depends on it), so a
+        # composing branch wants that base AND whatever its conjuncts name.  The reader
+        # that binds a conjunct list is the product row's, and a lowering imports
+        # ``codegen.compiler`` and ``codegen.refusal`` and nothing else of this package
+        # (D13), so this row cannot reach it -- a branch composes once that reader is
+        # shared machinery in ``compiler``, which is where D13 puts machinery two rows
+        # need.  ``mod.decide`` is not the way round it: it would declare a composition
+        # class that does not descend from this base, so the branch would not answer
+        # ``isinstance``, which is the same reason a bare ``$ref`` branch refuses above.
+        #
+        # **The reachable population of that move is 0 TODAY, measured by making this
+        # refusal fail.**  Probed by removing it and lowering each branch with its
+        # conjuncts DROPPED -- which is what the move would supply -- over all 9
+        # documents in this position: 0 emit.  They refuse on ``uniqueItems`` (3), a
+        # ``$ref`` chain (2), a branch ``type`` (2), an ``allOf`` whose base is an alias
+        # (1) and a class-name collision (1).  So hoisting the reader into ``compiler``
+        # would be a derivation matching nothing (D14), and the step whose own keyword
+        # unblocks one of these 9 is the step that should do it.  2 of the 9 compose
+        # nothing but bare ``$ref`` conjuncts and are the two to re-measure then.
+        raise Refusal(
+            "allOf",
+            pointer,
+            "a branch that composes needs the bases its conjuncts name as well as the "
+            "union base this row gives it, and the conjunct reader that binds them is "
+            "the product row's: a lowering imports codegen.compiler and codegen.refusal "
+            "and nothing else of this package (D13), so a branch composes once that "
+            "reader is shared machinery in codegen.compiler",
+        )
     if "properties" not in branch:
         raise Refusal(
             "required" if "required" in branch else "type",
@@ -324,43 +447,4 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
             "a branch declaring no property constrains only requiredness: that is a rule "
             "on the root's class (D2, D6), not a branch class (step 7's row)",
         )
-    if branch.get("type") not in (None, "object"):
-        raise Refusal("type", pointer, f"a branch of type {branch['type']!r} is step 6")
-    decided = {
-        key: _literal(sub, f"{pointer}/properties/{key}", mod)
-        for key, sub in branch["properties"].items()
-        if isinstance(sub, dict) and "const" in sub
-    }
-    return Branch(
-        name=branch_name(branch, root, pointer, doc),
-        pointer=pointer,
-        node=branch,
-        decided=decided,
-    )
-
-
-def _literal(node: dict, pointer: str, mod: compiler.Module) -> compiler.Decided:
-    """D2's ``const`` row, for a BRANCH property only.
-
-    A pinned ``const`` is what D3's rule 2 reads a branch's name from, so the keyword is
-    already this module's; and it is the discriminator the arm exists for, so a branch
-    whose pin is dropped is an arm with no arm in it.  Scoped to a branch property through
-    ``lower_object(decided=)`` rather than put into ``decide_type``, because the latter
-    would emit a ``const`` row for step 1's and step 2's own populations too and collide
-    with whichever step claims D2's ``const`` row in full.
-    """
-    compiler.check_keywords(node, pointer, {"type", "const"})  # the walk's own check
-    value = node["const"]
-    if isinstance(value, (dict, list)) or value is None:
-        raise Refusal("const", pointer, f"a const of {type(value).__name__} is not a Literal")
-    if not jsonschema.Draft7Validator(node).is_valid(value):
-        # The document's own validator rather than a type table of this module's: a
-        # ``const`` its own ``type`` refuses leaves the node admitting NOTHING, and a
-        # ``Literal`` of it would be a model wider than its schema.
-        raise Refusal(
-            "const",
-            pointer,
-            f"const {value!r} is not a {node.get('type')!r}: the node admits nothing",
-        )
-    mod.imports.add(("typing", "Literal"))
-    return compiler.Decided(compiler.Type(f"Literal[{value!r}]", local=True))
+    return Branch(name=branch_name(branch, root, pointer, doc), pointer=pointer, node=branch)

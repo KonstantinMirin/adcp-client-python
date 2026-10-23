@@ -96,11 +96,13 @@ from codegen.compiler import (
     declare_alias,
     lower_object,
 )
+from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
 from codegen.lower import product as lower_product
 from codegen.lower import containers as lower_containers
 from codegen.lower import rules as lower_rules
 from codegen.lower import union as lower_union
+from codegen import refusal
 from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
@@ -164,7 +166,7 @@ PACKAGE = "adcp.types._schemas"
 #: fact, each naming itself.
 #:
 #: What follows is the reasoning for the type being ours rather than pydantic's at
-#: the https arm, which the amendment did not change.  D5 admits
+#: the https branch, which the amendment did not change.  D5 admits
 #: a STANDARD type only when it states the document's own facts AND accepts the
 #: document's own set, and no pydantic URL type passes: ``AnyUrl`` and
 #: ``AnyHttpUrl`` both render a ``minLength: 1`` no ``format: uri`` document
@@ -321,6 +323,58 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         decided = lower_enum.decide(node, name_hint, pointer)
         mod.add(name_hint, pointer, compiler.render_enum(decided))
         return Decided(compiler.Type(name_hint, local=True))
+
+    if "const" in node:
+        # D2's ``const`` row, IN FULL, and reached before ``type`` is read for the
+        # enum branch's reason: a ``const`` pins the VALUE, and the value's own JSON
+        # type is what the node admits whether the document spells a ``type`` word or
+        # not -- 832 of the bundle's 1,486 const nodes spell none.  A ``const`` is a
+        # single-member enumeration in JSON Schema's vocabulary and nothing in this
+        # bundle writes both (0 of the 1,486 carry an ``enum`` beside it), so the two
+        # branches do not overlap and their order here is not a precedence.  The same
+        # holds against the composition arm below, measured over the portable
+        # population: 0 nodes carry both a ``const`` and an ``allOf``, so the order of
+        # the two moves no document.  It is written this way round because a ``const``
+        # pins the whole value and a conjunct list cannot widen a pinned value.
+        check_keywords(node, pointer, lower_const.HANDLED)
+        return lower_const.decide(node, pointer)
+
+    if isinstance(node.get("allOf"), list):
+        # **D7's composition, at a node that is NOT a root.**  The same lowering the
+        # root reaches through :data:`ROWS` -- the conjunct list is the same list and
+        # the merge rule is the same rule at every depth -- and it is reached here
+        # rather than through a seventh row because ``ROWS`` dispatches on ROOT KIND
+        # and is a partition by it: a keyword that does not appear at a root has no
+        # row to be and no selector to select it.  Measured on the 3.2 bundle: of the
+        # 67 documents whose composition the product row was deferring, 26 carry it
+        # at a property or deeper and 0 of those 26 are claimed by
+        # ``composes_at_the_root``, so a row would have claimed none of them.
+        #
+        # Read BEFORE ``type``, for the reason ``bundle.declares_its_own_root_kind``
+        # reads a root's ``allOf`` before its ``type``: a draft-07 ``allOf`` applies
+        # to the whole instance, so a node that composes is a composition whatever
+        # else it declares, and lowering the ``properties`` without the conjuncts
+        # would drop the bases.  After ``$ref`` and ``enum``, which both close the
+        # node ahead of it: a ``$ref``'s siblings are ignored by draft-07 (the branch
+        # above refuses one), and an ``enum`` closes the value set.
+        #
+        # **Every position this reaches is one whose INSTANCE is its own**, which is
+        # what makes reading the node here the node the DOCUMENT applies: a
+        # ``properties``, ``items`` or ``definitions`` entry is applied to a value one
+        # level down, where an ``allOf`` conjunct, a union branch and an ``if``/``then``
+        # position share the enclosing node's instance and so inherit its ``type``.
+        # Measured over the whole portable population: 307 compositions are lowered,
+        # 287 at a root and 20 below one, and **0 of the 20 sit at a shared-instance
+        # position** -- 12 at ``properties/<key>``, 7 at an ``items`` and 1 at a
+        # ``definitions`` entry.  The nearest miss is
+        # ``core/budget-allocation.json#/oneOf/1/properties/optimization_goals/items``,
+        # whose pointer crosses a branch two instances up and whose own node is an
+        # array element.
+        return Decided(
+            compiler.Type(
+                lower_product.lower_composition(node, name_hint, pointer, mod), local=True
+            )
+        )
 
     kind = node.get("type")
 
@@ -525,10 +579,23 @@ ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str
     (bundle.is_object_root, _object_root),
     (bundle.is_scalar_root, _scalar_root),
     (bundle.is_enum_root, _enum_root),
-    (bundle.composes_at_the_root, lower_product.lower_root),
+    (bundle.composes_at_the_root, lower_product.lower_composition),
     (bundle.union_root, _union_root),
     (bundle.is_container_root, lower_containers.root),
 )
+
+
+#: The keywords a root's KIND is read from, and the order an UNCLAIMED root is
+#: reported by.  **Not a dispatch table and not a precedence list**: ``ROWS`` is the
+#: dispatch and a root any row claims never reaches this.  It exists so that a root
+#: no row claims is refused on the keyword that would have decided it, rather than
+#: on the emitter's failure to find a row -- which is a fact about the emitter and
+#: tells a reader nothing about the document in front of them.
+ROOT_KIND = ("$ref", "if", "oneOf", "anyOf", "allOf", "enum", "properties", "type")
+
+#: Root keys that state no kind, so a refusal reporting what the root declares
+#: leaves them out: they are the same on every document and carry no signal.
+_ANNOTATIONS = frozenset({"$schema", "$id", "$comment", "title", "description"})
 
 
 class AmbiguousRoot(Exception):
@@ -576,6 +643,8 @@ def lower_document(
         # a node nothing names needs no entry, and 11 of this bundle's 157 local-section
         # entries are in that position (``compiler.local_reference``).
         local={p: n for p, n in bundle.nodes(doc) if p in named},
+
+        object_constrained=bundle.constrained_to_object(doc),
     )
     claimed = [(selects, lower) for selects, lower in ROWS if selects(doc)]
     if len(claimed) > 1:
@@ -585,7 +654,30 @@ def lower_document(
             "the selectors and the metric would count it twice"
         )
     if not claimed:
-        raise Refusal("type", "", "no D2 row selects this root (a later step's row does)")
+        # **Refused on the keyword the root's KIND is read from, and with no promise
+        # of a row.**  This said "no D2 row selects this root (a later step's row
+        # does)", which names no keyword and asserts a schedule -- and for the seven
+        # documents it is now down to, the promise is simply false: four of them are
+        # DATA documents carrying no schema keyword at all, so no row will ever read
+        # them.  A refusal that points at a file without saying what in it stopped
+        # the emitter sends the reader back to re-run.
+        kw = next((k for k in ROOT_KIND if k in doc), None)
+        declared = sorted(k for k in doc if k not in _ANNOTATIONS)
+        if kw is None:
+            raise Refusal(
+                "type",
+                "",
+                f"the root declares no kind keyword at all: {declared} are data keys, not "
+                "schema keywords, so there is no type, no properties and no composition "
+                "for a row to read -- and a class over them would state what no part of "
+                "this document declares",
+            )
+        raise Refusal(
+            kw,
+            "",
+            f"a root is exactly one kind, this one's is read from {kw!r} (the root declares "
+            f"{declared}), and no D2 row lowers that kind at a root",
+        )
     claimed[0][1](doc, symbol, "", mod)
     return mod, symbol
 
@@ -731,6 +823,55 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             mod, symbol = lower_document(
                 document, doc, bind(document), named.get(document, frozenset())
             )
+            # **The document the package will carry has to be DECIDABLE, and that is
+            # checked here because a refusal belongs where every other one is.**  A
+            # ``$ref`` left in it is a schema nothing local can decide, so
+            # ``jsonschema`` fetches the target over the network; the write loop below
+            # says what that costs.  ``bundle.resolved`` is the one resolution, and it
+            # does not reach every position: ``resolve_all_refs`` descends
+            # ``SCHEMA_KEYS`` and ``SCHEMA_OBJECT_KEYS`` only, and ``definitions`` and
+            # ``$defs`` are in NEITHER -- by its own design, since a section asserts
+            # nothing about an instance and a generator has no reason to look inside
+            # one.  So a reference under a section survives resolution.
+            #
+            # Refused rather than shipped, and refused rather than excused: the
+            # emitter cannot certify that a position nothing validates through TODAY
+            # stays inert, and the alternative readings all weaken something -- a
+            # second resolver (forbidden, D10 and ``bundle.resolved``'s own reason), a
+            # post-generation strip of the section (forbidden, D9), or narrowing the
+            # invariant to reachable positions, which is a check relaxed to fit.
+            #
+            # Measured over the whole bundle: 1 of 1,054 documents has every reference
+            # under a section (``a2ui/si-catalog.json``, 24 of them), nothing in the
+            # bundle references it, and no ``$ref`` names any of its nodes -- so this
+            # refuses exactly one document and cascades to none.  It is reachable at
+            # all only because salesagent-j3k2l.20 declares section entries and D2's
+            # ``const`` row lowers the keyword that used to stop this document first.
+            #
+            # **CROSS-DOCUMENT only, and that is what makes the reason above true.**  A
+            # LOCAL reference names a node of the very document the package carries, so
+            # ``jsonschema`` resolves it against the referrer and fetches nothing --
+            # ``bundle.resolved`` skips adding one to the store for exactly that reason.
+            # It survives resolution under a section just as a cross-document one does,
+            # and refusing it would be refusing a document that IS locally decidable.
+            # Probed: without this clause the check refused ``core/chain.json``, the
+            # fixture salesagent-j3k2l.20 wrote for a forward local reference, on
+            # ``#/definitions/second``.
+            unresolved = [
+                (p, u)
+                for p, u in bundle.references(bundle.resolved(bundle_dir, document))
+                if bundle.split_ref(u)[0]
+            ]
+            if unresolved:
+                pointer, uri = unresolved[0]
+                raise Refusal(
+                    "$ref",
+                    pointer,
+                    f"{uri} {refusal.UNRESOLVED_TARGET}, which leaves a "
+                    f"reference under a definitions/$defs section untouched ({len(unresolved)} "
+                    "here): the document the package would carry is not locally "
+                    "decidable, and jsonschema would fetch the target over the network",
+                )
         except Refusal as r:
             refused[document] = r
             raise

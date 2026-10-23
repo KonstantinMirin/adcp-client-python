@@ -624,7 +624,15 @@ def test_a_fragment_whose_target_document_is_refused_names_the_targets_own_keywo
     on a keyword of their own (``pattern``, ``allOf``, ``definitions``, and a chain).
     A refusal that names the wrong cause sends the next reader to the wrong file.
     """
-    target = {"title": "Refuses", "type": "object", "properties": {"a": {"const": "x"}}}
+    # The refusing keyword is ``allOf``, which is one of the four real causes above.
+    # It was ``const`` until D2's ``const`` row landed (salesagent-j3k2l.16) and the
+    # fixture stopped refusing -- a fixture built on a keyword the emitter is about to
+    # lower grades the chain only until that happens, and then grades nothing.
+    target = {
+        "title": "Refuses",
+        "type": "object",
+        "properties": {"a": {"allOf": [{"type": "string"}]}},
+    }
     referrer = {
         "title": "Chains",
         "type": "object",
@@ -638,7 +646,7 @@ def test_a_fragment_whose_target_document_is_refused_names_the_targets_own_keywo
     # looked up, and a message naming only the file does not say which of its nodes
     # was wanted.
     assert "core/refuses.json#/properties/a is refused" in r["detail"], r
-    assert "const" in r["detail"], r
+    assert "allOf" in r["detail"], r
 
     # A reference with NO fragment names the document alone, unchanged -- which is
     # every one of the bundle's 214 existing chain refusals.
@@ -933,7 +941,10 @@ def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
     Measured on the bundle: 11 of the 157 entries in the 40 documents this step
     unblocks are referenced by nothing, and all 11 sit in ``a2ui/si-catalog.json``,
     whose 24 ``$ref``\\ s are all inside that dead section -- so declaring them would
-    also pull that target's whole closure into a module no instance reaches.
+    also pull that target's whole closure into a module no instance reaches.  Those
+    same 24 are why that document is refused once D2's ``const`` row lets the walk
+    reach it: ``bundle.resolved`` does not descend a section, so the document the
+    package would carry is not locally decidable (``codegen.emit``).
 
     The second direction is what makes the first non-vacuous: the same keyword in a
     REFERENCED entry still refuses, so the pass below is the skip and not a hole in the
@@ -948,9 +959,25 @@ def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
         **SECTIONS,
         "definitions": {
             **SECTIONS["definitions"],
-            # ``const`` is D2's own unlanded row and the keyword 7 of the 40 refuse on
-            # today, so this is the real shape rather than an invented one.
-            "unused": {"type": "object", "properties": {"b": {"const": "x"}}, "required": ["b"]},
+            # A shape the emitter refuses SOMEWHERE inside, which is all this fixture
+            # needs: the dead half asserts no refusal, the live half asserts one, and
+            # the contrast is the measurement.
+            #
+            # **The keyword is deliberately no longer pinned, because pinning it has
+            # broken this fixture twice.**  It was ``const`` until D2's ``const`` row
+            # landed (salesagent-j3k2l.16); it became ``allOf`` on the ground that
+            # ``allOf`` was "a keyword no row lowers at a property", and
+            # salesagent-j3k2l.18 then lowered exactly that.  The shape still refuses
+            # -- one level deeper, at the conjunct's own ``type`` -- so the fixture is
+            # still live, but a fixture that names the keyword a row is about to claim
+            # grades the skip only until that row lands.  No keyword is immune to the
+            # next row, so the assertions below grade the thing this test is named for:
+            # whether the entry was WALKED, read off the refusal's pointer.
+            "unused": {
+                "type": "object",
+                "properties": {"b": {"allOf": [{"type": "string"}]}},
+                "required": ["b"],
+            },
         },
     }
     root = write_bundle(tmp_path / "b", {"core/catalog.json": dead})
@@ -960,13 +987,21 @@ def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
         **SECTIONS,
         "definitions": {
             **SECTIONS["definitions"],
-            "slot": {"type": "object", "properties": {"a": {"const": "x"}}, "required": ["a"]},
+            "slot": {
+                "type": "object",
+                "properties": {"a": {"allOf": [{"type": "string"}]}},
+                "required": ["a"],
+            },
         },
     }
     root = write_bundle(tmp_path / "c", {"core/catalog.json": live})
     r = refusal_for(root, "core/catalog.json")
-    assert r["keyword"] == "const", r
-    assert r["pointer"] == "/definitions/slot/properties/a", r
+    # The SAME shape, in a referenced entry, refuses -- and the refusal is INSIDE the
+    # entry, which is what says the walk reached it.  Whichever keyword the emitter
+    # stops on, and however deep inside the property it stops, the pointer still names
+    # the entry; that is the fact the dead half's silence is contrasted against.
+    assert r["keyword"], r
+    assert r["pointer"].startswith("/definitions/slot/properties/a"), r
 
 
 def test_a_local_reference_to_an_entry_declared_later_costs_nothing(tmp_path: Path) -> None:
@@ -1142,7 +1177,7 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
         for d, r in out.refusals.items()
         if r["pointer"].lstrip("/").split("/")[0] in bundle.DEFINITIONS
     }
-    assert len(inside) == 7, inside
+    assert len(inside) == 8, inside
     assert inside["core/response-payload-jws-envelope.json"] == (
         "/definitions/response_payload/properties/typ"
     )

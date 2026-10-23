@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Non-blocking observation emitted by a creative governance agent. Audit observations surface claims that deserve human or downstream audit review but are not verifier refutations and are not rejection grounds by themselves.",
+  "properties": {
+    "code": {
+      "description": "Machine-readable observation code. `OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED` means provenance declares `human_oversight` as `edited` or `directed` while also declaring `disclosure.required: false`; the verifier is surfacing the carve-out claim for audit, not adjudicating it.",
+      "enum": [
+        "OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"
+      ],
+      "type": "string"
+    },
+    "details": {
+      "additionalProperties": false,
+      "description": "Audit-safe structured details. Mirrors the safe allowlist keys used for `PROVENANCE_CLAIM_CONTRADICTED`; value shapes remain observation-specific. Top-level `ext` remains the standard protocol extension point, but details do not allow arbitrary verifier response fields.",
+      "properties": {
+        "agent_url": {
+          "description": "Governance agent URL that produced the observation.",
+          "format": "uri",
+          "type": "string"
+        },
+        "claimed_value": {
+          "additionalProperties": false,
+          "description": "Compact object of claimed provenance values that triggered the observation.",
+          "properties": {
+            "disclosure_required": {
+              "const": false,
+              "description": "Disclosure-required claim declared by the creative provenance.",
+              "type": "boolean"
+            },
+            "human_oversight": {
+              "description": "Human oversight level declared by the creative provenance.",
+              "enum": [
+                "edited",
+                "directed"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "human_oversight",
+            "disclosure_required"
+          ],
+          "type": "object"
+        },
+        "confidence": {
+          "description": "Confidence score for the observation, when applicable.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "feature_id": {
+          "description": "Feature or policy check that produced the observation.",
+          "type": "string"
+        },
+        "observed_value": {
+          "description": "Verifier observation relevant to the claim, when applicable.",
+          "type": [
+            "boolean",
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "substituted_for": {
+          "description": "Buyer-nominated verifier URL when the seller or orchestrator used a different on-list governance agent.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent_url",
+        "claimed_value"
+      ],
+      "type": "object"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "field": {
+      "description": "Resolved creative manifest path for the risky claim side of the observation, for example `creative_manifest.provenance.disclosure.required`. Some observations are triggered by a combination of fields; `field` anchors the primary claim, not necessarily every field in the trigger condition.",
+      "type": "string"
+    },
+    "message": {
+      "description": "Human-readable summary suitable for an audit queue. Do not include PII, cross-tenant data, or vendor-only report details.",
+      "type": "string"
+    },
+    "recovery": {
+      "description": "Caller recovery category for audit observations, distinct from the canonical error-code recovery enum. `informational` means the creative can continue through the normal flow; the observation is audit context rather than a required correction.",
+      "enum": [
+        "informational"
+      ],
+      "type": "string"
+    },
+    "severity": {
+      "description": "Routing severity. `audit-worthy` means the observation should be retained and may be routed to human or downstream audit review, but it is not a protocol rejection signal.",
+      "enum": [
+        "audit-worthy"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "severity",
+    "recovery",
+    "field",
+    "message",
+    "details"
+  ],
+  "title": "Creative Audit Observation",
+  "type": "object"
+}

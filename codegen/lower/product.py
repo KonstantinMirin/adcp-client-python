@@ -1,8 +1,18 @@
-"""An ``allOf`` root: the reference conjuncts become BASES, and the rest becomes
+"""An ``allOf`` node: the reference conjuncts become BASES, and the rest becomes
 fields of the node itself.
 
-D2's product row.  Two things come out of one conjunct list, and a third is
-deliberately absent:
+D2's product row.  **The node need not be a root**, and the lowering never asked
+that it be one: it takes ``(node, name, pointer, module)`` like every other
+lowering (D13), reads the pointer it is handed, and ``declare_object`` names
+whatever node that is.  A document ROOT reaches it through ``emit.ROWS``; a
+composition at a property or deeper reaches it through ``emit._decide``'s own branch,
+because ``ROWS`` dispatches on ROOT KIND and a node that is not a root has no row
+to be and no selector to select it.  Measured over the 3.2 bundle: of the 67
+documents whose composition this step was deferring, 41 carry it at a root -- all
+41 claimed by ``union_root``, not by this step's selector -- 10 at a property and
+16 deeper.
+
+Two things come out of one conjunct list, and a third is deliberately absent:
 
 * a conjunct that is a ``$ref`` and nothing else is a BASE CLASS.  D7: a base is
   DERIVED from what the document composes, so there is no marker policy and no
@@ -69,31 +79,31 @@ from codegen.refusal import Refusal
 #: refuses rather than choosing between them.
 INLINE = frozenset({"type", "properties", "required"})
 
-#: What the root itself may carry beside its conjunct list.
+#: What the composing node itself may carry beside its conjunct list.
 #:
 #: D6's rule families are NOT listed here and are added per node by
 #: ``compiler.rules_at``, because the admissible set is a function of the node: a
 #: ``oneOf``/``anyOf`` is a rule only where every branch is ``required``-only, and a
 #: combinator of shapes admitted here would emit a class that drops it silently.
-ROOT = frozenset({"type", "allOf", "properties", "required", "additionalProperties"})
+COMPOSING = frozenset({"type", "allOf", "properties", "required", "additionalProperties"})
 
 
-def lower_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
+def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
     """Append the class for an ``allOf`` node and return its name.
 
-    **The root's own D6 rules reach the class through** ``declare_object``, which
+    **The node's own D6 rules reach the class through** ``declare_object``, which
     writes the tuple for whatever node it is declaring -- so this row states nothing
-    about rules beyond admitting the keywords.  20 documents refused here on
-    ``not``, ``dependencies`` or ``minProperties`` at a root whose mechanism was
+    about rules beyond admitting the keywords.  Documents refused here on ``not``,
+    ``dependencies`` or ``minProperties`` at a composing node whose mechanism was
     complete three modules away: the rule kinds, the emitter's tuple and the one
     after-validator all existed, and only the object row consulted them.
 
-    A property the root declares only inside a conditional is merged in for the
+    A property the node declares only inside a conditional is merged in for the
     reason ``compiler.Rules`` states: a rule naming a key the class has no field for
     refuses a payload the document admits.
     """
     stated = rules_at(doc)
-    check_keywords(doc, pointer, ROOT | stated.screen)
+    check_keywords(doc, pointer, COMPOSING | stated.screen)
     if doc.get("type") not in (None, "object"):
         raise Refusal("type", pointer, f"an allOf of type {doc['type']!r} composes no object")
 
