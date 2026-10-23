@@ -702,9 +702,21 @@ one by D4's `default` drop, five by D5's third rung — and three of those refus
 decision by number** while declining to apply it. The implementer knew the rule, and the
 measurement charged nothing for refusing instead.
 
-So the emitted count is pinned to grow, beside the pending count pinned to shrink. Two
-constraints with opposite signs cannot both be satisfied by refusing a document, which is the
-only property that makes a row's completion mean anything. Measured instance:
+So the emitted count is pinned to grow, and **the two pins are coupled rather than
+independent**. Two separate bounds do not have the property this needs: `emitted >= 691`
+beside `pending <= 66` are both satisfied by refusing a pending document, because emitted
+stays 691 while pending falls to 65. The signs are opposite only once clearing a pending
+document COSTS an emission, so every document the pending count loses appears in the
+emitted count:
+
+```python
+assert len(out.emitted) >= emitted_pin + max(0, pending_pin - pending)
+```
+
+`max(0, ...)` carries the never-decreases half, for a bundle that grows its own pending
+set. A pin set at the current tree cannot fail on a row that already landed, so the
+formulation reads the delta from where the row STARTED — which is the only reading that
+refuses the trade below. Measured instance:
 `salesagent-j3k2l.40` moved pending from 87 to 66 while emitted rose by 5 and verdicts by 16 —
 sixteen of its twenty-one documents were resolved by deciding never to generate them, under a
 metric that read the row as the largest step of the day.
