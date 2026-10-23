@@ -4499,15 +4499,34 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     }
     verdicts = {d: r for d, r in out.refusals.items() if refusal_module.is_a_verdict(r["detail"])}
 
+    # The FOURTH kind, and the reason the partition below has four terms: a refusal
+    # reading ``its target X is refused: <X's own sentence>`` is pending or final
+    # according to X, not according to itself.  ``is_a_verdict`` resolves that chain,
+    # so these are the chained refusals it resolved to PENDING -- in no other bucket.
+    chained_pending = {
+        d: r
+        for d, r in out.refusals.items()
+        if d not in deferred
+        and d not in transitive
+        and d not in verdicts
+    }
+
     assert out.refusals, "no refusals: every assertion below would pass vacuously"
-    assert len(deferred) + len(transitive) + len(verdicts) == len(out.refusals), {
+    assert len(deferred) + len(transitive) + len(chained_pending) + len(verdicts) == len(
+        out.refusals
+    ), {
         "deferred": len(deferred),
         "transitive": len(transitive),
+        "chained_pending": len(chained_pending),
         "verdicts": len(verdicts),
         "refusals": len(out.refusals),
     }
     assert set(deferred) & set(verdicts) == set()
     assert set(transitive) & set(verdicts) == set()
+    assert set(chained_pending) & set(verdicts) == set()
+    # The chained set must not be empty, or this partition is asserting that a kind
+    # which demonstrably exists has no members -- which is how the bug it covers hid.
+    assert chained_pending, "no chained-pending refusal: the fourth term grades nothing"
 
     # Shrink-only: a row lands, deferrals become emissions, these fall.
     #
@@ -4528,15 +4547,27 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # Both pins are set to the value MEASURED on this tree rather than left loose, and
     # both were fire-probed one step tighter (`<= 47` and `>= 1006`) so they are known to
     # grade: a loose pin is a ratchet that grades nothing.
+    # **CORRECTED: 1005 WAS OVERSTATED BY 30 AND 48 UNDERSTATED BY 31.**  Reading only
+    # a chained refusal's OUTER sentence called all 170 of them verdicts, so the figures
+    # this test asserted were wrong on every tree the epic has reported -- the deltas
+    # between rows were right and the absolutes were not.  Measured on this tree with
+    # ``is_a_verdict`` resolving the chain:
+    #
+    #     accounted  1005 -> 975      pending  48 -> 79
+    #
+    # which two independent instruments agree on: the function here, and a separate
+    # walk that resolved every chain to its root (301 verdict, 78 deferred, 1
+    # transitive).
     assert len(deferred) <= 48, len(deferred)
     assert len(transitive) <= 1, len(transitive)
+    assert len(chained_pending) <= 31, len(chained_pending)
 
     # Grow-only: what the exit condition actually counts.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 1005, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 975, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
-    pending = len(deferred) + len(transitive)
+    pending = len(deferred) + len(transitive) + len(chained_pending)
     assert accounted + pending == len(portable), (accounted, pending, len(portable))
 
 
