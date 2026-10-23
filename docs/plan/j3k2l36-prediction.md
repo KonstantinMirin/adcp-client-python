@@ -117,3 +117,36 @@ measure it, and I will flag that this re-introduces a per-property decided type 
    `differs`. I will show which and why that is the right report.
 2. A base stating a fact the subclass and the model both lack — expected:
    `missing` names it.
+
+---
+
+# The grade, written after measuring
+
+## Right
+
+The three-mechanism partition and which file owns each. 28 `differs` cleared.
+`added` stays 0. The 9 enum facts remain and belong to the comparison; the 2 a2ui
+facts remain. End state **0 / 11 / 0** over 1034 pairs, and NOT 0/0/0.
+`emitted` 686, `accounted` 1053, `deferred` 0, `transitive` 1 -- unchanged. The
+`slots` re-lowering hazard, down to the duplicate class name, the exact pointer
+`#/properties/slots/items`, `schema_at` raising `KeyError`, that the answer is to
+re-use the base's decided field, and that doing so re-introduces a parameter
+`fields` deliberately dropped.
+
+## Wrong, two
+
+**`pairs` rising to about 1041.** It never got that far. A class stamped with a
+pointer its document does not have makes `pair_of` RAISE, so the simple node merge
+would not have produced a count to compare at all. The hazard was right; how it
+would present was wrong.
+
+**The silence asymmetry, which I predicted the opposite of.** I wrote that the
+annotations are the restatement's and are never gap-filled from the base's,
+following `_annotates_differently`'s existing reasoning. That is right for a
+restatement whose constraining content EQUALS the base's -- its node resolves to
+annotations of its own, all 15 being a bare `$ref` -- and wrong for an
+annotation-only one, whose node resolves to nothing. `_composed` gap-fills the
+base's annotation on the DOCUMENT side, so taking the silence as an answer turned
+one `differs` into one `missing` at
+`formats/canonical/responsive_creative.json#/properties/slots/description`. Caught
+by re-measuring the pair, not by reasoning about it.
