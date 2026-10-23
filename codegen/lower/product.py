@@ -315,6 +315,32 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
             # on ``core/protocol-envelope.json`` and required at their own root -- and
             # they were the last 2 ``added`` facts of the symmetric comparison.
             own[key] = node
+        elif _constraining(node) and _annotates_differently(node, inherited[key]):
+            # **It states the same thing about the INSTANCE and a different thing to the
+            # READER**, so the subclass states the field: a document's own declaration
+            # governs the annotation at its own pointer (the description-authority rule,
+            # ``docs/plan/rebuild-plan.md`` §6), and a base's must not stand where the
+            # document declares one itself.
+            #
+            # Gated on ``_constraining(node)`` being NON-EMPTY, and that gate is the
+            # whole of this branch's safety.  Non-empty and ``_restatement`` False means
+            # it equals the base's, so ``decide_type`` reads the base's own constraining
+            # content and decides the base's type -- the field is the inherited field
+            # with a different annotation, and there is no shadow to be had.  An
+            # annotation-ONLY restatement over a typed base is the other shape and stays
+            # inherited below: lowering it on its own would type it ``Any`` and drop
+            # every fact the base states, which is the 31-site shadow this module's
+            # docstring measures (and ``salesagent-j3k2l.22`` owns its 28 remaining
+            # facts).
+            #
+            # Measured on this tree: 15 pairs and 15 documents, every one a response
+            # root composing ``core/protocol-envelope.json`` and declaring ``context``
+            # itself as a bare ``$ref`` to ``core/context.json``.  The envelope states
+            # the long "Relationship to per-task body-level ``context`` declarations"
+            # text as a SIBLING of its own ``$ref``; the 15 documents state the target's
+            # own short text at the pointer the comparison grades, and were 15 of the
+            # 43 ``differs``.
+            own[key] = node
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
 
     decided = fields(
@@ -359,6 +385,27 @@ def _constraining(node: dict) -> dict:
     ``description`` and nothing else.
     """
     return {k: v for k, v in node.items() if k not in ANNOTATIONS and not k.startswith("x-")}
+
+
+#: The annotations a FIELD renders, so the two a restatement can differ about in a way
+#: the comparison sees.  ``compiler.fields`` reads exactly these off the declaration --
+#: ``description`` into ``Field(description=...)`` and ``default`` into the field's
+#: default -- and the rest of ``ANNOTATIONS`` (``title``, ``$comment``, ``$id``,
+#: ``$schema``) reach nothing on a field, so a restatement differing only in one of
+#: those renders the same field and states nothing to anyone.
+RENDERED = ("default", "description")
+
+
+def _annotates_differently(child: dict, base: dict) -> bool:
+    """Would the two declarations render a different FIELD?
+
+    Asked only of a restatement that says the same thing about the instance, where it
+    is the whole of the difference.  An annotation the child does not state counts as
+    a difference, because the child's silence is itself an answer: the field then
+    carries whatever its own node resolves -- for a bare ``$ref``, the target's --
+    and not the base's.
+    """
+    return any(child.get(k) != base.get(k) for k in RENDERED)
 
 
 def _restatement(child: dict, base: dict) -> bool | None:

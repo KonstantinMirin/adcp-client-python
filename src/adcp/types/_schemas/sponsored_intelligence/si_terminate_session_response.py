@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl
 
+from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
@@ -63,6 +64,7 @@ class SITerminateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     acp_handoff: Annotated[SITerminateSessionResponseAcpHandoff | None, Field(description='ACP checkout handoff data. Present when reason is handoff_transaction.')] = None
     follow_up: Annotated[SITerminateSessionResponseFollowUp | None, Field(description='Suggested follow-up actions')] = None
     errors: list[Error] | None = None
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 

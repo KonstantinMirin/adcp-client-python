@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
+from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.pagination_response import PaginationResponse
 from ..core.protocol_envelope import ProtocolEnvelope
@@ -97,6 +98,7 @@ class ListTasksResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     query_summary: Annotated[ListTasksResponseQuerySummary, Field(description='Summary of the query that was executed')]
     tasks: Annotated[list[ListTasksResponseTasksItem], Field(description='Array of tasks matching the query criteria')]
     pagination: PaginationResponse
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 

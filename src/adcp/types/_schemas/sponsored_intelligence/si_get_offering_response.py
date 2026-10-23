@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl
 
+from ..core.context import ContextObject
 from ..core.error import Error
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
@@ -69,6 +70,7 @@ class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     unavailable_reason: Annotated[str | None, Field(description="If not available, why (e.g., 'expired', 'sold_out', 'region_restricted')")] = None
     alternative_offering_ids: Annotated[list[str] | None, Field(description='Alternative offerings to consider if this one is unavailable')] = None
     errors: Annotated[list[Error] | None, Field(description='Errors during offering lookup')] = None
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 
