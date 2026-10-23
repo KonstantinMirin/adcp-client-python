@@ -272,6 +272,12 @@ A step that wants to change one of these reports it and stops.
   literally named `required` that carries `default: false`, and that node is `$ref`'d **21
   times as an `allOf/0` base** inside its own document — so emitting it optional makes all 21
   branches accept a document the schema refuses.
+
+  **This decision names the rendering, so a refusal here asserts that none exists.**
+  `core/reporting-delivery-config.json` — one of the four leaves measured above — is refused at
+  `/properties/active` saying "a default on a REQUIRED property has no rendering that does not
+  also make the property optional". The rendering is the one chosen here: no default, and the
+  drop reported.
 - **D5 — constraints bind to the type, not the field.** `Annotated[int, Field(ge=1, le=100)]`,
   never `Field(None, ge=1, le=100)` as a default. A constrained type nests into `list[...]` and
   `dict[str, ...]`, can be aliased and reused, and works under `TypeAdapter` on its own; a
@@ -282,6 +288,22 @@ A step that wants to change one of these reports it and stops.
   scalar and container it meets to one type, in this order: a type the bundle itself names — a
   titled root carrying those constraints, reached by `$ref` as an import; then a type pydantic
   names, where one qualifies; and otherwise an alias we emit in one module.
+
+  **The third rung is a decision, not a fallback, and the walk stops at the second.** Five
+  documents are refused for having no type at the first two rungs, which is the condition the
+  third rung exists to answer:
+
+  - `{"type": "string", "format": "hostname"}` under `items`, in the three
+    `core/requirements/*-asset-requirements.json` documents. No bundle root carries that
+    format and pydantic names no type for it, so the alias is
+    `Annotated[str, WithJsonSchema({"type": "string", "format": "hostname"})]` and the field is
+    `list[Hostname]`.
+  - `{"minItems": 1}` on one branch of a `oneOf`, in the two `get-media-buy*-request.json`
+    documents. The bound belongs to the array branch alone: carried on the field holding the
+    union it also binds the enum branch, so the field refuses a single status the document
+    accepts. The branch's own type takes it —
+    `Annotated[list[MediaBuyStatus], Field(min_length=1)]` — and the refusal names this
+    module while declining to use it.
 
   **A standard type qualifies only when it states the document's own facts and accepts the
   document's own set.** Both halves are required and the schema comparison enforces the first,
@@ -470,6 +492,43 @@ A step that wants to change one of these reports it and stops.
   intersection refuses the document by name and pointer. Unioning an enum's vocabularies makes
   the model accept a member the schema forbids, which is the defect this prevents.
 
+  **A conjunct contributes every part of itself, and each part lowers by the decision that
+  covers it.** A conjunct is a schema the composed node satisfies in full, so a conjunct of
+  `$ref`s gives bases and a conjunct of `properties` gives fields by the intersection rule
+  above — and a conjunct holding anything else is not an unhandled case. D2 already says what
+  every construct becomes; the conjunct reader applies it there. Three combinations follow, and
+  each had no case in the reader:
+
+  - **Fields and a rule in one conjunct** contribute both, independently. The fields merge by
+    the rule above; the rule attaches to the composed class by D2.
+    `core/media-buy-frequency-cap-requirement.json` at `/allOf/1` states `properties` beside a
+    rule, and a reader matching `properties` alone passes it by.
+  - **A conjunct whose content is a `oneOf` or `anyOf`** gives one subclass per branch, each
+    inheriting the bases the composition derives: D2's union rule applied after this
+    decision's base rule, in that order. The composed node satisfies one branch and every other
+    conjunct, which is what a branch subclass over the composed bases states.
+  - **A conjunct carrying a keyword draft-07 does not define** contributes nothing, and the
+    walk reports the drop. `media-buy/sync-catalogs-request.json` carries `errorMessage`, from
+    ajv-errors: it customizes a validator's message and constrains no instance, so dropping it
+    cannot change what the class accepts. It joins the `_constrains_nothing` fold on the
+    comparison's document side (§6), because a keyword constraining nothing is not a fact the
+    model is missing.
+
+  **A reason naming a later row is this rule's absence, not a refusal.** Thirteen of the
+  thirty-eight directly pending documents carry one sentence — "this step lowers a `$ref`
+  conjunct (a base) or an inline conjunct with properties; a later D2 row lowers this one" —
+  across `required`, `not`, `anyOf`, `oneOf`, `additionalProperties` and `errorMessage`. The
+  walk reaches every one of those nodes. No later row was ever specified, because the gap is
+  the cross product of this decision and D2 that nobody took: D2 enumerates outcomes per
+  construct, this decision states a rule for composition, and the intersections went unwritten.
+
+  **The requiredness overlay is this decision's own case and the reader refuses it.**
+  `core/collection-selection.json` at `/oneOf/0/properties/collections/items` is
+  `{"allOf": [{"$ref": "core/collection-selector.json"}, {"required": ["collection_ids"]}]}` —
+  the pattern named above as the clearest instance, where the subclass redeclares the field
+  with the base's type and no default. Four documents sit there, refused by a reader that has
+  no case for a conjunct holding neither a `$ref` nor `properties`.
+
   A response composing the two envelopes inherits them:
 
   ```python
@@ -629,10 +688,26 @@ population test, so a row cannot claim a document its step does not count.
 
 > **Every document in the bundle is either emitted as a class the harness grades green against
 > that document, or refused by name, pointer and keyword. Emitted plus refused equals the
-> bundle's own size, asserted at run time.**
+> bundle's own size, asserted at run time — and the emitted count never decreases.**
 
 The bundle size is read from the bundle, never written here. N is the emitted count and the
 refusal list is its complement.
+
+**The second term exists because the first one makes refusing a legal way to finish a row.**
+A refusal is a designed outcome, so a partition that counts a refusal and a class alike is
+satisfied either way: a row that emits its common case and refuses its edge leaves the figure
+green and the SDK short. That is not hypothetical and it is not a lapse by one step. Ten
+documents are refused today by a decision §5 already took — four by D7's requiredness overlay,
+one by D4's `default` drop, five by D5's third rung — and three of those refusals **cite the
+decision by number** while declining to apply it. The implementer knew the rule, and the
+measurement charged nothing for refusing instead.
+
+So the emitted count is pinned to grow, beside the pending count pinned to shrink. Two
+constraints with opposite signs cannot both be satisfied by refusing a document, which is the
+only property that makes a row's completion mean anything. Measured instance:
+`salesagent-j3k2l.40` moved pending from 87 to 66 while emitted rose by 5 and verdicts by 16 —
+sixteen of its twenty-one documents were resolved by deciding never to generate them, under a
+metric that read the row as the largest step of the day.
 
 **Two figures are both right and they count different things, so say which one you mean.** The
 PARTITION is total and disjoint — `emitted | refusals == portable`, 0 unaccounted — and that is
@@ -714,6 +789,35 @@ finite-type fold admits a model-only `description` at a rewritten node and nowhe
 `maxItems` fold applies only where the value equals exactly the item set's distinct-value count
 beside `uniqueItems: true`. A fold that cannot state the equality it rests on is a widening
 wearing this category's clothes.
+
+**Every fold applies to both sides, and that is what makes the comparison symmetric.** Symmetry
+is a construction, not a property to assert: `_normalize` serves the model side and the document
+side from one body of code, each supplied its own `$ref` root, and a fold it applies to one side
+it finds on the other — including one level down, inside a branch it folded. A fold running on
+one side alone reports a faithful class as narrower than its own document, which is the `added`
+direction and the only one that makes a correct SDK refuse valid traffic. Three instances exist
+because `_normalize` was written for the side that visibly needed canonicalizing:
+
+1. **A type list.** `creative/creative-feature-result.json` at `/properties/value` states
+   `{"oneOf": [{"type": "boolean"}, {"type": "number"}, {"type": "string"}]}`. The class is
+   `bool | float | str` and the fold rewrites pydantic's rendering of it as a type list, while
+   the document keeps its `oneOf` — so the restored facts arrive as facts the model adds. A
+   nested combinator states those facts inside a branch, which is where the document-side fold
+   has to look for them.
+2. **A local `$ref`.** `bundle.resolved` inlines a remote reference and leaves a local one, and
+   the fold resolves a `$ref` on the model's side, so every fact the class correctly carries
+   reads as added. Measured: 0 graded pairs of the committed tree hold a document-side local
+   `$ref`, and the two documents this admits produce 43 added facts over 4 pairs.
+3. **A conditional.** Conjuncts fold and conditionals do not, so the field a conditional needs
+   in order to read its key reads as a property the document does not state.
+
+**A class the comparison cannot grade is not emitted, and the comparison is not relaxed to
+admit it.** Each of those three documents is refused today with a reason ending "the harness's
+row", and that is the correct call in both directions: a class no check grades satisfies the
+partition and demonstrates nothing, and widening the comparison removes the only check that
+reads the generated code. The obligation runs the other way — the harness row lands first, then
+the document emits and is graded. Such a document stays pending, and its pending belongs to the
+harness rather than to a keyword row. The instrument comes before the product.
 
 **Number 3 is applied to an `allOf` CONJUNCT as well as to the node, and before the conjunct's
 facts are folded in.** A conjunct is an inlined base and arrives already resolved, so the
