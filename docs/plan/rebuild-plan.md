@@ -759,11 +759,12 @@ sentence:
 
 | | documents | |
 |---|---|---|
-| emitted and graded | 580 | |
-| refused by a VERDICT naming a keyword this emitter will not lower | 371 | |
-| **accounted for** | **951** | of 1,054 |
-| deferred — a draft-07 keyword no row lowers yet | 102 | pending, not refused |
+| emitted and graded | 674 | |
+| refused by a VERDICT naming a keyword this emitter will not lower | 301 | |
+| **accounted for** | **975** | of 1,054 |
+| deferred — a draft-07 keyword no row lowers yet | 48 | pending, not refused |
 | transitive — waiting on one of those through a `$ref` | 1 | pending |
+| chained onto a refusal that is itself pending | 30 | pending |
 
 **`emitted + refused == 1054` is green and has been all along, which is why it is not the
 condition.** "Refused" admits "not built yet": the metric's own arithmetic held while part of
@@ -771,7 +772,25 @@ that 476 was unwritten work. `test_a_refusal_that_is_a_verdict_is_counted_apart_
 now partitions it, with `deferred` and `transitive` pinned shrink-only and `accounted` grow-only,
 so a row landing moves all three one way and anything else reddens.
 
-The 102 deferrals partition by the keyword each waits on, and every one is owned:
+**THE FOURTH ROW IS A CORRECTION, AND EVERY ABSOLUTE THIS PLAN PREVIOUSLY CARRIED WAS
+OVERSTATED.** `refusal.is_a_verdict` read a refusal's own sentence and nothing else, so a
+refusal reading `its target X is refused: <X's whole refusal>` matched neither pending
+constant and counted as a verdict however X's refusal read. Measured: **170 of 380 refusals
+are chained that way.** Resolving the chain — a chained refusal is a verdict if and only if
+what it is chained to is one — moves accounted from 1005 to 975 and pending from 48 to 79.
+
+The bias was present on every tree this epic reported, so **1005, 951 and 877 were all
+overstated** while the DELTAS between rows were right. `refusal.py`'s own rule, "a fourth
+kind means a fourth constant here, not a regex somewhere else", was right about the rule and
+wrong about this case: this is not a fourth constant but TRANSITIVITY, and the producer
+already embeds the target's whole refusal after `is refused: `, so the answer was in the
+string the whole time.
+
+The deferrals partition by the keyword each waits on, and every one is owned. The counts
+below are the pre-`.22` reading and `.22` has since cleared four of these families entirely
+(`not`, `dependencies`, `minProperties`, `maxProperties` are all 0 now); the current
+deferral set is `oneOf` 23, `anyOf` 10, `uniqueItems` 7, `contains` 5, `enum` 2, `items` 1,
+all of them `.26`'s:
 
 | keyword | documents | owner |
 |---|---|---|
