@@ -11,7 +11,7 @@ from adcp.types.constraints import IntMin1
 
 from ...enums.catalog_type import CatalogType
 from ...enums.ctv_ad_experience import CTVAdExperience
-from ._base import CanonicalFormatBase
+from ._base import CanonicalFormatBase, CanonicalFormatBaseSlotsItem
 
 
 class CanonicalFormatSponsoredPlacementRetailMediaCatalogDrivenFanoutMode(StrEnum):
@@ -66,6 +66,9 @@ class CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven(CanonicalFormatB
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/sponsored_placement.json', pointer='#')
+    experimental: Annotated[bool | None, Field(description='Marked experimental at 3.1 GA: the canonical covers 4 meaningfully different retail-media adapter contracts (Amazon SP, Criteo SP / CitrusAd SP, Pinterest Collection, generative-per-SKU). Adopter contracts vary; buyers MUST validate per-adapter behavior before routing budget. Promotion to non-experimental gated on the #4592 adapter-contract docs work.')] = True
+    v1_translatable: Annotated[bool | None, Field(description="Inherently new in v2 — retail-media catalog placements weren't expressible as v1 named formats. SDKs MUST NOT emit `FORMAT_PROJECTION_FAILED` for products using this canonical; the v1-unreachability is structural, not a registry-coverage gap.")] = False
+    slots: Annotated[list[CanonicalFormatBaseSlotsItem] | None, Field(description="Programmatic declaration of which canonical asset_group_id slots a manifest targeting this format must (or may) populate. Lets SDK codegen and validators enumerate expected slots without parsing the format's prose description. Each entry references an asset_group_id from the canonical vocabulary registry, paired with an `asset_type` so the validator knows which asset schema to apply. Format-level narrowing parameters that apply across all slots (e.g., flat `headline_max_chars` on responsive_creative) may also live on the format declaration; per-slot constraints (a specific slot's `max_chars` or `max_size_kb`) live on the slot entry.")] = [{'asset_group_id': 'source_catalog', 'required': True, 'asset_type': 'catalog'}, {'asset_group_id': 'hero_asset', 'required': False, 'asset_type': 'image'}, {'asset_group_id': 'landing_page_url', 'required': False, 'asset_type': 'url'}]
     supported_catalog_types: Annotated[list[CatalogType] | None, Field(description='Catalog types this product accepts.')] = None
     min_items: Annotated[IntMin1 | None, Field(description='Minimum catalog item count buyer must supply.')] = None
     max_items: Annotated[int | None, Field(description='Maximum items considered for placement.')] = None

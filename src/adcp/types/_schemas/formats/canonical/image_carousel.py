@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import IntMin1, IntMin2, StrMatchingF601B9EB
 
-from ._base import CanonicalFormatBase
+from ._base import CanonicalFormatBase, CanonicalFormatBaseSlotsItem
 
 
 class CanonicalFormatImageCarouselAllowedCardMediaAssetTypesItem(StrEnum):
@@ -32,6 +32,8 @@ class CanonicalFormatImageCarousel(CanonicalFormatBase):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/image_carousel.json', pointer='#')
+    v1_translatable: Annotated[bool | None, Field(description="Inherently new in v2 — multi-card carousels (Meta carousel, Pinterest pin collections, Snap collection ads) weren't expressible as v1 named formats. SDKs MUST NOT emit `FORMAT_PROJECTION_FAILED` for products using this canonical; the v1-unreachability is structural.")] = False
+    slots: Annotated[list[CanonicalFormatBaseSlotsItem] | None, Field(description="Default slots for image_carousel. The `cards` slot's value in the manifest is an array of [card-asset](/schemas/core/assets/card-asset.json) objects; `min` / `max` constrain card count.")] = [{'asset_group_id': 'cards', 'asset_type': 'card', 'required': True, 'min': 2, 'max': 10}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]
     card_aspect_ratio: Annotated[StrMatchingF601B9EB | None, Field(description="Aspect ratio shared across all cards (e.g., '1:1', '1.91:1', '4:5').")] = None
     min_cards: Annotated[IntMin2 | None, Field(description='Minimum card count (typical: 2 or 3).')] = None
     max_cards: Annotated[int | None, Field(description='Maximum card count (typical: 6, 10, or 35 depending on platform).')] = None

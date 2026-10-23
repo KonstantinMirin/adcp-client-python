@@ -348,7 +348,11 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     """
     out = emit.emit(BUNDLE, bundle.portable(BUNDLE))
     assert len(out.emitted) + len(out.refusals) == 1054
-    assert len(out.emitted) == 674
+    # Re-pinned 674 -> 686 on bcb0b8ca8, and this is the EMITTED count over all
+    # 1,054 portable documents -- NOT the 677 the committed tree holds, which is
+    # the population() run. Those two populations have been confused in three
+    # briefings; read 686 as a module count and the tree looks stale by nine.
+    assert len(out.emitted) == 686
     assert [d for d, r in out.refusals.items() if "nothing enclosing it" in r["detail"]] == []
 
 
