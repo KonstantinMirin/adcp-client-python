@@ -92,7 +92,7 @@ from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._base import SchemaRef
 from codegen import refusal
-from codegen.refusal import Refusal
+from codegen.refusal import Kind, Refusal
 
 #: The import path of the hand-written base every emitted module imports from.
 #: Here rather than in ``emit`` because :func:`declare_alias` writes the two
@@ -856,7 +856,12 @@ def _no_binder(uri: str, pointer: str) -> Target:
     without it refuses its references by name rather than inventing an import, so
     there is no path on which a reference is silently dropped.
     """
-    raise Refusal("$ref", pointer, f"no reference binder: {uri} cannot be resolved to a module")
+    raise Refusal(
+        "$ref",
+        pointer,
+        f"no reference binder: {uri} cannot be resolved to a module",
+        kind=Kind.VERDICT,
+    )
 
 
 def _no_decider(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
@@ -870,7 +875,12 @@ def _no_decider(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     instead, exactly as ``bind`` is carried, so a lowering decides a nested node
     without naming ``emit``.
     """
-    raise Refusal("type", pointer, f"no node decider: {node.get('type')!r} cannot be decided")
+    raise Refusal(
+        "type",
+        pointer,
+        f"no node decider: {node.get('type')!r} cannot be decided",
+        kind=Kind.VERDICT,
+    )
 
 
 @dataclass
@@ -951,6 +961,7 @@ class Module:
                 "title",
                 pointer,
                 f"two nodes in this document derive the class name {name!r}",
+                kind=Kind.VERDICT,
             )
         if pointer in self.declared:
             # The symmetric failure to the one above, and the same kind of thing: a
@@ -965,6 +976,7 @@ class Module:
                 pointer,
                 f"two nodes are declared at this pointer: {self.declared[pointer]!r} "
                 f"and {name!r}, so a reference to it would import whichever came last",
+                kind=Kind.VERDICT,
             )
         self.names.add(name)
         self.declared[pointer] = name
@@ -1063,6 +1075,7 @@ def conditional_only(stated: Rules, declared: Collection[str], pointer: str) -> 
             "property at <pointer>/properties/<key> that the document does not (the "
             "comparison folds conjuncts and not conditionals), so the two cannot both "
             "hold and a comparison row for the added fact is the harness's to write",
+            kind=Kind.DEFERRED,
         )
 
 
@@ -1108,7 +1121,7 @@ def rules_at(node: dict, *also: dict) -> Rules:
     )
 
 
-def _why(key: str) -> str:
+def _why(key: str) -> tuple[str, Kind]:
     """Why this key stopped the walk, and the two answers are not the same claim.
 
     A key draft-07 DEFINES is a keyword some D2 row owns, so "a later row does" is
@@ -1124,14 +1137,23 @@ def _why(key: str) -> str:
     So the admission decision and the refusal REASON are the one bug read twice:
     :data:`BUNDLE_ANNOTATIONS` names the non-keywords that annotate, and this names
     what a refusal says about the rest.
+
+    **The KIND travels with the reason here, and this is the one place it does not
+    travel with the raise site.**  :func:`check_keywords` is a single ``raise``
+    reached for three different reasons -- a deferral, a verdict about a
+    non-keyword, and whatever a caller's own ``why`` says -- so a kind attached to
+    the line would be one answer for three claims.  That is precisely the mistake
+    the regex over details made in the other direction, and the pair returned here
+    is what keeps the two from drifting: the sentence and its classification are
+    one value and are written in one place.
     """
     if key in DRAFT07:
-        return refusal.DEFERRED_TO_A_LATER_ROW
+        return refusal.DEFERRED_TO_A_LATER_ROW, Kind.DEFERRED
     return (
         "draft-07 defines no such keyword, so no D2 row lowers it and none is "
         "scheduled; a non-keyword that ANNOTATES a node is named in "
         "compiler.BUNDLE_ANNOTATIONS and this is not one of those names"
-    )
+    ), Kind.VERDICT
 
 
 def check_keywords(
@@ -1139,13 +1161,25 @@ def check_keywords(
     pointer: str,
     handled: set[str],
     why: str | None = None,
+    kind: Kind = Kind.VERDICT,
 ) -> None:
+    """Refuse the first keyword at this node no caller claimed.
+
+    A caller passing its own ``why`` passes the ``kind`` that goes with it.  The
+    default is ``VERDICT`` because every ``why`` in the tree today is one -- a
+    caller-supplied reason is a reason this position can never be lowered, where
+    the generic answer :func:`_why` gives has a deferral in it -- and a caller
+    whose reason is a deferral says so rather than inheriting a default.
+    """
     for key in sorted(node):
         if key in handled or key in ANNOTATIONS or key in DEFINITION_SECTIONS:
             continue
         if key.startswith("x-"):
             continue
-        raise Refusal(key, pointer, why or _why(key))
+        if why is not None:
+            raise Refusal(key, pointer, why, kind=kind)
+        generic, generic_kind = _why(key)
+        raise Refusal(key, pointer, generic, kind=generic_kind)
 
 
 # --------------------------------------------------------------------------- #
@@ -1220,6 +1254,7 @@ def fields(
             "required",
             pointer,
             f"required names no property declares: {undeclared} (step 7's rule, not a field)",
+            kind=Kind.DEFERRED,
         )
 
     built: list[Property] = []
@@ -1229,12 +1264,12 @@ def fields(
     for key, sub in props.items():
         at = where.get(key, f"{pointer}/properties/{key}")
         if not isinstance(sub, dict):
-            raise Refusal("properties", at, "property is not a schema")
+            raise Refusal("properties", at, "property is not a schema", kind=Kind.VERDICT)
         fname = field_name(key)
         if fname in spelled:
             raise Refusal(
                 "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
-            )
+            , kind=Kind.VERDICT)
         spelled[fname] = key
         is_distinct = key in distinct
         if is_distinct:
@@ -1265,6 +1300,7 @@ def fields(
                     at,
                     "a default on a REQUIRED property has no rendering that does not also "
                     "make the property optional",
+                    kind=Kind.DEFERRED,
                 )
             default = sub["default"]
         doc = sub.get("description")
@@ -1451,10 +1487,16 @@ def lower_object(
             f"an object node must declare type: object; this one declares "
             f"{node.get('type', '<absent>')!r} and nothing enclosing it constrains the "
             "instance to an object, so the document admits a non-object that no class can",
+            kind=Kind.VERDICT,
         )
     props = node["properties"]
     if not isinstance(props, dict) or not props:
-        raise Refusal("properties", pointer, "an object node with no property declared")
+        raise Refusal(
+            "properties",
+            pointer,
+            "an object node with no property declared",
+            kind=Kind.VERDICT,
+        )
     # A key a conditional names and this node does not declare has no field to be and
     # no fact to state, so the document refuses rather than the class choosing one of
     # the two wrong answers (:func:`conditional_only` carries the reasoning).  0 object
@@ -1464,7 +1506,12 @@ def lower_object(
     conditional_only(stated, props, pointer)
     required = node.get("required", [])
     if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
-        raise Refusal("required", pointer, f"required is {required!r}, not a list of names")
+        raise Refusal(
+            "required",
+            pointer,
+            f"required is {required!r}, not a list of names",
+            kind=Kind.VERDICT,
+        )
     built = fields(props, required, pointer, name, mod, distinct=stated.distinct)
     return declare_object(
         node,
@@ -1636,10 +1683,11 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided:
             "$ref",
             at,
             f"a local reference cycle: #{' -> #'.join([*mod.resolving, pointer])}",
+            kind=Kind.VERDICT,
         )
     node = mod.local.get(pointer)
     if node is None:
-        raise Refusal("$ref", at, f"#{pointer} names no node of this document")
+        raise Refusal("$ref", at, f"#{pointer} names no node of this document", kind=Kind.VERDICT)
     key = pointer.rsplit("/", 1)[-1].replace("~1", "/").replace("~0", "~")
     symbol = mod.root + class_name(key)
     mod.resolving.append(pointer)

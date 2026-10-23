@@ -75,7 +75,7 @@ from __future__ import annotations
 from typing import Any
 
 from codegen import compiler
-from codegen.refusal import Refusal
+from codegen.refusal import Kind, Refusal
 
 #: The keywords an enum node can carry that this row ANSWERS for, screened by the
 #: caller (``codegen.emit``) against the one annotation set.  ``type`` agrees with
@@ -149,11 +149,21 @@ def decide(node: dict, name: str, pointer: str) -> compiler.Enumeration:
     """
     values = node.get("enum")
     if not isinstance(values, list) or not values:
-        raise Refusal("enum", pointer, "an empty enum admits no instance, so it enumerates nothing")
+        raise Refusal(
+            "enum",
+            pointer,
+            "an empty enum admits no instance, so it enumerates nothing",
+            kind=Kind.VERDICT,
+        )
 
     kinds = sorted({type(v).__name__ for v in values})
     if len(kinds) > 1:
-        raise Refusal("enum", pointer, f"members of mixed type {kinds} have no one base")
+        raise Refusal(
+            "enum",
+            pointer,
+            f"members of mixed type {kinds} have no one base",
+            kind=Kind.VERDICT,
+        )
     kind = BASES.get(kinds[0])
     if kind is None:
         raise Refusal(
@@ -161,6 +171,7 @@ def decide(node: dict, name: str, pointer: str) -> compiler.Enumeration:
             pointer,
             f"a {kinds[0]} member has no enumeration base"
             + (" (bool is an int subclass and would enumerate 0 and 1)" if kinds[0] == "bool" else ""),
+            kind=Kind.VERDICT,
         )
 
     descriptions = node.get("enumDescriptions")
@@ -174,6 +185,7 @@ def decide(node: dict, name: str, pointer: str) -> compiler.Enumeration:
                 pointer,
                 f"{value!r} appears twice; Python aliases the second member onto the first "
                 "silently, so the class would carry fewer members than the document lists",
+                kind=Kind.VERDICT,
             )
         seen.add(value)
         member = member_name(value)
@@ -182,6 +194,7 @@ def decide(node: dict, name: str, pointer: str) -> compiler.Enumeration:
                 "enum",
                 pointer,
                 f"{value!r} and {spelled[member]!r} both spell the member {member!r}",
+                kind=Kind.VERDICT,
             )
         spelled[member] = value
         text = descriptions.get(str(value)) if isinstance(descriptions, dict) else None

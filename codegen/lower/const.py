@@ -86,7 +86,7 @@ from __future__ import annotations
 import jsonschema
 
 from codegen import compiler
-from codegen.refusal import Refusal
+from codegen.refusal import Kind, Refusal
 
 #: The keywords a ``const`` node can carry that this row ANSWERS for, screened by
 #: the caller (``codegen.emit``) against the one annotation set, exactly as the
@@ -133,11 +133,13 @@ def decide(node: dict, pointer: str) -> compiler.Decided:
             f"a const of {type(value).__name__} has no Literal: the compiler's own slot "
             f"takes {', '.join(t.__name__ for t in LITERALS)} and raises on anything else, "
             "with no document, pointer or keyword in the message",
+            kind=Kind.VERDICT,
         )
     if not jsonschema.Draft7Validator(node).is_valid(value):
         raise Refusal(
             "const",
             pointer,
             f"const {value!r} is not a {node.get('type')!r}: the node admits nothing",
+            kind=Kind.VERDICT,
         )
     return compiler.Decided(compiler.Type(literals=(value,)))
