@@ -69,6 +69,28 @@ from codegen.refusal import Refusal
 #: does not lower is refused.
 BOUNDS = ("minItems", "maxItems")
 
+#: A MAPPING's own bounds -- how many keys it may carry -- in the document's spelling,
+#: and the ones a field holding the mapping can carry.  The same shape as
+#: :data:`BOUNDS` and for the same reason: a bound on the container is the container's,
+#: so it rides on the field rather than on ``K`` or ``V``.
+#:
+#: **Translated by the compiler and not here** (``compiler.KEY_COUNT``), because the
+#: translation is pydantic's rather than the document's: dmcg's ``Constraints`` has no
+#: ``minProperties`` field at all and silently sets nothing for one, while its length
+#: channel renders ``Field(min_length=..., max_length=...)``, which pydantic renders
+#: back as ``minProperties``/``maxProperties`` on a ``dict`` -- the document's own
+#: spelling, so the comparison needs no row.  Measured on pydantic 2.13.5:
+#: ``Annotated[dict[str, int], Field(min_length=1, max_length=4)]`` renders
+#: ``{"type": "object", "minProperties": 1, "maxProperties": 4}`` and refuses ``{}``
+#: and a five-key object while accepting a one-key one.
+#:
+#: These are NOT D6 rules even though :data:`compiler.RULE_KEYWORDS` names them, and
+#: the difference is the position: D6's ``PropertyCount`` reads a model's
+#: ``__pydantic_fields_set__``, and a mapping has no fields -- it is a ``dict`` -- so
+#: the rule cannot carry this node's bound and the annotation is the only place it can
+#: live.  A node with ``properties`` goes the other way and is step 7's.
+KEY_BOUNDS = ("minProperties", "maxProperties")
+
 #: Which constraint keywords each ``type`` can carry, for a node whose ``type`` is a
 #: LIST.  draft-07 applies a constraint keyword only to an instance OF the type it is
 #: defined for and ignores it for every other type, so a multi-type node means "this
@@ -154,10 +176,17 @@ def mapping(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     ``additionalProperties`` or from the one ``patternProperties`` schema, and its KEY
     from the document (:func:`_key`) -- ``str`` only where the document says nothing
     about keys, which is a faithful reading and not a default.
+
+    **How many keys it may carry is the mapping's own bound**, so it rides on the field
+    holding the mapping (:data:`KEY_BOUNDS`), which is where every container bound in
+    this module goes.
     """
     compiler.check_keywords(  # the walk's own check
-        node, pointer, {"type", "additionalProperties", "patternProperties", "propertyNames"}
+        node,
+        pointer,
+        {"type", "additionalProperties", "patternProperties", "propertyNames", *KEY_BOUNDS},
     )
+    bounds = {k: node[k] for k in KEY_BOUNDS if k in node}
     patterned = node.get("patternProperties")
     if patterned is not None:
         if not isinstance(patterned, dict) or len(patterned) != 1:
@@ -175,11 +204,15 @@ def mapping(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
                 "beside patternProperties, which leaves two value schemas for one "
                 "mapping value type",
             )
-        (expr, value_node), = patterned.items()
-        key = _key({"type": "string", "pattern": expr}, f"{pointer}/patternProperties", mod)
-        at = f"{pointer}/patternProperties/{expr.replace('~', '~0').replace('/', '~1')}"
-        value = _value(value_node, at, name_hint, mod)
-        return Decided(compiler.Type(container="dict", of=(value,), key=key))
+        # The expression constrains the KEY, so this is :data:`_PATTERN_KEY`'s verdict
+        # reached from the other spelling -- and it names ``patternProperties``, which
+        # is the keyword this document actually states, rather than the ``pattern`` a
+        # ``propertyNames`` document states.  A refusal names the document's own word.
+        #
+        # The tail this replaces was DEAD: ``_key`` was handed
+        # ``{"type": "string", "pattern": expr}`` and refused on ``pattern`` before any
+        # of it ran, so no ``patternProperties`` node has ever reached a decided type.
+        raise Refusal("patternProperties", pointer, _PATTERN_KEY)
 
     ap = node.get("additionalProperties", True)
     if ap is False:
@@ -191,7 +224,7 @@ def mapping(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         )
     key = _key(node.get("propertyNames"), f"{pointer}/propertyNames", mod)
     value = _value(ap, f"{pointer}/additionalProperties", name_hint, mod)
-    return Decided(compiler.Type(container="dict", of=(value,), key=key))
+    return Decided(compiler.Type(container="dict", of=(value,), key=key), bounds)
 
 
 def _value(node: Any, pointer: str, name_hint: str, mod: Module) -> compiler.Type:
@@ -206,18 +239,60 @@ def _value(node: Any, pointer: str, name_hint: str, mod: Module) -> compiler.Typ
     return _inner(mod.decide(node, pointer, name_hint + "Value", mod), pointer, "the value")
 
 
+#: Why a mapping whose KEY TEXT is constrained by a regular expression is refused, and
+#: it is a VERDICT: the model would be correct and ungradeable, not wider.
+#:
+#: Measured on pydantic 2.13.5.  A constrained-``str`` key is the only annotation that
+#: carries the bound, and ``dict[Annotated[str, StringConstraints(pattern="^[A-Z]{2}$")], V]``
+#: renders ``{"patternProperties": {"^[A-Z]{2}$": <V>}}`` -- pydantic's own reading of a
+#: patterned key, and a faithful one, but not the document's: ``patternProperties`` is a
+#: fact the document does not state, and the ``propertyNames`` and
+#: ``additionalProperties`` it DOES state are both gone.  The same probe shows the bound
+#: still ENFORCES (``{"AB": 1}`` accepted, ``{"abc": 1}`` refused), so the symmetric
+#: comparison reports one ``added`` and two ``missing`` for a model that accepts and
+#: refuses exactly what the document does.
+#:
+#: So there is no row to schedule and no keyword left to lower -- the alternative is a
+#: hand-written comparison row admitting a three-fact rewrite at every mapping, which
+#: is the blanket allowance D14 forbids.  A key LENGTH is a different measurement and is
+#: carried (:func:`_key`).
+_PATTERN_KEY = (
+    "a mapping whose key text is constrained by a regular expression has one "
+    "annotation that carries the bound, a constrained-str key, and pydantic renders "
+    "that as patternProperties -- a fact the document does not state, with the "
+    "propertyNames and additionalProperties it does state both dropped (measured on "
+    "pydantic 2.13.5).  The model would accept and refuse exactly what the document "
+    "does and the symmetric comparison would report one added and two missing facts "
+    "for it, so this is a keyword no row lowers rather than one a later row will"
+)
+
+
 def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
     """A mapping's key type, from the document (D5), with ``str`` the last resort.
 
     The order is the document's own: a ``$ref`` NAMES the key type, so the key is
     that type and the module imports it; an ``enum`` CLOSES the key set, which D5
     reads as a model rather than a mapping; anything that constrains the key's text
-    needs a named annotated ``str``, which is D5's alias module (see this module's
+    is a named annotated ``str``, which is D5's alias module (see this module's
     docstring); and silence means ``str``.
 
     Silence is a reading and not a fallback: the document says nothing about keys, so
     the key is every string, and typing it further would be the SDK inventing a
     constraint the document does not state.
+
+    **A key's LENGTH is lowered and a key's PATTERN is refused, and the split is
+    measured rather than preferred.**  Both go through the walk, so D5's rung 3 names
+    the shape and no spelling is invented here.  What differs is what pydantic renders
+    the resulting ``dict`` as, measured on 2.13.5:
+
+    * ``dict[Annotated[str, StringConstraints(min_length=1)], V]`` renders
+      ``{"additionalProperties": ..., "propertyNames": {"minLength": 1}}`` -- the
+      document's own two keywords, both of them -- so it is graded and carried.
+    * ``dict[Annotated[str, StringConstraints(pattern=...)], V]`` renders
+      ``{"patternProperties": {"<expr>": ...}}``: one fact the document does not state
+      and two it does, gone.  The bound still ENFORCES, so this is a model that is
+      correct and ungradeable rather than one that is wider -- which is a verdict, not
+      a deferral, and :data:`_PATTERN_KEY` is where it is said.
     """
     if node is None:
         return compiler.Type("str")
@@ -236,8 +311,16 @@ def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
             "type-position site in this bundle is core/store-item.json#/properties/hours, "
             "whose document refuses on enum, so the model would reach no document",
         )
-    compiler.check_keywords(node, pointer, {"type"})  # every key constraint refuses below
-    return compiler.Type("str")
+    if "pattern" in node:
+        raise Refusal("pattern", pointer, _PATTERN_KEY)
+    # Through the walk, so the key is D5's named shape and this row spells nothing: a
+    # length-bounded key resolves to ``constraints.StrMinLen1`` and is recorded there,
+    # and a key the alias module has no spelling for comes back with its constraints
+    # still on it and ``_inner`` refuses by name.  ``type: string`` is supplied where
+    # the document leaves it out, because ``propertyNames`` applies to a key and a JSON
+    # key is a string: without it the node is typeless and the walk reads it as
+    # ``Any``, which would drop the bound.
+    return _inner(mod.decide({"type": "string", **node}, pointer, "", mod), pointer, "the key")
 
 
 def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:

@@ -132,6 +132,29 @@ CONSTRAINTS = (
     "uniqueItems",
 )
 
+#: **The one keyword pair whose pydantic spelling the document does not share**, so it
+#: is translated here rather than passed through.  A mapping's key COUNT is
+#: ``min``/``maxProperties`` in the document and ``min_length``/``max_length`` in
+#: pydantic, and dmcg's ``Constraints`` has no field for the document's spelling at
+#: all: ``Constraints(minProperties=1)`` constructs and sets NOTHING, which is the
+#: silent drop gate 1 exists to prevent.
+#:
+#: Measured on pydantic 2.13.5, which is why it is a translation and not a refusal:
+#: ``Annotated[dict[str, int], Field(min_length=1, max_length=4)]`` renders
+#: ``{"type": "object", "minProperties": 1, "maxProperties": 4}`` -- the document's own
+#: spelling back again, so the symmetric comparison gains and drops nothing -- and
+#: enforces the bound (``{}`` refused, one key accepted, five refused).
+#:
+#: It is HERE and not in ``lower.containers`` for the reason the module docstring gives
+#: for gate 1: a row states the document's keyword, and translating one into pydantic's
+#: vocabulary is the compiler's half of the seam.  The array row relies on the same
+#: seam without needing an entry, because dmcg's ``Constraints`` happens to alias
+#: ``minItems`` itself.  A node carries at most one of the two pairs -- a string's
+#: ``minLength`` and an object's ``minProperties`` are keywords of different types, and
+#: ``containers.ARM`` is what keeps a multi-type node's arms apart -- so the
+#: translation cannot collide with a spelling already present.
+KEY_COUNT = {"minProperties": "minLength", "maxProperties": "maxLength"}
+
 #: Absent is not the same as ``None``: a property whose schema declares
 #: ``default: null`` has a default and it is ``None``.
 MISSING = object()
@@ -328,7 +351,11 @@ def _field(prop: Property) -> DataModelField:
     }
     if extra_schema:
         extras["json_schema_extra"] = extra_schema
-    constraints = {k: v for k, v in prop.constraints.items() if k in CONSTRAINTS}
+    constraints = {
+        KEY_COUNT.get(k, k): v
+        for k, v in prop.constraints.items()
+        if k in CONSTRAINTS or k in KEY_COUNT
+    }
     kwargs: dict[str, Any] = {}
     if prop.default is not MISSING:
         # ``has_default`` is what the template reads; the value alone is not
