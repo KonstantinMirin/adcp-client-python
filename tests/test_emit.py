@@ -59,6 +59,7 @@ from adcp.types._base import (
 from adcp.types._runtime import RuleBound
 from codegen import bundle, compiler, emit, harness
 from codegen import constraints as constraints_module
+from codegen import refusal as refusal_module
 from codegen.lower import const as lower_const
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
@@ -4371,6 +4372,67 @@ def test_every_portable_document_is_emitted_or_refused_by_name() -> None:
         d: r for d, r in out.refusals.items() if not r.get("keyword") or r.get("pointer") is None
     }
     assert unnamed == {}, unnamed
+
+
+def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending() -> None:
+    """The exit condition is ``emitted + VERDICTS``, and it is not ``emitted + refused``.
+
+    ``test_every_portable_document_is_emitted_or_refused_by_name`` proves the
+    partition is total and disjoint.  It cannot tell a refusal apart from a
+    placeholder, and ``emitted + refused == 1054`` is green while nothing does.
+    Measured here by the producers' own constants: of 476 refusals, **176** say
+    "a later D2 row does", **1** waits on one of those through a ``$ref``, and
+    **299** name a keyword this emitter will not lower.  So the exit condition
+    stands at 578 + 299 = **877 of 1054**, with 177 pending.
+
+    A REGEX OVER THE DETAIL STRING GAVE 404 / 41 / 31, AND ALL THREE WERE WRONG.
+    It matched ``"D2 row"`` inside the VERDICT sentence "draft-07 defines no such
+    keyword, so no D2 row lowers it and none is scheduled", reclassifying 268
+    verdicts as deferrals and making the project look 268 documents further from
+    its exit than it is.  That is exactly why this reads the constants and never
+    the text.
+
+    Each kind is recognised by the CONSTANT ITS PRODUCER EMITS
+    (``refusal.DEFERRED_TO_A_LATER_ROW``, ``refusal.UNRESOLVED_TARGET``), not by a
+    spelling this test invents, so a reworded message moves the constant and this
+    test with it rather than silently reclassifying 404 documents as verdicts.
+
+    The two pending counts are pinned SHRINK-ONLY and the accounted-for count
+    GROW-ONLY.  A new row converts deferrals into emissions, so all three move in
+    one direction; any other movement is a regression and reddens here.
+    """
+    portable = bundle.portable(BUNDLE)
+    out = emit.emit(BUNDLE, portable)
+
+    deferred = {d: r for d, r in out.refusals.items() if r["detail"] == refusal_module.DEFERRED_TO_A_LATER_ROW}
+    transitive = {
+        d: r
+        for d, r in out.refusals.items()
+        if d not in deferred and refusal_module.UNRESOLVED_TARGET in r["detail"]
+    }
+    verdicts = {d: r for d, r in out.refusals.items() if refusal_module.is_a_verdict(r["detail"])}
+
+    assert out.refusals, "no refusals: every assertion below would pass vacuously"
+    assert len(deferred) + len(transitive) + len(verdicts) == len(out.refusals), {
+        "deferred": len(deferred),
+        "transitive": len(transitive),
+        "verdicts": len(verdicts),
+        "refusals": len(out.refusals),
+    }
+    assert set(deferred) & set(verdicts) == set()
+    assert set(transitive) & set(verdicts) == set()
+
+    # Shrink-only: a row lands, deferrals become emissions, these fall.
+    assert len(deferred) <= 176, len(deferred)
+    assert len(transitive) <= 1, len(transitive)
+
+    # Grow-only: what the exit condition actually counts.
+    accounted = len(out.emitted) + len(verdicts)
+    assert accounted >= 877, (accounted, len(out.emitted), len(verdicts))
+
+    # And the gap between the two readings, stated so it cannot be read as closed.
+    pending = len(deferred) + len(transitive)
+    assert accounted + pending == len(portable), (accounted, pending, len(portable))
 
 
 def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
