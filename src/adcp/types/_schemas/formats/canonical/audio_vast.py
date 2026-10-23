@@ -11,7 +11,7 @@ from adcp.types.constraints import IntMin1
 
 from ...core.vast_media_file_requirements import VASTMediaFileRequirements
 from ...enums.vast_version import VASTVersion
-from ._base import CanonicalFormatBase
+from ._base import CanonicalFormatBase, CanonicalFormatBaseSlotsItem
 
 
 class CanonicalFormatVASTAudio(CanonicalFormatBase):
@@ -25,6 +25,7 @@ class CanonicalFormatVASTAudio(CanonicalFormatBase):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('vast_versions'),
     )
+    slots: Annotated[list[CanonicalFormatBaseSlotsItem] | None, Field(description='Default slots for the audio_vast canonical. The buyer supplies a VAST tag (URL or inline XML) plus an optional clickthrough URL, which falls back to the VAST ClickThrough when omitted. Tracking events and companion creatives carried by the VAST document do not require separate slots.')] = [{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]
     vast_versions: Annotated[list[VASTVersion] | None, Field(description='VAST audio versions accepted by this product format option. Standardized audio support begins at VAST 4.1; listing 2.0, 3.0, or 4.0 explicitly declares seller-supported legacy audio interoperability rather than standards-conformant VAST audio. The asset declares exactly one vast_version; compatibility requires membership in this set and the seller-wide execution set.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     vast_version: Annotated[VASTVersion | None, Field(description='Deprecated one-element alias for vast_versions. Producers use either the singular legacy alias or the plural 3.2 field, never both. VAST 4.1+ is the standards-conformant audio profile; older values declare legacy audio interoperability.')] = None
     media_file_requirements: Annotated[VASTMediaFileRequirements | None, Field(description='Technical acceptance constraints for alternative audio MediaFile renditions in each resolved InLine linear creative. Declared MIME types must be audio/*; visual-dimension constraints are invalid because VAST represents audio MediaFiles with width and height 0.')] = None

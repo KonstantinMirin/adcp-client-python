@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import SchemaRef
 from adcp.types.constraints import IntMin1
 
-from ._base import CanonicalFormatBase
+from ._base import CanonicalFormatBase, CanonicalFormatBaseSlotsItem
 
 
 class CanonicalFormatAgentPlacementAISurfaceSponsoredPlacementOutputModality(StrEnum):
@@ -31,6 +31,9 @@ class CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement(CanonicalFormatBa
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/agent_placement.json', pointer='#')
+    experimental: Annotated[bool | None, Field(description="Marked experimental at 3.1 GA: the canonical's tracking model (mention-level impression + attribution, postback shape, cross-surface dedup) is intentionally underspecified for 3.1. Adopters claiming `agent_placement` ship private tracking integrations; buyer agents MUST treat attribution as adapter-defined until the 3.2 tracking-macro spec lands. Promotion to non-experimental gated on the 3.2 tracking-contract spec.")] = True
+    v1_translatable: Annotated[bool | None, Field(description="Inherently new in v2 — AI-surface sponsored mentions weren't expressible as v1 named formats. SDKs MUST NOT emit `FORMAT_PROJECTION_FAILED` for products using this canonical; the v1-unreachability is structural.")] = False
+    slots: Annotated[list[CanonicalFormatBaseSlotsItem] | None, Field(description="agent_placement has minimal buyer-shipped slots — the surface composes the rendered output from brand context (resolved via the manifest's top-level `brand` BrandRef) plus optional offering_ref and landing_page_url assets. None of these assets are rendered verbatim by the buyer; the agent chooses how to use them.")] = [{'asset_group_id': 'offering_ref', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]
     output_modality: Annotated[CanonicalFormatAgentPlacementAISurfaceSponsoredPlacementOutputModality | None, Field(description='How the surface presents the mention. `text` = inline text (chat, search snippet). `audio` = TTS-synthesized voice. `card` = structured card with optional image + text.')] = None
     max_mention_length_chars: Annotated[IntMin1 | None, Field(description='For text output: maximum length of the surface-composed mention text.')] = None
     max_mention_duration_ms: Annotated[IntMin1 | None, Field(description='For audio output: maximum duration of the spoken mention in milliseconds.')] = None

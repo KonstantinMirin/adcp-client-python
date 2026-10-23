@@ -470,13 +470,23 @@ def test_a_ref_conjunct_becomes_a_base_in_the_documents_own_conjunct_order(
     assert "from .version_envelope import AdCPVersionEnvelope" in text
 
 
-def test_a_subclass_never_restates_an_inherited_field(tmp_path, monkeypatch) -> None:
-    """The one merge rule, and the shadow it makes unspellable.
+def test_a_subclass_restating_only_annotations_re_uses_the_inherited_field(
+    tmp_path, monkeypatch
+) -> None:
+    """The merge rule's annotation-only arm: the FIELD is the base's, the
+    annotations are this document's, and the shadow is still unspellable.
 
     The restatement states a default and a description and nothing about the
-    instance, so it adds nothing: the field is INHERITED and the subclass declares
-    no field for it.  The assertion is on the module TEXT as well as on the class,
-    because what the defect looked like was a line in a class body.
+    instance.  It is the subclass's field, because a document's own declaration
+    carries the annotation at its own pointer -- and its TYPE is re-used from the
+    base rather than decided from the restatement, which on its own would be
+    ``Any`` over a typed base.  The assertion is on the module TEXT as well as on
+    the class, because what the defect looked like was a line in a class body.
+
+    This replaced a rule reading "a subclass never restates an inherited field",
+    under which the field was inherited ENTIRELY and the class stated the base's
+    ``default`` and ``description`` at a pointer its own document declares -- the
+    28 ``differs`` of ``salesagent-j3k2l.36``, two of them inversions.
     """
     cls, text, _ = _emit_probe(
         tmp_path,
@@ -498,13 +508,109 @@ def test_a_subclass_never_restates_an_inherited_field(tmp_path, monkeypatch) -> 
         for name in (line.strip().split(":")[0] for line in body)
         if name.isidentifier() and not name.startswith("__")
     ]
-    assert declared == ["label"], text
-    assert "adcp_major_version" not in text, "the inherited field is restated"
-    # P2: no second spelling of anything the base states.
-    assert "ge=1" not in text and "le=99" not in text and "99" not in text, text
+    assert declared == ["adcp_major_version", "label"], text
+    assert "restated, and states no fact" in text, "the document's own text is not on the field"
     assert "Any" not in text, "the restatement lowered on its own would be Any"
-    # and the field is still THERE, with the base's own declaration
-    assert cls.model_fields["adcp_major_version"].annotation is not Any
+
+    # **The type is the base's, not a second decision about the same node.**  Read
+    # off the live field against the base's own, by VALUE: two spellings of one
+    # annotated alias are equal and are not the same object.
+    base = cls.__bases__[1]
+    assert cls.model_fields["adcp_major_version"].annotation == (
+        base.model_fields["adcp_major_version"].annotation
+    )
+    assert cls.model_fields["adcp_major_version"].metadata == (
+        base.model_fields["adcp_major_version"].metadata
+    )
+    # and it still REFUSES what the base refuses, which the annotation cannot say
+    assert cls.model_validate({"adcp_major_version": 2, "label": "xy", "kind": "ab"})
+    for bad in (0, 100):
+        with pytest.raises(pydantic.ValidationError):
+            cls.model_validate({"adcp_major_version": bad, "label": "xy", "kind": "ab"})
+    # and the annotations are the DOCUMENT's
+    assert cls.model_fields["adcp_major_version"].default == 1
+    assert cls.model_fields["adcp_major_version"].description == "restated, and states no fact"
+
+
+def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
+    tmp_path,
+) -> None:
+    """The merge does not reach a restatement that DISAGREES, and that is the one
+    thing a merge of the base's content could quietly swallow.
+
+    ``_restatement`` is asked first and is unchanged: a declaration that drops a
+    keyword the base states, or gives one a different value, is ``None`` and the
+    document refuses by the keyword the two disagree about.  Only a restatement
+    that says the SAME thing or NOTHING about the instance reaches the arm that
+    re-uses the base's field, so there is no reading on which a disagreement is
+    merged away.
+    """
+    base = {"type": "integer", "minimum": 3, "description": "the base's floor"}
+    # The keyword is ``_disagreeing``'s: the FIRST the two do not agree about, in
+    # sorted order.  So a restatement disagreeing about both the type and the bound
+    # is reported on ``minimum`` -- a tiebreak, not a judgement about which mattered.
+    for restated, keyword in (
+        ({"type": "integer", "minimum": 1}, "minimum"),  # a LOOSER bound
+        ({"type": "string"}, "minimum"),  # a different type, and the bound gone with it
+        ({"type": "integer"}, "minimum"),  # the bound dropped
+    ):
+        with pytest.raises(Refusal) as caught:
+            _lower(
+                {
+                    "type": "object",
+                    "allOf": [{"$ref": REF.format("core/probe-base.json")}],
+                    "properties": {"n": restated},
+                },
+                binder=lambda _uri, _at: compiler.Target(
+                    ".base", "ProbeBase", compiler.Shape({"n": base}, frozenset())
+                ),
+            )
+        assert caught.value.keyword == keyword, (restated, caught.value.keyword)
+        assert "neither matches nor narrows" in caught.value.detail, caught.value.detail
+
+
+def test_a_lost_inherited_fact_is_reported_as_missing(tmp_path, monkeypatch) -> None:
+    """The re-use BROKEN ON PURPOSE, because a merge that cannot produce a
+    ``missing`` is silencing the disagreement rather than resolving it.
+
+    ``_reused`` forced to hand back an untyped field is exactly the emitter this
+    arm replaces: the subclass declares ``adcp_major_version`` from a restatement
+    that states nothing about the instance, so the field states none of the three
+    facts ``core/version-envelope.json`` states about it.  The same probe bundle,
+    the same comparison, two emitters -- and the comparison names each lost fact
+    at its own pointer.
+    """
+    monkeypatch.setattr(
+        product,
+        "_reused",
+        lambda key, held, source, pointer, mod: compiler.Property(
+            name=key, wire=key, type=compiler.Type("typing.Any"), required=False
+        ),
+    )
+    # ``shared`` because this probe is graded by the COMPARISON, and only then does
+    # the fixture state the root description a composing document in the population
+    # has -- ``_probe`` says why.  The shared key is inherited and not restated, so
+    # it takes no part in the dimension this judges.
+    cls, text, schema = _emit_probe(
+        tmp_path,
+        monkeypatch,
+        name="s4lostfact",
+        own={"adcp_major_version": SHADOW, "label": {"type": "string", "minLength": 2}},
+        shared={"spare": {"type": "string", "description": "the base's spare"}},
+    )
+    assert "adcp_major_version: Annotated[Any | None" in text, "the patch did not reach"
+
+    comparison = compare_schema(schema, cls)
+    assert comparison.added == [], comparison.added
+    reported = {str(m).split(":", 1)[0] for m in comparison.missing}
+    assert reported == {
+        "/properties/adcp_major_version/type",
+        "/properties/adcp_major_version/minimum",
+        "/properties/adcp_major_version/maximum",
+    }, sorted(reported)
+    # And the model really does accept what the document refuses, which is the
+    # defect the report stands for.
+    assert cls.model_validate({"adcp_major_version": 1000, "label": "xy", "kind": "ab"})
 
 
 #: The two shapes of the OTHER restatement: it says exactly what the base says about
