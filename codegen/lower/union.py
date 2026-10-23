@@ -443,11 +443,15 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
     It is reached from ``emit.decide_type`` and NOT through ``emit.ROWS``, for the
     reason the nested ``allOf`` arm beside it is: ``ROWS`` dispatches on ROOT KIND and
     is a partition by it, so a keyword at a position no root selector sees has no row to
-    be and no selector to select it.  Measured on the 3.2 bundle: of the 32 documents
-    whose nested combinator was being deferred, **0 are claimed by
-    ``bundle.union_root``** -- a row would have claimed none of them -- and 4 of the 48
-    deferrals sit at a root, all 4 on ``uniqueItems`` at a root ARRAY, a kind
-    ``bundle.is_container_root`` already claims.  So ``ROWS`` stays six.
+    be and no selector to select it.  Measured on the 3.2 bundle, of the NODE'S POSITION
+    and not of the document: of the 32 deferred nested combinators **0 sit at a root**,
+    so no root selector sees one and a row would have claimed none.  (Asked of the
+    document instead, 2 of the 32 have a root ``bundle.union_root`` already claims and 14
+    have one ``composes_at_the_root`` claims -- a row claiming the document says nothing
+    about the position inside it, which is the whole of why ``ROWS`` partitions by root
+    kind.)  The other 4 of the 48 deferrals that DO sit at a root are all on
+    ``uniqueItems`` at a root ARRAY, a kind ``bundle.is_container_root`` already claims.
+    So ``ROWS`` stays six.
 
     **Each branch is decided by the same walk as any other node**, at its own
     ``<pointer>/<kw>/<i>``, which is what gives a branch that becomes a CLASS its own

@@ -380,9 +380,20 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # **D2's union keyword at a node that is NOT a root**, reached here rather than
         # through a seventh row for the ``allOf`` arm's reason above: ``ROWS`` dispatches
         # on ROOT KIND and is a partition by it, so a keyword at a position no root
-        # selector sees has no row to be.  Measured on the 3.2 bundle: of the 33
-        # documents whose nested combinator was deferred, **0 are claimed by
-        # ``bundle.union_root``**, so a row would have claimed none of them.
+        # selector sees has no row to be.  Measured on the 3.2 bundle, and the
+        # measurement is about the NODE'S POSITION rather than about the document:
+        # of the 32 deferred nested combinators, **0 sit at a root** -- every one is at a
+        # ``properties``, an ``items``, a ``definitions`` entry or inside a branch -- so
+        # no root selector sees any of them and a row would have claimed none.
+        #
+        # **Asked of the DOCUMENT the answer is different, which is why it is asked of
+        # the node:** 2 of the 32 documents have a root ``bundle.union_root`` already
+        # claims (``core/creative-item.json``, whose combinator is at
+        # ``/oneOf/1/properties/content``, and ``core/placement-selection.json`` at
+        # ``/oneOf/0/properties/placement_refs/items``) and 14 have one
+        # ``composes_at_the_root`` claims.  A row claiming the document says nothing
+        # about the position inside it, which is the whole of why ROWS partitions by
+        # root kind.
         #
         # It is a TYPE and not the root row's base-plus-subclasses -- see
         # ``lower.union.nested`` -- and ``lower_union.keyword`` is the one reading of

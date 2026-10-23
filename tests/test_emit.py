@@ -4597,8 +4597,10 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     #
     # `ROWS` stayed SIX and `codegen/bundle.py` was not touched: 4 of the 48 sat at a
     # root, all 4 on `uniqueItems` at a root ARRAY, a kind `bundle.is_container_root`
-    # already claims, and 0 of the 32 nested combinators are claimed by
-    # `bundle.union_root` -- so a row would have claimed none of them.
+    # already claims, and 0 of the 32 deferred nested combinator NODES sit at a root --
+    # so no root selector sees one and a row would have claimed none.  Asked of the
+    # DOCUMENT instead the answer is 2 and 14 (`union_root`, `composes_at_the_root`),
+    # which is why the measurement is of the position.
     #
     # All four pins are set to the value MEASURED on this tree and each was fire-probed
     # one step tighter (`deferred <= -1` is not expressible, so the probe was
