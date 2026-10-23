@@ -2386,7 +2386,7 @@ def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointe
 
 
 def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_keyword() -> None:
-    """The step's own arithmetic: 126 union roots, 34 emitted and 92 refused, each named.
+    """The step's own arithmetic: 126 union roots, 38 emitted and 88 refused, each named.
 
     The by-keyword profile is asserted as a WHOLE rather than as a total, because the
     profile is the readable result of the step -- it says which later step unblocks what.
@@ -2397,11 +2397,12 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     excludes a root carrying a union -- so the deferral named a row that was never going
     to see them.  All 51 are THIS module's own refusals: either a root where the
     ``allOf`` is a conjunction with every branch and no pointer addresses the
-    conjunction (``ROOT_CONJUNCTS``), or a branch that composes and needs a conjunct
-    reader D13 keeps out of this lowering's reach (``_plan``).  So the profile's
-    largest row is a bill rather than a queue, which is what it is for.  The 37 + 9
-    split the previous revision quoted was measured when ``allOf`` was 46 and is not
-    re-measured here; what is asserted is the row.
+    conjunction (``ROOT_CONJUNCTS``).  The other half of that row is gone:
+    ``salesagent-j3k2l.40`` shared the conjunct reader, so a branch that composes is
+    lowered by ``compiler.lower_composition`` rather than refused, and ``allOf`` fell
+    51 -> 44.  So the profile's largest row is a bill rather than a queue, which is
+    what it is for.  The 37 + 9 split the previous revision quoted was measured when
+    ``allOf`` was 46 and is not re-measured here; what is asserted is the row.
     """
     out = emit.emit(BUNDLE, population())
     roots = union_roots()
@@ -2419,8 +2420,15 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # not moved, while which of the 126 emit is a function of the other steps' rows,
     # and six more of them emit now.  Both halves are over one emit, so the two
     # numbers cannot drift apart -- the sum is asserted below.
-    assert len(emitted) == 34, emitted
-    assert len(refused) == 92
+    #
+    # **34 / 92 -> 38 / 88 at ``salesagent-j3k2l.40``**, and these four are THIS
+    # module's own doing rather than another row's: a composing branch is lowered now,
+    # so ``core/canonical-optimization-goal.json``,
+    # ``core/publisher-property-selector.json``, ``core/targeting-modification.json``
+    # and ``core/canonical-media-buy-action.json`` -- 3 of the 10 that waited on the
+    # shared reader, plus one reached through them -- left the refused half.
+    assert len(emitted) == 38, emitted
+    assert len(refused) == 88
     assert len(emitted) + len(refused) == len(roots)
     assert emitted == emitted_unions()
 
@@ -2433,12 +2441,19 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         # RE-MEASURED AT 64131600f (``salesagent-j3k2l.29``), in one pass with the
         # 34 / 92 above, so the dict and the totals are one measurement: the rows sum
         # to 92 by construction.
-        "allOf": 51,
+        # RE-MEASURED at ``salesagent-j3k2l.40``, in one pass with the 38 / 88 above.
+        # ``allOf`` 51 -> 44 is the composing-branch half of that row leaving; the
+        # other six moved DEEPER, which is what a shared reader does to an
+        # attribution -- ``$ref`` 13 -> 14, and ``anyOf`` and ``const`` are back at 1
+        # each, each a branch whose own next blocker the reader could finally reach.
+        "allOf": 44,
         "properties": 19,  # a root conjunct; see lower/union.py's docstring
-        "$ref": 13,  # a bare-$ref branch, or a chain naming the target that refused
+        "$ref": 14,  # a bare-$ref branch, or a chain naming the target that refused
         "type": 4,  # a root stating no type whose branch states none either
         "required": 2,  # step 7 (D6)
         "additionalProperties": 1,
+        "anyOf": 1,  # a conjunct of SHAPES inside a branch the reader now reaches
+        "const": 1,  # a branch pinning its whole value, reached past its conjuncts
         "maxLength": 1,  # D5: a string bound beside a format: uri
         "not": 1,  # step 7 (D6) at a position the rules row does not reach
         # WHICH ROWS LEFT THIS PROFILE, kept as the record of why it is shaped this
@@ -5030,7 +5045,10 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     #
     # Each pin is the value MEASURED on this tree and each was fire-probed one step
     # tighter (`deferred <= 64`, `unresolved <= 0`, `accounted >= 989`,
-    # `chained >= 170`), so each is known to grade rather than to sit loose.
+    # `chained >= 170`, and the two chain floors at 143 and 28), so each is known to
+    # grade rather than to sit loose.  Probed as six separate runs and not as
+    # arithmetic over one measurement: the assertions are ORDERED, so a tightened pin
+    # that an earlier one pre-empts is never reached and the arithmetic cannot say so.
     assert resolved[refusal_module.Kind.DEFERRED] <= 65, resolved[refusal_module.Kind.DEFERRED]
     assert resolved[refusal_module.Kind.UNRESOLVED] <= 1, resolved[refusal_module.Kind.UNRESOLVED]
 
