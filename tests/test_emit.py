@@ -27,6 +27,7 @@ derives it from ``adcp.get_adcp_spec_version()`` (D9, P9).
 from __future__ import annotations
 
 import ast
+import collections
 import functools
 import importlib
 import inspect
@@ -4842,161 +4843,186 @@ def test_every_portable_document_is_emitted_or_refused_by_name() -> None:
     assert unnamed == {}, unnamed
 
 
+def test_a_refusals_kind_is_declared_by_its_producer_and_a_chain_takes_its_targets() -> None:
+    """``Refusal``'s own contract, which is what makes the partition unanswerable by grep.
+
+    Four assertions, one per way the kind could go back to being a reading of
+    English:
+
+    * ``kind`` has no default, so a producer cannot omit it and inherit whatever
+      the default happens to say.
+    * a delegating kind REQUIRES the refusal it delegates to, and a self-answering
+      kind refuses one -- so a chained refusal cannot be constructed without the
+      target, and ``resolved`` is never a guess.
+    * ``resolved`` follows a chain of any depth, by carrying the object and not by
+      parsing the sentence the producer writes for the reader.
+    * ``is_a_verdict`` refuses a delegating kind rather than answering for it: a
+      caller holding one has read ``kind`` where it meant ``resolved``.
+
+    The LAST one is the fix for the instance that reddened the metric by 86: a
+    chain onto a DEFERRED target is pending, and the only thing that can say so is
+    the target's own declared kind.
+    """
+    from codegen.refusal import Kind
+
+    with pytest.raises(TypeError):
+        Refusal("x", "/", "no kind passed")  # type: ignore[call-arg]
+    with pytest.raises(TypeError, match="needs"):
+        Refusal("x", "/", "chained with no target", kind=Kind.CHAINED)
+    with pytest.raises(TypeError, match="takes no"):
+        Refusal(
+            "x",
+            "/",
+            "a target it does not delegate to",
+            kind=Kind.VERDICT,
+            through=Refusal("y", "/", "t", kind=Kind.VERDICT),
+        )
+
+    deferred = Refusal("allOf", "/allOf/0", "a later D2 row lowers this one", kind=Kind.DEFERRED)
+
+    def chain(target: Refusal, at: str) -> Refusal:
+        """One link, written once, so a three-link chain has one spelling."""
+        return Refusal(
+            "$ref", at, f"its target x.json is refused: {target}", kind=Kind.CHAINED, through=target
+        )
+
+    one = chain(deferred, "/p")
+    two = chain(one, "/q")
+    assert (one.kind, one.resolved) == (Kind.CHAINED, Kind.DEFERRED)
+    assert (two.kind, two.resolved) == (Kind.CHAINED, Kind.DEFERRED)
+    assert refusal_module.is_a_verdict(two.resolved) is False
+
+    final = Refusal("oneOf", "/", "there is no pointer to the conjunction", kind=Kind.VERDICT)
+    onto_final = chain(final, "/p")
+    assert onto_final.resolved is Kind.VERDICT
+    assert refusal_module.is_a_verdict(onto_final.resolved) is True
+
+    with pytest.raises(ValueError, match="delegates"):
+        refusal_module.is_a_verdict(Kind.CHAINED)
+
+
 def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending() -> None:
     """The exit condition is ``emitted + VERDICTS``, and it is not ``emitted + refused``.
 
     ``test_every_portable_document_is_emitted_or_refused_by_name`` proves the
     partition is total and disjoint.  It cannot tell a refusal apart from a
     placeholder, and ``emitted + refused == 1054`` is green while nothing does.
-    Measured here by the producers' own constants: of 380 refusals, **48** say
-    "a later D2 row does", **1** waits on one of those through a ``$ref``, and
-    **331** name a keyword this emitter will not lower.  So the exit condition
-    stands at 674 + 331 = **1005 of 1054**, with 49 pending.
 
-    A REGEX OVER THE DETAIL STRING GAVE 404 / 41 / 31, AND ALL THREE WERE WRONG.
-    It matched ``"D2 row"`` inside the VERDICT sentence "draft-07 defines no such
-    keyword, so no D2 row lowers it and none is scheduled", reclassifying 268
-    verdicts as deferrals and making the project look 268 documents further from
-    its exit than it is.  That is exactly why this reads the constants and never
-    the text.
+    **THE KIND IS AN ARGUMENT ITS PRODUCER PASSES, AND THIS TEST READS NOTHING
+    ELSE.**  Four times the number this computes was wrong, always optimistically,
+    and every time because the kind of a refusal was decided by reading its
+    English.  ``refusal.Kind``'s docstring carries all four.  The first three were
+    each fixed by reading the sentence more carefully -- a constant instead of a
+    regex, then a recursion through the quoted chain -- and the fourth was the same
+    bug again, so the fix is to stop reading it: every producer declares a
+    ``Kind``, ``refusal.is_a_verdict`` takes one and holds no string, and this test
+    partitions by ``resolved`` rather than by any spelling it could invent.
 
-    Each kind is recognised by the CONSTANT ITS PRODUCER EMITS
-    (``refusal.DEFERRED_TO_A_LATER_ROW``, ``refusal.UNRESOLVED_TARGET``), not by a
-    spelling this test invents, so a reworded message moves the constant and this
-    test with it rather than silently reclassifying 404 documents as verdicts.
+    Measured on the tree that made the kind structural: of 368 refusals, **149**
+    declare ``VERDICT``, **47** declare ``DEFERRED``, **1** declares
+    ``UNRESOLVED`` and **171** declare ``CHAINED``; resolving the chains through
+    ``through=`` gives **281 VERDICT**, **86 DEFERRED** and **1 UNRESOLVED**.  So
+    the exit condition stands at 686 + 281 = **967 of 1054**, with 87 pending.
 
-    The two pending counts are pinned SHRINK-ONLY and the accounted-for count
-    GROW-ONLY.  A new row converts deferrals into emissions, so all three move in
-    one direction; any other movement is a regression and reddens here.
+    **A FIFTH KIND CANNOT BE ABSORBED, which is the thing this test exists for.**
+    It asserted ``deferred + transitive + chained_pending + verdicts == total``
+    over four buckets it named itself, and that assertion was green through every
+    one of the four instances -- a new category just landed in whichever bucket
+    its sentence happened not to match.  The partition is now built from the three
+    named sets of ``Kind`` members, and the FIRST assertion below is that those
+    three cover ``Kind`` exactly.  A new member reddens there before a single
+    document is counted, and nothing can route around it, because a ``Kind`` is
+    the only thing a producer can pass.
     """
     portable = bundle.portable(BUNDLE)
     out = emit.emit(BUNDLE, portable)
 
-    deferred = {d: r for d, r in out.refusals.items() if r["detail"] == refusal_module.DEFERRED_TO_A_LATER_ROW}
-    transitive = {
-        d: r
-        for d, r in out.refusals.items()
-        if d not in deferred and refusal_module.UNRESOLVED_TARGET in r["detail"]
+    # **The grading assertion, and it comes first.**  Every ``Kind`` is final,
+    # pending or delegating, and no member is two of those -- so a fifth kind is a
+    # red test and not a silent reclassification.  Probed by adding a member: this
+    # fails, with the member named, before anything below runs.
+    named = (
+        refusal_module.FINAL_KINDS,
+        refusal_module.PENDING_KINDS,
+        refusal_module.DELEGATING_KINDS,
+    )
+    assert set().union(*named) == set(refusal_module.Kind), {
+        "a Kind no set names": sorted(set(refusal_module.Kind) - set().union(*named)),
+        "named but not a Kind": sorted(set().union(*named) - set(refusal_module.Kind)),
     }
-    verdicts = {d: r for d, r in out.refusals.items() if refusal_module.is_a_verdict(r["detail"])}
-
-    # The FOURTH kind, and the reason the partition below has four terms: a refusal
-    # reading ``its target X is refused: <X's own sentence>`` is pending or final
-    # according to X, not according to itself.  ``is_a_verdict`` resolves that chain,
-    # so these are the chained refusals it resolved to PENDING -- in no other bucket.
-    chained_pending = {
-        d: r
-        for d, r in out.refusals.items()
-        if d not in deferred
-        and d not in transitive
-        and d not in verdicts
-    }
+    for i, one in enumerate(named):
+        for other in named[i + 1 :]:
+            assert one & other == set(), sorted(one & other)
+    assert (
+        refusal_module.RESOLVED_KINDS
+        == refusal_module.FINAL_KINDS | refusal_module.PENDING_KINDS
+    )
 
     assert out.refusals, "no refusals: every assertion below would pass vacuously"
-    assert len(deferred) + len(transitive) + len(chained_pending) + len(verdicts) == len(
-        out.refusals
-    ), {
-        "deferred": len(deferred),
-        "transitive": len(transitive),
-        "chained_pending": len(chained_pending),
-        "verdicts": len(verdicts),
-        "refusals": len(out.refusals),
-    }
-    assert set(deferred) & set(verdicts) == set()
-    assert set(transitive) & set(verdicts) == set()
-    assert set(chained_pending) & set(verdicts) == set()
-    # **The chained KIND must not be empty, and it is no longer the PENDING bucket that
-    # carries it.**  This read ``assert chained_pending``, because a term asserting that
-    # a kind which demonstrably exists has no members is how the bug it covers hid.
-    # ``salesagent-j3k2l.26`` emptied that bucket legitimately -- every chained refusal
-    # now resolves to a verdict -- so the non-emptiness moves onto the thing that must
-    # stay graded, which is ``is_a_verdict`` RESOLVING a chain rather than reading its
-    # outer sentence.  Measured on this tree: **171 refusals quote a target's refusal,
-    # all 171 resolve to VERDICT, and the chains run to depth 5** (121 at depth 1, 39 at
-    # 2, 6 at 3, 3 at 4, 2 at 5), so the recursion is exercised by 171 documents and the
-    # bug that read only the outer sentence would still redden the ``accounted`` pin
-    # below by 171.  The PENDING bucket is pinned at 0 with the other two.
-    chained = {
-        d: r
-        for d, r in out.refusals.items()
-        if refusal_module.CHAINED_TO_A_REFUSED_TARGET in r["detail"]
-        and r["detail"].startswith("its target ")
-    }
-    assert len(chained) >= 171, len(chained)
-    assert set(chained) - set(verdicts) == set(chained_pending), "a chain is in one bucket"
-    assert max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values()) >= 5, (
-        "no chain deeper than one link: the recursion in is_a_verdict grades nothing"
+
+    declared = collections.Counter(r["kind"] for r in out.refusals.values())
+    resolved = collections.Counter(r["resolved"] for r in out.refusals.values())
+
+    # A producer cannot emit a kind this partition does not name, and a DELEGATING
+    # kind never survives to be counted: ``Refusal.resolved`` follows it at
+    # construction.  Both halves are asserted over the population rather than
+    # trusted, because both are what the four instances got wrong.
+    assert set(declared) <= set(refusal_module.Kind), sorted(
+        set(declared) - set(refusal_module.Kind)
     )
+    assert set(resolved) <= refusal_module.RESOLVED_KINDS, sorted(
+        set(resolved) - refusal_module.RESOLVED_KINDS
+    )
+    assert sum(resolved.values()) == len(out.refusals), (dict(resolved), len(out.refusals))
+
+    verdicts = {d for d, r in out.refusals.items() if refusal_module.is_a_verdict(r["resolved"])}
+    assert len(verdicts) == sum(resolved[k] for k in refusal_module.FINAL_KINDS), len(verdicts)
+
+    # **The chain is graded by what it RESOLVES TO, and both answers must occur.**
+    # The old reading took a chained refusal's outer sentence and called all 171 of
+    # them verdicts; the reading before that recursed into the quoted text.  Neither
+    # is here: the producer passes ``through=`` the target's own refusal and
+    # ``Refusal.resolved`` carries the target's answer.  Measured on this tree, 171
+    # refusals are chained and they split **132 verdict / 39 deferred** -- so a
+    # ``through=`` dropped at that producer would make all 171 resolve to
+    # ``CHAINED``, which the assertion above refuses, and a ``through=`` pointed at
+    # the wrong refusal would move this split.
+    chained = {d: r for d, r in out.refusals.items() if r["kind"] == refusal_module.Kind.CHAINED}
+    assert len(chained) >= 171, len(chained)
+    split = collections.Counter(r["resolved"] for r in chained.values())
+    assert split[refusal_module.Kind.VERDICT] >= 132, dict(split)
+    assert split[refusal_module.Kind.DEFERRED] >= 39, dict(split)
+    # and the chains run deep enough that the propagation is exercised more than once
+    assert (
+        max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values())
+        >= 5
+    ), "no chain deeper than one link: the propagation through through= grades nothing"
 
     # Shrink-only: a row lands, deferrals become emissions, these fall.
     #
-    # **102 -> 48 and 951 -> 1005, moved by `salesagent-j3k2l.22`.**  The four keywords
-    # that bead owns -- `not` 22, `dependencies` 10, `minProperties` 7, `maxProperties`
-    # 5, which is 44 of the 102 -- are gone from the deferred set ENTIRELY, and 10 more
-    # deferrals on other keywords cleared with them (a key `pattern` became a verdict
-    # for 2, a `maxLength` for 3, and 5 cleared through a reference to a document that
-    # now emits).  Of the 44: **3 emit**, **29 became verdicts**, and **12 moved to
-    # another row's keyword or cleared transitively**.
+    # **1053 -> 967 and 1 -> 87, moved by `salesagent-j3k2l.37`, and the number
+    # FALLING is the instrument working.**  Nothing about what emits changed -- 686
+    # before and after, `comparison.added` 0 before and after -- and 86 documents
+    # moved out of `verdict` because their producers say in their own text that the
+    # lowering for the position has not been written.  47 directly and 39 through a
+    # chain.  The rule applied to every one of the 29 live producers, and the table
+    # of which producer got which kind, is `docs/plan/j3k2l37-prediction.md`; the
+    # three biggest movers are `product.py`'s "a later D2 row lowers this one" (12),
+    # `union.py`'s "a branch composes once that reader is shared" (10) and
+    # `compiler.py`'s default-on-a-required-property (1 directly, 5 through chains).
     #
-    # The two halves it took, both measured rather than designed: D6's rules reach the
-    # composing row and the union row (the rule mechanism was complete and only the
-    # object row consulted it), and a mapping's key COUNT is an annotation rather than a
-    # rule, because `PropertyCount` reads `__pydantic_fields_set__` and a mapping is a
-    # `dict` with no fields.
-    #
-    # Both pins are set to the value MEASURED on this tree rather than left loose, and
-    # both were fire-probed one step tighter (`<= 47` and `>= 1006`) so they are known to
-    # grade: a loose pin is a ratchet that grades nothing.
-    # **CORRECTED: 1005 WAS OVERSTATED BY 30 AND 48 UNDERSTATED BY 31.**  Reading only
-    # a chained refusal's OUTER sentence called all 170 of them verdicts, so the figures
-    # this test asserted were wrong on every tree the epic has reported -- the deltas
-    # between rows were right and the absolutes were not.  Measured on this tree with
-    # ``is_a_verdict`` resolving the chain:
-    #
-    #     accounted  1005 -> 975      pending  48 -> 79
-    #
-    # which two independent instruments agree on: the function here, and a separate
-    # walk that resolved every chain to its root (301 verdict, 78 deferred, 1
-    # transitive).
-    #
-    # **48 -> 0, 30 -> 0 and 975 -> 1053, moved by `salesagent-j3k2l.26`.**  All 48 of
-    # the deferred set were that bead's, and they were SIX mechanisms rather than the
-    # one its title names.  Partitioned by WHICH ARM of the walk refused -- which is
-    # what says whether a lowering exists to be written -- and not by the keyword tally:
-    #
-    #      7  uniqueItems on an array no class holds     ->  0 emit,  7 verdict
-    #     32  a combinator of SHAPES at a nested pointer ->  8 emit, 24 verdict
-    #      1  a combinator beside an allOf (composing)   ->  0 emit,  1 verdict
-    #      5  contains on an array                       ->  2 emit,  3 verdict
-    #      2  an enum on a union BRANCH                  ->  0 emit,  2 verdict
-    #      1  a composing ARRAY, refused on items        ->  0 emit,  1 verdict
-    #     48                                                10 emit, 38 verdict
-    #
-    # The row's whole gain is 12 documents: those 10, plus 2 of the 30 chained-pending
-    # refusals that cleared into emissions.  The other 28 chained-pending refusals became
-    # verdicts, because every target they chain onto is now a verdict or an emission.
-    #
-    # `ROWS` stayed SIX and `codegen/bundle.py` was not touched: 4 of the 48 sat at a
-    # root, all 4 on `uniqueItems` at a root ARRAY, a kind `bundle.is_container_root`
-    # already claims, and 0 of the 32 deferred nested combinator NODES sit at a root --
-    # so no root selector sees one and a row would have claimed none.  Asked of the
-    # DOCUMENT instead the answer is 2 and 14 (`union_root`, `composes_at_the_root`),
-    # which is why the measurement is of the position.
-    #
-    # All four pins are set to the value MEASURED on this tree and each was fire-probed
-    # one step tighter (`deferred <= -1` is not expressible, so the probe was
-    # `len(deferred) < 0`; `transitive <= 0`, `chained_pending <= -1` likewise, and
-    # `accounted >= 1054`), so each is known to grade rather than to sit loose.
-    assert len(deferred) <= 0, len(deferred)
-    assert len(transitive) <= 1, len(transitive)
-    assert len(chained_pending) <= 0, len(chained_pending)
+    # Each pin is the value MEASURED on this tree and each was fire-probed one step
+    # tighter (`deferred <= 85`, `unresolved <= 0`, `accounted >= 968`,
+    # `chained >= 172`), so each is known to grade rather than to sit loose.
+    assert resolved[refusal_module.Kind.DEFERRED] <= 86, resolved[refusal_module.Kind.DEFERRED]
+    assert resolved[refusal_module.Kind.UNRESOLVED] <= 1, resolved[refusal_module.Kind.UNRESOLVED]
 
     # Grow-only: what the exit condition actually counts.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 1053, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 967, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
-    pending = len(deferred) + len(transitive) + len(chained_pending)
+    pending = sum(resolved[k] for k in refusal_module.PENDING_KINDS)
     assert accounted + pending == len(portable), (accounted, pending, len(portable))
 
 

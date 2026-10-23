@@ -72,6 +72,7 @@ does, with two hash seeds.
 
 from __future__ import annotations
 
+import collections
 import argparse
 import functools
 import json
@@ -103,7 +104,7 @@ from codegen.lower import containers as lower_containers
 from codegen.lower import rules as lower_rules
 from codegen.lower import union as lower_union
 from codegen import refusal
-from codegen.refusal import Refusal
+from codegen.refusal import Kind, Refusal
 
 #: Where a document's module lands, relative to the repository root.
 TREE = Path("src") / "adcp" / "types" / "_schemas"
@@ -453,7 +454,7 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         if set(node) & set(CONSTRAINTS):
             raise Refusal(
                 "type", pointer, "a typeless node carrying a constraint has nothing to apply it to"
-            )
+            , kind=Kind.VERDICT)
         return Decided(compiler.Type("typing.Any"))  # D2's typeless row
 
     if isinstance(kind, list):
@@ -472,7 +473,7 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         return lower_containers.array(node, pointer, name_hint, mod)
 
     if kind not in SCALAR:
-        raise Refusal("type", pointer, f"unknown type {kind!r}")
+        raise Refusal("type", pointer, f"unknown type {kind!r}", kind=Kind.VERDICT)
 
     # ``rules.ON_A_VALUE`` is the step-7 keyword that can land on a node with no
     # object to carry a rule tuple: a ``not`` over a ``const`` or an ``enum`` is an
@@ -524,6 +525,7 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
                     "the comparison's URL-type rows admit only a dropped pattern and "
                     "the two bounds a URL type renders of its own, so this keyword "
                     "would go missing or differ ungraded",
+                    kind=Kind.VERDICT,
                 )
             return Decided(compiler.Type(selected))
         return Decided(compiler.Type(selected), constraints)
@@ -774,10 +776,20 @@ def lower_document(
 
     title = doc.get("title")
     if not isinstance(title, str) or not title:
-        raise Refusal("title", "", "the document declares no title to derive a name from")
+        raise Refusal(
+            "title",
+            "",
+            "the document declares no title to derive a name from",
+            kind=Kind.VERDICT,
+        )
     symbol = class_name(title)
     if not symbol.isidentifier():
-        raise Refusal("title", "", f"the title {title!r} derives {symbol!r}, not an identifier")
+        raise Refusal(
+            "title",
+            "",
+            f"the title {title!r} derives {symbol!r}, not an identifier",
+            kind=Kind.VERDICT,
+        )
     mod = Module(
         document=document,
         root=symbol,
@@ -822,12 +834,14 @@ def lower_document(
                 "schema keywords, so there is no type, no properties and no composition "
                 "for a row to read -- and a class over them would state what no part of "
                 "this document declares",
+                kind=Kind.VERDICT,
             )
         raise Refusal(
             kw,
             "",
             f"a root is exactly one kind, this one's is read from {kw!r} (the root declares "
             f"{declared}), and no D2 row lowers that kind at a root",
+            kind=Kind.VERDICT,
         )
     claimed[0][1](doc, symbol, "", mod)
     return mod, symbol
@@ -953,12 +967,13 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                     f"{uri} is a pointer into this document, which is not a binding at "
                     "all -- the walk resolves one through compiler.local_reference and "
                     "never through a binder",
+                    kind=Kind.VERDICT,
                 )
             target = bundle.document_for(head, known)
             if target is None:
                 raise Refusal(
                     "$ref", pointer, f"{uri} names no document of this bundle"
-                )
+                , kind=Kind.VERDICT)
             try:
                 mod, symbol = lower(target)  # the target emits first, or this refuses with it
             except Refusal as r:
@@ -969,8 +984,22 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                 # nodes was wanted.  Bundle-relative, so it reads as a pointer into
                 # this bundle rather than as the URI's own base; a reference with no
                 # fragment is unchanged, which is all 214 of the existing chains.
+                #
+                # **``through=r`` is the classification and the quoted text is for the
+                # reader.**  Whether this document is pending or final is not a property
+                # of its own sentence at all, it is whatever the target's is -- and that
+                # used to be answered by parsing the target's refusal back out of the
+                # string this line writes.  It is answered by carrying the object
+                # instead: ``Refusal.resolved`` takes the target's, so a chain of any
+                # depth is one attribute read and no sentence is parsed.
                 wanted = f"{target}#{into}" if into else target
-                raise Refusal("$ref", pointer, f"its target {wanted} is refused: {r}") from r
+                raise Refusal(
+                    "$ref",
+                    pointer,
+                    f"its target {wanted} is refused: {r}",
+                    kind=Kind.CHAINED,
+                    through=r,
+                ) from r
             if into:
                 # The fragment names a NODE, so the symbol is the one the target
                 # module declared AT THAT POINTER rather than its root.  The target
@@ -998,6 +1027,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                         "(the walk either does not reach that node, or the node is "
                         "itself a $ref whose symbol that module imports rather than "
                         "declares)",
+                        kind=Kind.DEFERRED,
                     )
                 symbol = mod.declared[into]
             # ``shape`` is ``None`` for a target that is not a class -- D2's
@@ -1015,7 +1045,12 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         if document in refused:
             raise refused[document]
         if document in inflight:
-            raise Refusal("$ref", "", f"a reference cycle: {' -> '.join([*inflight, document])}")
+            raise Refusal(
+                "$ref",
+                "",
+                f"a reference cycle: {' -> '.join([*inflight, document])}",
+                kind=Kind.VERDICT,
+            )
         inflight.append(document)
         doc = bundle.read(bundle_dir, document)
         try:
@@ -1070,6 +1105,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                     f"reference under a definitions/$defs section untouched ({len(unresolved)} "
                     "here): the document the package would carry is not locally "
                     "decidable, and jsonschema would fetch the target over the network",
+                    kind=Kind.UNRESOLVED,
                 )
         except Refusal as r:
             refused[document] = r
@@ -1110,7 +1146,17 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
 
     for document in sorted(refused):
         r = refused[document]
-        out.refusals[document] = {"keyword": r.keyword, "pointer": r.pointer, "detail": r.detail}
+        # ``kind`` is what the producer DECLARED and ``resolved`` is what counts: they
+        # differ only for a delegating kind, which has already followed its chain.  Both
+        # are recorded because the first says which producer to go and read and the
+        # second is the metric's own input, and collapsing them to one loses the chain.
+        out.refusals[document] = {
+            "keyword": r.keyword,
+            "pointer": r.pointer,
+            "detail": r.detail,
+            "kind": r.kind,
+            "resolved": r.resolved,
+        }
     for pkg in packages:
         out.files[f"{pkg}/__init__.py"] = ""
     out.files["__init__.py"] = ""
@@ -1221,9 +1267,21 @@ def main(argv: list[str] | None = None) -> int:
         )
     for document in sorted(out.refusals):
         r = out.refusals[document]
-        print(f"refused {document} at {r['pointer']} on {r['keyword']}: {r['detail']}")
+        print(
+            f"refused {document} ({r['resolved']}) at {r['pointer']} "
+            f"on {r['keyword']}: {r['detail']}"
+        )
+    # **The report names the KINDS and not "refused" alone.**  "refused" admits "not
+    # built yet", which is how `emitted + refused == 1054` stayed green over 385
+    # documents waiting on rows nobody had written, so the one figure the exit
+    # condition counts -- emitted plus VERDICTS -- is printed beside the partition
+    # rather than left to a reader to assemble.
+    counted = collections.Counter(r["resolved"] for r in out.refusals.values())
+    verdicts = sum(counted[k] for k in refusal.FINAL_KINDS)
     print(
-        f"emitted {len(out.emitted)} / refused {len(out.refusals)}; "
+        f"emitted {len(out.emitted)} / refused {len(out.refusals)} "
+        f"({', '.join(f'{k} {n}' for k, n in sorted(counted.items()))}); "
+        f"accounted {len(out.emitted) + verdicts}; "
         f"{len(set(ns.document))} named, the rest reached through a $ref"
     )
     return 1 if out.refusals else 0

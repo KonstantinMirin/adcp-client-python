@@ -635,12 +635,16 @@ refusal list is its complement.
 **Two figures are both right and they count different things, so say which one you mean.** The
 PARTITION is total and disjoint — `emitted | refusals == portable`, 0 unaccounted — and that is
 **1054**. The GOAL is `emitted + VERDICTS`, because the condition above is "refused by name,
-pointer and keyword" and a refusal still waiting on something is not a verdict; that is **1053**,
-and the one document between them is `a2ui/si-catalog.json`, refused on `UNRESOLVED_TARGET`.
-Measured together on `2360ff7f1`: portable 1054, emitted 686, refused 368, of which 0 deferred
-to a later row and 1 unresolved, so 367 verdicts. Reporting 1054 for the goal overstates it by
-one and reporting 1053 for the partition looks like a lost document; both have been said of the
-same run.
+pointer and keyword" and a refusal still waiting on something is not a verdict; that is
+**967**. Measured together on `sdk/j3k2l37-refusal-kind`: portable 1054, emitted 686, refused
+368, of which 281 are verdicts and 87 are pending (86 `DEFERRED`, 1 `UNRESOLVED`). Reporting
+1054 for the goal overstates it by 87 and reporting 967 for the partition looks like 87 lost
+documents; both have been said of the same run.
+
+**A refusal's KIND is an argument its producer passes (`refusal.Kind`) and is never read off
+its detail.** Four separate readings of that English each made this number too high — see
+§7.1 — so `refusal.is_a_verdict` now takes a `Kind` and holds no string at all, and a chained
+refusal carries the refusal it chains to rather than quoting it for a parser.
 
 **Every measurement in this build is taken over `schemas/cache/<version>/` excluding the
 `bundled/` and `mcp/` directories.** Those two are projections of the same documents, so
@@ -869,25 +873,25 @@ remaining.** They were measured on different trees over several days, they overl
 is refused once but blocked by several rows), and four of the rows have since closed. Read them
 as the reason each row exists. Read the table below as the state.
 
-Measured on trunk `ac8a64fb1`, by the constants the refusal producers emit
-(`refusal.DEFERRED_TO_A_LATER_ROW`, `refusal.UNRESOLVED_TARGET`, `refusal.is_a_verdict`) and
-not by matching a detail string — a regex over those details gave 404/41/31 against the truth
-of 176/1/299 on an earlier tree, because the pattern matched `"D2 row"` inside the VERDICT
-sentence:
+Measured on `sdk/j3k2l37-refusal-kind`, by **the `refusal.Kind` each producer declares** —
+never by reading a detail string, and no longer by comparing one against a constant either:
 
 | | documents | |
 |---|---|---|
-| emitted and graded | 674 | |
-| refused by a VERDICT naming a keyword this emitter will not lower | 301 | |
-| **accounted for** | **975** | of 1,054 |
-| deferred — a draft-07 keyword no row lowers yet | 48 | pending, not refused |
-| transitive — waiting on one of those through a `$ref` | 1 | pending |
-| chained onto a refusal that is itself pending | 30 | pending |
+| emitted and graded | 686 | |
+| refused by a VERDICT naming a keyword this emitter will not lower | 281 | |
+| **accounted for** | **967** | of 1,054 |
+| deferred — the lowering for the position is not written, or is not reachable from this row | 86 | pending, not refused |
+| unresolved — a `$ref` the bundle's one resolution did not reach | 1 | pending |
+
+Of the 368 refusals, 149 DECLARE `VERDICT`, 47 declare `DEFERRED`, 1 declares `UNRESOLVED`
+and 171 declare `CHAINED`; a chained refusal carries the target's refusal (`through=`), so its
+`resolved` kind is the target's and the 171 split 132 verdict / 39 deferred.
 
 **`emitted + refused == 1054` is green and has been all along, which is why it is not the
 condition.** "Refused" admits "not built yet": the metric's own arithmetic held while part of
 that 476 was unwritten work. `test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending`
-now partitions it, with `deferred` and `transitive` pinned shrink-only and `accounted` grow-only,
+now partitions it, with `deferred` and `unresolved` pinned shrink-only and `accounted` grow-only,
 so a row landing moves all three one way and anything else reddens.
 
 **THE FOURTH ROW IS A CORRECTION, AND EVERY ABSOLUTE THIS PLAN PREVIOUSLY CARRIED WAS
@@ -903,6 +907,30 @@ kind means a fourth constant here, not a regex somewhere else", was right about 
 wrong about this case: this is not a fourth constant but TRANSITIVITY, and the producer
 already embeds the target's whole refusal after `is refused: `, so the answer was in the
 string the whole time.
+
+**THE FIFTH IS THE SAME CORRECTION A FOURTH TIME, AND IT IS THE LAST ONE OF ITS KIND.** The
+four instances above all read the same way: a refusal meaning "no row does this yet" counted
+as one meaning "this emitter never will". Each was fixed by reading the refusal's English more
+carefully — a constant instead of a regex, then a recursion through the quoted chain — and
+each time a category the reading did not know about landed in whichever bucket its sentence
+happened not to match. Of the 367 verdicts the third fix left, **86 state in their own text
+that the lowering for the position has not been written**: "a later D2 row lowers this one",
+"a branch composes once that reader is shared", "the harness's row", "step 6", "step 7's
+rule". 47 say it directly and 39 chain onto one that does.
+
+`salesagent-j3k2l.37` stops reading the sentence. Every producer passes a `refusal.Kind`,
+`refusal.is_a_verdict` takes one and holds no string, and a chained refusal carries the target
+REFUSAL rather than quoting its text for a parser. **Accounted falls 1053 → 967 and pending
+rises 1 → 87.** Nothing about what emits moved: 686 emitted and every emitted byte identical
+to `d9989750c`, every refusal's keyword, pointer and detail identical, `comparison.added` 0.
+A number that falls when the instrument improves is the instrument working.
+
+The partition can no longer absorb a sixth category. `Kind`'s members are covered exactly by
+three named sets — final, pending, delegating — and the partition test's FIRST assertion is
+that coverage, so a new member reddens before a document is counted. Probed both ways: a new
+`Kind` named in no set fails that assertion with the member named, and a live producer raising
+a new PENDING kind drops accounted to 966 and fails the grow-only pin.
+The per-producer classification is `docs/plan/j3k2l37-prediction.md`.
 
 The deferrals partition by the keyword each waits on, and every one is owned. The counts
 below are the pre-`.22` reading and `.22` has since cleared four of these families entirely

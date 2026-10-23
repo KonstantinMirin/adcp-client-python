@@ -82,7 +82,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from codegen import compiler
-from codegen.refusal import Refusal
+from codegen.refusal import Kind, Refusal
 
 #: What the ROOT of a union document may carry.  ``discriminator`` is an annotation in
 #: draft-07 -- ``jsonschema`` has no validator for it, so ignoring it cannot make the model
@@ -284,6 +284,7 @@ def branch_name(branch: dict, root: str, pointer: str, doc: dict) -> str:
         "no title, no discriminator const and no required set: this branch has no "
         "identity to derive a name from, and D3 refuses rather than naming it after "
         "its siblings",
+        kind=Kind.VERDICT,
     )
 
 
@@ -342,14 +343,20 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
                 f"inherited through the root's class -- states a fact its own "
                 f"#{'/' + kw}/<i> node does not: there is no pointer to the conjunction "
                 "for it to name",
+                kind=Kind.VERDICT,
             )
     if doc.get("type") not in (None, "object"):
-        raise Refusal("type", pointer, f"a union root of type {doc['type']!r} is step 6")
+        raise Refusal(
+            "type",
+            pointer,
+            f"a union root of type {doc['type']!r} is step 6",
+            kind=Kind.DEFERRED,
+        )
     branches = doc[kw]
     if len(branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
         raise Refusal(
             kw, pointer, f"{len(branches)} branch: a union of one is the branch itself, not a union"
-        )
+        , kind=Kind.VERDICT)
 
     planned = [
         _plan(branches[i], f"{pointer}/{kw}/{i}", symbol, doc) for i in range(len(branches))
@@ -360,6 +367,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
             "title",
             pointer,
             f"two branches derive the same class name: {sorted(n for n in names if names.count(n) > 1)}",
+            kind=Kind.VERDICT,
         )
 
     mod.imports.add((compiler.BASE_MODULE, "AdCPBaseModel"))
@@ -482,12 +490,17 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
     if len(branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
         raise Refusal(
             kw, pointer, f"{len(branches)} branch: a union of one is the branch itself, not a union"
-        )
+        , kind=Kind.VERDICT)
     arms: list[compiler.Type] = []
     for i, branch in enumerate(branches):
         at = f"{pointer}/{kw}/{i}"
         if not isinstance(branch, dict):
-            raise Refusal(kw, at, f"a branch is {type(branch).__name__}, not a schema")
+            raise Refusal(
+                kw,
+                at,
+                f"a branch is {type(branch).__name__}, not a schema",
+                kind=Kind.VERDICT,
+            )
         hint = branch_identity(branch, name_hint, node) or name_hint
         _refuse_a_local_reference_branch(branch, at)
         decided = mod.decide(branch, at, hint, mod)
@@ -510,6 +523,7 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
                 "so the keyword would reach the field holding the union and bound every "
                 "arm; D5's alias module names an arm's own bounded type and has no "
                 "spelling for this shape",
+                kind=Kind.DEFERRED,
             )
         arms.append(decided.type)
     _refuse_a_shape_the_comparison_cannot_read(node, kw, pointer)
@@ -579,7 +593,7 @@ def _refuse_a_local_reference_branch(branch: dict, pointer: str) -> None:
         "pairs of the committed tree hold a document-side local $ref, and the two "
         "documents this admits produce 43 added facts over 4 pairs.  The document-side "
         "reading is the harness's row"
-    )
+    , kind=Kind.DEFERRED)
 
 
 def _bare_type(branch: dict) -> str | None:
@@ -676,13 +690,19 @@ def _refuse_a_shape_the_comparison_cannot_read(node: dict, kw: str, pointer: str
         "is reported NARROWER than its document and the node would be emitted ungraded.  "
         "Teaching the fold that the facts it restored are the document's own, one level "
         "down in the branch it folded, is the harness's row",
+        kind=Kind.DEFERRED,
     )
 
 
 def _plan(branch: Any, pointer: str, root: str, doc: dict) -> Branch:
     """What one branch becomes, or the refusal that says why it becomes nothing."""
     if not isinstance(branch, dict):
-        raise Refusal("oneOf", pointer, f"a branch is {type(branch).__name__}, not a schema")
+        raise Refusal(
+            "oneOf",
+            pointer,
+            f"a branch is {type(branch).__name__}, not a schema",
+            kind=Kind.VERDICT,
+        )
     live = {k for k in branch if k not in compiler.ANNOTATIONS and not k.startswith("x-")}
     if live == {"$ref"}:
         raise Refusal(
@@ -691,6 +711,7 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict) -> Branch:
             "a bare $ref branch has no node to declare a subclass from: the member would "
             "be the target's own class, which does not descend from this base, so the "
             "arm would not answer isinstance",
+            kind=Kind.VERDICT,
         )
     # The branch's own D6 rules: the keywords are admitted here and the TUPLE is
     # written by ``compiler.declare_object``, which ``lower_object`` below reaches.
@@ -703,7 +724,12 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict) -> Branch:
     # ``properties`` -- "constrains only requiredness", of a node that constrains a
     # value -- which is the same misattribution ``ROOT_HANDLED`` is ordered to avoid.
     if branch.get("type") not in (None, "object"):
-        raise Refusal("type", pointer, f"a branch of type {branch['type']!r} is step 6")
+        raise Refusal(
+            "type",
+            pointer,
+            f"a branch of type {branch['type']!r} is step 6",
+            kind=Kind.DEFERRED,
+        )
     # **The composition AFTER the type, for that same reason**, and the order is
     # measured rather than preferred: a branch stating a non-object type cannot be a
     # class whatever else it states, so the type is the reason and the conjunct list is
@@ -746,6 +772,7 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict) -> Branch:
             "the product row's: a lowering imports codegen.compiler and codegen.refusal "
             "and nothing else of this package (D13), so a branch composes once that "
             "reader is shared machinery in codegen.compiler",
+            kind=Kind.DEFERRED,
         )
     if "properties" not in branch:
         raise Refusal(
@@ -753,5 +780,6 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict) -> Branch:
             pointer,
             "a branch declaring no property constrains only requiredness: that is a rule "
             "on the root's class (D2, D6), not a branch class (step 7's row)",
+            kind=Kind.DEFERRED,
         )
     return Branch(name=branch_name(branch, root, pointer, doc), pointer=pointer, node=branch)

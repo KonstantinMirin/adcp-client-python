@@ -80,7 +80,7 @@ from codegen.compiler import (
     fields,
     rules_at,
 )
-from codegen.refusal import Refusal
+from codegen.refusal import Kind, Refusal
 
 #: What a conjunct may carry and still be an inline object declaring fields.
 #: ``additionalProperties`` is absent on purpose: D8 derives ``extra`` from the
@@ -142,6 +142,7 @@ def _refuse_a_combinator_of_shapes(doc: dict, pointer: str, screen: frozenset[st
                 "a branch is satisfied by SOME instance.  There is no pointer to the "
                 "conjunction of the two for the class to name, which is what "
                 "union.ROOT_CONJUNCTS refuses a root union's own conjuncts for",
+                kind=Kind.VERDICT,
             )
 
 
@@ -171,7 +172,12 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
     # non-object type and all 4 state ``array``**; all 4 already refused here, so the
     # order moves no document and changes the reported keyword for one.
     if doc.get("type") not in (None, "object"):
-        raise Refusal("type", pointer, f"an allOf of type {doc['type']!r} composes no object")
+        raise Refusal(
+            "type",
+            pointer,
+            f"an allOf of type {doc['type']!r} composes no object",
+            kind=Kind.VERDICT,
+        )
     stated = rules_at(doc)
     _refuse_a_combinator_of_shapes(doc, pointer, stated.screen)
     check_keywords(doc, pointer, COMPOSING | stated.screen)
@@ -215,6 +221,7 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
                 where,
                 f"{key!r} is declared at {at[key]} and again here, and neither "
                 "declaration narrows the other",
+                kind=Kind.VERDICT,
             )
 
     for key, sub in (doc.get("properties") or {}).items():
@@ -223,7 +230,7 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
     for i, conjunct in enumerate(doc["allOf"]):
         where = f"{pointer}/allOf/{i}"
         if not isinstance(conjunct, dict):
-            raise Refusal("allOf", where, "a conjunct that is not a schema")
+            raise Refusal("allOf", where, "a conjunct that is not a schema", kind=Kind.VERDICT)
         keys = {k for k in conjunct if k not in ANNOTATIONS and not k.startswith("x-")}
         if keys == {"$ref"}:
             target = mod.bind(conjunct["$ref"], where)
@@ -234,6 +241,7 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
                     f"{target.symbol} is not a class, so it cannot be a base "
                     "(D2 makes a scalar root an Annotated alias, and subclassing "
                     "one is a TypeError at import)",
+                    kind=Kind.VERDICT,
                 )
             mod.imports.add((target.module, target.symbol))
             bases.append(target.symbol)
@@ -245,9 +253,19 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
         if "properties" in keys and keys <= INLINE:
             check_keywords(conjunct, where, set(INLINE))
             if conjunct.get("type") not in (None, "object"):
-                raise Refusal("type", where, f"a conjunct of type {conjunct['type']!r} is not one")
+                raise Refusal(
+                    "type",
+                    where,
+                    f"a conjunct of type {conjunct['type']!r} is not one",
+                    kind=Kind.VERDICT,
+                )
             if not isinstance(conjunct["properties"], dict) or not conjunct["properties"]:
-                raise Refusal("properties", where, "a conjunct declaring no property")
+                raise Refusal(
+                    "properties",
+                    where,
+                    "a conjunct declaring no property",
+                    kind=Kind.VERDICT,
+                )
             for key, sub in conjunct["properties"].items():
                 declare(key, sub, f"{where}/properties/{key}")
             required |= set(_required(conjunct, where))
@@ -285,12 +303,14 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
                 min(keys - {"$ref"}),
                 where,
                 "a sibling of $ref, which draft-07 ignores",
+                kind=Kind.VERDICT,
             )
         raise Refusal(
             min(keys) if keys else "allOf",
             where,
             "this step lowers a $ref conjunct (a base) or an inline conjunct with "
             "properties; a later D2 row lowers this one",
+            kind=Kind.DEFERRED,
         )
 
     # A property only a conditional names, read over the rule-bearing conjuncts as well
@@ -318,6 +338,7 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
                 f"the restatement of {key!r} neither matches nor narrows the "
                 f"inherited declaration: inherited states {sorted(_constraining(inherited[key]))}, "
                 f"this states {sorted(_constraining(node))}",
+                kind=Kind.VERDICT,
             )
         if verdict or (key in required and key not in inherited_required):
             # It narrows, so the subclass is the one that states it -- and **a
@@ -425,7 +446,12 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
 def _required(node: dict, pointer: str) -> list[str]:
     req = node.get("required", [])
     if not isinstance(req, list) or not all(isinstance(r, str) for r in req):
-        raise Refusal("required", pointer, f"required is {req!r}, not a list of names")
+        raise Refusal(
+            "required",
+            pointer,
+            f"required is {req!r}, not a list of names",
+            kind=Kind.VERDICT,
+        )
     return req
 
 
@@ -461,6 +487,7 @@ def _reused(
             f"{key!r} restates an inherited declaration with nothing but annotations, "
             f"and the base declaring it recorded no decided field for it, so there is "
             f"no type to re-use and lowering the restatement alone would type it Any",
+            kind=Kind.VERDICT,
         )
     wanted = _symbols(held.type)
     unplaceable = sorted(wanted - source.shape.declares) if source.shape else sorted(wanted)
@@ -471,6 +498,7 @@ def _reused(
             f"{key!r} re-uses the field of {source.symbol}, whose type names "
             f"{unplaceable} -- symbols that module imports rather than declares, so "
             f"importing them from it would be a re-export",
+            kind=Kind.VERDICT,
         )
     mod.imports |= {(source.module, symbol) for symbol in wanted}
     return held

@@ -55,7 +55,7 @@ from typing import Any
 
 from codegen import compiler
 from codegen.compiler import Decided, Module
-from codegen.refusal import Refusal
+from codegen.refusal import Kind, Refusal
 
 #: An ARRAY's own bounds, in the document's spelling, and the ones a field holding
 #: the array can carry.  ``uniqueItems`` is deliberately absent, and the reason is
@@ -201,6 +201,7 @@ def _inner(decided: Decided, pointer: str, what: str) -> compiler.Type:
             "container, so D5 would have to name the type; the bundle names no titled "
             "root with these facts and pydantic names no type for them, so D5's shared "
             "alias module is the row that lowers it",
+            kind=Kind.DEFERRED,
         )
     return decided.type
 
@@ -220,7 +221,7 @@ def array(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     if "uniqueItems" in node:
         # AFTER the screen, so an array carrying BOTH this and a keyword no row lowers
         # is reported on the other one: this refusal is final and that one may not be.
-        raise Refusal("uniqueItems", pointer, _DISTINCT_HAS_NOWHERE_TO_LIVE)
+        raise Refusal("uniqueItems", pointer, _DISTINCT_HAS_NOWHERE_TO_LIVE, kind=Kind.VERDICT)
     bounds = {k: node[k] for k in BOUNDS if k in node}
     items = node.get("items")
     if items is None:
@@ -236,6 +237,7 @@ def array(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
             pointer,
             "items is a list, which is draft-07 tuple validation: each position is its "
             "own schema and the shape is a fixed-length tuple, not a list[X]",
+            kind=Kind.VERDICT,
         )
     at = f"{pointer}/items"
     element = _inner(mod.decide(items, at, name_hint + "Item", mod), at, "the element")
@@ -270,6 +272,7 @@ def mapping(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
                 f"{len(patterned) if isinstance(patterned, dict) else '?'} patterns, and a "
                 "mapping has one key type: two patterns are a union of key types whose "
                 "value types differ per branch, which is a rule and not a dict[K, V]",
+                kind=Kind.VERDICT,
             )
         if "additionalProperties" in node and node["additionalProperties"] is not False:
             raise Refusal(
@@ -277,6 +280,7 @@ def mapping(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
                 pointer,
                 "beside patternProperties, which leaves two value schemas for one "
                 "mapping value type",
+                kind=Kind.VERDICT,
             )
         # The expression constrains the KEY, so this is :data:`_PATTERN_KEY`'s verdict
         # reached from the other spelling -- and it names ``patternProperties``, which
@@ -286,7 +290,7 @@ def mapping(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # The tail this replaces was DEAD: ``_key`` was handed
         # ``{"type": "string", "pattern": expr}`` and refused on ``pattern`` before any
         # of it ran, so no ``patternProperties`` node has ever reached a decided type.
-        raise Refusal("patternProperties", pointer, _PATTERN_KEY)
+        raise Refusal("patternProperties", pointer, _PATTERN_KEY, kind=Kind.VERDICT)
 
     ap = node.get("additionalProperties", True)
     if ap is False:
@@ -295,6 +299,7 @@ def mapping(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
             pointer,
             "an object declaring no property and refusing every additional one admits "
             "only the empty object, which is a rule on a value and not a type",
+            kind=Kind.VERDICT,
         )
     key = _key(node.get("propertyNames"), f"{pointer}/propertyNames", mod)
     value = _value(ap, f"{pointer}/additionalProperties", name_hint, mod)
@@ -309,7 +314,7 @@ def _value(node: Any, pointer: str, name_hint: str, mod: Module) -> compiler.Typ
     if node is True or node == {}:
         return compiler.Type("typing.Any")
     if not isinstance(node, dict):
-        raise Refusal("additionalProperties", pointer, f"not a schema: {node!r}")
+        raise Refusal("additionalProperties", pointer, f"not a schema: {node!r}", kind=Kind.VERDICT)
     return _inner(mod.decide(node, pointer, name_hint + "Value", mod), pointer, "the value")
 
 
@@ -371,7 +376,7 @@ def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
     if node is None:
         return compiler.Type("str")
     if not isinstance(node, dict):
-        raise Refusal("propertyNames", pointer, f"not a schema: {node!r}")
+        raise Refusal("propertyNames", pointer, f"not a schema: {node!r}", kind=Kind.VERDICT)
     if "$ref" in node:
         # The one key kind that needs no alias: the bundle already names the type, so
         # P2 applies unchanged -- an import, and no constraint of the target copied.
@@ -384,9 +389,10 @@ def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
             "D5 reads as a MODEL whose keys are its fields rather than a mapping; its one "
             "type-position site in this bundle is core/store-item.json#/properties/hours, "
             "whose document refuses on enum, so the model would reach no document",
+            kind=Kind.VERDICT,
         )
     if "pattern" in node:
-        raise Refusal("pattern", pointer, _PATTERN_KEY)
+        raise Refusal("pattern", pointer, _PATTERN_KEY, kind=Kind.VERDICT)
     # Through the walk, so the key is D5's named shape and this row spells nothing: a
     # length-bounded key resolves to ``constraints.StrMinLen1`` and is recorded there,
     # and a key the alias module has no spelling for comes back with its constraints
@@ -438,10 +444,10 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
     """
     kinds = node["type"]
     if not kinds or len(set(kinds)) != len(kinds) or not all(isinstance(k, str) for k in kinds):
-        raise Refusal("type", pointer, f"not a set of type names: {kinds!r}")
+        raise Refusal("type", pointer, f"not a set of type names: {kinds!r}", kind=Kind.VERDICT)
     unknown = sorted(set(kinds) - set(ARM))
     if unknown:
-        raise Refusal("type", pointer, f"unknown type(s) {unknown}")
+        raise Refusal("type", pointer, f"unknown type(s) {unknown}", kind=Kind.VERDICT)
     carried = frozenset().union(*(ARM[k] for k in kinds))
     compiler.check_keywords(  # the walk's own check
         node,
@@ -495,6 +501,7 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
             "branch is a bare type, so a constrained branch beside another live arm "
             "reads as dropping both the type list and the constraint and the node "
             "would be emitted ungraded",
+            kind=Kind.DEFERRED,
         )
     arms: list[compiler.Type] = []
     for kind in kinds:
@@ -531,5 +538,6 @@ def root(doc: dict, symbol: str, pointer: str, mod: Module) -> str:
             'class>'} is the element type it would wrap; the row is unimplemented because "
             "all five root arrays of this bundle refuse on a keyword of a later step, so "
             "no document would grade it",
+            kind=Kind.DEFERRED,
         )
     return compiler.declare_alias(mod, symbol, doc, decided)
