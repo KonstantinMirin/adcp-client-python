@@ -1539,7 +1539,7 @@ INLINE = frozenset({"type", "properties", "required"})
 #: What the composing node itself may carry beside its conjunct list.
 #:
 #: D6's rule families are NOT listed here and are added per node by
-#: ``compiler.rules_at``, because the admissible set is a function of the node: a
+#: :func:`rules_at`, because the admissible set is a function of the node: a
 #: ``oneOf``/``anyOf`` is a rule only where every branch is ``required``-only, and a
 #: combinator of shapes admitted here would emit a class that drops it silently.
 COMPOSING = frozenset({"type", "allOf", "properties", "required", "additionalProperties"})
@@ -1562,7 +1562,7 @@ def _refuse_a_combinator_of_shapes(doc: dict, pointer: str, screen: frozenset[st
     **Asked of ``rules_at``'s own screen and not of a second predicate.**  A
     ``oneOf``/``anyOf`` is a RULE where every branch states only which keys are present
     and a union of shapes otherwise; ``rules.presence_only`` is that one test and
-    ``compiler.rules_at`` subtracts the two combinators from the screen when it fails.
+    :func:`rules_at` subtracts the two combinators from the screen when it fails.
     Reading the screen is how this row asks the question without importing a sibling
     lowering (D13), and it is why there is no second reading to drift from.
 
@@ -1681,13 +1681,13 @@ def lower_composition(
     after-validator all existed, and only the object row consulted them.
 
     A property the node declares only inside a conditional is merged in for the
-    reason ``compiler.Rules`` states: a rule naming a key the class has no field for
+    reason :class:`Rules` states: a rule naming a key the class has no field for
     refuses a payload the document admits.
     """
     # **The TYPE first, BEFORE the keyword screen**, and the order is measured rather
     # than preferred: a node stating a non-object ``type`` composes no object whatever
     # else it states, so the type is the reason and a keyword it carries is not.  It sat
-    # after the screen, and ``compiler.check_keywords`` walks ``sorted(node)`` -- so
+    # after the screen, and :func:`check_keywords` walks ``sorted(node)`` -- so
     # ``media-buy/legacy-purchase-continuation-input.json#/properties/accepted_losses``,
     # a composing ARRAY, was reported on ``items`` with "a later D2 row does", which
     # promises a row for an array keyword at a node no array row will ever see.  The same
@@ -1711,7 +1711,7 @@ def lower_composition(
     inherited_required: set[str] = set()
     #: The FIELD each inherited key came out as on the base that declares it, and the
     #: base it came from.  Read only by the annotation-only arm below, which re-uses
-    #: the field rather than re-deciding the node; ``compiler.Shape.decided`` says why.
+    #: the field rather than re-deciding the node; :attr:`Shape.decided` says why.
     inherited_fields: dict[str, Property] = {}
     inherited_from: dict[str, Target] = {}
     #: Every LOCAL declaration that won its key, and where it was declared.  The
@@ -1840,7 +1840,7 @@ def lower_composition(
     # A property only a conditional names, read over the rule-bearing conjuncts as well
     # because most of this population states its conditional there and not at the root.
     # A key NOTHING else declares refuses: it has no field to be and no fact to state,
-    # and ``compiler.conditional_only`` carries both halves of why.  A key that IS
+    # and :func:`conditional_only` carries both halves of why.  A key that IS
     # declared somewhere -- the root's own ``properties``, an inline conjunct's, or an
     # inherited base's -- needs nothing here: the conditional is then a restatement of a
     # declaration the document has, and that declaration is the one that stands.
@@ -1904,7 +1904,7 @@ def lower_composition(
             #   the ground that lowering the restatement ALONE types it ``Any`` and
             #   drops every fact the base states.  That is true of the restatement
             #   alone, and the answer is to not lower it alone: the base's decided
-            #   field is re-used (``compiler.Shape.decided``, and ``fields``' ``reuse``
+            #   field is re-used (:attr:`Shape.decided`, and ``fields``' ``reuse``
             #   says why the node cannot simply be merged and re-decided).  Measured as
             #   the whole of ``salesagent-j3k2l.22``'s residue: 28 ``differs`` over 7
             #   ``formats/canonical/*.json`` at ``experimental``, ``v1_translatable``
@@ -2031,7 +2031,7 @@ def _reused(
 def _symbols(decided: Type) -> set[str]:
     """Every symbol a decided type names in the module that decided it.
 
-    Read off the :class:`compiler.Type` TREE rather than off its rendered text: a
+    Read off the :class:`Type` TREE rather than off its rendered text: a
     local arm is marked ``local`` where it is decided, so this enumerates the symbols
     instead of matching identifiers in an annotation and guessing which are types.
     """
@@ -2054,7 +2054,7 @@ def _constraining(node: dict) -> dict:
 
 
 #: The annotations a FIELD renders, so the two a restatement can differ about in a way
-#: the comparison sees.  ``compiler.fields`` reads exactly these off the declaration --
+#: the comparison sees.  :func:`fields` reads exactly these off the declaration --
 #: ``description`` into ``Field(description=...)`` and ``default`` into the field's
 #: default -- and the rest of ``ANNOTATIONS`` (``title``, ``$comment``, ``$id``,
 #: ``$schema``) reach nothing on a field, so a restatement differing only in one of
