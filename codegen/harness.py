@@ -79,9 +79,42 @@ from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
 from hypothesis.errors import HypothesisException, Unsatisfiable
 from hypothesis_jsonschema import from_schema
+from hypothesis_jsonschema import _canonicalise as _hjs_canon
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
 from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
 from pydantic import TypeAdapter, ValidationError
+
+# --------------------------------------------------------------------------- #
+# the one memo
+# --------------------------------------------------------------------------- #
+# ``canonicalish`` is a pure function of a schema, and the library does not
+# memoise it: ``from_schema`` re-canonicalises the WHOLE document once per step
+# site, and ``merged`` re-enters it for every subschema it sorts
+# (``_canonicalise.py:631``).  Over the 13,123 step sites this suite steps, the
+# same subschemas are canonicalised again for each one.
+#
+# Installed on the MODULE GLOBAL, not just on our call: ``merged`` and
+# ``canonicalish`` reach each other through ``_canonicalise``'s own namespace,
+# so patching the name there is what puts the library's internal recursion
+# through the memo.  A hit returns a DEEP COPY -- the library mutates the nodes
+# it is handed, and handing back the cached object would let one call corrupt
+# every later one.
+_CANON_MEMO: dict[str, Any] = {}
+_canonicalish_uncached = _hjs_canon.canonicalish
+
+
+def _canonicalish_memoised(schema: Any) -> Any:
+    try:
+        key = json.dumps(schema, sort_keys=True, default=repr)
+    except (TypeError, ValueError):
+        return _canonicalish_uncached(schema)
+    hit = _CANON_MEMO.get(key)
+    if hit is None:
+        hit = _CANON_MEMO[key] = _canonicalish_uncached(schema)
+    return copy.deepcopy(hit)
+
+
+_hjs_canon.canonicalish = _canonicalish_memoised
 
 # --------------------------------------------------------------------------- #
 # formats
@@ -2492,11 +2525,35 @@ class PairReport:
 def check_pair(
     pair: Pair,
     *,
-    accepts_examples: int = 25,
-    refuses_examples: int = 25,
+    accepts_examples: int = 1,
+    refuses_examples: int = 1,
     max_steps: int | None = 4,
     custom_formats: Mapping[str, Any] = (),
 ) -> PairReport:
+    """Two tests per class: one instance the document accepts, one it refuses.
+
+    **Why one and not twenty-five.**  ``refuses_examples`` is per STEP SITE, so 25
+    over a 40-site document drew 1,000 instances for one class, and 25 over the
+    13,123 sites this suite steps drew 328,075.  Measured on one pair
+    (``core/assets/zip-asset.json#``, 40 sites, quiet box): 40.00 s, of which
+    99.4% was Hypothesis drawing and 0.2% was the validation it fed.  The whole
+    suite ran about six hours at eight workers, which is why three full-suite
+    runs were launched and killed in one day and why no merge on this branch has
+    a green suite behind it.
+
+    One generated instance per site is enough to catch the mistakes this stage of
+    the project makes -- a class wider than its schema, a keyword silently
+    ignored -- and the cost of the variety we give up is stated where it is paid:
+    a site whose single instance does not happen to violate the stepped keyword
+    reports as a control rather than a grade, so the graded denominator falls and
+    some sites stop being graded at all.  That is a DELIBERATE CEILING, accepted
+    to reach the full population; the upgrade path is one witness CONSTRUCTED per
+    site to violate exactly the keyword it names, supplied through Hypothesis's
+    own ``example(...)`` into the ``Phase.explicit`` these call sites already ask
+    for and never feed (salesagent-j3k2l.27).
+
+    A caller that needs the old depth passes it: the parameters did not go away.
+    """
     rep = PairReport(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
     )

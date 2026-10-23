@@ -1521,8 +1521,11 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # deliberately untouched.  Clearing this test needs the full pair grading and is
     # not this row's work.
     assert len(reports) == 811, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 491
-    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
+    assert sum(1 for r in reports if r.outcome == "pass") == 758
+    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 25
+    assert sum(1 for r in reports if r.outcome == "no_instrument") == 9
+    assert sum(1 for r in reports if r.outcome == "refuses:harness_error") == 3
+    assert sum(1 for r in reports if r.outcome == "comparison:model_drops_a_fact") == 16
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
     # rather than schema facts, and seven careful readings of it, on trees whose
@@ -1542,10 +1545,35 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # Re-measured on the merged tree rather than carried over or minimised: this run
     # reads 49,766, and the floor sits ~0.7% under it -- about twice the 0.4% spread
     # the seven readings above show -- so a collapse reddens and a reread does not.
-    assert sum(r.graded_instances for r in reports) >= 49400  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 6167  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 1624  # model-only facts examined
+    # Re-measured at TWO TESTS PER CLASS (salesagent-j3k2l.27): ``refuses_examples``
+    # defaults to 1 per step site instead of 25, so this is 9,047 on this tree against
+    # a floor ~1.6% under it.  The 49,400 this line asserted was measured on a 503-pair
+    # tree at 25 examples per site and was never true here.
+    assert sum(r.graded_instances for r in reports) >= 8900  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 25858  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 9440  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
+    # **THE TWO ASSERTIONS BELOW ARE RED, DELIBERATELY, AND salesagent-j3k2l.28 OWNS
+    # THEM.**  Every count above is now measured and green, so this test fails HERE and
+    # the failure names the comparison rather than burying it behind a stale pin.
+    #
+    # Measured over all 811 pairs: ``missing`` is 10 and ``differs`` is 13, in 16 pairs.
+    # NEITHER IS A SAFETY DEFECT, and ``added == 0`` above is the proof -- the model
+    # narrows nothing anywhere in the population, which is the half that could admit an
+    # instance the document rejects.  The 10 missing facts are 5 x ``required: []`` and
+    # 5 x ``enum: [false, true]`` on a boolean, which constrain nothing; the 13 differs
+    # are all ``/properties/context/description``, where the emitter takes the ``$ref``
+    # target's description instead of the referring document's.
+    #
+    # Attribution was MEASURED, not assumed: pre-``.21`` trunk ``2b605b164`` graded 734
+    # pairs with 1 discrepancy, and post-``.21`` grades 808 with 23.  So ``.21`` made 74
+    # more documents emittable and they exercise a defect that was already there.
+    #
+    # THE FIX IS NOT TO RE-POINT THESE TO 10 AND 13.  Zero is the specification's
+    # symmetric comparison: a fact the model adds reddens and a fact it drops reddens.
+    # ``.28`` folds the two no-op shapes by shape (an ``enum: [false]`` on a boolean is
+    # NOT a no-op and must still compare) and resolves the description divergence in the
+    # emitter.
     assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
     assert sum(len(r.comparison.differs) for r in reports) == 0
     # D5's URL-type rows, the one category that excuses a fact the model does not
