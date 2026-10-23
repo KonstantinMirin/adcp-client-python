@@ -81,4 +81,4 @@ ReportingDatasetShareDestination._branch_models = (ExistingBinding, ProvisionRec
 ReportingDatasetShareDestination.model_rebuild(force=True)
 
 
-__all__ = ["ReportingDatasetShareDestination"]
+__all__ = ["ReportingDatasetShareDestination", "ReportingDatasetShareDestinationReportingCloud"]

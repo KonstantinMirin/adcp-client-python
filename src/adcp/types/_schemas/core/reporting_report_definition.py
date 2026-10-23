@@ -148,4 +148,4 @@ class ReportingReportDefinition(AdCPBaseModel):
     finality_policies: Annotated[list[ReportingReportDefinitionFinalityPoliciesItemSourceFinal | ReportingReportDefinitionFinalityPoliciesItemContractualCutoff | ReportingReportDefinitionFinalityPoliciesItemStabilized], Field(min_length=1)]
 
 
-__all__ = ["ReportingReportDefinition"]
+__all__ = ["ReportingReportDefinition", "ReportingReportDefinitionReportCalendarTimezoneBasis"]

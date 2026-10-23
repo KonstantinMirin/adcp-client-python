@@ -43,4 +43,4 @@ class ReportingAdjustmentReceipt(AdCPBaseModel):
     received_at: AwareDatetime | None = None
 
 
-__all__ = ["ReportingAdjustmentReceipt"]
+__all__ = ["ReportingAdjustmentReceipt", "ReportingAdjustmentReceiptReportingAdjustmentRejectionCode"]

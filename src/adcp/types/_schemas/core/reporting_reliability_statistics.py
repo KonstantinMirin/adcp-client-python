@@ -84,4 +84,4 @@ class ReportingReliabilityStatistics(AdCPBaseModel):
     evidence: ReportingReliabilityStatisticsEvidence
 
 
-__all__ = ["ReportingReliabilityStatistics"]
+__all__ = ["ReportingReliabilityStatistics", "ReportingReliabilityStatisticsLatencyPercentiles", "ReportingReliabilityStatisticsReportingReliabilityMeasurementPeriod"]
