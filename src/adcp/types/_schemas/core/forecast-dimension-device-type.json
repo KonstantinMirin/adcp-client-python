@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "A device form-factor dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
+  "properties": {
+    "device_type": {
+      "enum": [
+        "ctv",
+        "dooh",
+        "mobile",
+        "tablet",
+        "desktop",
+        "unknown"
+      ]
+    },
+    "kind": {
+      "const": "device_type",
+      "description": "Dimension family discriminator.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind",
+    "device_type"
+  ],
+  "title": "Device Type Forecast Dimension",
+  "type": "object"
+}

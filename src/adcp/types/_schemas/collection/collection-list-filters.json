@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Filters that dynamically modify a collection list when resolved. Include filters are allowlists (only matching collections pass). Exclude filters are blocklists (matching collections are removed). When both are present for the same dimension, include is applied first, then exclude narrows further.",
+  "properties": {
+    "content_ratings_exclude": {
+      "description": "Exclude collections with any of these content ratings (OR logic). This is a metadata filter on the collection's declared content_rating field \u2014 it does not evaluate episode content.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Content advisory rating using a specified rating system",
+        "properties": {
+          "rating": {
+            "description": "Rating value within the system (e.g., 'TV-PG', 'R', 'explicit')",
+            "type": "string"
+          },
+          "system": {
+            "enum": [
+              "acb",
+              "csa",
+              "fsk",
+              "bbfc",
+              "esrb",
+              "mpaa",
+              "pegi",
+              "chvrs",
+              "custom",
+              "podcast",
+              "tv_parental"
+            ]
+          }
+        },
+        "required": [
+          "rating",
+          "system"
+        ],
+        "title": "Content Rating",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "content_ratings_include": {
+      "description": "Include only collections with any of these content ratings (OR logic). Collections without a declared content_rating are excluded.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Content advisory rating using a specified rating system",
+        "properties": {
+          "rating": {
+            "description": "Rating value within the system (e.g., 'TV-PG', 'R', 'explicit')",
+            "type": "string"
+          },
+          "system": {
+            "enum": [
+              "acb",
+              "csa",
+              "fsk",
+              "bbfc",
+              "esrb",
+              "mpaa",
+              "pegi",
+              "chvrs",
+              "custom",
+              "podcast",
+              "tv_parental"
+            ]
+          }
+        },
+        "required": [
+          "rating",
+          "system"
+        ],
+        "title": "Content Rating",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "exclude_distribution_ids": {
+      "description": "Always exclude collections with these distribution identifiers",
+      "items": {
+        "additionalProperties": false,
+        "not": {
+          "properties": {
+            "type": {
+              "const": "platform_channel_id"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        "properties": {
+          "type": {
+            "enum": [
+              "domain",
+              "eidr_id",
+              "imdb_id",
+              "rss_url",
+              "tubi_id",
+              "iheart_id",
+              "tiktok_id",
+              "peacock_id",
+              "substack_id",
+              "gracenote_id",
+              "podcast_guid",
+              "twitch_channel",
+              "amazon_music_id",
+              "amazon_title_id",
+              "roku_channel_id",
+              "apple_podcast_id",
+              "pluto_channel_id",
+              "podcast_index_id",
+              "youtube_channel_id",
+              "platform_channel_id",
+              "youtube_channel_url",
+              "youtube_playlist_id",
+              "spotify_collection_id",
+              "youtube_channel_handle"
+            ]
+          },
+          "value": {
+            "description": "The identifier value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "genre_taxonomy": {
+      "enum": [
+        "eidr",
+        "roku",
+        "custom",
+        "gracenote",
+        "apple_genres",
+        "amazon_genres",
+        "google_genres",
+        "iab_content_2.2",
+        "iab_content_3.0"
+      ]
+    },
+    "genres_exclude": {
+      "description": "Exclude collections tagged with any of these genres (OR logic). Values are interpreted against genre_taxonomy when present.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "genres_include": {
+      "description": "Include only collections with any of these genres (OR logic). Collections without genre metadata are excluded. Values are interpreted against genre_taxonomy when present.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "kinds": {
+      "description": "Filter to these collection kinds",
+      "items": {
+        "enum": [
+          "series",
+          "channel",
+          "rotation",
+          "publication",
+          "event_series"
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "production_quality": {
+      "description": "Filter by production quality tier",
+      "items": {
+        "enum": [
+          "ugc",
+          "prosumer",
+          "professional"
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "title": "Collection List Filters",
+  "type": "object"
+}

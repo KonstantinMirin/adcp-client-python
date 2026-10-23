@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Fields shared by every variant of `authorized_agents[*]` in adagents.json, regardless of authorization_type. Variants `allOf` this base and add their discriminator-specific fields. Centralized to prevent drift across all authorization-type variants.",
+  "properties": {
+    "authorized_for": {
+      "description": "Human-readable description of what this agent is authorized to do \u2014 what it sells (for sales/property agents) or what data it provides (for signal agents). The variant the entry uses (`property_ids`, `signal_tags`, etc.) tells consumers which inflection applies; this field carries the operator-supplied label.",
+      "maxLength": 500,
+      "minLength": 1,
+      "type": "string"
+    },
+    "encryption_keys": {
+      "description": "X25519 public keys for TMPX exposure token encryption. Each key identifies a cluster master that can decrypt TMPX tokens. Used with HPKE mode_base \u2014 read replicas encrypt with this public key, only the master can decrypt.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "X25519 public key for HPKE encryption. Used for TMPX exposure token encryption with HPKE mode_base.",
+        "maxProperties": 5,
+        "properties": {
+          "crv": {
+            "const": "X25519"
+          },
+          "kid": {
+            "description": "Key identifier. Opaque \u2014 MUST NOT encode geographic or deployment information.",
+            "maxLength": 8,
+            "type": "string"
+          },
+          "kty": {
+            "const": "OKP"
+          },
+          "use": {
+            "const": "enc"
+          },
+          "x": {
+            "description": "Base64url-encoded X25519 public key (32 bytes).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "crv",
+          "kid",
+          "kty",
+          "use",
+          "x"
+        ],
+        "title": "Agent Encryption Key",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "last_updated": {
+      "description": "Optional ISO 8601 timestamp indicating when this `authorized_agents[]` entry last changed. Independent of the file-level `last_updated`. Lets validators perform a partial walk by skipping entries whose `last_updated` is older than their indexed value. Advisory \u2014 consumers MAY ignore and re-index the full file.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "signing_keys": {
+      "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Publisher-attested public key material for an authorized agent. Buyers use these keys to verify signed agent responses against the trust anchor published in adagents.json rather than trusting key discovery from the agent domain alone.",
+        "properties": {
+          "alg": {
+            "description": "Expected signing algorithm for this key, such as 'EdDSA' or 'RS256'.",
+            "type": "string"
+          },
+          "crv": {
+            "description": "Curve name for OKP or EC keys, such as 'Ed25519' or 'P-256'.",
+            "type": "string"
+          },
+          "e": {
+            "description": "Base64url-encoded RSA public exponent.",
+            "type": "string"
+          },
+          "kid": {
+            "description": "Key identifier for selecting the correct signing key.",
+            "type": "string"
+          },
+          "kty": {
+            "description": "JWK key type, such as 'OKP', 'EC', or 'RSA'.",
+            "type": "string"
+          },
+          "n": {
+            "description": "Base64url-encoded RSA modulus.",
+            "type": "string"
+          },
+          "revoked_at": {
+            "description": "Optional revocation timestamp. When present, verifiers MUST reject any signature produced with this key whose signing epoch (or equivalent time reference) is at or after this timestamp. The key may continue to appear in the trust anchor during a grace period so caches that have not yet refreshed still find the key and can evaluate the revocation marker. Keys past their revocation can be removed once the cache TTL (recommended: 5 minutes) has elapsed across all verifiers.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "use": {
+            "description": "Optional JWK use value. Typically 'sig' for signing keys.",
+            "type": "string"
+          },
+          "x": {
+            "description": "Base64url-encoded public key x coordinate or public key value for OKP keys.",
+            "type": "string"
+          },
+          "y": {
+            "description": "Base64url-encoded public key y coordinate for EC keys.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kid",
+          "kty"
+        ],
+        "title": "Agent Signing Key",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "url": {
+      "description": "The authorized agent's protocol endpoint URL: the exact agent URL buyers are given and send AdCP requests to, including the path (e.g., `https://agent.example.com/mcp`). A bare origin matches only an agent served at the root. An agent reachable at more than one agent URL (for example, separate MCP and A2A endpoints) needs one entry per URL. Callers comparing this URL against a registry (sales-agent list, signal-provider registry, TMP provider lookup, etc.) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality \u2014 two URLs that differ only in case, default port, or percent-encoding of unreserved characters are the same agent. See docs/reference/url-canonicalization.",
+      "format": "uri",
+      "type": "string"
+    }
+  },
+  "required": [
+    "url",
+    "authorized_for"
+  ],
+  "title": "Authorized Agent Base Fields",
+  "type": "object"
+}

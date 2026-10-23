@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Webhook configuration for automated reporting delivery. Configures where and how campaign performance reports are sent.",
+  "properties": {
+    "authentication": {
+      "additionalProperties": false,
+      "deprecated": true,
+      "description": "Legacy authentication configuration for webhook delivery (A2A-compatible). Opts the receiver into Bearer or HMAC-SHA256 signing. Both schemes are deprecated; the preferred signing profile for new integrations is RFC 9421, where the seller signs with a key published at its brand.json agents[] entry and the buyer verifies against the seller's JWKS \u2014 no shared secret crosses the wire (see docs/building/by-layer/L1/security.mdx#webhook-callbacks). This field is required in AdCP 3.x; the requirement is removed in AdCP 4.0 when the default RFC 9421 path becomes the only path.",
+      "properties": {
+        "credentials": {
+          "description": "Credentials for the legacy scheme. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.",
+          "minLength": 32,
+          "type": "string"
+        },
+        "schemes": {
+          "description": "Array of authentication schemes. ['Bearer'] for simple token auth, ['HMAC-SHA256'] for legacy shared-secret signing. Both are deprecated; new integrations SHOULD use the RFC 9421 webhook signing profile instead.",
+          "items": {
+            "enum": [
+              "Bearer",
+              "HMAC-SHA256"
+            ]
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "schemes",
+        "credentials"
+      ],
+      "type": "object"
+    },
+    "reporting_frequency": {
+      "description": "Frequency for automated reporting delivery. Must be supported by all products in the media buy.",
+      "enum": [
+        "hourly",
+        "daily",
+        "monthly"
+      ],
+      "type": "string"
+    },
+    "requested_metrics": {
+      "description": "Optional list of metrics to include in webhook notifications. If omitted, all available metrics are included; an empty array has the same meaning as omission (it does not narrow to impressions and spend only). impressions and spend are always included regardless of this list. Must be a subset of the product's available_metrics. Subset evaluation and leaf resolution follow `enums/available-metric.json`: a numeric leaf may be covered by its container, while each structured distribution must be explicitly available. Requesting any nested identity selects its canonical carrier inside the payload's nested object. Same narrowing semantics as get_media_buy_delivery's requested_metrics (which additionally requires at least one entry when present).",
+      "items": {
+        "enum": [
+          "cpm",
+          "ctr",
+          "grps",
+          "roas",
+          "leads",
+          "plays",
+          "reach",
+          "saves",
+          "spend",
+          "views",
+          "clicks",
+          "follows",
+          "downloads",
+          "frequency",
+          "brand_lift",
+          "units_sold",
+          "conversions",
+          "engagements",
+          "impressions",
+          "ooh_metrics",
+          "quartile_25",
+          "quartile_50",
+          "quartile_75",
+          "viewability",
+          "dooh_metrics",
+          "foot_traffic",
+          "quartile_100",
+          "quartile_data",
+          "viewable_rate",
+          "cost_per_click",
+          "profile_visits",
+          "viewed_seconds",
+          "completed_views",
+          "completion_rate",
+          "conversion_lift",
+          "engagement_rate",
+          "conversion_value",
+          "time_based_views",
+          "brand_search_lift",
+          "new_to_brand_rate",
+          "new_to_brand_units",
+          "commissionable_value",
+          "cost_per_acquisition",
+          "viewable_impressions",
+          "incremental_sales_lift",
+          "measurable_impressions",
+          "cost_per_completed_view",
+          "viewed_seconds_histogram",
+          "viewed_seconds_percentiles"
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "token": {
+      "description": "Optional client-provided token for webhook validation. Echoed back in webhook payload to validate request authenticity.",
+      "minLength": 16,
+      "type": "string"
+    },
+    "url": {
+      "description": "Webhook endpoint URL for reporting notifications",
+      "format": "uri",
+      "type": "string"
+    }
+  },
+  "required": [
+    "url",
+    "authentication",
+    "reporting_frequency"
+  ],
+  "title": "Reporting Webhook",
+  "type": "object"
+}

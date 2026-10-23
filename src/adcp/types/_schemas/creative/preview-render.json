@@ -1,0 +1,356 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "A single rendered piece of a creative preview with discriminated output format",
+  "discriminator": {
+    "propertyName": "output_format"
+  },
+  "oneOf": [
+    {
+      "additionalProperties": true,
+      "description": "URL-only preview format",
+      "properties": {
+        "dimensions": {
+          "description": "Dimensions for this rendered piece",
+          "properties": {
+            "height": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "width": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "width",
+            "height"
+          ],
+          "type": "object"
+        },
+        "embedding": {
+          "description": "Optional security and embedding metadata for safe iframe integration",
+          "properties": {
+            "csp_policy": {
+              "description": "Content Security Policy requirements for embedding",
+              "type": "string"
+            },
+            "recommended_sandbox": {
+              "const": "",
+              "description": "Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.",
+              "type": "string"
+            },
+            "requires_https": {
+              "description": "Whether this output requires HTTPS for secure embedding",
+              "type": "boolean"
+            },
+            "supports_fullscreen": {
+              "description": "Whether this output supports fullscreen mode",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        },
+        "output_format": {
+          "const": "url",
+          "description": "Discriminator indicating preview_url is provided",
+          "type": "string"
+        },
+        "preview_url": {
+          "description": "Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.",
+          "format": "uri",
+          "type": "string"
+        },
+        "render_id": {
+          "description": "Unique identifier for this rendered piece within the variant",
+          "type": "string"
+        },
+        "renderer": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.",
+          "properties": {
+            "export": {
+              "description": "Renderer export or entry-point name used for this render.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "renderer_id": {
+              "description": "Stable implementation identifier.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "rendering_origin": {
+              "enum": [
+                "platform_native",
+                "agent_approximation"
+              ]
+            },
+            "tracking_suppressed": {
+              "enum": [
+                false,
+                true
+              ]
+            },
+            "version": {
+              "description": "Exact semantic version of the renderer implementation.",
+              "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "export",
+            "renderer_id",
+            "rendering_origin",
+            "tracking_suppressed",
+            "version"
+          ],
+          "title": "Preview Renderer Metadata",
+          "type": "object"
+        },
+        "role": {
+          "description": "Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "render_id",
+        "output_format",
+        "preview_url",
+        "role"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": true,
+      "description": "HTML-only preview format",
+      "properties": {
+        "dimensions": {
+          "description": "Dimensions for this rendered piece",
+          "properties": {
+            "height": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "width": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "width",
+            "height"
+          ],
+          "type": "object"
+        },
+        "embedding": {
+          "description": "Optional security and embedding metadata",
+          "properties": {
+            "csp_policy": {
+              "description": "Content Security Policy requirements for embedding",
+              "type": "string"
+            },
+            "recommended_sandbox": {
+              "const": "",
+              "description": "Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.",
+              "type": "string"
+            },
+            "requires_https": {
+              "description": "Whether this output requires HTTPS for secure embedding",
+              "type": "boolean"
+            },
+            "supports_fullscreen": {
+              "description": "Whether this output supports fullscreen mode",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        },
+        "output_format": {
+          "const": "html",
+          "description": "Discriminator indicating preview_html is provided",
+          "type": "string"
+        },
+        "preview_html": {
+          "description": "Untrusted HTML. Consumers MUST NOT inject it into the host DOM. Render only as iframe srcdoc with an empty sandbox token set and a caller-enforced restrictive CSP; provider embedding metadata is advisory and MUST NOT loosen that policy.",
+          "type": "string"
+        },
+        "render_id": {
+          "description": "Unique identifier for this rendered piece within the variant",
+          "type": "string"
+        },
+        "renderer": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.",
+          "properties": {
+            "export": {
+              "description": "Renderer export or entry-point name used for this render.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "renderer_id": {
+              "description": "Stable implementation identifier.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "rendering_origin": {
+              "enum": [
+                "platform_native",
+                "agent_approximation"
+              ]
+            },
+            "tracking_suppressed": {
+              "enum": [
+                false,
+                true
+              ]
+            },
+            "version": {
+              "description": "Exact semantic version of the renderer implementation.",
+              "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "export",
+            "renderer_id",
+            "rendering_origin",
+            "tracking_suppressed",
+            "version"
+          ],
+          "title": "Preview Renderer Metadata",
+          "type": "object"
+        },
+        "role": {
+          "description": "Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "render_id",
+        "output_format",
+        "preview_html",
+        "role"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": true,
+      "description": "Both URL and HTML preview format",
+      "properties": {
+        "dimensions": {
+          "description": "Dimensions for this rendered piece",
+          "properties": {
+            "height": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "width": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "width",
+            "height"
+          ],
+          "type": "object"
+        },
+        "embedding": {
+          "description": "Optional security and embedding metadata for safe iframe integration",
+          "properties": {
+            "csp_policy": {
+              "description": "Content Security Policy requirements for embedding",
+              "type": "string"
+            },
+            "recommended_sandbox": {
+              "const": "",
+              "description": "Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.",
+              "type": "string"
+            },
+            "requires_https": {
+              "description": "Whether this output requires HTTPS for secure embedding",
+              "type": "boolean"
+            },
+            "supports_fullscreen": {
+              "description": "Whether this output supports fullscreen mode",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        },
+        "output_format": {
+          "const": "both",
+          "description": "Discriminator indicating both preview_url and preview_html are provided",
+          "type": "string"
+        },
+        "preview_html": {
+          "description": "Untrusted HTML. Consumers MUST NOT inject it into the host DOM. Render only as iframe srcdoc with an empty sandbox token set and a caller-enforced restrictive CSP; provider embedding metadata is advisory and MUST NOT loosen that policy.",
+          "type": "string"
+        },
+        "preview_url": {
+          "description": "Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.",
+          "format": "uri",
+          "type": "string"
+        },
+        "render_id": {
+          "description": "Unique identifier for this rendered piece within the variant",
+          "type": "string"
+        },
+        "renderer": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.",
+          "properties": {
+            "export": {
+              "description": "Renderer export or entry-point name used for this render.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "renderer_id": {
+              "description": "Stable implementation identifier.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "rendering_origin": {
+              "enum": [
+                "platform_native",
+                "agent_approximation"
+              ]
+            },
+            "tracking_suppressed": {
+              "enum": [
+                false,
+                true
+              ]
+            },
+            "version": {
+              "description": "Exact semantic version of the renderer implementation.",
+              "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "export",
+            "renderer_id",
+            "rendering_origin",
+            "tracking_suppressed",
+            "version"
+          ],
+          "title": "Preview Renderer Metadata",
+          "type": "object"
+        },
+        "role": {
+          "description": "Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "render_id",
+        "output_format",
+        "preview_url",
+        "preview_html",
+        "role"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "Preview Render"
+}

@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Async acknowledgement returned after get_creative_features accepts a provider evaluation but cannot complete it within the response window. Exact keyed request replays return this original acknowledgement with replayed: true and the same task_id. In AdCP 3.x providers SHOULD also return evaluation_id; it becomes required in AdCP 4.0. When present, exact replays and terminal results preserve it. The caller polls get_task_status using task_id.",
+  "not": {
+    "anyOf": [
+      {
+        "required": [
+          "results"
+        ]
+      },
+      {
+        "required": [
+          "errors"
+        ]
+      },
+      {
+        "required": [
+          "detail_url"
+        ]
+      },
+      {
+        "required": [
+          "pricing_option_id"
+        ]
+      },
+      {
+        "required": [
+          "vendor_cost"
+        ]
+      },
+      {
+        "required": [
+          "currency"
+        ]
+      },
+      {
+        "required": [
+          "consumption"
+        ]
+      }
+    ]
+  },
+  "properties": {
+    "context": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "title": "Context Object",
+      "type": "object"
+    },
+    "evaluation_id": {
+      "description": "Provider-generated identity allocated when the evaluation is accepted. Optional in AdCP 3.x and required in AdCP 4.0. Providers SHOULD emit it in 3.x; when present, exact replays and the terminal result MUST carry this same value. Distinct from task_id and idempotency_key.",
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "creative_evaluation"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "message": {
+      "description": "Optional human-readable explanation of why the evaluation is submitted. Plain text only; callers treat it as untrusted provider input.",
+      "maxLength": 2000,
+      "type": "string"
+    },
+    "status": {
+      "const": "submitted",
+      "description": "Task-level status literal that discriminates this acknowledgement from terminal success and error responses.",
+      "type": "string"
+    },
+    "task_id": {
+      "description": "AdCP task handle used to poll get_task_status or correlate terminal webhook delivery. Distinct from evaluation_id.",
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "task"
+    }
+  },
+  "required": [
+    "status",
+    "task_id"
+  ],
+  "title": "Get Creative Features - Submitted",
+  "type": "object"
+}

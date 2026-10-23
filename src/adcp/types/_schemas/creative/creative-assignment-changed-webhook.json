@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Optional account-anchored invalidation fired by a seller that can detect when a package\u2013creative assignment is added, removed, or its aggregate/scoped approval outcome changes. Registered through sync_accounts notification_configs with event_types: [\"creative.assignment_changed\"]. Receivers verify signing, dedupe, and reread get_media_buys; a creative-library seller may also expose a bounded list_creatives reverse projection, but the webhook does not replace the authoritative relationship snapshot.",
+  "examples": [
+    {
+      "data": {
+        "account_id": "acc_example",
+        "change_kind": "approval_changed",
+        "creative_id": "cr_summer_video",
+        "fired_at": "2026-08-04T12:01:00Z",
+        "idempotency_key": "whk_01K2ASSIGNMENT4EXAMPLE9R6",
+        "media_buy_id": "mb_a",
+        "notification_id": "assignchg_mb_a_pkg_social_cr_video_5",
+        "notification_type": "creative.assignment_changed",
+        "observed_at": "2026-08-04T12:00:00Z",
+        "package_id": "pkg_social",
+        "subscriber_id": "buyer-primary"
+      },
+      "description": "Assignment approval changed"
+    }
+  ],
+  "properties": {
+    "account_id": {
+      "type": "string",
+      "x-entity": "account"
+    },
+    "change_kind": {
+      "enum": [
+        "assigned",
+        "unassigned",
+        "approval_changed"
+      ],
+      "type": "string"
+    },
+    "creative_id": {
+      "type": "string",
+      "x-entity": "creative"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "fired_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "idempotency_key": {
+      "maxLength": 255,
+      "minLength": 16,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "type": "string"
+    },
+    "media_buy_id": {
+      "type": "string",
+      "x-entity": "media_buy"
+    },
+    "notification_id": {
+      "description": "Stable identity for this logical assignment change across re-emissions.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string"
+    },
+    "notification_type": {
+      "const": "creative.assignment_changed",
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "package_id": {
+      "type": "string",
+      "x-entity": "package"
+    },
+    "subscriber_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "idempotency_key",
+    "notification_id",
+    "notification_type",
+    "fired_at",
+    "subscriber_id",
+    "account_id",
+    "media_buy_id",
+    "package_id",
+    "creative_id",
+    "change_kind",
+    "observed_at"
+  ],
+  "title": "Creative Assignment Changed Webhook",
+  "type": "object"
+}

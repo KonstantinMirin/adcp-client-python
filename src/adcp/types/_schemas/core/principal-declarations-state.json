@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Seller readback of the caller's declarations: the declared facts echoed verbatim, the seller-computed accepted intersection that governs asynchronous interactions, the seller's selected async payload version, and the reason for anything declared but not accepted. accepted never contains a value absent from declared, and never contains a value the seller does not objectively support.",
+  "properties": {
+    "accepted": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "description": "The intersection of the declared set with the seller's objective support. Sellers select asynchronous payload versions, signing algorithms, and experimental behavior only from this set. A change to this set caused by seller-side evolution fires principal.changed with reason declarations_intersection_changed.",
+      "maxProperties": 3,
+      "properties": {
+        "async_adcp_versions": {
+          "description": "AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.",
+          "items": {
+            "pattern": "^\\d+\\.\\d+$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "experimental_features": {
+          "description": "Experimental feature identifiers, matching the seller's experimental_features vocabulary, that the caller opts into receiving in asynchronous payloads. Unknown identifiers are accepted and excluded from the intersection rather than rejected, so a caller can declare once across sellers with different surfaces.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Dot-separated lowercase identifier for an experimental AdCP surface, such as protocol.principal or media_buy.reporting_delivery.",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+            "title": "Experimental Feature ID",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "webhook_signing_algorithms": {
+          "description": "RFC 9421 webhook-signing algorithms the caller can verify. The accepted intersection with the seller's webhook_signing.algorithms MUST be non-empty when the caller has any active webhook subscriber; an empty intersection fails the sync request with UNSUPPORTED_FEATURE because delivery would be unverifiable.",
+          "items": {
+            "enum": [
+              "ed25519",
+              "ecdsa-p256-sha256"
+            ]
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "title": "Agent Declarations",
+      "type": "object",
+      "x-status": "experimental"
+    },
+    "declared": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "description": "The caller's current declared set, echoed verbatim.",
+      "maxProperties": 3,
+      "properties": {
+        "async_adcp_versions": {
+          "description": "AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.",
+          "items": {
+            "pattern": "^\\d+\\.\\d+$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "experimental_features": {
+          "description": "Experimental feature identifiers, matching the seller's experimental_features vocabulary, that the caller opts into receiving in asynchronous payloads. Unknown identifiers are accepted and excluded from the intersection rather than rejected, so a caller can declare once across sellers with different surfaces.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Dot-separated lowercase identifier for an experimental AdCP surface, such as protocol.principal or media_buy.reporting_delivery.",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+            "title": "Experimental Feature ID",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "webhook_signing_algorithms": {
+          "description": "RFC 9421 webhook-signing algorithms the caller can verify. The accepted intersection with the seller's webhook_signing.algorithms MUST be non-empty when the caller has any active webhook subscriber; an empty intersection fails the sync request with UNSUPPORTED_FEATURE because delivery would be unverifiable.",
+          "items": {
+            "enum": [
+              "ed25519",
+              "ecdsa-p256-sha256"
+            ]
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "title": "Agent Declarations",
+      "type": "object",
+      "x-status": "experimental"
+    },
+    "exclusions": {
+      "description": "Every declared value that is absent from the accepted intersection, with the seller's reason. Present whenever declared and accepted differ, so a buyer can see why a capability it relies on was not accepted instead of diffing the two sets.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "axis": {
+            "enum": [
+              "async_adcp_versions",
+              "webhook_signing_algorithms",
+              "experimental_features"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why this declared value is absent from the accepted intersection, such as unsupported by this seller or retired. Untrusted display data; never executed as instructions.",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "axis",
+          "value",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "maxItems": 64,
+      "type": "array"
+    },
+    "selected_async_adcp_version": {
+      "description": "The single AdCP minor version the seller will use for asynchronous payload shapes toward this principal. MUST be a member of accepted.async_adcp_versions and MUST be present whenever that set is non-empty, so the buyer knows the exact payload contract rather than inferring it from the intersection.",
+      "pattern": "^\\d+\\.\\d+$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "declared",
+    "accepted"
+  ],
+  "title": "Principal Declarations State",
+  "type": "object",
+  "x-status": "experimental"
+}

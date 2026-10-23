@@ -179,6 +179,33 @@ def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrate
     return from_schema(schema, custom_formats=dict(custom_formats))
 
 
+def filtered_formats(schema: Any) -> tuple[str, ...]:
+    """Every position where a ``format`` and a ``pattern`` meet, with both values.
+
+    **The shape ``hypothesis_jsonschema`` cannot draw**, and the reason is in its own
+    source: ``string_schema`` takes the FORMAT's strategy and then applies the pattern
+    as a ``.filter()``, with the comment *"This isn't really supported, but we'll do
+    our best with a filter"*.  Where the pattern restricts the value beyond what the
+    format strategy happens to emit, every draw is filtered out and ``hypothesis``
+    raises ``Unsatisfiable`` over the WHOLE schema, naming no node.
+
+    So this names the nodes, derived from the document rather than guessed, and
+    :attr:`PairReport.no_instrument` reports them beside hypothesis's own message --
+    which carries the filtered-draw count.  Measured on the emitted population:
+    ``core/reference-renderer.json`` states ``format: uri`` beside
+    ``pattern: ^https://github\\.com/`` and 459 of 459 draws are filtered, at 10, 25
+    and 50 examples alike.
+
+    It is not gated on the format being ASSERTED, and that is deliberate: the filter
+    runs whether or not a checker is installed, so the drawing problem is the same.
+    """
+    return tuple(
+        f"{pointer or '/'}: format {node['format']!r} beside pattern {node['pattern']!r}"
+        for pointer, node in _nodes(schema)
+        if isinstance(node.get("format"), str) and isinstance(node.get("pattern"), str)
+    )
+
+
 def validator_for(schema: dict) -> Any:
     """The validator the document's own ``$schema`` names.
 
@@ -1189,6 +1216,15 @@ class RefusesResult:
     #: denominator came from one statement of it rather than all -- which is why
     #: it is recorded instead of left to be inferred from a smaller count.
     stepped_at: str = ""
+    #: Set where the WITNESS strategy admitted nothing: the check could not DRAW an
+    #: instance, so the obstruction is the GENERATOR and not the model.  ``harness``
+    #: carries the same text and still makes this a ``harness_error``; this field is
+    #: what :attr:`PairReport.no_instrument` reads to tell the two things
+    #: ``harness_error`` means apart -- "hypothesis has no instance for this shape"
+    #: and "the harness broke" -- which are not the same finding and do not have the
+    #: same owner.  Written only for a WITNESS step, exactly as
+    #: :attr:`unsatisfiable` is written only for a COMPLEMENT one.
+    undrawable: str = ""
 
     @property
     def outcome(self) -> str:
@@ -1462,9 +1498,34 @@ def _refuses_once(
             res.collides = contradicting(schema, step)
             named = ", ".join(res.collides) or "nothing at this instance location"
             res.harness = f"{detail} | contradicted by: {named}"[:300]
+            # **Only where NOTHING contradicts the step**, and that gate is the whole
+            # difference between the two things an empty witness means.  A keyword at
+            # the same instance location that contradicts it is a reason the harness
+            # could act on -- group the positions, step the other keyword -- so §6's
+            # rule stands and the pair's verdict is a refusal
+            # (``test_an_unsteppable_site_is_reported_rather_than_passed`` is exactly
+            # that site, a ``maxLength`` stepped against a conjunct's ``const``).
+            # With nothing contradicting it, the document forbids the witness nowhere
+            # and the strategy still produced none: that is the GENERATOR, and
+            # ``PairReport.no_instrument`` records it.
+            if not res.collides:
+                res.undrawable = f"nothing at this instance location contradicts the step; {_why(e)}"
     except Exception as e:
         res.harness = f"{type(e).__name__}: {e}"[:300]
     return res
+
+
+def _why(e: BaseException) -> str:
+    """``hypothesis``'s own reason, up to the point where it starts advising.
+
+    ``Unsatisfiable``'s message is the reason followed by advice -- *"Try making your
+    filters or assumes less strict, or rewrite using strategy parameters..."* -- and
+    the advice is for whoever wrote the test, not a fact about the document.  The
+    reason half carries the number this report needs (*"459 of 459 test cases failed
+    a .filter() or assume() condition"*), so the cut keeps the measurement and drops
+    the boilerplate that was pushing it past the truncation.
+    """
+    return f"{type(e).__name__}: {str(e).split(' Try making')[0].strip()}"[:200]
 
 
 def _dump(x: Any) -> str:
@@ -1679,7 +1740,7 @@ def _schema_half_enforces(keyword: str, doc: Mapping[str, Any], got: Mapping[str
     return keyword == "pattern"
 
 
-def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
+def _narrows_nothing(keyword: str, value: Any, doc: dict, *, required: bool = False) -> bool:
     """Does a model-only fact narrow the document's accepted set, or not?
 
     A fact the model states and the document does not is reported, because that
@@ -1687,14 +1748,37 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
     nothing; two of them are 57 of the 57 model-only facts step 1's and step 2's
     population has, and the third arrived with step 5's union roots:
 
-    * **``default: null``**, 56 of them.  D4 renders an optional property
-      ``T | None = None``, because a Python attribute holds ``None`` for an
-      omitted key, and pydantic reports that as a default.  It is how absence is
-      spelled in Python, not a claim about the document: presence is the schema's
-      ``required`` axis and that is compared in both directions.  A model-only
-      ``default`` with any OTHER value IS an added claim and is reported -- the
-      difference between "absent renders as None" and "the generator invented a
-      default".
+    * **``default: null`` AT A KEY THE DOCUMENT DOES NOT DEMAND**, 56 of them.  D4
+      renders an optional property ``T | None = None``, because a Python attribute
+      holds ``None`` for an omitted key, and pydantic reports that as a default.
+      It is how absence is spelled in Python, not a claim about the document:
+      presence is the schema's ``required`` axis and that is compared in both
+      directions.  A model-only ``default`` with any OTHER value IS an added claim
+      and is reported -- the difference between "absent renders as None" and "the
+      generator invented a default".
+
+      **``required`` is the axis, and this clause used to read the node's declared
+      ``null`` as a proxy for it.**  The proxy was
+      ``"null" not in str(doc.get("type", ""))``, introduced in ``296175436`` with
+      no measurement naming it and with **0 sites** -- every nullable node in the
+      bundle was refused at the time, so it was never graded.  It is wrong in both
+      directions, and each cell was measured:
+
+      * at an OPTIONAL property the document declares ``["string", "null"]`` for,
+        the default is still D4's spelling of absence and nothing else, and the
+        proxy reported it.  That is what blocked
+        ``core/webhook-activity-record.json`` and ``core/delivery-metrics.json``
+        from emitting, at ``added`` rather than at the ``type`` the row is about.
+      * at a REQUIRED property the proxy ADMITTED one, and a default on a key the
+        document demands makes that key omissible -- which is the model inventing
+        a default, the very thing the ``value is None`` gate exists for.
+        ``compiler.fields`` refuses a document default on a required property for
+        exactly this reason, so a model-only one is the same defect arriving from
+        the other side.
+
+      So the clause reads ``required``, which the comparison knows and this
+      function was not being told.  One rule with the parameter it was missing,
+      not a second rule beside it.
     * **``additionalProperties: true``**, 1 of them.  Silence permits an
       additional property, so ``true`` permits exactly as much and forbids
       nothing.  It arises from the resolver: ``resolve_all_refs`` drops a
@@ -1733,11 +1817,39 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
     * **a ``type`` the node's own content already forces**, which
       :func:`_entails_type` decides from the document.  A typeless node with nothing
       forcing it is still reported.
+    * **a ``description`` AT A NODE THE DOCUMENT GIVES A ``const``.**  The same
+      resolver canonicalization as the bullet above, at a ONE-MEMBER enum written
+      as a ``const``: ``canonicalish`` reduces a node whose value set is finite to
+      that set alone and drops every annotation at it.  Measured directly --
+      ``{"type": "string", "const": "OKP", "description": "d"}`` inlined through a
+      ``$ref`` comes back ``{"const": "OKP"}``, and so does the same node written
+      ``{"enum": ["OKP"]}`` -- and measured on the live pair both ways round:
+      ``core/agent-encryption-key.json``'s ``kty`` keeps its ``type`` and its
+      ``description`` in its OWN resolved document, and keeps neither inside
+      ``core/authorized-agent-base.json``, which references it.
+
+      So a faithful class whose field carries the document's ``description``
+      states a fact its referrer's resolved document no longer does.  The
+      ``type`` half of the same drop is already decided, by
+      :func:`_entails_type`'s ``const`` branch; this row is the ``description``
+      half and nothing else.  **It is gated on the document stating a ``const``
+      at that node**, so it excuses nothing anywhere else, and a ``description``
+      changes no accepted set in any direction -- while the
+      ``missing``/``differs`` half still catches a dropped or wrong one, which
+      is the defect that matters.
+
+      Measured over the emitted population: **3 such facts at 1 pair**
+      (``core/authorized-agent-base.json``'s ``crv``, ``kty`` and ``use``), all
+      three a ``description``, and **0 elsewhere**.  A ``default`` or any other
+      annotation at a const node has no row and is still reported: 0 of the
+      bundle's 1,486 const nodes carries one.
     """
     if "enum" in doc:
         return _implied_by_an_enum(keyword, value, doc["enum"])
+    if keyword == "description":
+        return "const" in doc
     if keyword == "default":
-        return value is None and "null" not in str(doc.get("type", ""))
+        return value is None and not required
     if keyword == "type":
         return _entails_type(doc, value)
     return keyword == "additionalProperties" and value is True
@@ -1817,12 +1929,49 @@ def _uncanonicalized(doc: dict) -> tuple[dict, bool]:
     This is the third canonicalization the comparison folds out, beside ``_closed``
     and the ``additionalProperties: true`` arm of ``_narrows_nothing``.  Reached for
     the first time by ``core/demographic-predicate.json``, whose referenced
-    ``include_unknown`` is a plain boolean.
+    ``include_unknown`` is a plain boolean.  :func:`_derived_max_items` is the
+    fourth, and the only one that folds out a fact the resolver ADDS.
     """
     for canonical, kind in _FINITE:
         if doc == canonical:
             return {"type": kind}, True
+    if _derived_max_items(doc):
+        return {k: v for k, v in doc.items() if k != "maxItems"}, False
     return doc, False
+
+
+def _derived_max_items(doc: Mapping[str, Any]) -> bool:
+    """Is this node's ``maxItems`` one the RESOLVER DERIVED from its ``uniqueItems``?
+
+    The FOURTH canonicalization, and the only one that folds out a fact the resolver
+    ADDS rather than one it drops or rewrites.  ``uniqueItems: true`` over a
+    countable item set bounds an instance's length at the number of distinct values
+    the items admit, and ``canonicalish`` writes that bound out as a ``maxItems``
+    the document's own text does not state.  The mechanism was already measured in
+    this module -- :func:`violated_keywords`'s docstring records
+    ``uniqueItems: true`` over a 2-member enum becoming ``maxItems: 2`` -- and it
+    became reachable by the COMPARISON only once a document carrying ``uniqueItems``
+    emitted a class (``salesagent-j3k2l.19``).  Measured at 3 pairs:
+    ``core/principal-declarations-state.json`` (twice, ``maxItems: 2`` over a
+    2-member enum), ``core/requirements/vast-asset-requirements.json`` (the same),
+    and ``property/property-error.json`` (``maxItems: 20`` over the 20-member
+    channel enum).
+
+    **A HAND-WRITTEN ROW, gated on the exact derivation and not on "a bound beside a
+    uniqueItems".**  The value must equal :func:`_distinct_values` of the items, so a
+    document's own ``maxItems`` is still compared: measured over the bundle, 28 raw
+    nodes state both keywords and 21 of them state a bound BELOW their item count,
+    which this does not touch.  At the 7 where the two coincide -- all in
+    ``protocol/get-adcp-capabilities-response.json``, refused today for another
+    keyword -- the model's own ``uniqueItems`` over the same item set already forbids
+    a longer instance, so no accepted set goes ungraded either way.  A rule reading
+    "a maxItems beside a uniqueItems is admitted" would be shorter and would excuse a
+    genuine dropped bound, invisibly and for good.
+    """
+    if doc.get("uniqueItems") is not True:
+        return False
+    bound = _distinct_values(doc.get("items"))
+    return bound is not None and doc.get("maxItems") == bound
 
 
 def _closed(x: Any) -> Any:
@@ -1840,7 +1989,26 @@ def _closed(x: Any) -> Any:
     return False if x == {"not": {}} else x
 
 
-def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
+def _declares_null(doc: Any) -> bool:
+    """Does the DOCUMENT declare ``null`` among this node's types?
+
+    The one question :func:`_normalize` cannot answer from the model, and the one
+    it has to ask: ``{"type": ["string", "null"]}`` and an OPTIONAL
+    ``{"type": "string"}`` are different documents that D4 renders as the same
+    ``str | None``, so the model's own schema does not say which it came from.
+    Read off the document, which does.
+
+    A list, because that is the only spelling a multi-type node has; the lone
+    ``{"type": "null"}`` is included for completeness and has no site in the
+    bundle.
+    """
+    kind = doc.get("type") if isinstance(doc, Mapping) else None
+    return "null" in kind if isinstance(kind, list) else kind == "null"
+
+
+def _normalize(
+    node: Any, defs: Mapping[str, Any], depth: int = 0, *, declared_null: bool = False
+) -> dict:
     """The model's node for one position, written the way the document writes it.
 
     Three normalizations, and each one is forced by a decision this pipeline made
@@ -1850,11 +2018,35 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
       cross-document reference is an IMPORT (P2), so pydantic hoists both into
       ``$defs`` and references them.  The document the class names is resolved,
       so the same facts are inline there.
-    * **An ``anyOf`` with a ``null`` branch.**  D4 renders an optional property
-      ``T | None``, because the attribute holds ``None`` for an omitted key.
-      pydantic states that as a union; the document states the type and leaves
-      presence to ``required``.  Unwrapping the null branch compares like with
-      like.
+    * **An ``anyOf`` with a ``null`` branch, AND WHICH OF THE TWO THINGS IT IS.**
+      D4 renders an optional property ``T | None``, because the attribute holds
+      ``None`` for an omitted key.  pydantic states that as a union; the document
+      states the type and leaves presence to ``required``.  Unwrapping the null
+      branch compares like with like.
+
+      **A document that DECLARES ``null`` renders the same union, and unwrapping
+      that one erased the document's own fact.**  ``["string", "null"]`` is
+      ``str | None``, which is what D4 renders for an optional ``{"type":
+      "string"}`` as well -- so one model schema stood for two different
+      documents, and the comparison reported a faithful model as dropping its
+      ``type`` while a model that DROPPED the declared null compared the same way.
+      Neither could be graded, which is why ``lower.containers.multi_type``
+      refused a ``null`` arm by name rather than emit a node no check reads.
+
+      The distinction is not available on the model's side at all, so it comes
+      from ``declared_null``, which the caller reads off the DOCUMENT
+      (:func:`_declares_null`).  Where the document declares null the branch is a
+      type fact and is folded INTO the type list; where it does not, the branch is
+      presence and is unwrapped exactly as before.  Measured on
+      ``core/webhook-activity-record.json``'s ``completed_at``
+      (``["string", "null"]``, ``format: date-time``),
+      ``core/delivery-metrics.json``'s ``completion_rate`` and
+      ``core/error.json``'s discriminator ``value``
+      (``["string", "number", "boolean", "null"]``).
+
+      A model that drops the declared null folds into nothing -- with no null
+      branch neither arm of this fold applies -- so it is still reported, which is
+      the half ``tests/test_emit.py`` reddens on.
     * **A union of BARE types is a ``type`` LIST.**  draft-07 lets a node name
       several types at once and pydantic has no spelling for that but a union, so
       ``{"type": ["number", "string"]}`` comes back
@@ -1880,6 +2072,13 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
     if "$ref" in node:
         name = str(node["$ref"]).rsplit("/", 1)[-1]
         target = defs.get(name)
+        # ``declared_null`` deliberately does NOT travel through here.  It would be an
+        # arm with no site: measured over the graded population, 5 positions have a
+        # document declaring ``null`` and **all 5 render as an ``anyOf``, 0 as a
+        # ``$ref``** -- pydantic names a nested CLASS that way, and a class is not a
+        # null arm.  A derivation matching nothing is green for free, and this one
+        # also fails SAFE if such a position ever appears: the fold does not fire, so
+        # the document's ``type`` reads as missing and the pair reddens.
         outer = {k: v for k, v in node.items() if k != "$ref"}
         return {**_normalize(target, defs, depth + 1), **outer} if target is not None else outer
     branches = node.get("anyOf")
@@ -1888,9 +2087,13 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
         nulls = [b for b in branches if b.get("type") == "null"]
         outer = {k: v for k, v in node.items() if k != "anyOf"}
         if len(nulls) == 1 and len(live) == 1:
-            return {**_normalize(live[0], defs, depth + 1), **outer}
+            one = {**_normalize(live[0], defs, depth + 1), **outer}
+            if declared_null and isinstance(one.get("type"), str):
+                return {**one, "type": [one["type"], "null"]}
+            return one
         if len(nulls) <= 1 and len(live) > 1 and all(set(b) == {"type"} for b in live):
-            return {"type": [b["type"] for b in live], **outer}
+            kinds = [b["type"] for b in live]
+            return {"type": [*kinds, "null"] if declared_null and nulls else kinds, **outer}
     return node
 
 
@@ -2034,7 +2237,14 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
         return res
     defs = emitted.get("$defs", {})
 
-    def compare(doc: Any, got: Any, pointer: str) -> None:
+    def compare(doc: Any, got: Any, pointer: str, *, required: bool = False) -> None:
+        """``required`` is whether the PARENT document demands this key.
+
+        Two of this function's decisions need it and neither can derive it from the
+        node: ``_narrows_nothing`` asks it of a model-only ``default``, and a
+        non-property position (a root, an ``items``, a mapping's value) has no
+        presence question at all, which is what the ``False`` default states.
+        """
         if not isinstance(doc, dict):
             return
         # The document side is read the way the schema half reads it: a conjunct's
@@ -2042,7 +2252,10 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
         # the root -- a property's own node composes too, and the pydantic side is
         # flattened at every depth, so one call in the recursion is the whole of it.
         doc = _composed(doc)
-        got = _normalize(got, defs)
+        # The DOCUMENT decides whether a null branch on the model's side is a type
+        # fact or D4's spelling of absence, so the document is read first and the
+        # model's node is normalized against it.
+        got = _normalize(got, defs, declared_null=_declares_null(doc))
         doc, rewritten = _uncanonicalized(doc)
         for kw in FACTS:
             if kw not in doc:
@@ -2124,7 +2337,7 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
                 )
                 continue
             if (
-                _narrows_nothing(kw, got[kw], doc)
+                _narrows_nothing(kw, got[kw], doc, required=required)
                 or (rewritten and kw == "description")
                 or (rewritten and kw == "default" and _admitted(got[kw], doc))
             ):
@@ -2133,6 +2346,7 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
 
         props = doc.get("properties") or {}
         mine = got.get("properties") if isinstance(got.get("properties"), dict) else {}
+        demanded = doc.get("required") if isinstance(doc.get("required"), list) else []
         if isinstance(props, dict):
             for key in sorted(props):
                 at = f"{pointer}/properties/{_esc(key)}"
@@ -2140,7 +2354,7 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
                     res.compared += 1
                     res.missing.append(f"{at}: the model declares no such property")
                     continue
-                compare(props[key], mine[key], at)
+                compare(props[key], mine[key], at, required=key in demanded)
         for key in sorted(set(mine) - set(props)):
             res.model_facts += 1
             res.added.append(
@@ -2176,6 +2390,11 @@ class PairReport:
     comparison: ComparisonResult | None = None
     step_sites: int = 0
     missing_formats: list[str] = field(default_factory=list)
+    #: The DOCUMENT's own positions where a ``format`` and a ``pattern`` meet,
+    #: filled by :func:`check_pair` because a report does not hold the document it
+    #: graded.  Read by :attr:`no_instrument` to name the shape behind an accepts
+    #: check that could not draw.
+    accepts_filtered_formats: tuple[str, ...] = ()
 
     @property
     def graded_instances(self) -> int:
@@ -2185,6 +2404,46 @@ class PairReport:
         and is counted by the control instead.
         """
         return sum(r.refused + r.accepted_invalid for r in self.refuses)
+
+    @property
+    def no_instrument(self) -> tuple[str, ...]:
+        """Every check of this pair that could not DRAW, each with its CAUSE.
+
+        **Tracking, with no ratchet on it, and that is the decision rather than an
+        omission.**  A shrink-only count assumes a fixed or shrinking population and
+        the emitted tree GROWS every merge, so each new batch of documents can
+        legitimately contribute new undrawable pairs and a shrink-only gate would
+        redden on correct work.  It can only shrink once ``hypothesis`` draws these
+        shapes, which is unscheduled, so shrink-only is unachievable in principle and
+        not merely premature.
+
+        **The CAUSE matters more than the count**, because this is the population the
+        eventual generator work starts from, so each entry names a shape to act on
+        rather than "cannot draw":
+
+        * the ACCEPTS check reports hypothesis's own message -- which carries the
+          filtered-draw count -- beside the document's own positions where a
+          ``format`` and a ``pattern`` meet (:func:`filtered_formats`), because that
+          is the shape ``hypothesis_jsonschema``'s ``string_schema`` filters and
+          cannot satisfy.  The positions are DERIVED from the document, not guessed:
+          hypothesis raises over the whole schema and names no node.
+        * a REFUSES step reports its keyword and its position, and it lands here
+          only where NOTHING at that instance location contradicts it
+          (:attr:`RefusesResult.undrawable` says why). A step contradicted by a
+          NAMED keyword is a harness defect and still reddens the pair under §6's
+          rule -- that is what separates this from a tolerance.
+        """
+        out: list[str] = []
+        if self.accepts is not None and self.accepts.outcome == "strategy_error":
+            where = "; ".join(self.accepts_filtered_formats) or (
+                "no format-beside-pattern position in this document"
+            )
+            why = self.accepts.detail.split(" Try making")[0].strip()[:200]
+            out.append(f"accepts: {where}; {why}")
+        out += [
+            f"refuses {r.keyword!r} at {r.pointer or '/'}: {r.undrawable}" for r in self.refuses if r.undrawable
+        ]
+        return tuple(out)
 
     @property
     def outcome(self) -> str:
@@ -2202,13 +2461,27 @@ class PairReport:
         """
         if self.missing_formats:
             return "missing_formats"
-        if self.accepts is None or self.accepts.outcome != "pass":
-            return "accepts:" + (self.accepts.outcome if self.accepts else "unrun")
-        bad = [r.outcome for r in self.refuses if r.outcome not in ("pass", "no_evidence")]
+        if self.accepts is None:
+            return "accepts:unrun"
+        # ``strategy_error`` is held back here and answered by ``no_instrument``
+        # below: it says the GENERATOR produced nothing, which is not a verdict on
+        # the model.  Every other accepts outcome is a verdict and still wins.
+        if self.accepts.outcome not in ("pass", "strategy_error"):
+            return "accepts:" + self.accepts.outcome
+        bad = [
+            r.outcome
+            for r in self.refuses
+            if r.outcome not in ("pass", "no_evidence") and not r.undrawable
+        ]
         if bad:
             return "refuses:" + bad[0]
         if self.comparison is None or self.comparison.outcome not in ("pass", "no_evidence"):
             return "comparison:" + (self.comparison.outcome if self.comparison else "unrun")
+        # AFTER the comparison, so a model defect is never reported as an instrument
+        # one, and BEFORE the two zero-denominator verdicts, so a pair whose steps
+        # were all undrawable names that instead of "nothing was graded".
+        if self.no_instrument:
+            return "no_instrument"
         if not self.step_sites:
             return "no_constraint_to_step"  # the document states nothing to step
         if not self.graded_instances:
@@ -2228,6 +2501,7 @@ def check_pair(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
     )
     rep.missing_formats = sorted(missing_formats(pair.schema, custom_formats))
+    rep.accepts_filtered_formats = filtered_formats(pair.schema)
     rep.accepts = check_accepts(
         pair.schema, pair.accept, examples=accepts_examples, custom_formats=custom_formats
     )

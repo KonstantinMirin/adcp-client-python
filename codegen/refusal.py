@@ -33,3 +33,37 @@ class Refusal(Exception):
         self.keyword = kw
         self.pointer = pointer or "/"
         self.detail = detail
+
+
+# --------------------------------------------------------------------------- #
+# the three kinds of refusal, named where the refusal type lives
+# --------------------------------------------------------------------------- #
+# The exit condition asks for every document EMITTED, or REFUSED BY NAME,
+# POINTER AND KEYWORD.  Only one of the three sentences below is such a refusal.
+# The other two say "not built yet", and while they were unnamed the metric
+# counted them as refusals: 404 + 41 of 476 on the tree that first measured this,
+# so 93% of "refused" was pending work and ``emitted + refused == 1054`` was
+# green throughout.
+#
+# These are CONSTANTS AND NOT A CLASSIFIER so that a reader of a refusal is
+# comparing against the string its producer emits, not against a spelling a
+# grader invented.  Each has exactly one producer, named beside it.  A fourth
+# kind means a fourth constant here, not a regex somewhere else.
+
+#: A draft-07 keyword no row lowers YET, and a later D2 row is expected to.
+#: NOT a verdict -- the document is pending.  Producer: ``compiler.why_refused``.
+DEFERRED_TO_A_LATER_ROW = "this step lowers no such keyword (a later D2 row does)"
+
+#: A ``$ref`` whose target is itself refused, so this document clears when its
+#: target does.  NOT a verdict.  Matched as a substring because the producer
+#: names the URI first.  Producer: ``emit`` at the unresolved-reference check.
+UNRESOLVED_TARGET = "is still unresolved after bundle.resolved"
+
+
+def is_a_verdict(detail: str) -> bool:
+    """True when this refusal is final: a keyword this emitter will not lower.
+
+    False for the two pending kinds.  Read by the metric, so that "refused"
+    cannot absorb "not built yet" without the count moving.
+    """
+    return detail != DEFERRED_TO_A_LATER_ROW and UNRESOLVED_TARGET not in detail

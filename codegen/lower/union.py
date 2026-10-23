@@ -41,12 +41,18 @@ give:
   the 44 documents that pass this module's keyword screen, all five entirely bare-ref;
 * a ``required``-only overlay, which constrains requiredness and nothing else: that is a
   rule on the root's class (D2, D6), step 7's row;
-* a scalar or array branch (step 6, D2), a nested ``oneOf``/``anyOf``/``not``/``if``, an
-  ``enum`` or a bare ``const``;
+* a scalar or array branch (step 6, D2), a nested ``oneOf``/``anyOf``/``not``/``if``, or an
+  ``enum``.  A branch carrying a bare ``const`` is a SCALAR branch and is refused as one:
+  the ``const`` pins the branch's whole value, so there is no property map to declare a
+  subclass from.  D2's ``const`` row (``codegen.lower.const``) decides a branch's
+  PROPERTIES, which is where the discriminating pin sits, and this module no longer
+  carries a copy of it;
 * an ``allOf`` conjunct list.  That one is lowerable and is refused for a reason of its
   own, stated at the refusal in :func:`_plan`: the conjuncts sit at the branch's own
   node, so the grader has a pointer for them, and what is missing is only that the
-  conjunct reader is the product row's and D13 keeps it out of reach.  9 documents.
+  conjunct reader is the product row's and D13 keeps it out of reach.  It is checked
+  AFTER the branch's ``type``, because a branch whose type is not an object cannot be a
+  class whatever else it states -- see :func:`_plan`.
 
 WHAT THE ROOT MAY NOT CARRY, and this is the one refusal that is about the GRADER rather
 than about a missing lowering.  A root ``allOf``, ``properties``, ``required`` or
@@ -74,8 +80,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-
-import jsonschema
 
 from codegen import compiler
 from codegen.refusal import Refusal
@@ -134,10 +138,27 @@ ROOT_HANDLED = frozenset(
 #: ``missing``, so a red gate rather than a named refusal.
 ROOT_CONJUNCTS = ("allOf", "properties", "required", "additionalProperties")
 
-#: What a BRANCH may carry and still be a class this module declares.  ``allOf`` is
-#: HANDLED for the reason the root's four are: so the explicit refusal below reports it
-#: rather than the keyword screen promising a row.
-BRANCH_HANDLED = frozenset({"type", "properties", "required", "additionalProperties", "allOf"})
+#: What a BRANCH may carry and still be a class this module declares.
+#:
+#: ``const`` and ``allOf`` are both in the set for ``ROOT_HANDLED``'s reason, and
+#: neither because this module lowers one: left out, the keyword screen reports them
+#: first with the generic "a later D2 row does", and an explicit refusal below says
+#: what each actually is.  Attribution is the point of a refusal report.
+#:
+#: ``const`` at the BRANCH node pins the branch's whole VALUE, so the branch is a
+#: scalar and the refusal that says so is :func:`_plan`'s ``type`` check.  The generic
+#: deferral pointed at a row that already exists (D2's ``const`` row is
+#: ``codegen.lower.const``, reached for every PROPERTY of a branch), which sent the
+#: reader looking for the wrong thing.  Measured: 1 document,
+#: ``core/start-timing.json``, whose two branches are a ``const`` and a
+#: ``format: date-time``, both scalars.
+#:
+#: ``allOf`` at the BRANCH node is a conjunct list the branch's own pointer addresses,
+#: so unlike the root case it is genuinely lowerable; :func:`_plan` refuses it on the
+#: one thing it lacks, which is the conjunct reader D13 keeps in the product row.
+BRANCH_HANDLED = frozenset(
+    {"type", "properties", "required", "additionalProperties", "const", "allOf"}
+)
 
 
 #: The two union keywords, in the order a root carrying one is read.
@@ -230,12 +251,18 @@ def branch_name(branch: dict, root: str, pointer: str, doc: dict) -> str:
 # --------------------------------------------------------------------------- #
 @dataclass(frozen=True)
 class Branch:
-    """One branch's decided class: its name, its node, and the types already decided."""
+    """One branch's decided class: its name and its node.
+
+    It carried a third field -- a per-property type this module had already decided,
+    for the ``const`` on the discriminating property -- and that is gone with
+    ``_literal``: D2's ``const`` row is ``codegen.lower.const`` now and the walk
+    reaches it for every node, so a branch's properties are decided the way every
+    other object's are.
+    """
 
     name: str
     pointer: str
     node: dict
-    decided: dict[str, compiler.Decided]
 
 
 def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> str:
@@ -269,7 +296,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
         )
 
     planned = [
-        _plan(branches[i], f"{pointer}/{kw}/{i}", symbol, doc, mod) for i in range(len(branches))
+        _plan(branches[i], f"{pointer}/{kw}/{i}", symbol, doc) for i in range(len(branches))
     ]
     names = [p.name for p in planned]
     if len(set(names)) != len(names):
@@ -306,9 +333,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
     mod.add(symbol, pointer, rendered)
 
     for plan in planned:
-        compiler.lower_object(
-            plan.node, plan.name, plan.pointer, mod, bases=(symbol,), decided=plan.decided
-        )
+        compiler.lower_object(plan.node, plan.name, plan.pointer, mod, bases=(symbol,))
 
     # The module trailer.  Two statements beside the classes, which is the module writer's
     # own text (§3: no compiler template has a slot for a line beside a class), and they
@@ -319,7 +344,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
     return symbol
 
 
-def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module) -> Branch:
+def _plan(branch: Any, pointer: str, root: str, doc: dict) -> Branch:
     """What one branch becomes, or the refusal that says why it becomes nothing."""
     if not isinstance(branch, dict):
         raise Refusal("oneOf", pointer, f"a branch is {type(branch).__name__}, not a schema")
@@ -333,6 +358,20 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
             "arm would not answer isinstance",
         )
     compiler.check_keywords(branch, pointer, BRANCH_HANDLED)  # the walk's own check
+    # The TYPE first, and the property map after it.  A branch's type decides whether
+    # it can be a class AT ALL; whether it declares properties is a question only an
+    # object branch has.  The other order reported a scalar branch against
+    # ``properties`` -- "constrains only requiredness", of a node that constrains a
+    # value -- which is the same misattribution ``ROOT_HANDLED`` is ordered to avoid.
+    if branch.get("type") not in (None, "object"):
+        raise Refusal("type", pointer, f"a branch of type {branch['type']!r} is step 6")
+    # **The composition AFTER the type, for that same reason**, and the order is
+    # measured rather than preferred: a branch stating a non-object type cannot be a
+    # class whatever else it states, so the type is the reason and the conjunct list is
+    # not.  Measured over the portable population: 0 branches of a root union carry
+    # both a non-object ``type`` and an ``allOf``, so the order moves no document today
+    # -- it is written this way so that the first one to carry both is reported on the
+    # keyword that is the reason.
     if "allOf" in branch:
         # **A branch that COMPOSES, which is a different position from a root ``allOf``
         # and is genuinely lowerable.**  The conjunct sits AT the branch's own node, so
@@ -376,43 +415,4 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
             "a branch declaring no property constrains only requiredness: that is a rule "
             "on the root's class (D2, D6), not a branch class (step 7's row)",
         )
-    if branch.get("type") not in (None, "object"):
-        raise Refusal("type", pointer, f"a branch of type {branch['type']!r} is step 6")
-    decided = {
-        key: _literal(sub, f"{pointer}/properties/{key}", mod)
-        for key, sub in branch["properties"].items()
-        if isinstance(sub, dict) and "const" in sub
-    }
-    return Branch(
-        name=branch_name(branch, root, pointer, doc),
-        pointer=pointer,
-        node=branch,
-        decided=decided,
-    )
-
-
-def _literal(node: dict, pointer: str, mod: compiler.Module) -> compiler.Decided:
-    """D2's ``const`` row, for a BRANCH property only.
-
-    A pinned ``const`` is what D3's rule 2 reads a branch's name from, so the keyword is
-    already this module's; and it is the discriminator the arm exists for, so a branch
-    whose pin is dropped is an arm with no arm in it.  Scoped to a branch property through
-    ``lower_object(decided=)`` rather than put into ``decide_type``, because the latter
-    would emit a ``const`` row for step 1's and step 2's own populations too and collide
-    with whichever step claims D2's ``const`` row in full.
-    """
-    compiler.check_keywords(node, pointer, {"type", "const"})  # the walk's own check
-    value = node["const"]
-    if isinstance(value, (dict, list)) or value is None:
-        raise Refusal("const", pointer, f"a const of {type(value).__name__} is not a Literal")
-    if not jsonschema.Draft7Validator(node).is_valid(value):
-        # The document's own validator rather than a type table of this module's: a
-        # ``const`` its own ``type`` refuses leaves the node admitting NOTHING, and a
-        # ``Literal`` of it would be a model wider than its schema.
-        raise Refusal(
-            "const",
-            pointer,
-            f"const {value!r} is not a {node.get('type')!r}: the node admits nothing",
-        )
-    mod.imports.add(("typing", "Literal"))
-    return compiler.Decided(compiler.Type(f"Literal[{value!r}]", local=True))
+    return Branch(name=branch_name(branch, root, pointer, doc), pointer=pointer, node=branch)

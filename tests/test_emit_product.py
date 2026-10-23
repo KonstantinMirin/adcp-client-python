@@ -74,7 +74,7 @@ def test_the_population_is_the_one_this_step_is_stated_over() -> None:
     """
     docs = bundle.portable(BUNDLE)
     read = [bundle.read(BUNDLE, d) for d in docs]
-    assert len(composing()) == 287  # allOf at the root, NO union beside it
+    assert len(composing()) == 301  # allOf at the root, NO union beside it
 
     root_allof = [d for d in read if isinstance(d.get("allOf"), list)]
     anywhere = [d for d in read if "allOf" in bundle.schema_keywords(d)]
@@ -87,7 +87,9 @@ def test_the_population_is_the_one_this_step_is_stated_over() -> None:
     assert len(anywhere) == 401, "allOf anywhere in the document"
     assert len(only_root) == 257, "allOf at the root and nowhere else"
     # The union clause is what makes the two rows disjoint, and this is its cost.
-    assert len(root_allof) - len(composing()) == 55, "documents step 5's row takes"
+    # 41 and not 55: 14 of the 55 carry a PRESENCE-ONLY anyOf, which step 5's row does
+    # not take either -- they are step 4's, and used to be nobody's.
+    assert len(root_allof) - len(composing()) == 41, "documents step 5's row takes"
 
 
 def test_the_union_clause_is_what_keeps_the_rows_disjoint() -> None:
@@ -96,18 +98,38 @@ def test_the_union_clause_is_what_keeps_the_rows_disjoint() -> None:
 
     A row that lowered the conjuncts of a union root without the branches would
     apply the bases to some branches and not others, which is the defect D7 names.
-    So the 55 documents carrying both belong to step 5's row whatever else they
-    carry, and this row declines them -- which is not a preference, it is the
-    reason ``emit.lower_document`` can fail on a two-row document instead of
-    choosing.
+    So a document carrying both belongs to step 5's row whatever else it carries,
+    and this row declines it -- which is not a preference, it is the reason
+    ``emit.lower_document`` can fail on a two-row document instead of choosing.
+
+    **"BOTH" IS READ THROUGH ``union_root``, and the KEY test this used to use was a
+    14-document hole.**  55 documents carry a root ``allOf`` beside the ``oneOf`` or
+    ``anyOf`` KEY; only 41 of those carry a root ``allOf`` beside a UNION, because
+    14 of them spell a presence rule with ``anyOf`` and ``union_root`` -- which is
+    step 5's own selector, built on the lowering's ``union.keyword`` plus
+    ``rules.presence_only`` -- correctly says no. Those 14 were claimed by neither
+    row and refused by both, which is what ``salesagent-j3k2l.21`` was filed over.
+    Both populations are asserted here, and the disjointness is asserted of the one
+    that decides it.
     """
-    both = [
+    key_test = [
         d
         for d in bundle.portable(BUNDLE)
         if isinstance((doc := bundle.read(BUNDLE, d)).get("allOf"), list)
         and any(k in doc for k in ("oneOf", "anyOf"))
     ]
-    assert len(both) == 55
+    both = [d for d in key_test if bundle.union_root(bundle.read(BUNDLE, d))]
+    assert len(key_test) == 55, "a root allOf beside the oneOf/anyOf KEY"
+    assert len(both) == 41, "a root allOf beside a UNION, which is what decides it"
+    # The 14 the two readings disagree about are step 4's, and nobody else's.
+    rule_shaped = sorted(set(key_test) - set(both))
+    assert len(rule_shaped) == 14, rule_shaped
+    assert set(rule_shaped) <= set(composing()), rule_shaped
+    for d in rule_shaped:
+        doc = bundle.read(BUNDLE, d)
+        assert [s.__name__ for s, _ in emit.ROWS if s(doc)] == ["composes_at_the_root"], d
+    # And the disjointness the clause exists for still holds, over the population
+    # that decides it.
     assert not set(both) & set(composing())
     for d in both:
         assert not bundle.composes_at_the_root(bundle.read(BUNDLE, d)), d
@@ -153,7 +175,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
             or bundle.composes_at_the_root(read(d))
         }
     )
-    assert len(pop) == 587
+    assert len(pop) == 599
 
     with_row = emit.emit(BUNDLE, pop)
     # Removing THIS row from the merged table, rather than emptying it: the other
@@ -167,43 +189,33 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         emit.ROWS = saved
 
     assert len(docs) == 1054
-    # N over this population is 188 on the merged table (43 when this lane measured
-    # it alone, before the other four steps' rows were beside it), and the row moves
-    # it by 0.
-    # 217 and not 214: `salesagent-j3k2l.20` moved `governance/policy-entry.json`'s
-    # refusal off the root -- it stopped at `$defs` before any of its 8 property
-    # references was read -- so the closure now reaches the three enum documents its
-    # earlier properties name. The row itself still moves N by 0.
-    # 218 and not 217, and the one gained is `enums/reach-unit.json`:
-    # `salesagent-j3k2l.18` lowers a composition BELOW a root through
-    # `emit._decide`, so `core/frequency-cap.json` -- reached transitively, not in this
-    # population -- no longer stops at `/properties/suppress` (a bare-`$ref` `allOf` at
-    # a property) and the walk reaches `/properties/per`, where binding that conjunct
-    # emits its target. The document itself still refuses, at
-    # `/properties/per/allOf/0`, because `ReachUnit` is D2's root-scalar ALIAS and
-    # subclassing one is a TypeError -- so this is a refused document's target being
-    # emitted, which is what the transitive walk has always done. The row itself still
-    # moves N by 0.
-    assert len(with_row.emitted) == 218, "N, over a bundle of 1,054"
+    # N over this population on the merged table (43 when this lane measured it
+    # alone, before the other four steps' rows were beside it). Several lanes moved it
+    # and the figure is RE-MEASURED on the merged tree rather than taken from either
+    # side: `salesagent-j3k2l.20` moved `governance/policy-entry.json`'s refusal off
+    # the root -- it stops at `$defs` before any of its 8 property references is read
+    # -- so the closure reaches the three enum documents its earlier properties name;
+    # `salesagent-j3k2l.21` closed the two-reading hole in this row's own selector,
+    # which brought it 14 more documents; and this lane lowers a composition BELOW a
+    # root through `emit._decide`, which the transitive walk follows into targets it
+    # previously stopped short of. The row itself still moves N by 0.
+    assert len(with_row.emitted) == 238, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
     # the merged table steps 3, 5 and 6's rows emit those targets, so the composing
-    # documents follow: 22 of the 287 are emitted BY this row, and removing it loses
-    # 31 modules -- the emitted documents plus those reached only through a reference.
+    # documents follow: 34 of the 301 are emitted BY this row, and removing it loses
+    # 43 modules -- the emitted documents plus those reached only through a reference.
     # That is joint unblocking measured from this side -- the row's own 0 was a fact
     # about which other rows existed, not about the row.
     #
-    # 34 and not 31: the three documents `salesagent-j3k2l.20` added to N above are
-    # reached through `governance/policy-entry.json`, which this row's own population
-    # is what reaches, so removing the row loses them too.
-    # 35 and not 34: the same `enums/reach-unit.json`. `core/frequency-cap.json` is
-    # reached only through a document this row emits, so with the row removed the walk
-    # never arrives at it and never binds that conjunct's target -- the without-row
-    # count is unchanged at 183, measured, so the whole of the move is on the with-row
-    # side.
-    assert len(with_row.emitted) - len(without.emitted) == 35
-    assert len(set(composing()) & set(with_row.emitted)) == 22
+    # Both figures are re-measured on the merged tree. `salesagent-j3k2l.20` added
+    # three documents reached through `governance/policy-entry.json`, which this
+    # row's own population is what reaches, so removing the row loses them too;
+    # `salesagent-j3k2l.21` brought this row 14 more documents of its own; and this
+    # lane's composition arm lets the walk reach targets behind a below-root `allOf`.
+    assert len(with_row.emitted) - len(without.emitted) == 46
+    assert len(set(composing()) & set(with_row.emitted)) == 34
     assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
         with_row.emitted
     )
@@ -211,17 +223,29 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     assert set(pop) <= set(with_row.emitted) | set(with_row.refusals)
     for document, row in with_row.refusals.items():
         assert row["keyword"] and row["pointer"] and row["detail"], document
-    # The ATTRIBUTION moved for all 287.  Without the row a composing document is
-    # claimed by nothing and refuses at the root on ``type``; with it, the walk
-    # reaches the conjuncts and either emits the document or names the keyword that
-    # actually stopped it.
-    moved = [
-        d
-        for d in composing()
-        if with_row.refusals.get(d, {}).get("keyword")
-        != without.refusals.get(d, {}).get("keyword")
-    ]
-    assert len(moved) == 287
+    # **The ATTRIBUTION moves for 282 of the 301, and the 19 it does not move for are
+    # a measurement rather than a shortfall.**  Without the row a composing document
+    # is claimed by nothing, and ``lower_document`` refuses it at the ROOT on the
+    # keyword its kind is read from -- ``allOf`` for 279, ``anyOf`` for 14, ``if``
+    # for 8, all at ``/``.  (It used to say ``type`` for all 301, which is a keyword
+    # none of them states; ``salesagent-j3k2l.21`` changed that.)  With the row the
+    # walk reaches the conjuncts and either emits the document -- 34 of them -- or
+    # names where it actually stopped: 212 of the 267 refusals are at a pointer
+    # INSIDE the document.  The 19 that read the same either way are the documents
+    # whose root sibling keyword is also what stops step 4's lowering, so the row has
+    # nothing to move for them.
+    #
+    # Compared on (keyword, pointer) and not on the keyword alone: the pointer is
+    # half of the attribution, and a keyword-only test reports a refusal that moved
+    # from the root into a conjunct as not having moved.
+    def where(out: emit.Emitted, document: str) -> tuple[str, str] | None:
+        row = out.refusals.get(document)
+        return (row["keyword"], row["pointer"]) if row else None
+
+    moved = [d for d in composing() if where(with_row, d) != where(without, d)]
+    assert len(moved) == 282, len(moved)
+    assert all(where(without, d)[1] == "/" for d in composing()), "without the row: all at /"
+    assert sum(1 for d in composing() if where(with_row, d) == where(without, d)) == 19
 
 
 def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzzle() -> None:

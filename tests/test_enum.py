@@ -87,8 +87,14 @@ def _members(cls: ast.ClassDef) -> list[tuple[str, Any]]:
 def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> None:
     """The step's exit condition, over its own denominator.
 
-    213 of 214, with the refusal named -- and the one refusal is on a keyword the
-    document carries BESIDE its enum, not on the enum.
+    **214 of 214, and the refusal branch is now empty.** It held one document,
+    ``enums/task-type.json``, refused for the ``notes`` beside its ``enum`` --
+    and ``salesagent-j3k2l.23`` admitted that annotation, because ``notes`` is
+    not a JSON Schema keyword and constrains no instance.
+
+    The branch is kept rather than deleted: it is what makes the 214 a partition
+    and not a count, so a root enum this row stops emitting lands here by name
+    instead of lowering the figure above with nothing to read.
     """
     roots = root_enums()
     assert len(roots) == 214, len(roots)
@@ -97,15 +103,19 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     out = emit.emit(BUNDLE, population())
     emitted = [d for d in roots if d in out.emitted]
     refused = {d: out.refusals[d] for d in roots if d in out.refusals}
-    assert len(emitted) == 213, len(emitted)
-    assert sorted(refused) == ["enums/task-type.json"], sorted(refused)
-    assert refused["enums/task-type.json"]["keyword"] == "notes"
-    assert refused["enums/task-type.json"]["pointer"] == "/"
+    assert len(emitted) == 214, len(emitted)
+    assert refused == {}, refused
     assert set(emitted) | set(refused) == set(roots)
 
-    # Its cascade cost, MEASURED rather than asserted to be small: every document
-    # that references it and is in the population refuses on a keyword of its
-    # own, so emitting it would unblock nothing.
+    # And the document that was refused is emitted BY THIS ROW, which the count
+    # above does not say on its own: its class is a ``StrEnum`` in the module the
+    # emitter names for it.
+    assert "enums/task-type.json" in out.emitted
+    assert "class TaskType(StrEnum)" in out.files["enums/task_type.py"]
+
+    # Its cascade cost, MEASURED, and the measurement is why admitting ``notes``
+    # emits ONE document and not eight: all 7 of its referrers refuse on a keyword
+    # of their own, so nothing downstream was waiting on this document.
     known = set(bundle.portable(BUNDLE))
     referrers = sorted(
         {
@@ -120,12 +130,13 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     # 7, not the 6 this read before step 4's population landed: ``composes_at_the_root``
     # names one more of the referrers, and the cascade claim is the same either way.
     assert len(in_population) == 7, in_population
-    # The claim is that NONE of them is blocked BY this document, which is read off
+    assert all(d in out.refusals for d in in_population), in_population
+    # The claim is that none of them was blocked BY this document, which is read off
     # the refusal's own detail.  The keyword alone no longer says it: with step 4's
-    # row claiming these roots the walk reaches their conjuncts, and 6 of the 7 now
-    # refuse on a DIFFERENT ``$ref`` -- a fragment of another document, or a target
-    # that composes.  A keyword test would have read those as this document's
-    # cascade; the detail names the target and does not.
+    # row claiming these roots the walk reaches their conjuncts, and 6 of the 7
+    # refuse on a ``$ref`` -- a fragment of another document, or a target that
+    # composes.  A keyword test would have read those as this document's cascade;
+    # the detail names the target and does not.
     assert [d for d in in_population if "task-type" in out.refusals[d]["detail"]] == []
 
 
@@ -144,8 +155,8 @@ def test_the_dispatch_table_is_unordered_because_no_document_is_claimed_twice() 
     assert [s for s, _ in emit.ROWS if getattr(bundle, s.__name__, None) is not s] == []
     claimed = [sum(1 for selects, _ in emit.ROWS if selects(doc)) for doc in documents]
     assert [n for n in claimed if n > 1] == []
-    assert sum(1 for n in claimed if n == 1) == 1033, sum(1 for n in claimed if n == 1)
-    assert sum(1 for n in claimed if n == 0) == 21  # the rows that have not landed
+    assert sum(1 for n in claimed if n == 1) == 1047, sum(1 for n in claimed if n == 1)
+    assert sum(1 for n in claimed if n == 0) == 7  # the roots no row describes at all
 
     def scalar_without_the_exclusion(doc: dict) -> bool:
         return isinstance(doc.get("type"), str) and doc["type"] in emit.SCALAR
@@ -193,9 +204,9 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     are the document's ``enum`` array, in order, exactly.
     """
     classes = emitted_enum_classes()
-    assert len(classes) == 267, len(classes)  # 213 roots + 13 inline
+    assert len(classes) == 277, len(classes)  # 213 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
-    assert len(roots) == 213, len(roots)
+    assert len(roots) == 214, len(roots)
 
     for document in roots:
         doc = bundle.read(BUNDLE, document)
@@ -246,7 +257,7 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
             names += 1
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
-    assert names == 1944, names
+    assert names == 1974, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -303,7 +314,7 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
                 nodes += 1
             else:  # the one colliding node's document refuses before this is read
                 assert document not in emit.emit(BUNDLE, population()).emitted, (document, pointer)
-    assert nodes == 267, nodes
+    assert nodes == 277, nodes
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -348,7 +359,7 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
                     assert _text(got.get(member)) == _text(text), (document, pointer, member)
                 else:
                     assert got.get(member) == text, (document, pointer, member)
-    assert (nodes, entries, multiline) == (132, 1097, 10), (nodes, entries, multiline)
+    assert (nodes, entries, multiline) == (134, 1107, 10), (nodes, entries, multiline)
 
     # The whole block is an annotation, so NO check in the harness grades it:
     # `enumDescriptions` is not a fact the comparison compares.  P2 in
@@ -409,7 +420,7 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
             assert bound[0].__name__ in named, (g.ref.document, key)
             sites += 1
             documents.add(g.ref.document)
-    assert (sites, len(documents)) == (32, 21), (sites, len(documents))
+    assert (sites, len(documents)) == (33, 22), (sites, len(documents))
 
 
 # --------------------------------------------------------------------------- #
@@ -700,40 +711,62 @@ def test_a_member_name_that_cannot_begin_an_identifier_takes_the_prefix() -> Non
     assert lower_enum.member_name("media-buy/create") == "MEDIA_BUY_CREATE"
 
 
-def test_enum_metadata_is_an_annotation_of_this_row_and_the_cost_is_named() -> None:
-    """The one keyword decision this lane took, with its measured price.
+def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() -> None:
+    """The keyword decision, where it is now taken, with its measured price.
 
     ``enumMetadata`` states nothing about an instance -- ``enum`` has closed the
-    value set -- and an enumeration has no slot for a per-value block, so the row
-    carries it as an annotation and the three documents holding one emit.
-    Refusing it instead is one row out of ``HANDLED`` and costs exactly those 3
-    with no cascade, which is asserted here so the alternative is priced rather
-    than argued.
+    value set -- and an enumeration has no slot for a per-value block, so it is
+    ignored and the documents holding one emit.
+
+    **The decision is no longer this row's**, and that is ``salesagent-j3k2l.23``:
+    the reason above is a fact about the KEYWORD and not about an enum root, so
+    ``compiler.BUNDLE_ANNOTATIONS`` takes it once for every position and
+    ``lower.enum.HANDLED`` no longer names it. Asserted in BOTH directions here,
+    because one name admitted in two places is two places for one decision to
+    drift -- and the drift was observable: the 4th document carrying one
+    (``core/media-buy-available-action-id.json``) is a union root, which this
+    row's set never reached.
+
+    Refusing it instead is one name out of the admitted set and costs exactly the
+    3 enum roots with no cascade, which is measured here so the alternative is
+    priced rather than argued.
     """
     carriers = sorted(
         d
         for d in bundle.portable(BUNDLE)
         for _, n in bundle.nodes(bundle.read(BUNDLE, d))
-        if "enum" in n and "enumMetadata" in n
+        if "enumMetadata" in n
     )
     assert carriers == [
+        # Not an enum root, and so the document this row's own set could not reach.
+        "core/media-buy-available-action-id.json",
         "enums/error-code.json",
         "enums/media-buy-valid-action.json",
         "enums/request-signing-error-code.json",
     ], carriers
-    assert "enumMetadata" in lower_enum.HANDLED
+    assert "enumMetadata" in compiler.BUNDLE_ANNOTATIONS
+    assert "enumMetadata" not in lower_enum.HANDLED
     out = emit.emit(BUNDLE, population())
-    assert all(d in out.emitted for d in carriers)
+    enum_rooted = [d for d in carriers if bundle.is_enum_root(bundle.read(BUNDLE, d))]
+    assert len(enum_rooted) == 3, enum_rooted
+    assert all(d in out.emitted for d in enum_rooted)
 
-    without = frozenset(lower_enum.HANDLED - {"enumMetadata"})
-    original = lower_enum.HANDLED
+    # The price. ``compiler.ANNOTATIONS`` is the set ``check_keywords`` reads; the
+    # two modules that bind it at import (``lower.rules``, ``lower.product``) ask a
+    # different question of it -- what a node DECLARES -- and patching those as well
+    # was measured to give the same three documents, so this patches the one.
+    without = frozenset(compiler.ANNOTATIONS - {"enumMetadata"})
+    original = compiler.ANNOTATIONS
     try:
-        lower_enum.HANDLED = without
+        compiler.ANNOTATIONS = without
         refusing = emit.emit(BUNDLE, population())
     finally:
-        lower_enum.HANDLED = original
-    assert sorted(set(refusing.refusals) - set(out.refusals)) == carriers
+        compiler.ANNOTATIONS = original
+    assert sorted(set(refusing.refusals) - set(out.refusals)) == enum_rooted
     assert len(refusing.emitted) == len(out.emitted) - 3, len(refusing.emitted)
+    for document in enum_rooted:
+        assert refusing.refusals[document]["keyword"] == "enumMetadata"
+        assert refusing.refusals[document]["pointer"] == "/"
 
 
 def test_identical_enum_nodes_under_one_document_are_unreached_by_this_step() -> None:
@@ -803,4 +836,4 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
             for alias in n.names:
                 assert alias.name in exported[target], (module, target, alias.name)
                 checked += 1
-    assert checked == 171, checked
+    assert checked == 203, checked

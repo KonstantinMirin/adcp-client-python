@@ -120,6 +120,23 @@ class PaginationRequest(AdCPBaseModel):
 `SchemaRef` is a document path plus a JSON pointer, because a nested class is a subschema and
 answers for its own node rather than the whole document.
 
+**A `SchemaRef` names a node AS THE DOCUMENT APPLIES IT**, not the subschema read alone. The
+pairing was fixed at `(document, pointer)` without saying how the pointer RESOLVES, and a bare
+pointer walk is a different schema from the one the document applies at that location: draft-07
+applies a root's `type: object` to every `oneOf` branch beneath it, so a branch read alone
+admits a non-object its document refuses. That gap was latent while it could not be reached —
+for every class emitted before union branches existed, the bare node and the applied node
+coincided, because each either declares its own `type` or sits under a `properties` hop. Ten
+documents reached it: each declares `type: "object"` at its root and was refused one combinator
+hop below for not restating it.
+
+**The consequence is that a check and a resolution must agree, or relaxing either one is a
+defect.** Admitting the branch while the resolution still returned the bare node produced four
+pairs reporting `accepts:model_refused_valid` with an `added` fact apiece — the model saying
+`object` where the resolved schema said nothing. Given that resolution the original refusal was
+CORRECT, so fixing only the check would have been the forbidden relaxation reached from the
+other side.
+
 That reference is what makes the runtime contract and the test instrument generic:
 
 - **`strict_validate`**, once on `AdCPBaseModel`: read `cls.__adcp_schema__`, validate the
@@ -659,6 +676,34 @@ denominator is healthy in both, so nothing looks wrong.
 **The schema comparison is what grades the generated code.** It is also the only check that
 sees a default or a description, because neither changes the accepted set.
 
+**The comparison folds out the RESOLVER's canonicalizations, and that is a named category
+rather than a series of patches.** The harness grades against the document as
+`hypothesis-jsonschema`'s own resolver inlines it — deliberately, so the schema the runtime
+decides with is the schema the harness grades — and that resolver rewrites while it inlines. So
+a faithful model can read as dropping a fact the DOCUMENT never stated. Four are known:
+
+1. `_closed` — `additionalProperties` as the resolver spells it.
+2. The `additionalProperties: true` branch of `_narrows_nothing`.
+3. The finite-type rewrite (`_uncanonicalized`): a type whose value set is finite is written out
+   as that set and **every annotation at the node is dropped** — `{"type": "boolean",
+   "description": ...}` resolves to `{"enum": [false, true]}`. The `type` is restored because
+   `enum: [false, true]` IS `type: boolean`; the `description` cannot be and is **not** copied
+   off the model, because a fixture derived from the thing it grades falsifies nothing.
+4. `uniqueItems: true` over a countable item set derives a `maxItems`: a two-member `enum` with
+   `uniqueItems` resolves to the same node plus `maxItems: 2`.
+
+**Each fold-out is GATED to its own shape and is not a licence.** The rule is that the fold
+applies only where the resolver's rewrite is provably what produced the difference — the
+finite-type fold admits a model-only `description` at a rewritten node and nowhere else, and the
+`maxItems` fold applies only where the value equals exactly the item set's distinct-value count
+beside `uniqueItems: true`. A fold that cannot state the equality it rests on is a widening
+wearing this category's clothes.
+
+**Expect more of these, and expect each to appear when a document first reaches it.** Number 3
+was unreachable until a referenced plain boolean emitted and number 4 until a document carrying
+`uniqueItems` did, so the arrival of a fifth is a sign the emitted population grew rather than
+that the comparison is wrong.
+
 **Determinism is a precondition of grading, not something to fix later.** Two runs over the
 same bundle emit the same bytes, and a run that does not is ungraded rather than nearly right.
 
@@ -678,6 +723,40 @@ reached the class. That guards a pair nothing exercised; it does not catch a wid
 
 Each step ends with Python that `codegen.emit` emitted and that passes all three checks against
 the schema each class names. Steps 3–7 share only the dispatch table.
+
+**This table listed eleven steps and the work is twenty.** The eleven below do not reach the
+population §6's exit condition declares: measured on the bundle, **385 documents refused with a
+detail saying a later row would cover them, and no later row existed** — step 9 adds no lowering
+rule by its own text, step 10 is the public surface and step 11 is closeout. So after step 11
+the generator would have stopped near 400 of 1,054 with `emitted + refused == 1,054` asserted and
+green. Nine more rows close that gap, filed as `salesagent-j3k2l.16` through `.24` and each
+gating step 9:
+
+| row | keyword, and where it sits | measured refusals |
+|---|---|---|
+| `.16` | `const`, at a property or nested — never at a root | 82 |
+| `.17` | `if`/`then`/`else`, in a conjunct or at a root | 76 |
+| `.18` | the `allOf` shapes step 4's row defers | 68 |
+| `.19` | `uniqueItems`, at a property or a root | 50 |
+| `.20` | `definitions` and `$defs` — **closed**; a section is not a root kind, so it is the walk and not a row | 40 |
+| `.21` | a root `type` list, and the declared-`null` arm the comparison could not tell from an optional | 24 |
+| `.22` | `not`, `dependencies`, and the remaining object-size keywords | 60 |
+| `.23` | a bundle annotation (`notes`, `enumMetadata`, `last_updated`) is IGNORED, not lowered — there is nothing to lower | 4 |
+| `.24` | read a branch's type from its root before refusing the branch — **closed**; a bug, not a row | 10 |
+
+**A row's refusal count is not its value.** Measured by an independent audit over the 179
+`-request`/`-response` documents — the only ones a consumer imports — `notes` is rank 20 by
+refusal count and **gates 35** of the 167 uncovered, while `const` is rank 1 and gates 3. Two
+leaf documents gate 65 of the 167: `core/protocol-envelope.json` on `notes` and
+`core/brand-ref.json` on `uniqueItems`.
+
+**And the rows compose multiplicatively on that surface, not additively.** A tool document needs
+EVERY blocker in its `$ref` chain cleared, so a single row moves the bundle count while the task
+surface stays flat, then jumps when the last blocker falls. Measured: `.19` removes
+`core/brand-ref.json`'s `uniqueItems` blocker and the document still does not emit, because its
+next blocker is a `const` that `.16` owns — the 30 documents it gates need both rows and neither
+alone buys one. A step-by-step bundle count cannot show this, which is why §6 reports the
+refusal partition and the task surface beside the total.
 
 | # | step | done when | parallel |
 |---|---|---|---|
