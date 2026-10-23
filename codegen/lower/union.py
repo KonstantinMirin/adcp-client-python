@@ -540,13 +540,20 @@ def _refuse_a_local_reference_branch(branch: dict, pointer: str) -> None:
     rejects.
 
     Measured, and the first population the reading would ever have had: **0 graded
-    pairs of the committed tree hold a document-side local ``$ref``**; the two
-    documents this row would otherwise admit hold **24 sites over 4 pairs and produce
-    43 ``added`` facts** -- 31 at ``core/placement-presentation.json``'s three
+    pairs of the committed tree hold a document-side local ``$ref``**, while the two
+    documents whose pairs hold one carry **24 sites over 4 pairs and produce 43
+    ``added`` facts** -- 31 at ``core/placement-presentation.json``'s three
     ``#/definitions/*_decoration`` pairs, which THIS ROW'S branch lowering declares,
     and 12 at ``core/bidding-policy-capability.json#/definitions/scope_capability``,
     whose pair the root's own property declares in a document this row is the last
     blocker for.
+
+    **What the guard COSTS is 4 emissions and not 2**, measured by removing it and
+    re-emitting: ``core/bidding-policy-capability.json``,
+    ``core/placement-presentation.json`` -- the two that produce the 43 -- plus
+    ``core/canonical-media-buy-features.json`` and ``core/media-buy-features.json``,
+    which reference them. It refuses 8 documents in all; the other 4 refuse on
+    something else as well. 686 emitted with it, 690 without.
 
     **The limit of this predicate, stated rather than discovered.**  It asks about the
     NODE -- is this branch a local reference -- while what is ungradeable is the

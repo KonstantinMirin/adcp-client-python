@@ -123,7 +123,10 @@ _ARRAY_HANDLED = frozenset({"type", "items", "uniqueItems", "contains", *BOUNDS}
 #: over every node of every portable document: 485 sites, **all 485 state ``True``**, so
 #: there is no ``uniqueItems: false`` arm here and none is written -- a ``false`` is the
 #: keyword's own default and would state nothing, and a branch for it would be a
-#: derivation matching nothing (D14).
+#: derivation matching nothing (D14).  The 18 break down as **4 at a document root, 6 at
+#: a mapping value, 5 inside a combinator branch and 3 at a ``definitions``/``$defs``
+#: entry**, which is the position list this refusal names, measured rather than copied
+#: from ``lower/rules.py``.  19 documents report it as their first refusal.
 _DISTINCT_HAS_NOWHERE_TO_LIVE = (
     "uniqueItems is enforced by D6's rule on the CLASS holding the array "
     "(lower.rules._distinct, and compiler.fields strips the keyword off the "
