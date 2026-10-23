@@ -2402,7 +2402,25 @@ def _composed(doc: Any, depth: int = 0) -> Any:
     for conjunct in conjuncts:
         if not isinstance(conjunct, dict):
             continue
-        c = _composed(conjunct, depth + 1)
+        # The conjunct is read through the SAME canonicalization the node is read
+        # through (:func:`_uncanonicalized`), and BEFORE its facts are folded in.
+        # The resolver's finite-type rewrite drops the ``type`` when it writes a
+        # boolean out as ``{"enum": [false, true]}``, so an inlined base's boolean
+        # arrives here typeless; gap-filling that node's ``enum`` leaves the merged
+        # node with an enum and no type, which is neither spelling of the fact and
+        # is a shape no document states.  Measured at 9 facts over 5
+        # ``formats/canonical`` documents, each restating an inherited boolean with
+        # nothing but a ``default`` and a ``description``: the enum read as
+        # ``missing`` while the base plainly states the same accepted set the model
+        # does.  Undoing the rewrite first hands the fold ``{"type": "boolean"}``,
+        # the document's own spelling, and the pair grades the accepted set as a
+        # ``type``.
+        #
+        # NOT a widening of ``_constrains_nothing``, whose ``type == "boolean"``
+        # gate is correct and unchanged: an untyped ``enum: [false, true]`` the
+        # DOCUMENT itself states is still compared, because this rewrites a
+        # CONJUNCT the resolver wrote and nothing else.
+        c = _uncanonicalized(_composed(conjunct, depth + 1))[0]
         for kw in FACTS:
             if kw != "required" and kw in c and kw not in out:
                 out[kw] = c[kw]
