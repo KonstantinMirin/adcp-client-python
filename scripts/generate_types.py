@@ -241,11 +241,15 @@ PIN_GAP_FIELDS: dict[Path, tuple[dict[str, Any], ...]] = {
                 "maxLength": 255,
                 "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
                 "description": (
-                    "Opt-in AdCP 3.2 reporting-stream correlation extension pending "
-                    "adcp#7885. Cooperating sellers store and echo the buyer-supplied "
-                    "value verbatim in media_buy_delivery webhook payloads. Confirm "
-                    "seller support before use; registrations without a value cannot "
-                    "enable this interim delivery path."
+                    "Buyer-supplied correlation identifier for the reporting registration. "
+                    "The seller MUST echo this value verbatim into every webhook payload's "
+                    "`operation_id` field on each `media_buy_delivery` report sent to this "
+                    "registration, and MUST NOT derive it by parsing the reporting webhook URL. "
+                    "Independent of any `push_notification_config.operation_id`. Optional for "
+                    "schema compatibility, but a seller MUST NOT emit `media_buy_delivery` "
+                    "webhooks to a registration that omits it (fail closed). Standardized in "
+                    "AdCP 3.3 (adcp#7895); on 3.2 this is an opt-in SDK extension with the "
+                    "identical wire shape, so confirm seller support before relying on it."
                 ),
             },
         },

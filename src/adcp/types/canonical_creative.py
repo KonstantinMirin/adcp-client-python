@@ -147,6 +147,9 @@ from adcp.types.domains.core.creative_manifest import (
     CreativeManifest as _CreativeManifestRoot,
 )
 from adcp.types.domains.core.creative_variant import CreativeVariant as _LegacyCreativeVariant
+from adcp.types.domains.core.format_id import (
+    FormatReferenceStructuredObject as _LegacyFormatReference,
+)
 from adcp.types.domains.core.macro_resolution_capability import MacroProcessingCapability
 from adcp.types.domains.core.package import Package as _LegacyPackage
 from adcp.types.domains.core.placement import Placement as _LegacyPlacement
@@ -612,11 +615,17 @@ def _shape_forbids_top_level_key(cls: type, found: str) -> bool:
     return key in getattr(cls, "_ABSENT", frozenset())
 
 
+#: Every property a legacy format reference declares, derived from the model so
+#: a parameter added to ``core/format-id.json`` (as ``pixel_ratio`` was) is
+#: recognised without being named here.
+_LEGACY_FORMAT_REFERENCE_KEYS = frozenset(_LegacyFormatReference.model_fields)
+
+
 def _looks_like_legacy_format_tuple(schema: dict[str, Any], properties: dict[str, Any]) -> bool:
     keys = set(properties)
     title = str(schema.get("title", "")).lower()
     return {"agent_url", "id"} <= keys and (
-        "format" in title or keys <= {"agent_url", "id", "width", "height", "duration_ms"}
+        "format" in title or keys <= _LEGACY_FORMAT_REFERENCE_KEYS
     )
 
 
