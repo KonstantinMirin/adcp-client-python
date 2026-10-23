@@ -240,6 +240,8 @@ instead of promising a row.
 
 ## 9. The suite
 
+(Never run by the agent that wrote §1–§8; §10.4 is the run this branch has.)
+
 Never run on this branch. The agent that wrote §1–§8 stopped with this section empty
 and its tip commit banked as `wip(codegen): bank j3k2l18's uncommitted lane work
 unverified`. Everything above is measured at base `00c7dd4d4`, which is 61 commits
@@ -291,13 +293,25 @@ So the row claims all 82 and **74 of them become accounted-for**. The 8 that rem
 pending are not this row's to claim: each is a document whose `allOf` now lowers and
 which then stops at a different keyword, which is the keyword that is now the reason.
 
-**Where the 82 sat, which is what decided the unit.** 66 nested, 16 at a property,
-**0 at a root** — so no row and no selector could have claimed them, and the unit is an
-arm on `emit._decide`. The claiming selectors are `union_root` 54, `is_object_root` 23,
-`composes_at_the_root` 5: three root kinds, which is exactly why a single row was the
-wrong unit (D13 forbids a lowering importing `codegen.emit`, so a row cannot dispatch
-three root kinds itself). This is the same correction the issue's own note records for
-`.20` and `.16`, and it is confirmed here by measurement rather than inherited.
+**Where the 82 sat, which is what decided the unit.** **41 at a root, 16 at a property,
+25 deeper.**
+
+> **CORRECTION, and it was my own measurement that was wrong.** This paragraph first
+> read "66 nested, 16 at a property, **0 at a root**". A root refusal spells its pointer
+> `"/"`, not `""`, and my classifier tested `pointer == ""` for the root case — so it
+> counted all 41 roots as nested. The error surfaced when the union-root profile printed
+> 41 `allOf` refusals at pointer `/`, which cannot be true of a population with no root
+> in it. Re-measured by pointer DEPTH (segments after dropping empties), which is
+> spelling-independent: 41 / 16 / 25. The nested 25 sit under `oneOf` 11,
+> `properties` 10, `definitions` 3, `anyOf` 1.
+
+The claiming selectors are `union_root` 54, `is_object_root` 23, `composes_at_the_root`
+5: three root kinds. That is why a single row was the wrong unit — D13 forbids a
+lowering importing `codegen.emit`, so a row cannot dispatch three root kinds itself.
+The 41 at a root are claimed by rows that ALREADY EXIST (`union.ROOT_CONJUNCTS` is
+where a root `allOf` beside a union is refused), and the unit for the 41 remaining
+below a root is the arm on `emit._decide`. This is the same correction the issue's own
+note records for `.20` and `.16`, and it is confirmed here by measurement.
 
 The coordinator's brief estimated accounted would reach "about 959". It reaches **951**.
 The 8-document difference is precisely the 8 above — the brief's estimate assumed all 82
@@ -318,4 +332,31 @@ Each is about something not yet measured on this tree.
 
 ## 10.3 GRADE
 
-<!-- grade -->
+Four of six wrong, and the two biggest errors were both the same mistake: I anchored a
+prediction on a committed constant without first asking whether that constant was true
+of the tree it sits in. Three of them were not.
+
+| # | prediction | measured | verdict |
+|---|---|---|---|
+| R1 | the fresh-run comparison is RED at the merge; the regeneration adds exactly 1 module, `core/outcome_measurement.py` | **`test_the_committed_tree_is_what_a_fresh_run_emits` PASSES at the merge commit. No regeneration was needed: 0 files added, 0 removed, 0 changed.** My own first probe said 2 files added (`core/iana-timezone.json`, `core/iana_timezone.py`) — because I had reimplemented the test's `population()` and included `is_scalar_root`, which the real one does not. With the correct 7 selectors the trees are byte-identical | **WRONG**, and the probe I wrote to check it was wrong in a way that would have written a tree with a module no run produces. The lesson is the instrument: the gate test was one command away and I built a copy of it instead |
+| R2 | pairs rise from trunk's 503 into 506–512; `pass` rises by the same amount; added/missing/differs 0 | **811 pairs.** Trunk has **808** and asserts 503, so trunk's own constant is 305 out. The DELTA is **+3**, inside the +3…+9 I predicted, and it is `core/attribution-window.json`'s three pairs exactly as §5 named them | **WRONG on the absolute figure, right on the delta.** The added/missing/differs half is **UNGRADED**: grading 811 pairs at `max_steps=None` ran over 50 minutes without finishing and I stopped rather than report a number I had not measured |
+| R3 | the union-root profile keeps `allOf` at trunk's 54 | **46.** The 8 that leave are the same 8 documents whose composition now lowers and which then stop elsewhere: `$ref` +3, `not` +3, `dependencies` +1, `required` +1. The 46 split 37 root conjuncts + 9 composing branches, which is the split that test's docstring already claimed | **WRONG**, and wrong in the direction that matters — I predicted the lane had no effect here and it has exactly the effect the predecessor's own docstring described |
+| R4 | `with_row.emitted` 238 → 239/240, delta 46 → 47/48, `composing() ∩ emitted` unchanged at 34 | **425 / 94 / 73, and all three are IDENTICAL ON TRUNK.** This lane moves every one of them by **0**. Trunk fails this assertion itself, `assert 425 == 238` | **WRONG.** I predicted a small movement by this lane; the real movement is zero and the whole gap is trunk's own staleness |
+| R5 | nothing else reddens | **One test reddens: `test_fragment_ref.py::test_an_entry_nothing_references_is_not_declared`.** Trunk fails 12 of these five files' tests, this merge failed 13, and the one extra is that test. Its fixture pinned the keyword it refuses on and chose `allOf` on the stated ground that no row lowers it at a property — which this lane does. Fixed by grading the entry's pointer instead of the keyword, and fire-probed | **WRONG**, which is why it was worth predicting. `test_import_rule.py` did stay green, as the sub-claim said |
+| R6 | the pins become deferred ≤ 102 and accounted ≥ 951 | **Exactly that**, and both fire-probed one step tighter: `deferred <= 101` fails at 102, `accounted >= 952` fails at 951 = 580 emitted + 371 verdicts | **RIGHT** |
+
+**Score: 1 right, 4 wrong, 1 half right with its other half ungraded.**
+
+**The one correction worth carrying forward.** Three of the four wrong predictions failed
+for a single reason: I took a committed assertion as a measurement of the tree it sits
+in. Trunk `29c553504` is red, and the stale constants are 305 out (503 vs 808), 187 out
+(238 vs 425) and 9 out (19 vs 28). The two-test 60-second metric is what gets run per
+change, and it does not cover any of those three — so a pin can be green while a derived
+count beside it is 300% wrong. A ratchet grading one axis is a ratchet that says nothing
+about the others.
+
+**And one about my own instruments.** Twice I built a copy of an instrument that already
+existed and the copy was wrong: `population()` (R1, which would have written a module no
+run produces) and the pointer-position classifier (§10.1, which reported 0 roots where
+there are 41, because a root's pointer is spelled `/` and not `""`). Both were caught by
+a measurement that contradicted the architecture rather than by review of the copy.

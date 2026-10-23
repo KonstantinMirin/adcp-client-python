@@ -1503,11 +1503,24 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    # Re-measured on the MERGED tree: trunk's 503/491 plus the pairs a composition
-    # BELOW a root adds, because such a node reaches the product lowering through
-    # ``emit._decide`` (``ROWS`` dispatches on root kind, so a node that is not a root
-    # has no row to be).  0 missing, 0 differs and 0 added throughout.
-    assert len(reports) == 503, len(reports)
+    # **THIS ASSERTION IS RED, IT IS RED ON TRUNK TOO, AND salesagent-j3k2l.18 DID NOT
+    # CLEAR IT.**  Stated here rather than left to be rediscovered:
+    #
+    # * the pair count is **811** on this tree and **808** at trunk ``29c553504``,
+    #   measured twice as ``len(graded())``, which needs no grading run.  The 503 this
+    #   line asserted is 305 out ON TRUNK, before any part of this lane existed, so it
+    #   is not this branch's doing.  The +3 IS this lane's: `core/attribution-window.json`
+    #   contributes its root plus its two ``allOf`` property nodes.
+    # * the ``pass`` and ``no_constraint_to_step`` figures below are **NOT measured**.
+    #   Getting them means grading all 811 pairs at ``max_steps=None``, which ran for
+    #   over 50 minutes here without finishing.  491 and 12 are trunk's own numbers and
+    #   are left exactly as trunk has them: a guessed pass count would be a number
+    #   nobody measured, which is worse than a red line that says so.
+    #
+    # So the pair count is corrected to what was measured and the other two are
+    # deliberately untouched.  Clearing this test needs the full pair grading and is
+    # not this row's work.
+    assert len(reports) == 811, len(reports)
     assert sum(1 for r in reports if r.outcome == "pass") == 491
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
