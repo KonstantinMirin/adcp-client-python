@@ -91,6 +91,7 @@ from jsonschema import Draft7Validator
 from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._base import SchemaRef
+from codegen import refusal
 from codegen.refusal import Refusal
 
 #: The import path of the hand-written base every emitted module imports from.
@@ -921,7 +922,7 @@ def _why(key: str) -> str:
     what a refusal says about the rest.
     """
     if key in DRAFT07:
-        return "this step lowers no such keyword (a later D2 row does)"
+        return refusal.DEFERRED_TO_A_LATER_ROW
     return (
         "draft-07 defines no such keyword, so no D2 row lowers it and none is "
         "scheduled; a non-keyword that ANNOTATES a node is named in "

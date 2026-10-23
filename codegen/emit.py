@@ -102,6 +102,7 @@ from codegen.lower import product as lower_product
 from codegen.lower import containers as lower_containers
 from codegen.lower import rules as lower_rules
 from codegen.lower import union as lower_union
+from codegen import refusal
 from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
@@ -825,7 +826,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                 raise Refusal(
                     "$ref",
                     pointer,
-                    f"{uri} is still unresolved after bundle.resolved, which leaves a "
+                    f"{uri} {refusal.UNRESOLVED_TARGET}, which leaves a "
                     f"reference under a definitions/$defs section untouched ({len(unresolved)} "
                     "here): the document the package would carry is not locally "
                     "decidable, and jsonschema would fetch the target over the network",
