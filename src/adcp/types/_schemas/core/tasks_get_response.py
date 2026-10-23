@@ -82,6 +82,7 @@ class TasksGetResponse(AdCPVersionEnvelope, ProtocolEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-get-response.json', pointer='#')
+    task_id: Annotated[str, Field(description='Unique identifier for this task')]
     task_type: Annotated[TaskType, Field(description='Type of AdCP operation')]
     protocol: Annotated[AdCPProtocol, Field(description='AdCP protocol this task belongs to')]
     created_at: Annotated[AwareDatetime, Field(description='When the task was initially created (ISO 8601)')]

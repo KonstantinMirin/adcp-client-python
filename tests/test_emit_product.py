@@ -192,26 +192,26 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # N over this population on the merged table (43 when this lane measured it
     # alone, before the other four steps' rows were beside it).
     #
-    # **568, AND THIS ONE IS `salesagent-j3k2l.22`'S OWN DOING.**  Measured with one
+    # **566, AND THIS ONE IS `salesagent-j3k2l.22`'S OWN DOING.**  Measured with one
     # script against both trees: trunk `ac8a64fb1` gives 425 / 331 / 94 / 73 / 282 / 19
-    # and this branch gives 568 / 345 / 223 / 143 / 301 / 0, so the figures below are
+    # and this branch gives 566 / 345 / 221 / 141 / 301 / 0, so the figures below are
     # the row lowering its own ROOT RULES -- `not`, `dependencies`, `min`/`maxProperties`
     # at a composing root -- rather than deferring them.  The previous revision of this
     # comment said trunk and the branch agreed, which was true of the branch it was
     # written on and is not true of this one.
-    assert len(with_row.emitted) == 568, "N, over a bundle of 1,054"
+    assert len(with_row.emitted) == 566, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
     # the merged table steps 3, 5 and 6's rows emit those targets, so the composing
-    # documents follow: 143 of the 301 are emitted BY this row, and removing it loses
-    # 223 modules -- the emitted documents plus those reached only through a reference.
+    # documents follow: 141 of the 301 are emitted BY this row, and removing it loses
+    # 221 modules -- the emitted documents plus those reached only through a reference.
     # That is joint unblocking measured from this side -- the row's own 0 was a fact
     # about which other rows existed, not about the row.
-    assert len(with_row.emitted) - len(without.emitted) == 223
-    assert len(set(composing()) & set(with_row.emitted)) == 143
+    assert len(with_row.emitted) - len(without.emitted) == 221
+    assert len(set(composing()) & set(with_row.emitted)) == 141
     # **Every document the row rescues from a refusal is EMITTED with it**, and the
-    # composing ones are 143 of the 147.  This was an equality against
+    # composing ones are 141 of the 145.  This was an equality against
     # ``composing() & emitted`` and the equality is no longer true, which is a
     # measurement and not a regression: the other 4 are documents that do NOT compose
     # at their own root and were refused on an unresolved target, whose target the row
@@ -224,7 +224,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     cleared = set(without.refusals) - set(with_row.refusals)
     assert cleared <= set(with_row.emitted), sorted(cleared - set(with_row.emitted))
     assert set(composing()) & set(with_row.emitted) <= cleared
-    assert len(cleared) == 147, len(cleared)
+    assert len(cleared) == 145, len(cleared)
     # Every document of the population is accounted for by name, pointer and keyword.
     assert set(pop) <= set(with_row.emitted) | set(with_row.refusals)
     for document, row in with_row.refusals.items():
@@ -235,9 +235,12 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # its kind is read from -- ``allOf`` for 279, ``anyOf`` for 14, ``if`` for 8, all at
     # ``/``.  (It used to say ``type`` for all 301, which is a keyword none of them
     # states; ``salesagent-j3k2l.21`` changed that.)  With the row the walk reaches the
-    # conjuncts and either emits the document -- 142 of them -- or names where it
-    # actually stopped, and every one of the 159 refusals is now at a pointer INSIDE the
-    # document.
+    # conjuncts and either emits the document -- 141 of them -- or names where it
+    # actually stopped, and 159 of the 160 refusals are now at a pointer INSIDE the
+    # document.  The one still at ``/`` is
+    # ``sponsored-intelligence/si-ui-element.json``, and the root IS its cause: the
+    # refusal is about the class this row would declare at that root
+    # (``compiler.conditional_only``), not about anything inside a conjunct.
     #
     # The 19 that read the same either way on trunk were the documents whose root
     # sibling keyword was ALSO what stopped step 4's lowering, which is to say a root
@@ -257,9 +260,11 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     assert len(moved) == 301, len(moved)
     assert all(where(without, d)[1] == "/" for d in composing()), "without the row: all at /"
     assert sum(1 for d in composing() if where(with_row, d) == where(without, d)) == 0
-    refused = [where(with_row, d) for d in composing() if d not in with_row.emitted]
-    assert len(refused) == 159, len(refused)
-    assert all(at != "/" for _, at in refused), [one for one in refused if one[1] == "/"]
+    refused = {d: where(with_row, d) for d in composing() if d not in with_row.emitted}
+    assert len(refused) == 160, len(refused)
+    at_root = sorted(d for d, w in refused.items() if w[1] == "/")
+    assert at_root == ["sponsored-intelligence/si-ui-element.json"], at_root
+    assert refused[at_root[0]][0] == "if", refused[at_root[0]]
 
 
 def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzzle() -> None:

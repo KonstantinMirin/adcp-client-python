@@ -1005,6 +1005,45 @@ class Rules:
     distinct: tuple[str, ...]
 
 
+def conditional_only(stated: Rules, declared: Collection[str], pointer: str) -> None:
+    """Refuse a class whose only declaration of a key is inside a CONDITIONAL.
+
+    :attr:`Rules.properties` exists because a rule naming a key the class has no field
+    for refuses a payload the document admits, so the field has to exist.  But a field
+    is a FACT AT ``<pointer>/properties/<key>``, and a key only a conditional names has
+    no declaration there -- ``harness._composed`` folds a document's conjuncts and
+    deliberately does not fold its conditionals (``harness._NEVER_GROUPED``), so the
+    document the symmetric comparison reads declares no such property and the class
+    stating one is an ``added`` fact.
+
+    **Both halves are right and the pair is not satisfiable, so the document refuses.**
+    Declaring the field adds a fact; omitting it while keeping the rule narrows the
+    constructor below the document; omitting both drops the rule.  A hand-written
+    comparison row is what the plan's invariant allows for a fact the lowering needs
+    and the document does not state, and it is the harness's to write, not this row's.
+
+    Measured over the 1,054 portable documents: 26 nodes in 9 documents name a property
+    inside a conditional, and in 8 of the 9 the key is ALSO declared at the node's own
+    ``properties`` or by a conjunct, so this refuses exactly ONE --
+    ``sponsored-intelligence/si-ui-element.json``, whose ``/allOf/6/then`` names ``apps``
+    and whose root declares ``type`` and ``data`` only.  Without this refusal that one
+    document and the two pairs referencing it were the ``added`` 3 of 5 on this tree,
+    and its nested ``apps`` value class carried an ``__adcp_schema__`` pointer that does
+    not resolve at all -- the one unbuildable pair of 990.
+    """
+    orphan = sorted(k for k in stated.properties if k not in declared)
+    if orphan:
+        raise Refusal(
+            "if",
+            pointer,
+            f"a conditional names {orphan} and no node of this class declares one: the "
+            "field is needed for the rule to read the key, and declaring it states a "
+            "property at <pointer>/properties/<key> that the document does not (the "
+            "comparison folds conjuncts and not conditionals), so the two cannot both "
+            "hold and a comparison row for the added fact is the harness's to write",
+        )
+
+
 def rules_at(node: dict, *also: dict) -> Rules:
     """D6's reading of a node, for a lowering that cannot import the rules module.
 
@@ -1364,13 +1403,13 @@ def lower_object(
     props = node["properties"]
     if not isinstance(props, dict) or not props:
         raise Refusal("properties", pointer, "an object node with no property declared")
-    # A property the node declares only under a conditional still arrives on the
-    # wire, so the class needs a field to carry it.  Collected by the rules lowering,
-    # which is what reads the conditional, and merged in BEFORE the walk over
-    # ``props`` so such a property is typed from its own declaration rather than left
-    # off the model -- a required name the model does not declare is a class narrower
-    # than its document on both acceptance paths.
-    props = {**props, **{k: v for k, v in stated.properties.items() if k not in props}}
+    # A key a conditional names and this node does not declare has no field to be and
+    # no fact to state, so the document refuses rather than the class choosing one of
+    # the two wrong answers (:func:`conditional_only` carries the reasoning).  0 object
+    # nodes over the portable population reach it: every conditional-named key in this
+    # bundle is also declared at the node that states the conditional -- which is what
+    # makes the field below a RESTATEMENT of a declaration the document has.
+    conditional_only(stated, props, pointer)
     required = node.get("required", [])
     if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
         raise Refusal("required", pointer, f"required is {required!r}, not a list of names")

@@ -4432,10 +4432,10 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     ``test_every_portable_document_is_emitted_or_refused_by_name`` proves the
     partition is total and disjoint.  It cannot tell a refusal apart from a
     placeholder, and ``emitted + refused == 1054`` is green while nothing does.
-    Measured here by the producers' own constants: of 474 refusals, **102** say
+    Measured here by the producers' own constants: of 380 refusals, **48** say
     "a later D2 row does", **1** waits on one of those through a ``$ref``, and
-    **371** name a keyword this emitter will not lower.  So the exit condition
-    stands at 580 + 371 = **951 of 1054**, with 103 pending.
+    **331** name a keyword this emitter will not lower.  So the exit condition
+    stands at 674 + 331 = **1005 of 1054**, with 49 pending.
 
     A REGEX OVER THE DETAIL STRING GAVE 404 / 41 / 31, AND ALL THREE WERE WRONG.
     It matched ``"D2 row"`` inside the VERDICT sentence "draft-07 defines no such
@@ -4476,21 +4476,29 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
 
     # Shrink-only: a row lands, deferrals become emissions, these fall.
     #
-    # **176 -> 102 and 877 -> 951, moved by `salesagent-j3k2l.18`.**  The `allOf`
-    # deferrals went from 82 to 0: the keyword is lowered below a root by an arm on
-    # `emit._decide` (`ROWS` dispatches on root kind, and 41 of the 82 sat at a root
-    # that a union row already claims, 16 at a property and 25 deeper).  Of the 82,
-    # **2 emit**, **72 became verdicts**, and **8 are still pending on another
-    # keyword** a later row owns -- `not` +3, `dependencies` +2, `anyOf` +1, `oneOf`
-    # +1, `items` +1 -- so 74 of the 82 are now accounted for.  Both pins are set to
-    # the value MEASURED on this tree rather than left loose: a loose pin is a ratchet
-    # that grades nothing.
-    assert len(deferred) <= 102, len(deferred)
+    # **102 -> 48 and 951 -> 1005, moved by `salesagent-j3k2l.22`.**  The four keywords
+    # that bead owns -- `not` 22, `dependencies` 10, `minProperties` 7, `maxProperties`
+    # 5, which is 44 of the 102 -- are gone from the deferred set ENTIRELY, and 10 more
+    # deferrals on other keywords cleared with them (a key `pattern` became a verdict
+    # for 2, a `maxLength` for 3, and 5 cleared through a reference to a document that
+    # now emits).  Of the 44: **3 emit**, **29 became verdicts**, and **12 moved to
+    # another row's keyword or cleared transitively**.
+    #
+    # The two halves it took, both measured rather than designed: D6's rules reach the
+    # composing row and the union row (the rule mechanism was complete and only the
+    # object row consulted it), and a mapping's key COUNT is an annotation rather than a
+    # rule, because `PropertyCount` reads `__pydantic_fields_set__` and a mapping is a
+    # `dict` with no fields.
+    #
+    # Both pins are set to the value MEASURED on this tree rather than left loose, and
+    # both were fire-probed one step tighter (`<= 47` and `>= 1006`) so they are known to
+    # grade: a loose pin is a ratchet that grades nothing.
+    assert len(deferred) <= 48, len(deferred)
     assert len(transitive) <= 1, len(transitive)
 
     # Grow-only: what the exit condition actually counts.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 951, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 1005, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
     pending = len(deferred) + len(transitive)

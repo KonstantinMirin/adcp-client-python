@@ -66,6 +66,7 @@ from codegen.compiler import (
     Module,
     Shape,
     check_keywords,
+    conditional_only,
     declare_object,
     fields,
     rules_at,
@@ -217,15 +218,15 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
             "properties; a later D2 row lowers this one",
         )
 
-    # A property only a conditional names, added after the conjuncts so that an
-    # inherited or composed declaration of the same key is the one that stands: the
-    # conditional's declaration is a fallback for a key nothing else types, not a
-    # restatement competing with one.  Re-read over the rule-bearing conjuncts as
-    # well, because 9 of the 20 state their conditional there and not at the root.
+    # A property only a conditional names, read over the rule-bearing conjuncts as well
+    # because most of this population states its conditional there and not at the root.
+    # A key NOTHING else declares refuses: it has no field to be and no fact to state,
+    # and ``compiler.conditional_only`` carries both halves of why.  A key that IS
+    # declared somewhere -- the root's own ``properties``, an inline conjunct's, or an
+    # inherited base's -- needs nothing here: the conditional is then a restatement of a
+    # declaration the document has, and that declaration is the one that stands.
     stated = rules_at(doc, *conjunct_rules)
-    for key, sub in stated.properties.items():
-        if key not in local and key not in inherited:
-            declare(key, sub, f"{pointer}/properties/{key}")
+    conditional_only(stated, {*local, *inherited}, pointer)
 
     own: dict[str, dict] = {}
     for key, node in local.items():
@@ -241,8 +242,20 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
                 f"inherited declaration: inherited states {sorted(_constraining(inherited[key]))}, "
                 f"this states {sorted(_constraining(node))}",
             )
-        if verdict:
-            own[key] = node  # it narrows, so the subclass is the one that states it
+        if verdict or (key in required and key not in inherited_required):
+            # It narrows, so the subclass is the one that states it -- and **a
+            # REQUIREDNESS the base does not have is a narrowing too**, which is the
+            # half this read for as long as requiredness lived in ``required`` rather
+            # than in the declaration ``_restatement`` compares.  Left inherited, the
+            # field keeps the base's optionality while the composing document's own
+            # ``required`` names it, so the class ACCEPTS A PAYLOAD THE DOCUMENT
+            # REFUSES and renders a ``default: None`` the document does not state.
+            # Measured on this tree: 2 documents and 2 pairs --
+            # ``core/tasks-get-response.json`` and
+            # ``protocol/get-task-status-response.json``, whose ``task_id`` is optional
+            # on ``core/protocol-envelope.json`` and required at their own root -- and
+            # they were the last 2 ``added`` facts of the symmetric comparison.
+            own[key] = node
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
 
     decided = fields(
