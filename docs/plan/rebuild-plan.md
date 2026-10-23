@@ -741,6 +741,41 @@ lowering it alone types it `Any` and drops every fact the base states. The 28 re
 `salesagent-j3k2l.22` owns them; two of the 14 defaults are inversions, where the model's boolean
 default is the opposite of the document's.
 
+**The export rule: a module's `__all__` names the root symbol and the symbol at every pointer
+the BUNDLE names.** `emit.exported` is the whole of it. The two sides of a cross-document
+reference then read the same two facts — `bundle.named_nodes` and `Module.declared` — so the
+emitter cannot disagree with itself about what a module offers.
+
+It disagreed for a while, and that is why this is written down. The binder resolves a fragment
+reference to `mod.declared[into]`, section 2's rule being an import of a symbol the target
+DECLARES, while the writer exported the root alone: measured on `ac9175209`, **16 of the
+committed tree's 957 relative-import aliases** named a symbol the target module declared and did
+not export. Nothing raised, because Python does not consult `__all__` on import, and
+importability is already graded by the whole-tree import in `tests/test_emit.py` — so the
+defect was invisible to everything except a check on what a module DECLARES, which is what
+`test_the_emitted_tree_still_declares_every_module_it_imports` is for.
+
+**The symbols are exported rather than the imports removed**, and the alternative is excluded on
+this plan's own grounds rather than by a measurement. Its two readings are *reach the alias
+through its owning module*, which is the import under discussion and so is not a change, and
+*emit the alias where it is used*, which is a second name for one document node (P2). And the
+thing copied is in most cases not an alias at all: the 16 name 8 distinct symbols, 4 of them
+`StrEnum` CLASSES accounting for 9 of the 16 imports, one of which
+(`ReportingDeliveryOfferingReportingFeedPurpose`) is imported by 6 modules — so copying would be
+7 classes for one document node, which is the flatten-a-`$ref`-into-a-copy defect
+`test_a_cross_document_reference_is_an_import_and_not_a_copy` exists to catch.
+
+**Every declared symbol would be the wrong set, not merely a wider one.** A nested class exists
+because a field needed a type, is asked for by nothing, and is reached through its parent's own
+annotation; naming it would put a second entry in 228 of the tree's 677 modules and say that a
+node the document does not name is part of its surface. The set as written is closed by
+CONSTRUCTION rather than by today's population: `named_nodes` is computed from every `$ref` in
+the bundle and the binder only ever asks for a pointer that came from a `$ref` fragment, so a
+symbol the import side can ask for is always in the export set. Both facts are functions of
+(bundle, document) and not of the run's document set, so P7 holds and the one-document command
+writes the same bytes as the whole-population run. Measured after: 19 of 677 modules export more
+than one name, 0 of 957 aliases are unexported. The root goes first in the list.
+
 **Determinism is a precondition of grading, not something to fix later.** Two runs over the
 same bundle emit the same bytes, and a run that does not is ungraded rather than nearly right.
 

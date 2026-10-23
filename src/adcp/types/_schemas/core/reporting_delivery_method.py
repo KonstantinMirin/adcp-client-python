@@ -82,4 +82,4 @@ ReportingDeliveryMethod._branch_models = (FileTransfer, DatasetShare, WarehouseM
 ReportingDeliveryMethod.model_rebuild(force=True)
 
 
-__all__ = ["ReportingDeliveryMethod"]
+__all__ = ["ReportingDeliveryMethod", "ReportingDeliveryMethodReportingOrchestration"]

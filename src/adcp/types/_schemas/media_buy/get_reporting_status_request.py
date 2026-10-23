@@ -72,4 +72,4 @@ class GetReportingStatusRequest(AdCPVersionEnvelope):
     ext: ExtensionObject | None = None
 
 
-__all__ = ["GetReportingStatusRequest"]
+__all__ = ["GetReportingStatusRequest", "GetReportingStatusRequestReportingStatusView"]

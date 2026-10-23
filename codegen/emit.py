@@ -561,6 +561,39 @@ def _import_rank(module: str) -> int:
     return 1 if module == "pydantic" else 0
 
 
+def exported(mod: Module, symbol: str) -> list[str]:
+    """The names the module declares that a reference can ask it for: the root, then
+    the symbol at every pointer the BUNDLE names.
+
+    **The import side and the export side read the same two facts, so the emitter
+    cannot disagree with itself about a module's public surface.**  The binder above
+    resolves a fragment reference to ``mod.declared[into]`` -- section 2's rule is an
+    import of a symbol the target DECLARES -- while this list used to be the root
+    alone, and the tree then held 16 imports of a symbol the target module declared
+    and did not export.  Nothing raised, because Python does not consult ``__all__``
+    on import; the disagreement was about what the module says it offers.
+
+    The set is closed by CONSTRUCTION rather than by today's population.
+    ``bundle.named_nodes`` is computed from every ``$ref`` in the bundle, and the
+    binder only ever asks for a pointer that came from a ``$ref`` fragment, so a
+    symbol the import side can ask for is always in ``mod.named`` here.  Both facts
+    are functions of (bundle, document) and not of the run's document set, so the
+    one-document command writes the same bytes as the whole-population run (P7).
+
+    **Every declared symbol would be the wrong set, and not merely a wider one.**  A
+    nested class exists because a field needed a type, is asked for by nothing, and is
+    reached through its parent's own annotation; naming it here would put a second
+    entry in 228 of the tree's 677 modules and say that a node the document does not
+    name is part of its surface.
+
+    The root goes FIRST, not sorted in with the rest: a reader wants the document's
+    own class at the head of the list, and ``tests/test_emit.py`` reads the root off
+    ``__all__``.
+    """
+    rest = sorted({mod.declared[p] for p in mod.named if p in mod.declared} - {symbol})
+    return [symbol, *rest]
+
+
 def render(mod: Module, symbol: str) -> str:
     groups: list[list[str]] = [[], [], [], []]
     by_module: dict[str, set[str]] = {}
@@ -578,7 +611,8 @@ def render(mod: Module, symbol: str) -> str:
         if g:
             out += [*g, ""]
     classes = "\n\n\n".join(mod.blocks)
-    return "\n".join([*out, "", classes, "", "", f'__all__ = ["{symbol}"]', ""])
+    names = ", ".join(f'"{n}"' for n in exported(mod, symbol))
+    return "\n".join([*out, "", classes, "", "", f"__all__ = [{names}]", ""])
 
 
 # --------------------------------------------------------------------------- #

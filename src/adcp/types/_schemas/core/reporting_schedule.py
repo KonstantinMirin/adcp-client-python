@@ -39,4 +39,4 @@ class ReportingSchedule(AdCPBaseModel):
     delivery_sla: Annotated[StrMatching3524D29B, Field(description='Non-negative maximum time after period end before the required revision is due. PT0S means due at period close; expected_at equals the resolved period end plus this duration.')]
 
 
-__all__ = ["ReportingSchedule"]
+__all__ = ["ReportingSchedule", "ReportingScheduleReportingScheduleAlignment"]

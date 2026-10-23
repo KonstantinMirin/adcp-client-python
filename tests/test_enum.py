@@ -913,12 +913,18 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     whole tree is imported by ``tests/test_emit.py``; this reads the other
     direction off the AST, so a module importing a symbol from a sibling that does
     not export it fails here by name.
+
+    The ORDER is graded too, because ``__all__`` holds more than one name since
+    salesagent-j3k2l.31 and ``tests/test_emit.py`` reads the root off the head of it.
+    The expected head is derived -- ``emit.class_name`` over the document's own title,
+    which is the function ``lower_document`` makes the symbol with -- so this cannot
+    pass by restating what the tree happens to hold.
     """
     exported: dict[str, set[str]] = {}
     for document in sorted({g.ref.document for g in graded()}):
         module = emit.module_path(document)
         tree = ast.parse((TREE / f"{module}.py").read_text())
-        exported[module] = {
+        listed = [
             e.value
             for n in tree.body
             if isinstance(n, ast.Assign)
@@ -926,7 +932,10 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
             if isinstance(n.value, (ast.List, ast.Tuple))
             for e in n.value.elts
             if isinstance(e, ast.Constant)
-        }
+        ]
+        root = compiler.class_name(bundle.read(BUNDLE, document)["title"])
+        assert listed[:1] == [root], (module, listed[:1], root)
+        exported[module] = set(listed)
     checked = 0
     for document in sorted({g.ref.document for g in graded()}):
         module = emit.module_path(document)
@@ -942,23 +951,29 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
             for alias in n.names:
                 assert alias.name in exported[target], (module, target, alias.name)
                 checked += 1
-    # LEFT RED ON PURPOSE at 0130e5fc9, and the assertion above is what found it:
-    # 15 of the tree's 910 relative-import aliases name a symbol the target module
-    # DEFINES but does not list in its ``__all__`` -- all 15 are module-level type
-    # aliases step 4's row emits, e.g.
-    # ``core/reporting_delivery_offering`` importing
+    # LEFT RED ON PURPOSE at 0130e5fc9, and the assertion above is what found it: the
+    # tree held imports of a symbol the target module DECLARED and did not list in its
+    # ``__all__`` -- e.g. ``core/reporting_delivery_offering`` importing
     # ``ReportingCanonicalizationContractReportingPrimaryKey`` from
-    # ``core/reporting_canonicalization_contract``, whose ``__all__`` is
-    # ``["ReportingCanonicalizationContract"]`` alone.  Nothing ImportErrors --
-    # Python does not consult ``__all__`` on import -- so this is a question about
-    # what the emitter should export, which belongs to the emitter's own lane and
-    # not to a re-measurement: see salesagent-j3k2l.29.
+    # ``core/reporting_canonicalization_contract``, whose ``__all__`` was
+    # ``["ReportingCanonicalizationContract"]`` alone.  Nothing ImportErrors -- Python
+    # does not consult ``__all__`` on import -- so what it found was the EMITTER
+    # disagreeing with itself: the binder resolves a fragment reference to
+    # ``mod.declared[into]`` while the writer exported the root alone.
     #
-    # 910 is the alias POPULATION, measured, and it is the value this pin takes if
-    # those 15 come to be exported.  If the answer is instead that the emitter
-    # should not import them, the population shrinks and the pin reads 895.  The
-    # assertion is NOT weakened to ``defined in the target module`` to get there:
-    # that would grade importability, which the whole-tree import in
-    # ``tests/test_emit.py`` already grades, and would retire the only check on
-    # what a module declares.
-    assert checked == 910, checked
+    # CLOSED at salesagent-j3k2l.31, on the first of the two readings the issue names:
+    # the symbols are exported, because the other reading is a second name for one
+    # document node (P2).  The 16 named 8 distinct symbols, 4 of them ``StrEnum``
+    # CLASSES accounting for 9 of the imports, and one of those is imported by 6
+    # modules -- so copying would be 7 classes for one node, not the 15 "module-level
+    # type aliases" the issue describes.  ``emit.exported`` is the fix and carries the
+    # reasoning; ``docs/plan/rebuild-plan.md`` section 6 records the decision.
+    # Re-measured there: 0 of 957.
+    #
+    # 957 is the alias POPULATION over the ``graded()`` documents of the committed
+    # 677-module tree, re-measured on this tree -- not the 910 this pin carried, which
+    # was measured at 0130e5fc9 before the emitted population grew.  The assertion is
+    # NOT weakened to ``defined in the target module``: that would grade importability,
+    # which the whole-tree import in ``tests/test_emit.py`` already grades, and would
+    # retire the only check on what a module DECLARES.
+    assert checked == 957, checked

@@ -81,4 +81,4 @@ class ReportingCanonicalizationContract(AdCPBaseModel):
     golden_vectors: Annotated[ReportingCanonicalizationContractGoldenVectors, Field(description='Named cross-language conformance cases: exactly one empty_report vector, exactly one ordering_encoding vector, and an optional list of additional vectors.')]
 
 
-__all__ = ["ReportingCanonicalizationContract"]
+__all__ = ["ReportingCanonicalizationContract", "ReportingCanonicalizationContractReportingPrimaryKey"]

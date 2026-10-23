@@ -58,4 +58,4 @@ class AAODirectoryAgentPublishersInverseLookupResponse(AdCPBaseModel):
     next_cursor: Annotated[str | None, Field(description="Opaque pagination cursor. Absent or null on the terminal page. Stable across the directory's refresh cycle for the lifetime of the cursor.")] = None
 
 
-__all__ = ["AAODirectoryAgentPublishersInverseLookupResponse"]
+__all__ = ["AAODirectoryAgentPublishersInverseLookupResponse", "AAODirectoryAgentPublishersInverseLookupResponsePublisherEntry"]
