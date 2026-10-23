@@ -65,22 +65,16 @@ RUNTIME_MODULE = "adcp.types._runtime"
 #: selector to claim a document its lowering cannot read.
 ANNOTATIONS = compiler.ANNOTATIONS
 
-#: Everything this module reads off an OBJECT node.  ``emit`` adds it to the handled set
-#: of an object node, which is what stops a document being refused for one of them.
-KEYWORDS = frozenset(
-    {
-        "oneOf",
-        "anyOf",
-        "if",
-        "then",
-        "else",
-        "dependencies",
-        "minProperties",
-        "maxProperties",
-        "uniqueItems",
-        "not",
-    }
-)
+#: Everything this module reads off a node with FIELDS.  A keyword screen admits it,
+#: which is what stops a document being refused for one of them.
+#:
+#: ``codegen.compiler``'s, not a second copy, for the reason :data:`ANNOTATIONS` is --
+#: and the pressure was the same: three lowerings screen on this set and two of them
+#: (the ``allOf`` row, the union row) cannot import this module at all (D13), so the
+#: set has to sit below both packages.  ``compiler.rules_at`` is the screen a lowering
+#: actually asks, because a combinator is a rule only where
+#: :func:`presence_only` holds.
+KEYWORDS = compiler.RULE_KEYWORDS
 
 #: Of those, the ones that can appear on a node with no object to carry a rule -- a
 #: scalar, where a rule tuple has nowhere to live.  Measured over the 1,054 portable

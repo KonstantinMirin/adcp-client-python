@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Release-precision AdCP protocol version negotiation fields. Composed via `allOf` into AdCP request schemas and shared response components so the version semantics live in one place. Strict (`additionalProperties: false`) request schemas also redeclare these two fields in their own `properties` via `$ref`, because draft-07 does not evaluate properties across `allOf`. The Trusted Match match requests are the exception: they inline both fields for their strict privacy boundary. Distinct from `core/protocol-envelope.json`, which wraps responses at the transport layer (context_id / task_id / status / payload). This envelope is part of the payload itself.",
+      "properties": {
+        "adcp_major_version": {
+          "deprecated": true,
+          "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+          "maximum": 99,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "adcp_version": {
+          "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
+          "examples": [
+            "3.0",
+            "3.1",
+            "3.1-beta",
+            "3.1-rc.1"
+          ],
+          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
+          "type": "string"
+        }
+      },
+      "title": "AdCP Version Envelope",
+      "type": "object"
+    }
+  ],
+  "anyOf": [
+    {
+      "required": [
+        "plan_ids"
+      ]
+    },
+    {
+      "required": [
+        "portfolio_plan_ids"
+      ]
+    },
+    {
+      "required": [
+        "governance_contexts"
+      ]
+    }
+  ],
+  "description": "Retrieve governance state and audit trail for one or more plans.",
+  "properties": {
+    "context": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "title": "Context Object",
+      "type": "object"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "governance_contexts": {
+      "description": "Filter audit entries by governance context. Returns only checks and outcomes that share these governance contexts, enabling lifecycle tracing across purchase types.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "include_entries": {
+      "default": false,
+      "description": "Include the full audit trail. Default: false.",
+      "type": "boolean"
+    },
+    "plan_ids": {
+      "description": "Plan IDs to retrieve. For a single plan, pass a one-element array. Plans uniquely scope account and operator; do not include a separate `account` field \u2014 the governance agent resolves account from each plan. Including `account` is rejected by `additionalProperties: false`.",
+      "items": {
+        "type": "string",
+        "x-entity": "governance_plan"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "portfolio_plan_ids": {
+      "description": "Portfolio plan IDs. The governance agent expands each to its member_plan_ids and returns combined audit data.",
+      "items": {
+        "type": "string",
+        "x-entity": "governance_plan"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "purchase_types": {
+      "description": "Filter audit entries by purchase type. Returns only checks and outcomes matching these purchase types (e.g., ['rights_license'] to see all rights activity).",
+      "items": {
+        "enum": [
+          "media_buy",
+          "rights_license",
+          "creative_services",
+          "signal_activation"
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "title": "Get Plan Audit Logs Request",
+  "type": "object",
+  "x-status": "experimental"
+}

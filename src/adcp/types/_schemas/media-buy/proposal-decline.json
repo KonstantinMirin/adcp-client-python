@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "reason": {
+            "const": "other"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "then": {
+        "required": [
+          "detail"
+        ]
+      }
+    }
+  ],
+  "description": "Terminal buyer feedback for one immutable proposal snapshot.",
+  "properties": {
+    "detail": {
+      "description": "Optional short, non-identifying explanation. MUST NOT identify a competitor or disclose sensitive campaign information.",
+      "maxLength": 500,
+      "minLength": 1,
+      "type": "string"
+    },
+    "proposal_id": {
+      "description": "Immutable proposal ID returned by request_proposals or refine_proposals.",
+      "maxLength": 255,
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "proposal"
+    },
+    "reason": {
+      "enum": [
+        "other",
+        "price",
+        "policy",
+        "timing",
+        "audience_fit",
+        "inventory_fit",
+        "budget_changed",
+        "creative_unsupported",
+        "selected_alternative",
+        "measurement_unsupported"
+      ]
+    }
+  },
+  "required": [
+    "proposal_id",
+    "reason"
+  ],
+  "title": "Proposal Decline",
+  "type": "object"
+}

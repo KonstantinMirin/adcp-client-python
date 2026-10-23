@@ -192,48 +192,62 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # N over this population on the merged table (43 when this lane measured it
     # alone, before the other four steps' rows were beside it).
     #
-    # **425, RE-MEASURED, AND THE 238 IT REPLACES WAS ALREADY STALE ON TRUNK.** Run
-    # at trunk `29c553504` itself, with no part of this lane present, this assertion
-    # fails the same way and with the same number: `assert 425 == 238`. So the three
-    # figures below are not a consequence of this branch -- measured with one script
-    # against both trees, trunk and this merge give an IDENTICAL 425 / 331 / 94 / 73,
-    # and this lane's below-root composition arm moves every one of them by 0. They
-    # are corrected here rather than left red because this file is one this branch
-    # already touches and the correct values are measured.
-    assert len(with_row.emitted) == 425, "N, over a bundle of 1,054"
+    # **566, AND THIS ONE IS `salesagent-j3k2l.22`'S OWN DOING.**  Measured with one
+    # script against both trees: trunk `ac8a64fb1` gives 425 / 331 / 94 / 73 / 282 / 19
+    # and this branch gives 566 / 345 / 221 / 141 / 301 / 0, so the figures below are
+    # the row lowering its own ROOT RULES -- `not`, `dependencies`, `min`/`maxProperties`
+    # at a composing root -- rather than deferring them.  The previous revision of this
+    # comment said trunk and the branch agreed, which was true of the branch it was
+    # written on and is not true of this one.
+    assert len(with_row.emitted) == 566, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
     # the merged table steps 3, 5 and 6's rows emit those targets, so the composing
-    # documents follow: 34 of the 301 are emitted BY this row, and removing it loses
-    # 43 modules -- the emitted documents plus those reached only through a reference.
+    # documents follow: 141 of the 301 are emitted BY this row, and removing it loses
+    # 221 modules -- the emitted documents plus those reached only through a reference.
     # That is joint unblocking measured from this side -- the row's own 0 was a fact
     # about which other rows existed, not about the row.
-    #
-    # Both figures are re-measured, and both were stale on trunk for the reason above:
-    # trunk gives 94 and 73 here, identical to this merge. `without.emitted` is 331 on
-    # both trees, so the whole of the delta is on the with-row side and none of it is
-    # this lane's.
-    assert len(with_row.emitted) - len(without.emitted) == 94
-    assert len(set(composing()) & set(with_row.emitted)) == 73
-    assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
-        with_row.emitted
-    )
+    assert len(with_row.emitted) - len(without.emitted) == 221
+    assert len(set(composing()) & set(with_row.emitted)) == 141
+    # **Every document the row rescues from a refusal is EMITTED with it**, and the
+    # composing ones are 141 of the 145.  This was an equality against
+    # ``composing() & emitted`` and the equality is no longer true, which is a
+    # measurement and not a regression: the other 4 are documents that do NOT compose
+    # at their own root and were refused on an unresolved target, whose target the row
+    # now emits (``core/catalog.json``, ``core/reporting-delivery-ready-webhook.json``,
+    # ``error-details/authorization-required.json``,
+    # ``error-details/macro-resolution-failed.json``).  On trunk the set difference was
+    # empty because the row emitted 73 composing documents and none of them was such a
+    # target.  Stated as the containment plus the count, so a document clearing for a
+    # reason that is NOT this row still reddens.
+    cleared = set(without.refusals) - set(with_row.refusals)
+    assert cleared <= set(with_row.emitted), sorted(cleared - set(with_row.emitted))
+    assert set(composing()) & set(with_row.emitted) <= cleared
+    assert len(cleared) == 145, len(cleared)
     # Every document of the population is accounted for by name, pointer and keyword.
     assert set(pop) <= set(with_row.emitted) | set(with_row.refusals)
     for document, row in with_row.refusals.items():
         assert row["keyword"] and row["pointer"] and row["detail"], document
-    # **The ATTRIBUTION moves for 282 of the 301, and the 19 it does not move for are
-    # a measurement rather than a shortfall.**  Without the row a composing document
-    # is claimed by nothing, and ``lower_document`` refuses it at the ROOT on the
-    # keyword its kind is read from -- ``allOf`` for 279, ``anyOf`` for 14, ``if``
-    # for 8, all at ``/``.  (It used to say ``type`` for all 301, which is a keyword
-    # none of them states; ``salesagent-j3k2l.21`` changed that.)  With the row the
-    # walk reaches the conjuncts and either emits the document -- 34 of them -- or
-    # names where it actually stopped: 212 of the 267 refusals are at a pointer
-    # INSIDE the document.  The 19 that read the same either way are the documents
-    # whose root sibling keyword is also what stops step 4's lowering, so the row has
-    # nothing to move for them.
+    # **The ATTRIBUTION now moves for ALL 301, and the 19 it did not move for on trunk
+    # were exactly this bead's keywords.**  Without the row a composing document is
+    # claimed by nothing, and ``lower_document`` refuses it at the ROOT on the keyword
+    # its kind is read from -- ``allOf`` for 279, ``anyOf`` for 14, ``if`` for 8, all at
+    # ``/``.  (It used to say ``type`` for all 301, which is a keyword none of them
+    # states; ``salesagent-j3k2l.21`` changed that.)  With the row the walk reaches the
+    # conjuncts and either emits the document -- 141 of them -- or names where it
+    # actually stopped, and 159 of the 160 refusals are now at a pointer INSIDE the
+    # document.  The one still at ``/`` is
+    # ``sponsored-intelligence/si-ui-element.json``, and the root IS its cause: the
+    # refusal is about the class this row would declare at that root
+    # (``compiler.conditional_only``), not about anything inside a conjunct.
+    #
+    # The 19 that read the same either way on trunk were the documents whose root
+    # sibling keyword was ALSO what stopped step 4's lowering, which is to say a root
+    # ``not``, ``dependencies`` or ``min``/``maxProperties`` -- so admitting those at a
+    # composing root (``salesagent-j3k2l.22``) is what took the figure to 0. It is
+    # asserted as 0 rather than deleted: a document reading the same either way again
+    # would mean a root keyword the row screens but does not lower.
     #
     # Compared on (keyword, pointer) and not on the keyword alone: the pointer is
     # half of the attribution, and a keyword-only test reports a refusal that moved
@@ -243,9 +257,14 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         return (row["keyword"], row["pointer"]) if row else None
 
     moved = [d for d in composing() if where(with_row, d) != where(without, d)]
-    assert len(moved) == 282, len(moved)
+    assert len(moved) == 301, len(moved)
     assert all(where(without, d)[1] == "/" for d in composing()), "without the row: all at /"
-    assert sum(1 for d in composing() if where(with_row, d) == where(without, d)) == 19
+    assert sum(1 for d in composing() if where(with_row, d) == where(without, d)) == 0
+    refused = {d: where(with_row, d) for d in composing() if d not in with_row.emitted}
+    assert len(refused) == 160, len(refused)
+    at_root = sorted(d for d, w in refused.items() if w[1] == "/")
+    assert at_root == ["sponsored-intelligence/si-ui-element.json"], at_root
+    assert refused[at_root[0]][0] == "if", refused[at_root[0]]
 
 
 def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzzle() -> None:
@@ -665,22 +684,70 @@ def test_a_scalar_root_cannot_be_a_base_and_refuses_rather_than_writing_the_modu
 
 
 def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
-    """The root may carry its own ``properties``, ``required``, ``type`` and
-    ``additionalProperties`` beside ``allOf``, and nothing else.
+    """The root may carry its own ``properties``, ``required``, ``type``,
+    ``additionalProperties`` and D6's rule keywords beside ``allOf``, and nothing else.
 
-    64 of the 287 refuse first on ``if`` at the root: that is step 7's keyword, and
-    this row reports it rather than lowering a document whose conditional it ignores.
+    ``if``, ``not`` and ``min``/``maxProperties`` were in the refusing list and are NOT
+    keywords this row reports any more: ``salesagent-j3k2l.22`` admits D6's families at
+    a composing root, where the rule attaches to the class this row declares
+    (``compiler.declare_object`` writes the tuple).  They are asserted on the admitting
+    side below, so the keywords that moved are graded rather than merely dropped.
 
-    ``definitions`` was in this list and is NOT a keyword this row reports any more.
-    15 of the 287 refused on it here; since `salesagent-j3k2l.20` a section is admitted
-    at every node by ``compiler.check_keywords`` -- it asserts nothing about an
+    ``definitions`` left the list before them, at `salesagent-j3k2l.20`: a section is
+    admitted at every node by ``compiler.check_keywords`` -- it asserts nothing about an
     instance, and the entries a ``$ref`` names are declared when it asks -- so the 15
-    now refuse on whatever is inside the conjunct or the section, which is this row's
-    own honest-attribution point one level deeper.
+    documents refusing on it now refuse on whatever is inside the conjunct or the
+    section, which is this row's own honest-attribution point one level deeper.
+
+    **The screen is a function of the NODE and not a flat set**, which is the half a
+    membership test would miss: a ``oneOf`` of SHAPES is a nested union this row still
+    refuses, while a ``oneOf`` of ``required`` groups is a rule and is admitted.  One
+    predicate decides both (``rules.presence_only``), so both arms are graded here.
     """
-    for keyword in ("if", "not", "minProperties"):
-        doc = {"title": "Probe", "type": "object", "allOf": [{"$ref": "x"}], keyword: {}}
+    # Still refused, each at the root, and each for its own reason: a draft-07 keyword
+    # no row lowers, and a combinator of SHAPES, which is a union and not a rule.
+    for keyword, value in (
+        ("propertyNames", {"type": "string"}),
+        ("contains", {"type": "string"}),
+        ("oneOf", [{"type": "object", "properties": {"a": {"type": "string"}}}]),
+    ):
+        doc = {"title": "Probe", "type": "object", "allOf": [{"$ref": "x"}], keyword: value}
         with pytest.raises(Refusal) as caught:
             _lower(doc)
-        assert caught.value.keyword == keyword
+        assert caught.value.keyword == keyword, (keyword, caught.value.keyword)
         assert caught.value.pointer == "/"
+
+    # Admitted, and the rule REACHES THE CLASS -- the point of the change, and what a
+    # bare "does not raise" would not say.  Asserted on the emitted text, because that
+    # is where a rule tuple either appears or silently does not.
+    # ``minProperties`` carries ``additionalProperties`` beside it because
+    # ``rules._count`` writes the MINIMUM only where the class keeps every key the
+    # document would count -- a silent ``additionalProperties`` is D8's ``ignore``, and
+    # a minimum counted over kept keys alone refuses an instance the document accepts.
+    # The probe states what the rule needs rather than asserting the gate away.
+    for keyword, value, also in (
+        ("not", {"required": ["a"]}, {}),
+        ("minProperties", 1, {"additionalProperties": False}),
+        ("maxProperties", 4, {}),
+        ("dependencies", {"a": ["b"]}, {}),
+        # A conditional with no branch states nothing, so ``rules._conditional`` writes
+        # no rule for one: the probe carries the ``then`` the rule is made of.
+        ("if", {"required": ["a"]}, {"then": {"required": ["b"]}}),
+        ("oneOf", [{"required": ["a"]}, {"required": ["b"]}], {}),
+    ):
+        mod = emit.Module(
+            document="probe.json",
+            bind=emit._no_binder,  # noqa: SLF001 -- the test is the caller
+            decide=emit.decide_type,  # the probe declares fields, so the walk must run
+        )
+        doc = {
+            "title": "Probe",
+            "type": "object",
+            "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
+            "allOf": [{"type": "object", "properties": {"c": {"type": "string"}}}],
+            keyword: value,
+            **also,
+        }
+        product.lower_composition(doc, "Probe", "", mod)
+        assert mod.declared[""] == "Probe", (keyword, mod.declared)
+        assert [b for b in mod.blocks if "_adcp_rules" in b], keyword

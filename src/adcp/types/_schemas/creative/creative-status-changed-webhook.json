@@ -1,0 +1,321 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Account-level push notification fired when a creative in the library transitions status by seller or system initiative. Fires per registered subscriber against each `notification_configs[]` entry whose `event_types` includes `creative.status_changed`. Buyer-initiated transitions (archive, unarchive, resubmit) do NOT fire \u2014 those are acknowledged on the `sync_creatives` response path. Receivers MUST verify signing per the registered scheme (RFC 9421 webhook profile by default; legacy Bearer / HMAC-SHA256 when `authentication` was supplied at registration) and dedupe by `idempotency_key`. See docs/protocol/snapshot-and-log.mdx for the snapshot/log duality rules \u2014 the current status is always authoritative on `list_creatives`.",
+  "examples": [
+    {
+      "data": {
+        "account_id": "acc_acme_pinnacle",
+        "creative_id": "ft_88201",
+        "fired_at": "2026-05-18T14:20:00Z",
+        "idempotency_key": "whk_01HW9D2T3VXQ5M7K9N1P3R5S7U",
+        "initiator": "seller",
+        "notification_id": "cs_ft88201_2026_05_18a",
+        "notification_type": "creative.status_changed",
+        "reason_code": "policy_revocation",
+        "reason_detail": "Landing page now references competitor brand; violates seller content policy.",
+        "subscriber_id": "buyer-primary",
+        "transition": {
+          "from": "approved",
+          "observed_at": "2026-05-18T14:18:42Z",
+          "to": "rejected"
+        }
+      },
+      "description": "Approved \u2192 rejected post-approval revocation (paired with a media-buy impairment)"
+    },
+    {
+      "data": {
+        "account_id": "acc_acme_pinnacle",
+        "creative_id": "ft_88202",
+        "fired_at": "2026-05-18T15:00:00Z",
+        "idempotency_key": "whk_01HW9F2V3XYR6P8L0M2Q4S6T8V",
+        "initiator": "seller",
+        "notification_id": "cs_ft88202_2026_05_18b",
+        "notification_type": "creative.status_changed",
+        "reason_code": "seller_rereview",
+        "subscriber_id": "buyer-primary",
+        "transition": {
+          "from": "approved",
+          "observed_at": "2026-05-18T14:55:10Z",
+          "to": "pending_review"
+        }
+      },
+      "description": "Approved \u2192 pending_review (seller pulled back for re-review)"
+    },
+    {
+      "data": {
+        "account_id": "acc_acme_pinnacle",
+        "creative_id": "ft_88203",
+        "fired_at": "2026-05-18T15:02:11Z",
+        "idempotency_key": "whk_01HW9G3W4YSP7Q9N1O3R5T7U9W",
+        "initiator": "system",
+        "notification_id": "cs_ft88203_proc_fail",
+        "notification_type": "creative.status_changed",
+        "reason_code": "processing_failure",
+        "reason_detail": "Video transcode failed: unsupported codec 'av1' for VAST 4.2.",
+        "subscriber_id": "buyer-primary",
+        "transition": {
+          "from": "processing",
+          "observed_at": "2026-05-18T15:02:09Z",
+          "to": "rejected"
+        }
+      },
+      "description": "System-initiated rejection on processing failure"
+    }
+  ],
+  "properties": {
+    "account_id": {
+      "description": "Seller's identifier for the account this creative belongs to. Echoed so multi-account buyers can route without re-resolving via `list_accounts`.",
+      "type": "string",
+      "x-entity": "account"
+    },
+    "creative_id": {
+      "description": "Seller's identifier for the creative whose status changed. References the same id space as `list_creatives` / `sync_creatives` responses.",
+      "type": "string",
+      "x-entity": "creative"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "fired_at": {
+      "description": "ISO 8601 timestamp when the seller initiated this fire. Distinct from when the transition was observed (`transition.observed_at`) \u2014 fires MAY be coalesced or delayed up to the seller's declared coalescence window for `creative.status_changed`.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "idempotency_key": {
+      "description": "Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity. Distinct from `notification_id` \u2014 same `notification_id` under two different `idempotency_key` values is a re-emission signal (snapshot-and-log Rule 1).",
+      "maxLength": 255,
+      "minLength": 16,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$",
+      "type": "string"
+    },
+    "initiator": {
+      "description": "Who initiated the transition. `seller` \u2014 explicit decision by the seller (human reviewer, policy operator, takedown handler). `system` \u2014 automated seller-side process (processing pipeline, retention sweep, inactivity scan). `buyer` never appears on this event \u2014 buyer-initiated transitions are acknowledged on the `sync_creatives` response path and MUST NOT fire `creative.status_changed`.",
+      "enum": [
+        "seller",
+        "system"
+      ],
+      "type": "string"
+    },
+    "notification_id": {
+      "description": "Stable identifier for this logical transition event, used by buyers to correlate fires to current snapshot state. Stable across re-emissions of the same transition (e.g., the seller re-fires after the buyer's endpoint was unreachable); a fresh transition on the same creative receives a new id. Charset matches `idempotency_key` so the value is safe to log, embed in dashboard URLs, and pass into LLM prompts without escaping.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string"
+    },
+    "notification_type": {
+      "const": "creative.status_changed",
+      "description": "Fixed notification type discriminator. Matches the value registered on the subscriber's `event_types`.",
+      "type": "string"
+    },
+    "reason_code": {
+      "enum": [
+        "content_drift",
+        "legal_erasure",
+        "review_passed",
+        "account_closed",
+        "review_failure",
+        "seller_archive",
+        "source_deleted",
+        "source_private",
+        "seller_rereview",
+        "takedown_request",
+        "account_suspended",
+        "policy_revocation",
+        "retention_expired",
+        "advertiser_request",
+        "processing_failure",
+        "identity_authorization_expired",
+        "identity_authorization_revoked"
+      ]
+    },
+    "reason_detail": {
+      "description": "Human-readable supplement to `reason_code`. Free text from the seller. Sellers MUST NOT include third-party PII in this field.",
+      "maxLength": 500,
+      "type": "string"
+    },
+    "revision_id": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Buyer-authored input revision to which this transition applies. Required when the reviewed state has revision identity and the seller advertises creative.supports_revisions; it need not be the current list revision when the fire is received. Omitted for unversioned current content. A stale review outcome MUST NOT emit a fire as though it applied to a newer current revision.",
+      "maxLength": 255,
+      "minLength": 1,
+      "title": "Creative Revision ID",
+      "type": "string",
+      "x-adcp-validation": {
+        "spec": "docs/creative/specification.mdx#lifecycle-webhooks",
+        "verifier_constraints": {
+          "revision_transition_attribution": {
+            "must_equal": "revision_to_which_transition_applies",
+            "omit_for_unversioned_content": true,
+            "required_capability": "creative.supports_revisions",
+            "required_when_transition_applies_to_bound_revision": true,
+            "stale_result_must_not_target_current_revision": true
+          }
+        }
+      },
+      "x-entity": "creative_revision"
+    },
+    "subscriber_id": {
+      "description": "Identifies which `notification_configs[]` entry on the recipient account is receiving this fire. Echoed verbatim from the entry's `subscriber_id`. Required so multi-subscriber accounts can route by endpoint.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+      "type": "string"
+    },
+    "transition": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "from": {
+                "enum": [
+                  "processing"
+                ]
+              }
+            },
+            "required": [
+              "from"
+            ]
+          },
+          "then": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "pending_review",
+                  "rejected"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "from": {
+                "enum": [
+                  "pending_review"
+                ]
+              }
+            },
+            "required": [
+              "from"
+            ]
+          },
+          "then": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "approved",
+                  "rejected"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "from": {
+                "enum": [
+                  "approved"
+                ]
+              }
+            },
+            "required": [
+              "from"
+            ]
+          },
+          "then": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "pending_review",
+                  "suspended",
+                  "rejected",
+                  "archived"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "from": {
+                "enum": [
+                  "suspended"
+                ]
+              }
+            },
+            "required": [
+              "from"
+            ]
+          },
+          "then": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "approved",
+                  "rejected"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "description": "The status transition that triggered this fire. Valid `from` values are restricted to the prior states from which a seller/system-initiated transition can fire (`processing` for processing outcomes, `pending_review` for initial review outcomes, `approved` for re-review/revocation/seller-archive/recoverable suspension, `suspended` for seller-observed recovery or terminal escalation). The post-terminal states `rejected` and `archived` MUST NOT appear as `from` \u2014 those would require a buyer-initiated unblock (`sync_creatives` resubmit / unarchive), which does not fire this event.",
+      "properties": {
+        "from": {
+          "description": "Prior status \u2014 restricted to the states from which a seller/system-initiated transition can fire. For initial review outcomes the prior status is `pending_review`; for processing outcomes it is `processing`; for seller re-review, post-approval revocation, recoverable suspension, and seller-initiated archive it is `approved`; for recovery from a dependency/authorization outage or terminal escalation after a suspension it is `suspended`.",
+          "enum": [
+            "processing",
+            "pending_review",
+            "approved",
+            "suspended"
+          ],
+          "type": "string"
+        },
+        "observed_at": {
+          "description": "ISO 8601 timestamp when the seller observed the transition. Distinct from `fired_at` \u2014 `fired_at` reflects when the webhook was emitted, which may lag `observed_at` by up to the seller's coalescence window. **Ordering with `media-buy.impairment`:** when a creative transition also causes a media-buy impairment (e.g., `approved \u2192 suspended` or `approved \u2192 rejected` while assignments exist), the `creative.status_changed` and `impairment` fires are not ordered \u2014 buyers MUST NOT assume one arrives before the other. Reconcile via the snapshot (`list_creatives` and `get_media_buys`) when the two fires reference the same `creative_id`.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "to": {
+          "enum": [
+            "approved",
+            "archived",
+            "rejected",
+            "suspended",
+            "processing",
+            "pending_review"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "observed_at"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "idempotency_key",
+    "notification_id",
+    "notification_type",
+    "fired_at",
+    "subscriber_id",
+    "account_id",
+    "creative_id",
+    "transition",
+    "reason_code",
+    "initiator"
+  ],
+  "title": "Creative Status Changed Webhook",
+  "type": "object"
+}

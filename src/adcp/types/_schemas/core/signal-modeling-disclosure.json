@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "required": {
+            "const": true
+          }
+        },
+        "required": [
+          "required"
+        ]
+      },
+      "then": {
+        "required": [
+          "jurisdictions"
+        ]
+      }
+    }
+  ],
+  "description": "Disclosure requirements and jurisdictional notes for modeled data signals. This schema is intentionally separate from core/provenance.json because creative provenance is about generated content, render guidance, and asset-level chain of custody, while signal modeling disclosure is about data-segment methodology and data-use transparency.",
+  "properties": {
+    "jurisdictions": {
+      "description": "Jurisdictions where a modeling or AI-use disclosure applies.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "audience": {
+            "description": "Primary audience for this disclosure entry.",
+            "enum": [
+              "buyer",
+              "data_subject",
+              "regulator",
+              "public"
+            ],
+            "type": "string"
+          },
+          "country": {
+            "description": "ISO 3166-1 alpha-2 country code.",
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "disclosure_text": {
+            "description": "Human-readable disclosure text or summary the provider expects buyers or reviewers to see.",
+            "type": "string"
+          },
+          "disclosure_url": {
+            "description": "Optional URL to the provider's canonical disclosure or methodology page for this jurisdiction.",
+            "format": "uri",
+            "type": "string"
+          },
+          "region": {
+            "description": "Provider-defined sub-national region code or name when the obligation is regional. No global canonical format is implied.",
+            "type": "string"
+          },
+          "regulation": {
+            "description": "Provider-supplied regulation identifier for the disclosure obligation.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "country",
+          "regulation"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "notes": {
+      "description": "Optional provider notes on how the disclosure should be interpreted. Informational only; buyers should not branch programmatically on this text.",
+      "maxLength": 2000,
+      "type": "string"
+    },
+    "required": {
+      "description": "The provider's claim that a modeling or AI-use disclosure is required for this signal in at least one applicable jurisdiction. This is a declared compliance signal, not a protocol-level legal determination.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "required"
+  ],
+  "title": "Signal Modeling Disclosure",
+  "type": "object"
+}

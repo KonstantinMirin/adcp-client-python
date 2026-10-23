@@ -1,0 +1,946 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "feed_purpose": {
+            "const": "billing"
+          }
+        },
+        "required": [
+          "feed_purpose"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reconciliation_mode": {
+            "const": "consumer_receipt"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reconciliation_mode": {
+            "const": "consumer_receipt"
+          }
+        },
+        "required": [
+          "reconciliation_mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reporting_profile": {
+            "required": [
+              "canonicalization_id",
+              "canonicalization_contract_version",
+              "canonicalization_media_type",
+              "canonicalization_uri",
+              "canonicalization_sha256"
+            ]
+          }
+        },
+        "required": [
+          "method"
+        ]
+      }
+    }
+  ],
+  "definitions": {
+    "ReportingDeliveryPattern": {
+      "enum": [
+        "file_transfer",
+        "dataset_share",
+        "warehouse_materialization"
+      ],
+      "title": "Reporting Delivery Pattern",
+      "type": "string"
+    },
+    "ReportingFeedPurpose": {
+      "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
+      "enum": [
+        "pacing",
+        "analytics",
+        "billing"
+      ],
+      "title": "Reporting Feed Purpose",
+      "type": "string",
+      "x-adcp-model-context-inline": true
+    }
+  },
+  "description": "One atomic combination a seller can honor. Buyers MUST NOT form a cross-product from separate capability arrays; each installed configuration selects one offering_id and values within that offering. A Core API-delivered offering requires no Managed external-materialization canonicalization code or contract, but every resulting revision still carries the fixed RFC 8785/JCS revision-binding canonicalization and digest.",
+  "properties": {
+    "feed_purpose": {
+      "enum": [
+        "pacing",
+        "billing",
+        "analytics"
+      ]
+    },
+    "method": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "pattern"
+            ]
+          },
+          "then": {
+            "required": [
+              "provider"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "pattern": {
+                "const": "file_transfer"
+              }
+            },
+            "required": [
+              "pattern"
+            ]
+          },
+          "then": {
+            "required": [
+              "format"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "pattern": {
+                "const": "dataset_share"
+              }
+            },
+            "required": [
+              "pattern"
+            ]
+          },
+          "then": {
+            "required": [
+              "access_mode"
+            ]
+          }
+        }
+      ],
+      "description": "Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.",
+      "properties": {
+        "access_mode": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_.-]*$",
+          "type": "string"
+        },
+        "destination_modes": {
+          "items": {
+            "enum": [
+              "provision",
+              "existing"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "format": {
+          "enum": [
+            "jsonl",
+            "csv",
+            "parquet",
+            "avro",
+            "orc"
+          ],
+          "type": "string"
+        },
+        "orchestration": {
+          "enum": [
+            "consumer_managed",
+            "producer_managed"
+          ]
+        },
+        "pattern": {
+          "enum": [
+            "dataset_share",
+            "file_transfer",
+            "warehouse_materialization"
+          ]
+        },
+        "producer_identity": {
+          "additionalProperties": false,
+          "dependencies": {
+            "cloud": [
+              "region"
+            ],
+            "region": [
+              "cloud"
+            ]
+          },
+          "description": "Seller principal a buyer grants access to for this exact buyer-hosted destination offering.",
+          "properties": {
+            "cloud": {
+              "enum": [
+                "aws",
+                "gcp",
+                "azure"
+              ]
+            },
+            "identity": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "provider": {
+              "additionalProperties": false,
+              "properties": {
+                "domain": {
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "domain"
+              ],
+              "type": "object"
+            },
+            "region": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "provider",
+            "identity"
+          ],
+          "type": "object"
+        },
+        "provider": {
+          "additionalProperties": false,
+          "properties": {
+            "domain": {
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "domain"
+          ],
+          "type": "object"
+        },
+        "reader_compatibility": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Reporting Reader Compatibility Item",
+            "type": "string",
+            "x-adcp-model-context-inline": true
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "transport": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_.-]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pattern",
+        "transport",
+        "orchestration",
+        "destination_modes"
+      ],
+      "type": "object"
+    },
+    "offering_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+      "type": "string",
+      "x-entity": "reporting_offering"
+    },
+    "reconciliation_mode": {
+      "enum": [
+        "delivery_only",
+        "consumer_receipt"
+      ]
+    },
+    "report_definition_id": {
+      "description": "Immutable semantic definition for metric, grain, attribution, action-report-time, timezone/calendar, source/API mapping, and restatement/finality policy. Configurations and revisions MUST echo this exact value.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_definition"
+    },
+    "report_definition_sha256": {
+      "description": "Digest of the exact report-definition bytes. SDKs verify this before parsing and cache by digest.",
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "report_definition_uri": {
+      "description": "Retrievable immutable reporting-report-definition.json document on the authenticated seller/provider or AdCP-registry origin.",
+      "format": "uri",
+      "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+      "type": "string"
+    },
+    "reporting_profile": {
+      "additionalProperties": false,
+      "description": "Machine-readable semantic and validation contract for delivered rows. The canonicalization_* fields describe the external-materialization canonical-digest contract and are required only for offerings under the reconciled_billing tier; Core and managed-delivery offerings omit those fields but every Core revision still carries the fixed RFC 8785/JCS revision-binding digest.",
+      "properties": {
+        "canonicalization_contract_version": {
+          "const": "1.0",
+          "type": "string"
+        },
+        "canonicalization_id": {
+          "description": "Rules for stable logical row ordering, value encoding, nulls, and schema used by canonical_content_digest.",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "canonicalization_media_type": {
+          "const": "application/vnd.adcp.reporting-canonicalization+json",
+          "type": "string"
+        },
+        "canonicalization_sha256": {
+          "description": "Digest of the exact canonicalization contract identified by canonicalization_id.",
+          "pattern": "^[A-Fa-f0-9]{64}$",
+          "type": "string"
+        },
+        "canonicalization_uri": {
+          "description": "Retrievable exact canonicalization contract on the authenticated seller/provider or AdCP-registry origin. SDKs apply the same bounded, redirect-free SSRF controls as schema_uri and verify canonicalization_sha256 before use.",
+          "format": "uri",
+          "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+          "type": "string"
+        },
+        "grain": {
+          "description": "Stable description of what one logical row represents.",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+          "type": "string"
+        },
+        "primary_keys": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Reporting Primary Key",
+            "type": "string",
+            "x-adcp-model-context-inline": true
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema_dialect": {
+          "const": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Closed SDK-bundled dialect. The SDK never resolves a metaschema over the network, and the fetched document's $schema MUST equal this value.",
+          "type": "string"
+        },
+        "schema_ref_policy": {
+          "const": "local_fragment_only",
+          "description": "The fetched schema is a self-contained bundle. Every $ref is a local # fragment; remote and relative-document dependencies are forbidden.",
+          "type": "string"
+        },
+        "schema_sha256": {
+          "description": "Digest of the exact schema bytes. SDKs verify this before parsing and cache by digest.",
+          "pattern": "^[A-Fa-f0-9]{64}$",
+          "type": "string"
+        },
+        "schema_uri": {
+          "description": "Authenticated seller/provider or AdCP-registry HTTPS origin only; never an IP literal, userinfo URL, redirect target, or mutable validation authority.",
+          "format": "uri",
+          "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "schema_uri",
+        "schema_sha256",
+        "schema_dialect",
+        "schema_ref_policy",
+        "grain",
+        "primary_keys"
+      ],
+      "type": "object"
+    },
+    "schedule": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "anyOf": [
+        {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "period_timezone_policy": {
+                            "const": "fixed"
+                          }
+                        },
+                        "required": [
+                          "period_timezone_policy"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "required": [
+                          "period_timezone"
+                        ],
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "period_timezone_policy": {
+                      "const": "fixed"
+                    }
+                  },
+                  "required": [
+                    "period_timezone",
+                    "period_timezone_policy"
+                  ]
+                }
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "not": {
+                          "anyOf": [
+                            {
+                              "properties": {
+                                "period_timezone_policy": {
+                                  "const": "fixed"
+                                }
+                              },
+                              "required": [
+                                "period_timezone_policy"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "required": [
+                                "period_timezone"
+                              ],
+                              "type": "object"
+                            }
+                          ]
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "period_timezone_policy": {
+                            "const": "fixed"
+                          }
+                        },
+                        "required": [
+                          "period_timezone",
+                          "period_timezone_policy"
+                        ]
+                      }
+                    ],
+                    "properties": {
+                      "alignment": {
+                        "const": "source_timezone"
+                      }
+                    },
+                    "required": [
+                      "alignment",
+                      "period_anchor",
+                      "period_timezone_policy"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "not": {
+                          "anyOf": [
+                            {
+                              "properties": {
+                                "period_timezone_policy": {
+                                  "const": "fixed"
+                                }
+                              },
+                              "required": [
+                                "period_timezone_policy"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "required": [
+                                "period_timezone"
+                              ],
+                              "type": "object"
+                            }
+                          ]
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "period_timezone_policy": {
+                            "const": "fixed"
+                          }
+                        },
+                        "required": [
+                          "period_timezone",
+                          "period_timezone_policy"
+                        ]
+                      }
+                    ],
+                    "properties": {
+                      "alignment": {
+                        "const": "source_timezone"
+                      }
+                    },
+                    "required": [
+                      "alignment",
+                      "period_anchor_policy",
+                      "period_timezone_policy"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "properties": {
+                "alignment": {
+                  "const": "source_timezone"
+                }
+              },
+              "required": [
+                "alignment",
+                "period_timezone_policy"
+              ],
+              "type": "object"
+            },
+            {
+              "not": {
+                "anyOf": [
+                  {
+                    "properties": {
+                      "alignment": {
+                        "const": "source_timezone"
+                      }
+                    },
+                    "required": [
+                      "alignment"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "period_anchor"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "period_anchor_policy"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "period_timezone"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "period_timezone_policy"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "type": "object"
+            }
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "not": {
+                      "anyOf": [
+                        {
+                          "properties": {
+                            "period_timezone_policy": {
+                              "const": "fixed"
+                            }
+                          },
+                          "required": [
+                            "period_timezone_policy"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "required": [
+                            "period_timezone"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "period_timezone_policy": {
+                        "const": "fixed"
+                      }
+                    },
+                    "required": [
+                      "period_timezone",
+                      "period_timezone_policy"
+                    ]
+                  }
+                ],
+                "not": {
+                  "anyOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "not": {
+                            "anyOf": [
+                              {
+                                "properties": {
+                                  "period_timezone_policy": {
+                                    "const": "fixed"
+                                  }
+                                },
+                                "required": [
+                                  "period_timezone_policy"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "required": [
+                                  "period_timezone"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "period_timezone_policy": {
+                              "const": "fixed"
+                            }
+                          },
+                          "required": [
+                            "period_timezone",
+                            "period_timezone_policy"
+                          ]
+                        }
+                      ],
+                      "properties": {
+                        "alignment": {
+                          "const": "source_timezone"
+                        }
+                      },
+                      "required": [
+                        "alignment",
+                        "period_anchor",
+                        "period_timezone_policy"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "anyOf": [
+                        {
+                          "not": {
+                            "anyOf": [
+                              {
+                                "properties": {
+                                  "period_timezone_policy": {
+                                    "const": "fixed"
+                                  }
+                                },
+                                "required": [
+                                  "period_timezone_policy"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "required": [
+                                  "period_timezone"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "properties": {
+                            "period_timezone_policy": {
+                              "const": "fixed"
+                            }
+                          },
+                          "required": [
+                            "period_timezone",
+                            "period_timezone_policy"
+                          ]
+                        }
+                      ],
+                      "properties": {
+                        "alignment": {
+                          "const": "source_timezone"
+                        }
+                      },
+                      "required": [
+                        "alignment",
+                        "period_anchor_policy",
+                        "period_timezone_policy"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                "properties": {
+                  "alignment": {
+                    "const": "source_timezone"
+                  }
+                },
+                "required": [
+                  "alignment",
+                  "period_timezone_policy"
+                ],
+                "type": "object"
+              },
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "alignment": {
+                          "const": "source_timezone"
+                        }
+                      },
+                      "required": [
+                        "alignment"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "required": [
+                        "period_anchor"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "required": [
+                        "period_anchor_policy"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "required": [
+                        "period_timezone"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "required": [
+                        "period_timezone_policy"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "object"
+              }
+            ],
+            "properties": {
+              "alignment": {
+                "const": "billing_cycle"
+              }
+            },
+            "required": [
+              "alignment"
+            ],
+            "type": "object"
+          },
+          "type": "object"
+        },
+        {
+          "anyOf": [
+            {
+              "not": {
+                "anyOf": [
+                  {
+                    "properties": {
+                      "period_anchor_policy": {
+                        "const": "fixed"
+                      }
+                    },
+                    "required": [
+                      "period_anchor_policy"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "period_anchor"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "period_timezone"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "period_anchor_policy": {
+                  "const": "fixed"
+                }
+              },
+              "required": [
+                "period_anchor",
+                "period_anchor_policy",
+                "period_timezone"
+              ]
+            }
+          ],
+          "properties": {
+            "alignment": {
+              "const": "billing_cycle"
+            }
+          },
+          "required": [
+            "alignment",
+            "period_anchor_policy"
+          ]
+        }
+      ],
+      "description": "Period and availability SLA this offering can honor. For example, PT1H with snapshot finality explicitly advertises hourly provisional snapshots; a separate P1D official offering advertises daily finalized reporting.",
+      "maxProperties": 7,
+      "properties": {
+        "alignment": {
+          "enum": [
+            "utc",
+            "billing_cycle",
+            "source_timezone",
+            "account_timezone"
+          ]
+        },
+        "delivery_sla": {
+          "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
+          "type": "string"
+        },
+        "period_anchor": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "period_anchor_policy": {
+          "enum": [
+            "fixed",
+            "configurable"
+          ]
+        },
+        "period_duration": {
+          "pattern": "^P(?=.*[1-9])(?=\\d|T)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
+          "type": "string"
+        },
+        "period_timezone": {
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string"
+        },
+        "period_timezone_policy": {
+          "enum": [
+            "fixed",
+            "account_resolved"
+          ]
+        }
+      },
+      "required": [
+        "alignment",
+        "delivery_sla",
+        "period_duration"
+      ],
+      "title": "Reporting Schedule Offering",
+      "type": "object",
+      "x-adcp-validation": {
+        "iana_timezone": "Every advertised fixed period_timezone MUST be a recognized IANA Time Zone Database zone name or link, including UTC. Unknown identifiers and numeric UTC offsets are invalid.",
+        "installed_schedule_match": "period_duration, alignment, and delivery_sla MUST equal the installed configuration. For fixed billing_cycle offerings, period_anchor and period_timezone MUST also equal it. For configurable billing_cycle offerings, the installed configuration supplies both values. A fixed source_timezone offering supplies period_timezone; an account_resolved source_timezone offering requires the seller to resolve and echo period_timezone before the configuration becomes ready. utc and account_timezone use the normative origins in reporting-schedule.json, so even multi-unit durations have one independently derivable phase.",
+        "source_compatibility": "The resolved schedule MUST be compatible with the pinned report definition calendar. A seller MUST NOT advertise or accept a schedule merely because it can query the source eventually; it must be able to produce the exact promised periods natively or through lossless finer-grained re-bucketing."
+      },
+      "x-status": "experimental"
+    },
+    "supported_finality": {
+      "description": "Finality classes available under this exact report definition, schedule, and delivery method. snapshot is an explicit provisional capability, not inferred from poll frequency. Use separate atomic offerings when snapshot and official schedules or methods differ.",
+      "items": {
+        "enum": [
+          "official",
+          "snapshot"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "offering_id",
+    "feed_purpose",
+    "report_definition_id",
+    "report_definition_uri",
+    "report_definition_sha256",
+    "reporting_profile",
+    "schedule",
+    "supported_finality",
+    "reconciliation_mode"
+  ],
+  "title": "Reporting Delivery Offering",
+  "type": "object",
+  "x-adcp-validation": {
+    "safe_schema_fetch": "schema_uri, canonicalization_uri, and report_definition_uri origins must be the authenticated seller, the named provider, or an AdCP registry. Reject userinfo, IP literals, localhost, private/reserved DNS results, redirects, and DNS/connect-target mismatch; pin resolution, cap bytes/time, require the expected content type, verify the corresponding SHA-256 before parsing, and cache by digest. The canonicalization and report-definition documents MUST validate against their AdCP contract schemas. The fetched row schema's $schema MUST equal schema_dialect, whose metaschema is SDK-bundled and never network-fetched. Before compiling with no network-capable resolver installed, recursively reject every $ref not beginning with #, all $dynamicRef and $recursiveRef keywords, cyclic references, excessive depth/node count, oversized regexes, and unsupported vocabularies. Fetched content and annotations are untrusted data, never agent or LLM instructions.",
+    "snapshot_declaration": "A snapshot claim is the atomic combination of supported_finality containing snapshot, this exact schedule, report definition/profile, and delivery method. Sellers MUST NOT imply a faster snapshot cadence from polling, webhook, or transport support that is not advertised by such an offering.",
+    "tier_boundaries": "An offering without method is Core: delivered through existing API transports, with no destination, manifest, or Managed external-materialization canonicalization code or contract required. Every Core revision nevertheless carries the fixed RFC 8785/JCS revision-binding canonicalization and digest. method requires the managed_delivery capability. reconciliation_mode consumer_receipt requires a managed method and the reconciled_billing capability, and such offerings MUST carry the full external canonicalization_* contract in reporting_profile. delivery_only offerings omit that external canonicalization contract."
+  },
+  "x-status": "experimental"
+}

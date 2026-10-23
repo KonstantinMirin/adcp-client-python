@@ -1,0 +1,368 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "geo_level": {
+            "const": "country"
+          }
+        },
+        "required": [
+          "geo_level"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "system"
+              ]
+            },
+            {
+              "required": [
+                "country"
+              ]
+            }
+          ]
+        },
+        "properties": {
+          "geo_code": {
+            "description": "ISO 3166-1 alpha-2 country code.",
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "geo_level": {
+            "const": "region"
+          }
+        },
+        "required": [
+          "geo_level"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "system"
+              ]
+            },
+            {
+              "required": [
+                "country"
+              ]
+            }
+          ]
+        },
+        "properties": {
+          "geo_code": {
+            "description": "ISO 3166-2 subdivision code.",
+            "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "geo_level": {
+            "const": "metro"
+          }
+        },
+        "required": [
+          "geo_level"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "country"
+          ]
+        },
+        "properties": {
+          "system": {
+            "enum": [
+              "custom",
+              "uk_itl1",
+              "uk_itl2",
+              "nielsen_dma",
+              "eurostat_nuts2"
+            ]
+          }
+        },
+        "required": [
+          "system"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "geo_level": {
+            "const": "postal_area"
+          }
+        },
+        "required": [
+          "geo_level"
+        ]
+      },
+      "then": {
+        "anyOf": [
+          {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "anyOf": [
+              {
+                "properties": {
+                  "country": {
+                    "const": "AU"
+                  },
+                  "system": {
+                    "const": "postcode"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "const": "BR"
+                  },
+                  "system": {
+                    "const": "cep"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "const": "CA"
+                  },
+                  "system": {
+                    "enum": [
+                      "fsa",
+                      "full"
+                    ]
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "const": "FR"
+                  },
+                  "system": {
+                    "const": "code_postal"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "const": "GB"
+                  },
+                  "system": {
+                    "enum": [
+                      "full",
+                      "outward"
+                    ]
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "const": "IN"
+                  },
+                  "system": {
+                    "const": "pin"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "const": "US"
+                  },
+                  "system": {
+                    "enum": [
+                      "zip",
+                      "zip_plus_four"
+                    ]
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "const": "ZA"
+                  },
+                  "system": {
+                    "const": "postal_code"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "enum": [
+                      "AT",
+                      "CH",
+                      "DE"
+                    ]
+                  },
+                  "system": {
+                    "const": "plz"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "not": {
+                      "enum": [
+                        "AT",
+                        "AU",
+                        "BR",
+                        "CA",
+                        "CH",
+                        "DE",
+                        "FR",
+                        "GB",
+                        "IN",
+                        "US",
+                        "ZA"
+                      ]
+                    }
+                  },
+                  "system": {
+                    "enum": [
+                      "custom",
+                      "postal_code"
+                    ]
+                  }
+                }
+              }
+            ],
+            "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
+            "properties": {
+              "country": {
+                "description": "ISO 3166-1 alpha-2 country code.",
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              "system": {
+                "enum": [
+                  "cep",
+                  "fsa",
+                  "pin",
+                  "plz",
+                  "zip",
+                  "full",
+                  "at_plz",
+                  "ca_fsa",
+                  "ch_plz",
+                  "custom",
+                  "de_plz",
+                  "us_zip",
+                  "ca_full",
+                  "gb_full",
+                  "outward",
+                  "postcode",
+                  "gb_outward",
+                  "au_postcode",
+                  "code_postal",
+                  "postal_code",
+                  "zip_plus_four",
+                  "fr_code_postal",
+                  "us_zip_plus_four"
+                ]
+              }
+            },
+            "required": [
+              "country",
+              "system"
+            ],
+            "title": "Postal Country System",
+            "type": "object"
+          },
+          {
+            "not": {
+              "required": [
+                "country"
+              ]
+            },
+            "properties": {
+              "system": {
+                "enum": [
+                  "at_plz",
+                  "ca_fsa",
+                  "ch_plz",
+                  "de_plz",
+                  "us_zip",
+                  "ca_full",
+                  "gb_full",
+                  "gb_outward",
+                  "au_postcode",
+                  "fr_code_postal",
+                  "us_zip_plus_four"
+                ]
+              }
+            },
+            "required": [
+              "system"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "description": "A geographic dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
+  "properties": {
+    "country": {
+      "description": "ISO 3166-1 alpha-2 country code. Required for native postal_area rows and omitted for legacy postal rows, metro rows, country rows, and region rows.",
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "geo_code": {
+      "description": "Geographic code within the level and system. Country: ISO 3166-1 alpha-2 ('US'). Region: ISO 3166-2 with country prefix ('US-CA'). Metro/postal: system-specific code ('501', '10001').",
+      "type": "string"
+    },
+    "geo_level": {
+      "enum": [
+        "metro",
+        "region",
+        "country",
+        "postal_area"
+      ]
+    },
+    "geo_name": {
+      "description": "Human-readable geographic name (e.g., 'United States', 'California', 'New York DMA').",
+      "type": "string"
+    },
+    "kind": {
+      "const": "geo",
+      "description": "Dimension family discriminator.",
+      "type": "string"
+    },
+    "system": {
+      "description": "Classification system for metro or postal_area levels. Required when geo_level is 'metro' or 'postal_area'. Metro rows use metro-system enum values such as 'nielsen_dma'; native postal rows use country-local postal-system enum values such as 'zip' with country 'US'; deprecated legacy postal rows may use legacy-postal-system enum values such as 'us_zip'. Omit for country and region rows.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind",
+    "geo_level",
+    "geo_code"
+  ],
+  "title": "Geo Forecast Dimension",
+  "type": "object"
+}

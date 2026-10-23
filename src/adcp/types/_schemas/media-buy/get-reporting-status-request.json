@@ -1,0 +1,472 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "allOf": [
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Release-precision AdCP protocol version negotiation fields. Composed via `allOf` into AdCP request schemas and shared response components so the version semantics live in one place. Strict (`additionalProperties: false`) request schemas also redeclare these two fields in their own `properties` via `$ref`, because draft-07 does not evaluate properties across `allOf`. The Trusted Match match requests are the exception: they inline both fields for their strict privacy boundary. Distinct from `core/protocol-envelope.json`, which wraps responses at the transport layer (context_id / task_id / status / payload). This envelope is part of the payload itself.",
+      "properties": {
+        "adcp_major_version": {
+          "deprecated": true,
+          "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+          "maximum": 99,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "adcp_version": {
+          "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
+          "examples": [
+            "3.0",
+            "3.1",
+            "3.1-beta",
+            "3.1-rc.1"
+          ],
+          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
+          "type": "string"
+        }
+      },
+      "title": "AdCP Version Envelope",
+      "type": "object"
+    },
+    {
+      "if": {
+        "properties": {
+          "view": {
+            "const": "summary"
+          }
+        },
+        "required": [
+          "view"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "reporting_revision_id"
+              ]
+            },
+            {
+              "required": [
+                "pagination"
+              ]
+            },
+            {
+              "required": [
+                "health"
+              ]
+            },
+            {
+              "required": [
+                "changes_after"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "view": {
+            "const": "periods"
+          }
+        },
+        "required": [
+          "view"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "reporting_revision_id"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "view": {
+            "const": "revision"
+          }
+        },
+        "required": [
+          "view"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "media_buy_ids"
+              ]
+            },
+            {
+              "required": [
+                "delivery_config_ids"
+              ]
+            },
+            {
+              "required": [
+                "feed_purposes"
+              ]
+            },
+            {
+              "required": [
+                "period"
+              ]
+            },
+            {
+              "required": [
+                "health"
+              ]
+            },
+            {
+              "required": [
+                "finality"
+              ]
+            },
+            {
+              "required": [
+                "changes_after"
+              ]
+            }
+          ]
+        },
+        "required": [
+          "reporting_revision_id"
+        ]
+      }
+    }
+  ],
+  "definitions": {
+    "ReportingStatusView": {
+      "description": "Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.",
+      "enum": [
+        "summary",
+        "periods",
+        "revision"
+      ],
+      "title": "Reporting Status View",
+      "type": "string",
+      "x-adcp-model-context-inline": true
+    }
+  },
+  "description": "Authoritative caller/account-isolated reporting reliability read. The authenticated caller identity comes only from transport authentication, never request fields. summary answers the operational question for independently selected delivery configurations/feeds; periods returns a cursor-paginated obligation ledger; revision resolves one exact retained revision and its materializations/resources. Unknown, unauthorized, cross-caller, and cross-account identifiers MUST be indistinguishable. Sellers implementing this task MUST advertise media_buy.reporting_delivery in experimental_features.",
+  "properties": {
+    "account": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "not": {}
+          },
+          "maxProperties": 1,
+          "properties": {
+            "account_id": {
+              "minLength": 1,
+              "type": "string",
+              "x-entity": "account"
+            }
+          },
+          "required": [
+            "account_id"
+          ]
+        },
+        {
+          "additionalProperties": {
+            "not": {}
+          },
+          "maxProperties": 6,
+          "properties": {
+            "brand": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+              "maxProperties": 3,
+              "properties": {
+                "brand_id": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+                  "examples": [
+                    "tide",
+                    "cheerios",
+                    "air_jordan",
+                    "nike",
+                    "pampers"
+                  ],
+                  "pattern": "^[a-z0-9_]+$",
+                  "title": "Brand ID",
+                  "type": "string",
+                  "x-entity": "advertiser_brand"
+                },
+                "countries": {
+                  "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+                  "items": {
+                    "pattern": "^[A-Z]{2}$",
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "domain": {
+                  "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "domain"
+              ],
+              "title": "Brand Key",
+              "type": "object"
+            },
+            "currency": {
+              "description": "Immutable ISO 4217 transaction currency when the advertiser object is currency-bound. When present, this is part of the natural key and all media buys on the account use it. Omit for per-media-buy currency selection.",
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            "operator": {
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string",
+              "x-entity": "operator"
+            },
+            "operator_unit": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Optional operator-owned business unit, agency seat, or platform account. Only id participates in identity; name is mutable display metadata.",
+              "examples": [
+                {
+                  "id": "234284238",
+                  "name": "Nova EMEA"
+                },
+                {
+                  "id": "benelux-seat",
+                  "name": "Nova Benelux"
+                }
+              ],
+              "maxProperties": 2,
+              "properties": {
+                "id": {
+                  "description": "Stable identifier assigned by the operator. Numeric platform IDs and durable slugs are both valid. Scoped by the enclosing operator domain.",
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Human-readable seat or business-unit name, such as Nova EMEA. This label may change and is not part of the natural account key.",
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id"
+              ],
+              "title": "Operator Unit",
+              "type": "object",
+              "x-entity": "operator_unit"
+            },
+            "sandbox": {
+              "enum": [
+                false,
+                true
+              ]
+            },
+            "timezone": {
+              "description": "Immutable account timezone. Include it in the natural key only for buyer-selected account_fixed provisioning.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "brand",
+            "operator"
+          ]
+        }
+      ],
+      "description": "Account whose caller-owned reporting status is queried.",
+      "examples": [
+        {
+          "account_id": "acc_nova_nl"
+        },
+        {
+          "brand": {
+            "countries": [
+              "NL"
+            ],
+            "domain": "nova-athletics.example"
+          },
+          "currency": "EUR",
+          "operator": "nova-athletics.example",
+          "operator_unit": {
+            "id": "234284238",
+            "name": "Nova EMEA"
+          },
+          "timezone": "Europe/Amsterdam"
+        }
+      ],
+      "title": "Canonical Account Reference",
+      "type": "object"
+    },
+    "changes_after": {
+      "description": "Periods-view incremental-repair checkpoint previously returned as changes_checkpoint after fully consuming a response. Returns newly committed obligations, revisions, adjustments, materializations, consumer status statements, revision receipts, and adjustment receipts plus the current projection of each affected obligation. Omit for a full ledger read.",
+      "maxLength": 2048,
+      "minLength": 1,
+      "type": "string"
+    },
+    "context": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "title": "Context Object",
+      "type": "object"
+    },
+    "delivery_config_ids": {
+      "description": "Optional summary/periods scope. Use to reconcile billing, analytics, and pacing independently. Omit for every active caller-owned configuration.",
+      "items": {
+        "maxLength": 64,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9_.:-]{1,64}$",
+        "type": "string",
+        "x-entity": "reporting_delivery_config"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "feed_purposes": {
+      "description": "Optional summary/periods feed filter. The response echoes exact resolved configuration generations so this never creates an opaque aggregate.",
+      "items": {
+        "enum": [
+          "pacing",
+          "billing",
+          "analytics"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "finality": {
+      "items": {
+        "enum": [
+          "official",
+          "snapshot"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "health": {
+      "description": "Periods-view result filter only; it never changes summary health.",
+      "items": {
+        "enum": [
+          "delayed",
+          "healthy",
+          "waiting",
+          "complete",
+          "action_required"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "media_buy_ids": {
+      "description": "Optional summary/periods scope. Omit for every accessible media buy in the account.",
+      "items": {
+        "minLength": 1,
+        "title": "Reporting Media Buy ID",
+        "type": "string",
+        "x-adcp-model-context-inline": true,
+        "x-entity": "media_buy"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "pagination": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "description": "Periods or revision-view pagination. Cursors are bound to the authenticated caller, account, filters, and ledger snapshot.",
+      "maxProperties": 2,
+      "properties": {
+        "cursor": {
+          "description": "Opaque cursor from a previous response to fetch the next page",
+          "type": "string"
+        },
+        "max_results": {
+          "default": 50,
+          "description": "Maximum number of items to return per page",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "title": "Pagination Request",
+      "type": "object"
+    },
+    "period": {
+      "additionalProperties": false,
+      "description": "Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope.",
+      "properties": {
+        "end": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "type": "object"
+    },
+    "reporting_revision_id": {
+      "description": "Exact retained revision to resolve in revision view.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_revision"
+    },
+    "view": {
+      "enum": [
+        "periods",
+        "summary",
+        "revision"
+      ]
+    }
+  },
+  "required": [
+    "account",
+    "view"
+  ],
+  "title": "Get Reporting Status Request",
+  "type": "object",
+  "x-mutates-state": false,
+  "x-status": "experimental",
+  "x-tool-summary": "Check reporting health, enumerate expected periods and all retained revisions, or resolve one exact reporting revision."
+}

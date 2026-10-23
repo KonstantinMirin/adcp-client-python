@@ -1,0 +1,255 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Normative manifest for one completed file-transfer materialization. Producers write every data object first and publish this manifest last. Its appearance is the commit point: consumers MUST ignore unlisted objects and MUST NOT process the materialization before a digest-valid complete manifest is visible.",
+  "properties": {
+    "complete": {
+      "const": true,
+      "type": "boolean"
+    },
+    "compression": {
+      "enum": [
+        "gzip",
+        "none",
+        "zstd",
+        "snappy"
+      ]
+    },
+    "control_totals": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "One profile-defined aggregate used to reconcile a reporting revision without rereading every row. Names and units are defined by the immutable report definition. Values use canonical strings so currency and large integer comparisons are exact across SDKs.",
+        "oneOf": [
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 4,
+            "properties": {
+              "name": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+                "type": "string"
+              },
+              "unit": {
+                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              "value": {
+                "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
+                "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+                "type": "string"
+              },
+              "value_type": {
+                "const": "decimal"
+              }
+            },
+            "required": [
+              "name",
+              "value",
+              "value_type"
+            ],
+            "title": "DecimalReportingControlTotal",
+            "type": "object"
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 4,
+            "properties": {
+              "name": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+                "type": "string"
+              },
+              "unit": {
+                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              "value": {
+                "description": "Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.",
+                "pattern": "^-?(?:0|[1-9][0-9]*)$",
+                "type": "string"
+              },
+              "value_type": {
+                "const": "integer"
+              }
+            },
+            "required": [
+              "name",
+              "value",
+              "value_type"
+            ],
+            "title": "IntegerReportingControlTotal",
+            "type": "object"
+          }
+        ],
+        "title": "Reporting Control Total",
+        "x-status": "experimental"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "created_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "files": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "One immutable data object committed by a reporting file manifest.",
+        "maxProperties": 6,
+        "properties": {
+          "native_version_ref": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Credential-free, decoded provider-native immutable version reference, such as an S3 VersionId, GCS generation, table version, transaction, snapshot, manifest generation, job, or run. This is not URI-encoded or concatenated into an object_ref; URI-encode it only when constructing a provider request. The 1024-character limit accommodates a provider value of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Reporting Native Version Reference",
+            "type": "string",
+            "x-status": "experimental"
+          },
+          "object_ref": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Reporting File Object Reference",
+            "type": "string",
+            "x-status": "experimental"
+          },
+          "partition": {
+            "additionalProperties": {
+              "maxLength": 512,
+              "type": "string"
+            },
+            "maxProperties": 32,
+            "type": "object"
+          },
+          "row_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[A-Fa-f0-9]{64}$",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "object_ref",
+          "row_count",
+          "sha256",
+          "size_bytes"
+        ],
+        "title": "Reporting File Entry",
+        "type": "object",
+        "x-status": "experimental"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "format": {
+      "enum": [
+        "jsonl",
+        "csv",
+        "parquet",
+        "avro",
+        "orc"
+      ],
+      "type": "string"
+    },
+    "manifest_version": {
+      "const": "1.0",
+      "type": "string"
+    },
+    "period": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "source_timezone": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "source_timezone"
+      ],
+      "type": "object"
+    },
+    "reporting_materialization_id": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_materialization"
+    },
+    "reporting_obligation_id": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_obligation"
+    },
+    "reporting_revision_id": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_revision"
+    },
+    "row_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "total_size_bytes": {
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "manifest_version",
+    "complete",
+    "reporting_revision_id",
+    "reporting_obligation_id",
+    "reporting_materialization_id",
+    "period",
+    "format",
+    "compression",
+    "files",
+    "total_size_bytes",
+    "row_count",
+    "control_totals",
+    "created_at"
+  ],
+  "title": "Reporting File Manifest",
+  "type": "object",
+  "x-adcp-validation": {
+    "identity_match": "The revision, obligation, materialization, period, format, row count, and control totals MUST equal the referenced ledger records and verification evidence.",
+    "manifest_digest": "reporting_resource.manifest_sha256 MUST equal SHA-256 over the exact manifest bytes before parsing.",
+    "object_set": "object_ref values MUST be unique. total_size_bytes and row_count MUST equal the sums across files. Every file checksum MUST be verified before downstream commit."
+  },
+  "x-status": "experimental"
+}

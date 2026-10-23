@@ -1,0 +1,564 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "disposition": {
+            "const": "conditional"
+          }
+        },
+        "required": [
+          "disposition"
+        ]
+      },
+      "then": {
+        "required": [
+          "requirements"
+        ]
+      }
+    }
+  ],
+  "description": "A coarse, discoverable seller rule for one policy subject. Discovery is advisory; the seller response to an exact request remains authoritative.",
+  "properties": {
+    "advertiser_roles": {
+      "description": "Registry-extensible roles such as political_actor, election_authority, government_entity, news_publisher, or commercial_advertiser.",
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "applies_to": {
+      "items": {
+        "enum": [
+          "account",
+          "media_buy",
+          "creative",
+          "landing_page",
+          "targeting",
+          "delivery",
+          "format"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "description": {
+      "description": "Display-only explanation. Matchers MUST NOT interpret this text as executable instructions or use it to override typed fields.",
+      "maxLength": 1000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "disposition": {
+      "enum": [
+        "allowed",
+        "conditional",
+        "prohibited"
+      ],
+      "type": "string"
+    },
+    "effective_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "jurisdiction_groups": {
+      "description": "Named country groups declared by the containing profile's region_aliases. Unknown group IDs invalidate the profile; they never match permissively.",
+      "items": {
+        "pattern": "^[A-Z][A-Z0-9_-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "jurisdictions": {
+      "description": "Delivery jurisdictions where this rule applies. Omission means every jurisdiction served by the seller.",
+      "items": {
+        "pattern": "^[A-Z]{2}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "policy_ids": {
+      "description": "Registry policies that define the exact obligations behind this coarse rule.",
+      "items": {
+        "minLength": 1,
+        "type": "string",
+        "x-entity": "governance_registry_policy"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "requirements": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "A typed prerequisite or restriction attached to a conditional seller-acceptance rule. The kind is coarse and machine-actionable; exact obligations remain in the referenced registry policies.",
+        "discriminator": {
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 2,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "account_setup"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 2,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "creative_restriction"
+              }
+            },
+            "required": [
+              "description",
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 2,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "destination_restriction"
+              }
+            },
+            "required": [
+              "description",
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 2,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "prior_authorization"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 2,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "sales_assisted"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 2,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "transparency_reporting"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 3,
+            "properties": {
+              "credential": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "certification"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 3,
+            "properties": {
+              "credential": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "license"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 3,
+            "properties": {
+              "criteria": {
+                "description": "Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.",
+                "items": {
+                  "pattern": "^[a-z][a-z0-9_.:-]*$",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "advertiser_eligibility"
+              }
+            },
+            "required": [
+              "criteria",
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 3,
+            "properties": {
+              "criteria": {
+                "description": "Stable restrictions such as no_foreign_funding or sponsor_identity_required.",
+                "items": {
+                  "pattern": "^[a-z][a-z0-9_.:-]*$",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "funding_restriction"
+              }
+            },
+            "required": [
+              "criteria",
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 3,
+            "properties": {
+              "declaration": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "category_declaration"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 3,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "format_ids": {
+                "deprecated": true,
+                "description": "Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.",
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true,
+                "x-deprecated-in": "3.2.0",
+                "x-removed-in": "4.0.0"
+              },
+              "kind": {
+                "const": "format_restriction"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 3,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "advertiser_verification"
+              },
+              "verification_scheme": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 3,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "targeting_restriction"
+              },
+              "restricted_attributes": {
+                "items": {
+                  "enum": [
+                    "age",
+                    "health_data",
+                    "genetic_data",
+                    "biometric_data",
+                    "familial_status",
+                    "religious_beliefs",
+                    "political_opinions",
+                    "racial_ethnic_origin",
+                    "trade_union_membership",
+                    "sex_life_sexual_orientation"
+                  ]
+                },
+                "maxItems": 10,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 4,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "ends_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "kind": {
+                "const": "time_restriction"
+              },
+              "starts_at": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 4,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "ext": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                "title": "Extension Object",
+                "type": "object"
+              },
+              "id": {
+                "pattern": "^[a-z][a-z0-9_.:-]*$",
+                "type": "string"
+              },
+              "kind": {
+                "const": "custom"
+              }
+            },
+            "required": [
+              "description",
+              "id",
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": {
+              "not": {}
+            },
+            "maxProperties": 4,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "format": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "disclosure"
+              },
+              "placement": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        ],
+        "title": "Acceptance Policy Requirement",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "rule_id": {
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "type": "string",
+      "x-entity": "acceptance_policy_rule"
+    },
+    "subject_category": {
+      "description": "Registry policy-category-definition category_id. Named subject_category to avoid collision with PolicyEntry.category, whose values are regulation and standard.",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "type": "string",
+      "x-entity": "governance_policy_category"
+    },
+    "subject_facets": {
+      "description": "Facet IDs defined by the selected policy category. Omission means the rule applies to every facet in the category.",
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "type": "string",
+        "x-entity": "governance_policy_category_facet"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "rule_id",
+    "subject_category",
+    "applies_to",
+    "disposition"
+  ],
+  "title": "Acceptance Policy Rule",
+  "type": "object"
+}
