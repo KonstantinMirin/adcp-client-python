@@ -119,6 +119,125 @@ Written before any code was changed or any probe run.
 | P7 | No `ROWS` row is added and no `bundle` selector changes. Rows stay disjoint: 1,033 claimed once, 21 by none, 0 twice. |
 | P8 | `tests/test_import_rule.py` stays green: the arm lives in `emit`, which already imports `lower.product`, and `product.py` gains no import. |
 
-## 5. GRADE (filled in after measurement)
+## 5. GRADE
 
-<!-- grade -->
+**Every number below was measured at base `00c7dd4d4`**, in the worktree
+`acp-j3k2l18`, with the baseline re-derived in a detached worktree at that same sha
+(401 emitted / 653 refused, which is the bead's own figure). The trunk figures the
+coordinator quotes — 406 / 648, 481 pairs, 395 modules — are from a tree carrying
+`applied_schema` / `constrained_to_object`, which neither this branch nor
+`emit/from-scratch`'s tip at `62b5e7ce2` contains, so none of my numbers is comparable
+to them without the merge. §6 below says which of them the merge should move.
+
+| # | prediction | measured | verdict |
+|---|---|---|---|
+| P1 | the probe reddens: every branch class reports `added` > 0, and the accepts check reports `model_refused_valid` | **UNGRADEABLE — the probe could not run.** Patching this row to bind the conjuncts as bases over all 41: **0 emit.** 35 refuse on the root `properties` below, 4 on a branch `not`, 1 on a branch `type`, 1 on `dependencies`. No branch class ever existed to grade, so `added` and the accepts verdict were never measured | **WRONG about being measurable.** The direction was right for the wrong reason: I predicted a red grade, and what I got was no grade at all |
+| P2 | 0 of 41 emit; all 41 report `allOf`; the by-keyword profile keeps `allOf` at 68 | 0 of 41 emit ✓. **37 report `allOf`, not 41**: adding `allOf` to `ROOT_HANDLED` lets the keyword screen reach past it, so 3 move to `not` and 1 to `dependencies`. `allOf` goes **68 → 48** over the bundle | **HALF WRONG.** The emission count held; the attribution claim did not, and "the profile does not move" was simply false |
+| P3 | 5 of the 8 lowerable property/nested documents emit | **2**: `core/attribution-window.json` and `core/outcome-measurement.json` | **WRONG**, and over-optimistic by 3 |
+| P4 | the other 18 refuse `if` 12 / `not` 3 / `anyOf` 2 / `additionalProperties` 1 | over the 26: `allOf` 10 (9 at a branch, 1 "not a class"), `if` 6, `$ref` 6, `anyOf` 1, `additionalProperties` 1, emits 2 | **WRONG.** I did not predict the `$ref` CHAIN refusals at all — 6 documents whose composition now lowers and whose target is refused — and I did not foresee that 9 would land at a union branch, which `_decide` never reaches |
+| P5 | N 401 → 406, refused 653 → 648 | **401 → 403**, refused **653 → 651**, sum 1,054 | **WRONG**, by 3 |
+| P6 | `added` 0, `missing` 0, `differs` 0; pairs 462 → about 470 | see the suite line in §7 | — |
+| P7 | no row added, no selector changed; rows stay 1,033 / 21 / 0 | `ROWS` is still six rows; `codegen/bundle.py` is untouched | **RIGHT** |
+| P8 | `test_import_rule` stays green | `product.py` gained no import; the composition is reached from `emit`, which already imported it | **RIGHT** |
+
+**Score: 2 right, 4 wrong, 1 ungradeable, 1 deferred to the suite.** The two
+structural predictions held and every quantitative one was wrong. The sharpest
+correction is P1: I wrote a prediction about what a probe would GRADE without first
+asking whether the probe had a population, and it had none.
+
+## 6. The design gap, and the mechanism that is already closing it
+
+**Group A's 41 documents cannot be emitted, and the reason is not step 4's.** A root
+`allOf` is a conjunction with every branch of a root union. If the conjuncts become
+bases of the union base, every branch inherits them (the branches subclass the base —
+§4), so each branch class states facts its own `#/<kw>/<i>` node does not. §6 pairs a
+class with a JSON POINTER, and the conjunction of `#/allOf/*` with `#/oneOf/<i>` is at
+no pointer. This is a direct conflict with D7, which shows a branch class
+(`CreateMediaBuyResponse1`) inheriting `AdcpVersionEnvelope` and `ProtocolEnvelope` —
+and 37 of the 41 reference `core/version-envelope.json`, 33
+`core/protocol-envelope.json`, so this is the bulk of D7's envelope story.
+
+**What the design did not take into consideration: a SchemaRef is a JSON pointer, and
+a conjunction is not at one.** §6 assumes every class a row declares names a node the
+pointer vocabulary can address. It does for a leaf, a nested object and a branch of a
+BARE union; it does not for a branch of a union whose root also asserts something
+about the same instance.
+
+**That is the KNOWN CEILING trunk has already named.** `_base.applied_schema`
+(`5e4a02e34`) makes a SchemaRef resolve to the node AS THE DOCUMENT APPLIES IT, and its
+own docstring says:
+
+> `type` is the ONE fact conjoined … every such node a class is declared at today is a
+> union branch — `lower.union.ROOT_CONJUNCTS` refuses a union root that carries
+> `properties`, `required` or `additionalProperties`, so `type` is the only assertion
+> such a root can make about the instance. KNOWN CEILING: a row whose root asserts more
+> than a type about the same instance needs this extended.
+
+So the upgrade path is not in step 4 and not a seventh row: **widen `applied_schema`
+from conjoining the enclosing `type` to conjoining everything the enclosing node
+asserts unconditionally about the same instance** — its `allOf` conjuncts, its
+`properties`, `required` and `additionalProperties`. Then `#/oneOf/<i>` as applied does
+carry the envelope facts, the branch class grades, `ROOT_CONJUNCTS` shrinks to nothing
+and all four of its entries stop refusing. This change makes that argument STRONGER
+rather than weaker: with `allOf` in `ROOT_CONJUNCTS`, `type` remains the only assertion
+a union root can make about the instance, which is the premise `applied_schema` rests
+on.
+
+**One number of mine the merge should move.** P1's "0 of 41" was measured without
+`applied_schema`. Asking the DOCUMENTS instead of the tree — the rule applied by hand,
+verbatim from `5e4a02e34` — **17 of the 41 have at least one branch that trunk's rule
+repairs**, `brand/verify-brand-claim-request.json` among them (root `type: object`, all
+four branches gain an applied type). That document is the only one of the 32 whose
+conjunct targets all emit today, so on the merged tree the probe acquires a population
+and "0 of 41" must be re-run. The grader argument is untouched by that: `applied_schema`
+conjoins `type` alone, so a branch still states the envelope fields its node does not.
+
+**Not affected: every composition this branch lowers owns its own instance.** Measured
+over the whole portable population — 307 compositions lowered, 287 at a root and 20
+below one, and 0 of the 20 at a shared-instance position (12 `properties/<key>`, 7
+`items`, 1 `definitions` entry). The nearest miss is
+`core/budget-allocation.json#/oneOf/1/properties/optimization_goals/items`, whose
+pointer crosses a branch two instances up and whose own node is an array element. So no
+node this branch reads in isolation is a node the document constrains from outside.
+
+## 7. The fire probes, and one that refuted my own reasoning
+
+Each change was made to FAIL, and the emitter re-measured over all 1,054 documents.
+
+| probe | what was removed | measured |
+|---|---|---|
+| (a) | the `_decide` composition branch | 403 → **401** emitted, deferral refusals 210 → **226**. Load-bearing: it is what emits the 2 and what moves 16 documents off the deferral |
+| (b) | `allOf` from `ROOT_CONJUNCTS`, with the keyword screen still admitting it | **403 / 651 — unchanged. 0 new emissions.** Only the deferral count moves, 210 → 211 |
+| (c) | the branch-`allOf` refusal, lowering each branch with its conjuncts DROPPED | **403 / 651 — unchanged. 0 new emissions.** Deferral count 210 → 213 |
+
+**Probe (b) refutes the way I was justifying that entry.** It prevents no widening
+today, because nothing emits either way; what it changes is the REASON 37 documents
+are refused. The widening it forecloses is real but not yet reachable: it arrives at
+the first branch repair, and `applied_schema` alone unblocks a branch in 17 of the 41.
+Without the entry such a document emits a base that drops its composed bases — which
+the comparison catches as `missing`, so a red gate rather than a named refusal. Stated
+that way in the code rather than as a widening it prevents now.
+
+**Probe (c) refutes my §6 claim that 2 of the 9 would emit.** With the conjuncts
+dropped — which is exactly what the compiler hoist would supply — **0 of the 9 emit.**
+They refuse on `uniqueItems` (3), a `$ref` chain (2), a branch `type` (2), an `allOf`
+whose base is an alias (1) and a class-name collision (1).
+
+## 8. What I declined to build, and why
+
+**The 9 branch-position compositions.** A branch carrying `allOf` is genuinely
+lowerable — the conjuncts sit at the branch's own node, so `harness._composed` folds
+them in and the grader has a pointer for every fact. What it needs is the conjuncts
+BOUND, and the conjunct reader is the product row's: D13 forbids a lowering importing
+another lowering, so landing it means hoisting that reader into `codegen/compiler.py`.
+That is what D13 prescribes, and I did not do it — and probe (c) is why rather than
+the merge risk I first reached for: **the reachable population is 0.** A ~130-line
+move out of a closed step's module, for a derivation that matches nothing, is the
+shape D14 names. The step whose own keyword unblocks one of these 9 — `uniqueItems`
+(`salesagent-j3k2l.19`) and `applied_schema`'s branch-`type` repair are the two
+nearest — is the step that should make the move. The refusal names the mechanism
+instead of promising a row.
+
+## 9. The suite
+
+<!-- suite -->

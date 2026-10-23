@@ -174,7 +174,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # refusal off the root -- it stopped at `$defs` before any of its 8 property
     # references was read -- so the closure now reaches the three enum documents its
     # earlier properties name. The row itself still moves N by 0.
-    assert len(with_row.emitted) == 217, "N, over a bundle of 1,054"
+    # 218 and not 217, and the one gained is `enums/reach-unit.json`:
+    # `salesagent-j3k2l.18` lowers a composition BELOW a root through
+    # `emit._decide`, so `core/frequency-cap.json` -- reached transitively, not in this
+    # population -- no longer stops at `/properties/suppress` (a bare-`$ref` `allOf` at
+    # a property) and the walk reaches `/properties/per`, where binding that conjunct
+    # emits its target. The document itself still refuses, at
+    # `/properties/per/allOf/0`, because `ReachUnit` is D2's root-scalar ALIAS and
+    # subclassing one is a TypeError -- so this is a refused document's target being
+    # emitted, which is what the transitive walk has always done. The row itself still
+    # moves N by 0.
+    assert len(with_row.emitted) == 218, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
@@ -187,7 +197,12 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # 34 and not 31: the three documents `salesagent-j3k2l.20` added to N above are
     # reached through `governance/policy-entry.json`, which this row's own population
     # is what reaches, so removing the row loses them too.
-    assert len(with_row.emitted) - len(without.emitted) == 34
+    # 35 and not 34: the same `enums/reach-unit.json`. `core/frequency-cap.json` is
+    # reached only through a document this row emits, so with the row removed the walk
+    # never arrives at it and never binds that conjunct's target -- the without-row
+    # count is unchanged at 183, measured, so the whole of the move is on the with-row
+    # side.
+    assert len(with_row.emitted) - len(without.emitted) == 35
     assert len(set(composing()) & set(with_row.emitted)) == 22
     assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
         with_row.emitted

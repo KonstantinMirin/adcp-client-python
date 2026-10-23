@@ -67,6 +67,8 @@ from codegen.harness import (
     Pair,
     PairReport,
     RefusesResult,
+    _closed,  # noqa: PLC2701 -- the harness's own reading of a closed additionalProperties
+    _composed,  # noqa: PLC2701 -- and its own folding of an allOf conjunct's facts
     check_pair,
     compare_schema,
     conforms,
@@ -1448,7 +1450,19 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
     for row in graded():
         if not (isinstance(row.model, type) and issubclass(row.model, AdCPBaseModel)):
             continue  # an alias and an enumeration have no model config
-        declared = schema_at(row.ref).get("additionalProperties", "silent")
+        # **What the DOCUMENT APPLIES at this node, not what the node says alone.**
+        # ``allOf`` conjoins, so a conjunct's ``additionalProperties`` IS the node's --
+        # and ``_composed`` is the harness's own folding, the one ``compare_schema``
+        # reads the document through, so there is no second reading of what a conjunct
+        # contributes.  ``_closed`` folds the resolver's ``{"not": {}}`` back to
+        # ``false``.  Read bare instead, a composing node comes back SILENT while its
+        # class correctly carries the conjunct's value: measured on
+        # ``core/attribution-window.json#/properties/post_click``, whose own node is
+        # ``{"allOf": [{"$ref": "core/duration.json"}], "description": ...}`` and whose
+        # one conjunct declares ``additionalProperties: false``.  The class is
+        # ``forbid`` and the folded document says ``false``, which agree; the bare node
+        # said nothing and this read it as the document permitting what it forbids.
+        declared = _closed(_composed(schema_at(row.ref)).get("additionalProperties", "silent"))
         want = {False: "forbid", True: "allow", "silent": "ignore"}[declared]
         if declared == "silent" and row.model.model_config["extra"] != "ignore":
             # A class that COMPOSES takes its base's value, and the resolver is why
