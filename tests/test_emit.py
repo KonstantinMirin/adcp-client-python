@@ -4333,10 +4333,44 @@ def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
     assert beside == {"type", "description"}, beside
     assert [(d, p) for d, p, n in nodes if "enum" in n] == []
 
-    out = emit.emit(BUNDLE, bundle.portable(BUNDLE))
-    assert len(out.emitted) + len(out.refusals) == 1054
+    portable = bundle.portable(BUNDLE)
+    out = emit.emit(BUNDLE, portable)
+    assert len(out.emitted) + len(out.refusals) == len(portable)
     on_const = {d: r for d, r in out.refusals.items() if r["keyword"] == "const"}
     assert on_const == {}, on_const
+
+
+def test_every_portable_document_is_emitted_or_refused_by_name() -> None:
+    """The epic's exit condition, asserted at run time against the BUNDLE'S OWN SIZE.
+
+    The arithmetic alone is not the condition and has been green while it was false:
+    two sets whose sizes sum correctly can still both miss a document and double-count
+    another.  So this asserts the PARTITION -- total and disjoint, by name -- and it
+    derives the population from ``bundle.portable`` rather than restating a count.
+    A literal here (it read ``1054``) stops being the bundle's size the moment the
+    bundle changes, and then the assertion says only that the number is still that
+    number.
+
+    Each refusal additionally names its pointer and the keyword it refused on, which
+    is the rest of the condition: a document is accounted for by NAME, POINTER and
+    KEYWORD, never by a tally.
+    """
+    portable = set(bundle.portable(BUNDLE))
+    out = emit.emit(BUNDLE, sorted(portable))
+    emitted, refused = set(out.emitted), set(out.refusals)
+
+    assert portable, "empty population: the assertion below would pass vacuously"
+    assert emitted | refused == portable, {
+        "neither emitted nor refused": sorted(portable - (emitted | refused)),
+        "accounted for but not portable": sorted((emitted | refused) - portable),
+    }
+    assert emitted & refused == set(), sorted(emitted & refused)
+    assert len(emitted) + len(refused) == len(portable)
+
+    unnamed = {
+        d: r for d, r in out.refusals.items() if not r.get("keyword") or r.get("pointer") is None
+    }
+    assert unnamed == {}, unnamed
 
 
 def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
