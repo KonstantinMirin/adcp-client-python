@@ -632,6 +632,16 @@ population test, so a row cannot claim a document its step does not count.
 The bundle size is read from the bundle, never written here. N is the emitted count and the
 refusal list is its complement.
 
+**Two figures are both right and they count different things, so say which one you mean.** The
+PARTITION is total and disjoint — `emitted | refusals == portable`, 0 unaccounted — and that is
+**1054**. The GOAL is `emitted + VERDICTS`, because the condition above is "refused by name,
+pointer and keyword" and a refusal still waiting on something is not a verdict; that is **1053**,
+and the one document between them is `a2ui/si-catalog.json`, refused on `UNRESOLVED_TARGET`.
+Measured together on `2360ff7f1`: portable 1054, emitted 686, refused 368, of which 0 deferred
+to a later row and 1 unresolved, so 367 verdicts. Reporting 1054 for the goal overstates it by
+one and reporting 1053 for the partition looks like a lost document; both have been said of the
+same run.
+
 **Every measurement in this build is taken over `schemas/cache/<version>/` excluding the
 `bundled/` and `mcp/` directories.** Those two are projections of the same documents, so
 counting them multiplies every figure. A number quoted without that exclusion is void.
@@ -741,10 +751,11 @@ lowering it alone types it `Any` and drops every fact the base states. The 28 re
 `salesagent-j3k2l.22` owns them; two of the 14 defaults are inversions, where the model's boolean
 default is the opposite of the document's.
 
-**The export rule: a module's `__all__` names the root symbol and the symbol at every pointer
-the BUNDLE names.** `emit.exported` is the whole of it. The two sides of a cross-document
-reference then read the same two facts — `bundle.named_nodes` and `Module.declared` — so the
-emitter cannot disagree with itself about what a module offers.
+**The export rule: a module's `__all__` names every symbol that can cross a module boundary, and
+a symbol crosses in exactly two ways.** `emit.exported` is the whole of it: the root, the symbol
+at every pointer the BUNDLE names, and the field types of a class the bundle COMPOSES. The import
+side and the export side then read the same facts, so the emitter cannot disagree with itself
+about what a module offers.
 
 It disagreed for a while, and that is why this is written down. The binder resolves a fragment
 reference to `mod.declared[into]`, section 2's rule being an import of a symbol the target
@@ -765,16 +776,34 @@ thing copied is in most cases not an alias at all: the 16 name 8 distinct symbol
 7 classes for one document node, which is the flatten-a-`$ref`-into-a-copy defect
 `test_a_cross_document_reference_is_an_import_and_not_a_copy` exists to catch.
 
-**Every declared symbol would be the wrong set, not merely a wider one.** A nested class exists
-because a field needed a type, is asked for by nothing, and is reached through its parent's own
-annotation; naming it would put a second entry in 228 of the tree's 677 modules and say that a
-node the document does not name is part of its surface. The set as written is closed by
-CONSTRUCTION rather than by today's population: `named_nodes` is computed from every `$ref` in
-the bundle and the binder only ever asks for a pointer that came from a `$ref` fragment, so a
-symbol the import side can ask for is always in the export set. Both facts are functions of
-(bundle, document) and not of the run's document set, so P7 holds and the one-document command
-writes the same bytes as the whole-population run. Measured after: 19 of 677 modules export more
-than one name, 0 of 957 aliases are unexported. The root goes first in the list.
+**The second way a symbol crosses was found by the same assertion, one row later.**
+`salesagent-j3k2l.36` landed a subclass that re-uses a composed base's decided field, and
+`formats/canonical/_base.py`'s `CanonicalFormatBaseSlotsItem` then crossed into 7 modules with no
+`$ref` naming it — the bundle-named clause cannot reach it, because the lowering and not a
+reference created the edge. Under `allOf` a subclass inherits the base's fields and may restate
+one, and the description-authority rule's clause 2 says a restatement is then the base's FIELD
+wearing this document's annotations, so the base's own field types necessarily cross into every
+module that composes it. Re-deciding the base's node instead was measured and is wrong: it
+declares a second `...SlotsItem` at a pointer the subclass's document does not have. So the
+import is this plan's own answer and the export has to match it. `emit._composed_nodes` is the
+companion to `bundle.named_nodes` and the same kind of fact — one scan of the bundle, not of the
+run — and ONE restatement is as deep as it goes, because a subclass restates a key the base
+declares and a field of a nested item is not a key of the subclass. A `Target` is minted for the
+root or a named node and for nothing else, so no other class's fields can cross.
+
+**Every declared symbol would be wider than the demand and wrong about why.** Measured on the
+committed tree at `2360ff7f1`: the rule above is **717 names with 24 of 677 modules exporting
+more than one**, and it meets the demand exactly — every symbol the tree imports is in it, 0 of
+964 aliases unexported. Every declared symbol is **1,314 names over 228 modules**, and the extra
+597 are nested classes nothing can ask for, reached through their parent's own annotation. Taking
+the annotations of every root rather than a composed one is **1,053 over 194**, barely narrower
+and discriminating on nothing. Both facts the rule reads are functions of (bundle, document) and
+not of the run's document set, so P7 holds and the one-document command writes the same bytes as
+the whole-population run. The root goes first in the list.
+
+**The alias population is re-measured at every step and never carried**: 910 at `0130e5fc9`, 957
+at `ac9175209`, 964 at `2360ff7f1`. It is a property of the committed tree, so it belongs to the
+`population()` run — 677 modules — and not to the 686-of-1054 metric run.
 
 **Determinism is a precondition of grading, not something to fix later.** Two runs over the
 same bundle emit the same bytes, and a run that does not is ungraded rather than nearly right.

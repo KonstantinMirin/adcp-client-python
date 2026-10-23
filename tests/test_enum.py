@@ -968,12 +968,21 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     # modules -- so copying would be 7 classes for one node, not the 15 "module-level
     # type aliases" the issue describes.  ``emit.exported`` is the fix and carries the
     # reasoning; ``docs/plan/rebuild-plan.md`` section 6 records the decision.
-    # Re-measured there: 0 of 957.
     #
-    # 957 is the alias POPULATION over the ``graded()`` documents of the committed
-    # 677-module tree, re-measured on this tree -- not the 910 this pin carried, which
-    # was measured at 0130e5fc9 before the emitted population grew.  The assertion is
-    # NOT weakened to ``defined in the target module``: that would grade importability,
-    # which the whole-tree import in ``tests/test_emit.py`` already grades, and would
-    # retire the only check on what a module DECLARES.
-    assert checked == 957, checked
+    # AND IT TOOK TWO CLAUSES, which is this assertion's second catch rather than a
+    # correction to the first.  salesagent-j3k2l.36 landed a subclass that RE-USES a
+    # composed base's decided field, so ``formats/canonical/_base``'s
+    # ``CanonicalFormatBaseSlotsItem`` crossed into 7 modules with no ``$ref`` naming
+    # it -- the bundle-named clause cannot reach that, and this assertion found it
+    # again the same way.  A symbol crosses in exactly those two ways, so
+    # ``emit.exported`` is now the union of both and still not every declared symbol.
+    #
+    # 964 is the alias POPULATION over the ``graded()`` documents of the committed
+    # 677-module tree -- the ``population()`` run, not the 686-of-1054 metric run --
+    # re-measured on this tree at every step rather than carried: 910 at 0130e5fc9,
+    # 957 at ac9175209, 964 here, because the population grows under the rows. 0 are
+    # unexported. The assertion is NOT weakened to ``defined in the target module``:
+    # that would grade importability, which the whole-tree import in
+    # ``tests/test_emit.py`` already grades, and would retire the only check on what a
+    # module DECLARES -- the check that has now caught two separate defects.
+    assert checked == 964, checked
