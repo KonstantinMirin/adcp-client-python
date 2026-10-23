@@ -217,7 +217,12 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     classes = emitted_enum_classes()
     # 447 -> 482 on fe0e185f9: every count in this file is over the documents
     # ``population()`` names, so each moved as the emitted population grew.
-    assert len(classes) == 482, len(classes)  # 214 roots, the rest inline
+    # 482 -> 484 at ``salesagent-j3k2l.40``, which emits 5 more of those documents.
+    # Re-measured in one pass with the other three counts of this file; the ROOT half
+    # (214) did not move, so the 2 are both INLINE and the baseline says so -- this
+    # file is 1 failed / 22 passed at ``c9bfb5133`` and these four were the 4 green
+    # ones that moved.
+    assert len(classes) == 484, len(classes)  # 214 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -270,7 +275,9 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
             names += 1
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
-    assert names == 2892, names  # 2692 -> 2892 on fe0e185f9, population growth
+    # 2692 -> 2892 on fe0e185f9, population growth; 2892 -> 2917 at
+    # ``salesagent-j3k2l.40``, the same 5 documents.
+    assert names == 2917, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -332,7 +339,11 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
     # equal at 277 and again at 333 and that was a coincidence of the populations,
     # not a rule -- a node under a position that reuses an already-declared class
     # is reached without adding one.  Neither number is derived from the other.
-    assert nodes == 541, nodes  # 501 -> 541 on fe0e185f9, population growth
+    # 501 -> 541 on fe0e185f9, population growth; 541 -> 545 at
+    # ``salesagent-j3k2l.40``.  Still not derived from the CLASS count above, which
+    # moved by 2 against this 4 -- the two were equal at 277 and again at 333 by
+    # coincidence of the populations, and this is the third pair that is not.
+    assert nodes == 545, nodes
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -995,12 +1006,12 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     # again the same way.  A symbol crosses in exactly those two ways, so
     # ``emit.exported`` is now the union of both and still not every declared symbol.
     #
-    # 964 is the alias POPULATION over the ``graded()`` documents of the committed
-    # 677-module tree -- the ``population()`` run, not the 686-of-1054 metric run --
+    # 977 is the alias POPULATION over the ``graded()`` documents of the committed
+    # 682-module tree -- the ``population()`` run, not the 691-of-1054 metric run --
     # re-measured on this tree at every step rather than carried: 910 at 0130e5fc9,
-    # 957 at ac9175209, 964 here, because the population grows under the rows. 0 are
-    # unexported. The assertion is NOT weakened to ``defined in the target module``:
+    # 957 at ac9175209, 964 at d9989750c, 977 at ``salesagent-j3k2l.40``, because the
+    # population grows under the rows. 0 are unexported. The assertion is NOT weakened to ``defined in the target module``:
     # that would grade importability, which the whole-tree import in
     # ``tests/test_emit.py`` already grades, and would retire the only check on what a
     # module DECLARES -- the check that has now caught two separate defects.
-    assert checked == 964, checked
+    assert checked == 977, checked
