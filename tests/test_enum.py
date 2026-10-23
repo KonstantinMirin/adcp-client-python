@@ -115,10 +115,10 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
 
     # Its cascade cost, MEASURED, and the measurement is why admitting ``notes``
     # emitted ONE document and not eight: no referrer of it was ever waiting on
-    # this document.  The PARTITION under that claim has moved -- 4 of the 7
-    # referrers emit at 16052ffb0, where all 7 refused when this was written -- so
-    # it is asserted as a partition rather than as "all of them refuse", which was
-    # a fact about the tree of the day and never the claim.
+    # this document.  The PARTITION under that claim keeps moving -- all 7
+    # refused when this was written, 4 emitted at 16052ffb0 and 6 emit at
+    # 0130e5fc9 -- so it is asserted as a partition rather than as "all of them
+    # refuse", which was a fact about the tree of the day and never the claim.
     known = set(bundle.portable(BUNDLE))
     referrers = sorted(
         {
@@ -135,18 +135,19 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     assert len(in_population) == 7, in_population
     emitted_referrers = sorted(d for d in in_population if d in out.emitted)
     refused_referrers = sorted(d for d in in_population if d in out.refusals)
+    # 6 and 1 at 0130e5fc9; 4 and 3 at 16052ffb0, before step 4's row landed.
     # A partition and not two counts: a referrer in NEITHER half would be a
     # document the emitter neither built nor refused, and the equality below is
     # what reports that rather than letting the two numbers absorb it.
-    assert len(emitted_referrers) == 4, emitted_referrers
-    assert len(refused_referrers) == 3, refused_referrers
+    assert len(emitted_referrers) == 6, emitted_referrers
+    assert len(refused_referrers) == 1, refused_referrers
     assert sorted(emitted_referrers + refused_referrers) == sorted(in_population)
     # The claim is that none of them was blocked BY this document, which is read off
-    # the refusal's own detail.  The keyword alone no longer says it: with step 4's
-    # row claiming these roots the walk reaches their conjuncts, and all 3 of the
-    # ones still refusing report ``if`` at an ``/allOf`` position -- a conjunct a
-    # later row owns.  A keyword test would have read those as this document's
-    # cascade; the detail names what the row could not lower and does not.
+    # the refusal's own detail, and that is the only reading that still works: the
+    # one referrer still refusing refuses on a ``$ref`` at ``/properties/result``,
+    # and its detail is a CHAINED one -- "its target core/async-response-data.json
+    # is refused: ..." -- so what blocks it is named two documents away.  A keyword
+    # test would have read it as this document's cascade; the detail does not.
     assert [d for d in refused_referrers if "task-type" in out.refusals[d]["detail"]] == []
 
 
@@ -214,7 +215,7 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     are the document's ``enum`` array, in order, exactly.
     """
     classes = emitted_enum_classes()
-    assert len(classes) == 333, len(classes)  # 214 roots, the rest inline
+    assert len(classes) == 447, len(classes)  # 214 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -267,7 +268,7 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
             names += 1
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
-    assert names == 2208, names
+    assert names == 2692, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -324,7 +325,12 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
                 nodes += 1
             else:  # the one colliding node's document refuses before this is read
                 assert document not in emit.emit(BUNDLE, population()).emitted, (document, pointer)
-    assert nodes == 333, nodes
+    # 501 enum NODES the walk reaches, against the 447 enum CLASSES
+    # ``test_an_enum_node_is_a_class_over_an_enum_base...`` counts.  The two were
+    # equal at 277 and again at 333 and that was a coincidence of the populations,
+    # not a rule -- a node under a position that reuses an already-declared class
+    # is reached without adding one.  Neither number is derived from the other.
+    assert nodes == 501, nodes
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -405,32 +411,71 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
     """
     known = set(bundle.portable(BUNDLE))
     roots = set(root_enums())
+
+    def exported_class(document: str) -> Any:
+        """The one symbol a root enum's own module exports."""
+        module = importlib.import_module(
+            f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}"
+        )
+        (symbol,) = module.__all__
+        return getattr(module, symbol)
+
+    def names_spelled(module_name: str) -> set[str]:
+        """Every ``Name`` the AST of one emitted module spells."""
+        relative = module_name[len(emit.PACKAGE) + 1 :].replace(".", "/")
+        tree = ast.parse((TREE / f"{relative}.py").read_text())
+        return {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+
     sites = 0
+    inherited = 0
     documents: set[str] = set()
     for g in graded():
         if g.ref.pointer != "#" or not hasattr(g.model, "model_fields"):
             continue
         raw = bundle.read(BUNDLE, g.ref.document)
-        tree = ast.parse((TREE / f"{emit.module_path(g.ref.document)}.py").read_text())
         for key, sub in sorted((raw.get("properties") or {}).items()):
             if not isinstance(sub, dict) or "$ref" not in sub:
                 continue
             target = bundle.document_for(sub["$ref"], known)
             if target not in roots:
                 continue
-            field = g.model.model_fields[compiler.field_name(key)]
+            name = compiler.field_name(key)
+            field = g.model.model_fields[name]
             bound = [
                 a for a in getattr(field.annotation, "__args__", (field.annotation,))
                 if isinstance(a, type) and issubclass(a, pyenum.Enum)
             ]
             assert len(bound) == 1, (g.ref.document, key, field.annotation)
-            named = {
-                n.id for n in ast.walk(tree) if isinstance(n, ast.Name)
-            }
-            assert bound[0].__name__ in named, (g.ref.document, key)
+            # "and not a copy", asserted by IDENTITY rather than by a name: the
+            # annotation is the very class object the TARGET document's module
+            # exports, so a re-spelled enumeration with the same members and the
+            # same name fails here.  This is the half that closes the widening.
+            assert bound[0] is exported_class(target), (g.ref.document, key, bound[0])
+            # ... and the AST half, read off the module that DECLARES the field.
+            # Not always this document's own module: step 4's row composes a root
+            # over its ``$ref`` bases, so an inherited field is spelled in the
+            # BASE's module -- ``core/tasks-get-response.json`` takes ``status``
+            # from ``ProtocolEnvelope``.  Reading the document's own module instead
+            # reported 2 sites as failures at 0130e5fc9 when both were faithful.
+            owner = next(
+                k for k in g.model.__mro__ if name in getattr(k, "__annotations__", {})
+            )
+            inherited += owner is not g.model
+            assert bound[0].__name__ in names_spelled(owner.__module__), (
+                g.ref.document,
+                key,
+                owner.__module__,
+            )
             sites += 1
             documents.add(g.ref.document)
-    assert (sites, len(documents)) == (68, 47), (sites, len(documents))
+    # ``inherited`` is pinned so the branch above is not graded by an empty set:
+    # if the composition row stopped inheriting, the AST half would silently go
+    # back to reading only each document's own module.
+    assert (sites, len(documents), inherited) == (124, 76, 2), (
+        sites,
+        len(documents),
+        inherited,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -619,13 +664,30 @@ def test_the_colliding_node_is_in_the_bundle_and_its_document_refuses_earlier() 
     assert node["enum"] == ["clickTag", "clickTAG"]
     assert len({lower_enum.member_name(v) for v in node["enum"]}) == 1
     out = emit.emit(BUNDLE, population())
-    # ``$ref`` and not ``allOf``: step 4's row now claims this root, so the walk
-    # reaches the conjuncts and refuses on the first one that names a FRAGMENT of
-    # another document -- a node needing a name of its own, which is a later row.
-    # The claim this test makes is that the colliding enum node is never reached,
-    # and it holds on either keyword.
-    assert out.refusals[document]["keyword"] == "$ref"
-    assert out.refusals[document]["pointer"] == "/allOf/0"
+    # THE KEYWORD IS NO LONGER PINNED HERE, which is this file's own precedent --
+    # 9cd0aeaa9, "stop pinning the keyword a negative fixture refuses on".  This
+    # refusal has read ``allOf`` at ``/allOf/0``, then ``$ref`` at ``/allOf/0``,
+    # then ``oneOf`` at ``/allOf/1``, moving each time a later row claimed more of
+    # this root; and the comment beside it said every time that the claim "holds
+    # on either keyword".  A pin on a keyword the test does not assert is just
+    # somewhere for a re-measurement to keep landing.
+    #
+    # So the claim is asserted directly, over a population derived from the
+    # document rather than named: the collision is still there, the document does
+    # not emit, so no class was built from the colliding node -- and the refusal
+    # fires OUTSIDE that node, so the walk never read it.
+    colliding = [
+        p
+        for p, n in bundle.nodes(bundle.read(BUNDLE, document))
+        if isinstance(n.get("enum"), list)
+        and n["enum"]
+        and len({lower_enum.member_name(v) for v in n["enum"]}) != len(n["enum"])
+    ]
+    assert colliding == ["/properties/clicktag_macro"], colliding
+    assert document not in out.emitted
+    assert not any(
+        out.refusals[document]["pointer"].startswith(p) for p in colliding
+    ), out.refusals[document]
 
 
 def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one() -> None:
@@ -880,4 +942,23 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
             for alias in n.names:
                 assert alias.name in exported[target], (module, target, alias.name)
                 checked += 1
-    assert checked == 642, checked
+    # LEFT RED ON PURPOSE at 0130e5fc9, and the assertion above is what found it:
+    # 15 of the tree's 910 relative-import aliases name a symbol the target module
+    # DEFINES but does not list in its ``__all__`` -- all 15 are module-level type
+    # aliases step 4's row emits, e.g.
+    # ``core/reporting_delivery_offering`` importing
+    # ``ReportingCanonicalizationContractReportingPrimaryKey`` from
+    # ``core/reporting_canonicalization_contract``, whose ``__all__`` is
+    # ``["ReportingCanonicalizationContract"]`` alone.  Nothing ImportErrors --
+    # Python does not consult ``__all__`` on import -- so this is a question about
+    # what the emitter should export, which belongs to the emitter's own lane and
+    # not to a re-measurement: see salesagent-j3k2l.29.
+    #
+    # 910 is the alias POPULATION, measured, and it is the value this pin takes if
+    # those 15 come to be exported.  If the answer is instead that the emitter
+    # should not import them, the population shrinks and the pin reads 895.  The
+    # assertion is NOT weakened to ``defined in the target module`` to get there:
+    # that would grade importability, which the whole-tree import in
+    # ``tests/test_emit.py`` already grades, and would retire the only check on
+    # what a module declares.
+    assert checked == 910, checked
