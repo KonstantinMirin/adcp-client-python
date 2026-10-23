@@ -132,3 +132,99 @@ the four EMITS are the rows most likely to be wrong, and wrong downward.
 3. **D13 is not widened.** `codegen/lower/union.py` still imports
    `codegen.compiler` and `codegen.refusal` and nothing else of the package, and
    `tests/test_import_rule.py` is the thing that says so, unchanged.
+
+---
+
+# The grade
+
+Measured on `db53576b0`, over the same 1,054 PORTABLE population and the same
+instrument. Trunk did not move while this ran — `emit/from-scratch` is still
+`c9bfb5133` and is an ancestor of this branch — so the before column is the
+baseline above and not a re-reading of a different tree.
+
+## The metric
+
+| | predicted | measured |
+|---|---|---|
+| portable | 1054 | 1054 |
+| emitted | **692** | **691** |
+| verdicts | **296** | **297** |
+| accounted | 988 | 988 |
+| pending | 66 | 66 |
+| `comparison.added` | 0 | 0 |
+| the 10 union documents that clear | 9 | 9 |
+| of the 39 chained, released | 12 | 12 |
+| of the 12 product documents, released | 0 | 0 |
+
+`comparison.added` is measured over every pair of the REGENERATED tree — 1,055
+pairs, 36,060 document facts and 12,840 model facts compared — not carried over
+from trunk.
+
+## Four predictions were wrong, and all four in the same way
+
+Every one of them came from grading the move by the probe that DROPS a composing
+branch's conjuncts, where the implementation BINDS them. The prediction named
+that asymmetry and named the four EMITS as the rows most likely to be wrong. The
+direction was right and the specifics were not.
+
+**1. 692 emitted, not 691; 296 verdicts, not 297.** Both off by the same one
+document. `core/canonical-media-buy-action.json` EMITS with its conjuncts dropped
+and is a VERDICT with them bound — which is the asymmetry doing exactly what was
+predicted of it, on a document the prediction put on the other side.
+
+**2. The holdout is `adagents.json`, not `brand.json`.** The prediction had
+`brand.json` staying deferred on step 7's row and `adagents.json` chaining to a
+verdict. Measured: `brand.json` is a VERDICT (`allOf` at
+`/definitions/default_language/allOf/0` — a base that is a scalar alias), and
+`adagents.json` is DEFERRED. Both moved, in opposite directions, and the net of 9
+of 10 held by coincidence rather than because the composition was right.
+
+**3. The product row's deferral GREW, 12 → 13, and nothing predicted that.**
+`adagents.json` is the thirteenth. It cleared the union row — the branch composes
+and is lowered — and landed on the NEXT gap, which is the conjunct-shape gap the
+other 12 are on. So "0 of the 12 clear" is right and incomplete: the row they are
+on gained a document from the row this change cleared. The prediction treated the
+two rows as independent and they are sequential.
+
+**4. Three pins moved in files this change does not touch, and the prediction
+listed none of them.** `tests/test_applied_schema.py` (emitted 686),
+`tests/test_fragment_ref.py` (a refusal inside a section, 8) and
+`tests/test_emit.py`'s union census (34 / 92 and its keyword profile) each hold a
+population figure this change moves. Each was re-measured in one pass and
+re-pinned with the reason; `tests/test_emit_product.py`'s own N moved too (576 →
+581) and is the one case where only ONE of a test's figures moved, which is what
+attributes the +5 to the union row rather than to the product row.
+
+## What the probe got right, and the comment it refutes
+
+`union.py`'s claim that the move's reachable population is 0 is refuted either
+way: 9 of 10 directly and 12 through chains, by the implementation and by the
+probe. The conclusion the comment drew from it — that the move would be a
+derivation matching nothing (D14) — was a measurement taken before the branch
+rows landed, and it is replaced in the code by the run that refutes it.
+
+## The reader's second caller was ungraded, and is not now
+
+The `bases` prepend **is** a derivation matching nothing in the bundle today, and
+that is a different fact from the one the comment asserted. All 3 composing
+branches the bundle emits carry inline conjuncts only, so no emitted class has a
+union base plus a conjunct's base and the prepend ORDER was graded by nothing.
+Two tests on a hand-built bundle close it
+(`tests/test_emit_product.py`):
+
+* the order is asserted on `__bases__`, `__mro__` and the rendered class line,
+  with the inherited field beside it. Probed by inverting the prepend: both
+  orders give a legal MRO, so nothing refuses at import and the assertion is the
+  only thing that separates them;
+* **one break in the reader reddens BOTH callers** — `$ref` added to
+  `compiler.ANNOTATIONS`, so a bare `$ref` conjunct carries no live keyword — each
+  at its own conjunct pointer, with a control run first so a red is the break and
+  not the probe.
+
+## The 39 chained, counted apart
+
+12 of the 39 chain onto the union row and all 12 released: 2 became emissions and
+10 became verdicts. 4 of the 39 chain onto the product row's conjunct-shape
+deferral and none released, which is consistent with 0 of that row clearing. The
+remaining 23 chain onto other rows and did not move. **The 12 are release, not
+this row's work, and are not added to the 9.**
