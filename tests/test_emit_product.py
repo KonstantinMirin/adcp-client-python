@@ -203,19 +203,28 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # agents and the integrator each took it independently and agreed, and each
     # A/B'd it against the base's codegen to confirm it is stale rather than a
     # regression. It drifted because every row that claims documents moves it.
+    # CONFIRMED at 64131600f by ``salesagent-j3k2l.29``, in one pass with every
+    # other quantity this test asserts: 576, and ``without`` is 348.
     assert len(with_row.emitted) == 576, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
     # the merged table steps 3, 5 and 6's rows emit those targets, so the composing
-    # documents follow: 141 of the 301 are emitted BY this row, and removing it loses
-    # 221 modules -- the emitted documents plus those reached only through a reference.
+    # documents follow: 147 of the 301 are emitted BY this row, and removing it loses
+    # 228 modules -- the emitted documents plus those reached only through a reference.
     # That is joint unblocking measured from this side -- the row's own 0 was a fact
     # about which other rows existed, not about the row.
-    assert len(with_row.emitted) - len(without.emitted) == 221
-    assert len(set(composing()) & set(with_row.emitted)) == 141
+    #
+    # 221 -> 228 and 141 -> 147, re-measured at 64131600f (``salesagent-j3k2l.29``).
+    # Both are over the two emits above and moved with them while 576 held, which is
+    # the shape to expect: 576 counts what the merged table emits and these count
+    # what THIS ROW contributes, so another step's row landing moves the second pair
+    # without moving the first.  The population (599) and the bundle (1,054) did not
+    # move at all -- they are the bundle's own selectors.
+    assert len(with_row.emitted) - len(without.emitted) == 228
+    assert len(set(composing()) & set(with_row.emitted)) == 147
     # **Every document the row rescues from a refusal is EMITTED with it**, and the
-    # composing ones are 141 of the 145.  This was an equality against
+    # composing ones are 147 of the 151.  This was an equality against
     # ``composing() & emitted`` and the equality is no longer true, which is a
     # measurement and not a regression: the other 4 are documents that do NOT compose
     # at their own root and were refused on an unresolved target, whose target the row
@@ -225,10 +234,21 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # empty because the row emitted 73 composing documents and none of them was such a
     # target.  Stated as the containment plus the count, so a document clearing for a
     # reason that is NOT this row still reddens.
+    #
+    # 145 -> 151 at 64131600f (``salesagent-j3k2l.29``), measured in the same pass.
+    # The four names are re-measured and are STILL exactly those four, which is what
+    # says the +6 is the composing half growing and not a new kind of document
+    # arriving -- 151 - 147 = 4 either way.  Asserted by NAME below for that reason.
     cleared = set(without.refusals) - set(with_row.refusals)
     assert cleared <= set(with_row.emitted), sorted(cleared - set(with_row.emitted))
     assert set(composing()) & set(with_row.emitted) <= cleared
-    assert len(cleared) == 145, len(cleared)
+    assert len(cleared) == 151, len(cleared)
+    assert sorted(cleared - set(composing())) == [
+        "core/catalog.json",
+        "core/reporting-delivery-ready-webhook.json",
+        "error-details/authorization-required.json",
+        "error-details/macro-resolution-failed.json",
+    ], sorted(cleared - set(composing()))
     # Every document of the population is accounted for by name, pointer and keyword.
     assert set(pop) <= set(with_row.emitted) | set(with_row.refusals)
     for document, row in with_row.refusals.items():
@@ -237,10 +257,11 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # were exactly this bead's keywords.**  Without the row a composing document is
     # claimed by nothing, and ``lower_document`` refuses it at the ROOT on the keyword
     # its kind is read from -- ``allOf`` for 279, ``anyOf`` for 14, ``if`` for 8, all at
-    # ``/``.  (It used to say ``type`` for all 301, which is a keyword none of them
+    # ``/`` (re-measured at 64131600f: that histogram is unchanged, 279 + 14 + 8 = 301).
+    # (It used to say ``type`` for all 301, which is a keyword none of them
     # states; ``salesagent-j3k2l.21`` changed that.)  With the row the walk reaches the
-    # conjuncts and either emits the document -- 141 of them -- or names where it
-    # actually stopped, and 159 of the 160 refusals are now at a pointer INSIDE the
+    # conjuncts and either emits the document -- 147 of them -- or names where it
+    # actually stopped, and 153 of the 154 refusals are now at a pointer INSIDE the
     # document.  The one still at ``/`` is
     # ``sponsored-intelligence/si-ui-element.json``, and the root IS its cause: the
     # refusal is about the class this row would declare at that root
@@ -265,7 +286,11 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     assert all(where(without, d)[1] == "/" for d in composing()), "without the row: all at /"
     assert sum(1 for d in composing() if where(with_row, d) == where(without, d)) == 0
     refused = {d: where(with_row, d) for d in composing() if d not in with_row.emitted}
-    assert len(refused) == 160, len(refused)
+    # 160 -> 154 at 64131600f (``salesagent-j3k2l.29``), and 147 + 154 = 301: the six
+    # documents that left this half are the six the row now emits.  Asserted as the
+    # partition as well, so the two halves cannot drift apart silently.
+    assert len(refused) == 154, len(refused)
+    assert len(refused) + len(set(composing()) & set(with_row.emitted)) == len(composing())
     at_root = sorted(d for d, w in refused.items() if w[1] == "/")
     assert at_root == ["sponsored-intelligence/si-ui-element.json"], at_root
     assert refused[at_root[0]][0] == "if", refused[at_root[0]]
