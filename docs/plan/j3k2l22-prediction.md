@@ -259,6 +259,62 @@ R6 assumes nothing else unlocks. A newly emitted mapping is a reference target, 
 the floor may be beaten rather than hit — which is why both pins are re-measured on
 the finished tree rather than computed from this arithmetic.
 
-## 8. Measured (filled in after the build)
+## 8. Measured, and the predictions graded
 
-_pending_
+Final tip `73aabe558`. Every figure below measured on that tree; trunk's own figure
+is named beside each one that moved, so no delta rests on one measurement.
+
+### The 44, where each one ended
+
+| outcome | `not` | `dependencies` | `minProperties` | `maxProperties` | total |
+|---|---|---|---|---|---|
+| EMITTED | 4 | 2 | 2 | 2 | **10** |
+| VERDICT | 17 | 8 | 5 | 2 | **32** |
+| still deferred, on another row's `anyOf` | 1 | 0 | 0 | 1 | **2** |
+
+**42 of the 44 are accounted for, and 0 of the 1,054 portable documents is deferred
+on `not`, `dependencies`, `minProperties` or `maxProperties` any more.** The 2 that
+remain pending are `media-buy/package-update.json` and
+`governance/reported-outcome-error.json`, both now deferred on `anyOf`, which the
+epic gives to `salesagent-j3k2l.26`.
+
+### The totals
+
+| figure | trunk `ac8a64fb1` | final `73aabe558` |
+|---|---|---|
+| emitted | 580 | 674 |
+| refusals | 474 | 380 |
+| — deferred | 102 | **48** |
+| — transitive | 1 | 1 |
+| — verdicts | 371 | 331 |
+| **accounted** | **951** | **1005** |
+| pairs the tree carries | 811 | 982 |
+| facts compared | 25,858 | 33,913 |
+| added / missing / differs | 0 / 10 / 13 | **0** / 21 / 43 |
+
+Trunk's 102 deferrals went to 48 by clearing 69 and gaining 15: a document that
+gets further along the walk meets the next row's keyword, so a cleared deferral on
+one keyword can arrive as a new deferral on another.
+
+### Grade
+
+| # | prediction | verdict |
+|---|---|---|
+| R1 | 7 of the 11 mapping documents emit, named | **WRONG.** 3 emit. The three it named that did emit are `a2ui/component.json`, `core/product-change-map.json` and `core/reporting-file-entry.json`; the four it named that did not went further and stopped elsewhere — `core/account-change.json` and its webhook on an `allOf` conjunct whose base is an alias, `core/geo-place-requirement.json` on a `propertyNames` `$ref` whose target refuses on `enum`, and `governance/reported-outcome-error.json` on `anyOf`. §7 named R1 as the guess with no instrument behind it, and it was. |
+| R2 | the other 4 become verdicts on a key `pattern` | **RIGHT**, and under-counted: 3 refuse on `pattern` and `core/creative-localization.json` on `patternProperties`, which is the same sentence reached from the other spelling, and the verdict also claimed 2 documents outside this bead's 44 (`media-buy/acceptance-policy-profile.json`, `trusted-match/identity-match-response.json`) that were deferred on `pattern` and `maxLength`. |
+| R3 | `core/account.json` becomes a VERDICT on `not` | **HALF WRONG, and the half that is wrong is the mechanism.** It is a verdict, but not on `not`: the typeless arm CARRIES the `not`, the walk gets past it, and the verdict is a `$ref` chain ending at a `default` on a required property. The prediction had the emitter refusing what it now lowers. |
+| R4 | R3 does not unlock `core/media-buy.json` | **RIGHT.** Still a verdict. |
+| R5 | ROWS stays at six, no new selector, no change to `declares_its_own_root_kind` | **RIGHT.** `ROWS` is 6 and `codegen/bundle.py` is byte-identical to trunk, so no selector moved. |
+| R6 | `deferred <= 51`, `accounted >= 1002` | **DIRECTION RIGHT, VALUES BEATEN**: 48 and 1005. §7 said the floor might be beaten because a newly emitted mapping is a reference target, which is what happened. Both pins are set to the measured value, not to this arithmetic. |
+| R7 | added / missing / differs stay 0 / 0 / 0 | **WRONG TWICE, AND IT IS THE MISS THAT MATTERED.** They were never 0/0/0: trunk is 0/10/13. And the branch took them to 5/23/48 with one pair that could not be built at all. `added` is back to 0 by two fixes (`compiler.conditional_only`, and reading a requiredness the base lacks as a narrowing restatement); `missing` and `differs` are 21 and 43 and are reported, not fixed — four families, one of which (+2 `missing`, a mapping VALUE's `description`) is this bead's own reachability of a pre-existing annotation drop. Extending the restatement predicate to defaults was probed and rejected: it trades 26 `differs` for 114 `missing`. |
+| R8 | the gate's failing set goes from 3 to 1 | **RIGHT**, and the 1 is the same test that is the whole of trunk's failing set over those four files. |
+| R9 | existing modules change bytes as well as new ones appearing | **WRONG for Unit 1, RIGHT for the finished branch, and it missed a third case.** Unit 1's regeneration changed 0 existing modules — every document it claimed was previously refused, so every file was new. The finished branch changes 2 and DELETES 4, which the prediction did not consider at all: `emit.write` only writes, so a document that stops emitting leaves a stale module behind and the stale set has to be derived and removed by hand. |
+
+### What the grade says about the method
+
+The two predictions with an instrument behind them (R5, R8) were right, the two
+arithmetic ones (R6, and R2's count) were right in direction, and the three read off
+node text or off memory (R1, R3, R9) were wrong. R7 was wrong because it asserted a
+baseline nobody had measured on this tree — the comparison is not in this bead's
+gate, so "added stays 0" was carried from the plan's text rather than from a run,
+and the run says trunk was already at 0/10/13.
