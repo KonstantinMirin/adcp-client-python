@@ -959,12 +959,20 @@ def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
         **SECTIONS,
         "definitions": {
             **SECTIONS["definitions"],
-            # ``allOf`` is a keyword no row lowers at a property and the one 72 of
-            # the bundle's documents refuse on, so this is a real shape rather than an
-            # invented one.  It was ``const`` until D2's ``const`` row landed
-            # (salesagent-j3k2l.16) and the fixture stopped refusing -- a negative
-            # fixture built on a keyword the emitter is about to lower grades the skip
-            # only until that happens, and then grades nothing.
+            # A shape the emitter refuses SOMEWHERE inside, which is all this fixture
+            # needs: the dead half asserts no refusal, the live half asserts one, and
+            # the contrast is the measurement.
+            #
+            # **The keyword is deliberately no longer pinned, because pinning it has
+            # broken this fixture twice.**  It was ``const`` until D2's ``const`` row
+            # landed (salesagent-j3k2l.16); it became ``allOf`` on the ground that
+            # ``allOf`` was "a keyword no row lowers at a property", and
+            # salesagent-j3k2l.18 then lowered exactly that.  The shape still refuses
+            # -- one level deeper, at the conjunct's own ``type`` -- so the fixture is
+            # still live, but a fixture that names the keyword a row is about to claim
+            # grades the skip only until that row lands.  No keyword is immune to the
+            # next row, so the assertions below grade the thing this test is named for:
+            # whether the entry was WALKED, read off the refusal's pointer.
             "unused": {
                 "type": "object",
                 "properties": {"b": {"allOf": [{"type": "string"}]}},
@@ -988,8 +996,12 @@ def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
     }
     root = write_bundle(tmp_path / "c", {"core/catalog.json": live})
     r = refusal_for(root, "core/catalog.json")
-    assert r["keyword"] == "allOf", r
-    assert r["pointer"] == "/definitions/slot/properties/a", r
+    # The SAME shape, in a referenced entry, refuses -- and the refusal is INSIDE the
+    # entry, which is what says the walk reached it.  Whichever keyword the emitter
+    # stops on, and however deep inside the property it stops, the pointer still names
+    # the entry; that is the fact the dead half's silence is contrasted against.
+    assert r["keyword"], r
+    assert r["pointer"].startswith("/definitions/slot/properties/a"), r
 
 
 def test_a_local_reference_to_an_entry_declared_later_costs_nothing(tmp_path: Path) -> None:
