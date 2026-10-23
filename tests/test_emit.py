@@ -5060,6 +5060,40 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     pending = sum(resolved[k] for k in refusal_module.PENDING_KINDS)
     assert accounted + pending == len(portable), (accounted, pending, len(portable))
 
+    # **A document the pending count loses has to turn up in the EMITTED count**
+    # (§6, "and the emitted count never decreases", and the paragraph beginning
+    # "The second term exists because the first one makes refusing a legal way to
+    # finish a row").  ``accounted >= 988`` counts a verdict and a class alike, so a
+    # row that emits its common case and refuses its edge satisfies it either way:
+    # `salesagent-j3k2l.40` moved pending 87 -> 66 while emitted rose 686 -> 691 and
+    # verdicts 281 -> 297, sixteen of its twenty-one documents resolved by deciding
+    # never to generate them, and the figure read that row as the day's largest step.
+    #
+    # The two terms are COUPLED and that is the whole content of this pin.  Held
+    # apart -- ``emitted >= 691`` beside ``pending <= 66`` -- they are both satisfied
+    # by refusing a document, because emitted stays 691 while pending falls to 65;
+    # the signs are only opposite once clearing a pending document COSTS an emission.
+    # ``max(0, ...)`` is the never-decreases half: a bundle that grows the pending set
+    # cannot buy back room under the emitted floor.
+    #
+    # Fire-probed as five runs of this test on this tree, swapping the two literals
+    # and nothing else, so each half is perturbed on its own: ``691, 66`` passes (the
+    # tree as delivered), ``686, 87`` fails -- that is .40's own trade, 21 cleared for
+    # 5 emitted, and it is the instance this pin exists for -- ``691, 76`` fails (ten
+    # cleared with emitted flat, a row finished entirely by refusing), ``686, 71``
+    # passes (five cleared for the five .40 really emitted), and ``692, 66`` fails on
+    # the floor alone with pending unmoved.  The three failures all land HERE and not
+    # on an earlier assertion, which the ordering makes worth stating.
+    emitted_pin, pending_pin = 691, 66
+    assert len(out.emitted) >= emitted_pin + max(0, pending_pin - pending), {
+        "emitted, and its pin": (len(out.emitted), emitted_pin),
+        "pending, and its pin": (pending, pending_pin),
+        "pending cleared since the pin": pending_pin - pending,
+        "emitted gained since the pin": len(out.emitted) - emitted_pin,
+        "cleared by refusing instead of emitting": max(0, pending_pin - pending)
+        - (len(out.emitted) - emitted_pin),
+    }
+
 
 def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
     """Measured on the pinned compiler, because the comparison is SYMMETRIC.
