@@ -1,8 +1,18 @@
-"""An ``allOf`` root: the reference conjuncts become BASES, and the rest becomes
+"""An ``allOf`` node: the reference conjuncts become BASES, and the rest becomes
 fields of the node itself.
 
-D2's product row.  Two things come out of one conjunct list, and a third is
-deliberately absent:
+D2's product row.  **The node need not be a root**, and the lowering never asked
+that it be one: it takes ``(node, name, pointer, module)`` like every other
+lowering (D13), reads the pointer it is handed, and ``declare_object`` names
+whatever node that is.  A document ROOT reaches it through ``emit.ROWS``; a
+composition at a property or deeper reaches it through ``emit._decide``'s own branch,
+because ``ROWS`` dispatches on ROOT KIND and a node that is not a root has no row
+to be and no selector to select it.  Measured over the 3.2 bundle: of the 67
+documents whose composition this step was deferring, 41 carry it at a root -- all
+41 claimed by ``union_root``, not by this step's selector -- 10 at a property and
+16 deeper.
+
+Two things come out of one conjunct list, and a third is deliberately absent:
 
 * a conjunct that is a ``$ref`` and nothing else is a BASE CLASS.  D7: a base is
   DERIVED from what the document composes, so there is no marker policy and no
@@ -68,13 +78,13 @@ from codegen.refusal import Refusal
 #: refuses rather than choosing between them.
 INLINE = frozenset({"type", "properties", "required"})
 
-#: What the root itself may carry beside its conjunct list.
-ROOT = frozenset({"type", "allOf", "properties", "required", "additionalProperties"})
+#: What the composing node itself may carry beside its conjunct list.
+COMPOSING = frozenset({"type", "allOf", "properties", "required", "additionalProperties"})
 
 
-def lower_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
+def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
     """Append the class for an ``allOf`` node and return its name."""
-    check_keywords(doc, pointer, set(ROOT))
+    check_keywords(doc, pointer, set(COMPOSING))
     if doc.get("type") not in (None, "object"):
         raise Refusal("type", pointer, f"an allOf of type {doc['type']!r} composes no object")
 

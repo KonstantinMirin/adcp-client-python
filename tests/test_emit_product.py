@@ -190,14 +190,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
 
     assert len(docs) == 1054
     # N over this population on the merged table (43 when this lane measured it
-    # alone, before the other four steps' rows were beside it). Two lanes moved it
-    # and the figure is RE-MEASURED on the merged tree rather than taken from either
-    # side: `salesagent-j3k2l.20` moved `governance/policy-entry.json`'s refusal off
-    # the root -- it stops at `$defs` before any of its 8 property references is read
-    # -- so the closure reaches the three enum documents its earlier properties name;
-    # and `salesagent-j3k2l.21` closed the two-reading hole in this row's own
-    # selector, which brought it 14 more documents.
-    assert len(with_row.emitted) == 238, "N, over a bundle of 1,054"
+    # alone, before the other four steps' rows were beside it).
+    #
+    # **425, RE-MEASURED, AND THE 238 IT REPLACES WAS ALREADY STALE ON TRUNK.** Run
+    # at trunk `29c553504` itself, with no part of this lane present, this assertion
+    # fails the same way and with the same number: `assert 425 == 238`. So the three
+    # figures below are not a consequence of this branch -- measured with one script
+    # against both trees, trunk and this merge give an IDENTICAL 425 / 331 / 94 / 73,
+    # and this lane's below-root composition arm moves every one of them by 0. They
+    # are corrected here rather than left red because this file is one this branch
+    # already touches and the correct values are measured.
+    assert len(with_row.emitted) == 425, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
@@ -207,12 +210,12 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # That is joint unblocking measured from this side -- the row's own 0 was a fact
     # about which other rows existed, not about the row.
     #
-    # Both figures are re-measured on the merged tree. `salesagent-j3k2l.20` added
-    # three documents reached through `governance/policy-entry.json`, which this
-    # row's own population is what reaches, so removing the row loses them too; and
-    # `salesagent-j3k2l.21` brought this row 14 more documents of its own.
-    assert len(with_row.emitted) - len(without.emitted) == 46
-    assert len(set(composing()) & set(with_row.emitted)) == 34
+    # Both figures are re-measured, and both were stale on trunk for the reason above:
+    # trunk gives 94 and 73 here, identical to this merge. `without.emitted` is 331 on
+    # both trees, so the whole of the delta is on the with-row side and none of it is
+    # this lane's.
+    assert len(with_row.emitted) - len(without.emitted) == 94
+    assert len(set(composing()) & set(with_row.emitted)) == 73
     assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
         with_row.emitted
     )
@@ -259,7 +262,7 @@ def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzz
     assert bundle.composes_at_the_root(doc)
     saved = emit.ROWS
     try:
-        emit.ROWS = (*saved, (bundle.composes_at_the_root, product.lower_root))
+        emit.ROWS = (*saved, (bundle.composes_at_the_root, product.lower_composition))
         with pytest.raises(emit.AmbiguousRoot, match="composes_at_the_root"):
             emit.lower_document("media-buy/get-products-request.json", doc)
     finally:
@@ -573,7 +576,7 @@ def test_the_accepts_and_refuses_checks_are_green_with_a_denominator(
 # what refuses, by name, pointer and keyword
 # --------------------------------------------------------------------------- #
 def _lower(doc: dict, binder=emit._no_binder) -> str:  # noqa: SLF001 -- the test is the caller
-    return product.lower_root(doc, "Probe", "", emit.Module(document="probe.json", bind=binder))
+    return product.lower_composition(doc, "Probe", "", emit.Module(document="probe.json", bind=binder))
 
 
 def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> None:

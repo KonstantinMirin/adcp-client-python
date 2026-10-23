@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Describes the attribution methodology and lookback windows used for conversion measurement. Enables cross-platform comparison by making attribution methodology transparent. Used as a `$ref` from `optimization-goal.json` (buyer's optimization-time attribution choice), `get-media-buy-delivery-response.json` (seller-declared attribution methodology in delivery reports), and similar surfaces. All fields are optional individually but at least one of `post_click`, `post_view`, or `model` SHOULD be populated; absence of `model` means the seller's default attribution model applies (typically `last_touch` per industry convention) \u2014 sellers SHOULD populate `model` explicitly when committing to a specific methodology.",
+  "properties": {
+    "model": {
+      "enum": [
+        "linear",
+        "last_touch",
+        "time_decay",
+        "data_driven",
+        "first_touch"
+      ]
+    },
+    "post_click": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+          "maxProperties": 2,
+          "properties": {
+            "interval": {
+              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "unit": {
+              "enum": [
+                "days",
+                "hours",
+                "minutes",
+                "seconds",
+                "campaign"
+              ]
+            }
+          },
+          "required": [
+            "interval",
+            "unit"
+          ],
+          "title": "Duration",
+          "type": "object"
+        }
+      ],
+      "description": "Post-click attribution window. Conversions occurring within this duration after a click are attributed to the ad."
+    },
+    "post_view": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+          "maxProperties": 2,
+          "properties": {
+            "interval": {
+              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "unit": {
+              "enum": [
+                "days",
+                "hours",
+                "minutes",
+                "seconds",
+                "campaign"
+              ]
+            }
+          },
+          "required": [
+            "interval",
+            "unit"
+          ],
+          "title": "Duration",
+          "type": "object"
+        }
+      ],
+      "description": "Post-view attribution window. Conversions occurring within this duration after an ad impression (without click) are attributed to the ad."
+    }
+  },
+  "title": "Attribution Window",
+  "type": "object"
+}

@@ -331,9 +331,50 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # not -- 832 of the bundle's 1,486 const nodes spell none.  A ``const`` is a
         # single-member enumeration in JSON Schema's vocabulary and nothing in this
         # bundle writes both (0 of the 1,486 carry an ``enum`` beside it), so the two
-        # branches do not overlap and their order here is not a precedence.
+        # branches do not overlap and their order here is not a precedence.  The same
+        # holds against the composition arm below, measured over the portable
+        # population: 0 nodes carry both a ``const`` and an ``allOf``, so the order of
+        # the two moves no document.  It is written this way round because a ``const``
+        # pins the whole value and a conjunct list cannot widen a pinned value.
         check_keywords(node, pointer, lower_const.HANDLED)
         return lower_const.decide(node, pointer)
+
+    if isinstance(node.get("allOf"), list):
+        # **D7's composition, at a node that is NOT a root.**  The same lowering the
+        # root reaches through :data:`ROWS` -- the conjunct list is the same list and
+        # the merge rule is the same rule at every depth -- and it is reached here
+        # rather than through a seventh row because ``ROWS`` dispatches on ROOT KIND
+        # and is a partition by it: a keyword that does not appear at a root has no
+        # row to be and no selector to select it.  Measured on the 3.2 bundle: of the
+        # 67 documents whose composition the product row was deferring, 26 carry it
+        # at a property or deeper and 0 of those 26 are claimed by
+        # ``composes_at_the_root``, so a row would have claimed none of them.
+        #
+        # Read BEFORE ``type``, for the reason ``bundle.declares_its_own_root_kind``
+        # reads a root's ``allOf`` before its ``type``: a draft-07 ``allOf`` applies
+        # to the whole instance, so a node that composes is a composition whatever
+        # else it declares, and lowering the ``properties`` without the conjuncts
+        # would drop the bases.  After ``$ref`` and ``enum``, which both close the
+        # node ahead of it: a ``$ref``'s siblings are ignored by draft-07 (the branch
+        # above refuses one), and an ``enum`` closes the value set.
+        #
+        # **Every position this reaches is one whose INSTANCE is its own**, which is
+        # what makes reading the node here the node the DOCUMENT applies: a
+        # ``properties``, ``items`` or ``definitions`` entry is applied to a value one
+        # level down, where an ``allOf`` conjunct, a union branch and an ``if``/``then``
+        # position share the enclosing node's instance and so inherit its ``type``.
+        # Measured over the whole portable population: 307 compositions are lowered,
+        # 287 at a root and 20 below one, and **0 of the 20 sit at a shared-instance
+        # position** -- 12 at ``properties/<key>``, 7 at an ``items`` and 1 at a
+        # ``definitions`` entry.  The nearest miss is
+        # ``core/budget-allocation.json#/oneOf/1/properties/optimization_goals/items``,
+        # whose pointer crosses a branch two instances up and whose own node is an
+        # array element.
+        return Decided(
+            compiler.Type(
+                lower_product.lower_composition(node, name_hint, pointer, mod), local=True
+            )
+        )
 
     kind = node.get("type")
 
@@ -538,7 +579,7 @@ ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str
     (bundle.is_object_root, _object_root),
     (bundle.is_scalar_root, _scalar_root),
     (bundle.is_enum_root, _enum_root),
-    (bundle.composes_at_the_root, lower_product.lower_root),
+    (bundle.composes_at_the_root, lower_product.lower_composition),
     (bundle.union_root, _union_root),
     (bundle.is_container_root, lower_containers.root),
 )
