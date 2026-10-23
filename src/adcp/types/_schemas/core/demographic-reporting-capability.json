@@ -1,0 +1,230 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "anyOf": [
+    {
+      "required": [
+        "age"
+      ]
+    },
+    {
+      "required": [
+        "demographic_systems"
+      ]
+    }
+  ],
+  "description": "Product-scoped demographic breakdown capability. Reporting capability is independent of demographic targeting capability: a product can execute an exact buyer age predicate while its measurement source reports only fixed age intervals. Buyers compare requested reporting ranges with this declaration before requesting by_demographic rows and MUST NOT infer reporting alignment from Product.demographic_targeting.",
+  "properties": {
+    "age": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "reporting_modes": {
+                "contains": {
+                  "const": "exact_predicates"
+                }
+              }
+            },
+            "required": [
+              "reporting_modes"
+            ]
+          },
+          "then": {
+            "required": [
+              "min_reportable_age",
+              "max_reportable_age",
+              "supports_unbounded_min",
+              "supports_unbounded_max"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reporting_modes": {
+                "contains": {
+                  "const": "enumerated_intervals"
+                }
+              }
+            },
+            "required": [
+              "reporting_modes"
+            ]
+          },
+          "then": {
+            "required": [
+              "intervals"
+            ]
+          }
+        }
+      ],
+      "description": "Machine-comparable age ranges this product can report.",
+      "properties": {
+        "intervals": {
+          "description": "Fixed reportable age intervals for enumerated_intervals. Bounds are authoritative capability data, not a protocol-wide bucket taxonomy. Optional native labels identify the measurement-system code returned with the interval.",
+          "items": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "required": [
+                    "demographic"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "demographic_system"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "required": [
+                    "demographic_system"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "demographic"
+                  ]
+                }
+              }
+            ],
+            "properties": {
+              "age": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "anyOf": [
+                  {
+                    "required": [
+                      "max"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "min"
+                    ]
+                  }
+                ],
+                "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
+                "properties": {
+                  "include_unknown": {
+                    "enum": [
+                      false,
+                      true
+                    ]
+                  },
+                  "max": {
+                    "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
+                    "maximum": 150,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "min": {
+                    "description": "Inclusive minimum age in completed years. Omit for an open lower bound.",
+                    "maximum": 150,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "include_unknown"
+                ],
+                "title": "Demographic Age Range",
+                "type": "object"
+              },
+              "demographic": {
+                "description": "Optional native demographic label returned for this interval.",
+                "minLength": 1,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "demographic_system": {
+                "enum": [
+                  "agf",
+                  "barb",
+                  "oztam",
+                  "custom",
+                  "nielsen",
+                  "mediametrie",
+                  "nielsen_audio"
+                ]
+              }
+            },
+            "required": [
+              "age"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "max_reportable_age": {
+          "description": "Highest explicit min or max bound accepted by exact_predicates. Required when that mode is declared.",
+          "maximum": 150,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "min_reportable_age": {
+          "description": "Lowest explicit min or max bound accepted by exact_predicates. Required when that mode is declared.",
+          "maximum": 150,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reporting_modes": {
+          "description": "Ways this product can produce age rows. exact_predicates accepts requested canonical age predicates within the declared bounds. enumerated_intervals reports only the exact intervals declared in intervals; buyers may aggregate adjacent complete intervals but MUST NOT treat a wider or narrower interval as the requested audience.",
+          "items": {
+            "enum": [
+              "exact_predicates",
+              "enumerated_intervals"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "supports_unbounded_max": {
+          "description": "Whether exact_predicates accepts a canonical age predicate with max omitted. Required when that mode is declared.",
+          "type": "boolean"
+        },
+        "supports_unbounded_min": {
+          "description": "Whether exact_predicates accepts a canonical age predicate with min omitted. Required when that mode is declared.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reporting_modes"
+      ],
+      "type": "object"
+    },
+    "demographic_systems": {
+      "description": "Measurement-system notations this product may return. A code remains opaque unless its capability interval and response row also carry a canonical age predicate.",
+      "items": {
+        "enum": [
+          "agf",
+          "barb",
+          "oztam",
+          "custom",
+          "nielsen",
+          "mediametrie",
+          "nielsen_audio"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "may_suppress_small_cells": {
+      "description": "Whether privacy, policy, or measurement thresholds may suppress otherwise reportable demographic rows. When true, buyers must inspect by_demographic_suppressed before testing whether rows reconcile to package totals.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "may_suppress_small_cells"
+  ],
+  "title": "Demographic Reporting Capability",
+  "type": "object"
+}

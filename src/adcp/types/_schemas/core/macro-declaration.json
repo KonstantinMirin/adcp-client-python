@@ -1,0 +1,1559 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "dialect": {
+            "enum": [
+              "iab_vast",
+              "iab_daast",
+              "vendor"
+            ]
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "required": [
+          "dialect_namespace",
+          "dialect_revision"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "dialect": {
+            "enum": [
+              "adcp",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "dialect_namespace"
+              ]
+            },
+            {
+              "required": [
+                "dialect_revision"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "else": {
+        "not": {
+          "required": [
+            "universal_semantic"
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "mapping_status": {
+            "const": "verified_universal"
+          }
+        },
+        "required": [
+          "mapping_status"
+        ]
+      },
+      "then": {
+        "required": [
+          "universal_semantic"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "dialect": {
+            "const": "adcp"
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dialect_semantic": {
+            "enum": [
+              "OS",
+              "DMA",
+              "LAT",
+              "SKU",
+              "ZIP",
+              "AXEM",
+              "CITY",
+              "GDPR",
+              "GTIN",
+              "LONG",
+              "TMPX",
+              "DOMAIN",
+              "JOB_ID",
+              "REGION",
+              "COUNTRY",
+              "GPP_SID",
+              "AD_WIDTH",
+              "APP_NAME",
+              "HOTEL_ID",
+              "KEYWORDS",
+              "PAGE_URL",
+              "POD_SIZE",
+              "REFERRER",
+              "STORE_ID",
+              "VIDEO_ID",
+              "AD_HEIGHT",
+              "CLICK_URL",
+              "DEVICE_ID",
+              "FLIGHT_ID",
+              "ITEM_NAME",
+              "TIMESTAMP",
+              "APP_BUNDLE",
+              "CATALOG_ID",
+              "GPP_STRING",
+              "IP_ADDRESS",
+              "ITEM_PRICE",
+              "LISTING_ID",
+              "OS_VERSION",
+              "PACKAGE_ID",
+              "PROGRAM_ID",
+              "STATION_ID",
+              "USER_AGENT",
+              "US_PRIVACY",
+              "VEHICLE_ID",
+              "AD_BREAK_ID",
+              "APP_ITEM_ID",
+              "CACHEBUSTER",
+              "CREATIVE_ID",
+              "DEVICE_MAKE",
+              "DEVICE_TYPE",
+              "OFFERING_ID",
+              "VIDEO_TITLE",
+              "DEVICE_MODEL",
+              "GDPR_CONSENT",
+              "ITEM_TAGLINE",
+              "MEDIA_BUY_ID",
+              "PLACEMENT_ID",
+              "PLAYER_WIDTH",
+              "POD_POSITION",
+              "CONTENT_GENRE",
+              "FOLD_POSITION",
+              "IMPRESSION_ID",
+              "PLAYER_HEIGHT",
+              "AUDIO_DURATION",
+              "CONTENT_RATING",
+              "DESTINATION_ID",
+              "DEVICE_ID_TYPE",
+              "INSTALLMENT_ID",
+              "VIDEO_CATEGORY",
+              "VIDEO_DURATION",
+              "COLLECTION_NAME",
+              "ITEM_DESCRIPTION",
+              "LIMIT_AD_TRACKING",
+              "CREATIVE_VARIANT_ID",
+              "ITEM_PRICE_CURRENCY"
+            ]
+          },
+          "mapping_status": {
+            "const": "verified_universal"
+          }
+        },
+        "required": [
+          "universal_semantic"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "dialect": {
+            "const": "unknown"
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "performed_by"
+              ]
+            },
+            {
+              "required": [
+                "translation_target"
+              ]
+            },
+            {
+              "required": [
+                "universal_semantic"
+              ]
+            }
+          ]
+        },
+        "properties": {
+          "encoding": {
+            "properties": {
+              "depth": {
+                "const": 0
+              },
+              "kind": {
+                "const": "none"
+              }
+            }
+          },
+          "mapping_status": {
+            "const": "unresolved"
+          },
+          "operation": {
+            "const": "preserve"
+          },
+          "required": {
+            "const": false
+          },
+          "unavailable_behavior": {
+            "const": "preserve"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "translate_to_native"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "encoding": {
+            "properties": {
+              "depth": {
+                "const": 0
+              },
+              "kind": {
+                "const": "none"
+              }
+            }
+          },
+          "mapping_status": {
+            "enum": [
+              "verified_universal",
+              "dialect_defined"
+            ]
+          }
+        },
+        "required": [
+          "performed_by",
+          "translation_target"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "resolve_value"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "translation_target"
+          ]
+        },
+        "properties": {
+          "mapping_status": {
+            "enum": [
+              "verified_universal",
+              "dialect_defined"
+            ]
+          }
+        },
+        "required": [
+          "performed_by"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "dialect": {
+            "enum": [
+              "iab_vast",
+              "iab_daast"
+            ]
+          },
+          "operation": {
+            "const": "resolve_value"
+          }
+        },
+        "required": [
+          "dialect",
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "performed_by": {
+            "const": "request_executor"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "preserve"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "performed_by"
+              ]
+            },
+            {
+              "required": [
+                "translation_target"
+              ]
+            }
+          ]
+        },
+        "properties": {
+          "encoding": {
+            "properties": {
+              "depth": {
+                "const": 0
+              },
+              "kind": {
+                "const": "none"
+              }
+            }
+          },
+          "required": {
+            "const": false
+          },
+          "unavailable_behavior": {
+            "const": "preserve"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "location": {
+            "properties": {
+              "context": {
+                "const": "opaque"
+              }
+            },
+            "required": [
+              "context"
+            ]
+          }
+        },
+        "required": [
+          "location"
+        ]
+      },
+      "then": {
+        "properties": {
+          "encoding": {
+            "properties": {
+              "depth": {
+                "const": 0
+              },
+              "kind": {
+                "const": "none"
+              }
+            }
+          },
+          "operation": {
+            "const": "preserve"
+          },
+          "required": {
+            "const": false
+          },
+          "unavailable_behavior": {
+            "const": "preserve"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "universal_semantic": {
+            "enum": [
+              "CATALOG_ID",
+              "SKU",
+              "GTIN",
+              "OFFERING_ID",
+              "JOB_ID",
+              "HOTEL_ID",
+              "FLIGHT_ID",
+              "VEHICLE_ID",
+              "LISTING_ID",
+              "STORE_ID",
+              "PROGRAM_ID",
+              "DESTINATION_ID",
+              "ITEM_NAME",
+              "ITEM_DESCRIPTION",
+              "ITEM_TAGLINE",
+              "ITEM_PRICE",
+              "ITEM_PRICE_CURRENCY"
+            ]
+          }
+        },
+        "required": [
+          "universal_semantic"
+        ]
+      },
+      "then": {
+        "properties": {
+          "encoding": {
+            "properties": {
+              "depth": {
+                "const": 1
+              },
+              "kind": {
+                "const": "rfc3986"
+              }
+            }
+          },
+          "location": {
+            "properties": {
+              "context": {
+                "enum": [
+                  "url_query_value",
+                  "url_path_segment"
+                ]
+              }
+            }
+          },
+          "operation": {
+            "const": "resolve_value"
+          },
+          "performed_by": {
+            "const": "seller"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "required": {
+            "const": true
+          }
+        },
+        "required": [
+          "required"
+        ]
+      },
+      "then": {
+        "properties": {
+          "unavailable_behavior": {
+            "const": "reject"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "unavailable_behavior": {
+            "const": "omit_parameter"
+          }
+        },
+        "required": [
+          "unavailable_behavior"
+        ]
+      },
+      "then": {
+        "properties": {
+          "location": {
+            "properties": {
+              "context": {
+                "const": "url_query_value"
+              }
+            }
+          },
+          "operation": {
+            "const": "resolve_value"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "unavailable_behavior": {
+            "const": "preserve"
+          }
+        },
+        "required": [
+          "unavailable_behavior"
+        ]
+      },
+      "then": {
+        "properties": {
+          "operation": {
+            "const": "preserve"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "unavailable_behavior": {
+            "const": "dialect_sentinel"
+          }
+        },
+        "required": [
+          "unavailable_behavior"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dialect": {
+            "const": "iab_vast"
+          },
+          "operation": {
+            "const": "resolve_value"
+          },
+          "required": {
+            "const": false
+          }
+        }
+      }
+    }
+  ],
+  "description": "The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.",
+  "properties": {
+    "declaration_id": {
+      "description": "Identifier unique within the enclosing asset, used to correlate validation results.",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "type": "string",
+      "x-entity": "macro_declaration"
+    },
+    "dialect": {
+      "enum": [
+        "adcp",
+        "vendor",
+        "unknown",
+        "iab_vast",
+        "iab_daast"
+      ]
+    },
+    "dialect_namespace": {
+      "description": "Authority-controlled registry or mapping URI. Required for IAB VAST, IAB DAAST, and vendor dialects.",
+      "format": "uri",
+      "type": "string"
+    },
+    "dialect_revision": {
+      "description": "Immutable registry/mapping revision, release, commit, or digest. Required for IAB VAST, IAB DAAST, and vendor dialects.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "dialect_semantic": {
+      "description": "Exact semantic identifier in the cited dialect, such as `CACHEBUSTING`, `PLAYERSTATE`, or a documented vendor name. This is not inferred from token spelling.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "encoding": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "kind": {
+                    "const": "iab_vast_uri"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "depth": {
+                  "const": 1
+                },
+                "kind": {
+                  "const": "iab_vast_uri"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "kind": {
+                    "const": "none"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "depth": {
+                  "const": 0
+                },
+                "kind": {
+                  "const": "none"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "kind": {
+                    "const": "rfc3986"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "depth": {
+                  "minimum": 1
+                },
+                "kind": {
+                  "const": "rfc3986"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "Encoding for the concrete value. Translation/preservation uses `none` at depth zero.",
+      "maxProperties": 2,
+      "properties": {
+        "depth": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "none",
+            "rfc3986",
+            "iab_vast_uri"
+          ]
+        }
+      },
+      "required": [
+        "depth",
+        "kind"
+      ],
+      "title": "Macro Encoding",
+      "type": "object"
+    },
+    "location": {
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "enum": [
+            "opaque",
+            "url_query_value",
+            "url_path_segment"
+          ]
+        },
+        "field": {
+          "description": "Asset field containing this occurrence.",
+          "enum": [
+            "url",
+            "markup",
+            "content",
+            "ad_request_url",
+            "clickthrough_url"
+          ],
+          "type": "string"
+        },
+        "occurrence": {
+          "description": "Zero-based occurrence of this exact token within the named field.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "field",
+        "occurrence",
+        "context"
+      ],
+      "type": "object"
+    },
+    "mapping_status": {
+      "enum": [
+        "unresolved",
+        "dialect_defined",
+        "verified_universal"
+      ]
+    },
+    "operation": {
+      "enum": [
+        "preserve",
+        "resolve_value",
+        "translate_to_native"
+      ]
+    },
+    "performed_by": {
+      "enum": [
+        "buyer",
+        "seller",
+        "creative_agent",
+        "request_executor",
+        "source_ad_server"
+      ]
+    },
+    "required": {
+      "description": "Whether terminal delivery must fail if the declared operation cannot complete.",
+      "type": "boolean"
+    },
+    "token": {
+      "description": "Exact byte-preserved token expression at this occurrence, including delimiters.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "translation_target": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "not": {
+                "anyOf": [
+                  {
+                    "properties": {
+                      "dialect": {
+                        "enum": [
+                          "adcp",
+                          "unknown"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "dialect",
+                      "dialect_namespace"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "dialect": {
+                        "enum": [
+                          "adcp",
+                          "unknown"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "dialect",
+                      "dialect_revision"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "properties": {
+                "dialect": {
+                  "enum": [
+                    "adcp",
+                    "unknown"
+                  ]
+                }
+              },
+              "required": [
+                "dialect"
+              ],
+              "type": "object"
+            },
+            {
+              "not": {
+                "properties": {
+                  "dialect": {
+                    "enum": [
+                      "adcp",
+                      "unknown"
+                    ]
+                  }
+                },
+                "required": [
+                  "dialect"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "not": {
+                "anyOf": [
+                  {
+                    "properties": {
+                      "mapping_status": {
+                        "const": "verified_universal"
+                      }
+                    },
+                    "required": [
+                      "mapping_status"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "universal_semantic"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "mapping_status": {
+                  "const": "verified_universal"
+                }
+              },
+              "required": [
+                "mapping_status",
+                "universal_semantic"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "dialect": {
+                    "const": "adcp"
+                  }
+                },
+                "required": [
+                  "dialect"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "dialect": {
+                  "const": "adcp"
+                },
+                "dialect_semantic": {
+                  "enum": [
+                    "OS",
+                    "DMA",
+                    "LAT",
+                    "SKU",
+                    "ZIP",
+                    "AXEM",
+                    "CITY",
+                    "GDPR",
+                    "GTIN",
+                    "LONG",
+                    "TMPX",
+                    "DOMAIN",
+                    "JOB_ID",
+                    "REGION",
+                    "COUNTRY",
+                    "GPP_SID",
+                    "AD_WIDTH",
+                    "APP_NAME",
+                    "HOTEL_ID",
+                    "KEYWORDS",
+                    "PAGE_URL",
+                    "POD_SIZE",
+                    "REFERRER",
+                    "STORE_ID",
+                    "VIDEO_ID",
+                    "AD_HEIGHT",
+                    "CLICK_URL",
+                    "DEVICE_ID",
+                    "FLIGHT_ID",
+                    "ITEM_NAME",
+                    "TIMESTAMP",
+                    "APP_BUNDLE",
+                    "CATALOG_ID",
+                    "GPP_STRING",
+                    "IP_ADDRESS",
+                    "ITEM_PRICE",
+                    "LISTING_ID",
+                    "OS_VERSION",
+                    "PACKAGE_ID",
+                    "PROGRAM_ID",
+                    "STATION_ID",
+                    "USER_AGENT",
+                    "US_PRIVACY",
+                    "VEHICLE_ID",
+                    "AD_BREAK_ID",
+                    "APP_ITEM_ID",
+                    "CACHEBUSTER",
+                    "CREATIVE_ID",
+                    "DEVICE_MAKE",
+                    "DEVICE_TYPE",
+                    "OFFERING_ID",
+                    "VIDEO_TITLE",
+                    "DEVICE_MODEL",
+                    "GDPR_CONSENT",
+                    "ITEM_TAGLINE",
+                    "MEDIA_BUY_ID",
+                    "PLACEMENT_ID",
+                    "PLAYER_WIDTH",
+                    "POD_POSITION",
+                    "CONTENT_GENRE",
+                    "FOLD_POSITION",
+                    "IMPRESSION_ID",
+                    "PLAYER_HEIGHT",
+                    "AUDIO_DURATION",
+                    "CONTENT_RATING",
+                    "DESTINATION_ID",
+                    "DEVICE_ID_TYPE",
+                    "INSTALLMENT_ID",
+                    "VIDEO_CATEGORY",
+                    "VIDEO_DURATION",
+                    "COLLECTION_NAME",
+                    "ITEM_DESCRIPTION",
+                    "LIMIT_AD_TRACKING",
+                    "CREATIVE_VARIANT_ID",
+                    "ITEM_PRICE_CURRENCY"
+                  ]
+                },
+                "mapping_status": {
+                  "const": "verified_universal"
+                }
+              },
+              "required": [
+                "dialect",
+                "universal_semantic"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "dialect": {
+                    "enum": [
+                      "iab_vast",
+                      "iab_daast"
+                    ]
+                  }
+                },
+                "required": [
+                  "dialect"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "dialect": {
+                  "enum": [
+                    "iab_vast",
+                    "iab_daast"
+                  ]
+                },
+                "performed_by": {
+                  "const": "request_executor"
+                }
+              },
+              "required": [
+                "dialect"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "dialect": {
+                    "enum": [
+                      "vendor",
+                      "iab_vast",
+                      "iab_daast"
+                    ]
+                  }
+                },
+                "required": [
+                  "dialect"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "dialect": {
+                  "enum": [
+                    "vendor",
+                    "iab_vast",
+                    "iab_daast"
+                  ]
+                }
+              },
+              "required": [
+                "dialect",
+                "dialect_namespace",
+                "dialect_revision"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "universal_semantic": {
+                    "enum": [
+                      "SKU",
+                      "GTIN",
+                      "JOB_ID",
+                      "HOTEL_ID",
+                      "STORE_ID",
+                      "FLIGHT_ID",
+                      "ITEM_NAME",
+                      "CATALOG_ID",
+                      "ITEM_PRICE",
+                      "LISTING_ID",
+                      "PROGRAM_ID",
+                      "VEHICLE_ID",
+                      "OFFERING_ID",
+                      "ITEM_TAGLINE",
+                      "DESTINATION_ID",
+                      "ITEM_DESCRIPTION",
+                      "ITEM_PRICE_CURRENCY"
+                    ]
+                  }
+                },
+                "required": [
+                  "universal_semantic"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "encoding": {
+                  "properties": {
+                    "depth": {
+                      "const": 1
+                    },
+                    "kind": {
+                      "const": "rfc3986"
+                    }
+                  }
+                },
+                "performed_by": {
+                  "const": "seller"
+                },
+                "universal_semantic": {
+                  "enum": [
+                    "SKU",
+                    "GTIN",
+                    "JOB_ID",
+                    "HOTEL_ID",
+                    "STORE_ID",
+                    "FLIGHT_ID",
+                    "ITEM_NAME",
+                    "CATALOG_ID",
+                    "ITEM_PRICE",
+                    "LISTING_ID",
+                    "PROGRAM_ID",
+                    "VEHICLE_ID",
+                    "OFFERING_ID",
+                    "ITEM_TAGLINE",
+                    "DESTINATION_ID",
+                    "ITEM_DESCRIPTION",
+                    "ITEM_PRICE_CURRENCY"
+                  ]
+                }
+              },
+              "required": [
+                "universal_semantic"
+              ]
+            }
+          ]
+        },
+        {
+          "not": {
+            "properties": {
+              "dialect": {
+                "const": "unknown"
+              }
+            },
+            "required": [
+              "dialect"
+            ],
+            "type": "object"
+          },
+          "type": "object"
+        }
+      ],
+      "description": "Required only for `translate_to_native`. The output token contract that replaces this declaration after translation.",
+      "maxProperties": 10,
+      "properties": {
+        "dialect": {
+          "enum": [
+            "adcp",
+            "vendor",
+            "unknown",
+            "iab_vast",
+            "iab_daast"
+          ]
+        },
+        "dialect_namespace": {
+          "format": "uri",
+          "type": "string"
+        },
+        "dialect_revision": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "dialect_semantic": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "encoding": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {
+                    "properties": {
+                      "kind": {
+                        "const": "iab_vast_uri"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "depth": {
+                      "const": 1
+                    },
+                    "kind": {
+                      "const": "iab_vast_uri"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                }
+              ]
+            },
+            {
+              "anyOf": [
+                {
+                  "not": {
+                    "properties": {
+                      "kind": {
+                        "const": "none"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "depth": {
+                      "const": 0
+                    },
+                    "kind": {
+                      "const": "none"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                }
+              ]
+            },
+            {
+              "anyOf": [
+                {
+                  "not": {
+                    "properties": {
+                      "kind": {
+                        "const": "rfc3986"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "depth": {
+                      "minimum": 1
+                    },
+                    "kind": {
+                      "const": "rfc3986"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                }
+              ]
+            }
+          ],
+          "description": "Exact encoding profile applied to a concrete substitution value. `rfc3986` encodes UTF-8 bytes outside the RFC 3986 unreserved set once per depth. `iab_vast_uri` follows the cited IAB VAST macro registry, including its array serialization rules, and is exactly one pass.",
+          "maxProperties": 2,
+          "properties": {
+            "depth": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "kind": {
+              "enum": [
+                "none",
+                "rfc3986",
+                "iab_vast_uri"
+              ]
+            }
+          },
+          "required": [
+            "depth",
+            "kind"
+          ],
+          "title": "Macro Encoding",
+          "type": "object"
+        },
+        "mapping_status": {
+          "enum": [
+            "unresolved",
+            "dialect_defined",
+            "verified_universal"
+          ]
+        },
+        "next_operation": {
+          "const": "resolve_value"
+        },
+        "performed_by": {
+          "enum": [
+            "buyer",
+            "seller",
+            "creative_agent",
+            "request_executor",
+            "source_ad_server"
+          ]
+        },
+        "token": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "universal_semantic": {
+          "enum": [
+            "OS",
+            "DMA",
+            "LAT",
+            "SKU",
+            "ZIP",
+            "AXEM",
+            "CITY",
+            "GDPR",
+            "GTIN",
+            "LONG",
+            "TMPX",
+            "DOMAIN",
+            "JOB_ID",
+            "REGION",
+            "COUNTRY",
+            "GPP_SID",
+            "AD_WIDTH",
+            "APP_NAME",
+            "HOTEL_ID",
+            "KEYWORDS",
+            "PAGE_URL",
+            "POD_SIZE",
+            "REFERRER",
+            "STORE_ID",
+            "VIDEO_ID",
+            "AD_HEIGHT",
+            "CLICK_URL",
+            "DEVICE_ID",
+            "FLIGHT_ID",
+            "ITEM_NAME",
+            "TIMESTAMP",
+            "APP_BUNDLE",
+            "CATALOG_ID",
+            "GPP_STRING",
+            "IP_ADDRESS",
+            "ITEM_PRICE",
+            "LISTING_ID",
+            "OS_VERSION",
+            "PACKAGE_ID",
+            "PROGRAM_ID",
+            "STATION_ID",
+            "USER_AGENT",
+            "US_PRIVACY",
+            "VEHICLE_ID",
+            "AD_BREAK_ID",
+            "APP_ITEM_ID",
+            "CACHEBUSTER",
+            "CREATIVE_ID",
+            "DEVICE_MAKE",
+            "DEVICE_TYPE",
+            "OFFERING_ID",
+            "VIDEO_TITLE",
+            "DEVICE_MODEL",
+            "GDPR_CONSENT",
+            "ITEM_TAGLINE",
+            "MEDIA_BUY_ID",
+            "PLACEMENT_ID",
+            "PLAYER_WIDTH",
+            "POD_POSITION",
+            "CONTENT_GENRE",
+            "FOLD_POSITION",
+            "IMPRESSION_ID",
+            "PLAYER_HEIGHT",
+            "AUDIO_DURATION",
+            "CONTENT_RATING",
+            "DESTINATION_ID",
+            "DEVICE_ID_TYPE",
+            "INSTALLMENT_ID",
+            "VIDEO_CATEGORY",
+            "VIDEO_DURATION",
+            "COLLECTION_NAME",
+            "ITEM_DESCRIPTION",
+            "LIMIT_AD_TRACKING",
+            "CREATIVE_VARIANT_ID",
+            "ITEM_PRICE_CURRENCY"
+          ]
+        }
+      },
+      "required": [
+        "dialect",
+        "dialect_semantic",
+        "encoding",
+        "mapping_status",
+        "next_operation",
+        "performed_by",
+        "token"
+      ],
+      "title": "Macro Translation Target",
+      "type": "object"
+    },
+    "unavailable_behavior": {
+      "description": "Action when the responsible actor has no value. Omission is legal only for a complete URL query-value occurrence; dialect sentinels require a cited dialect rule.",
+      "enum": [
+        "preserve",
+        "omit_parameter",
+        "dialect_sentinel",
+        "reject"
+      ],
+      "type": "string"
+    },
+    "universal_semantic": {
+      "enum": [
+        "OS",
+        "DMA",
+        "LAT",
+        "SKU",
+        "ZIP",
+        "AXEM",
+        "CITY",
+        "GDPR",
+        "GTIN",
+        "LONG",
+        "TMPX",
+        "DOMAIN",
+        "JOB_ID",
+        "REGION",
+        "COUNTRY",
+        "GPP_SID",
+        "AD_WIDTH",
+        "APP_NAME",
+        "HOTEL_ID",
+        "KEYWORDS",
+        "PAGE_URL",
+        "POD_SIZE",
+        "REFERRER",
+        "STORE_ID",
+        "VIDEO_ID",
+        "AD_HEIGHT",
+        "CLICK_URL",
+        "DEVICE_ID",
+        "FLIGHT_ID",
+        "ITEM_NAME",
+        "TIMESTAMP",
+        "APP_BUNDLE",
+        "CATALOG_ID",
+        "GPP_STRING",
+        "IP_ADDRESS",
+        "ITEM_PRICE",
+        "LISTING_ID",
+        "OS_VERSION",
+        "PACKAGE_ID",
+        "PROGRAM_ID",
+        "STATION_ID",
+        "USER_AGENT",
+        "US_PRIVACY",
+        "VEHICLE_ID",
+        "AD_BREAK_ID",
+        "APP_ITEM_ID",
+        "CACHEBUSTER",
+        "CREATIVE_ID",
+        "DEVICE_MAKE",
+        "DEVICE_TYPE",
+        "OFFERING_ID",
+        "VIDEO_TITLE",
+        "DEVICE_MODEL",
+        "GDPR_CONSENT",
+        "ITEM_TAGLINE",
+        "MEDIA_BUY_ID",
+        "PLACEMENT_ID",
+        "PLAYER_WIDTH",
+        "POD_POSITION",
+        "CONTENT_GENRE",
+        "FOLD_POSITION",
+        "IMPRESSION_ID",
+        "PLAYER_HEIGHT",
+        "AUDIO_DURATION",
+        "CONTENT_RATING",
+        "DESTINATION_ID",
+        "DEVICE_ID_TYPE",
+        "INSTALLMENT_ID",
+        "VIDEO_CATEGORY",
+        "VIDEO_DURATION",
+        "COLLECTION_NAME",
+        "ITEM_DESCRIPTION",
+        "LIMIT_AD_TRACKING",
+        "CREATIVE_VARIANT_ID",
+        "ITEM_PRICE_CURRENCY"
+      ]
+    }
+  },
+  "required": [
+    "declaration_id",
+    "token",
+    "dialect",
+    "dialect_semantic",
+    "mapping_status",
+    "operation",
+    "location",
+    "encoding",
+    "required",
+    "unavailable_behavior"
+  ],
+  "title": "Macro Declaration",
+  "type": "object",
+  "x-adcp-validation": {
+    "spec": "docs/creative/universal-macros.mdx#declared-source-token-contracts",
+    "verifier_constraints": {
+      "adcp_semantic_identity": "when dialect is adcp, dialect_semantic must equal universal_semantic",
+      "asset_field": "location.field must exist on and be permitted by the containing asset type",
+      "catalog_universal_profile": "catalog semantics require seller resolve_value in a URL context with exactly one rfc3986 pass",
+      "declaration_id_uniqueness": "declaration_id must be unique within the containing asset",
+      "omit_parameter_scope": "omit_parameter requires the token to occupy the complete URL query-parameter value",
+      "token_occurrence": "location must identify the declared zero-based occurrence of token in location.field"
+    }
+  }
+}

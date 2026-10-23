@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "One immutable data object committed by a reporting file manifest.",
+  "properties": {
+    "native_version_ref": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Credential-free, decoded provider-native immutable version reference, such as an S3 VersionId, GCS generation, table version, transaction, snapshot, manifest generation, job, or run. This is not URI-encoded or concatenated into an object_ref; URI-encode it only when constructing a provider request. The 1024-character limit accommodates a provider value of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Reporting Native Version Reference",
+      "type": "string",
+      "x-status": "experimental"
+    },
+    "object_ref": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Reporting File Object Reference",
+      "type": "string",
+      "x-status": "experimental"
+    },
+    "partition": {
+      "additionalProperties": {
+        "maxLength": 512,
+        "type": "string"
+      },
+      "maxProperties": 32,
+      "type": "object"
+    },
+    "row_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "sha256": {
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "type": "string"
+    },
+    "size_bytes": {
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "object_ref",
+    "size_bytes",
+    "sha256",
+    "row_count"
+  ],
+  "title": "Reporting File Entry",
+  "type": "object",
+  "x-status": "experimental"
+}

@@ -66,8 +66,10 @@ from codegen.compiler import (
     Module,
     Shape,
     check_keywords,
+    conditional_only,
     declare_object,
     fields,
+    rules_at,
 )
 from codegen.refusal import Refusal
 
@@ -79,12 +81,30 @@ from codegen.refusal import Refusal
 INLINE = frozenset({"type", "properties", "required"})
 
 #: What the composing node itself may carry beside its conjunct list.
+#:
+#: D6's rule families are NOT listed here and are added per node by
+#: ``compiler.rules_at``, because the admissible set is a function of the node: a
+#: ``oneOf``/``anyOf`` is a rule only where every branch is ``required``-only, and a
+#: combinator of shapes admitted here would emit a class that drops it silently.
 COMPOSING = frozenset({"type", "allOf", "properties", "required", "additionalProperties"})
 
 
 def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
-    """Append the class for an ``allOf`` node and return its name."""
-    check_keywords(doc, pointer, set(COMPOSING))
+    """Append the class for an ``allOf`` node and return its name.
+
+    **The node's own D6 rules reach the class through** ``declare_object``, which
+    writes the tuple for whatever node it is declaring -- so this row states nothing
+    about rules beyond admitting the keywords.  Documents refused here on ``not``,
+    ``dependencies`` or ``minProperties`` at a composing node whose mechanism was
+    complete three modules away: the rule kinds, the emitter's tuple and the one
+    after-validator all existed, and only the object row consulted them.
+
+    A property the node declares only inside a conditional is merged in for the
+    reason ``compiler.Rules`` states: a rule naming a key the class has no field for
+    refuses a payload the document admits.
+    """
+    stated = rules_at(doc)
+    check_keywords(doc, pointer, COMPOSING | stated.screen)
     if doc.get("type") not in (None, "object"):
         raise Refusal("type", pointer, f"an allOf of type {doc['type']!r} composes no object")
 
@@ -97,6 +117,8 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
     local: dict[str, dict] = {}
     at: dict[str, str] = {}
     required: set[str] = set(_required(doc, pointer))
+    #: The conjuncts that state a RULE of this node rather than a base or fields.
+    conjunct_rules: list[dict] = []
 
     def declare(key: str, node: Any, where: str) -> None:
         prior = local.get(key)
@@ -155,6 +177,27 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
                 declare(key, sub, f"{where}/properties/{key}")
             required |= set(_required(conjunct, where))
             continue
+        if keys and keys <= rules_at(conjunct).screen:
+            # **A conjunct that states only a RULE is a rule of THIS node**, by the
+            # same draft-07 fact the arm above rests on: a conjunct applies to the
+            # same instance, so it is not a separate object and gets no class of its
+            # own.  The arm above reads a conjunct's ``properties`` as this node's
+            # fields; this reads its ``not``, ``if``/``then``/``else``,
+            # ``dependencies`` or ``min``/``maxProperties`` as this node's rule.
+            #
+            # Measured, and it is why this arm exists rather than the root arm alone:
+            # all 20 documents whose ROOT carries a rule keyword ALSO carry a
+            # rule-bearing conjunct, so admitting the root's keyword on its own moved
+            # every one of them from a refusal on ``not``/``dependencies`` to a
+            # refusal on ``not``/``if`` one pointer deeper and emitted none.  The two
+            # positions are one unit.
+            #
+            # Screened by the conjunct's OWN ``screen`` at its OWN pointer, so a
+            # conjunct carrying a combinator of SHAPES still refuses here (step 4's
+            # deferral, ``salesagent-j3k2l.18``) rather than being emitted with the
+            # combinator dropped.
+            conjunct_rules.append(conjunct)
+            continue
         if "$ref" in keys:
             # A conjunct that is a ``$ref`` AND something else: refused on the
             # SIBLING, which is the cause, and never on ``$ref``, which is only
@@ -175,6 +218,16 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
             "properties; a later D2 row lowers this one",
         )
 
+    # A property only a conditional names, read over the rule-bearing conjuncts as well
+    # because most of this population states its conditional there and not at the root.
+    # A key NOTHING else declares refuses: it has no field to be and no fact to state,
+    # and ``compiler.conditional_only`` carries both halves of why.  A key that IS
+    # declared somewhere -- the root's own ``properties``, an inline conjunct's, or an
+    # inherited base's -- needs nothing here: the conditional is then a restatement of a
+    # declaration the document has, and that declaration is the one that stands.
+    stated = rules_at(doc, *conjunct_rules)
+    conditional_only(stated, {*local, *inherited}, pointer)
+
     own: dict[str, dict] = {}
     for key, node in local.items():
         if key not in inherited:
@@ -189,8 +242,20 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
                 f"inherited declaration: inherited states {sorted(_constraining(inherited[key]))}, "
                 f"this states {sorted(_constraining(node))}",
             )
-        if verdict:
-            own[key] = node  # it narrows, so the subclass is the one that states it
+        if verdict or (key in required and key not in inherited_required):
+            # It narrows, so the subclass is the one that states it -- and **a
+            # REQUIREDNESS the base does not have is a narrowing too**, which is the
+            # half this read for as long as requiredness lived in ``required`` rather
+            # than in the declaration ``_restatement`` compares.  Left inherited, the
+            # field keeps the base's optionality while the composing document's own
+            # ``required`` names it, so the class ACCEPTS A PAYLOAD THE DOCUMENT
+            # REFUSES and renders a ``default: None`` the document does not state.
+            # Measured on this tree: 2 documents and 2 pairs --
+            # ``core/tasks-get-response.json`` and
+            # ``protocol/get-task-status-response.json``, whose ``task_id`` is optional
+            # on ``core/protocol-envelope.json`` and required at their own root -- and
+            # they were the last 2 ``added`` facts of the symmetric comparison.
+            own[key] = node
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
 
     decided = fields(
@@ -201,6 +266,10 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
         mod,
         inherited=set(inherited),
         declared_at=at,
+        # D6 has claimed the ``uniqueItems`` of these keys, whether the node stating
+        # it is this one or a rule-bearing conjunct: the rule tuple and the strip are
+        # two halves of one claim, so the row that writes the tuple passes the keys.
+        distinct=stated.distinct,
     )
     return declare_object(
         doc,
@@ -210,6 +279,7 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
         decided,
         Shape({**inherited, **own}, frozenset(required | inherited_required)),
         bases=tuple(bases),
+        rule_nodes=conjunct_rules,
     )
 
 

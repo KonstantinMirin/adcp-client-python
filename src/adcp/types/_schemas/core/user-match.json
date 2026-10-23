@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "required": [
+        "uids"
+      ]
+    },
+    {
+      "required": [
+        "hashed_email"
+      ]
+    },
+    {
+      "required": [
+        "hashed_phone"
+      ]
+    },
+    {
+      "required": [
+        "click_id"
+      ]
+    },
+    {
+      "required": [
+        "client_ip",
+        "client_user_agent"
+      ]
+    }
+  ],
+  "description": "User identifiers for attribution matching. Supports universal IDs, hashed identifiers, click IDs, and probabilistic matching.",
+  "properties": {
+    "click_id": {
+      "description": "Platform click identifier (fbclid, gclid, ttclid, ScCid, etc.)",
+      "type": "string"
+    },
+    "click_id_type": {
+      "description": "Type of click identifier (e.g. fbclid, gclid, ttclid, msclkid, ScCid)",
+      "type": "string"
+    },
+    "client_ip": {
+      "description": "Client IP address for probabilistic matching",
+      "type": "string"
+    },
+    "client_user_agent": {
+      "description": "Client user agent string for probabilistic matching",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "hashed_email": {
+      "description": "SHA-256 hash of lowercase, trimmed email address. Buyer must normalize before hashing: lowercase, trim whitespace. Pseudonymous PII, not anonymous \u2014 the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "hashed_phone": {
+      "description": "SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Buyer must normalize to E.164 before hashing. Pseudonymous PII, not anonymous \u2014 the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "uids": {
+      "description": "Universal ID values for user matching",
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "enum": [
+              "id5",
+              "euid",
+              "maid",
+              "uid2",
+              "other",
+              "pairid",
+              "rampid",
+              "hashed_email",
+              "rampid_derived",
+              "world_id_nullifier",
+              "publisher_first_party"
+            ]
+          },
+          "value": {
+            "description": "Universal ID value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "title": "User Match",
+  "type": "object"
+}

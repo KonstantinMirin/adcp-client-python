@@ -379,7 +379,16 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     kind = node.get("type")
 
     if kind is None:
-        check_keywords(node, pointer, set())
+        # ``rules.ON_A_VALUE`` for the SCALAR arm's reason, which does not depend on the
+        # type word being present: a ``not`` is a statement about which VALUES the node
+        # admits, so D4 leaves it to the schema half, and a node with no ``type`` has no
+        # less of a value than a node with one.  The set was admitted on the scalar arm
+        # alone because every site measured for it spelled a type; this bundle has one
+        # that does not (``core/account.json#/properties/destination_billing_entity``,
+        # whose whole schema is ``{"not": {}}``), and refusing it there while carrying
+        # ``not: {"const": ...}`` here would be the same keyword read two ways by the
+        # presence of a word that changes nothing about it.
+        check_keywords(node, pointer, {*lower_rules.ON_A_VALUE})
         if set(node) & set(CONSTRAINTS):
             raise Refusal(
                 "type", pointer, "a typeless node carrying a constraint has nothing to apply it to"

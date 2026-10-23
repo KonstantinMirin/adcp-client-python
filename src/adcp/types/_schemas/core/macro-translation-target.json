@@ -1,0 +1,526 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "dialect": {
+            "enum": [
+              "iab_vast",
+              "iab_daast",
+              "vendor"
+            ]
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "required": [
+          "dialect_namespace",
+          "dialect_revision"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "dialect": {
+            "enum": [
+              "adcp",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "dialect_namespace"
+              ]
+            },
+            {
+              "required": [
+                "dialect_revision"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "dialect": {
+            "const": "unknown"
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": false
+    },
+    {
+      "else": {
+        "not": {
+          "required": [
+            "universal_semantic"
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "mapping_status": {
+            "const": "verified_universal"
+          }
+        },
+        "required": [
+          "mapping_status"
+        ]
+      },
+      "then": {
+        "required": [
+          "universal_semantic"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "dialect": {
+            "enum": [
+              "iab_vast",
+              "iab_daast"
+            ]
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "properties": {
+          "performed_by": {
+            "const": "request_executor"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "dialect": {
+            "const": "adcp"
+          }
+        },
+        "required": [
+          "dialect"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dialect_semantic": {
+            "enum": [
+              "OS",
+              "DMA",
+              "LAT",
+              "SKU",
+              "ZIP",
+              "AXEM",
+              "CITY",
+              "GDPR",
+              "GTIN",
+              "LONG",
+              "TMPX",
+              "DOMAIN",
+              "JOB_ID",
+              "REGION",
+              "COUNTRY",
+              "GPP_SID",
+              "AD_WIDTH",
+              "APP_NAME",
+              "HOTEL_ID",
+              "KEYWORDS",
+              "PAGE_URL",
+              "POD_SIZE",
+              "REFERRER",
+              "STORE_ID",
+              "VIDEO_ID",
+              "AD_HEIGHT",
+              "CLICK_URL",
+              "DEVICE_ID",
+              "FLIGHT_ID",
+              "ITEM_NAME",
+              "TIMESTAMP",
+              "APP_BUNDLE",
+              "CATALOG_ID",
+              "GPP_STRING",
+              "IP_ADDRESS",
+              "ITEM_PRICE",
+              "LISTING_ID",
+              "OS_VERSION",
+              "PACKAGE_ID",
+              "PROGRAM_ID",
+              "STATION_ID",
+              "USER_AGENT",
+              "US_PRIVACY",
+              "VEHICLE_ID",
+              "AD_BREAK_ID",
+              "APP_ITEM_ID",
+              "CACHEBUSTER",
+              "CREATIVE_ID",
+              "DEVICE_MAKE",
+              "DEVICE_TYPE",
+              "OFFERING_ID",
+              "VIDEO_TITLE",
+              "DEVICE_MODEL",
+              "GDPR_CONSENT",
+              "ITEM_TAGLINE",
+              "MEDIA_BUY_ID",
+              "PLACEMENT_ID",
+              "PLAYER_WIDTH",
+              "POD_POSITION",
+              "CONTENT_GENRE",
+              "FOLD_POSITION",
+              "IMPRESSION_ID",
+              "PLAYER_HEIGHT",
+              "AUDIO_DURATION",
+              "CONTENT_RATING",
+              "DESTINATION_ID",
+              "DEVICE_ID_TYPE",
+              "INSTALLMENT_ID",
+              "VIDEO_CATEGORY",
+              "VIDEO_DURATION",
+              "COLLECTION_NAME",
+              "ITEM_DESCRIPTION",
+              "LIMIT_AD_TRACKING",
+              "CREATIVE_VARIANT_ID",
+              "ITEM_PRICE_CURRENCY"
+            ]
+          },
+          "mapping_status": {
+            "const": "verified_universal"
+          }
+        },
+        "required": [
+          "universal_semantic"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "universal_semantic": {
+            "enum": [
+              "CATALOG_ID",
+              "SKU",
+              "GTIN",
+              "OFFERING_ID",
+              "JOB_ID",
+              "HOTEL_ID",
+              "FLIGHT_ID",
+              "VEHICLE_ID",
+              "LISTING_ID",
+              "STORE_ID",
+              "PROGRAM_ID",
+              "DESTINATION_ID",
+              "ITEM_NAME",
+              "ITEM_DESCRIPTION",
+              "ITEM_TAGLINE",
+              "ITEM_PRICE",
+              "ITEM_PRICE_CURRENCY"
+            ]
+          }
+        },
+        "required": [
+          "universal_semantic"
+        ]
+      },
+      "then": {
+        "properties": {
+          "encoding": {
+            "properties": {
+              "depth": {
+                "const": 1
+              },
+              "kind": {
+                "const": "rfc3986"
+              }
+            }
+          },
+          "performed_by": {
+            "const": "seller"
+          }
+        }
+      }
+    }
+  ],
+  "description": "The exact downstream-native token produced by a `translate_to_native` operation. The output asset replaces the source declaration with a declaration for this token and its next operation.",
+  "properties": {
+    "dialect": {
+      "enum": [
+        "adcp",
+        "vendor",
+        "unknown",
+        "iab_vast",
+        "iab_daast"
+      ]
+    },
+    "dialect_namespace": {
+      "format": "uri",
+      "type": "string"
+    },
+    "dialect_revision": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "dialect_semantic": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "encoding": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "kind": {
+                    "const": "iab_vast_uri"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "depth": {
+                  "const": 1
+                },
+                "kind": {
+                  "const": "iab_vast_uri"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "kind": {
+                    "const": "none"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "depth": {
+                  "const": 0
+                },
+                "kind": {
+                  "const": "none"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "kind": {
+                    "const": "rfc3986"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "depth": {
+                  "minimum": 1
+                },
+                "kind": {
+                  "const": "rfc3986"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "Exact encoding profile applied to a concrete substitution value. `rfc3986` encodes UTF-8 bytes outside the RFC 3986 unreserved set once per depth. `iab_vast_uri` follows the cited IAB VAST macro registry, including its array serialization rules, and is exactly one pass.",
+      "maxProperties": 2,
+      "properties": {
+        "depth": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "none",
+            "rfc3986",
+            "iab_vast_uri"
+          ]
+        }
+      },
+      "required": [
+        "depth",
+        "kind"
+      ],
+      "title": "Macro Encoding",
+      "type": "object"
+    },
+    "mapping_status": {
+      "enum": [
+        "unresolved",
+        "dialect_defined",
+        "verified_universal"
+      ]
+    },
+    "next_operation": {
+      "const": "resolve_value",
+      "type": "string"
+    },
+    "performed_by": {
+      "enum": [
+        "buyer",
+        "seller",
+        "creative_agent",
+        "request_executor",
+        "source_ad_server"
+      ]
+    },
+    "token": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "universal_semantic": {
+      "enum": [
+        "OS",
+        "DMA",
+        "LAT",
+        "SKU",
+        "ZIP",
+        "AXEM",
+        "CITY",
+        "GDPR",
+        "GTIN",
+        "LONG",
+        "TMPX",
+        "DOMAIN",
+        "JOB_ID",
+        "REGION",
+        "COUNTRY",
+        "GPP_SID",
+        "AD_WIDTH",
+        "APP_NAME",
+        "HOTEL_ID",
+        "KEYWORDS",
+        "PAGE_URL",
+        "POD_SIZE",
+        "REFERRER",
+        "STORE_ID",
+        "VIDEO_ID",
+        "AD_HEIGHT",
+        "CLICK_URL",
+        "DEVICE_ID",
+        "FLIGHT_ID",
+        "ITEM_NAME",
+        "TIMESTAMP",
+        "APP_BUNDLE",
+        "CATALOG_ID",
+        "GPP_STRING",
+        "IP_ADDRESS",
+        "ITEM_PRICE",
+        "LISTING_ID",
+        "OS_VERSION",
+        "PACKAGE_ID",
+        "PROGRAM_ID",
+        "STATION_ID",
+        "USER_AGENT",
+        "US_PRIVACY",
+        "VEHICLE_ID",
+        "AD_BREAK_ID",
+        "APP_ITEM_ID",
+        "CACHEBUSTER",
+        "CREATIVE_ID",
+        "DEVICE_MAKE",
+        "DEVICE_TYPE",
+        "OFFERING_ID",
+        "VIDEO_TITLE",
+        "DEVICE_MODEL",
+        "GDPR_CONSENT",
+        "ITEM_TAGLINE",
+        "MEDIA_BUY_ID",
+        "PLACEMENT_ID",
+        "PLAYER_WIDTH",
+        "POD_POSITION",
+        "CONTENT_GENRE",
+        "FOLD_POSITION",
+        "IMPRESSION_ID",
+        "PLAYER_HEIGHT",
+        "AUDIO_DURATION",
+        "CONTENT_RATING",
+        "DESTINATION_ID",
+        "DEVICE_ID_TYPE",
+        "INSTALLMENT_ID",
+        "VIDEO_CATEGORY",
+        "VIDEO_DURATION",
+        "COLLECTION_NAME",
+        "ITEM_DESCRIPTION",
+        "LIMIT_AD_TRACKING",
+        "CREATIVE_VARIANT_ID",
+        "ITEM_PRICE_CURRENCY"
+      ]
+    }
+  },
+  "required": [
+    "token",
+    "dialect",
+    "dialect_semantic",
+    "mapping_status",
+    "next_operation",
+    "performed_by",
+    "encoding"
+  ],
+  "title": "Macro Translation Target",
+  "type": "object"
+}

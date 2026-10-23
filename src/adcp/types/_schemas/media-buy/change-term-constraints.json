@@ -1,0 +1,358 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "money": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "type": "object"
+    }
+  },
+  "description": "Optional machine-readable bounds on a proposal-bound change right. These constraints narrow the action named by the containing change term; they never grant an additional action or expand the accepted commercial envelope. Sellers omit this object when no portable bound is available, and buyers then treat any opaque conditions as unevaluated rather than assuming the change will be accepted.",
+  "discriminator": {
+    "propertyName": "kind"
+  },
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "max_delta_amount"
+          ]
+        },
+        {
+          "required": [
+            "max_delta_percent"
+          ]
+        },
+        {
+          "required": [
+            "min_result_amount"
+          ]
+        },
+        {
+          "required": [
+            "max_result_amount"
+          ]
+        }
+      ],
+      "properties": {
+        "kind": {
+          "const": "budget",
+          "type": "string"
+        },
+        "max_delta_amount": {
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Maximum absolute amount by which the affected budget may change in the direction named by the action.",
+          "maxProperties": 2,
+          "properties": {
+            "amount": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "currency": {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "amount",
+            "currency"
+          ],
+          "type": "object"
+        },
+        "max_delta_percent": {
+          "description": "Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "max_result_amount": {
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Maximum resulting committed value after the change.",
+          "maxProperties": 2,
+          "properties": {
+            "amount": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "currency": {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "amount",
+            "currency"
+          ],
+          "type": "object"
+        },
+        "min_result_amount": {
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Minimum resulting committed value after the change.",
+          "maxProperties": 2,
+          "properties": {
+            "amount": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "currency": {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "amount",
+            "currency"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Budget change constraints",
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "max_change"
+          ]
+        },
+        {
+          "required": [
+            "earliest_result"
+          ]
+        },
+        {
+          "required": [
+            "latest_result"
+          ]
+        },
+        {
+          "required": [
+            "minimum_notice"
+          ]
+        }
+      ],
+      "properties": {
+        "earliest_result": {
+          "description": "Earliest resulting start or end timestamp accepted for this action.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "kind": {
+          "const": "flight",
+          "type": "string"
+        },
+        "latest_result": {
+          "description": "Latest resulting start or end timestamp accepted for this action.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "max_change": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Maximum extension, shortening, or shift in the direction named by the action.",
+          "maxProperties": 2,
+          "properties": {
+            "interval": {
+              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "unit": {
+              "enum": [
+                "days",
+                "hours",
+                "minutes",
+                "seconds",
+                "campaign"
+              ]
+            }
+          },
+          "required": [
+            "interval",
+            "unit"
+          ],
+          "title": "Duration",
+          "type": "object"
+        },
+        "minimum_notice": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Minimum elapsed notice before the requested flight change may take effect.",
+          "maxProperties": 2,
+          "properties": {
+            "interval": {
+              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "unit": {
+              "enum": [
+                "days",
+                "hours",
+                "minutes",
+                "seconds",
+                "campaign"
+              ]
+            }
+          },
+          "required": [
+            "interval",
+            "unit"
+          ],
+          "title": "Duration",
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Flight change constraints",
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "max_additions"
+          ]
+        },
+        {
+          "required": [
+            "max_removals"
+          ]
+        },
+        {
+          "required": [
+            "max_result_count"
+          ]
+        }
+      ],
+      "properties": {
+        "kind": {
+          "const": "package_count",
+          "type": "string"
+        },
+        "max_additions": {
+          "description": "Maximum packages that may be added by one exercise of the right.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_removals": {
+          "description": "Maximum packages that may be removed by one exercise of the right.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_result_count": {
+          "description": "Maximum active package count after the change.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Package count constraints",
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "minimum_notice"
+          ]
+        },
+        {
+          "required": [
+            "earliest_effective_at"
+          ]
+        },
+        {
+          "required": [
+            "latest_effective_at"
+          ]
+        }
+      ],
+      "properties": {
+        "earliest_effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "kind": {
+          "const": "effective_timing",
+          "type": "string"
+        },
+        "latest_effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "minimum_notice": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.",
+          "maxProperties": 2,
+          "properties": {
+            "interval": {
+              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "unit": {
+              "enum": [
+                "days",
+                "hours",
+                "minutes",
+                "seconds",
+                "campaign"
+              ]
+            }
+          },
+          "required": [
+            "interval",
+            "unit"
+          ],
+          "title": "Duration",
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Effective timing constraints",
+      "type": "object"
+    }
+  ],
+  "title": "Media Buy Change Term Constraints"
+}

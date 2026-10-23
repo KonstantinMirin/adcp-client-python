@@ -59,11 +59,39 @@ DEFERRED_TO_A_LATER_ROW = "this step lowers no such keyword (a later D2 row does
 #: names the URI first.  Producer: ``emit`` at the unresolved-reference check.
 UNRESOLVED_TARGET = "is still unresolved after bundle.resolved"
 
+#: A ``$ref`` whose target is itself refused, which QUOTES THE TARGET'S OWN
+#: REFUSAL after this prefix.  Whether this document is pending or final is
+#: therefore not a property of its own sentence at all -- it is whatever the
+#: target's is.  Producer: ``emit`` at the cross-document reference, as
+#: ``f"its target {wanted} is refused: {r}"``.
+CHAINED_TO_A_REFUSED_TARGET = "is refused: "
+
 
 def is_a_verdict(detail: str) -> bool:
     """True when this refusal is final: a keyword this emitter will not lower.
 
-    False for the two pending kinds.  Read by the metric, so that "refused"
-    cannot absorb "not built yet" without the count moving.
+    **A chained refusal is a verdict if and only if what it is chained to is
+    one.**  That is TRANSITIVITY and not a third constant, which is why the
+    comment above -- "a fourth kind means a fourth constant here" -- was right
+    about the rule and wrong about this case.  The producer embeds the target's
+    whole refusal after ``is refused: ``, so the answer is already in the string
+    and this recurses into it rather than asking a new question of it.
+
+    **Measured, and this was wrong for as long as the function existed.** On
+    ``4a596febe``, 170 of 380 refusals quote a target's refusal. Reading only the
+    outer sentence called every one of them a verdict:
+
+        is_a_verdict as it was   674 emitted + 331 verdicts = 1005 accounted
+        resolving the chain      674 emitted + 301 verdicts =  975 accounted
+        overstated by 30, and pending understated 48 -> 79
+
+    The bias was on every tree the epic has reported, so the DELTAS between rows
+    were right and the absolutes were not.
     """
+    head, _, rest = detail.partition(CHAINED_TO_A_REFUSED_TARGET)
+    if rest and head.startswith("its target "):
+        # The target's refusal is quoted whole, with its own pointer prefix
+        # (``/allOf/0: $ref: ...``).  Strip to the detail and ask again: a chain
+        # of any depth resolves because each link quotes the next.
+        return is_a_verdict(rest.split(": ", 2)[-1] if ": " in rest else rest)
     return detail != DEFERRED_TO_A_LATER_ROW and UNRESOLVED_TARGET not in detail

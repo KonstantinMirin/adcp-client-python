@@ -388,22 +388,56 @@ def supplied(model: BaseModel) -> tuple[frozenset[str], Mapping[str, Any]]:
     return frozenset(out), out
 
 
+def bound_rules(cls: type) -> tuple[Rule, ...]:
+    """Every rule bound ON ``cls`` or on any ancestor of it, base-most first.
+
+    **Read over the MRO and not off ``cls._adcp_rules``, because an attribute read
+    returns ONE class's tuple and stops.**  A subclass that declares rules of its own
+    SHADOWS its base's, and the emitter now produces exactly that pair: a union root
+    whose own ``not`` is the base's rule and whose branches each carry theirs.
+    Measured on the 3.2 bundle, 3 documents --
+    ``media-buy/list-products-response.json``, ``refine-proposals-response.json`` and
+    ``request-proposals-response.json`` -- declare a rule at the root AND a rule on a
+    branch, so an attribute read would have stopped enforcing the root's silently, with
+    nothing to report it: a rule renders nothing in a model's JSON schema, so the
+    schema comparison cannot see one go missing.
+
+    It is also what ``docs/plan/rebuild-plan.md`` §6 already asks for from the other
+    side -- "a subclass inherits its parent's validators, and that is graded ... a
+    subclass that silently loses a validator is the defect this catches" -- so a
+    CONSUMER's refinement of an emitted class keeps the emitted rules too, which an
+    attribute read did not give it either.
+
+    Base-most first, so a refusal reports the composed document's own statement before
+    the branch's.  Deduplicated by VALUE: the rule kinds are frozen dataclasses, two
+    ancestors can state the same rule, and evaluating it twice would report one
+    violation twice.
+    """
+    out: list[Rule] = []
+    for ancestor in reversed(cls.__mro__):
+        for rule in ancestor.__dict__.get("_adcp_rules", ()):
+            if rule not in out:
+                out.append(rule)
+    return tuple(out)
+
+
 class RuleBound(BaseModel):
     """The one validator, over the one tuple.
 
-    A class with no rule carries the empty tuple it inherits and the validator returns
-    on its first line, so this costs every other class one attribute lookup.
+    A class with no rule anywhere in its MRO collects the empty tuple and the validator
+    returns on its first line, so this costs every other class one walk of a short MRO.
     """
 
     _adcp_rules: ClassVar[tuple[Rule, ...]] = ()
 
     @model_validator(mode="after")
     def _enforce_adcp_rules(self) -> RuleBound:
-        if not self._adcp_rules:
+        rules = bound_rules(type(self))
+        if not rules:
             return self
         keys, values = supplied(self)
         refuse(
             type(self).__name__,
-            [e for rule in self._adcp_rules for e in rule.errors(keys, values)],
+            [e for rule in rules for e in rule.errors(keys, values)],
         )
         return self

@@ -1,0 +1,324 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "not": {
+        "required": [
+          "fixed_price",
+          "floor_price"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pricing_model": {
+            "const": "cpa"
+          }
+        },
+        "required": [
+          "pricing_model"
+        ]
+      },
+      "then": {
+        "required": [
+          "event_type",
+          "fixed_price"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pricing_model": {
+            "const": "revenue_share"
+          }
+        },
+        "required": [
+          "pricing_model"
+        ]
+      },
+      "then": {
+        "required": [
+          "event_type",
+          "event_source_id",
+          "commission_rate",
+          "commission_basis_description"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pricing_model": {
+            "enum": [
+              "cpv",
+              "cpp",
+              "time"
+            ]
+          }
+        },
+        "required": [
+          "pricing_model"
+        ]
+      },
+      "then": {
+        "required": [
+          "parameters"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "custom"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "custom_event_name"
+        ]
+      }
+    }
+  ],
+  "description": "Self-contained selected pricing terms for compact product offers and accepted commercial snapshots. Deprecated execution hints such as max_bid are absent; bidding intent lives in BiddingPolicy.",
+  "properties": {
+    "commission_basis_description": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "commission_rate": {
+      "exclusiveMinimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "custom_event_name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "eligible_adjustments": {
+      "items": {
+        "enum": [
+          "fee",
+          "discount",
+          "commission",
+          "settlement"
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "event_source_id": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "event_source"
+    },
+    "event_type": {
+      "enum": [
+        "lead",
+        "share",
+        "custom",
+        "donate",
+        "follow",
+        "refund",
+        "search",
+        "contact",
+        "purchase",
+        "schedule",
+        "page_view",
+        "subscribe",
+        "app_launch",
+        "add_to_cart",
+        "app_install",
+        "select_item",
+        "start_trial",
+        "viewed_cart",
+        "content_view",
+        "qualify_lead",
+        "view_content",
+        "select_content",
+        "add_to_wishlist",
+        "disqualify_lead",
+        "watch_milestone",
+        "add_payment_info",
+        "remove_from_cart",
+        "initiate_checkout",
+        "close_convert_lead",
+        "submit_application",
+        "complete_registration"
+      ]
+    },
+    "fixed_price": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "floor_price": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "min_spend_per_package": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "parameters": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "price_breakdown": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Breaks down the composition of fixed_price from a list (rate card) price through adjustments. Adjustments fall into four kinds: fees (increase buyer price), discounts (reduce buyer price), commissions (revenue splits that don't affect buyer price), and settlement terms (applied at invoicing). The invariant is: list_price with all fee and discount adjustments applied sequentially equals fixed_price. Fees increase the running price; discounts reduce it. This invariant applies only when fixed_price is present on the parent object; on auction-based packages the breakdown is informational only. All monetary values are rounded to currency precision at each step. Budgets are always denominated at the fixed_price level, inclusive of commissions.",
+      "properties": {
+        "adjustments": {
+          "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+          "items": {
+            "oneOf": [
+              {
+                "required": [
+                  "amount"
+                ]
+              },
+              {
+                "required": [
+                  "rate"
+                ]
+              }
+            ],
+            "properties": {
+              "amount": {
+                "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              "beneficiary": {
+                "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                "maxLength": 256,
+                "type": "string"
+              },
+              "description": {
+                "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                "maxLength": 256,
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "fee",
+                  "discount",
+                  "commission",
+                  "settlement"
+                ]
+              },
+              "name": {
+                "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                "examples": [
+                  "ad_serving",
+                  "data_targeting",
+                  "brand_safety",
+                  "volume",
+                  "negotiated",
+                  "early_booking",
+                  "agency",
+                  "intermediary",
+                  "cash_discount",
+                  "early_payment"
+                ],
+                "maxLength": 64,
+                "type": "string"
+              },
+              "rate": {
+                "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                "exclusiveMaximum": 1,
+                "exclusiveMinimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "name"
+            ],
+            "type": "object"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "type": "array"
+        },
+        "list_price": {
+          "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "adjustments",
+        "list_price"
+      ],
+      "title": "Price Breakdown",
+      "type": "object"
+    },
+    "price_guidance": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Pricing guidance for auction-based bidding. Helps buyers calibrate bids with historical percentiles.",
+      "properties": {
+        "p25": {
+          "description": "25th percentile of recent winning bids",
+          "minimum": 0,
+          "type": "number"
+        },
+        "p50": {
+          "description": "Median of recent winning bids",
+          "minimum": 0,
+          "type": "number"
+        },
+        "p75": {
+          "description": "75th percentile of recent winning bids",
+          "minimum": 0,
+          "type": "number"
+        },
+        "p90": {
+          "description": "90th percentile of recent winning bids",
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "title": "Price Guidance",
+      "type": "object"
+    },
+    "pricing_model": {
+      "enum": [
+        "cpm",
+        "vcpm",
+        "cpc",
+        "cpcv",
+        "cpv",
+        "cpp",
+        "cpa",
+        "revenue_share",
+        "flat_rate",
+        "time"
+      ],
+      "type": "string"
+    },
+    "pricing_option_id": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "product_pricing_option"
+    }
+  },
+  "required": [
+    "pricing_option_id",
+    "pricing_model",
+    "currency"
+  ],
+  "title": "Canonical Pricing Option",
+  "type": "object"
+}

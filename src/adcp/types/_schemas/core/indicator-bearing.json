@@ -1,0 +1,381 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "indicators_evaluated_scope"
+        ]
+      },
+      "then": {
+        "properties": {
+          "indicators": {
+            "items": {
+              "required": [
+                "scope"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "indicators": {
+            "contains": {
+              "properties": {
+                "type": {
+                  "const": "creative_fatigue"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          }
+        },
+        "required": [
+          "indicators"
+        ]
+      },
+      "then": {
+        "properties": {
+          "indicator_types_evaluated": {
+            "contains": {
+              "const": "creative_fatigue"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "indicators": {
+            "contains": {
+              "properties": {
+                "type": {
+                  "const": "creative_quality_opportunity"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          }
+        },
+        "required": [
+          "indicators"
+        ]
+      },
+      "then": {
+        "properties": {
+          "indicator_types_evaluated": {
+            "contains": {
+              "const": "creative_quality_opportunity"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "indicators": {
+            "contains": {
+              "properties": {
+                "type": {
+                  "const": "creative_diversity_low"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          }
+        },
+        "required": [
+          "indicators"
+        ]
+      },
+      "then": {
+        "properties": {
+          "indicator_types_evaluated": {
+            "contains": {
+              "const": "creative_diversity_low"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "indicators": {
+            "contains": {
+              "properties": {
+                "type": {
+                  "const": "audience_saturation"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          }
+        },
+        "required": [
+          "indicators"
+        ]
+      },
+      "then": {
+        "properties": {
+          "indicator_types_evaluated": {
+            "contains": {
+              "const": "audience_saturation"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "indicators": {
+            "contains": {
+              "properties": {
+                "type": {
+                  "const": "inventory_shortfall_forecast"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          }
+        },
+        "required": [
+          "indicators"
+        ]
+      },
+      "then": {
+        "properties": {
+          "indicator_types_evaluated": {
+            "contains": {
+              "const": "inventory_shortfall_forecast"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "indicators": {
+            "contains": {
+              "properties": {
+                "type": {
+                  "const": "pacing_risk"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          }
+        },
+        "required": [
+          "indicators"
+        ]
+      },
+      "then": {
+        "properties": {
+          "indicator_types_evaluated": {
+            "contains": {
+              "const": "pacing_risk"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "indicators": {
+            "contains": {
+              "properties": {
+                "type": {
+                  "const": "budget_constrained"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          }
+        },
+        "required": [
+          "indicators"
+        ]
+      },
+      "then": {
+        "properties": {
+          "indicator_types_evaluated": {
+            "contains": {
+              "const": "budget_constrained"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "dependencies": {
+    "indicator_types_evaluated": [
+      "indicators",
+      "indicators_as_of"
+    ],
+    "indicators": [
+      "indicator_types_evaluated",
+      "indicators_as_of"
+    ],
+    "indicators_as_of": [
+      "indicators",
+      "indicator_types_evaluated"
+    ],
+    "indicators_evaluated_scope": [
+      "indicators",
+      "indicator_types_evaluated",
+      "indicators_as_of"
+    ]
+  },
+  "description": "Reusable contract for current indicator snapshots on media buys, packages, and package\u2013creative assignments. This schema contributes sibling properties through allOf; it does not create an indicator_state wrapper on the wire.",
+  "properties": {
+    "indicator_types_evaluated": {
+      "description": "Indicator types covered by this snapshot. Required whenever indicators is present. Types omitted from this list remain unknown even when indicators is empty. Every returned indicator.type MUST appear in this list.",
+      "items": {
+        "enum": [
+          "pacing_risk",
+          "creative_fatigue",
+          "budget_constrained",
+          "audience_saturation",
+          "creative_diversity_low",
+          "creative_quality_opportunity",
+          "inventory_shortfall_forecast"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "indicators": {
+      "description": "Current seller assertions for the indicator types and publisher/placement coverage named by the sibling evaluation fields. Omitted means unknown or not evaluated. A present empty array means evaluated with no current assertion for indicator_types_evaluated in the evaluated scope.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "A compact current seller assertion identifying a material risk or optimization opportunity that warrants buyer attention on the containing media buy, package, or package\u2013creative relationship. An indicator is read-side state, not an error, warning, durable event record, authorization, executable action, or independently addressable resource. The responding seller is the source. Different sellers may use different methodologies for the same standard type; native scores, evaluation windows, suggested actions, deep links, and upstream attribution belong in ext.",
+        "properties": {
+          "detected_at": {
+            "description": "When the seller first detected the current uninterrupted occurrence of this indicator. Keep this value stable while the condition remains present. If the condition clears and is later detected again, use the new detection time. Optional because some upstream platforms expose current assessments without an original detection timestamp.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "ext": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Seller- or provider-specific detail such as scores, thresholds, evaluation windows, methodology identifiers, or upstream attribution. Core consumers must not need ext to understand the broad meaning of type.",
+            "title": "Extension Object",
+            "type": "object"
+          },
+          "scope": {
+            "description": "Optional narrower publisher or placement scope within the enclosing media buy, package, or package\u2013creative assignment. Omit only when the seller evaluated and asserts the indicator across the whole enclosing resource/relationship. When partial indicators_evaluated_scope is declared, every returned indicator MUST include scope and every entry MUST fall within that coverage. This is scope, not source: the responding seller remains the source.",
+            "items": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "A publisher or placement scope within an enclosing media buy, package, or package\u2013creative assignment. publisher_domain alone means all delivery for that publisher within the enclosing object; placement_id narrows to one placement in that publisher's namespace.",
+              "properties": {
+                "placement_id": {
+                  "description": "Optional placement ID within publisher_domain. Omit to scope the assertion or evaluation to all delivery for the publisher in the enclosing object.",
+                  "type": "string",
+                  "x-entity": "placement"
+                },
+                "publisher_domain": {
+                  "description": "Domain where the publisher's adagents.json is hosted.",
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "publisher_domain"
+              ],
+              "title": "Indicator Scope",
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "enum": [
+              "pacing_risk",
+              "creative_fatigue",
+              "budget_constrained",
+              "audience_saturation",
+              "creative_diversity_low",
+              "creative_quality_opportunity",
+              "inventory_shortfall_forecast"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "Indicator",
+        "type": "object"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "indicators_as_of": {
+      "description": "When the seller completed this evaluation. Required whenever indicators is present, including an empty array. State changes require a strictly newer timestamp; equal-timestamp conflicts are invalid and buyers retain stored state.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "indicators_evaluated_scope": {
+      "description": "Optional publisher or placement coverage for this evaluation. Omit when the named indicator types were evaluated across the whole enclosing resource or relationship. Unlisted scopes remain unknown. When present, every returned indicator MUST include scope and every scope entry MUST be contained by this coverage.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "A publisher or placement scope within an enclosing media buy, package, or package\u2013creative assignment. publisher_domain alone means all delivery for that publisher within the enclosing object; placement_id narrows to one placement in that publisher's namespace.",
+        "properties": {
+          "placement_id": {
+            "description": "Optional placement ID within publisher_domain. Omit to scope the assertion or evaluation to all delivery for the publisher in the enclosing object.",
+            "type": "string",
+            "x-entity": "placement"
+          },
+          "publisher_domain": {
+            "description": "Domain where the publisher's adagents.json is hosted.",
+            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publisher_domain"
+        ],
+        "title": "Indicator Scope",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "title": "Indicator-bearing resource state",
+  "type": "object",
+  "x-adcp-validation": {
+    "spec": "specs/relationship-scoped-indicators.md#evaluation-contract",
+    "verifier_constraints": {
+      "indicator_snapshot_semantics": {
+        "assertion_scope_must_be_contained_by_evaluated_scope": true,
+        "logical_key_unique_by_type_and_normalized_scope_set": true
+      }
+    }
+  }
+}
