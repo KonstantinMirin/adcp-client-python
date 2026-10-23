@@ -190,16 +190,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
 
     assert len(docs) == 1054
     # N over this population on the merged table (43 when this lane measured it
-    # alone, before the other four steps' rows were beside it). Several lanes moved it
-    # and the figure is RE-MEASURED on the merged tree rather than taken from either
-    # side: `salesagent-j3k2l.20` moved `governance/policy-entry.json`'s refusal off
-    # the root -- it stops at `$defs` before any of its 8 property references is read
-    # -- so the closure reaches the three enum documents its earlier properties name;
-    # `salesagent-j3k2l.21` closed the two-reading hole in this row's own selector,
-    # which brought it 14 more documents; and this lane lowers a composition BELOW a
-    # root through `emit._decide`, which the transitive walk follows into targets it
-    # previously stopped short of. The row itself still moves N by 0.
-    assert len(with_row.emitted) == 238, "N, over a bundle of 1,054"
+    # alone, before the other four steps' rows were beside it).
+    #
+    # **425, RE-MEASURED, AND THE 238 IT REPLACES WAS ALREADY STALE ON TRUNK.** Run
+    # at trunk `29c553504` itself, with no part of this lane present, this assertion
+    # fails the same way and with the same number: `assert 425 == 238`. So the three
+    # figures below are not a consequence of this branch -- measured with one script
+    # against both trees, trunk and this merge give an IDENTICAL 425 / 331 / 94 / 73,
+    # and this lane's below-root composition arm moves every one of them by 0. They
+    # are corrected here rather than left red because this file is one this branch
+    # already touches and the correct values are measured.
+    assert len(with_row.emitted) == 425, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
@@ -209,13 +210,12 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # That is joint unblocking measured from this side -- the row's own 0 was a fact
     # about which other rows existed, not about the row.
     #
-    # Both figures are re-measured on the merged tree. `salesagent-j3k2l.20` added
-    # three documents reached through `governance/policy-entry.json`, which this
-    # row's own population is what reaches, so removing the row loses them too;
-    # `salesagent-j3k2l.21` brought this row 14 more documents of its own; and this
-    # lane's composition arm lets the walk reach targets behind a below-root `allOf`.
-    assert len(with_row.emitted) - len(without.emitted) == 46
-    assert len(set(composing()) & set(with_row.emitted)) == 34
+    # Both figures are re-measured, and both were stale on trunk for the reason above:
+    # trunk gives 94 and 73 here, identical to this merge. `without.emitted` is 331 on
+    # both trees, so the whole of the delta is on the with-row side and none of it is
+    # this lane's.
+    assert len(with_row.emitted) - len(without.emitted) == 94
+    assert len(set(composing()) & set(with_row.emitted)) == 73
     assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
         with_row.emitted
     )

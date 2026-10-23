@@ -2216,7 +2216,7 @@ def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointe
 
 
 def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_keyword() -> None:
-    """The step's own arithmetic: 126 union roots, 10 emitted and 116 refused, each named.
+    """The step's own arithmetic: 126 union roots, 28 emitted and 98 refused, each named.
 
     The by-keyword profile is asserted as a WHOLE rather than as a total, because the
     profile is the readable result of the step -- it says which later step unblocks what.
@@ -2236,12 +2236,17 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     emitted = [d for d in roots if d in out.emitted]
     refused = [d for d in roots if d in out.refusals]
     assert len(roots) == 126
-    # 10 and not the 6 this lane measured alone, over a population of 126 and not
-    # 156: roots emit only once another step's row is beside this one -- a nested
-    # ``enum`` (step 3), a nested container (step 6) -- and the 30 presence-only
-    # combinators left for step 7.  Joint unblocking, which no single lane reaches.
-    assert len(emitted) == 19, emitted
-    assert len(refused) == 107
+    # Roots emit only once another step's row is beside this one -- a nested ``enum``
+    # (step 3), a nested container (step 6) -- and the presence-only combinators are
+    # left for step 7.  Joint unblocking, which no single lane reaches.
+    #
+    # **28 / 98, RE-MEASURED, AND THE 19 / 107 THEY REPLACE WAS ALREADY STALE ON
+    # TRUNK.**  Run at trunk ``29c553504`` with no part of this lane present, this
+    # assertion fails identically -- ``assert 28 == 19`` -- so neither figure is a
+    # consequence of this branch.  Measured on both trees: emitted 28 and refused 98
+    # on each.  The PROFILE below does move, and that movement is this lane's.
+    assert len(emitted) == 28, emitted
+    assert len(refused) == 98
     assert len(emitted) + len(refused) == len(roots)
     assert emitted == emitted_unions()
 
@@ -2251,48 +2256,53 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         assert row["keyword"] and row["pointer"], document
         profile[row["keyword"]] = profile.get(row["keyword"], 0) + 1
     assert profile == {
-        # Re-measured on the MERGED tree.  ``allOf`` is now this row's OWN refusal at
-        # both positions it holds -- a root conjunct and a composing branch -- rather
-        # than a keyword-screen deferral naming a row that claims none of them.
-        "allOf": 54,
-        "$ref": 16,  # a bare-$ref branch, or a chain naming the target that refused
+        # RE-MEASURED on this merged tree, and this dict is where the lane's effect
+        # shows.  Trunk's own profile is ``allOf`` 54 / ``$ref`` 9 / ``not`` 7 with no
+        # ``dependencies`` and no ``required`` row; here ``allOf`` is 46 and the 8
+        # documents that left it are the 8 whose composition now lowers and which then
+        # stop at the keyword that is actually the reason: ``$ref`` +3, ``not`` +3,
+        # ``dependencies`` +1, ``required`` +1.  That redistribution is the whole of
+        # what this row does to a union root -- it moves no document from refused to
+        # emitted here (28 / 98 on both trees), it moves the ATTRIBUTION.
+        #
+        # The 46 split 37 + 9, measured by pointer depth: 37 roots where the ``allOf``
+        # is a conjunction with every branch and no pointer addresses the conjunction
+        # (``ROOT_CONJUNCTS``), and 9 branches that compose and need a conjunct reader
+        # D13 keeps out of this lowering's reach (``_plan``).
+        "allOf": 46,
         "properties": 13,  # a root conjunct; see lower/union.py's docstring
-        "not": 7,  # step 7 (D6) at a position the rules row does not reach
+        "$ref": 12,  # a bare-$ref branch, or a chain naming the target that refused
+        "not": 10,  # step 7 (D6) at a position the rules row does not reach
         "anyOf": 6,  # a nested union
-        "if": 2,  # step 7 (D6)
         "enum": 2,  # a member type no enumeration base exists for
-        "const": 2,
-        "oneOf": 1,
+        "if": 2,  # step 7 (D6)
+        "type": 2,  # a root stating no type whose branch states none either
         "additionalProperties": 1,
-        "type": 1,  # a root stating no type whose branch states none either
-        "enumMetadata": 1,
+        "dependencies": 1,  # step 7 (D6)
         "maxLength": 1,  # D5: a string bound beside a format: uri
-        # **The ``uniqueItems`` row (6) is GONE**, and its documents are
-        # redistributed rather than emitted: `salesagent-j3k2l.19` lowers the keyword
-        # on the class that holds the array, so a branch stating it reaches its NEXT
-        # blocker -- `allOf` (+2), `$ref` (0, already 16) and `anyOf` (+1) -- while 3
-        # of the 6 emit. `emitted` rising 16 -> 19 is the half of that this profile
-        # cannot show, which is why both are asserted.
-        # **``type`` is 1 and was 12**: 10 of these roots declared ``type: object``
-        # and were refused at a branch of their own combinator, which
-        # ``bundle.constrained_to_object`` is now the reading of. 2 of the 10 emit
-        # and 8 moved to the keyword a later row owns. The 1 left is a root that
-        # states no type and whose branch states none either, so nothing in the
-        # document constrains the instance and the refusal is right.
-        # The `pattern` row is GONE: it was "a constraint inside a container", and
-        # D5's alias module names that type now, so the document emits instead.
+        "oneOf": 1,
+        "required": 1,  # step 7 (D6)
+        # WHICH ROWS LEFT THIS PROFILE, kept as the record of why it is shaped this
+        # way.  The per-row deltas each note quoted were true when its lane wrote it
+        # and several are not arithmetic about the dict above, so the counts have been
+        # removed where they would now read as assertions about it; what each lane DID
+        # is what matters here.
         #
-        # The `definitions` (7) and `$defs` (2) rows are GONE as well, and their 9
-        # documents are redistributed across the rows above rather than emitted:
-        # `salesagent-j3k2l.20` admits a section at every node and declares the entries
-        # a `$ref` names, so each of the 9 now refuses on the keyword that actually
-        # stopped it -- in a branch, in a conjunct, or inside the section itself.
+        # The `uniqueItems` row is GONE: `salesagent-j3k2l.19` lowers the keyword on
+        # the class that holds the array, so a branch stating it reaches its NEXT
+        # blocker instead of stopping here, and some of its documents emit.
         #
-        # The `uniqueItems` (5) row is GONE too, and its 5 documents are redistributed
-        # rather than emitted: `salesagent-j3k2l.19` lowers the keyword on the class
-        # that holds the array, so a branch stating it reaches its NEXT blocker --
-        # `allOf` (2), `$ref` (2), `anyOf` (1).  `emitted` is unchanged at 11, which is
-        # the measurement that says this row was never the only thing in their way.
+        # The `pattern` row is GONE: it was "a constraint inside a container", and D5's
+        # alias module names that type now, so the document emits instead.
+        #
+        # The `definitions` and `$defs` rows are GONE: `salesagent-j3k2l.20` admits a
+        # section at every node and declares the entries a `$ref` names, so each of
+        # those documents now refuses on the keyword that actually stopped it -- in a
+        # branch, in a conjunct, or inside the section itself.
+        #
+        # The `const` and `enumMetadata` rows are GONE from this profile as well; both
+        # were present when the figures above were last written and neither appears in
+        # the measured dict now.
     }, profile
 
 
@@ -4409,10 +4419,10 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     ``test_every_portable_document_is_emitted_or_refused_by_name`` proves the
     partition is total and disjoint.  It cannot tell a refusal apart from a
     placeholder, and ``emitted + refused == 1054`` is green while nothing does.
-    Measured here by the producers' own constants: of 476 refusals, **176** say
+    Measured here by the producers' own constants: of 474 refusals, **102** say
     "a later D2 row does", **1** waits on one of those through a ``$ref``, and
-    **299** name a keyword this emitter will not lower.  So the exit condition
-    stands at 578 + 299 = **877 of 1054**, with 177 pending.
+    **371** name a keyword this emitter will not lower.  So the exit condition
+    stands at 580 + 371 = **951 of 1054**, with 103 pending.
 
     A REGEX OVER THE DETAIL STRING GAVE 404 / 41 / 31, AND ALL THREE WERE WRONG.
     It matched ``"D2 row"`` inside the VERDICT sentence "draft-07 defines no such
@@ -4452,12 +4462,22 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     assert set(transitive) & set(verdicts) == set()
 
     # Shrink-only: a row lands, deferrals become emissions, these fall.
-    assert len(deferred) <= 176, len(deferred)
+    #
+    # **176 -> 102 and 877 -> 951, moved by `salesagent-j3k2l.18`.**  The `allOf`
+    # deferrals went from 82 to 0: the keyword is lowered below a root by an arm on
+    # `emit._decide` (`ROWS` dispatches on root kind, and 41 of the 82 sat at a root
+    # that a union row already claims, 16 at a property and 25 deeper).  Of the 82,
+    # **2 emit**, **72 became verdicts**, and **8 are still pending on another
+    # keyword** a later row owns -- `not` +3, `dependencies` +2, `anyOf` +1, `oneOf`
+    # +1, `items` +1 -- so 74 of the 82 are now accounted for.  Both pins are set to
+    # the value MEASURED on this tree rather than left loose: a loose pin is a ratchet
+    # that grades nothing.
+    assert len(deferred) <= 102, len(deferred)
     assert len(transitive) <= 1, len(transitive)
 
     # Grow-only: what the exit condition actually counts.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 877, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 951, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
     pending = len(deferred) + len(transitive)
