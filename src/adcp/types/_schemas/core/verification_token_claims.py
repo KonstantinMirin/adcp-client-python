@@ -58,4 +58,4 @@ class AgenticAdvertisingOrgVerificationTokenClaims(AdCPBaseModel):
     protocol_version: str | None = None
 
 
-__all__ = ["AgenticAdvertisingOrgVerificationTokenClaims"]
+__all__ = ["AgenticAdvertisingOrgVerificationTokenClaims", "AgenticAdvertisingOrgVerificationTokenClaimsVerificationTokenGradingProfile", "AgenticAdvertisingOrgVerificationTokenClaimsVerificationTokenMode"]

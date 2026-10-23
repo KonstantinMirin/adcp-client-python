@@ -117,4 +117,4 @@ class CanonicalFormatBase(AdCPBaseModel):
     production_window_business_days: Annotated[NonNegativeInt | None, Field(description='Typical production turnaround in business days when the format requires seller-side production (e.g., host-recording from a buyer-supplied script). 0 for synchronous (e.g., generative AI); >0 for human-produced (e.g., podcast host-read). Absent when no production is required (buyer uploads complete creative).')] = None
 
 
-__all__ = ["CanonicalFormatBase"]
+__all__ = ["CanonicalFormatBase", "CanonicalFormatBaseCompositionModel", "CanonicalFormatBaseReferenceMutability", "CanonicalFormatBaseSlotsItem"]

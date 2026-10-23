@@ -530,3 +530,135 @@ def test_a_const_at_a_named_node_is_a_rendering_question_and_is_not_silenced() -
     res = graded(root, Enumerated)
     assert "/properties/v/const" in keys(res.missing), res.missing
     assert "/properties/v/enum" in keys(res.added), res.added
+
+
+# --------------------------------------------------------------------------- #
+# reading three: a CONJUNCT the resolver rewrote (salesagent-j3k2l.28)
+#
+# `_composed` folds an `allOf` conjunct's facts into the node, and the conjunct
+# arrives already resolved -- so the resolver's finite-type rewrite has dropped
+# the `type` off any boolean the inlined base declared.  Gap-filling that
+# conjunct's `enum` left the merged node with an enum and no type, which is
+# neither spelling of the fact and a shape no document states: measured at 9
+# facts over 5 `formats/canonical` documents, each restating an inherited
+# boolean with nothing but a `default` and a `description`, where the enum read
+# as `missing` against a model stating exactly the accepted set the base does.
+#
+# The conjunct is now read through the same `_uncanonicalized` the node is read
+# through, BEFORE its facts are folded in.  Same discipline as above: the tests
+# that matter are the ones that must still REPORT.
+# --------------------------------------------------------------------------- #
+def composing(own: dict, conjunct: dict, *, required: bool = True) -> dict:
+    """A holder restating ``v`` itself beside an ``allOf`` conjunct declaring it.
+
+    The ``formats/canonical`` shape exactly: the document's own property node
+    carries annotations and no ``type``, and the inlined base's conjunct carries
+    the resolver's rewrite of the ``type`` and nothing else.
+
+    ``required`` is the holder's own, and has to follow the MODEL the probe
+    grades: a field with a default is not required in pydantic, so a holder that
+    demands the key would report a ``/required`` of the fixture's own making.
+    """
+    root = document(own, {"type": "string"})
+    holder = root["definitions"]["holder"]
+    holder["allOf"] = [{"properties": {"v": conjunct}}]
+    if not required:
+        del holder["required"]
+    return root
+
+
+#: The resolver's spelling of a base's ``{"type": "boolean", "description": ...}``:
+#: the members written out and every annotation at the node dropped.
+REWRITTEN_BOOLEAN = {"enum": [False, True]}
+
+
+def test_a_conjunct_the_resolver_rewrote_is_read_as_the_type_it_spells() -> None:
+    """The 9 facts, as a pair: a faithful class over the real shape reports nothing.
+
+    ``enum: [false, true]`` IS ``type: boolean`` -- the same accepted set, and the
+    second is the document's own spelling -- so the fold receives a typed node and
+    the pair grades the accepted set as a ``type``.
+    """
+    own = {"default": True, "description": "d"}
+    root = composing(own, REWRITTEN_BOOLEAN, required=False)
+
+    class Faithful(Base):
+        v: bool = Field(default=True, description="d")
+
+    res = graded(root, Faithful)
+    assert (res.added, res.missing, res.differs) == ([], [], []), res
+    assert res.outcome == "pass", res
+    # The fold happens in the canonicalization that OWNS the rewrite, not in
+    # `_constrains_nothing`, whose gate is never asked: there is no enum at the
+    # merged node to ask about.  Asserted so a later change that routes this
+    # through the fold instead is visible rather than silently equivalent.
+    assert res.constrains_nothing == [], res.constrains_nothing
+
+
+def test_the_restored_type_is_graded_and_not_merely_dropped() -> None:
+    """The rewrite is undone, NOT discarded.  A model whose type disagrees with the
+    conjunct's restored one is still reported -- which is what makes the fold
+    lossless rather than a hole one fact wide."""
+    root = composing({"description": "d"}, REWRITTEN_BOOLEAN)
+
+    class WrongType(Base):
+        v: str = Field(description="d")
+
+    res = graded(root, WrongType)
+    assert "/properties/v/type" in keys(res.differs), res
+
+
+def test_a_conjunct_stating_a_fact_the_model_lacks_is_still_missing() -> None:
+    """A conjunct is the document, so a conjunct's own constraint the model drops
+    is reported.  The reading restores a rewritten TYPE; it excuses nothing."""
+    root = composing(
+        {"description": "d"}, {"type": "string", "minLength": 3, "pattern": "^a"}
+    )
+
+    class Lax(Base):
+        v: str = Field(description="d")
+
+    res = graded(root, Lax)
+    assert "/properties/v/minLength" in keys(res.missing), res
+    assert "/properties/v/pattern" in keys(res.missing), res
+
+
+class StatesABoolean(Base):
+    v: bool = Field(description="d")
+
+
+class StatesAString(Base):
+    v: str = Field(description="d")
+
+
+@pytest.mark.parametrize(
+    ("conjunct", "model", "why"),
+    [
+        ({"enum": [False]}, StatesABoolean, "one member PINS the value to false"),
+        ({"enum": [True]}, StatesABoolean, "and the other one pins it to true"),
+        (
+            {"enum": [False, True, None]},
+            StatesABoolean,
+            "a third member is not the boolean domain",
+        ),
+        ({"enum": ["a", "b"]}, StatesAString, "a string enumeration is no rewrite"),
+    ],
+    ids=["false-only", "true-only", "three-members", "strings"],
+)
+def test_a_conjunct_enum_outside_the_boolean_DOMAIN_still_compares(
+    conjunct: dict, model: Any, why: str
+) -> None:
+    """**The test that distinguishes this reading from widening the fold.**
+
+    ``_constrains_nothing`` folds ``enum: [false, true]`` at a node the document
+    declares ``boolean`` because the two members are the whole of that domain.
+    Widening it to fold an UNTYPED ``enum: [false, true]`` would fold a real
+    constraint wherever no base supplies the type, and
+    ``tests/test_comparison_folds.py`` carries 12 negative cases against that.
+    This reading does not touch the gate: it undoes a rewrite the resolver
+    performed, and a conjunct's enum that is not one of the two rewritten shapes
+    reaches the comparison untouched and is reported.
+    """
+    res = graded(composing({"description": "d"}, conjunct), model)
+    assert "/properties/v/enum" in keys(res.missing), f"{why}: {res}"
+    assert res.constrains_nothing == [], f"{why}: {res.constrains_nothing}"

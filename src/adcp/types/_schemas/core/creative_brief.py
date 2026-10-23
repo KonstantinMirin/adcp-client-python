@@ -83,4 +83,4 @@ class CreativeBrief(AdCPBaseModel):
     compliance: Annotated[CreativeBriefCompliance | None, Field(description='Regulatory and legal compliance requirements for this campaign. Campaign-specific, regional, and product-based — distinct from brand-level disclaimers in brand.json.')] = None
 
 
-__all__ = ["CreativeBrief"]
+__all__ = ["CreativeBrief", "CreativeBriefCompliance", "CreativeBriefMessaging", "CreativeBriefObjective"]

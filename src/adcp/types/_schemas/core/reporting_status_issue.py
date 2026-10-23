@@ -100,4 +100,4 @@ class ReportingStatusIssue(AdCPBaseModel):
     expected_at: AwareDatetime | None = None
 
 
-__all__ = ["ReportingStatusIssue"]
+__all__ = ["ReportingStatusIssue", "ReportingStatusIssueReportingStatusSeverity"]

@@ -561,7 +561,87 @@ def _import_rank(module: str) -> int:
     return 1 if module == "pydantic" else 0
 
 
-def render(mod: Module, symbol: str) -> str:
+def _local_symbols(t: compiler.Type) -> set[str]:
+    """Every symbol of the DECLARING module that one decided type names.
+
+    A local bare symbol is this pipeline's own class or alias (``compiler.Type``), and
+    a container carries its members in ``of`` with a mapping's key beside them -- so
+    ``list[CanonicalFormatBaseSlotsItem] | None`` reaches the item through two levels
+    and neither can be read off ``path``.
+    """
+    out = {t.path} if t.local and t.path.isidentifier() else set()
+    for inner in (*t.of, *( (t.key,) if t.key is not None else () )):
+        out |= _local_symbols(inner)
+    return out
+
+
+def exported(mod: Module, symbol: str, composed: frozenset[str] = frozenset()) -> list[str]:
+    """The names the module declares that another module can ask it for: the root, the
+    symbol at every pointer the BUNDLE names, and the field types of a class the bundle
+    COMPOSES.
+
+    **The import side and the export side read the same facts, so the emitter cannot
+    disagree with itself about a module's public surface.**  The binder above resolves a
+    fragment reference to ``mod.declared[into]`` -- section 2's rule is an import of a
+    symbol the target DECLARES -- while this list used to be the root alone, and the
+    tree then held 16 imports of a symbol the target module declared and did not export.
+    Nothing raised, because Python does not consult ``__all__`` on import; the
+    disagreement was about what the module says it offers.
+
+    **A symbol crosses a module boundary in exactly two ways, and this list is the union
+    of both.**  That is what makes it closed by CONSTRUCTION rather than by today's
+    population, and the second way was found by salesagent-j3k2l.36 landing while the
+    first was being fixed:
+
+    1. **The binder answers a ``$ref`` fragment.**  ``bundle.named_nodes`` is computed
+       from every ``$ref`` in the bundle and the binder only ever asks for a pointer that
+       came from one, so what it can ask for is always in ``mod.named``.
+    2. **A composing subclass RE-USES a base's decided field.**  Under ``allOf`` a
+       subclass inherits the base's fields and may restate one, and the plan's
+       description-authority clause 2 says a restatement is then the base's FIELD wearing
+       this document's annotations -- so the base's own field TYPES cross into every
+       module that composes it (``lower.product``'s ``inherited_fields``, read off
+       ``Target.shape.decided``).  ``formats/canonical/_base.py``'s
+       ``CanonicalFormatBaseSlotsItem`` is one: 7 modules import it and no ``$ref``
+       names it.  Re-deciding the base's node instead was measured and is wrong -- it
+       declares a second ``...SlotsItem`` at a pointer the subclass's document does not
+       have -- so the import is the plan's answer and the export has to match it.
+
+    ``composed`` is the pointers some document's root ``allOf`` names in this one,
+    ``#`` for a bare conjunct (257 of the bundle's 258) and the fragment for the one that
+    carries one.  A Target is minted for the root or a named node and for nothing else,
+    so no OTHER class's fields can cross, and ONE restatement is as deep as it goes: a
+    subclass restates a key the base declares, and a field of a nested item is not a key
+    of the subclass.
+
+    **Every declared symbol would be wider than the demand and wrong about why.**
+    Measured on the committed tree: the rule above is 717 names with 24 of 677 modules
+    exporting more than one, and it meets the demand exactly -- every symbol the tree
+    imports is in it.  Every declared symbol is 1,314 names over 228 modules, and the
+    extra 597 are nested classes nothing can ask for, reached through their parent's own
+    annotation.  Taking the annotations of EVERY root rather than a composed one is 1,053
+    over 194, which is barely narrower and discriminates on nothing.
+
+    The root goes FIRST, not sorted in with the rest: a reader wants the document's own
+    class at the head of the list, and ``tests/test_emit.py`` reads the root off
+    ``__all__``.
+    """
+    rest = {mod.declared[p] for p in mod.named if p in mod.declared}
+    for pointer in composed:
+        base = mod.declared.get(pointer)
+        shape = mod.shapes.get(base or "")
+        if shape is None:
+            continue
+        rest |= {
+            name
+            for prop in shape.decided.values()
+            for name in _local_symbols(prop.type)
+            if name in mod.names
+        }
+    return [symbol, *sorted(rest - {symbol})]
+
+
+def render(mod: Module, symbol: str, composed: frozenset[str] = frozenset()) -> str:
     groups: list[list[str]] = [[], [], [], []]
     by_module: dict[str, set[str]] = {}
     for module, name in mod.imports:
@@ -578,7 +658,8 @@ def render(mod: Module, symbol: str) -> str:
         if g:
             out += [*g, ""]
     classes = "\n\n\n".join(mod.blocks)
-    return "\n".join([*out, "", classes, "", "", f'__all__ = ["{symbol}"]', ""])
+    names = ", ".join(f'"{n}"' for n in exported(mod, symbol, composed))
+    return "\n".join([*out, "", classes, "", "", f"__all__ = [{names}]", ""])
 
 
 # --------------------------------------------------------------------------- #
@@ -775,6 +856,53 @@ class Emitted:
     refusals: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
+def _composed_nodes(bundle_dir: Path, known: set[str]) -> dict[str, frozenset[str]]:
+    """For each document, the pointers of its nodes that another document's root
+    ``allOf`` COMPOSES.
+
+    The companion to :func:`bundle.named_nodes`, and the same kind of fact: a function
+    of the BUNDLE and not of the run's document set, so a module's ``__all__`` does not
+    depend on who else was emitted (P7) and the one-document command writes the bytes the
+    whole-population run writes.  :func:`exported` says what it is for -- a composing
+    subclass re-uses the base's decided field, so the base's field types cross the module
+    boundary while no ``$ref`` fragment names them.
+
+    A bare conjunct composes the target's ROOT, whose pointer is ``""``; the one conjunct
+    in this bundle that carries a fragment
+    (``core/package-delivery-metric-value.json`` -> ``core/delivery-metric-aggregate.json#/oneOf/0``)
+    composes that node, and it is recorded at its own pointer rather than folded into the
+    root -- a branch's fields are not the union base's.
+
+    **It sits here and not in ``codegen/bundle.py``, where it belongs**, only because
+    this lane owns this module and not that one; moving it is one cut and one import.
+    Known ceiling: it reads every portable document a second time, after
+    ``named_nodes``'s own pass, which is ~2 s on the 3.2 bundle against a ~60 s run.
+    Merging the two scans is the upgrade path, and it is the reason to move it.
+    """
+    out: dict[str, set[str]] = {}
+    for document in sorted(known):  # sorted, like ``portable``: P7
+        doc = bundle.read(bundle_dir, document)
+        if not bundle.composes_at_the_root(doc):
+            continue
+        for conjunct in doc.get("allOf", []):
+            uri = conjunct.get("$ref") if isinstance(conjunct, dict) else None
+            if not isinstance(uri, str):
+                continue
+            head, into = bundle.split_ref(uri)
+            # A LOCAL conjunct composes a node of this very document, whose symbol the
+            # module already declares and never imports, so it is this document's own
+            # entry -- the same reason ``named_nodes`` keys a local reference against the
+            # referring document.
+            target = bundle.document_for(head, known) if head else document
+            if target is not None:
+                # The ROOT's pointer is ``""`` in ``Module.declared`` and a node's is
+                # ``/oneOf/0`` -- ``bundle.split_ref``'s own spelling, which is what
+                # ``bundle.named_nodes`` produces and what ``decide_type`` matches
+                # against.  ``"#"`` here would look right and match nothing.
+                out.setdefault(target, set()).add(into)
+    return {d: frozenset(p) for d, p in out.items()}
+
+
 def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     """Lower every named document, and every document one of them references.
 
@@ -797,6 +925,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     # Read once per run, from the BUNDLE rather than from ``documents``: a module's
     # content must not depend on who else was named (see ``bundle.named_nodes``).
     named = bundle.named_nodes(bundle_dir)
+    composed = _composed_nodes(bundle_dir, known)
     lowered: dict[str, tuple[Module, str, dict]] = {}
     refused: dict[str, Refusal] = {}
     inflight: list[str] = []
@@ -959,7 +1088,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     for document in sorted(lowered):
         mod, symbol, doc = lowered[document]
         rel = module_path(document)
-        out.files[f"{rel}.py"] = render(mod, symbol)
+        out.files[f"{rel}.py"] = render(mod, symbol, composed.get(document, frozenset()))
         out.emitted[document] = f"{PACKAGE}.{rel.replace('/', '.')}"
         # The document travels WITH the module, at its own bundle-relative path,
         # because ``__adcp_schema__`` names that path and ``strict_validate``

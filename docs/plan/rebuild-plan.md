@@ -632,6 +632,16 @@ population test, so a row cannot claim a document its step does not count.
 The bundle size is read from the bundle, never written here. N is the emitted count and the
 refusal list is its complement.
 
+**Two figures are both right and they count different things, so say which one you mean.** The
+PARTITION is total and disjoint — `emitted | refusals == portable`, 0 unaccounted — and that is
+**1054**. The GOAL is `emitted + VERDICTS`, because the condition above is "refused by name,
+pointer and keyword" and a refusal still waiting on something is not a verdict; that is **1053**,
+and the one document between them is `a2ui/si-catalog.json`, refused on `UNRESOLVED_TARGET`.
+Measured together on `2360ff7f1`: portable 1054, emitted 686, refused 368, of which 0 deferred
+to a later row and 1 unresolved, so 367 verdicts. Reporting 1054 for the goal overstates it by
+one and reporting 1053 for the partition looks like a lost document; both have been said of the
+same run.
+
 **Every measurement in this build is taken over `schemas/cache/<version>/` excluding the
 `bundled/` and `mcp/` directories.** Those two are projections of the same documents, so
 counting them multiplies every figure. A number quoted without that exclusion is void.
@@ -699,6 +709,23 @@ finite-type fold admits a model-only `description` at a rewritten node and nowhe
 beside `uniqueItems: true`. A fold that cannot state the equality it rests on is a widening
 wearing this category's clothes.
 
+**Number 3 is applied to an `allOf` CONJUNCT as well as to the node, and before the conjunct's
+facts are folded in.** A conjunct is an inlined base and arrives already resolved, so the
+rewrite has dropped the `type` off any boolean the base declared. Gap-filling that conjunct's
+`enum` left the merged node carrying an enum and no type — neither spelling of the fact, and a
+shape no document states — so the rewrite could be undone at neither end: `_uncanonicalized`
+matches an exactly-canonical node and the fifth fold's gate correctly demands
+`type == "boolean"`. Measured at 9 facts over 5 `formats/canonical` documents, each restating an
+inherited boolean with nothing but a `default` and a `description`
+(`salesagent-j3k2l.28`). Reading the conjunct through the same canonicalization hands the fold
+`{"type": "boolean"}` — the document's own spelling of the same accepted set — and the pair
+grades the accepted set as a `type`. **This is the fold moving to the canonicalization that owns
+the rewrite, not a gate being widened**; the fifth fold's `enum` arm is left exactly as it was,
+and its bundle population is now 0 because all 5 of its sites were conjunct-supplied enums
+(`/properties/replayed`, five response documents). The arm stays for the shape it is for — a
+document stating the pair in its own node, which draft-07 permits — graded by its 3 positive and
+12 negative hand-written cases rather than by the bundle.
+
 **Expect more of these, and expect each to appear when a document first reaches it.** Number 3
 was unreachable until a referenced plain boolean emitted and number 4 until a document carrying
 `uniqueItems` did, so the arrival of a fifth is a sign the emitted population grew rather than
@@ -740,6 +767,60 @@ lowering it alone types it `Any` and drops every fact the base states. The 28 re
 (14 `description`, 14 `default`, over 7 `formats/canonical/*.json`) are that shape, and
 `salesagent-j3k2l.22` owns them; two of the 14 defaults are inversions, where the model's boolean
 default is the opposite of the document's.
+
+**The export rule: a module's `__all__` names every symbol that can cross a module boundary, and
+a symbol crosses in exactly two ways.** `emit.exported` is the whole of it: the root, the symbol
+at every pointer the BUNDLE names, and the field types of a class the bundle COMPOSES. The import
+side and the export side then read the same facts, so the emitter cannot disagree with itself
+about what a module offers.
+
+It disagreed for a while, and that is why this is written down. The binder resolves a fragment
+reference to `mod.declared[into]`, section 2's rule being an import of a symbol the target
+DECLARES, while the writer exported the root alone: measured on `ac9175209`, **16 of the
+committed tree's 957 relative-import aliases** named a symbol the target module declared and did
+not export. Nothing raised, because Python does not consult `__all__` on import, and
+importability is already graded by the whole-tree import in `tests/test_emit.py` — so the
+defect was invisible to everything except a check on what a module DECLARES, which is what
+`test_the_emitted_tree_still_declares_every_module_it_imports` is for.
+
+**The symbols are exported rather than the imports removed**, and the alternative is excluded on
+this plan's own grounds rather than by a measurement. Its two readings are *reach the alias
+through its owning module*, which is the import under discussion and so is not a change, and
+*emit the alias where it is used*, which is a second name for one document node (P2). And the
+thing copied is in most cases not an alias at all: the 16 name 8 distinct symbols, 4 of them
+`StrEnum` CLASSES accounting for 9 of the 16 imports, one of which
+(`ReportingDeliveryOfferingReportingFeedPurpose`) is imported by 6 modules — so copying would be
+7 classes for one document node, which is the flatten-a-`$ref`-into-a-copy defect
+`test_a_cross_document_reference_is_an_import_and_not_a_copy` exists to catch.
+
+**The second way a symbol crosses was found by the same assertion, one row later.**
+`salesagent-j3k2l.36` landed a subclass that re-uses a composed base's decided field, and
+`formats/canonical/_base.py`'s `CanonicalFormatBaseSlotsItem` then crossed into 7 modules with no
+`$ref` naming it — the bundle-named clause cannot reach it, because the lowering and not a
+reference created the edge. Under `allOf` a subclass inherits the base's fields and may restate
+one, and the description-authority rule's clause 2 says a restatement is then the base's FIELD
+wearing this document's annotations, so the base's own field types necessarily cross into every
+module that composes it. Re-deciding the base's node instead was measured and is wrong: it
+declares a second `...SlotsItem` at a pointer the subclass's document does not have. So the
+import is this plan's own answer and the export has to match it. `emit._composed_nodes` is the
+companion to `bundle.named_nodes` and the same kind of fact — one scan of the bundle, not of the
+run — and ONE restatement is as deep as it goes, because a subclass restates a key the base
+declares and a field of a nested item is not a key of the subclass. A `Target` is minted for the
+root or a named node and for nothing else, so no other class's fields can cross.
+
+**Every declared symbol would be wider than the demand and wrong about why.** Measured on the
+committed tree at `2360ff7f1`: the rule above is **717 names with 24 of 677 modules exporting
+more than one**, and it meets the demand exactly — every symbol the tree imports is in it, 0 of
+964 aliases unexported. Every declared symbol is **1,314 names over 228 modules**, and the extra
+597 are nested classes nothing can ask for, reached through their parent's own annotation. Taking
+the annotations of every root rather than a composed one is **1,053 over 194**, barely narrower
+and discriminating on nothing. Both facts the rule reads are functions of (bundle, document) and
+not of the run's document set, so P7 holds and the one-document command writes the same bytes as
+the whole-population run. The root goes first in the list.
+
+**The alias population is re-measured at every step and never carried**: 910 at `0130e5fc9`, 957
+at `ac9175209`, 964 at `2360ff7f1`. It is a property of the committed tree, so it belongs to the
+`population()` run — 677 modules — and not to the 686-of-1054 metric run.
 
 **Determinism is a precondition of grading, not something to fix later.** Two runs over the
 same bundle emit the same bytes, and a run that does not is ungraded rather than nearly right.

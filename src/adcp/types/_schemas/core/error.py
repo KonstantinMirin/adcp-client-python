@@ -90,4 +90,4 @@ class Error(AdCPBaseModel):
     sdk_id: Annotated[str | None, Field(description='Optional identifier for the SDK that augmented this error entry. Format: `<sdk_package_name>@<version>` (e.g., `@adcontextprotocol/adcp@7.3.0`, `adcontextprotocol-adcp-python@1.2.0`). MUST be set when `source: "sdk"`; MUST be absent when `source: "producer"` or absent. Lets downstream consumers identify which intermediate processor inserted the entry, useful for debugging cross-SDK divergence (e.g., one SDK detects a projection failure that another SDK\'s registry version doesn\'t).')] = None
 
 
-__all__ = ["Error"]
+__all__ = ["Error", "ErrorBuyerReason", "ErrorIssuesItem", "ErrorRecovery", "ErrorSource"]

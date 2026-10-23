@@ -75,4 +75,4 @@ class PerformanceFeedbackAssertion(AdCPBaseModel):
     supersedes_feedback_id: Annotated[StrMinLen1 | None, Field(description='Receiver-issued feedback_id of the earlier assertion this one replaces at the same hop.')] = None
 
 
-__all__ = ["PerformanceFeedbackAssertion"]
+__all__ = ["PerformanceFeedbackAssertion", "PerformanceFeedbackAssertionEvidence"]

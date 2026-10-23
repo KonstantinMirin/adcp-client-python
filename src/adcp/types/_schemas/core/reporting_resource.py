@@ -57,4 +57,4 @@ class ReportingResource(AdCPBaseModel):
     reader_compatibility: Annotated[list[ReportingResourceReportingReaderCompatibilityItem] | None, Field(description='Reader features or format constraints required to consume this resource. Readiness verification MUST use a representative supported reader.', json_schema_extra={'uniqueItems': True})] = None
 
 
-__all__ = ["ReportingResource"]
+__all__ = ["ReportingResource", "ReportingResourceReportingReaderCompatibilityItem"]

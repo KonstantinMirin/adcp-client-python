@@ -60,4 +60,4 @@ class Catalog(AdCPBaseModel):
     feed_field_mappings: Annotated[list[CatalogFieldMapping] | None, Field(description='Declarative normalization rules for external feeds. Maps non-standard feed field names, date formats, price encodings, and image URLs to the AdCP catalog item schema. Applied during sync_catalogs ingestion. Supports field renames, named transforms (date, divide, boolean, split), static literal injection, and assignment of image URLs to typed asset pools.', min_length=1)] = None
 
 
-__all__ = ["Catalog"]
+__all__ = ["Catalog", "CatalogCategory", "CatalogGtins", "CatalogIds", "CatalogQuery", "CatalogTags"]

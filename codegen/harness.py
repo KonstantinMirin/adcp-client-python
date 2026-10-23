@@ -1728,14 +1728,24 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any]) -> bool:
     whether a DOCUMENT-only fact constrains anything at all.  A fact that admits
     exactly what its absence admits is not dropped by a model that omits it, so
     reporting it as ``missing`` says the model is wider than its schema when it is
-    not.  Measured on the 1,054-document bundle: 10 facts in 2 shapes, and nothing
-    else reaches this.
+    not.  Measured on the 1,054-document bundle: 5 facts in 1 of its 2 shapes, and
+    nothing else reaches this.
 
     * **``required: []``** -- an empty list demands no key, which is what silence
-      demands.  5 sites.
+      demands.  5 sites, and all 5 of the facts this fold accounts for today.
     * **``enum: [false, true]`` at a node the document declares ``boolean``** --
       the two members are the whole of the boolean domain, so the enum admits
-      exactly what ``boolean`` admits.  5 sites.
+      exactly what ``boolean`` admits.  **0 sites in the bundle, and the arm is
+      kept.**  It had 5 -- ``/properties/replayed`` in five response documents --
+      and every one of them was a CONJUNCT's ``enum``: the resolver's finite-type
+      rewrite of the base's boolean, gap-filled beside the node's own
+      ``type: boolean``.  ``_composed`` now undoes that rewrite per conjunct
+      (``salesagent-j3k2l.28``), so the fact arrives as the ``type`` the node
+      already states and never reaches this function.  The shape this arm is for
+      is a document stating the PAIR in its own node, which the bundle does not do
+      today and which draft-07 plainly permits; its 3 positive and 12 negative
+      cases in ``tests/test_comparison_folds.py`` are what grade it, and they are
+      hand-written for exactly that reason.
 
     **Each clause is gated to ITS OWN SHAPE and the gates are the whole of this
     function's correctness.**  A fold that matches one real constraint is invisible
@@ -2402,7 +2412,25 @@ def _composed(doc: Any, depth: int = 0) -> Any:
     for conjunct in conjuncts:
         if not isinstance(conjunct, dict):
             continue
-        c = _composed(conjunct, depth + 1)
+        # The conjunct is read through the SAME canonicalization the node is read
+        # through (:func:`_uncanonicalized`), and BEFORE its facts are folded in.
+        # The resolver's finite-type rewrite drops the ``type`` when it writes a
+        # boolean out as ``{"enum": [false, true]}``, so an inlined base's boolean
+        # arrives here typeless; gap-filling that node's ``enum`` leaves the merged
+        # node with an enum and no type, which is neither spelling of the fact and
+        # is a shape no document states.  Measured at 9 facts over 5
+        # ``formats/canonical`` documents, each restating an inherited boolean with
+        # nothing but a ``default`` and a ``description``: the enum read as
+        # ``missing`` while the base plainly states the same accepted set the model
+        # does.  Undoing the rewrite first hands the fold ``{"type": "boolean"}``,
+        # the document's own spelling, and the pair grades the accepted set as a
+        # ``type``.
+        #
+        # NOT a widening of ``_constrains_nothing``, whose ``type == "boolean"``
+        # gate is correct and unchanged: an untyped ``enum: [false, true]`` the
+        # DOCUMENT itself states is still compared, because this rewrites a
+        # CONJUNCT the resolver wrote and nothing else.
+        c = _uncanonicalized(_composed(conjunct, depth + 1))[0]
         for kw in FACTS:
             if kw != "required" and kw in c and kw not in out:
                 out[kw] = c[kw]

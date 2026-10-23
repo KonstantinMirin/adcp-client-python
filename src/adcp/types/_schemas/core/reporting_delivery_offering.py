@@ -157,4 +157,4 @@ class ReportingDeliveryOffering(AdCPBaseModel):
     method: Annotated[ReportingDeliveryOfferingMethod | None, Field(description='Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.')] = None
 
 
-__all__ = ["ReportingDeliveryOffering"]
+__all__ = ["ReportingDeliveryOffering", "ReportingDeliveryOfferingReportingDeliveryPattern", "ReportingDeliveryOfferingReportingFeedPurpose"]
