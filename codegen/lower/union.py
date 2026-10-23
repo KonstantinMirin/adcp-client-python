@@ -91,6 +91,14 @@ ROOT_HANDLED = frozenset({"type", "discriminator", "properties", "required", "ad
 ROOT_CONJUNCTS = ("properties", "required", "additionalProperties")
 
 #: What a BRANCH may carry and still be a class this module declares.
+#:
+#: D6's rule families are NOT listed here and are added per branch by
+#: ``compiler.rules_at``, which is what keeps the distinction this module's docstring
+#: draws: a branch's ``anyOf`` of ``required`` groups is a RULE on that branch's own
+#: class, and a branch's ``oneOf`` of SHAPES is a nested union this row still refuses.
+#: One predicate decides both (``rules.presence_only``, reached through the compiler
+#: because a lowering cannot import a sibling lowering), so there is no second reading
+#: for the two to disagree through.
 BRANCH_HANDLED = frozenset({"type", "properties", "required", "additionalProperties"})
 
 
@@ -202,7 +210,22 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
     """
     kw = keyword(doc)
     assert kw is not None, "lower_union is dispatched on the keyword being present"
-    compiler.check_keywords(doc, pointer, ROOT_HANDLED | {kw})  # the walk's own check
+    # **A root D6 rule is the BASE's**, and the base is the one class every branch
+    # descends from -- so draft-07's reading, that a root keyword applies to the whole
+    # instance and therefore to every branch, is what class inheritance already says.
+    # It is admissible where a root ``properties`` is NOT (``ROOT_CONJUNCTS`` below)
+    # because the reason that one refuses is the GRADER: a branch class carrying an
+    # inherited field states a fact its own ``#/<kw>/<i>`` node does not, and the
+    # schema comparison correctly reports it as added.  A rule renders NOTHING in a
+    # model's JSON schema, so there is no fact for the comparison to gain, and the
+    # instrument that observes a rule is a direct ``model_validate``.
+    #
+    # ``rules_at`` subtracts the two combinators from a root whose branches are
+    # shapes, so the union keyword arrives through ``{kw}`` alone and a root carrying
+    # BOTH ``oneOf`` and ``anyOf`` still refuses on the second -- which is what the
+    # docstring of :func:`keyword` says it does, and the bundle has 0 of them.
+    stated = compiler.rules_at(doc)
+    compiler.check_keywords(doc, pointer, ROOT_HANDLED | {kw} | stated.screen)
     for name in ROOT_CONJUNCTS:
         if name in doc:
             raise Refusal(
@@ -234,6 +257,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
     mod.imports.add((compiler.BASE_MODULE, "AdCPBaseModel"))
     mod.imports.add((compiler.BASE_MODULE, "BranchDispatchMixin"))
     mod.imports.add(("typing", "ClassVar"))
+    mod.imports |= stated.body.imports
     description = doc.get("description")
     rendered = compiler.render(
         compiler.Class(
@@ -252,6 +276,10 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
                 "@classmethod",
                 "def _branch_combinator(cls) -> str:",
                 f'    return "{kw}"',
+                # The root's own rule, which every branch inherits.  Last, because the
+                # compiler indents each body entry and a multi-line entry after the
+                # method reads as part of neither.
+                *(line for line in (stated.body.text,) if line),
             ),
         )
     )
@@ -284,7 +312,11 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
             "be the target's own class, which does not descend from this base, so the "
             "arm would not answer isinstance",
         )
-    compiler.check_keywords(branch, pointer, BRANCH_HANDLED)  # the walk's own check
+    # The branch's own D6 rules: the keywords are admitted here and the TUPLE is
+    # written by ``compiler.declare_object``, which ``lower_object`` below reaches.
+    compiler.check_keywords(  # the walk's own check
+        branch, pointer, BRANCH_HANDLED | compiler.rules_at(branch).screen
+    )
     if "properties" not in branch:
         raise Refusal(
             "required" if "required" in branch else "type",

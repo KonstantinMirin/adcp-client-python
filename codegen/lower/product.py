@@ -58,6 +58,7 @@ from codegen.compiler import (
     check_keywords,
     declare_object,
     fields,
+    rules_at,
 )
 from codegen.refusal import Refusal
 
@@ -69,12 +70,30 @@ from codegen.refusal import Refusal
 INLINE = frozenset({"type", "properties", "required"})
 
 #: What the root itself may carry beside its conjunct list.
+#:
+#: D6's rule families are NOT listed here and are added per node by
+#: ``compiler.rules_at``, because the admissible set is a function of the node: a
+#: ``oneOf``/``anyOf`` is a rule only where every branch is ``required``-only, and a
+#: combinator of shapes admitted here would emit a class that drops it silently.
 ROOT = frozenset({"type", "allOf", "properties", "required", "additionalProperties"})
 
 
 def lower_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
-    """Append the class for an ``allOf`` node and return its name."""
-    check_keywords(doc, pointer, set(ROOT))
+    """Append the class for an ``allOf`` node and return its name.
+
+    **The root's own D6 rules reach the class through** ``declare_object``, which
+    writes the tuple for whatever node it is declaring -- so this row states nothing
+    about rules beyond admitting the keywords.  20 documents refused here on
+    ``not``, ``dependencies`` or ``minProperties`` at a root whose mechanism was
+    complete three modules away: the rule kinds, the emitter's tuple and the one
+    after-validator all existed, and only the object row consulted them.
+
+    A property the root declares only inside a conditional is merged in for the
+    reason ``compiler.Rules`` states: a rule naming a key the class has no field for
+    refuses a payload the document admits.
+    """
+    stated = rules_at(doc)
+    check_keywords(doc, pointer, ROOT | stated.screen)
     if doc.get("type") not in (None, "object"):
         raise Refusal("type", pointer, f"an allOf of type {doc['type']!r} composes no object")
 
@@ -87,6 +106,8 @@ def lower_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
     local: dict[str, dict] = {}
     at: dict[str, str] = {}
     required: set[str] = set(_required(doc, pointer))
+    #: The conjuncts that state a RULE of this node rather than a base or fields.
+    conjunct_rules: list[dict] = []
 
     def declare(key: str, node: Any, where: str) -> None:
         prior = local.get(key)
@@ -145,6 +166,27 @@ def lower_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
                 declare(key, sub, f"{where}/properties/{key}")
             required |= set(_required(conjunct, where))
             continue
+        if keys and keys <= rules_at(conjunct).screen:
+            # **A conjunct that states only a RULE is a rule of THIS node**, by the
+            # same draft-07 fact the arm above rests on: a conjunct applies to the
+            # same instance, so it is not a separate object and gets no class of its
+            # own.  The arm above reads a conjunct's ``properties`` as this node's
+            # fields; this reads its ``not``, ``if``/``then``/``else``,
+            # ``dependencies`` or ``min``/``maxProperties`` as this node's rule.
+            #
+            # Measured, and it is why this arm exists rather than the root arm alone:
+            # all 20 documents whose ROOT carries a rule keyword ALSO carry a
+            # rule-bearing conjunct, so admitting the root's keyword on its own moved
+            # every one of them from a refusal on ``not``/``dependencies`` to a
+            # refusal on ``not``/``if`` one pointer deeper and emitted none.  The two
+            # positions are one unit.
+            #
+            # Screened by the conjunct's OWN ``screen`` at its OWN pointer, so a
+            # conjunct carrying a combinator of SHAPES still refuses here (step 4's
+            # deferral, ``salesagent-j3k2l.18``) rather than being emitted with the
+            # combinator dropped.
+            conjunct_rules.append(conjunct)
+            continue
         if "$ref" in keys:
             # A conjunct that is a ``$ref`` AND something else: refused on the
             # SIBLING, which is the cause, and never on ``$ref``, which is only
@@ -164,6 +206,16 @@ def lower_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
             "this step lowers a $ref conjunct (a base) or an inline conjunct with "
             "properties; a later D2 row lowers this one",
         )
+
+    # A property only a conditional names, added after the conjuncts so that an
+    # inherited or composed declaration of the same key is the one that stands: the
+    # conditional's declaration is a fallback for a key nothing else types, not a
+    # restatement competing with one.  Re-read over the rule-bearing conjuncts as
+    # well, because 9 of the 20 state their conditional there and not at the root.
+    stated = rules_at(doc, *conjunct_rules)
+    for key, sub in stated.properties.items():
+        if key not in local and key not in inherited:
+            declare(key, sub, f"{pointer}/properties/{key}")
 
     own: dict[str, dict] = {}
     for key, node in local.items():
@@ -200,6 +252,7 @@ def lower_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
         decided,
         Shape({**inherited, **own}, frozenset(required | inherited_required)),
         bases=tuple(bases),
+        rule_nodes=conjunct_rules,
     )
 
 

@@ -548,6 +548,34 @@ ANNOTATIONS = frozenset(
     }
 )
 
+#: **D6's six keyword families, as the set a keyword screen admits.**
+#:
+#: Here rather than in ``codegen.lower.rules`` for the reason ``ANNOTATIONS`` is here,
+#: and it is the same reason verbatim: ``compiler`` sits BELOW both ``codegen.lower``
+#: and ``codegen.bundle``, so every reader can import it, while a lowering may not
+#: import a sibling lowering (D13).  Three lowerings need it -- the object row screens
+#: an object node with it, the ``allOf`` row screens a root, the union row screens a
+#: root and each branch -- and two of the three cannot reach ``rules`` at all.  Two
+#: copies of the set would be one place for a screen to admit a keyword the lowering
+#: writes nothing for, which is a model wider than its document.
+#:
+#: ``codegen.lower.rules`` re-exports this as its own ``KEYWORDS`` rather than
+#: restating it, which is the direction D13 fixes.
+RULE_KEYWORDS = frozenset(
+    {
+        "oneOf",
+        "anyOf",
+        "if",
+        "then",
+        "else",
+        "dependencies",
+        "minProperties",
+        "maxProperties",
+        "uniqueItems",
+        "not",
+    }
+)
+
 #: The two keywords holding a BAG OF NAMED SUBSCHEMAS, admitted at every node and
 #: separate from :data:`ANNOTATIONS` because the reason is different.
 #:
@@ -798,6 +826,81 @@ class Module:
         self.declare(name, pointer, rendered.text)
 
 
+@dataclass(frozen=True)
+class Rules:
+    """What one node's D6 rules come to, as the three things a lowering needs.
+
+    ONE carrier and one call (:func:`rules_at`), because the three answers are read
+    off one reading of the node and a lowering that took two of them would be a
+    lowering that could take one and forget the other -- which is exactly what
+    happened: the object row read all three, the ``allOf`` row read none, and 20
+    documents refused at a keyword whose mechanism was complete.
+
+    * ``screen`` is what a keyword check may ADMIT at this node.  It is not
+      :data:`RULE_KEYWORDS` flat, and the difference is load-bearing: a
+      ``oneOf``/``anyOf`` is a rule only where every branch is ``required``-only
+      (``rules.presence_only``, the published step-5/step-7 test).  A combinator of
+      SHAPES is a nested union, ``rules.lower`` writes nothing for it, and admitting
+      it would emit a class that drops the combinator silently -- a model wider than
+      its document.  Measured on the 3.2 bundle: 72 object nodes carry a
+      non-presence-only combinator, and 0 of them sit in a document that emits
+      today, so the object row's former unconditional admission was latent rather
+      than live -- and this step makes more documents emit, which is what would have
+      reached it.
+    * ``properties`` are the properties the node declares ONLY inside a conditional.
+      They still arrive on the wire, so the class needs a field to carry one, and a
+      rule naming a key the class has no field for is worse than no rule: under D8's
+      ``ignore`` the key is dropped, the rule reads it as absent, and the constructor
+      refuses a payload the document admits.
+    * ``body`` is the class-body line binding ``_adcp_rules``, with its imports.
+      Empty text where the node states no rule this lowering can express, which D4
+      makes correct rather than a refusal (``codegen.lower.rules``' module docstring
+      is the one place that judgement is stated).
+    """
+
+    screen: frozenset[str]
+    properties: Mapping[str, dict]
+    body: Rendered
+
+
+def rules_at(node: dict, *also: dict) -> Rules:
+    """D6's reading of a node, for a lowering that cannot import the rules module.
+
+    Imported on use, because ``codegen.lower.rules`` imports this module for
+    :data:`ANNOTATIONS` and :data:`RULE_KEYWORDS` -- the one place the two halves
+    meet, and the lowering's direction is the one D13 fixes, so this side is the lazy
+    one.  The same lazy import ``lower_object`` already used, now in one place.
+
+    **``also`` is the other nodes whose rules belong to THIS class**, which is what a
+    draft-07 ``allOf`` conjunct is: it applies to the same instance, so it is not a
+    separate object and its rule is this node's rule, exactly as a conjunct's
+    ``properties`` are this node's fields (``codegen.lower.product``).  They are one
+    ``Rules`` and not one per node because a class body can bind ``_adcp_rules``
+    ONCE -- two lines would make the second silently replace the first -- so the
+    sources are concatenated and the tuple is rendered once.
+
+    ``screen`` is ``node``'s alone and deliberately not merged: a keyword screen is
+    asked about one node, and each conjunct is screened by its own call at its own
+    pointer, which is what keeps a refusal pointing at the node that caused it.
+    """
+    from codegen.lower import rules
+
+    lowered = [rules.lower(n) for n in (node, *also)]
+    screen = RULE_KEYWORDS if rules.presence_only(node) else RULE_KEYWORDS - {"oneOf", "anyOf"}
+    properties: dict[str, dict] = {}
+    for one in lowered:
+        properties.update({k: v for k, v in one.properties.items() if k not in properties})
+    sources = [source for one in lowered for source in one.rules]
+    return Rules(
+        screen=frozenset(screen),
+        properties=properties,
+        body=Rendered(
+            text=rules.block(sources),
+            imports=set().union(*(one.imports for one in lowered)),
+        ),
+    )
+
+
 def check_keywords(
     node: dict,
     pointer: str,
@@ -918,6 +1021,7 @@ def declare_object(
     bases: tuple[str, ...] = (),
     body_lines: tuple[str, ...] = (),
     imports: set[tuple[str, str]] | None = None,
+    rule_nodes: Sequence[dict] = (),
 ) -> str:
     """Assemble one class out of decided properties, and record what it declares.
 
@@ -928,7 +1032,24 @@ def declare_object(
     ``$ref`` conjuncts bound (D7 -- a base is DERIVED from what the document
     composes, never classified by hand), and ``AdCPBaseModel`` arrives through
     them.
+
+    **D6's rule tuple is written HERE**, for the node being declared, and that is what
+    makes "a rule attaches to the nearest class" true of every row rather than of the
+    one that remembered.  This is the one funnel a class WITH FIELDS passes through --
+    the object row, the ``allOf`` row and a union BRANCH all arrive here -- so the
+    ``allOf`` row gets its root's ``not``/``dependencies``/``minProperties`` by passing
+    through rather than by repeating the object row's call.  A rule renders nothing in a
+    model's JSON schema, so the symmetric comparison neither gains nor loses a fact by
+    this; the only instrument that observes one is a direct ``model_validate``, which
+    is what ``src/adcp/types/_runtime.py`` records.
+
+    ``rule_nodes`` are the OTHER nodes whose rules are this class's -- an ``allOf``
+    conjunct, which draft-07 applies to the same instance.  Empty for every row but
+    the composing one.
     """
+    stated = rules_at(node, *rule_nodes)
+    body_lines = (*body_lines, *(line for line in (stated.body.text,) if line))
+    imports = (imports or set()) | stated.body.imports
     # D8's typed row: a property the class does not DECLARE is validated against
     # the document's own value schema, through pydantic's ``__pydantic_extra__``.
     # The TYPE is the same ``dict[K, V]`` a mapping node lowers to, decided by the
@@ -993,12 +1114,11 @@ def lower_object(
     ``decided``; ``bases`` and ``body_lines`` are :class:`Class`'s own.
     """
     # D6's six families are handled HERE and not refused: a rule attaches to the
-    # nearest class, so an object node is the only node that can carry one.  Imported
-    # on use, because ``codegen.lower.rules`` imports this module for ``ANNOTATIONS``
-    # -- the one place the two halves meet, and the lowering's direction is the one
-    # D13 fixes, so this side is the lazy one.
-    from codegen.lower import rules
-
+    # nearest class, so a node with fields is the only node that can carry one.  The
+    # reading is :func:`rules_at`'s, which is also where the TUPLE is written
+    # (:func:`declare_object`) -- so this row and the ``allOf`` row and a union branch
+    # all admit the same keywords and all write the same rule.
+    stated = rules_at(node)
     check_keywords(
         node,
         pointer,
@@ -1008,7 +1128,7 @@ def lower_object(
             "required",
             "additionalProperties",
             "propertyNames",
-            *rules.KEYWORDS,
+            *stated.screen,
         },
     )
     if node.get("type") != "object":
@@ -1042,7 +1162,6 @@ def lower_object(
     # ``props`` so such a property is typed from its own declaration rather than left
     # off the model -- a required name the model does not declare is a class narrower
     # than its document on both acceptance paths.
-    stated = rules.lower(node)
     props = {**props, **{k: v for k, v in stated.properties.items() if k not in props}}
     required = node.get("required", [])
     if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
@@ -1056,8 +1175,7 @@ def lower_object(
         built,
         Shape(props, frozenset(required)),
         bases=bases,
-        body_lines=(*body_lines, *(b for b in (rules.block(stated.rules),) if b)),
-        imports=stated.imports,
+        body_lines=body_lines,
     )
 
 
