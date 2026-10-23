@@ -240,4 +240,82 @@ instead of promising a row.
 
 ## 9. The suite
 
-<!-- suite -->
+Never run on this branch. The agent that wrote §1–§8 stopped with this section empty
+and its tip commit banked as `wip(codegen): bank j3k2l18's uncommitted lane work
+unverified`. Everything above is measured at base `00c7dd4d4`, which is 61 commits
+behind trunk `29c553504`, so none of it is a statement about any tree that exists now.
+
+---
+
+# 10. RESUMPTION — a new agent, 2026-10-23
+
+The change this row needed **already exists on this branch**. So this section does not
+open with a prediction about it: predicting what is already written and already
+measurable would be a probe built to confirm its own hypothesis. §10.1 is MEASUREMENT,
+taken before anything was edited. §10.2 is the prediction, and it is about the things
+that are genuinely still unknown — the regeneration, the four stale constants, and
+whether the merge broke anything it does not touch.
+
+## 10.1 Measured first: the two trees, same instrument
+
+Both numbers come from one script run against two checkouts, through
+`emit.emit(bundle.portable(BUNDLE))` and the refusal producers' own constants
+(`refusal.DEFERRED_TO_A_LATER_ROW`, `refusal.UNRESOLVED_TARGET`,
+`refusal.is_a_verdict`) — never a regex over a detail string. Dependency pins are
+byte-identical across `00c7dd4d4..29c553504` for `pyproject.toml` and `uv.lock`, so one
+venv serves both trees and the comparison is not an environment difference.
+
+| | trunk `29c553504` | merged `5f602c4b1` | delta |
+|---|---|---|---|
+| portable | 1054 | 1054 | 0 |
+| emitted | 578 | 580 | **+2** |
+| refused | 476 | 474 | −2 |
+| **deferred** (pin ≤ 176) | **176** | **102** | **−74** |
+| transitive (pin ≤ 1) | 1 | 1 | 0 |
+| verdicts | 299 | 371 | +72 |
+| **accounted** (pin ≥ 877) | **877** | **951** | **+74** |
+| pending | 177 | 103 | −74 |
+
+**The 82 `allOf` deferrals are gone — all 82, measured by name.** Trunk defers 82
+documents on `allOf`; the merged tree defers **0**. Their disposition partitions
+exactly:
+
+| n | what became of it |
+|---|---|
+| 2 | **emitted** |
+| 72 | **a verdict** — refused on a keyword this emitter will not lower |
+| 8 | still pending, but on ANOTHER keyword a later row owns: `not` +3, `dependencies` +2, `anyOf` +1, `oneOf` +1, `items` +1 |
+| **82** | and 2 + 72 + 8 = 82 |
+
+So the row claims all 82 and **74 of them become accounted-for**. The 8 that remain
+pending are not this row's to claim: each is a document whose `allOf` now lowers and
+which then stops at a different keyword, which is the keyword that is now the reason.
+
+**Where the 82 sat, which is what decided the unit.** 66 nested, 16 at a property,
+**0 at a root** — so no row and no selector could have claimed them, and the unit is an
+arm on `emit._decide`. The claiming selectors are `union_root` 54, `is_object_root` 23,
+`composes_at_the_root` 5: three root kinds, which is exactly why a single row was the
+wrong unit (D13 forbids a lowering importing `codegen.emit`, so a row cannot dispatch
+three root kinds itself). This is the same correction the issue's own note records for
+`.20` and `.16`, and it is confirmed here by measurement rather than inherited.
+
+The coordinator's brief estimated accounted would reach "about 959". It reaches **951**.
+The 8-document difference is precisely the 8 above — the brief's estimate assumed all 82
+would become accounted-for, and 8 of them stop at a later row's keyword instead.
+
+## 10.2 The predictions, written before the regeneration and the pin edits
+
+Each is about something not yet measured on this tree.
+
+| # | prediction |
+|---|---|
+| R1 | `test_the_committed_tree_is_what_a_fresh_run_emits` is RED at the merge commit `5f602c4b1`, because both sides moved the generator and neither re-derived the tree. The regeneration ADDS modules and changes no existing one: trunk's committed tree holds its 578, this branch committed `core/attribution_window.py`, and the merged emitter emits 580 — so I expect exactly **1 module added**, `core/outcome_measurement.py`, which §5's grade names as the second of the two documents that emit. If more than one file is added, or any existing file's bytes change, R1 is wrong. |
+| R2 | The graded-pair count rises from trunk's 503. `core/attribution-window.json` contributed 3 pairs when measured alone (§5), so I predict **pairs in 506–512** and `pass` rising by the SAME amount, with `no_constraint_to_step` unchanged at 12 and **added 0, missing 0, differs 0** throughout. The symmetric comparison is the thing most likely to catch a composition lowering that inherits a fact the node does not state, so a non-zero `added` here would be the sharpest possible refutation. |
+| R3 | The union-root by-keyword profile keeps `allOf` at trunk's **54**, unchanged. The root-conjunct refusal and the branch-composition refusal both report `allOf`, which is the keyword the screen reported before, so the attribution does not move for a root union. |
+| R4 | `test_emit_product.py`'s three constants move UP a little and the row's own delta does not: `with_row.emitted` 238 → **239 or 240** (the below-root composition lets the transitive walk reach past a property `allOf` into targets it stopped short of), `with_row − without` 46 → **47 or 48**, and `composing() ∩ emitted` **unchanged at 34**, because that set counts compositions at a ROOT and this arm claims none. |
+| R5 | Nothing else reddens. No guard, no import rule, no other suite file — specifically `tests/test_import_rule.py` stays green, because the arm lives in `emit`, which already imports `lower.product`, and `product.py` gains no import. A branch can redden a guard in a file it never touched, so this is a real prediction and not a formality. |
+| R6 | The two pins become **deferred ≤ 102** and **accounted ≥ 951**, set to the values measured in §10.1 and not left loose. `transitive` stays at ≤ 1. |
+
+## 10.3 GRADE
+
+<!-- grade -->
