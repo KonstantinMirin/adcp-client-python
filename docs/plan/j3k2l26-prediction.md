@@ -92,12 +92,21 @@ refused, which is what says whether a lowering exists to be written:
 | # | family | mechanism | docs |
 |---|---|---|---|
 | U | `uniqueItems` on an array NO CLASS HOLDS | `lower.containers.array`'s screen | 7 |
-| N | a combinator of SHAPES at a nested pointer | `_decide` has no union arm at all | 29 |
-| P | a `oneOf` of `{required, not}` groups at a nested OBJECT | `rules._required_only` admits `{required}` alone | 4 |
+| N | a combinator of SHAPES at a nested pointer | `_decide` has no union arm at all | 32 |
+| P | a combinator beside an `allOf`, so the COMPOSING row saw it | `lower_product`'s screen, via `rules_at` | 1 |
 | C | `contains` on an array | no row, no screen entry, nowhere | 5 |
 | B | a union BRANCH carrying an `enum` | `union.BRANCH_HANDLED` | 2 |
 | I | an array that also COMPOSES, refused on `items` | `lower_product`'s screen | 1 |
 | | **total** | | **48** |
+
+**This table was first written as `N 29 / P 5` and those two numbers were wrong.**
+They were read off the branch SHAPES in the JSON — "a `oneOf` whose branches state
+`{required, not}` is a presence rule the rule reader does not admit" — which
+describes 5 documents correctly and says nothing about which ARM sees them. Asked
+mechanically instead (does the node carry an `allOf`; does `rules.presence_only`
+hold), only `creative/list-creatives-response.json` reaches the composing row; the
+other 4 have no `allOf` sibling and `presence_only` is False for them, so they are
+family N. The corrected pair sums to 48, the `29 / 5` pair summed to 49.
 
 `.22` measured families N and B already and named them exactly: "C is D2's union
 row at a NESTED pointer and E is a union root of scalars; no bead owns either, so
@@ -185,3 +194,71 @@ asked for `deferred <= 0` implicitly ("the 48 are all yours"). I am predicting 4
 survive, and the reason is a file-ownership boundary rather than a measurement:
 family P's fix is in a selector's predicate and `codegen/bundle.py` is another
 lane's file.
+
+## 5. The grade
+
+Measured on the delivered tree, `52eb738c2`, with trunk merged forward to
+`fe063613c`. Of 15 graded rows (the 14 predictions plus the partition itself, which I got
+wrong without having predicted it): **6 held, 2 held in part, 6 were wrong, and 1
+held for a reason that was wrong.** The two I named in §4 as the weakest guesses
+were indeed wrong, and P8 — the one I expected to be called a miss — was wrong in
+the better direction.
+
+| # | predicted | measured | |
+|---|---|---|---|
+| P1 | U: 0 of 7 emit, 7 verdicts | 0 emit, 7 verdicts | **held** |
+| P2 | B: 0 of 2 emit, 2 verdicts, reported on `type` | both report `type @ /anyOf/0` | **held** |
+| P3 | N: 8 of 29 emit, 21 verdicts | **8 emit of 32, 24 verdicts** — the count of emissions is exactly right and the denominator was wrong | half held |
+| P4 | at least 2 of N blocked at the bare-type fold, naming `property-feature-value.json` and one of the `status_filter` pair | `property-feature-value.json` is blocked there; the `status_filter` pair is **not** — it refuses on `minItems` inside its array branch | half wrong |
+| P5 | P: 4 of 4 unchanged, still deferred, one bead filed | **family P is 1 document, not 4, and it became a verdict.** The other 4 I put here are family N: no `allOf` sibling, so the composing row never sees them and `nested`'s sibling screen refuses them by name. 0 remain deferred and no bead was needed | wrong |
+| P6 | C: 2 of 5 emit | **2 emit** (`signal-definition.json`, `signal-definition-enrichment.json`), 3 verdicts | **held** |
+| — | (not predicted) | the partition itself: `N 29 / P 5` summed to 49 against a population of 48, and the mechanical reading is `N 32 / P 1` | wrong |
+| P7 | I: 0 of 1 emits, 1 verdict | 1 verdict, reported on `type` rather than `items` | **held** |
+| P8 | deferred 48 → 4 | **48 → 0** | wrong |
+| P9 | accounted 975 → 1,020 | **975 → 1,053** | wrong |
+| P10 | chained-pending 30 → 24 | **30 → 0**; 28 became verdicts and 2 emit | wrong |
+| P11 | `added` stays 0 | 0 — but only after **three refusals I had not predicted needing**. The first working version measured **51 added facts over 9 pairs** | held, and the reasoning behind it was wrong |
+| P12 | `ROWS` stays six, `codegen/bundle.py` untouched | both hold | **held** |
+| P13 | pins become 4 / 1 / 24 / 1020 | **0 / 1 / 0 / 1053** | wrong |
+| P14 | no document stops emitting, so no stale file | 0 lost, 0 stale, 0 absent, 0 content mismatch | **held** |
+
+**The 48 split 10 EMIT / 38 VERDICT.** `GAINED` is 12 documents: those 10 plus 2
+of the 30 chained-pending refusals that cleared into emissions.
+
+### What the grade is actually about
+
+**P11 is the prediction that matters and I got it right for the wrong reason.** I
+wrote "any position whose lowering would move it is refused instead, and that is
+the decision rather than a pin to re-point" — as a statement of intent, with no
+idea which positions those were. The first version that compiled took `added`
+from 0 to **51**, in three distinct causes I had not anticipated:
+
+* 5 facts from `harness._normalize`'s bare-type fold (predicted in P4, under-counted);
+* 4 facts from the SAME function's one-null-one-live fold, which I had not
+  considered at all even though it is the arm immediately above;
+* **43 facts from a DOCUMENT-side local `$ref`** — a position the comparison has
+  no reading for, in a file this lane does not own, and whose first population in
+  the whole project is the two documents this row made emittable. Trunk's entire
+  committed tree holds 0 graded pairs with one.
+
+So the honest reading is that `added == 0` was not preserved by the design; it was
+restored by measuring, three times, and refusing what the measurement found.
+
+**P5 and P8 were wrong in the better direction, and both for one reason I missed:
+`nested`'s sibling screen is a verdict.** I predicted family P would survive
+because its fix is `rules._required_only`, a predicate `bundle.states_an_object_rule`
+is built on, and `codegen/bundle.py` is not this lane's file. That is still true —
+and irrelevant, because 4 of those 5 documents never reach the rule reading at all:
+they carry the combinator beside a `properties`, and a sibling of a nested
+combinator is a conjunction no `compiler.Type` can hold, which refuses by name. The
+prediction read the population off the keyword each document refuses on and never
+asked which ARM would see it after the arm existed.
+
+**P3 and P5 are one error and it is the standing one for this epic** — I named it
+in §4 before measuring, and then made it anyway. Both numbers came from reading
+branch SHAPES off the JSON rather than from asking which arm of the walk would see
+the node. That misread the N/P boundary by 4 documents and produced a partition
+summing to 49 against a population of 48 — an arithmetic tell I did not check
+before committing the prediction. P3's emission COUNT (8) is exactly right, which
+is luck: the denominator was wrong and the per-document assignment was wrong in
+both directions.
