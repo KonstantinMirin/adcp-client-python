@@ -2094,18 +2094,88 @@ def _declares_null(doc: Any) -> bool:
     return "null" in kind if isinstance(kind, list) else kind == "null"
 
 
+#: The two combinators a union of types is spelled with, and BOTH are read,
+#: because the two sides spell it differently.  ``anyOf`` is pydantic's only
+#: spelling of a union; ``oneOf`` is the DOCUMENT's at 2 of this bundle's 3
+#: fold positions (``creative/creative-feature-result.json#/properties/value``
+#: and ``property/property-feature-value.json#/properties/value``, each
+#: ``oneOf: [{"type": "boolean"}, {"type": "number"}, {"type": "string"}]``).
+#: Reading only ``anyOf`` folded the model and left the document unfolded, which
+#: is the asymmetry ``salesagent-j3k2l.33`` is about.
+#:
+#: **A ``oneOf`` of bare types is a type list because a value has exactly one
+#: JSON type -- with one exception, gated below**: ``integer`` and ``number``
+#: both admit ``5``, so a ``oneOf`` naming both REFUSES every integer while the
+#: type list admits it.  That pair is the only overlap in draft-07's type
+#: vocabulary, and ``true`` is ``boolean`` and not ``number`` in it.
+_UNION_KEYWORDS = ("anyOf", "oneOf")
+
+
+def _target(ref: Any, root: Any) -> Any:
+    """The node a LOCAL ``$ref`` names, found by walking its POINTER from ``root``.
+
+    **A pointer walk and not the last segment of the reference**, which is what
+    this used to be: measured over all 1,054 portable documents of the bundle there
+    are 405 local-``$ref`` sites, and 3 of them name a ``definitions`` section
+    NESTED inside a property
+    (``brand/get-brand-identity-response.json`` ->
+    ``#/oneOf/0/properties/fonts/definitions/font_role``).  A last-segment lookup
+    answers those 3 from whatever section happens to hold that key, silently, and
+    the walk answers all 405 for the same amount of code.
+
+    ``None`` for anything that does not resolve, which is the FAIL-SAFE direction:
+    the caller leaves the node's own annotations in place and states no fact, so
+    every fact the model carries reads as ``added`` and the pair reddens.  A
+    reading that invented facts for an unresolvable reference would do the
+    opposite.
+    """
+    if not isinstance(ref, str) or not ref.startswith("#"):
+        return None
+    try:
+        target = at(root, ref[1:])
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+    return target if isinstance(target, dict) else None
+
+
 def _normalize(
-    node: Any, defs: Mapping[str, Any], depth: int = 0, *, declared_null: bool = False
+    node: Any,
+    root: Any,
+    depth: int = 0,
+    *,
+    declared_null: bool = False,
+    null_is_absence: bool = True,
 ) -> dict:
-    """The model's node for one position, written the way the document writes it.
+    """One node for one position, written the way the two sides can be compared.
+
+    **Called on BOTH sides, which is the whole of ``salesagent-j3k2l.32`` and
+    ``.33``.**  It began as "the MODEL's node written the way the document writes
+    it" and that was the defect: every normalization below is a statement about
+    one SPELLING of a fact, and a spelling the document also uses has to be read
+    the same way or a faithful class reads as narrower than its own document.
+    Measured, with the two shapes reachable: a document-side local ``$ref``
+    produced **43 ``added`` facts over 4 pairs in 2 documents**, and the folds
+    below produced **9 more over 7 pairs**, for a faithful class in every case.
+    ``added`` is the half that can make a faithful SDK refuse valid traffic, and
+    it is 0 over the whole graded tree.
+
+    ``root`` is the schema a ``$ref`` resolves against and so is per-side: the
+    model's own ``model_json_schema()`` for the model, and the whole resolved
+    DOCUMENT for the document -- a nested pair's node is a sub-node and
+    ``#/definitions/x`` is relative to the document root, which is why
+    :class:`Pair` carries the document and not only the node.
 
     Three normalizations, and each one is forced by a decision this pipeline made
     rather than by anything arbitrary in pydantic:
 
-    * **``$ref`` into ``$defs``.**  A nested object is a nested CLASS and a
+    * **A local ``$ref``.**  A nested object is a nested CLASS and a
       cross-document reference is an IMPORT (P2), so pydantic hoists both into
-      ``$defs`` and references them.  The document the class names is resolved,
-      so the same facts are inline there.
+      ``$defs`` and references them.  ``codegen.bundle.resolved`` inlines a REMOTE
+      reference and leaves a LOCAL one, so the document says ``$ref`` too -- at a
+      ``definitions`` entry, which is the one section resolution does not reach
+      (measured on ``core/placement-presentation.json``: the local reference at
+      ``/properties/decorations/items/oneOf/0`` IS inlined and the one at
+      ``/definitions/text_decoration/properties/layer`` is not).
     * **An ``anyOf`` with a ``null`` branch, AND WHICH OF THE TWO THINGS IT IS.**
       D4 renders an optional property ``T | None``, because the attribute holds
       ``None`` for an omitted key.  pydantic states that as a union; the document
@@ -2135,6 +2205,22 @@ def _normalize(
       A model that drops the declared null folds into nothing -- with no null
       branch neither arm of this fold applies -- so it is still reported, which is
       the half ``tests/test_emit.py`` reddens on.
+
+      **``null_is_absence`` is the OTHER half of that same question, and the
+      measurement that forced it.**  D4 renders ``None`` for an OPTIONAL property;
+      a REQUIRED one has no default, so a ``null`` branch there is a type the model
+      admits and the document does not.  Unwrapping it regardless made those two
+      cases one cell again from the other direction: measured, a model declaring
+      ``v: bool | float | str | None`` at a property its document REQUIRES and
+      types ``[boolean, number, string]`` compared byte-identical to the faithful
+      ``v: bool | float | str`` -- both ``pass``.  So the null is folded into the
+      ``type`` unless the caller says the position really can be absent, and the
+      caller reads that off the parent document's ``required``.
+      KNOWN CEILING: the axis ``compare`` carries is "the parent demands this
+      key", which cannot tell an OPTIONAL property from a position with no
+      presence question at all (an ``items``, a root, a mapping's value), so a
+      null branch at one of those is still read as absence.  Closing that needs a
+      third state on the axis rather than a wider rule here.
     * **A union of BARE types is a ``type`` LIST.**  draft-07 lets a node name
       several types at once and pydantic has no spelling for that but a union, so
       ``{"type": ["number", "string"]}`` comes back
@@ -2152,14 +2238,34 @@ def _normalize(
       omission in either direction: a model listing more types than the document
       still differs after the fold, and a model listing fewer never folds into a
       match.
+
+      **KNOWN CEILING: a bare type beside a DESCRIPTION does not fold either.**
+      ``{"type": "string", "description": "..."}`` is a bare type as far as the
+      accepted set goes, and ``lower.union._bare_type`` reads it as one, but this
+      keeps the exact-key test -- folding would throw the branch's own description
+      away, and the direction of the miss is safe: the node stays a combinator,
+      states no fact in :data:`FACTS`, and the pair reddens rather than passing
+      blind.  0 of the 3 fold positions in this bundle carry one.
     * **The outer keys win.**  ``default`` and ``description`` sit outside the
       ``anyOf`` and the type facts inside the branch.
+
+      **KNOWN CEILING, and the measurement that bounds it.**  Draft-07 IGNORES
+      every sibling of a ``$ref``, so a document stating
+      ``{"$ref": X, "minimum": 5}`` means X alone, and letting the sibling win
+      there would let the document EXCUSE a model that really is narrower.  What
+      bounds it is the bundle: of the 405 local-``$ref`` sites the only keys ever
+      beside one are ``description`` (58) and ``deprecated`` (4), so **0 sites
+      carry a constraint keyword beside a local ``$ref``** and the rule's unsafe
+      half has no population.  ``description`` winning is not optional in the
+      other direction -- the compiler transcribes the sibling onto the field, so
+      a reading that preferred the target's description would report an ``added``
+      fact at 58 sites.  The upgrade path, if a document ever states a constraint
+      beside a local ``$ref``, is to keep only the keys outside :data:`FACTS`.
     """
     if depth > 16 or not isinstance(node, dict):  # a self-referential $defs chain
         return node if isinstance(node, dict) else {}
     if "$ref" in node:
-        name = str(node["$ref"]).rsplit("/", 1)[-1]
-        target = defs.get(name)
+        target = _target(node["$ref"], root)
         # ``declared_null`` deliberately does NOT travel through here.  It would be an
         # arm with no site: measured over the graded population, 5 positions have a
         # document declaring ``null`` and **all 5 render as an ``anyOf``, 0 as a
@@ -2168,20 +2274,58 @@ def _normalize(
         # also fails SAFE if such a position ever appears: the fold does not fire, so
         # the document's ``type`` reads as missing and the pair reddens.
         outer = {k: v for k, v in node.items() if k != "$ref"}
-        return {**_normalize(target, defs, depth + 1), **outer} if target is not None else outer
-    branches = node.get("anyOf")
-    if isinstance(branches, list) and branches and all(isinstance(b, dict) for b in branches):
+        return {**_normalize(target, root, depth + 1), **outer} if target is not None else outer
+    for kw in _UNION_KEYWORDS:
+        stated = node.get(kw)
+        if not (isinstance(stated, list) and stated and all(isinstance(b, dict) for b in stated)):
+            continue
+        # Each branch read through the FINITE-TYPE rewrite, which is the third
+        # canonicalization (:func:`_uncanonicalized`) applied one level down rather
+        # than a fourth rule.  The resolver writes a finite type out as its members
+        # WHILE INLINING, so the same union is two shapes depending on whether the
+        # document states it or references one that does: measured, the three
+        # documents that reference
+        # ``creative/creative-feature-result.json#/properties/value`` carry
+        # ``oneOf: [{"enum": [false, true]}, {"type": "number"}, {"type": "string"}]``
+        # where the two that state it carry ``{"type": "boolean"}`` as the first
+        # branch.  Without this the fold fired on the 2 and not on the 3, and the 3
+        # reported the model's type list as ``added`` -- the reading half-done is
+        # the same defect it was built to close.  ``{"const": null}`` is the same
+        # rewrite of a ``null`` branch and is restored by the same call.
+        branches = [_uncanonicalized(b)[0] for b in stated]
         live = [b for b in branches if b.get("type") != "null"]
         nulls = [b for b in branches if b.get("type") == "null"]
-        outer = {k: v for k, v in node.items() if k != "anyOf"}
+        outer = {k: v for k, v in node.items() if k != kw}
+        # The null branch is a TYPE FACT unless the position can really be absent:
+        # the document declares it, or the model renders it at a key nothing can
+        # omit.  Either way it is folded INTO the type rather than unwrapped.
+        keep_null = declared_null or not null_is_absence
         if len(nulls) == 1 and len(live) == 1:
-            one = {**_normalize(live[0], defs, depth + 1), **outer}
-            if declared_null and isinstance(one.get("type"), str):
-                return {**one, "type": [one["type"], "null"]}
-            return one
+            one = {**_normalize(live[0], root, depth + 1), **outer}
+            if not keep_null:
+                return one
+            kind = one.get("type")
+            # The null is a TYPE FACT here, so the fold has to carry it forward or
+            # not fire.  Returning ``one`` without it would drop the document's own
+            # ``null`` -- and then a model that DROPPED the null compares identical
+            # to one that kept it, which is the conflation
+            # ``test_a_declared_null_is_never_read_as_absence`` exists to redden on.
+            # A live branch with no ``type`` word of its own has nowhere to put it, so
+            # that case does not fold: the node stays a combinator, states no fact in
+            # ``FACTS``, and the pair reddens visibly instead of passing blind.
+            if isinstance(kind, str):
+                return {**one, "type": [kind, "null"]}
+            if isinstance(kind, list) and "null" in kind:
+                return one
+            return node
         if len(nulls) <= 1 and len(live) > 1 and all(set(b) == {"type"} for b in live):
             kinds = [b["type"] for b in live]
-            return {"type": [*kinds, "null"] if declared_null and nulls else kinds, **outer}
+            if kw == "oneOf" and {"integer", "number"} <= set(kinds):
+                # The one overlap in draft-07's type vocabulary: both branches admit
+                # ``5``, so this ``oneOf`` refuses every integer and the type list
+                # admits it.  Folding would state a fact the document does not.
+                return node
+            return {"type": [*kinds, "null"] if keep_null and nulls else kinds, **outer}
     return node
 
 
@@ -2282,8 +2426,15 @@ def _composed(doc: Any, depth: int = 0) -> Any:
     return out
 
 
-def compare_schema(schema: dict, model: Any) -> ComparisonResult:
+def compare_schema(schema: dict, model: Any, *, document: dict | None = None) -> ComparisonResult:
     """The document's facts and the model's, compared in BOTH directions.
+
+    ``document`` is the WHOLE resolved document ``schema`` is a node of, and it is
+    what a local ``$ref`` on the document side resolves against.  It defaults to
+    ``schema``, which is exactly right for a root pair and FAIL-SAFE for a nested
+    one: with no root supplied a ``#/definitions/x`` does not resolve, the node
+    states only its own annotations, and every fact the model carries reads as
+    ``added`` -- the pair reddens instead of passing blind.
 
     * ``missing`` / ``differs`` -- the document states a fact and the model
       states nothing, or something else.  That is a model WIDER than its
@@ -2323,7 +2474,11 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
     except Exception as e:  # a model whose schema cannot be built states nothing
         res.detail = f"{type(e).__name__}: {e}"[:300]
         return res
-    defs = emitted.get("$defs", {})
+    #: The two roots a ``$ref`` resolves against, one per side.  Captured here and
+    #: not threaded through ``compare``, because they are properties of the PAIR and
+    #: do not change as the recursion descends -- a ``#/definitions/x`` three levels
+    #: into a node is still relative to the document root.
+    root = document if isinstance(document, dict) else schema
 
     def compare(doc: Any, got: Any, pointer: str, *, required: bool = False) -> None:
         """``required`` is whether the PARENT document demands this key.
@@ -2339,11 +2494,27 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
         # facts are the document's (see `_composed`).  At every node, not only at
         # the root -- a property's own node composes too, and the pydantic side is
         # flattened at every depth, so one call in the recursion is the whole of it.
-        doc = _composed(doc)
+        # ONE instrument, both sides.  The document's node is normalized FIRST and
+        # by the same function: a local ``$ref`` is resolved against the document
+        # root and a union of types is folded to the type list it spells, because
+        # the document uses those two spellings too and reading them on one side
+        # only reported a faithful class as NARROWER than its own document -- 43
+        # ``added`` facts for the reference and 9 for the folds, measured
+        # (salesagent-j3k2l.32, .33).  ``_normalize`` before ``_composed`` so a
+        # reference whose TARGET composes still has its conjuncts folded.
+        #
+        # ``declared_null=True`` on this side is not a guess read off anything: a
+        # DOCUMENT has no other way to spell a nullable value at a node, because
+        # presence is ``required`` at the parent.  A null BRANCH here is therefore
+        # always a type fact, which is what makes the fold lossless and what keeps a
+        # model that drops the null reportable.
+        doc = _composed(_normalize(doc, root, declared_null=True))
         # The DOCUMENT decides whether a null branch on the model's side is a type
         # fact or D4's spelling of absence, so the document is read first and the
         # model's node is normalized against it.
-        got = _normalize(got, defs, declared_null=_declares_null(doc))
+        got = _normalize(
+            got, emitted, declared_null=_declares_null(doc), null_is_absence=not required
+        )
         doc, rewritten = _uncanonicalized(doc)
         for kw in FACTS:
             if kw not in doc:
@@ -2476,6 +2647,22 @@ class Pair:
     schema: dict
     model: Any
     accept: Callable[[Any], Any]
+    #: The WHOLE resolved document ``schema`` is a node of, which only the schema
+    #: comparison reads and only to resolve a local ``$ref`` on the DOCUMENT side.
+    #:
+    #: **A second field and not a wider ``schema``, because they answer different
+    #: questions.**  ``schema`` is what the pair is GRADED against -- the node the
+    #: class names, which is what the accepts and refuses checks must draw
+    #: instances from.  The root is only the scope a ``#/definitions/x`` is
+    #: relative to, and a nested pair's node does not contain it: measured on
+    #: ``core/bidding-policy-capability.json``, whose
+    #: ``#/definitions/scope_capability`` pair references
+    #: ``#/definitions/policy_profile``, a SIBLING in the root's own
+    #: ``definitions`` section.
+    #:
+    #: ``None`` means "the node is the root", which is true of a root pair and
+    #: FAIL-SAFE for a nested one -- see :func:`compare_schema`.
+    document: dict | None = None
 
 
 @dataclass
@@ -2639,7 +2826,7 @@ def check_pair(
                 custom_formats=custom_formats,
             )
         )
-    rep.comparison = compare_schema(pair.schema, pair.model)
+    rep.comparison = compare_schema(pair.schema, pair.model, document=pair.document)
     return rep
 
 
