@@ -934,13 +934,14 @@ class Module:
 
 @dataclass(frozen=True)
 class Rules:
-    """What one node's D6 rules come to, as the three things a lowering needs.
+    """What one node's D6 rules come to, as the four things a lowering needs.
 
-    ONE carrier and one call (:func:`rules_at`), because the three answers are read
-    off one reading of the node and a lowering that took two of them would be a
+    ONE carrier and one call (:func:`rules_at`), because the four answers are read
+    off one reading of the node and a lowering that took three of them would be a
     lowering that could take one and forget the other -- which is exactly what
-    happened: the object row read all three, the ``allOf`` row read none, and 20
-    documents refused at a keyword whose mechanism was complete.
+    happened: the object row read them all, the ``allOf`` row read none, and the
+    documents in this bead's population refused at a keyword whose mechanism was
+    complete three modules away.
 
     * ``screen`` is what a keyword check may ADMIT at this node.  It is not
       :data:`RULE_KEYWORDS` flat, and the difference is load-bearing: a
@@ -962,11 +963,19 @@ class Rules:
       Empty text where the node states no rule this lowering can express, which D4
       makes correct rather than a refusal (``codegen.lower.rules``' module docstring
       is the one place that judgement is stated).
+    * ``distinct`` are the property keys whose array this node states is DISTINCT.
+      D6 has claimed their ``uniqueItems``, so :func:`fields` strips the keyword off
+      the declaration before the array row sees it and renders the fact onto the
+      field instead (``Property.distinct``).  It travels on this carrier for the
+      reason the other three do: a caller that reads the rule tuple and forgets the
+      strip emits a class whose ``uniqueItems`` reaches a row that refuses it by
+      name, which loses the document the rule was written for.
     """
 
     screen: frozenset[str]
     properties: Mapping[str, dict]
     body: Rendered
+    distinct: tuple[str, ...]
 
 
 def rules_at(node: dict, *also: dict) -> Rules:
@@ -997,6 +1006,9 @@ def rules_at(node: dict, *also: dict) -> Rules:
     for one in lowered:
         properties.update({k: v for k, v in one.properties.items() if k not in properties})
     sources = [source for one in lowered for source in one.rules]
+    distinct: list[str] = []
+    for one in lowered:
+        distinct += [key for key in one.distinct if key not in distinct]
     return Rules(
         screen=frozenset(screen),
         properties=properties,
@@ -1004,6 +1016,7 @@ def rules_at(node: dict, *also: dict) -> Rules:
             text=rules.block(sources),
             imports=set().union(*(one.imports for one in lowered)),
         ),
+        distinct=tuple(distinct),
     )
 
 

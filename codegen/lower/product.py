@@ -253,6 +253,10 @@ def lower_composition(doc: dict, name: str, pointer: str, mod: Module) -> str:
         mod,
         inherited=set(inherited),
         declared_at=at,
+        # D6 has claimed the ``uniqueItems`` of these keys, whether the node stating
+        # it is this one or a rule-bearing conjunct: the rule tuple and the strip are
+        # two halves of one claim, so the row that writes the tuple passes the keys.
+        distinct=stated.distinct,
     )
     return declare_object(
         doc,
