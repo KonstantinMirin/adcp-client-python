@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
 
+from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.pagination_response import PaginationResponse
 from ..core.protocol_envelope import ProtocolEnvelope
@@ -24,6 +25,7 @@ class ListCollectionListsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/list-collection-lists-response.json', pointer='#')
     lists: Annotated[list[CollectionList], Field(description='Array of collection lists (metadata only, not resolved collections)')]
     pagination: PaginationResponse | None = None
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 

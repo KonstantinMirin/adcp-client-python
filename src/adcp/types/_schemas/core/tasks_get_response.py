@@ -10,7 +10,9 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import FloatMin0Max100, IntMin1
 
 from ..enums.adcp_protocol import AdCPProtocol
+from ..enums.task_status import TaskStatus
 from ..enums.task_type import TaskType
+from .context import ContextObject
 from .ext import ExtensionObject
 from .protocol_envelope import ProtocolEnvelope
 from .version_envelope import AdCPVersionEnvelope
@@ -85,6 +87,7 @@ class TasksGetResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     task_id: Annotated[str, Field(description='Unique identifier for this task')]
     task_type: Annotated[TaskType, Field(description='Type of AdCP operation')]
     protocol: Annotated[AdCPProtocol, Field(description='AdCP protocol this task belongs to')]
+    status: Annotated[TaskStatus, Field(description='Current task status')]
     created_at: Annotated[AwareDatetime, Field(description='When the task was initially created (ISO 8601)')]
     updated_at: Annotated[AwareDatetime, Field(description='When the task was last updated (ISO 8601)')]
     completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)')] = None
@@ -93,6 +96,7 @@ class TasksGetResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     error: Annotated[TasksGetResponseError | None, Field(description='Convenience summary for failed tasks. When include_result was true and the canonical terminal result is also present, this error MUST agree with the canonical fatal error in result. A legacy poll carrying only this singular summary proves failure status but not equivalence to a richer terminal webhook artifact.')] = None
     history: Annotated[list[TasksGetResponseHistoryItem] | None, Field(description='Complete conversation history for this task (only included if include_history was true in request)')] = None
     result: Annotated[dict[str, Any] | None, Field(description='Canonical task-specific terminal payload. Present when include_result was true and a completed, failed, or rejected task produced a terminal artifact; canceled tasks may omit it. For failed tasks, the singular error field is a convenience summary and MUST agree with the canonical fatal error represented here. Consumers and sellers MUST resolve and validate the exact schema through manifest.task_result_resolution: use terminal_schema_overrides[task_type] when present, otherwise tools[task_type].response_schema. The polling envelope keeps this field generic so tasks/get does not embed every task response schema.')] = None
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 

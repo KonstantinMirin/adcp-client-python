@@ -42,7 +42,7 @@ import pytest
 from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit
 from codegen import constraints as constraints_module
-from codegen.harness import Pair, check_pair, steps
+from codegen.harness import Pair, check_pair, compare_schema, steps
 from codegen.lower import product
 from codegen.refusal import Refusal
 
@@ -301,13 +301,37 @@ def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzz
 #: own instance, over ``formats/canonical/_base.json``.
 SHADOW = {"default": 1, "description": "restated, and states no fact"}
 
+#: A document the probe bundle REFERENCES, so a property can be a bare ``$ref``
+#: whose description is the TARGET's rather than the referring node's.  Its text is
+#: the third of the three a description can come from, and the three disagreeing is
+#: what makes the authority question answerable: the target's, the referring node's
+#: own sibling, and a composed base's declaration of the same key.
+TARGET = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Probe Target",
+    "description": "THE TARGET SAYS THIS",
+    "type": "object",
+    "additionalProperties": True,
+}
 
-def _probe(tmp_path: Path, *, own: dict[str, Any], name: str) -> Path:
-    """Write the three-document probe bundle and return its directory."""
+
+def _probe(
+    tmp_path: Path, *, own: dict[str, Any], name: str, shared: dict[str, Any] | None = None
+) -> Path:
+    """Write the three-document probe bundle and return its directory.
+
+    ``shared`` adds properties to the MARKER, which is a base of the composing
+    document, so a key can be declared on BOTH sides -- the base's declaration and
+    the subclass's own -- which is what the merge rule decides between.  It is
+    opt-in because the marker is every other test's base too, and writes
+    ``core/probe-target.json`` beside it for a ``$ref`` to name.
+    """
     at = tmp_path / name
     (at / "core").mkdir(parents=True)
     # BYTE FOR BYTE: the inherited bound the control asserts on is the bundle's text.
     shutil.copyfile(BUNDLE / ENVELOPE, at / ENVELOPE)
+    if shared:
+        (at / "core/probe-target.json").write_text(json.dumps(TARGET, indent=2))
     (at / "core/probe-marker.json").write_text(
         json.dumps(
             {
@@ -316,7 +340,8 @@ def _probe(tmp_path: Path, *, own: dict[str, Any], name: str) -> Path:
                 "type": "object",
                 "required": ["kind"],
                 "properties": {
-                    "kind": {"type": "string", "minLength": 2, "description": "the marker"}
+                    "kind": {"type": "string", "minLength": 2, "description": "the marker"},
+                    **(shared or {}),
                 },
             },
             indent=2,
@@ -327,6 +352,14 @@ def _probe(tmp_path: Path, *, own: dict[str, Any], name: str) -> Path:
             {
                 "$schema": "http://json-schema.org/draft-07/schema#",
                 "title": "Probe Composing",
+                # Stated only with ``shared``, where the probe is graded by the schema
+                # COMPARISON and so has to be in the state the population is in: the
+                # resolver merges a conjunct's ROOT description into the root, so a
+                # composing document stating none reads as dropping its base's.  All
+                # 301 of the bundle's composing documents state one, which is why the
+                # comparison reports no such fact and a probe without one would grade
+                # a state no document has.  Opt-in so no other test's bytes move.
+                **({"description": "the composing probe"} if shared else {}),
                 "type": "object",
                 "allOf": [
                     {"$ref": REF.format("core/probe-marker.json")},
@@ -366,7 +399,14 @@ def install_run_aliases(out: emit.Emitted, monkeypatch) -> list[str]:
     return sorted(added)
 
 
-def _emit_probe(tmp_path: Path, monkeypatch, *, own: dict[str, Any], name: str):
+def _emit_probe(
+    tmp_path: Path,
+    monkeypatch,
+    *,
+    own: dict[str, Any],
+    name: str,
+    shared: dict[str, Any] | None = None,
+):
     """Emit the probe bundle, import its tree, and return (class, module text, schema).
 
     ``strict_validate`` reaches a document through ``_base._document``, which reads
@@ -384,7 +424,7 @@ def _emit_probe(tmp_path: Path, monkeypatch, *, own: dict[str, Any], name: str):
     site for.  The probe RUN emitted its own alias module
     (``Emitted.beside``), so that is what is installed, for this test only.
     """
-    at = _probe(tmp_path, own=own, name=name)
+    at = _probe(tmp_path, own=own, name=name, shared=shared)
     documents = sorted(str(p.relative_to(at)) for p in at.rglob("*.json"))
     out = emit.emit(at, documents)
     assert out.refusals == {}, out.refusals
@@ -465,6 +505,107 @@ def test_a_subclass_never_restates_an_inherited_field(tmp_path, monkeypatch) -> 
     assert "Any" not in text, "the restatement lowered on its own would be Any"
     # and the field is still THERE, with the base's own declaration
     assert cls.model_fields["adcp_major_version"].annotation is not Any
+
+
+#: The two shapes of the OTHER restatement: it says exactly what the base says about
+#: the instance (the same ``$ref``) and a different thing to the reader.  ``ctx``
+#: states its own description beside the ``$ref``; ``echo`` states none, so the
+#: TARGET's is what its node resolves.  Both disagree with the base's.
+AUTHORITY_SHARED = {
+    "ctx": {"$ref": REF.format("core/probe-target.json"), "description": "THE BASE SAYS THIS"},
+    "echo": {"$ref": REF.format("core/probe-target.json"), "description": "THE BASE SAYS THAT"},
+}
+AUTHORITY_OWN = {
+    "ctx": {"$ref": REF.format("core/probe-target.json"), "description": "THE DOCUMENT SAYS THIS"},
+    "echo": {"$ref": REF.format("core/probe-target.json")},
+    "label": {"type": "string", "minLength": 2},
+}
+
+
+def test_a_documents_own_declaration_carries_the_description_at_its_own_pointer(
+    tmp_path, monkeypatch
+) -> None:
+    """The description-authority rule (``docs/plan/rebuild-plan.md`` §6): an annotation
+    reaches a field from the document that declares the field's pointer, and never from
+    a composed base's declaration of the same key.
+
+    The restatement says the same thing about the instance as the base's -- the same
+    ``$ref``, so ``_restatement`` reads it as adding nothing -- and a different thing
+    to the reader.  Left inherited, the class states at ``/properties/ctx`` a
+    description its own document does not, which is 15 of the 43 ``differs`` the
+    symmetric comparison reported (every response root composing
+    ``core/protocol-envelope.json`` and declaring ``context`` itself).
+
+    **The type is still the BASE's and there is no shadow**, which is what the
+    non-empty gate buys: the restated declaration's constraining content EQUALS the
+    base's, so the node lowers to the same type rather than to ``Any``.
+    """
+    cls, text, schema = _emit_probe(
+        tmp_path,
+        monkeypatch,
+        name="s4authority",
+        own=AUTHORITY_OWN,
+        shared=AUTHORITY_SHARED,
+    )
+    assert "class ProbeComposing(ProbeMarker, AdCPVersionEnvelope):" in text, text
+    # The subclass states both keys, and the base's text is in NEITHER of them.
+    assert "THE DOCUMENT SAYS THIS" in text, text
+    assert "THE BASE SAYS" not in text, text
+    assert "Any" not in text, "the restatement lowered on its own would be Any"
+    # Compared by VALUE: two spellings of one annotated alias are equal and are not
+    # the same object, so ``is`` here reads a faithful field as a shadow.
+    assert cls.model_fields["ctx"].annotation == cls.__bases__[0].model_fields["ctx"].annotation
+
+    # What a reader of the model sees at each pointer, which is what the comparison
+    # grades: the node's own sibling where it states one, the TARGET's where it does
+    # not.  ``echo`` carries no field description at all and reads the target's
+    # through the branch its ``$ref`` becomes.
+    rendered = cls.model_json_schema()["properties"]
+    assert rendered["ctx"]["description"] == "THE DOCUMENT SAYS THIS", rendered["ctx"]
+    assert "description" not in rendered["echo"], rendered["echo"]
+    assert [
+        arm["description"] for arm in rendered["echo"]["anyOf"] if "description" in arm
+    ] == ["THE TARGET SAYS THIS"], rendered["echo"]
+
+    # And the comparison agrees, at those pointers and everywhere else.
+    comparison = compare_schema(schema, cls)
+    assert (comparison.added, comparison.missing, comparison.differs) == ([], [], [])
+    assert schema["properties"]["ctx"]["description"] == "THE DOCUMENT SAYS THIS"
+    assert schema["properties"]["echo"]["description"] == "THE TARGET SAYS THIS"
+
+
+def test_the_wrong_text_at_that_pointer_is_reported_as_a_differs(
+    tmp_path, monkeypatch
+) -> None:
+    """The rule BROKEN ON PURPOSE, because a description rule that cannot produce a
+    ``differs`` is not a rule.
+
+    ``_annotates_differently`` forced to ``False`` is exactly the emitter before
+    this branch existed: the restatement adds nothing constraining, so the field is
+    inherited and the class carries the BASE's text at a pointer its own document
+    declares. The same probe bundle, the same comparison, two emitters -- and the
+    comparison separates them by name, pointer and both texts.
+    """
+    monkeypatch.setattr(product, "_annotates_differently", lambda child, base: False)
+    cls, text, schema = _emit_probe(
+        tmp_path,
+        monkeypatch,
+        name="s4authoritybroken",
+        own=AUTHORITY_OWN,
+        shared=AUTHORITY_SHARED,
+    )
+    assert "THE DOCUMENT SAYS THIS" not in text, "the patch did not reach the emitter"
+
+    comparison = compare_schema(schema, cls)
+    assert comparison.added == [] and comparison.missing == []
+    reported = {str(d).split(":", 1)[0]: str(d) for d in comparison.differs}
+    assert sorted(reported) == ["/properties/ctx/description", "/properties/echo/description"], (
+        sorted(reported)
+    )
+    assert "THE DOCUMENT SAYS THIS" in reported["/properties/ctx/description"]
+    assert "THE BASE SAYS THIS" in reported["/properties/ctx/description"]
+    assert "THE TARGET SAYS THIS" in reported["/properties/echo/description"]
+    assert "THE BASE SAYS THAT" in reported["/properties/echo/description"]
 
 
 def test_the_composed_field_set_is_the_union_and_requiredness_is_inherited(

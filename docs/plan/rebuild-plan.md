@@ -704,6 +704,43 @@ was unreachable until a referenced plain boolean emitted and number 4 until a do
 `uniqueItems` did, so the arrival of a fifth is a sign the emitted population grew rather than
 that the comparison is wrong.
 
+**A `description` is NEVER folded, and this is the one difference the comparison must keep.**
+A fold hides every future divergence at the pointer it covers, and a description is the one fact
+in these documents a human reads. Where the comparison reports one, the emitter is wrong and the
+emitter is what changes.
+
+**The description-authority rule: a document's own declaration carries the description at its
+own pointer.** Three documents can state a description for one field — the `$ref` target, the
+referring node as a SIBLING of its `$ref`, and a composed base's declaration of the same key —
+and the model renders one. The rule, in the order it resolves:
+
+1. **The referring node's own sibling beats its `$ref` target's.** Draft-07 says a `$ref`
+   IGNORES its siblings; this bundle plainly intends them, 147 documents state a body-level
+   `context` that `$ref`s `core/context.json`, and `core/protocol-envelope.json`'s own text
+   discusses the relationship. The resolver the harness grades through MERGES a `$ref`'s
+   siblings with the OUTER keys winning, so taking the sibling is also the only reading under
+   which the two halves agree. Draft-07's reading is why a CONSTRAINT sibling refuses by name
+   (`emit.decide_type`) rather than being silently dropped: an accepted set cannot be read two
+   ways, where an annotation can and this says which.
+2. **A composed base's declaration of the same key loses to the document's own.** Where a
+   subclass declares a key its base also declares and says the same thing about the INSTANCE,
+   the field is the base's field and the annotation is the document's: a class must not state,
+   at a pointer its own document declares, a description that document does not carry. Measured
+   on trunk `9e9da67e1`: 15 of 43 `differs`, every one at `/properties/context/description`, a
+   response root composing `core/protocol-envelope.json` whose envelope states the long
+   "Relationship to per-task body-level `context` declarations" text as a `$ref` sibling.
+3. **Silence inherits.** A subclass that does not declare the key declares no field, and the
+   base's annotation is the one there is.
+
+Clause 2 is gated on the restatement's constraining content being NON-EMPTY and equal to the
+base's, which is what keeps it from becoming the shadow §4 forbids: equal constraining content
+lowers to the base's own type, so the field is the inherited field with a different annotation.
+A restatement stating ONLY annotations over a typed base is the other shape and still inherits —
+lowering it alone types it `Any` and drops every fact the base states. The 28 remaining `differs`
+(14 `description`, 14 `default`, over 7 `formats/canonical/*.json`) are that shape, and
+`salesagent-j3k2l.22` owns them; two of the 14 defaults are inversions, where the model's boolean
+default is the opposite of the document's.
+
 **Determinism is a precondition of grading, not something to fix later.** Two runs over the
 same bundle emit the same bytes, and a run that does not is ungraded rather than nearly right.
 

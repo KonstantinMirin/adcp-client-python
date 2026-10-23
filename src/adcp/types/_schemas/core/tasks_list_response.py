@@ -10,6 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 
 from ..enums.task_status import TaskStatus
 from ..enums.task_type import TaskType
+from .context import ContextObject
 from .ext import ExtensionObject
 from .pagination_response import PaginationResponse
 from .protocol_envelope import ProtocolEnvelope
@@ -97,6 +98,7 @@ class TasksListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     query_summary: Annotated[TasksListResponseQuerySummary, Field(description='Summary of the query that was executed')]
     tasks: Annotated[list[TasksListResponseTasksItem], Field(description='Array of tasks matching the query criteria')]
     pagination: PaginationResponse
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 

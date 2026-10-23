@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
+from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
@@ -79,6 +80,7 @@ class SyncPlansResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-response.json', pointer='#')
     plans: Annotated[list[SyncPlansResponsePlansItem], Field(description='Status for each synced plan.')]
+    context: ContextObject | None = None
     ext: ExtensionObject | None = None
 
 
