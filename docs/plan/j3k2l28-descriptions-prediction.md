@@ -112,3 +112,48 @@ One branch in `lower_product.lower_composition`'s merge. A restatement that
 - The probe: a fixture document stating a `description` beside a `$ref` that disagrees
   with its target's, emitted with the WRONG text, must report a `differs` at that
   pointer. A description rule that cannot produce one is not a rule.
+
+## 5. The grade
+
+Measured on `6e5b505d5`, same instrument, same tree.
+
+| figure | predicted | measured |
+|---|---|---|
+| graded pairs | 1,034 | 1,034 |
+| added | 0 | 0 |
+| missing | 11 | 11 |
+| differs | 28 | 28 |
+| emitted | 686 | 686 |
+| accounted | 1,053 | 1,053 |
+| modules changed | 15, one field line each | 15, **17** field lines |
+
+**One prediction was wrong, and it is the last row.** "Each gaining one `context` field
+line. No module loses one" — 15 gained a `context` line and **2 of those 15 also gained
+a `status` line**: `core/tasks-get-response.json` and
+`protocol/get-task-status-response.json` restate `status` as a `$ref` to
+`enums/task-status.json` with their own short "Current task status" beside the
+envelope's long one, which is the same shape at a second key. That pointer was green
+before and is green after, and for a reason worth stating: the resolver's finite-type
+rewrite (canonicalization 3) writes an enum node out as its member set and drops every
+annotation at it, so the document states no description there and the comparison admits
+a model-only one at exactly such a node. So the two lines move which text a reader of
+`TasksGetResponse.status` sees — to the document's own, which is the decision — and
+move no fact the comparison grades.
+
+Everything else held, the 28 F facts are the same 28 by pointer and document, and the
+probe reports both pointers with both texts when `_annotates_differently` is forced to
+`False`.
+
+## 6. Two pre-existing reds, measured and attributed
+
+Neither is in this half's gate and neither is this half's. Both are stale `emitted`
+pins, and both were A/B'd by putting the BASE's `codegen/` on `sys.path` (`git archive
+HEAD codegen` into a temp directory, `codegen.__file__` verified) and re-running:
+
+| test | pins | measures | with the base's codegen |
+|---|---|---|---|
+| `test_emit_product.py::test_the_rows_delta_is_reported_with_its_denominator` | 566 | 576 | fails identically |
+| `test_applied_schema.py::test_no_document_in_the_bundle_reaches_the_refusal_any_more` | 674 | 686 | fails identically |
+
+The first one's own comment says the figure is `salesagent-j3k2l.22`'s doing. Neither
+pin was re-pointed here: a measurement another lane owns is not this lane's to move.
