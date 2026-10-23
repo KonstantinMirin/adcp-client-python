@@ -96,8 +96,16 @@ PYTHONPATH=.:tests uv run --no-sync python -c \
    emit.write(out, Path("src/adcp/types/_schemas"), Path("src/adcp/types"))'
 ```
 
+That command is also the only one that PRUNES. `package` is the run's scope, so
+passing it says this run covers the whole population — and a whole-population run
+deletes the `.py`/`.json` pairs it no longer intends, which is what a document
+that stops emitting leaves behind. The one-document command above passes no
+`--package` and so deletes nothing: it intends one document's files, and a prune
+there would wipe the rest of the tree.
+
 `tests/test_emit.py::test_the_committed_tree_is_what_a_fresh_run_emits` compares
-both against a fresh emission, byte for byte, so a stale file fails at the gate.
+both against a fresh emission, byte for byte, so a stale file fails at the gate
+even if it got into the tree some other way.
 
 ## Merging back
 

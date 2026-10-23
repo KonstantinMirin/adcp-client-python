@@ -110,6 +110,23 @@ TREE = Path("src") / "adcp" / "types" / "_schemas"
 #: The import path of that tree, and of the hand-written base beside it.
 PACKAGE = "adcp.types._schemas"
 
+#: **The two file kinds the emitter writes, and so the only two :func:`write` will
+#: delete.**  ``emit`` writes exactly these: a module per emitted document, the
+#: document beside it, and an empty ``__init__.py`` per package -- which is why the
+#: prune is bounded by suffix rather than deleting whatever a walk of the tree
+#: finds.  Anything else under the tree is something no run of this emitter put
+#: there, so the prune is not entitled to an opinion about it; a ``.pyc`` under
+#: ``__pycache__`` is the case that exists today.
+#:
+#: Declared rather than derived from ``Emitted.files``, because a derived set has a
+#: hole exactly where the prune matters most: a whole-population run that emitted
+#: nothing would derive ``{".py"}`` from its lone ``__init__.py`` and silently leave
+#: every stale document behind.
+#: ``test_the_emitter_writes_only_the_file_kinds_the_prune_removes`` grades the
+#: declaration against the committed tree, so it cannot drift from what ``emit``
+#: produces.
+EMITTED_SUFFIXES = frozenset({".py", ".json"})
+
 #: **``format`` SELECTS A TYPE, and the schema half asserts it** (D5).
 #:
 #: ``format: date-time`` references RFC 3339, where the time offset is MANDATORY,
@@ -989,28 +1006,49 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
 
 
 def write(out: Emitted, tree: Path, package: Path | None = None) -> None:
-    """Write this run's files, and delete nothing.
+    """Write this run's files, and -- on a WHOLE-POPULATION run -- delete the files
+    it no longer intends.
 
-    A stale module -- one emitted by an earlier run over a different document set
-    -- is a real defect: it stays importable while no document produces it any
-    more.  Pruning it here was tried and removed, because it makes the
-    one-document command above destroy the other modules of the committed tree,
-    and a command whose demonstration wipes the tree gets run once.
+    **A stale module is an integrity defect and not untidiness**, which is why the
+    deletion is here and not in a step a human remembers.  A document that stops
+    emitting leaves a ``.py`` and a ``.json`` that are INDISTINGUISHABLE from a real
+    emission to everything that reads the tree: the class still imports, still
+    carries ``__adcp_schema__``, and still answers ``strict_validate``, so the
+    harness can grade a class the current compiler would not produce.  §2 binds
+    every class to its document precisely so that it is impossible to point the
+    grader at a tree this run did not emit, and a stale file is that tree one file
+    at a time.
 
-    The file SET is checked where P10 puts a check, against the inputs rather
-    than against a previous output: ``test_emit`` compares the whole committed
-    tree with a fresh emission of the derived population, so a file no run
-    produces is a failure at the gate and never a silent survivor.  Probed by
-    planting one.
+    The enforcement used to be a RED TEST and a hand deletion:
+    ``test_the_committed_tree_is_what_a_fresh_run_emits`` compares file SETS, so it
+    fails on a stale file -- but it fails at the gate, leaving the operator to
+    derive the stale set and remove it.  Two lanes did that by hand
+    (``salesagent-j3k2l.22``, which turned 32 documents into verdicts and removed 4
+    files, and ``.26``), which is two for two: every change that ADDS a refusal was
+    a two-step job and nothing enforced the second step.
 
-    **``package`` is REQUIRED for :attr:`Emitted.beside` and has no default, for
-    the reason the refusal report was moved out of the tree.**  D5's alias module
-    is ONE file over the WHOLE run: a run over one document resolves that
-    document's shapes and no others, so writing it would replace the committed
-    module with a shorter one and leave every other module importing a symbol
-    that is gone -- which is damage, where a partial run's effect on the tree
-    itself is a rewrite with identical bytes.  The README's one-document command
-    passes no ``package`` and so cannot do it; the full run passes one.
+    **``package`` is the run's SCOPE, and it gates both whole-run effects.**  It is
+    required for :attr:`Emitted.beside` because D5's alias module is ONE file over
+    the WHOLE run: a run over one document resolves that document's shapes and no
+    others, so writing it would replace the committed module with a shorter one and
+    leave every other module importing a symbol that is gone.  The prune is the same
+    fact asked of the tree -- a one-document run INTENDS one document's files, so an
+    ungated prune would delete the other 676 modules of the committed tree.  That is
+    why a prune was tried here before and removed: a command whose demonstration
+    wipes the tree gets run once.  Gating it on the discriminator already present
+    means the README's whole-tree command prunes with no change to it and its
+    one-document command cannot, and no second flag exists for anyone to forget.
+
+    **The intended set comes from this run's result, never from a pattern over the
+    directory**: :attr:`Emitted.files` is the set ``write`` just wrote, so a file
+    under ``tree`` that is not in it is a file no run produces.  Deletion is bounded
+    to :data:`EMITTED_SUFFIXES`, the two kinds ``emit`` itself writes.
+
+    Known ceiling: a directory left EMPTY by the prune stays.  It is inert -- no
+    ``__init__.py``, so it is not a package, holds no class and cannot be graded --
+    and removing directories is the one way this could reach something no run of
+    this emitter created.  The upgrade, if an empty domain directory ever matters,
+    is a bottom-up ``rmdir`` of the directories the prune emptied.
     """
     for rel in sorted(out.files):
         path = tree / rel
@@ -1022,6 +1060,13 @@ def write(out: Emitted, tree: Path, package: Path | None = None) -> None:
         path = package / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(out.beside[rel])
+    # Only ``tree``.  ``package`` holds the hand-written ``_base.py`` beside the
+    # alias module and is nobody's population: ``Emitted.beside`` names one file in
+    # it, not its contents.
+    intended = {tree / rel for rel in out.files}
+    for path in sorted(tree.rglob("*")):
+        if path.suffix in EMITTED_SUFFIXES and path not in intended and path.is_file():
+            path.unlink()
 
 
 def main(argv: list[str] | None = None) -> int:

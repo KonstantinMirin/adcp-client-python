@@ -11,11 +11,14 @@ which document a class was generated from, and an indirection that can be aimed
 at a tree can be aimed at the WRONG tree -- which is how a previous attempt came
 to grade 1,602 documents green while generating nothing.  Now a class carries its
 own schema reference, so ``pairs`` reads the pairing off the class and the
-"grading someone else's tree" failure has no site.  What remains is a STALE
-module -- one an earlier run wrote and no current document produces -- and that
-is caught where P10 puts a check: ``test_the_committed_tree_is_what_a_fresh_run_emits``
+"grading someone else's tree" failure has no site.  The last site was a STALE
+module -- one an earlier run wrote and no current document produces -- which is
+indistinguishable from a real emission to everything that reads the tree, and
+``emit.write`` now DELETES one on a whole-population run
+(``test_write_removes_a_file_the_run_no_longer_intends``).  It is still checked
+where P10 puts a check as well: ``test_the_committed_tree_is_what_a_fresh_run_emits``
 compares the whole tree with a fresh emission of the derived population, so a file
-no run produces is a failure at the gate.
+no run produces is a failure at the gate even if it got there some other way.
 
 The bundle directory is a constant here and nowhere inside ``codegen/``: step 10
 derives it from ``adcp.get_adcp_spec_version()`` (D9, P9).
@@ -3456,6 +3459,127 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     assert sorted(out.beside) == ["constraints.py"], sorted(out.beside)
     for rel in sorted(out.beside):
         assert (tmp_path / rel).read_text() == (TREE.parent / rel).read_text(), rel
+
+
+#: A two-document bundle for the prune: both documents emit, and the second is then
+#: rewritten so that it REFUSES, which is the only way a file stops being intended.
+#: Hand-built rather than cut from the 3.2 bundle, because the scenario needs a
+#: document whose emission is turned OFF between two runs and no bundle document can
+#: be asked to do that without editing the bundle.
+def _prunable(bundle_dir: Path, name: str, extra: dict[str, Any] | None = None) -> None:
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    (bundle_dir / f"{name}.json").write_text(
+        json.dumps(
+            {
+                "title": name.title(),
+                "type": "object",
+                "properties": {"a": {"type": "string"}},
+                **(extra or {}),
+            }
+        )
+    )
+
+
+#: What makes the second document stop emitting.  A ``required``-only ``allOf``
+#: conjunct: step 4's row claims the root, reaches the conjunct, and refuses because
+#: a conjunct with no ``properties`` has no base to subclass.  The test ASSERTS the
+#: refusal rather than assuming it, for the reason
+#: ``test_the_cli_reports_a_refusal_rather_than_raising_it`` records: that fixture
+#: once used ``not: {}``, a later row lowered it, and the test went on passing over a
+#: bundle with no refusal in it.  Whichever row claims this next moves the fixture,
+#: and the assertion is what says so out loud.
+_STOPS_EMITTING = {"allOf": [{"required": ["a"]}]}
+
+
+def test_write_removes_a_file_the_run_no_longer_intends(tmp_path) -> None:
+    """The prune, graded by making a document stop emitting.
+
+    This is the defect's whole shape: a stale ``.py``/``.json`` pair is
+    INDISTINGUISHABLE from a real emission to everything that reads the tree -- the
+    class imports, carries ``__adcp_schema__``, and answers ``strict_validate`` --
+    so the harness can grade a class the current compiler would not produce, which
+    is the one thing §2's per-class schema reference exists to make impossible.
+
+    It was caught before this only by ``test_the_committed_tree_is_what_a_fresh_run_emits``
+    comparing file SETS, which fails at the GATE and leaves the operator to derive
+    the stale set and delete it by hand.  Two lanes did exactly that
+    (``salesagent-j3k2l.22``, 4 files, and ``.26``), so every change that added a
+    refusal was a two-step job with nothing enforcing the second step.
+
+    PROBED by removing the two lines in ``emit.write`` that delete: this test then
+    fails on the last assertion with ``goes.json`` and ``goes.py`` still in the tree.
+    """
+    bundle_dir, tree, package = tmp_path / "bundle", tmp_path / "tree", tmp_path / "package"
+    package.mkdir()
+
+    _prunable(bundle_dir, "stays")
+    _prunable(bundle_dir, "goes")
+    documents = ["goes.json", "stays.json"]
+    first = emit.emit(bundle_dir, documents)
+    assert first.refusals == {}, first.refusals
+    emit.write(first, tree, package)
+
+    def kinds(root: Path) -> list[str]:
+        return sorted(str(p.relative_to(root)) for p in root.rglob("*") if p.is_file())
+
+    assert kinds(tree) == ["__init__.py", "goes.json", "goes.py", "stays.json", "stays.py"]
+
+    # The document stops emitting, which is what every row that adds a refusal does
+    # to some document.  Asserted, not assumed -- see ``_STOPS_EMITTING``.
+    _prunable(bundle_dir, "goes", _STOPS_EMITTING)
+    second = emit.emit(bundle_dir, documents)
+    assert sorted(second.refusals) == ["goes.json"], second.refusals
+    assert sorted(second.emitted) == ["stays.json"], sorted(second.emitted)
+
+    emit.write(second, tree, package)
+    assert kinds(tree) == ["__init__.py", "stays.json", "stays.py"]
+
+
+def test_a_partial_run_prunes_nothing(tmp_path) -> None:
+    """The other half, and the reason a prune was tried here once and removed.
+
+    ``write`` is the same function the README's ONE-DOCUMENT command reaches.  A
+    one-document run intends one document's files, so a prune that did not ask the
+    run's scope would delete the other 676 modules of the committed tree -- and a
+    command whose demonstration wipes the tree gets run once.  ``package`` is the
+    discriminator already present for D5's alias module, which is a whole-run
+    artifact for the same reason, so the two whole-run effects are gated on one
+    fact and there is no second flag to forget.
+
+    Without this test the prune's gate is ungraded and the obvious "simplification"
+    -- prune unconditionally -- passes the test above.
+    """
+    bundle_dir, tree = tmp_path / "bundle", tmp_path / "tree"
+    _prunable(bundle_dir, "stays")
+    _prunable(bundle_dir, "goes")
+    emit.write(emit.emit(bundle_dir, ["goes.json", "stays.json"]), tree, tmp_path / "package")
+
+    # The whole population is still both documents and ``goes`` still emits; what
+    # changes is that this run NAMES one of them, so it intends one document's files.
+    partial = emit.emit(bundle_dir, ["stays.json"])
+    assert sorted(partial.emitted) == ["stays.json"], sorted(partial.emitted)
+    emit.write(partial, tree)
+
+    survived = sorted(str(p.relative_to(tree)) for p in tree.rglob("*") if p.is_file())
+    assert survived == ["__init__.py", "goes.json", "goes.py", "stays.json", "stays.py"]
+
+
+def test_the_emitter_writes_only_the_file_kinds_the_prune_removes() -> None:
+    """``emit.EMITTED_SUFFIXES`` bounds what ``write`` will delete, and it is a
+    DECLARATION -- so this grades it against the emitter's actual output.
+
+    Derived from ``Emitted.files`` instead, the bound has a hole exactly where it
+    matters: a whole-population run that emitted nothing derives ``{".py"}`` from
+    its lone ``__init__.py`` and silently leaves every stale document behind.  So
+    the constant is written down, and this is what keeps it in step.  Both
+    directions redden: a third file kind in the tree, and a narrowed constant.
+
+    The committed tree is the emitter's output byte for byte -- the test above
+    asserts exactly that -- so reading the kinds off it costs nothing, where a
+    second whole-population emit costs the run again.
+    """
+    kinds = {p.suffix for p in TREE.rglob("*") if p.is_file() and "__pycache__" not in p.parts}
+    assert kinds == emit.EMITTED_SUFFIXES, sorted(kinds)
 
 
 def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> None:
