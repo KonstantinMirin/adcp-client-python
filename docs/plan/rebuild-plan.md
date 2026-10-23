@@ -636,10 +636,10 @@ refusal list is its complement.
 PARTITION is total and disjoint — `emitted | refusals == portable`, 0 unaccounted — and that is
 **1054**. The GOAL is `emitted + VERDICTS`, because the condition above is "refused by name,
 pointer and keyword" and a refusal still waiting on something is not a verdict; that is
-**967**. Measured together on `sdk/j3k2l37-refusal-kind`: portable 1054, emitted 686, refused
-368, of which 281 are verdicts and 87 are pending (86 `DEFERRED`, 1 `UNRESOLVED`). Reporting
-1054 for the goal overstates it by 87 and reporting 967 for the partition looks like 87 lost
-documents; both have been said of the same run.
+**988**. Measured together on `sdk/j3k2l40-conjunct-reader`: portable 1054, emitted 691,
+refused 363, of which 297 are verdicts and 66 are pending (65 `DEFERRED`, 1 `UNRESOLVED`).
+Reporting 1054 for the goal overstates it by 66 and reporting 988 for the partition looks like
+66 lost documents; both have been said of the same run.
 
 **A refusal's KIND is an argument its producer passes (`refusal.Kind`) and is never read off
 its detail.** Four separate readings of that English each made this number too high — see
@@ -873,20 +873,28 @@ remaining.** They were measured on different trees over several days, they overl
 is refused once but blocked by several rows), and four of the rows have since closed. Read them
 as the reason each row exists. Read the table below as the state.
 
-Measured on `sdk/j3k2l37-refusal-kind`, by **the `refusal.Kind` each producer declares** —
-never by reading a detail string, and no longer by comparing one against a constant either:
+Measured on `sdk/j3k2l40-conjunct-reader`, by **the `refusal.Kind` each producer declares**
+— never by reading a detail string, and no longer by comparing one against a constant either:
 
 | | documents | |
 |---|---|---|
-| emitted and graded | 686 | |
-| refused by a VERDICT naming a keyword this emitter will not lower | 281 | |
-| **accounted for** | **967** | of 1,054 |
-| deferred — the lowering for the position is not written, or is not reachable from this row | 86 | pending, not refused |
+| emitted and graded | 691 | |
+| refused by a VERDICT naming a keyword this emitter will not lower | 297 | |
+| **accounted for** | **988** | of 1,054 |
+| deferred — the lowering for the position is not written, or is not reachable from this row | 65 | pending, not refused |
 | unresolved — a `$ref` the bundle's one resolution did not reach | 1 | pending |
 
-Of the 368 refusals, 149 DECLARE `VERDICT`, 47 declare `DEFERRED`, 1 declares `UNRESOLVED`
-and 171 declare `CHAINED`; a chained refusal carries the target's refusal (`through=`), so its
-`resolved` kind is the target's and the 171 split 132 verdict / 39 deferred.
+Of the 363 refusals, 155 DECLARE `VERDICT`, 38 declare `DEFERRED`, 1 declares `UNRESOLVED`
+and 169 declare `CHAINED`; a chained refusal carries the target's refusal (`through=`), so its
+`resolved` kind is the target's and the 169 split 142 verdict / 27 deferred.
+
+**967 → 988 and 87 → 66 is `salesagent-j3k2l.40`**, which moved the conjunct reader into
+`codegen/compiler.py` so that a union BRANCH that composes could reach it — D13's own rule,
+which says shared machinery lives there. All 10 documents waiting on "a branch composes once
+that reader is shared" cleared that row (3 emitted, 6 accounted as verdicts, 1 moved on to the
+conjunct-SHAPE gap the product row's 12 are on, taking it to 13), and 12 chained refusals
+released with them. `comparison.added` stays 0, measured over every pair of the regenerated
+tree. The remaining 66 are enumerated in `docs/plan/j3k2l40-prediction.md`.
 
 **`emitted + refused == 1054` is green and has been all along, which is why it is not the
 condition.** "Refused" admits "not built yet": the metric's own arithmetic held while part of
