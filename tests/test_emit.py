@@ -1857,8 +1857,20 @@ def _symbol(document: str) -> str:
     answer is a function of (bundle, document) alone, so the memo cannot hide a
     change.
     """
-    (symbol,) = importlib.import_module(emit.emit(BUNDLE, [document]).emitted[document]).__all__
-    return symbol
+    # ``__all__[0]`` AND NOT A ONE-ELEMENT UNPACK.  ``salesagent-j3k2l.31`` made a
+    # module export more than its root -- the root, plus every pointer the bundle
+    # names, plus the field types a composing subclass re-uses -- so 24 of the 677
+    # modules now list several names and the unpack this line used to do raised
+    # ``ValueError`` at all 12 call sites: ``core/catalog.json`` lists 6 names and
+    # ``aao/agent-publishers.json`` lists 2.
+    #
+    # THE ROOT IS FIRST BY A FACT THAT IS ITSELF GRADED, which is what makes position
+    # 0 safe rather than an assumption: ``tests/test_enum.py`` asserts
+    # ``listed[:1] == [root]`` for every emitted module, with the expected root derived
+    # from ``compiler.class_name`` over the document's own title.  So this reads index 0
+    # instead of filtering by name or re-deriving the title, and if that order ever
+    # changes the assertion over there fails before anything here does.
+    return importlib.import_module(emit.emit(BUNDLE, [document]).emitted[document]).__all__[0]
 
 
 def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
