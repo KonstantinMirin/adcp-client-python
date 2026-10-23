@@ -79,9 +79,42 @@ from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
 from hypothesis.errors import HypothesisException, Unsatisfiable
 from hypothesis_jsonschema import from_schema
+from hypothesis_jsonschema import _canonicalise as _hjs_canon
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
 from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
 from pydantic import TypeAdapter, ValidationError
+
+# --------------------------------------------------------------------------- #
+# the one memo
+# --------------------------------------------------------------------------- #
+# ``canonicalish`` is a pure function of a schema, and the library does not
+# memoise it: ``from_schema`` re-canonicalises the WHOLE document once per step
+# site, and ``merged`` re-enters it for every subschema it sorts
+# (``_canonicalise.py:631``).  Over the 13,123 step sites this suite steps, the
+# same subschemas are canonicalised again for each one.
+#
+# Installed on the MODULE GLOBAL, not just on our call: ``merged`` and
+# ``canonicalish`` reach each other through ``_canonicalise``'s own namespace,
+# so patching the name there is what puts the library's internal recursion
+# through the memo.  A hit returns a DEEP COPY -- the library mutates the nodes
+# it is handed, and handing back the cached object would let one call corrupt
+# every later one.
+_CANON_MEMO: dict[str, Any] = {}
+_canonicalish_uncached = _hjs_canon.canonicalish
+
+
+def _canonicalish_memoised(schema: Any) -> Any:
+    try:
+        key = json.dumps(schema, sort_keys=True, default=repr)
+    except (TypeError, ValueError):
+        return _canonicalish_uncached(schema)
+    hit = _CANON_MEMO.get(key)
+    if hit is None:
+        hit = _CANON_MEMO[key] = _canonicalish_uncached(schema)
+    return copy.deepcopy(hit)
+
+
+_hjs_canon.canonicalish = _canonicalish_memoised
 
 # --------------------------------------------------------------------------- #
 # formats
