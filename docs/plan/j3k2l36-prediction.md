@@ -150,3 +150,17 @@ base's annotation on the DOCUMENT side, so taking the silence as an answer turne
 one `differs` into one `missing` at
 `formats/canonical/responsive_creative.json#/properties/slots/description`. Caught
 by re-measuring the pair, not by reasoning about it.
+
+## Re-measured after merging trunk `ac9175209` forward (`emit.write`'s prune)
+
+Every number above was taken on `93ec36aea` and re-taken on the merge commit. **None
+moved**, and the prune removed nothing: a fresh whole-`population()` emit leaves
+`git status` clean, so the committed tree was already what the merged run intends.
+
+* comparison, `max_steps=0`, 1034 pairs: **0 / 11 / 0**, the same 9 documents and the
+  same 11 facts, per document unchanged.
+* the two populations, stated separately because conflating them is what the prune
+  work corrected: over `bundle.portable` (1054) **emitted 686**, accounted 1053,
+  deferred 0, transitive 1; over `population()` (991 named) **emitted 677**, which is
+  what the TREE holds -- 677 modules + 677 documents + 27 `__init__.py` = 1381 files
+  on disk.
