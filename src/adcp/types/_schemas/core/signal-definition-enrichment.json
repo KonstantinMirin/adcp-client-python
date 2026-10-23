@@ -1,0 +1,622 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "demographic_predicate"
+        ]
+      },
+      "then": {
+        "properties": {
+          "restricted_attributes": {
+            "contains": {
+              "const": "age"
+            }
+          }
+        },
+        "required": [
+          "restricted_attributes"
+        ]
+      }
+    }
+  ],
+  "description": "Optional signal-definition enrichment fields that may be projected inline on signal listings when requested through get_signals.fields. This schema intentionally excludes signal identity and required definition fields so source-native, private, or compact listings can include typed partial disclosure without becoming a full adagents.json signal definition.",
+  "properties": {
+    "art9_basis": {
+      "description": "Data provider's declared GDPR Article 9 basis for the underlying signal definition when special-category data is involved and Article 9 applies, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own Article 9 basis for the provider-declared basis.",
+      "enum": [
+        "explicit_consent",
+        "manifestly_made_public",
+        "substantial_public_interest",
+        "vital_interests"
+      ],
+      "type": "string"
+    },
+    "audience_expansion": {
+      "type": "boolean"
+    },
+    "consent_basis": {
+      "description": "Data provider's declared GDPR Article 6 lawful basis or consent basis for the underlying signal definition, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own processing basis for the provider-declared basis.",
+      "items": {
+        "enum": [
+          "consent",
+          "contract",
+          "legal_obligation",
+          "legitimate_interest"
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "countries": {
+      "items": {
+        "pattern": "^[A-Z]{2}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "criteria_url": {
+      "format": "uri",
+      "type": "string"
+    },
+    "data_sources": {
+      "items": {
+        "enum": [
+          "app_behavior",
+          "app_usage",
+          "web_usage",
+          "geo_location",
+          "email",
+          "tv_ott_or_stb_device",
+          "panel",
+          "online_ecommerce",
+          "credit_data",
+          "loyalty_card",
+          "transaction",
+          "online_survey",
+          "offline_survey",
+          "public_record_census",
+          "public_record_voter_file",
+          "public_record_other",
+          "offline_transaction"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "data_subject_rights": {
+      "additionalProperties": false,
+      "description": "Per-signal data-subject-rights routing. This is a contact/routing reference, not a machine-callable AdCP API.",
+      "properties": {
+        "ccpa_opt_out_url": {
+          "format": "uri",
+          "pattern": "^https://",
+          "type": "string"
+        },
+        "channels": {
+          "contains": {
+            "properties": {
+              "rights": {
+                "contains": {
+                  "enum": [
+                    "access",
+                    "erasure",
+                    "objection"
+                  ]
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "rights"
+            ],
+            "type": "object"
+          },
+          "items": {
+            "additionalProperties": false,
+            "anyOf": [
+              {
+                "required": [
+                  "url"
+                ]
+              },
+              {
+                "required": [
+                  "email"
+                ]
+              }
+            ],
+            "properties": {
+              "countries": {
+                "items": {
+                  "pattern": "^[A-Z]{2}$",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "email": {
+                "format": "email",
+                "type": "string"
+              },
+              "languages": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "rights": {
+                "items": {
+                  "enum": [
+                    "access",
+                    "rectification",
+                    "erasure",
+                    "portability",
+                    "objection"
+                  ],
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "url": {
+                "format": "uri",
+                "pattern": "^https://",
+                "type": "string"
+              }
+            },
+            "required": [
+              "rights"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "response_sla_days": {
+          "maximum": 90,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "upstream_source_domain": {
+          "format": "hostname",
+          "maxLength": 253,
+          "type": "string"
+        }
+      },
+      "required": [
+        "channels"
+      ],
+      "type": "object"
+    },
+    "demographic_predicate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Projected authoritative demographic meaning for the signal. When projected from another provider, this MUST match the provider's definition exactly. Signal names alone never establish demographic semantics.",
+      "properties": {
+        "age": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "anyOf": [
+            {
+              "required": [
+                "max"
+              ]
+            },
+            {
+              "required": [
+                "min"
+              ]
+            }
+          ],
+          "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
+          "properties": {
+            "include_unknown": {
+              "enum": [
+                false,
+                true
+              ]
+            },
+            "max": {
+              "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
+              "maximum": 150,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "min": {
+              "description": "Inclusive minimum age in completed years. Omit for an open lower bound.",
+              "maximum": 150,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "include_unknown"
+          ],
+          "title": "Demographic Age Range",
+          "type": "object"
+        }
+      },
+      "required": [
+        "age"
+      ],
+      "title": "Demographic Predicate",
+      "type": "object"
+    },
+    "device_expansion": {
+      "type": "boolean"
+    },
+    "dts_compliant_version": {
+      "type": "string"
+    },
+    "last_updated": {
+      "description": "When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "lookback_window": {
+      "enum": [
+        "intra_day",
+        "daily",
+        "weekly",
+        "monthly",
+        "bi_monthly",
+        "quarterly",
+        "bi_annually",
+        "annually"
+      ],
+      "type": "string"
+    },
+    "methodology": {
+      "enum": [
+        "observed",
+        "declared",
+        "derived",
+        "inferred",
+        "modeled"
+      ],
+      "type": "string"
+    },
+    "modeling": {
+      "additionalProperties": false,
+      "properties": {
+        "ai_act_risk_class": {
+          "enum": [
+            "minimal",
+            "limited",
+            "high_risk"
+          ],
+          "type": "string"
+        },
+        "disclosure": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "required": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "required"
+                ],
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "required": {
+                  "const": true
+                }
+              },
+              "required": [
+                "jurisdictions",
+                "required"
+              ]
+            }
+          ],
+          "description": "Disclosure requirements and jurisdictional notes for modeled data signals. This schema is intentionally separate from core/provenance.json because creative provenance is about generated content, render guidance, and asset-level chain of custody, while signal modeling disclosure is about data-segment methodology and data-use transparency.",
+          "maxProperties": 3,
+          "properties": {
+            "jurisdictions": {
+              "description": "Jurisdictions where a modeling or AI-use disclosure applies.",
+              "items": {
+                "additionalProperties": {
+                  "not": {}
+                },
+                "maxProperties": 6,
+                "properties": {
+                  "audience": {
+                    "enum": [
+                      "buyer",
+                      "public",
+                      "regulator",
+                      "data_subject"
+                    ]
+                  },
+                  "country": {
+                    "description": "ISO 3166-1 alpha-2 country code.",
+                    "pattern": "^[A-Z]{2}$",
+                    "type": "string"
+                  },
+                  "disclosure_text": {
+                    "description": "Human-readable disclosure text or summary the provider expects buyers or reviewers to see.",
+                    "type": "string"
+                  },
+                  "disclosure_url": {
+                    "description": "Optional URL to the provider's canonical disclosure or methodology page for this jurisdiction.",
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "Provider-defined sub-national region code or name when the obligation is regional. No global canonical format is implied.",
+                    "type": "string"
+                  },
+                  "regulation": {
+                    "description": "Provider-supplied regulation identifier for the disclosure obligation.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "country",
+                  "regulation"
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "notes": {
+              "description": "Optional provider notes on how the disclosure should be interpreted. Informational only; buyers should not branch programmatically on this text.",
+              "maxLength": 2000,
+              "type": "string"
+            },
+            "required": {
+              "enum": [
+                false,
+                true
+              ]
+            }
+          },
+          "required": [
+            "required"
+          ],
+          "title": "Signal Modeling Disclosure",
+          "type": "object"
+        },
+        "method": {
+          "enum": [
+            "lookalike",
+            "supervised",
+            "embedding",
+            "rules"
+          ],
+          "type": "string"
+        },
+        "seed_source": {
+          "additionalProperties": false,
+          "properties": {
+            "provider_signed": {
+              "description": "Provider assertion that the seed source carries a signed attestation. Consumers MUST NOT treat this boolean alone as cryptographic proof.",
+              "type": "boolean"
+            },
+            "type": {
+              "enum": [
+                "first_party_crm",
+                "panel",
+                "declared_survey",
+                "transactional",
+                "behavioral"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "provider_signed"
+          ],
+          "type": "object"
+        },
+        "training_data_jurisdictions": {
+          "items": {
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "method",
+        "seed_source",
+        "training_data_jurisdictions",
+        "ai_act_risk_class"
+      ],
+      "type": "object"
+    },
+    "onboarder": {
+      "additionalProperties": false,
+      "properties": {
+        "match_keys": {
+          "items": {
+            "enum": [
+              "name",
+              "address",
+              "email",
+              "postal",
+              "lat_long",
+              "mobile_id",
+              "cookie_id",
+              "ip",
+              "customer_id",
+              "phone"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "pre_onboarding_audience_expansion": {
+          "type": "boolean"
+        },
+        "pre_onboarding_device_expansion": {
+          "type": "boolean"
+        },
+        "pre_onboarding_precision_level": {
+          "enum": [
+            "individual",
+            "household",
+            "business",
+            "geography"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "match_keys"
+      ],
+      "type": "object"
+    },
+    "policy_categories": {
+      "description": "Policy categories this signal is sensitive for.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "refresh_cadence": {
+      "enum": [
+        "intra_day",
+        "daily",
+        "weekly",
+        "monthly",
+        "bi_monthly",
+        "quarterly",
+        "bi_annually",
+        "annually"
+      ],
+      "type": "string"
+    },
+    "restricted_attributes": {
+      "description": "Restricted attribute categories this signal touches.",
+      "items": {
+        "enum": [
+          "age",
+          "health_data",
+          "genetic_data",
+          "biometric_data",
+          "familial_status",
+          "religious_beliefs",
+          "political_opinions",
+          "racial_ethnic_origin",
+          "trade_union_membership",
+          "sex_life_sexual_orientation"
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "segmentation_criteria": {
+      "maxLength": 500,
+      "type": "string"
+    },
+    "taxonomy": {
+      "additionalProperties": false,
+      "description": "Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.",
+      "properties": {
+        "etag": {
+          "type": "string"
+        },
+        "parent_match_behavior": {
+          "enum": [
+            "exact_only",
+            "descendants_supported",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "ref": {
+          "format": "uri",
+          "type": "string"
+        },
+        "segtax": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "value_mappings": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "modifiers": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "path": {
+                "type": "string"
+              },
+              "taxonomy_value_id": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "taxonomy_value_id"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "values": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "modifiers": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "values"
+      ],
+      "type": "object"
+    }
+  },
+  "title": "Signal Definition Enrichment",
+  "type": "object"
+}

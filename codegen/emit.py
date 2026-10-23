@@ -376,6 +376,50 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
             )
         )
 
+    if lower_union.keyword(node) is not None and not lower_rules.presence_only(node):
+        # **D2's union keyword at a node that is NOT a root**, reached here rather than
+        # through a seventh row for the ``allOf`` arm's reason above: ``ROWS`` dispatches
+        # on ROOT KIND and is a partition by it, so a keyword at a position no root
+        # selector sees has no row to be.  Measured on the 3.2 bundle, and the
+        # measurement is about the NODE'S POSITION rather than about the document:
+        # of the 32 deferred nested combinators, **0 sit at a root** -- every one is at a
+        # ``properties``, an ``items``, a ``definitions`` entry or inside a branch -- so
+        # no root selector sees any of them and a row would have claimed none.
+        #
+        # **Asked of the DOCUMENT the answer is different, which is why it is asked of
+        # the node:** 2 of the 32 documents have a root ``bundle.union_root`` already
+        # claims (``core/creative-item.json``, whose combinator is at
+        # ``/oneOf/1/properties/content``, and ``core/placement-selection.json`` at
+        # ``/oneOf/0/properties/placement_refs/items``) and 14 have one
+        # ``composes_at_the_root`` claims.  A row claiming the document says nothing
+        # about the position inside it, which is the whole of why ROWS partitions by
+        # root kind.
+        #
+        # It is a TYPE and not the root row's base-plus-subclasses -- see
+        # ``lower.union.nested`` -- and ``lower_union.keyword`` is the one reading of
+        # which keyword a node carries, shared with ``bundle.union_root``, so this arm
+        # and the root selector cannot disagree about what a union is.
+        #
+        # Read AFTER ``$ref``, ``enum``, ``const`` and ``allOf``, each of which closes
+        # the node ahead of it, and BEFORE ``type``: a union keyword beside a ``type``
+        # word is a CONJUNCTION with every branch, which ``nested``'s sibling screen
+        # refuses by name -- reading ``type`` first would lower the type and drop the
+        # branches, which is a model wider than its document.
+        #
+        # **``presence_only`` is the gate and it is the published step-5/step-7 boundary,
+        # not a precedence rule invented here.**  A combinator whose every branch is
+        # ``required``-only says which KEYS are present, which is D6's rule on the
+        # nearest class (``lower.rules``, reached through ``compiler.rules_at`` by the
+        # object row below) -- not a union of shapes.  ``bundle.states_an_object_rule``
+        # asks the same predicate of a ROOT, so the two positions read one definition.
+        #
+        # Measured: without this gate the arm claimed every presence-only node too and
+        # **emitted fell 674 -> 620**, because a class-plus-rule became a union whose
+        # sibling ``properties`` then refused.  The predicate is read HERE, at the
+        # dispatch, because ``lower.union`` imports ``compiler`` and ``refusal`` and
+        # nothing else of this package (D13) and so cannot ask step 7's question.
+        return lower_union.nested(node, pointer, name_hint, mod)
+
     kind = node.get("type")
 
     if kind is None:

@@ -164,8 +164,21 @@ ROOT_CONJUNCTS = ("allOf", "properties", "required", "additionalProperties")
 #: ``allOf`` at the BRANCH node is a conjunct list the branch's own pointer addresses,
 #: so unlike the root case it is genuinely lowerable; :func:`_plan` refuses it on the
 #: one thing it lacks, which is the conjunct reader D13 keeps in the product row.
+#:
+#: ``enum`` is here for ``const``'s reason exactly, and the module docstring already
+#: lists an ``enum`` branch among those that have no subclass to give: it pins the
+#: branch's VALUE SET, so there is no property map to declare a class from, which makes
+#: it a scalar branch and :func:`_plan`'s ``type`` check the refusal that says so.
+#: Measured over all 126 union roots of this bundle: **2 branches carry an ``enum`` and
+#: both state ``type: "string"``** -- ``core/geo-place-system.json#/anyOf/0`` and
+#: ``core/geo-place-type.json#/anyOf/0``.  Left out of this set, both were reported on
+#: ``enum`` with ``DEFERRED_TO_A_LATER_ROW``, because ``compiler.check_keywords`` walks
+#: ``sorted(node)`` and reaches ``enum`` before the ``type`` check below -- the
+#: identical misattribution :data:`ROOT_HANDLED` measured at 55 of 156 and fixed the
+#: same way, and a deferral promising a row for a branch shape this module refuses by
+#: design.
 BRANCH_HANDLED = frozenset(
-    {"type", "properties", "required", "additionalProperties", "const", "allOf"}
+    {"type", "properties", "required", "additionalProperties", "const", "enum", "allOf"}
 )
 
 
@@ -221,6 +234,32 @@ def _const_pin(branch: dict, doc: dict) -> Any:
     return next(iter(pinned.values())) if len(pinned) == 1 else None
 
 
+def branch_identity(branch: dict, root: str, doc: dict) -> str | None:
+    """D3's three branch rules, or ``None`` where none of them applies.
+
+    Split out of :func:`branch_name` because the two callers need the SAME three rules
+    and differ only in what "no identity" means.  A ROOT union declares one class per
+    branch, so a branch with no identity is a document this emitter cannot name and
+    :func:`branch_name` refuses it.  A NESTED union is a TYPE (:func:`nested`), and a
+    branch that lowers to an annotation -- a scalar, a ``$ref``, an array -- needs no
+    name at all, so refusing one there would refuse a union the walk can lower.
+
+    It is one function and not two copies of the three rules for the ordinary reason:
+    the rules ARE D3, and a second reading of them is how the two positions come to
+    name one branch differently.
+    """
+    title = branch.get("title")
+    if isinstance(title, str) and title:
+        return compiler.class_name(title)
+    pin = _const_pin(branch, doc)
+    if pin is not None and not isinstance(pin, (dict, list)):
+        return root + compiler.class_name(str(pin))
+    required = branch.get("required")
+    if isinstance(required, list) and required:
+        return root + "".join(compiler.class_name(str(k)) for k in sorted(required))
+    return None
+
+
 def branch_name(branch: dict, root: str, pointer: str, doc: dict) -> str:
     """D3's branch rules, in order: title, the discriminator ``const``, the required set,
     then refuse the document by name and pointer.
@@ -236,15 +275,9 @@ def branch_name(branch: dict, root: str, pointer: str, doc: dict) -> str:
     function of what its siblings happen to be, so adding a branch renames an unrelated
     class.  D3 has no such rule and this refuses instead.
     """
-    title = branch.get("title")
-    if isinstance(title, str) and title:
-        return compiler.class_name(title)
-    pin = _const_pin(branch, doc)
-    if pin is not None and not isinstance(pin, (dict, list)):
-        return root + compiler.class_name(str(pin))
-    required = branch.get("required")
-    if isinstance(required, list) and required:
-        return root + "".join(compiler.class_name(str(k)) for k in sorted(required))
+    named = branch_identity(branch, root, doc)
+    if named is not None:
+        return named
     raise Refusal(
         "title",
         pointer,
@@ -370,6 +403,280 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
         f"{symbol}._branch_models = ({', '.join(names)},)\n{symbol}.model_rebuild(force=True)"
     )
     return symbol
+
+
+# --------------------------------------------------------------------------- #
+# the same keyword BELOW a root, which is a TYPE and not a base plus subclasses
+# --------------------------------------------------------------------------- #
+#: Why a nested union's SIBLING refuses, and why it is a verdict rather than a
+#: deferral.  The sentence is :data:`ROOT_CONJUNCTS`' reasoning at a nested pointer, and
+#: the mechanism it names is different: a root's branches are CLASSES and the fact is
+#: unreportable because a branch's ``#/<kw>/<i>`` node does not state it, while a nested
+#: union is one TYPE and there is no slot on a ``compiler.Type`` for a sibling fact at
+#: all.  Both ends of that were measured on the pinned harness: the document states the
+#: sibling at this pointer and ``harness.compare_schema`` looks for it here, so a model
+#: whose node is a bare ``anyOf`` reports it ``missing`` -- a model wider than its
+#: document, by the keyword's own position.
+_NESTED_SIBLING = (
+    "a sibling of a nested oneOf/anyOf is a CONJUNCTION with every branch (draft-07), "
+    "and a nested union lowers to one type -- A | B -- which has no slot for a fact of "
+    "its own: compiler.Type carries a container and its members and nothing else.  "
+    "Conjoining it into each branch instead states it at a pointer the document does "
+    "not, and dropping it is a model wider than its document, which "
+    "harness.compare_schema reports as a missing fact at this very pointer.  The "
+    "position needs a row that can NAME the conjunction, which is the same thing a "
+    "root union's ROOT_CONJUNCTS refuses for"
+)
+
+
+def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> compiler.Decided:
+    """``A | B`` for a ``oneOf``/``anyOf`` at a pointer that is NOT a document root.
+
+    **It is not the root row's shape and must not be.**  A root union emits a base
+    carrying ``BranchDispatchMixin`` and one subclass per branch because a DOCUMENT must
+    export one importable symbol that answers ``isinstance`` for every arm (§4).  A
+    nested position exports nothing: it is a property's type, an element type or a
+    mapping value, so what it needs is a TYPE -- which is exactly what
+    ``lower.containers.multi_type`` already builds for a ``type`` LIST, through the same
+    ``compiler.Type(container="union", ...)``.
+
+    It is reached from ``emit.decide_type`` and NOT through ``emit.ROWS``, for the
+    reason the nested ``allOf`` arm beside it is: ``ROWS`` dispatches on ROOT KIND and
+    is a partition by it, so a keyword at a position no root selector sees has no row to
+    be and no selector to select it.  Measured on the 3.2 bundle, of the NODE'S POSITION
+    and not of the document: of the 32 deferred nested combinators **0 sit at a root**,
+    so no root selector sees one and a row would have claimed none.  (Asked of the
+    document instead, 2 of the 32 have a root ``bundle.union_root`` already claims and 14
+    have one ``composes_at_the_root`` claims -- a row claiming the document says nothing
+    about the position inside it, which is the whole of why ``ROWS`` partitions by root
+    kind.)  The other 4 of the 48 deferrals that DO sit at a root are all on
+    ``uniqueItems`` at a root ARRAY, a kind ``bundle.is_container_root`` already claims.
+    So ``ROWS`` stays six.
+
+    **Each branch is decided by the same walk as any other node**, at its own
+    ``<pointer>/<kw>/<i>``, which is what gives a branch that becomes a CLASS its own
+    ``__adcp_schema__`` and therefore its own graded pair -- the root row's
+    docstring states that mechanism and it is the one that grades these branches too.
+    A branch's name is D3's (:func:`branch_identity`), and a branch with no identity
+    needs none: it lowers to an annotation, and if it turns out to need a name anyway
+    two branches collide and ``compiler.Module.declare`` refuses by name.
+
+    **What this does NOT make as narrow as its document, named here rather than
+    discovered later.**  ``A | B`` admits a value satisfying BOTH arms and a ``oneOf``
+    refuses one, so the ``model_validate`` CONSTRUCTOR is wider than a ``oneOf`` at
+    exactly that instance.  That is D4's standing trade and not a new one: the accepted
+    set of every emitted class is ``strict_validate``, which validates against the
+    document's own schema and so enforces the exclusivity, and ``lower/rules.py``
+    records the identical ceiling for a conditional it cannot express as a rule.  A
+    rule cannot close it either -- ``RuleBound`` reads ``__pydantic_fields_set__`` and
+    exclusivity is a statement about values, not about which keys are present.
+    """
+    kw = keyword(node)
+    assert kw is not None, "nested is dispatched on the keyword being present"
+    # The sibling screen, with its own ``why``: every other keyword at this node is a
+    # conjunction with every branch, and the generic answer for a draft-07 keyword
+    # promises a later row for something no row can carry here.  Same shape as the
+    # ``$ref`` arm's "a sibling of $ref, which draft-07 ignores".
+    compiler.check_keywords(node, pointer, {kw}, _NESTED_SIBLING)
+    branches = node[kw]
+    if len(branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
+        raise Refusal(
+            kw, pointer, f"{len(branches)} branch: a union of one is the branch itself, not a union"
+        )
+    arms: list[compiler.Type] = []
+    for i, branch in enumerate(branches):
+        at = f"{pointer}/{kw}/{i}"
+        if not isinstance(branch, dict):
+            raise Refusal(kw, at, f"a branch is {type(branch).__name__}, not a schema")
+        hint = branch_identity(branch, name_hint, node) or name_hint
+        _refuse_a_local_reference_branch(branch, at)
+        decided = mod.decide(branch, at, hint, mod)
+        if decided.constraints or decided.format is not None:
+            # The arm's own bound has nowhere to go: ``compiler.Type`` carries none, so
+            # the keyword would reach the FIELD holding the union and bound every arm --
+            # ``Annotated[str | int, Field(min_length=4)]`` applying a string's bound to
+            # the integer arm, which is ``containers.multi_type``'s named defect at the
+            # other spelling of the same shape.  D5's alias module is what puts a bound
+            # on an arm's own type, and what reaches here still carrying one is a shape
+            # it has no spelling for.
+            stated = {
+                **decided.constraints,
+                **({"format": decided.format} if decided.format else {}),
+            }
+            raise Refusal(
+                sorted(stated)[0],
+                at,
+                f"this branch states {stated} and compiler.Type carries no constraint, "
+                "so the keyword would reach the field holding the union and bound every "
+                "arm; D5's alias module names an arm's own bounded type and has no "
+                "spelling for this shape",
+            )
+        arms.append(decided.type)
+    _refuse_a_shape_the_comparison_cannot_read(node, kw, pointer)
+    unique = tuple(dict.fromkeys(arms))  # document order, deduped
+    if len(unique) == 1:
+        # Two branches that lower to one type are one type, and saying ``X | X`` would
+        # be a second spelling of it.  ``multi_type`` dedupes for the same reason.
+        return compiler.Decided(unique[0])
+    return compiler.Decided(compiler.Type(container="union", of=unique))
+
+
+def _refuse_a_local_reference_branch(branch: dict, pointer: str) -> None:
+    """A branch that is a LOCAL reference puts this document's own ``definitions``
+    section in front of a comparison that has no reading for one.
+
+    ``compiler.local_reference`` declares a class for the node the reference names --
+    a node of THIS document -- and declares it if the walk has not reached it yet, which
+    for a ``definitions`` entry nothing else reaches is this row's own doing.  The
+    class then has its own ``__adcp_schema__`` and so its own graded pair.
+
+    **What has no reading is the DOCUMENT side.**  ``harness._normalize`` resolves a
+    ``$ref`` into ``$defs`` on the MODEL's side, and nothing resolves one on the
+    document's: ``bundle.resolved`` inlines a REMOTE reference and leaves a local one
+    in place, so the comparison reads a property whose document node is
+    ``{"$ref": "#/definitions/x"}`` as stating no fact at all, and every fact the
+    model's class correctly carries arrives as ``added`` -- the model reported NARROWER
+    than its document, which is the half that could admit an instance the document
+    rejects.
+
+    Measured, and the first population the reading would ever have had: **0 graded
+    pairs of the committed tree hold a document-side local ``$ref``**, while the two
+    documents whose pairs hold one carry **24 sites over 4 pairs and produce 43
+    ``added`` facts** -- 31 at ``core/placement-presentation.json``'s three
+    ``#/definitions/*_decoration`` pairs, which THIS ROW'S branch lowering declares,
+    and 12 at ``core/bidding-policy-capability.json#/definitions/scope_capability``,
+    whose pair the root's own property declares in a document this row is the last
+    blocker for.
+
+    **What the guard COSTS is 4 emissions and not 2**, measured by removing it and
+    re-emitting: ``core/bidding-policy-capability.json``,
+    ``core/placement-presentation.json`` -- the two that produce the 43 -- plus
+    ``core/canonical-media-buy-features.json`` and ``core/media-buy-features.json``,
+    which reference them. It refuses 8 documents in all; the other 4 refuse on
+    something else as well. 686 emitted with it, 690 without.
+
+    **The limit of this predicate, stated rather than discovered.**  It asks about the
+    NODE -- is this branch a local reference -- while what is ungradeable is the
+    document's ``definitions`` section. The two coincide over all 6 documents of the
+    bundle that carry a local-reference branch at a nested combinator, and the
+    coincidence is NOT a derivation: a document carrying one with no ungradeable
+    ``definitions`` position would be refused here for nothing.  The fix is the
+    document-side reading in ``codegen/harness.py``, which is one instrument for both
+    directions; widening the predicate here would admit the 43.
+    """
+    ref = branch.get("$ref")
+    if not isinstance(ref, str) or not ref.startswith("#"):
+        return
+    raise Refusal(
+        "$ref",
+        pointer,
+        f"a branch referencing {ref!r} names a node of THIS document, and "
+        "compiler.local_reference declares a class for it whose own pair is then graded "
+        "against a document side the resolver did not inline: bundle.resolved inlines a "
+        "remote reference and leaves a local one, harness._normalize resolves a $ref on "
+        "the MODEL's side only, and so every fact the class correctly carries is "
+        "reported as added -- the model narrower than its document.  Measured: 0 graded "
+        "pairs of the committed tree hold a document-side local $ref, and the two "
+        "documents this admits produce 43 added facts over 4 pairs.  The document-side "
+        "reading is the harness's row"
+    )
+
+
+def _bare_type(branch: dict) -> str | None:
+    """The one ``type`` word this branch states and nothing else, or ``None``.
+
+    The DOCUMENT-side spelling of the shape ``harness._normalize``'s third
+    normalization fires on, read through ``compiler.ANNOTATIONS`` so a branch that
+    carries only a ``description`` beside its type is still a bare type -- which is
+    what the model renders, because an annotation changes no accepted set.
+    """
+    live = {k for k in branch if k not in compiler.ANNOTATIONS and not k.startswith("x-")}
+    word = branch.get("type")
+    return word if live == {"type"} and isinstance(word, str) else None
+
+
+def _refuse_a_shape_the_comparison_cannot_read(node: dict, kw: str, pointer: str) -> None:
+    """A union the comparison FOLDS is emitted ungraded, so this refuses it by name.
+
+    **It is the grader and not the rendering, and the predicate is ``_normalize``'s own
+    two fold arms read off the document.**  ``A | B`` is exactly what the document
+    admits and pydantic renders it as an ``anyOf``.  ``harness._normalize`` then folds
+    that ``anyOf`` away in two cases, each for a reason that is right about the model:
+
+    * **one null branch and one live branch** -- D4 renders an optional property
+      ``T | None``, so the fold unwraps the null arm and keeps the live branch's own
+      keys (resolving a ``$ref`` into ``$defs`` on the way);
+    * **at most one null branch and every live branch a bare ``{"type": X}``** -- a
+      union of bare types is draft-07's multi-type node in pydantic's only spelling of
+      one, so the fold restores the ``type`` LIST.
+
+    Both are correct for a node whose DOCUMENT states those facts at the node. A nested
+    combinator's node states them INSIDE a branch and nothing at the node itself -- a
+    sibling refuses above -- so every folded fact arrives in ``compare_schema``'s second
+    pass as a fact the model states and the document does not.  ``_narrows_nothing``
+    admits a model-only ``type`` only where ``_entails_type`` derives it, and that
+    derivation requires every branch to declare the SAME type, which is exactly the case
+    neither fold arm is about.
+
+    So the comparison reports a faithful model as NARROWER than its document. Measured
+    over the committed tree, in two passes:
+
+    * the bare-type arm: **5 ``added`` facts over 5 pairs**, all of them
+      ``.../value/type: the model says ['boolean', 'number', 'string'], the document
+      nothing`` -- the two documents that state the shape
+      (``creative/creative-feature-result.json#/properties/value``,
+      ``property/property-feature-value.json#/properties/value``) and the three that
+      reference them;
+    * the null arm: **4 ``added`` facts over 2 pairs**, at
+      ``formats/canonical/{audio,video}_hosted.json#/properties/duration_ms_range/items``,
+      whose ``anyOf`` is ``[{"type": "integer", "minimum": 0}, {"type": "null"}]`` and
+      whose model folds to ``{"type": ["integer", "null"], "minimum": 0}``.
+
+    ``added`` is the half that could admit an instance the document rejects, so it is 0
+    over the whole committed tree and must stay 0; emitting a node no check can read is
+    the widening this pipeline exists to remove.
+
+    **The upgrade path is the harness's row and not this one's**, exactly as
+    ``containers.multi_type``'s constrained-arm refusal says of its own shape: each fold
+    is right that the two spellings are one fact, and what is missing is for the fold to
+    be told that the facts it restored are the DOCUMENT's own, stated one level down
+    inside the branch it folded.  ``codegen/harness.py`` is one instrument for both
+    directions, so the reading belongs there and not in a wider rule here.
+
+    **What this does NOT refuse, which is the whole reachable population:** a union with
+    two live branches at least one of which states more than a type word -- a ``$ref``, an
+    object, a constrained scalar, an array.  Neither arm folds it, the model's node stays
+    an ``anyOf``, ``anyOf`` is not in ``harness.FACTS``, and each branch that became a
+    class is graded at its own pair through its own ``__adcp_schema__``.  **8 of the 32
+    documents in this family emit, and every one of the 8 is in that position**; the
+    row's whole gain is 12 documents, the 10 of the 48 that emit plus 2 of the 30
+    chained-pending refusals that cleared into emissions.
+    """
+    branches = [b for b in node[kw] if isinstance(b, dict)]
+    nulls = [b for b in branches if _bare_type(b) == "null"]
+    live = [b for b in branches if _bare_type(b) != "null"]
+    unwraps = len(nulls) == 1 and len(live) == 1
+    restores = len(nulls) <= 1 and len(live) > 1 and all(_bare_type(b) is not None for b in live)
+    if not (unwraps or restores):
+        return
+    which = (
+        "one null branch and one live one, which D4's own T | None renders"
+        if unwraps
+        else "every live branch a bare type, which is a type LIST in pydantic's only "
+        "spelling of one"
+    )
+    raise Refusal(
+        kw,
+        pointer,
+        f"this union is {which}, and harness._normalize folds exactly that shape off "
+        "the model's side -- while this node states no such fact of its own, because a "
+        "nested combinator states them inside a branch.  So the folded facts arrive as "
+        "facts the model adds and the document does not, and _entails_type derives a "
+        "model-only type only where every branch declares the SAME one: a faithful model "
+        "is reported NARROWER than its document and the node would be emitted ungraded.  "
+        "Teaching the fold that the facts it restored are the document's own, one level "
+        "down in the branch it folded, is the harness's row",
+    )
 
 
 def _plan(branch: Any, pointer: str, root: str, doc: dict) -> Branch:

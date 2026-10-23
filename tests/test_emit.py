@@ -4524,9 +4524,28 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     assert set(deferred) & set(verdicts) == set()
     assert set(transitive) & set(verdicts) == set()
     assert set(chained_pending) & set(verdicts) == set()
-    # The chained set must not be empty, or this partition is asserting that a kind
-    # which demonstrably exists has no members -- which is how the bug it covers hid.
-    assert chained_pending, "no chained-pending refusal: the fourth term grades nothing"
+    # **The chained KIND must not be empty, and it is no longer the PENDING bucket that
+    # carries it.**  This read ``assert chained_pending``, because a term asserting that
+    # a kind which demonstrably exists has no members is how the bug it covers hid.
+    # ``salesagent-j3k2l.26`` emptied that bucket legitimately -- every chained refusal
+    # now resolves to a verdict -- so the non-emptiness moves onto the thing that must
+    # stay graded, which is ``is_a_verdict`` RESOLVING a chain rather than reading its
+    # outer sentence.  Measured on this tree: **171 refusals quote a target's refusal,
+    # all 171 resolve to VERDICT, and the chains run to depth 5** (121 at depth 1, 39 at
+    # 2, 6 at 3, 3 at 4, 2 at 5), so the recursion is exercised by 171 documents and the
+    # bug that read only the outer sentence would still redden the ``accounted`` pin
+    # below by 171.  The PENDING bucket is pinned at 0 with the other two.
+    chained = {
+        d: r
+        for d, r in out.refusals.items()
+        if refusal_module.CHAINED_TO_A_REFUSED_TARGET in r["detail"]
+        and r["detail"].startswith("its target ")
+    }
+    assert len(chained) >= 171, len(chained)
+    assert set(chained) - set(verdicts) == set(chained_pending), "a chain is in one bucket"
+    assert max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values()) >= 5, (
+        "no chain deeper than one link: the recursion in is_a_verdict grades nothing"
+    )
 
     # Shrink-only: a row lands, deferrals become emissions, these fall.
     #
@@ -4558,13 +4577,42 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # which two independent instruments agree on: the function here, and a separate
     # walk that resolved every chain to its root (301 verdict, 78 deferred, 1
     # transitive).
-    assert len(deferred) <= 48, len(deferred)
+    #
+    # **48 -> 0, 30 -> 0 and 975 -> 1053, moved by `salesagent-j3k2l.26`.**  All 48 of
+    # the deferred set were that bead's, and they were SIX mechanisms rather than the
+    # one its title names.  Partitioned by WHICH ARM of the walk refused -- which is
+    # what says whether a lowering exists to be written -- and not by the keyword tally:
+    #
+    #      7  uniqueItems on an array no class holds     ->  0 emit,  7 verdict
+    #     32  a combinator of SHAPES at a nested pointer ->  8 emit, 24 verdict
+    #      1  a combinator beside an allOf (composing)   ->  0 emit,  1 verdict
+    #      5  contains on an array                       ->  2 emit,  3 verdict
+    #      2  an enum on a union BRANCH                  ->  0 emit,  2 verdict
+    #      1  a composing ARRAY, refused on items        ->  0 emit,  1 verdict
+    #     48                                                10 emit, 38 verdict
+    #
+    # The row's whole gain is 12 documents: those 10, plus 2 of the 30 chained-pending
+    # refusals that cleared into emissions.  The other 28 chained-pending refusals became
+    # verdicts, because every target they chain onto is now a verdict or an emission.
+    #
+    # `ROWS` stayed SIX and `codegen/bundle.py` was not touched: 4 of the 48 sat at a
+    # root, all 4 on `uniqueItems` at a root ARRAY, a kind `bundle.is_container_root`
+    # already claims, and 0 of the 32 deferred nested combinator NODES sit at a root --
+    # so no root selector sees one and a row would have claimed none.  Asked of the
+    # DOCUMENT instead the answer is 2 and 14 (`union_root`, `composes_at_the_root`),
+    # which is why the measurement is of the position.
+    #
+    # All four pins are set to the value MEASURED on this tree and each was fire-probed
+    # one step tighter (`deferred <= -1` is not expressible, so the probe was
+    # `len(deferred) < 0`; `transitive <= 0`, `chained_pending <= -1` likewise, and
+    # `accounted >= 1054`), so each is known to grade rather than to sit loose.
+    assert len(deferred) <= 0, len(deferred)
     assert len(transitive) <= 1, len(transitive)
-    assert len(chained_pending) <= 31, len(chained_pending)
+    assert len(chained_pending) <= 0, len(chained_pending)
 
     # Grow-only: what the exit condition actually counts.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 975, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 1053, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
     pending = len(deferred) + len(transitive) + len(chained_pending)

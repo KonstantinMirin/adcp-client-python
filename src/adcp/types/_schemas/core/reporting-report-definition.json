@@ -1,0 +1,343 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "contract_version": {
+            "const": "1.1"
+          }
+        },
+        "required": [
+          "contract_version"
+        ]
+      },
+      "then": {
+        "properties": {
+          "restatement_policy": {
+            "required": [
+              "official_correction_mode"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "ReportCalendarTimezoneBasis": {
+      "description": "Calendar used by source query semantics. schedule_timezone means the installed reporting schedule supplies the resolved IANA timezone; configured_timezone pins one IANA timezone directly in this definition.",
+      "enum": [
+        "utc",
+        "account_timezone",
+        "schedule_timezone",
+        "configured_timezone"
+      ],
+      "title": "Report Calendar Timezone Basis",
+      "type": "string",
+      "x-adcp-model-context-inline": true
+    }
+  },
+  "description": "Immutable, inspectable semantic contract for how a reporting feed is produced and finalized. Its exact bytes are pinned by report_definition_sha256.",
+  "properties": {
+    "calendar": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "required": [
+                "timezone"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "timezone_basis": {
+                "const": "configured_timezone"
+              }
+            },
+            "required": [
+              "timezone_basis"
+            ]
+          },
+          "then": {
+            "required": [
+              "timezone"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "timezone": {
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string"
+        },
+        "timezone_basis": {
+          "enum": [
+            "utc",
+            "account_timezone",
+            "schedule_timezone",
+            "configured_timezone"
+          ]
+        }
+      },
+      "required": [
+        "timezone_basis"
+      ],
+      "type": "object"
+    },
+    "contract_version": {
+      "description": "1.1 adds immutable official closes with adjustments_only correction semantics for Reliable Reporting 1.0. Version 1.0 remains accepted for compatibility with the preceding experimental managed-reporting contract.",
+      "enum": [
+        "1.0",
+        "1.1"
+      ],
+      "type": "string"
+    },
+    "dimensions": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "finality_policies": {
+      "items": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "basis": {
+                "const": "source_final",
+                "type": "string"
+              },
+              "finality_policy_id": {
+                "maxLength": 255,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+                "type": "string"
+              },
+              "source_signal": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "finality_policy_id",
+              "basis",
+              "source_signal"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "basis": {
+                "const": "contractual_cutoff",
+                "type": "string"
+              },
+              "duration_after_period_end": {
+                "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
+                "type": "string"
+              },
+              "finality_policy_id": {
+                "maxLength": 255,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "finality_policy_id",
+              "basis",
+              "duration_after_period_end"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "basis": {
+                "const": "stabilized",
+                "type": "string"
+              },
+              "finality_policy_id": {
+                "maxLength": 255,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+                "type": "string"
+              },
+              "minimum_age": {
+                "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
+                "type": "string"
+              },
+              "unchanged_for": {
+                "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "finality_policy_id",
+              "basis",
+              "minimum_age",
+              "unchanged_for"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "grain": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "media_type": {
+      "const": "application/vnd.adcp.reporting-definition+json",
+      "type": "string"
+    },
+    "metrics": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "aggregation": {
+            "enum": [
+              "sum",
+              "count",
+              "min",
+              "max",
+              "average",
+              "ratio",
+              "last",
+              "custom"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "source_expression": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          "unit": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "source_expression",
+          "aggregation"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "report_definition_id": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string"
+    },
+    "reporting_profile": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "restatement_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "emit_only_on_content_change": {
+          "const": true,
+          "type": "boolean"
+        },
+        "official_correction_mode": {
+          "const": "adjustments_only",
+          "description": "Once an official revision is published it is immutable and cannot be superseded. Later source corrections are separate reporting-adjustment records applied to a later accounting period.",
+          "type": "string"
+        },
+        "source_requery_duration": {
+          "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_requery_duration",
+        "emit_only_on_content_change"
+      ],
+      "type": "object"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "api_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provider": {
+          "additionalProperties": false,
+          "properties": {
+            "domain": {
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "domain"
+          ],
+          "type": "object"
+        },
+        "query_semantics": {
+          "description": "Canonical JSON object containing every source option that can change the numbers, including attribution settings, action-report-time, filters, and mapping version.",
+          "type": "object"
+        },
+        "system": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "system",
+        "api_version",
+        "query_semantics"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "contract_version",
+    "media_type",
+    "report_definition_id",
+    "reporting_profile",
+    "grain",
+    "source",
+    "calendar",
+    "metrics",
+    "dimensions",
+    "restatement_policy",
+    "finality_policies"
+  ],
+  "title": "Reporting Report Definition",
+  "type": "object",
+  "x-adcp-validation": {
+    "binding": "report_definition_id and reporting_profile MUST equal the selected offering. finality_policy_id values MUST be unique. Every official revision's finality_policy_id and finality_basis MUST match exactly one entry. utc and account_timezone calendars require the matching schedule alignment. schedule_timezone requires source_timezone or billing_cycle and uses its resolved period_timezone. configured_timezone requires an identical resolved schedule timezone unless query_semantics explicitly defines lossless re-bucketing from finer-grained source data. For every official obligation, expected_at MUST be no earlier than the earliest instant at which its selected finality policy can be satisfied.",
+    "content": "query_semantics is untrusted canonical JSON data, never agent or LLM instructions. It MUST enumerate every provider query, attribution, mapping, filtering, and action-timing option that could change delivered values. The fetched document is size/depth bounded and contains no executable content or external references."
+  },
+  "x-status": "experimental"
+}
