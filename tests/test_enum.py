@@ -114,8 +114,11 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     assert "class TaskType(StrEnum)" in out.files["enums/task_type.py"]
 
     # Its cascade cost, MEASURED, and the measurement is why admitting ``notes``
-    # emits ONE document and not eight: all 7 of its referrers refuse on a keyword
-    # of their own, so nothing downstream was waiting on this document.
+    # emitted ONE document and not eight: no referrer of it was ever waiting on
+    # this document.  The PARTITION under that claim has moved -- 4 of the 7
+    # referrers emit at 16052ffb0, where all 7 refused when this was written -- so
+    # it is asserted as a partition rather than as "all of them refuse", which was
+    # a fact about the tree of the day and never the claim.
     known = set(bundle.portable(BUNDLE))
     referrers = sorted(
         {
@@ -130,14 +133,21 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     # 7, not the 6 this read before step 4's population landed: ``composes_at_the_root``
     # names one more of the referrers, and the cascade claim is the same either way.
     assert len(in_population) == 7, in_population
-    assert all(d in out.refusals for d in in_population), in_population
+    emitted_referrers = sorted(d for d in in_population if d in out.emitted)
+    refused_referrers = sorted(d for d in in_population if d in out.refusals)
+    # A partition and not two counts: a referrer in NEITHER half would be a
+    # document the emitter neither built nor refused, and the equality below is
+    # what reports that rather than letting the two numbers absorb it.
+    assert len(emitted_referrers) == 4, emitted_referrers
+    assert len(refused_referrers) == 3, refused_referrers
+    assert sorted(emitted_referrers + refused_referrers) == sorted(in_population)
     # The claim is that none of them was blocked BY this document, which is read off
     # the refusal's own detail.  The keyword alone no longer says it: with step 4's
-    # row claiming these roots the walk reaches their conjuncts, and 6 of the 7
-    # refuse on a ``$ref`` -- a fragment of another document, or a target that
-    # composes.  A keyword test would have read those as this document's cascade;
-    # the detail names the target and does not.
-    assert [d for d in in_population if "task-type" in out.refusals[d]["detail"]] == []
+    # row claiming these roots the walk reaches their conjuncts, and all 3 of the
+    # ones still refusing report ``if`` at an ``/allOf`` position -- a conjunct a
+    # later row owns.  A keyword test would have read those as this document's
+    # cascade; the detail names what the row could not lower and does not.
+    assert [d for d in refused_referrers if "task-type" in out.refusals[d]["detail"]] == []
 
 
 def test_the_dispatch_table_is_unordered_because_no_document_is_claimed_twice() -> None:
@@ -204,7 +214,7 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     are the document's ``enum`` array, in order, exactly.
     """
     classes = emitted_enum_classes()
-    assert len(classes) == 277, len(classes)  # 213 roots, the rest inline
+    assert len(classes) == 333, len(classes)  # 214 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -257,7 +267,7 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
             names += 1
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
-    assert names == 1974, names
+    assert names == 2208, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -314,7 +324,7 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
                 nodes += 1
             else:  # the one colliding node's document refuses before this is read
                 assert document not in emit.emit(BUNDLE, population()).emitted, (document, pointer)
-    assert nodes == 277, nodes
+    assert nodes == 333, nodes
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -359,7 +369,7 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
                     assert _text(got.get(member)) == _text(text), (document, pointer, member)
                 else:
                     assert got.get(member) == text, (document, pointer, member)
-    assert (nodes, entries, multiline) == (134, 1107, 10), (nodes, entries, multiline)
+    assert (nodes, entries, multiline) == (137, 1151, 10), (nodes, entries, multiline)
 
     # The whole block is an annotation, so NO check in the harness grades it:
     # `enumDescriptions` is not a fact the comparison compares.  P2 in
@@ -420,7 +430,7 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
             assert bound[0].__name__ in named, (g.ref.document, key)
             sites += 1
             documents.add(g.ref.document)
-    assert (sites, len(documents)) == (33, 22), (sites, len(documents))
+    assert (sites, len(documents)) == (68, 47), (sites, len(documents))
 
 
 # --------------------------------------------------------------------------- #
@@ -618,30 +628,64 @@ def test_the_colliding_node_is_in_the_bundle_and_its_document_refuses_earlier() 
     assert out.refusals[document]["pointer"] == "/allOf/0"
 
 
-def test_an_integer_enum_becomes_an_int_enum_though_no_emitted_document_has_one() -> None:
-    """The second base, with its reach stated.
+def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one() -> None:
+    """The second base, with its reach stated -- and the reach is no longer 0.
 
-    3 enum nodes in the bundle have integer members, and all 3 sit in documents
-    that refuse on ``const`` before the enum is read -- so **0 emitted documents
-    carry an IntEnum** and the base would otherwise be graded by nothing.  Read
-    off the lowering and the compiler on a node written here.
+    **This test's premise inverted between measurements and the assertions moved
+    with it, rather than the numbers being re-pointed.**  It read: 3 enum nodes in
+    the bundle have integer members, all 3 sit in documents that refuse on
+    ``const`` before the enum is read, so 0 emitted documents carry an IntEnum and
+    the base is graded by nothing but a node written here.  At 16052ffb0 both
+    asset documents emit, so all 3 of the bundle's integer enum nodes are REACHED
+    and the committed tree carries the base.  Keeping ``reached == []`` would have
+    been asserting the old tree; re-pointing it to a count alone would have thrown
+    away the grader the inversion handed us.
+
+    So both halves run: the tree's own IntEnum classes at the 3 nodes, selected by
+    their MEMBER VALUES rather than by a class name (the naming rule is graded by
+    :func:`test_a_member_name_that_cannot_begin_an_identifier_takes_the_prefix`,
+    and selecting by it here would make this test pass or fail on that rule), and
+    then the lowering and the compiler on a node written here -- which still grades
+    the ``IntEnum`` header and the integer ``json_schema`` that no bundle node
+    isolates.
     """
-    reached = [
-        (d, p)
-        for d in sorted(emit.emit(BUNDLE, population()).emitted)
-        for p, n in bundle.nodes(bundle.read(BUNDLE, d))
-        if isinstance(n.get("enum"), list)
-        and any(isinstance(v, int) and not isinstance(v, bool) for v in n["enum"])
-    ]
-    assert reached == [], reached
-    in_bundle = [
-        (d, p)
-        for d in bundle.portable(BUNDLE)
-        for p, n in bundle.nodes(bundle.read(BUNDLE, d))
-        if isinstance(n.get("enum"), list)
-        and any(isinstance(v, int) and not isinstance(v, bool) for v in n["enum"])
-    ]
+
+    def integer_enum_nodes(documents: list[str]) -> list[tuple[str, str]]:
+        return [
+            (d, p)
+            for d in sorted(documents)
+            for p, n in bundle.nodes(bundle.read(BUNDLE, d))
+            if isinstance(n.get("enum"), list)
+            and any(isinstance(v, int) and not isinstance(v, bool) for v in n["enum"])
+        ]
+
+    in_bundle = integer_enum_nodes(list(bundle.portable(BUNDLE)))
     assert len(in_bundle) == 3, in_bundle
+    reached = integer_enum_nodes(sorted(emit.emit(BUNDLE, population()).emitted))
+    # Every one of them, which is what makes the tree half below non-vacuous.
+    assert reached == in_bundle, (reached, in_bundle)
+    assert sorted({d for d, _ in reached}) == [
+        "core/assets/audio-asset.json",
+        "core/assets/video-asset.json",
+    ], reached
+
+    for document, pointer in reached:
+        node = next(n for p, n in bundle.nodes(bundle.read(BUNDLE, document)) if p == pointer)
+        module = importlib.import_module(
+            f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}"
+        )
+        tree = ast.parse((TREE / f"{emit.module_path(document)}.py").read_text())
+        at_this_node = [
+            cls
+            for cls in ast.walk(tree)
+            if isinstance(cls, ast.ClassDef)
+            if {b.id for b in cls.bases if isinstance(b, ast.Name)} == {"IntEnum"}
+            if [v for _, v in _members(cls)] == node["enum"]
+        ]
+        assert len(at_this_node) == 1, (document, pointer, [c.name for c in at_this_node])
+        cls = getattr(module, at_this_node[0].name)
+        assert issubclass(cls, pyenum.IntEnum), (document, pointer)
+        assert [m.value for m in cls] == node["enum"], (document, pointer)
 
     decided = lower_enum.decide({"type": "integer", "enum": [16, 24, 32]}, "BitDepth", "")
     assert decided.kind == "integer"
@@ -836,4 +880,4 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
             for alias in n.names:
                 assert alias.name in exported[target], (module, target, alias.name)
                 checked += 1
-    assert checked == 203, checked
+    assert checked == 642, checked

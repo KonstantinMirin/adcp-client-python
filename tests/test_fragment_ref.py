@@ -1154,11 +1154,12 @@ def test_no_document_of_the_bundle_refuses_on_a_definition_section_any_more() ->
 def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     """The POSITIVE path on the real bundle, which the committed tree cannot grade.
 
-    0 of the 40 documents emit yet -- each is held by a keyword another step owns
-    (``if`` 10, ``const`` 7, ``$ref`` 4, ``anyOf`` 3, ``properties`` 3, and 13 more
-    across eight keywords) -- so no section entry reaches the committed tree and the
-    constructed bundles above are what grade the declaration itself.  What the real
-    bundle grades is the WALK, in the two places it is observable:
+    6 of the 45 documents emit at 16052ffb0 -- it was 0 of 40 -- and the other 39
+    are each held by a keyword another step owns (``if`` 12, ``anyOf`` 7, ``$ref``
+    4, ``allOf`` 3, ``discriminator`` 3, ``properties`` 3, and 7 more across five
+    keywords).  The constructed bundles above are what grade the declaration
+    itself.  What the real bundle grades is the WALK, in the two places it is
+    observable:
 
     * a refusal at a pointer INSIDE a section is proof the walk descended one.  7
       documents are in that position, and none was before: every pointer under
@@ -1177,9 +1178,16 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
         for d, r in out.refusals.items()
         if r["pointer"].lstrip("/").split("/")[0] in bundle.DEFINITIONS
     }
-    assert len(inside) == 8, inside
-    assert inside["core/response-payload-jws-envelope.json"] == (
-        "/definitions/response_payload/properties/typ"
+    assert len(inside) == 7, inside
+    # Pinned by name because a count alone cannot say the pointer went INTO a
+    # section.  This was ``core/response-payload-jws-envelope.json`` at
+    # ``/definitions/response_payload/properties/typ``; that document EMITS at
+    # 16052ffb0, so it left this population and the pin moved to the deepest
+    # section pointer the bundle still refuses at -- three hops past the section
+    # name, which is what makes it evidence of a descent rather than of the
+    # section being read.
+    assert inside["core/account-identity-change-preview.json"] == (
+        "/definitions/nonblocking_impacts/items/allOf/0"
     )
 
     entry = out.refusals["governance/policy-entry.json"]
