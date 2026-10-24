@@ -42,7 +42,7 @@ import pytest
 from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit
 from codegen import constraints as constraints_module
-from codegen.harness import Pair, check_pair, compare_schema, steps
+from codegen.harness import Pair, check_pair, compare_schema
 from codegen.refusal import Refusal
 
 REPO = Path(__file__).resolve().parents[1]
@@ -842,14 +842,14 @@ def test_a_narrowing_restatement_is_declared_by_the_subclass(tmp_path, monkeypat
             cls.model_validate({"kind": bad, "label": "xy"})
 
 
-def test_the_accepts_and_refuses_checks_are_green_with_a_denominator(
+def test_the_accepts_and_invalid_checks_are_green_with_a_denominator(
     tmp_path, monkeypatch
 ) -> None:
-    """Checks 1 and 2 over the probe, with the refuses check's count asserted.
+    """The instance checks over the probe, with the denominator asserted.
 
     A green mark without the count beside it says nothing: a pair no instance
-    reached leaves every step unrun, and ``PairReport.outcome`` refuses a zero
-    denominator for exactly that reason.
+    reached leaves the accepts check with nothing round-tripped, and
+    ``PairReport.outcome`` refuses a zero denominator for exactly that reason.
     """
     cls, _, schema = _emit_probe(
         tmp_path,
@@ -857,21 +857,19 @@ def test_the_accepts_and_refuses_checks_are_green_with_a_denominator(
         name="s4checks",
         own={"adcp_major_version": SHADOW, "label": {"type": "string", "minLength": 2}},
     )
-    # Explicit depth: this test asserts the denominator (4 refuses x 25 = 100).
-    rep = check_pair(Pair("probe", schema, cls, cls.strict_validate), refuses_examples=25)
+    # Explicit depth: this test asserts the denominator, which is the number of
+    # instances drawn, constructed AND dumped back out to something the document
+    # still admits -- not the number drawn.
+    rep = check_pair(Pair("probe", schema, cls, cls.strict_validate), accepts_examples=25)
     assert rep.accepts is not None and rep.accepts.outcome == "pass", rep.accepts
-    assert [r.outcome for r in rep.refuses] == ["pass"] * 4, [
-        (r.keyword, r.outcome, r.harness) for r in rep.refuses
-    ]
-    assert rep.graded_instances == 100, rep.graded_instances
-    assert rep.step_sites == 7
-    # The document states a constraint in BOTH halves -- its own properties and
-    # its conjuncts -- and the step list reaches both, which is what says the
-    # composed document was graded and not just the root.  ``_spread`` takes one
-    # step per keyword, and ``minLength`` is stated in both halves, so the four
-    # it chose all happen to sit in a conjunct.
-    assert {s.pointer.split("/")[1] for s in steps(schema)} == {"", "allOf", "properties"}
-    assert {r.pointer.split("/")[1] for r in rep.refuses} == {"allOf"}
+    assert rep.graded_instances == 25, rep.graded_instances
+    # The invalid payload reaches the class's OWN validation, and the probe's
+    # document demands ``adcp_major_version`` in a conjunct, so dropping it is what
+    # the document refuses and the class has to refuse too.
+    assert rep.invalid.outcome == "pass", (rep.invalid.how, rep.invalid.detail)
+    assert rep.invalid.how.startswith("drops the required key"), rep.invalid.how
+    assert "required" in rep.invalid.violated, rep.invalid.violated
+    assert rep.outcome == "pass", rep.outcome
 
 
 # --------------------------------------------------------------------------- #
