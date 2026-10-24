@@ -211,7 +211,11 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # row's own contribution (147), the cleared set (151) and the attribution
     # histogram (279 + 14 + 8) are all unchanged, which is what says the +5 belongs
     # to another row.  ``without`` moves with it, so the delta holds.
-    assert len(with_row.emitted) == 581, "N, over a bundle of 1,054"
+    # 581 -> 592 at ``salesagent-j3k2l.28``, and again it is not this row: the three
+    # refusals section 6 names as one-sided folds are gone, so 11 more documents of
+    # this 599-document population emit.  Re-measured in one pass with the rest; the
+    # row's own contribution moved with it (147 -> 152) and the delta held at 228.
+    assert len(with_row.emitted) == 592, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
@@ -227,8 +231,11 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # what THIS ROW contributes, so another step's row landing moves the second pair
     # without moving the first.  The population (599) and the bundle (1,054) did not
     # move at all -- they are the bundle's own selectors.
-    assert len(with_row.emitted) - len(without.emitted) == 228
-    assert len(set(composing()) & set(with_row.emitted)) == 147
+    # 228 -> 233 at ``salesagent-j3k2l.28``: with the row, 592 emit; without it, 359.
+    # The delta grew because 5 of the 11 documents that row unblocked only emit
+    # when this row claims their composing root as well.
+    assert len(with_row.emitted) - len(without.emitted) == 233
+    assert len(set(composing()) & set(with_row.emitted)) == 152  # 147 at .40
     # **Every document the row rescues from a refusal is EMITTED with it**, and the
     # composing ones are 147 of the 151.  This was an equality against
     # ``composing() & emitted`` and the equality is no longer true, which is a
@@ -248,7 +255,10 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     cleared = set(without.refusals) - set(with_row.refusals)
     assert cleared <= set(with_row.emitted), sorted(cleared - set(with_row.emitted))
     assert set(composing()) & set(with_row.emitted) <= cleared
-    assert len(cleared) == 151, len(cleared)
+    # 151 -> 156 at ``salesagent-j3k2l.28``, and 156 - 152 = 4 again: the four names
+    # below are still exactly the non-composing members, so the +5 is the composing
+    # half growing and not a new kind of document arriving.
+    assert len(cleared) == 156, len(cleared)
     assert sorted(cleared - set(composing())) == [
         "core/catalog.json",
         "core/reporting-delivery-ready-webhook.json",
@@ -292,14 +302,21 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     assert all(where(without, d)[1] == "/" for d in composing()), "without the row: all at /"
     assert sum(1 for d in composing() if where(with_row, d) == where(without, d)) == 0
     refused = {d: where(with_row, d) for d in composing() if d not in with_row.emitted}
-    # 160 -> 154 at 64131600f (``salesagent-j3k2l.29``), and 147 + 154 = 301: the six
-    # documents that left this half are the six the row now emits.  Asserted as the
-    # partition as well, so the two halves cannot drift apart silently.
-    assert len(refused) == 154, len(refused)
+    # 160 -> 154 at 64131600f (``salesagent-j3k2l.29``), 154 -> 149 at
+    # ``salesagent-j3k2l.28``, and 152 + 149 = 301 either way: the five documents that
+    # left this half are the five the row now emits.  Asserted as the partition as
+    # well, so the two halves cannot drift apart silently.
+    assert len(refused) == 149, len(refused)
     assert len(refused) + len(set(composing()) & set(with_row.emitted)) == len(composing())
+    # **AND THE ONE AT ``/`` IS GONE, which is the attribution reaching 100%.**  It was
+    # ``sponsored-intelligence/si-ui-element.json`` on ``if``, refused at the ROOT
+    # because the class this row would declare there named a conditional-only key --
+    # and ``salesagent-j3k2l.28`` removed that refusal, because no field is ever
+    # emitted for such a key and the hazard it guarded has no producer.  So every one
+    # of the 149 now refuses at a pointer INSIDE its document, which is what this
+    # test's attribution claim has been approaching since ``salesagent-j3k2l.21``.
     at_root = sorted(d for d, w in refused.items() if w[1] == "/")
-    assert at_root == ["sponsored-intelligence/si-ui-element.json"], at_root
-    assert refused[at_root[0]][0] == "if", refused[at_root[0]]
+    assert at_root == [], at_root
 
 
 def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzzle() -> None:
@@ -1188,3 +1205,110 @@ def test_breaking_the_shared_reader_reddens_the_product_row_and_the_union_row(
     assert "core/probe-union.json" in union, union
     assert union["core/probe-union.json"]["detail"].startswith(LAST_ARM), union
     assert union["core/probe-union.json"]["pointer"] == "/oneOf/0/allOf/0", union
+
+
+#: The a2ui shape exactly: a mapping whose VALUE is a schema of its own carrying a
+#: ``description`` and nothing the compiler's ``DataType`` can hold.  ``minProperties``
+#: and ``maxProperties`` ride the FIELD, so the only fact at the value's own pointer is
+#: the annotation.
+ANNOTATED_VALUE = {
+    "component": {
+        "type": "object",
+        "description": "Component definition (keyed by component type)",
+        "minProperties": 1,
+        "maxProperties": 1,
+        "additionalProperties": {"type": "object", "description": "Component properties"},
+    },
+    "tags": {
+        "type": "array",
+        "description": "a list whose ELEMENT carries one too",
+        "items": {"type": "object", "description": "one tag"},
+    },
+    "label": {"type": "string", "minLength": 2},
+}
+
+
+def test_an_annotation_on_a_containers_contents_reaches_the_wire(tmp_path, monkeypatch) -> None:
+    """``docs/plan/rebuild-plan.md`` §6: a ``description`` is never folded, and where
+    the comparison reports one the EMITTER is what changes (``salesagent-j3k2l.28``).
+
+    An annotation on a node INSIDE a container had nowhere to go, and unlike a
+    constraint it was dropped in SILENCE: ``containers._inner`` refuses a constraint
+    and a ``format`` by name because dropping one would widen the model, while a
+    ``description`` narrows nothing and so was dropped with no refusal and no
+    rendering.  It was the whole of ``comparison.missing`` -- 4 facts over 4 pairs,
+    every one ``.../additionalProperties/description`` and every one
+    ``'Component properties'``.
+
+    ``containers._contents`` now NAMES such a node, through the same
+    ``compiler.name_the_node`` a fragment-referenced node already goes through, so the
+    annotation has one spelling.  Both inner positions the comparison reads are probed
+    -- a mapping's value and an array's element -- and the real emitter and the real
+    comparison are what grade it.
+    """
+    # ``shared`` because this probe is graded by the COMPARISON, and only then does
+    # the fixture state the root description a composing document in the population
+    # has -- ``_probe`` says why.  It takes no part in the dimension this judges.
+    cls, text, schema = _emit_probe(
+        tmp_path,
+        monkeypatch,
+        name="s4innerann",
+        own=ANNOTATED_VALUE,
+        shared={"spare": {"type": "string", "description": "the base's spare"}},
+    )
+
+    # The alias is named by D3's nested rule and the field references it, so the
+    # annotation is not restated inline.
+    assert (
+        "ProbeComposingComponentValue = Annotated[dict[str, Any], "
+        "Field(description='Component properties')]" in text
+    ), text
+    assert "component: Annotated[dict[str, ProbeComposingComponentValue]" in text, text
+    assert "ProbeComposingTagsItem = Annotated[dict[str, Any], Field(description='one tag')]" in text, text
+    assert "tags: Annotated[list[ProbeComposingTagsItem] | None" in text, text
+
+    comparison = compare_schema(schema, cls)
+    assert (comparison.added, comparison.missing, comparison.differs) == ([], [], []), comparison
+    # and the fact really is on the wire.  The field is optional, so D4 renders it
+    # ``T | None`` and pydantic states the mapping in the live arm of an ``anyOf`` --
+    # which is the arm ``harness._normalize`` unwraps and the arm the assertion reads.
+    rendered = cls.model_json_schema()["properties"]["component"]
+    (live,) = [a for a in rendered["anyOf"] if a.get("type") != "null"]
+    assert live["additionalProperties"]["description"] == "Component properties", rendered
+
+
+def test_breaking_the_inner_annotation_carrier_reddens_the_comparison(
+    tmp_path, monkeypatch
+) -> None:
+    """The same probe with the carrier BROKEN, because a rendering that cannot be
+    missed is not graded.
+
+    ``_contents`` reduced to the ``_inner`` call it replaced IS the emitter before this
+    change: the decided type is handed up and the node's own annotation goes nowhere.
+    The comparison then names each lost annotation at its own pointer, and nothing
+    else moves -- which is what says the two positions are the whole of the defect.
+    """
+    from codegen.lower import containers  # noqa: PLC0415
+
+    monkeypatch.setattr(
+        containers,
+        "_contents",
+        lambda node, pointer, symbol, what, mod: containers._inner(
+            mod.decide(node, pointer, symbol, mod), pointer, what
+        ),
+    )
+    cls, text, schema = _emit_probe(
+        tmp_path,
+        monkeypatch,
+        name="s4innerbrk",
+        own=ANNOTATED_VALUE,
+        shared={"spare": {"type": "string", "description": "the base's spare"}},
+    )
+    assert "ProbeComposingComponentValue" not in text, "the patch did not reach"
+
+    comparison = compare_schema(schema, cls)
+    assert comparison.added == [], comparison.added
+    assert {str(m).split(":", 1)[0] for m in comparison.missing} == {
+        "/properties/component/additionalProperties/description",
+        "/properties/tags/items/description",
+    }, sorted(comparison.missing)

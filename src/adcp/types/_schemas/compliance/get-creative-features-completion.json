@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Bounded get_creative_features terminal success fixture accepted by force_task_completion. It carries the result identity and optional economics exercised by conformance; production terminal artifacts validate against the full task response schema.",
+  "properties": {
+    "consumption": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Structured consumption details returned by build_creative when a paid creative agent computes cost. Contains well-known fields for common consumption metrics. The consumption object is informational \u2014 it lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth, not consumption.",
+      "properties": {
+        "duration_seconds": {
+          "description": "Processing time billed, in seconds. For compute-time pricing models.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "images_generated": {
+          "description": "Number of images produced during generation.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "renders": {
+          "description": "Number of render passes performed (video, animation).",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tokens": {
+          "description": "LLM or generation tokens consumed during creative generation.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "Creative Consumption",
+      "type": "object"
+    },
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "evaluation_id": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "creative_evaluation"
+    },
+    "pricing_option_id": {
+      "type": "string",
+      "x-entity": "vendor_pricing_option"
+    },
+    "results": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "A single feature evaluation result for a creative. Uses the same value structure as property-feature-value (value, confidence, expires_at, etc.).",
+        "maxProperties": 10,
+        "properties": {
+          "confidence": {
+            "description": "Confidence score for this value (0-1)",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "details": {
+            "description": "Additional vendor-specific details about this evaluation",
+            "type": "object"
+          },
+          "expires_at": {
+            "description": "When this evaluation expires and should be refreshed",
+            "format": "date-time",
+            "type": "string"
+          },
+          "ext": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            "title": "Extension Object",
+            "type": "object"
+          },
+          "feature_id": {
+            "description": "The feature that was evaluated (e.g., 'auto_redirect', 'brand_consistency'). Features prefixed with 'registry:' reference standardized policies from the shared policy registry (e.g., 'registry:eu_ai_act_article_50'). Unprefixed feature IDs are agent-defined.",
+            "type": "string"
+          },
+          "measured_at": {
+            "description": "When this feature was evaluated",
+            "format": "date-time",
+            "type": "string"
+          },
+          "methodology_version": {
+            "description": "Version of the methodology used to evaluate this feature",
+            "type": "string"
+          },
+          "policy_id": {
+            "$comment": "x-entity deliberately omitted \u2014 a PolicyEntry reference can resolve to either a governance_registry_policy or a governance_inline_policy depending on the authorizing entry's source. See issue #2685.",
+            "description": "Optional attribution \u2014 when this feature was evaluated for the purpose of a specific policy, policy_id references the authorizing PolicyEntry. Creative agents and sellers populate when the measurement was motivated by a specific policy; do NOT populate when the feature is a generic measurement (carbon score, brand consistency) unrelated to any policy. See /docs/governance/policy-attribution.",
+            "type": "string"
+          },
+          "unit": {
+            "description": "Unit of measurement for quantitative values (e.g., 'percentage', 'score')",
+            "type": "string"
+          },
+          "value": {
+            "description": "The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.",
+            "oneOf": [
+              {
+                "enum": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": [
+          "feature_id",
+          "value"
+        ],
+        "title": "Creative Feature Result",
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "status": {
+      "const": "completed",
+      "type": "string"
+    },
+    "vendor_cost": {
+      "minimum": 0,
+      "type": "number"
+    }
+  },
+  "required": [
+    "evaluation_id",
+    "results"
+  ],
+  "title": "Get Creative Features Compliance Completion",
+  "type": "object"
+}

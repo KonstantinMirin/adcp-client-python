@@ -493,6 +493,20 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
     records the identical ceiling for a conditional it cannot express as a rule.  A
     rule cannot close it either -- ``RuleBound`` reads ``__pydantic_fields_set__`` and
     exclusivity is a statement about values, not about which keys are present.
+
+    **Two refusals stood here and are gone, because each one's stated reason was a
+    claim about a harness that has since changed** (``salesagent-j3k2l.28``, §6 "every
+    fold applies to both sides").  One refused a branch that was a LOCAL ``$ref`` and
+    one refused a union whose shape ``harness._normalize`` folds, and both said the
+    fold ran on the MODEL's side alone -- so a faithful class would read as narrower
+    than its own document, which is the ``added`` direction.  ``_normalize`` now serves
+    both sides from one body of code with a per-side ``$ref`` root, reads ``oneOf`` as
+    well as ``anyOf``, and reads each branch through the finite-type rewrite one level
+    down, so neither claim holds.  Measured by lifting each refusal and grading the
+    population: the local-``$ref`` guard cost **8 documents** and its 43 ``added``
+    facts have no site left -- 0 new reports of any kind -- and the fold guard cost
+    **9**, whose folds grade green in both arms.  Together they took emitted from
+    **691 to 702 of 1054 portable** with ``added`` 0.
     """
     kw = keyword(node)
     assert kw is not None, "nested is dispatched on the keyword being present"
@@ -517,7 +531,6 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
                 kind=Kind.VERDICT,
             )
         hint = branch_identity(branch, name_hint, node) or name_hint
-        _refuse_a_local_reference_branch(branch, at)
         decided = mod.decide(branch, at, hint, mod)
         if decided.constraints or decided.format is not None:
             # The arm's own bound has nowhere to go: ``compiler.Type`` carries none, so
@@ -541,172 +554,12 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
                 kind=Kind.DEFERRED,
             )
         arms.append(decided.type)
-    _refuse_a_shape_the_comparison_cannot_read(node, kw, pointer)
     unique = tuple(dict.fromkeys(arms))  # document order, deduped
     if len(unique) == 1:
         # Two branches that lower to one type are one type, and saying ``X | X`` would
         # be a second spelling of it.  ``multi_type`` dedupes for the same reason.
         return compiler.Decided(unique[0])
     return compiler.Decided(compiler.Type(container="union", of=unique))
-
-
-def _refuse_a_local_reference_branch(branch: dict, pointer: str) -> None:
-    """A branch that is a LOCAL reference puts this document's own ``definitions``
-    section in front of a comparison that has no reading for one.
-
-    ``compiler.local_reference`` declares a class for the node the reference names --
-    a node of THIS document -- and declares it if the walk has not reached it yet, which
-    for a ``definitions`` entry nothing else reaches is this row's own doing.  The
-    class then has its own ``__adcp_schema__`` and so its own graded pair.
-
-    **What has no reading is the DOCUMENT side.**  ``harness._normalize`` resolves a
-    ``$ref`` into ``$defs`` on the MODEL's side, and nothing resolves one on the
-    document's: ``bundle.resolved`` inlines a REMOTE reference and leaves a local one
-    in place, so the comparison reads a property whose document node is
-    ``{"$ref": "#/definitions/x"}`` as stating no fact at all, and every fact the
-    model's class correctly carries arrives as ``added`` -- the model reported NARROWER
-    than its document, which is the half that could admit an instance the document
-    rejects.
-
-    Measured, and the first population the reading would ever have had: **0 graded
-    pairs of the committed tree hold a document-side local ``$ref``**, while the two
-    documents whose pairs hold one carry **24 sites over 4 pairs and produce 43
-    ``added`` facts** -- 31 at ``core/placement-presentation.json``'s three
-    ``#/definitions/*_decoration`` pairs, which THIS ROW'S branch lowering declares,
-    and 12 at ``core/bidding-policy-capability.json#/definitions/scope_capability``,
-    whose pair the root's own property declares in a document this row is the last
-    blocker for.
-
-    **What the guard COSTS is 4 emissions and not 2**, measured by removing it and
-    re-emitting: ``core/bidding-policy-capability.json``,
-    ``core/placement-presentation.json`` -- the two that produce the 43 -- plus
-    ``core/canonical-media-buy-features.json`` and ``core/media-buy-features.json``,
-    which reference them. It refuses 8 documents in all; the other 4 refuse on
-    something else as well. 686 emitted with it, 690 without.
-
-    **The limit of this predicate, stated rather than discovered.**  It asks about the
-    NODE -- is this branch a local reference -- while what is ungradeable is the
-    document's ``definitions`` section. The two coincide over all 6 documents of the
-    bundle that carry a local-reference branch at a nested combinator, and the
-    coincidence is NOT a derivation: a document carrying one with no ungradeable
-    ``definitions`` position would be refused here for nothing.  The fix is the
-    document-side reading in ``codegen/harness.py``, which is one instrument for both
-    directions; widening the predicate here would admit the 43.
-    """
-    ref = branch.get("$ref")
-    if not isinstance(ref, str) or not ref.startswith("#"):
-        return
-    raise Refusal(
-        "$ref",
-        pointer,
-        f"a branch referencing {ref!r} names a node of THIS document, and "
-        "compiler.local_reference declares a class for it whose own pair is then graded "
-        "against a document side the resolver did not inline: bundle.resolved inlines a "
-        "remote reference and leaves a local one, harness._normalize resolves a $ref on "
-        "the MODEL's side only, and so every fact the class correctly carries is "
-        "reported as added -- the model narrower than its document.  Measured: 0 graded "
-        "pairs of the committed tree hold a document-side local $ref, and the two "
-        "documents this admits produce 43 added facts over 4 pairs.  The document-side "
-        "reading is the harness's row"
-    , kind=Kind.DEFERRED)
-
-
-def _bare_type(branch: dict) -> str | None:
-    """The one ``type`` word this branch states and nothing else, or ``None``.
-
-    The DOCUMENT-side spelling of the shape ``harness._normalize``'s third
-    normalization fires on, read through ``compiler.ANNOTATIONS`` so a branch that
-    carries only a ``description`` beside its type is still a bare type -- which is
-    what the model renders, because an annotation changes no accepted set.
-    """
-    live = {k for k in branch if k not in compiler.ANNOTATIONS and not k.startswith("x-")}
-    word = branch.get("type")
-    return word if live == {"type"} and isinstance(word, str) else None
-
-
-def _refuse_a_shape_the_comparison_cannot_read(node: dict, kw: str, pointer: str) -> None:
-    """A union the comparison FOLDS is emitted ungraded, so this refuses it by name.
-
-    **It is the grader and not the rendering, and the predicate is ``_normalize``'s own
-    two fold arms read off the document.**  ``A | B`` is exactly what the document
-    admits and pydantic renders it as an ``anyOf``.  ``harness._normalize`` then folds
-    that ``anyOf`` away in two cases, each for a reason that is right about the model:
-
-    * **one null branch and one live branch** -- D4 renders an optional property
-      ``T | None``, so the fold unwraps the null arm and keeps the live branch's own
-      keys (resolving a ``$ref`` into ``$defs`` on the way);
-    * **at most one null branch and every live branch a bare ``{"type": X}``** -- a
-      union of bare types is draft-07's multi-type node in pydantic's only spelling of
-      one, so the fold restores the ``type`` LIST.
-
-    Both are correct for a node whose DOCUMENT states those facts at the node. A nested
-    combinator's node states them INSIDE a branch and nothing at the node itself -- a
-    sibling refuses above -- so every folded fact arrives in ``compare_schema``'s second
-    pass as a fact the model states and the document does not.  ``_narrows_nothing``
-    admits a model-only ``type`` only where ``_entails_type`` derives it, and that
-    derivation requires every branch to declare the SAME type, which is exactly the case
-    neither fold arm is about.
-
-    So the comparison reports a faithful model as NARROWER than its document. Measured
-    over the committed tree, in two passes:
-
-    * the bare-type arm: **5 ``added`` facts over 5 pairs**, all of them
-      ``.../value/type: the model says ['boolean', 'number', 'string'], the document
-      nothing`` -- the two documents that state the shape
-      (``creative/creative-feature-result.json#/properties/value``,
-      ``property/property-feature-value.json#/properties/value``) and the three that
-      reference them;
-    * the null arm: **4 ``added`` facts over 2 pairs**, at
-      ``formats/canonical/{audio,video}_hosted.json#/properties/duration_ms_range/items``,
-      whose ``anyOf`` is ``[{"type": "integer", "minimum": 0}, {"type": "null"}]`` and
-      whose model folds to ``{"type": ["integer", "null"], "minimum": 0}``.
-
-    ``added`` is the half that could admit an instance the document rejects, so it is 0
-    over the whole committed tree and must stay 0; emitting a node no check can read is
-    the widening this pipeline exists to remove.
-
-    **The upgrade path is the harness's row and not this one's**, exactly as
-    ``containers.multi_type``'s constrained-arm refusal says of its own shape: each fold
-    is right that the two spellings are one fact, and what is missing is for the fold to
-    be told that the facts it restored are the DOCUMENT's own, stated one level down
-    inside the branch it folded.  ``codegen/harness.py`` is one instrument for both
-    directions, so the reading belongs there and not in a wider rule here.
-
-    **What this does NOT refuse, which is the whole reachable population:** a union with
-    two live branches at least one of which states more than a type word -- a ``$ref``, an
-    object, a constrained scalar, an array.  Neither arm folds it, the model's node stays
-    an ``anyOf``, ``anyOf`` is not in ``harness.FACTS``, and each branch that became a
-    class is graded at its own pair through its own ``__adcp_schema__``.  **8 of the 32
-    documents in this family emit, and every one of the 8 is in that position**; the
-    row's whole gain is 12 documents, the 10 of the 48 that emit plus 2 of the 30
-    chained-pending refusals that cleared into emissions.
-    """
-    branches = [b for b in node[kw] if isinstance(b, dict)]
-    nulls = [b for b in branches if _bare_type(b) == "null"]
-    live = [b for b in branches if _bare_type(b) != "null"]
-    unwraps = len(nulls) == 1 and len(live) == 1
-    restores = len(nulls) <= 1 and len(live) > 1 and all(_bare_type(b) is not None for b in live)
-    if not (unwraps or restores):
-        return
-    which = (
-        "one null branch and one live one, which D4's own T | None renders"
-        if unwraps
-        else "every live branch a bare type, which is a type LIST in pydantic's only "
-        "spelling of one"
-    )
-    raise Refusal(
-        kw,
-        pointer,
-        f"this union is {which}, and harness._normalize folds exactly that shape off "
-        "the model's side -- while this node states no such fact of its own, because a "
-        "nested combinator states them inside a branch.  So the folded facts arrive as "
-        "facts the model adds and the document does not, and _entails_type derives a "
-        "model-only type only where every branch declares the SAME one: a faithful model "
-        "is reported NARROWER than its document and the node would be emitted ungraded.  "
-        "Teaching the fold that the facts it restored are the document's own, one level "
-        "down in the branch it folded, is the harness's row",
-        kind=Kind.DEFERRED,
-    )
 
 
 def _plan(branch: Any, pointer: str, root: str, doc: dict) -> Branch:
