@@ -779,6 +779,35 @@ denominator is healthy in both, so nothing looks wrong.
 **The schema comparison is what grades the generated code.** It is also the only check that
 sees a default or a description, because neither changes the accepted set.
 
+**So the harness grades one class against one schema, and it does not iterate over keywords.**
+Per class: resolve the document once, draw a payload the schema accepts, construct the class
+from it, dump the instance, and compare the dump against the schema. One payload the schema
+refuses goes through the class's own validation. That is the whole harness, 1,055 units of work
+rather than 13,140, and the only recursion anywhere in it belongs to reference resolution.
+
+**Per-keyword step sites are removed, and the reason is stronger than their cost.** The refuses
+check mutated one keyword at a time, drew an instance the mutated schema accepts, and passed it
+to `strict_validate` — which runs `_refuse(schema_at(ref), payload, symbol)`, validating against
+THE DOCUMENT and only then constructing. So a step site asserts that `jsonschema` rejects a
+payload violating the schema it was handed. The generated class takes no part in the outcome,
+which is why the paragraph above finds a class carrying `Any` on every field indistinguishable
+from a faithful one. 13,140 of those sites at 0.228 s each is the suite's entire wall clock,
+spent on a property of a third-party validator.
+
+**An invalid payload is informative only through the class's own validation.** Route it to
+`model_validate`, where pydantic's generated validators decide, and an acceptance is a real
+defect in the emitted code. Route it to `strict_validate` and the document answers first, so
+nothing about the class is observed.
+
+**Reference resolution happens once per bundle, and its result is reused.** Documents reference
+each other, so resolution is the one place recursion is unavoidable — and it is also the only
+reason canonicalisation was ever repeated. Resolving once removes the repetition instead of
+caching it. `_CANON_MEMO` is therefore DELETED, not bounded: an unbounded process-global dict
+keyed on a serialized schema, holding a canonicalised copy per key, grows by roughly 340 entries
+per pair and has pushed a ten-worker run into a kernel kill. A cache with a measured hit rate
+and no measured size is the defect, and a repetition that resolution removes needs no cache at
+all.
+
 **The comparison folds out the RESOLVER's canonicalizations, and that is a named category
 rather than a series of patches.** The harness grades against the document as
 `hypothesis-jsonschema`'s own resolver inlines it — deliberately, so the schema the runtime
