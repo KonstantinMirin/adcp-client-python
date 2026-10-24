@@ -24,97 +24,72 @@ generator or model package.  Its whole input is:
                   should have had one was graded wide and green.  The caller
                   knows which it is; this module does not and now does not guess.
 
-It runs three checks over that pair:
+**ONE CLASS AGAINST ONE SCHEMA, AND NO ITERATION OVER KEYWORDS** (section 6).  Per
+pair, four things happen and each is O(1) in the document's keyword count:
 
   the accepts check (``check_accepts``)
-      schema -> payload -> model: every instance the schema admits, the model
-      admits.
+      schema -> payload -> model: an instance the schema admits, the model admits.
+      It then DUMPS what it constructed and validates the dump against the same
+      document (``AcceptsResult.round_tripped``), which is the one thing in this
+      module that reads what the class does with a value rather than whether it
+      took it.
 
-  the refuses check (``check_refuses``)
-      model -> mutated keyword -> schema: for each constraint keyword in the
-      document, an instance that violates exactly that keyword is refused.
+  the liveness check (``check_liveness``)
+      one payload the DOCUMENT refuses, routed through the entry point the caller
+      supplies -- ``strict_validate``, whose schema half answers.  It proves that
+      class's schema half is CONNECTED and that the ref it names resolves to the
+      document it names.  It is not a measurement of the class: pydantic is
+      deliberately less strict than the schema, so a refusal says the document
+      answered (D4).
 
   the schema comparison (``compare_schema``)
       every fact the document states about a value, the model's own
-      ``model_json_schema()`` states too.
+      ``model_json_schema()`` states too.  **This is what grades the generated
+      code**, and it is the only check that sees a ``default`` or a
+      ``description``, because neither changes the accepted set.
 
-**The third is not redundant and here is the measurement that forces it.**  Where
-``accept`` validates against the document before constructing -- which is the
-production entry point and so the only honest thing to run the first two
-through -- its schema half refuses everything the document refuses, so the
-ANNOTATIONS are never exercised.  On ``core/pagination-request.json`` a model
-with ``Any`` on every field passes both checks over the SAME 75 instances a
-faithful model is graded over, so no count of instances separates them.  Three
-lanes found that independently, by widening their own lowering and staying green.
-The accepts and refuses checks grade the entry point; ``compare_schema`` grades
-the generated code.
+**WHAT THIS MODULE USED TO DO AND NO LONGER DOES, and the reason is stronger than
+its cost.**  The refuses check mutated ONE KEYWORD at a time, drew an instance the
+mutated schema accepts, and passed it to the caller's ``accept`` -- which validates
+against THE DOCUMENT before constructing.  So a step site asserted that
+``jsonschema`` rejects a payload violating the schema it was handed, and the
+generated class took no part in the outcome: on ``core/pagination-request.json`` a
+model with ``Any`` on every field accepted, refused 75 of 75 instances and recorded
+no wrong acceptance, exactly as a faithful one did.  27,791 of those sites over the
+graded population were the suite's entire wall clock, spent on a property of a
+third-party validator.  A payload the schema refuses is informative
+about the WIRING and nothing else, so ``check_liveness`` sends exactly one.
 
-Nothing is enumerated by hand.  The keyword comes from the document, the instance
-from ``hypothesis_jsonschema``, and the expected refusal is the keyword that was
-stepped.  ``conforms`` runs as a control before any refusal is asserted: an
-instance the step failed to push out of the schema grades nothing, and is counted
-rather than silently passed.
-
-A site under an optional key is reachable only if the generator populates that
-key, which it mostly does not; ``force_path`` makes the way down mandatory in the
-generated-from document so the mutation lands where it was aimed.  What is left
-ungraded after that is a hop with no instance location to make mandatory -- a
-union branch, a pattern-matched key -- and the control still counts it.
+**There is no process-global canonicalisation memo here**, and the documents this
+grades arrive already resolved (``codegen.emit`` writes them out with zero ``$ref``),
+so the one recursion reference resolution needs has happened before the harness sees
+anything.  What remains is the library's own: ``merged`` re-enters ``canonicalish``
+for every subschema it sorts, so one ``from_schema`` call re-canonicalises the same
+subtrees of one document.  ``canonicalisation_shared_within_one_call`` shares those
+for the duration of ONE check and drops them on the way out -- its docstring carries
+the measurement that forces it, and why that is not the unbounded process-global
+dict section 6 deleted.
 """
 
 from __future__ import annotations
 
 import copy
-import dataclasses
-import hashlib
 import json
-import re
+from contextlib import contextmanager
 from collections import Counter
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
-from typing import Any, TypeGuard
+from typing import Any
 
 import jsonschema
 from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
-from hypothesis.errors import HypothesisException, Unsatisfiable
-from hypothesis_jsonschema import from_schema
+from hypothesis.errors import HypothesisException
 from hypothesis_jsonschema import _canonicalise as _hjs_canon
+from hypothesis_jsonschema import from_schema
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
 from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
 from pydantic import TypeAdapter, ValidationError
-
-# --------------------------------------------------------------------------- #
-# the one memo
-# --------------------------------------------------------------------------- #
-# ``canonicalish`` is a pure function of a schema, and the library does not
-# memoise it: ``from_schema`` re-canonicalises the WHOLE document once per step
-# site, and ``merged`` re-enters it for every subschema it sorts
-# (``_canonicalise.py:631``).  Over the 13,123 step sites this suite steps, the
-# same subschemas are canonicalised again for each one.
-#
-# Installed on the MODULE GLOBAL, not just on our call: ``merged`` and
-# ``canonicalish`` reach each other through ``_canonicalise``'s own namespace,
-# so patching the name there is what puts the library's internal recursion
-# through the memo.  A hit returns a DEEP COPY -- the library mutates the nodes
-# it is handed, and handing back the cached object would let one call corrupt
-# every later one.
-_CANON_MEMO: dict[str, Any] = {}
-_canonicalish_uncached = _hjs_canon.canonicalish
-
-
-def _canonicalish_memoised(schema: Any) -> Any:
-    try:
-        key = json.dumps(schema, sort_keys=True, default=repr)
-    except (TypeError, ValueError):
-        return _canonicalish_uncached(schema)
-    hit = _CANON_MEMO.get(key)
-    if hit is None:
-        hit = _CANON_MEMO[key] = _canonicalish_uncached(schema)
-    return copy.deepcopy(hit)
-
-
-_hjs_canon.canonicalish = _canonicalish_memoised
 
 # --------------------------------------------------------------------------- #
 # formats
@@ -210,6 +185,66 @@ def resolve(schema: dict, *, store: Mapping[str, Any], base_uri: str = "") -> di
 
 def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrategy:
     return from_schema(schema, custom_formats=dict(custom_formats))
+
+
+@contextmanager
+def canonicalisation_shared_within_one_call() -> Iterator[dict[str, Any]]:
+    """Share ``canonicalish`` results for the duration of ONE check, then drop them.
+
+    **THIS IS A DIVERGENCE FROM SECTION 6's LETTER AND IT IS MEASURED.**  Section 6
+    says ``_CANON_MEMO`` is "DELETED, not bounded", because "a repetition that
+    resolution removes needs no cache at all".  The first half is right and is done:
+    there is no process-global dict here, nothing is retained between pairs, and
+    nothing is patched at import time.  **The second half is refuted by the
+    measurement.**  The repetition the memo covered is not only across step sites --
+    ``merged`` re-enters ``canonicalish`` for every subschema it sorts
+    (``_canonicalise.py:631``), so ONE ``from_schema`` call on ONE already-resolved
+    document re-canonicalises the same subtrees. Resolution cannot remove that: the
+    document arrives with zero ``$ref`` and the repetition is inside the library's
+    own recursion.
+
+    Measured on ``core/macro-declaration.json#``, 18,301 bytes, one pair, single
+    process, no profiler:
+
+    ======================================  ==========  =============
+    ``from_schema`` on that one document    seconds     memo entries
+    ======================================  ==========  =============
+    sharing within the call                     43.58            504
+    no sharing at all                         >600.0  (stopped)     -
+    ======================================  ==========  =============
+
+    So deleting the sharing outright does not make the suite cheaper, it makes one
+    pair cost more than the whole population does with it.
+
+    **What section 6's complaint actually names, and what this keeps out.**  The
+    defect was "an unbounded process-global dict ... grows by roughly 340 entries per
+    pair", retained across every pair of the population and multiplied by ten
+    workers, with a measured hit rate and no measured size.  A memo whose lifetime is
+    one call has none of those properties: its contents are one document's
+    subschemas, 504 at the measured worst, it is discarded on exit including on an
+    exception, and that size is the figure above rather than an unknown.  The name
+    says the lifetime, so a later reader cannot widen it without renaming it.
+    """
+    memo: dict[str, Any] = {}
+    uncached = _hjs_canon.canonicalish
+
+    def shared(schema: Any) -> Any:
+        try:
+            key = json.dumps(schema, sort_keys=True, default=repr)
+        except (TypeError, ValueError):
+            return uncached(schema)
+        hit = memo.get(key)
+        if hit is None:
+            hit = memo[key] = uncached(schema)
+        # A DEEP COPY on the way out: the library mutates the nodes it is handed, so
+        # returning the held object would let one call corrupt every later one.
+        return copy.deepcopy(hit)
+
+    _hjs_canon.canonicalish = shared
+    try:
+        yield memo
+    finally:
+        _hjs_canon.canonicalish = uncached
 
 
 def filtered_formats(schema: Any) -> tuple[str, ...]:
@@ -308,99 +343,6 @@ def violated_keywords(schema: dict, instance: Any, *, validator_cls=None) -> lis
     return sorted(set(out))
 
 
-# --------------------------------------------------------------------------- #
-# the step: one constraint keyword, rewritten so every instance violates it
-# --------------------------------------------------------------------------- #
-# A looser step ("minItems: 1 -> 0") leaves it to chance whether the generator
-# walks into the violation.  Each step below is EXCLUSIVE: the stepped subschema
-# admits only instances the original refuses, so the control fires only when the
-# site itself is unreachable (an optional subtree, an untaken union branch).
-@dataclass(frozen=True)
-class Step:
-    """A constraint FACT about one instance location, and how to rewrite it away.
-
-    ``steps()`` finds every site by walking the document once and copies nothing:
-    a resolved document can be megabytes with thousands of sites, and
-    deep-copying it per site cost 93 s on a 214-site document before this was
-    made lazy. ``materialize`` produces the stepped document for the sites a
-    caller actually grades.
-
-    **A fact can be stated at more than one schema position, and the step is the
-    fact rather than the position.**  ``allOf`` conjoins, so a document whose root
-    and whose conjunct both state ``minLength: 3`` states one fact about one
-    instance location through two positions.  Rewriting ONE of them left the other
-    stating the original bound, the conjunction of the two admitted no instance,
-    and ``hypothesis_jsonschema`` raised -- so the site cost a step and graded
-    nothing.  MEASURED on a root ``allOf`` restating ``required``, ``minLength``
-    and ``minItems``: 6 of 6 sites reported ``harness_error``, in three different
-    exception shapes.  D7 makes that restatement the normal case rather than an
-    edge: where a composition tightens an inherited field's requiredness the
-    subclass redeclares the field with the base's keywords, and a composed class's
-    ``required`` is the union of its own and every base's.
-
-    So ``positions`` holds every position stating the fact and ``materialize``
-    rewrites all of them, which pushes the instance out of the document once.
-    ``pointer`` is the outermost of them, because a report names one site.
-    """
-
-    keyword: str  # the constraint that was stepped, as the document spells it
-    describe: str  # human-readable "before -> after"
-    _rewrite: Callable[[dict], None]
-    positions: tuple[str, ...]  # every position stating this fact, outermost first
-    #: Whether the rewrite puts the document's OWN statement at this site back,
-    #: NEGATED -- so what it admits is exactly the set of instances the document
-    #: refuses there -- or merely one witness the harness chose.
-    #:
-    #: This is the only thing that separates the two reasons a stepped document
-    #: can admit nothing, and both have a test.  A COMPLEMENT that admits nothing
-    #: says the DOCUMENT admits no instance violating this keyword here: nothing
-    #: of the harness's choosing is in it, so the emptiness is the document's and
-    #: the honest verdict is the zero-denominator one (``no_evidence``) -- an
-    #: ``if`` whose condition implies its branch, a combinator exhaustive over its
-    #: own type.  A WITNESS that admits nothing says only that THIS witness does
-    #: not exist: ``maxLength 4`` is stepped to "exactly 5 characters", and a
-    #: ``const`` of four characters at the same instance location rules that out
-    #: while the document still refuses every five-character value.  The harness
-    #: cannot build the instance; the document has one.  That is a harness
-    #: limitation and is REPORTED (``harness_error``), with the contradicting
-    #: keyword named, because §6 forbids a green mark over an ungraded site.
-    #:
-    #: Set by the emitting branch, which is the one place that knows which of the
-    #: two it built.  A list consulted at the catch site would be a second answer
-    #: to the same question, and would go stale the first time a family is added.
-    complement: bool = False
-
-    @property
-    def pointer(self) -> str:
-        """The one position a report names.  Derived, so the two cannot disagree."""
-        return self.positions[0]
-
-    def materialize(self, schema: dict, *, force: bool = True) -> dict:
-        """The stepped document to GENERATE from. The original still decides.
-
-        ``force`` makes the path down to the site mandatory (see ``force_path``).
-        It is on because a site the generator never populates grades nothing;
-        ``force=False`` exists so a measurement can draw the unforced case from
-        the same inputs in the same process, and nothing else passes it.
-
-        EVERY position is forced, not only the one a report names, and what that
-        buys is a DENOMINATOR rather than a verdict.  Measured on a fact stated in
-        two union branches that neither branch requires: forcing the first
-        position alone makes the key mandatory in that branch only, the generator
-        satisfies the OTHER branch and omits the key, and 8 of 25 examples grade
-        nothing.  Forcing every position makes it 25 of 25.  Both report ``pass``,
-        so no outcome separates them -- which is why the test for it asserts the
-        control count and not the verdict.
-        """
-        doc = copy.deepcopy(schema)
-        if force:
-            for pointer in self.positions:
-                _force_into(doc, pointer)
-        for pointer in self.positions:
-            self._rewrite(at(doc, "" if pointer == "/" else pointer))
-        return doc
-
-
 _DESCEND_ONE = (
     "items",
     "additionalProperties",
@@ -433,146 +375,6 @@ def at(doc: Any, pointer: str) -> Any:
     return cur
 
 
-# The hops along a pointer whose presence in an instance is OPTIONAL and can be
-# made mandatory: a named property (and the trigger key of a dependent schema) by
-# adding the name to its own parent's ``required``, a collection by forbidding it
-# to be empty.  Every other hop falls through to a plain descent, which is the
-# right answer for each of them for a different reason: an ``allOf`` branch and a
-# ``contains`` subschema already apply to every instance; a union branch is a
-# partial barrier the generator clears on its own (the control pair takes its
-# branch on 18 of 40 examples, and one is enough to grade); and a pattern-matched key, a
-# ``not`` / ``propertyNames`` subschema or a ``$defs`` entry has no instance
-# location to make mandatory at all, so a site beneath one stays unreachable and
-# the control still counts it as ungraded.  A ``then`` / ``else`` DOES have one --
-# its sibling ``if`` -- and ``force_path`` adds it as a conjunct; see the hop.
-_FORCE_NAMED = ("properties", "dependentSchemas")
-
-#: Candidate instances for a ``pattern`` step, tried in order.  Short, so a
-#: ``maxLength`` beside the pattern does not rule them all out, and spread across
-#: character classes, so a pattern restricting to one of them still has a miss.
-#:
-#: The last member is the one axis the first seven do not cover and ``format``
-#: being asserted introduced: a sibling ``format`` has to ADMIT the candidate
-#: too, and none of the first seven is a well-formed value of any format.
-#: Measured at ``core/platform-extension-ref.json#/properties/uri``, which
-#: states ``format: uri`` beside ``pattern: ^https://``: once the checker was
-#: passed, all seven failed the ``conforms`` screen, the site got no step at all,
-#: and the refuses-check denominator fell by that step's 25 instances -- the
-#: pattern went from graded to ungraded without any pair reporting a failure.
-#: An absolute URI with a scheme the pattern refuses clears both screens and
-#: grades it again.  It is LAST so a shorter candidate still wins wherever one
-#: clears, which is every other pattern site in this population.
-#:
-#: ``uri`` is the only format in this bundle that co-occurs with a string
-#: constraint at any scale -- 73 of its 300 uses, against 4 for ``email``, 2 for
-#: ``hostname`` and 0 for ``date-time`` and ``date`` -- so one member is the
-#: whole of what this axis needs today.
-_PATTERN_MISSES = ("!", "A", "0", " ", "", "\x00", "__adcp_harness__", "http://a.example/")
-
-
-def force_path(schema: dict, pointer: str) -> dict:
-    """Copy of ``schema`` in which the path down to ``pointer`` is mandatory.
-
-    MEASURED mechanism for a site that grades nothing: the parent object IS
-    generated, but the optional key holding the stepped site is never populated.
-    At every probed site the parent was present in 11-24 of 50 instances and the
-    key inside it in 0 of 50 -- ``hypothesis_jsonschema`` biases hard toward the
-    minimal object, and ``derandomize=True`` makes that bias reproducible, which
-    is why it is 50 consecutive omissions rather than a coin flip.  Three
-    competing explanations were ruled out by the same probe: an identical inlined
-    copy elsewhere in the resolved document (0 at every site), the keyword being
-    normalised away by ``canonicalish``, and an unsatisfiable parent.
-
-    So each property traversed on the way to the site is added to its OWN
-    parent's ``required``, and each collection traversed is forbidden to be
-    empty.  This is applied to the STEPPED document only -- the one the generator
-    draws from.  The ORIGINAL decides whether an instance violates anything
-    (see ``check_refuses``), so the control stays independent: rewrite the
-    original here and a site could be reported as graded on the strength of a
-    constraint this function added.
-
-    A hop is left alone when forcing it would contradict a bound already at that
-    node (``maxItems: 0``, ``maxProperties: 0``).  Such a site is genuinely
-    unreachable, and an unsatisfiable stepped document would report it as a
-    harness error instead of as the ungraded site it is.
-    """
-    doc = copy.deepcopy(schema)
-    _force_into(doc, pointer)
-    return doc
-
-
-def _force_into(doc: dict, pointer: str) -> None:
-    """``force_path``'s body, applied IN PLACE.
-
-    One step can hold several positions (see ``Step``), and each is forced into
-    the same document: copying per position would discard the previous one's
-    forcing.
-    """
-    parts = [p for p in pointer.split("/") if p]
-    node: Any = doc
-    i = 0
-    while i < len(parts):
-        k = parts[i]
-        nxt = parts[i + 1] if i + 1 < len(parts) else None
-        if k in _DESCEND_MAP and nxt is not None:
-            name = nxt.replace("~1", "/").replace("~0", "~")
-            if k in _FORCE_NAMED and isinstance(node, dict):
-                req = node.setdefault("required", [])
-                if name not in req:
-                    req.append(name)
-            node = node[k][name]
-            i += 2
-        elif k == "items" and isinstance(node.get("items"), list) and _is_index(nxt):
-            _at_least(node, "minItems", "maxItems", int(nxt) + 1)
-            node = node["items"][int(nxt)]
-            i += 2
-        elif k in _DESCEND_LIST and _is_index(nxt):
-            if k == "prefixItems":
-                _at_least(node, "minItems", "maxItems", int(nxt) + 1)
-            node = node[k][int(nxt)]
-            i += 2
-        elif k in ("items", "additionalItems", "unevaluatedItems"):
-            _at_least(node, "minItems", "maxItems", 1)
-            node = node[k]
-            i += 1
-        elif k in ("additionalProperties", "unevaluatedProperties"):
-            _at_least(node, "minProperties", "maxProperties", 1)
-            node = node[k]
-            i += 1
-        elif k in ("then", "else") and isinstance(node.get("if"), dict):
-            # A ``then`` applies only to an instance its sibling ``if`` MATCHES, and
-            # nothing made the ``if`` match: ``hypothesis_jsonschema`` draws the
-            # minimal object, the condition is usually a ``const`` on an optional
-            # key, and a site under ``then`` was then graded by the control instead
-            # of by the model.  ``core/canvas-constraint.json``'s
-            # ``if unit == "percent" then x.maximum = 100`` is the inventory's one
-            # ``maximum`` triple, and this is the hop it needed.
-            #
-            # So the condition is added as a CONJUNCT of the node holding it --
-            # negated for an ``else``, which is what reaches that branch.  Same rule
-            # as every other hop here: make the way down mandatory in the
-            # generated-from document only, and leave the ORIGINAL to decide what an
-            # instance violates.
-            condition = copy.deepcopy(node["if"])
-            node.setdefault("allOf", []).append(
-                condition if k == "then" else {"not": condition}
-            )
-            node = node[k]
-            i += 1
-        else:
-            node = node[int(k)] if isinstance(node, list) else node[k]
-            i += 1
-
-
-def _is_index(part: str | None) -> TypeGuard[str]:
-    return part is not None and part.isdigit()
-
-
-def _whole(value: Any) -> int | None:
-    """``value`` if it is a JSON integer, which ``True`` is not."""
-    return value if isinstance(value, int) and not isinstance(value, bool) else None
-
-
 def _distinct_values(items: Any) -> int | None:
     """How many values ``items`` admits, when that is a countable number.
 
@@ -589,128 +391,6 @@ def _distinct_values(items: Any) -> int | None:
     if isinstance(items.get("enum"), list):
         return len(items["enum"]) or None
     return {"boolean": 2, "null": 1}.get(items.get("type"))
-
-
-def _admits_nothing(schema: Any) -> bool:
-    """Whether ``schema`` admits no instance at all, by the GENERATOR'S own reading.
-
-    ``hypothesis_jsonschema`` is what will be asked to generate from the stepped
-    document, so its canonical form is the authority on what is satisfiable; a list
-    of spellings maintained here would be a second answer that drifts.  That matters
-    for every step below that negates part of a document: a negation whose
-    conjunction with the rest is unsatisfiable produces a HARNESS ERROR, which
-    reports as a red pair rather than as the ungraded site it is.  The name is
-    private, so degrade to the literal rather than break on an upgrade.
-    """
-    try:
-        from hypothesis_jsonschema._canonicalise import FALSEY, canonicalish
-    except ImportError:  # pragma: no cover
-        return schema is False
-    try:
-        return bool(canonicalish(schema) == FALSEY)
-    except Exception:  # a schema the canonicaliser cannot reduce is not known-empty
-        return False
-
-
-def _admits_more_than(node: dict, n: int) -> bool:
-    """Whether the node admits an object of MORE than ``n`` properties.
-
-    A closed object admits only the keys it declares, so a ``maxProperties`` at or
-    above that count cannot be pushed past: the site is genuinely unreachable, and a
-    step that asked for ``n + 1`` keys anyway would report an unsatisfiable strategy
-    in place of the ungraded site it is.  Measured on
-    ``core/operator-identity.json``'s ``operator_unit``, which is also the reason
-    the test is "closed" and not "``additionalProperties`` is ``False``": that node
-    spells closed as ``{"additionalProperties": {"not": {}}}``, a subschema no
-    instance satisfies, and a check against the literal read it as open.
-    """
-    extra = node.get("additionalProperties")
-    if extra is None or not _admits_nothing(extra):
-        return True
-    declared = node.get("properties")
-    return isinstance(declared, dict) and len(declared) > n
-
-
-def _at_least(node: Any, floor_kw: str, ceiling_kw: str, n: int) -> None:
-    """Raise ``floor_kw`` to ``n``, unless a ceiling at the same node forbids it."""
-    if not isinstance(node, dict):
-        return
-    ceiling = node.get(ceiling_kw)
-    if isinstance(ceiling, int) and not isinstance(ceiling, bool) and ceiling < n:
-        return  # genuinely unreachable; do not manufacture an unsatisfiable step
-    cur = node.get(floor_kw)
-    if not (isinstance(cur, int) and not isinstance(cur, bool) and cur >= n):
-        node[floor_kw] = n
-
-
-#: The pointer hops that do NOT move the instance cursor, so two positions either
-#: side of one address the same instance location.  ``allOf``, ``anyOf`` and
-#: ``oneOf`` take an index; ``then`` and ``else`` do not.
-_APPLICATOR_INDEXED = ("allOf", "anyOf", "oneOf")
-_APPLICATOR_PLAIN = ("then", "else")
-
-#: A position beneath one of these states no fact ABOUT the instance that a
-#: sibling could restate, so it joins no group and is always a step of its own.
-#: A step beneath an ``if`` makes the condition FAIL, which releases ``then``
-#: instead of pushing the instance out of the document; a step beneath a ``not``
-#: is satisfied by the negation.  Such a site stays exactly as reachable as it is
-#: today, and the control counts it when it grades nothing.
-#:
-#: MEASURED, and this is why the rule is "groups with nothing" rather than "keeps
-#: the hop in its location": ``core/creative-approval-scope.json`` states
-#: ``required: ['approval_status']`` inside ``/allOf/0/if`` AND inside
-#: ``/allOf/1/if`` -- two different conditions, which keeping the ``if`` hop while
-#: dropping the ``allOf`` index collapses to one location called ``/if``.  They
-#: are not one fact and grouping them says they are.
-_NEVER_GROUPED = ("if", "not")
-
-
-def instance_location(pointer: str) -> str:
-    """The instance location a schema position addresses.
-
-    Two positions with the same location constrain the same place in an instance,
-    which is what makes them restatements of one fact rather than two facts.  A
-    position under an ``if`` or a ``not`` gets its own pointer back, so it is
-    equal to no other position and groups with nothing (see ``_NEVER_GROUPED``).
-    """
-    parts = [p for p in pointer.split("/") if p]
-    out: list[str] = []
-    i = 0
-    while i < len(parts):
-        p = parts[i]
-        if p in _NEVER_GROUPED:
-            return pointer or "/"
-        if p in _APPLICATOR_INDEXED and _is_index(parts[i + 1] if i + 1 < len(parts) else None):
-            i += 2
-        elif p in _APPLICATOR_PLAIN:
-            i += 1
-        else:
-            out.append(p)
-            i += 1
-    return "/" + "/".join(out)
-
-
-#: What a node can say that constrains NO value: a name, a note, a presence
-#: default.  Everything else at a node narrows what the node admits, so the
-#: complement of this set is "the keywords that could contradict a step" -- which
-#: is the honest way round, because a list of CONSTRAINTS would have to be
-#: complete and would go silently short of the vocabulary (``const`` is the
-#: fixture's own collider and is not a keyword ``steps`` can step).
-_ANNOTATION_ONLY = frozenset(
-    {
-        "$schema",
-        "$id",
-        "$comment",
-        "title",
-        "description",
-        "examples",
-        "default",
-        "deprecated",
-        "readOnly",
-        "writeOnly",
-        "enumDescriptions",
-    }
-)
 
 
 def _nodes(schema: Any, pointer: str = "") -> list[tuple[str, dict]]:
@@ -732,441 +412,6 @@ def _nodes(schema: Any, pointer: str = "") -> list[tuple[str, dict]]:
         elif k in _DESCEND_LIST and isinstance(v, list):
             out += _nodes(v, f"{pointer}/{k}")
     return out
-
-
-def contradicting(schema: dict, step: Step) -> tuple[str, ...]:
-    """Every keyword stated at this step's instance location that it did not rewrite.
-
-    What a reader is owed when a witness step admits nothing: the step mutated one
-    keyword at one position, and something ELSE about the same place in an
-    instance ruled the mutation out.  ``pointer:keyword``, so the report names the
-    position as well as the keyword.
-
-    An EMPTY result is a finding of its own rather than a blank: it says the
-    contradiction is NOT at this instance location, so the step is not what the
-    reader should look at.  It does not say which of the other causes it is, and
-    the measured population holds at least two.  ``core/reference-renderer.json``
-    does not generate in its ORIGINAL resolved form -- it exhausts
-    ``hypothesis_jsonschema``'s filter before any step is applied -- so all 14 of
-    its unsteppable sites are that one fact and none is a collision.
-    ``core/media-buy-frequency-cap.json`` generates, and five of its sites report
-    an empty collider anyway: a ``maxProperties`` and the ``required`` names
-    ``force_path`` adds on the way down are at different nodes, so neither is at
-    the stepped site's location.  Do not read an empty result as either one.
-
-    Called only from the failure path, so the second walk costs one traversal per
-    site the check could not step rather than one per site.
-    """
-    location = instance_location(step.pointer)
-    stepped = set(step.positions)
-    return tuple(
-        f"{pointer}:{keyword}"
-        for pointer, node in _nodes(schema)
-        if pointer not in stepped and instance_location(pointer) == location
-        for keyword in sorted(node)
-        if keyword not in _ANNOTATION_ONLY
-    )
-
-
-def steps(schema: dict) -> list[Step]:
-    """Every constraint FACT in the document, each as one exclusive step.
-
-    A fact restated at a second position is ONE step that rewrites both, because
-    rewriting one of them leaves the other constraining the value and the
-    conjunction of the two can admit no instance at all (see ``Step``).
-
-    **Two positions are the same fact when they state the same keyword at the same
-    instance location AND their rewrites are identical**, and the admission rule
-    says that directly: the key carries the VALUE the rewrite is derived from, so
-    equal keys mean interchangeable rewrites and the group can apply any one of
-    them at every position.  That is why a group can never manufacture a
-    contradiction of its own: two positions stating DIFFERENT bounds for one
-    keyword are an intersection rather than a restatement, so they key differently
-    and stay separate steps behaving exactly as they do today.
-
-    The stated value is in the key rather than read off ``describe`` because
-    MEASURED, ``describe`` does not determine the rewrite for the five families
-    whose rewrite READS the node it rewrites.  ``if/then -> the condition, the
-    branch negated`` holds no value at all, so
-    ``core/account-timezone-capability.json``'s four conjuncts -- four different
-    ``if`` conditions about one instance location -- grouped into ONE step whose
-    materialization demands ``mode`` be ``seller_fixed`` and ``account_fixed`` at
-    once.  That is unsatisfiable, so D6's ``then`` family went from 4 sites x 20
-    biting examples to one site grading nothing, and step 7's exit condition --
-    the harness steps every one of the six -- stopped holding.
-    ``core/macro-encoding.json`` is the same shape with three conjuncts, and
-    ``not`` lost a site the same way: ``not {"required": ["fixed_timezone"]}`` and
-    ``not {"required": ["supported_timezones"]}`` describe identically through
-    their key lists and are two facts.
-    """
-    Key = tuple[str, str, str, str]
-    found: dict[Key, list[str]] = {}
-    rewrites: dict[Key, Callable[[dict], None]] = {}
-    complements: dict[Key, bool] = {}
-
-    def emit(
-        pointer: str,
-        keyword: str,
-        describe: str,
-        rewrite: Callable[[dict], None],
-        *,
-        states: Any = None,
-        complement: bool = False,
-    ) -> None:
-        """Record one position of one fact.
-
-        ``states`` is the value the rewrite is derived from, and is passed by the
-        branches whose rewrite reads the node rather than closing over a bound.
-        ``None`` means the rewrite is a function of the keyword alone, so
-        ``describe`` already determines it.
-        """
-        pointer = pointer or "/"
-        key = (instance_location(pointer), keyword, describe, _stated(states))
-        if key in found:
-            found[key].append(pointer)
-            return
-        found[key] = [pointer]
-        rewrites[key] = rewrite
-        complements[key] = complement
-
-    def rec(node: Any, pointer: str) -> None:
-        if isinstance(node, list):
-            for i, v in enumerate(node):
-                rec(v, f"{pointer}/{i}")
-            return
-        if not isinstance(node, dict):
-            return
-
-        n = node.get("minItems")
-        if isinstance(n, int) and not isinstance(n, bool) and n >= 1:
-
-            def r(t: dict, _n: int = n) -> None:
-                t.pop("minItems", None)
-                t["maxItems"] = 0
-
-            emit(pointer, "minItems", f"minItems {n} -> maxItems 0", r)
-
-        n = node.get("maxItems")
-        if isinstance(n, int) and not isinstance(n, bool):
-
-            def r(t: dict, _n: int = n) -> None:
-                t["minItems"] = _n + 1
-                t["maxItems"] = _n + 1
-                t.pop("uniqueItems", None)
-
-            emit(pointer, "maxItems", f"maxItems {n} -> exactly {n + 1}", r)
-
-        n = node.get("maxLength")
-        if isinstance(n, int) and not isinstance(n, bool):
-
-            def r(t: dict, _n: int = n) -> None:
-                t["minLength"] = _n + 1
-                t["maxLength"] = _n + 1
-                # a pattern/format/enum/const at the same site would contradict
-                # the lengthened string and make the step unsatisfiable
-                for k in ("pattern", "format", "enum", "const"):
-                    t.pop(k, None)
-
-            emit(pointer, "maxLength", f"maxLength {n} -> exactly {n + 1}", r)
-
-        n = node.get("minLength")
-        if isinstance(n, int) and not isinstance(n, bool) and n >= 1:
-
-            def r(t: dict, _n: int = n) -> None:
-                t["minLength"] = 0
-                t["maxLength"] = _n - 1
-                for k in ("pattern", "format", "enum", "const"):
-                    t.pop(k, None)
-
-            emit(pointer, "minLength", f"minLength {n} -> at most {n - 1}", r)
-
-        n = node.get("minimum")
-        if isinstance(n, (int, float)) and not isinstance(n, bool):
-
-            def r(t: dict, _n: Any = n) -> None:
-                t.pop("minimum", None)
-                t.pop("exclusiveMinimum", None)
-                t["maximum"] = _n - 1
-
-            emit(pointer, "minimum", f"minimum {n} -> maximum {n - 1}", r)
-
-        n = node.get("maximum")
-        if isinstance(n, (int, float)) and not isinstance(n, bool):
-
-            def r(t: dict, _n: Any = n) -> None:
-                t.pop("maximum", None)
-                t.pop("exclusiveMaximum", None)
-                t["minimum"] = _n + 1
-
-            emit(pointer, "maximum", f"maximum {n} -> minimum {n + 1}", r)
-
-        req = node.get("required")
-        if isinstance(req, list) and req:
-            for key in req:
-                if not isinstance(key, str):
-                    continue
-
-                def r(t: dict, _k: str = key) -> None:
-                    t["required"] = [x for x in t.get("required", []) if x != _k]
-                    t["not"] = {"required": [_k]}  # every instance omits it
-
-                emit(pointer, "required", f"required drops {key!r}", r)
-
-        if node.get("additionalProperties") is False and isinstance(node.get("properties"), dict):
-
-            def r(t: dict) -> None:
-                t["additionalProperties"] = True
-                t.setdefault("properties", {})["__harness_extra__"] = {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 3,
-                }
-                t["required"] = sorted(set(t.get("required", [])) | {"__harness_extra__"})
-
-            emit(
-                pointer,
-                "additionalProperties",
-                "additionalProperties false -> an extra property",
-                r,
-            )
-
-        p = node.get("pattern")
-        if isinstance(p, str):
-            # A `pattern` step has to be a value the pattern refuses, and no
-            # rewrite of the pattern itself produces one reliably.  So the step
-            # pins a `const` -- exclusive by construction -- chosen from a fixed
-            # list by two tests: the ORIGINAL pattern must not match it
-            # (`jsonschema` uses `re.search`, so the candidate is graded the way
-            # the document will grade it), and the node WITHOUT its pattern must
-            # admit it, so the instance violates the pattern and nothing else.
-            # A node no candidate clears gets no step and the pair reports its own
-            # zero denominator; inventing one that also violates a `minLength`
-            # would make the step's keyword a label for someone else's refusal.
-            without = {k: v for k, v in node.items() if k != "pattern"}
-            pick = next(
-                (
-                    c
-                    for c in _PATTERN_MISSES
-                    if re.search(p, c) is None and conforms(without, c) is True
-                ),
-                None,
-            )
-            if pick is not None:
-
-                def r(t: dict, _c: str = pick) -> None:
-                    t.pop("pattern", None)
-                    t["type"] = "string"
-                    t["const"] = _c
-
-                emit(pointer, "pattern", f"pattern {p!r} -> the non-matching {pick!r}", r)
-
-        e = node.get("enum")
-        if isinstance(e, list) and e and all(isinstance(x, str) for x in e):
-
-            def r(t: dict, _e: list = e) -> None:
-                t.pop("enum", None)
-                t["type"] = "string"
-                t["const"] = "__harness_not_a_member__"
-                for k in ("pattern", "format", "minLength", "maxLength"):
-                    t.pop(k, None)
-
-            emit(pointer, "enum", f"enum of {len(e)} -> a non-member", r)
-
-        # ----------------------------------------------------------------- #
-        # D6's six families: what a document says about an instance AS A WHOLE
-        # ----------------------------------------------------------------- #
-        # NONE OF THESE HAD A STEP BEFORE THIS.  The nine keywords above were the
-        # whole of ``steps()``, and step 7's six families are WHOLLY DISJOINT from
-        # them -- so every rule the step lowers would have been graded by nothing,
-        # in either direction, and the bundle's 485 ``uniqueItems`` occurrences
-        # were 0 of 5,545 site rows.  Two of the nine steps ``pop``
-        # ``uniqueItems`` to stay satisfiable, which is how its absence went
-        # unnoticed.
-        if node.get("uniqueItems") is True:
-            # Forcing a duplicate is the one thing draft-07 cannot say directly, so
-            # the step says it two ways.  PIGEONHOLE where the item schema admits a
-            # countable set of values (``const``, ``enum``, ``boolean``, ``null``):
-            # ask for one more element than there are values and a repeat is
-            # unavoidable, so the step is exclusive.  Otherwise EXACTLY ``slots``
-            # elements drawn from one schema, which is NOT exclusive and does not
-            # pretend to be -- the first example of ``{"type": "string"}`` is
-            # ``["", ""]`` and later ones differ, so the site is graded by that
-            # example and the control counts the rest.  One refusal is a pass;
-            # ``no_evidence`` is what a site with none reports.
-            bound = _distinct_values(node.get("items"))
-            ceiling = _whole(node.get("maxItems"))
-            slots = max(2, _whole(node.get("minItems")) or 0)
-            if bound is not None and (ceiling is None or ceiling > bound):
-
-                def r(t: dict, _n: int = bound + 1) -> None:
-                    t.pop("uniqueItems", None)
-                    t["minItems"] = _n
-                    t.pop("maxItems", None)
-
-                emit(pointer, "uniqueItems", f"uniqueItems over {bound} values -> {bound + 1}", r)
-            elif ceiling is None or ceiling >= slots:
-
-                def r(t: dict, _n: int = slots) -> None:
-                    t.pop("uniqueItems", None)
-                    t["minItems"] = _n
-                    t["maxItems"] = _n
-
-                emit(pointer, "uniqueItems", f"uniqueItems true -> {slots} draws, one schema", r)
-
-        dependencies = node.get("dependencies")
-        if isinstance(dependencies, dict):
-            own = [k for k in node.get("required", []) if isinstance(k, str)]
-            for trigger in sorted(dependencies):
-                names = dependencies[trigger]
-                if not isinstance(names, list):
-                    continue  # the schema-valued form; its own keywords step themselves
-                for dependent in names:
-                    if not isinstance(dependent, str) or dependent == trigger:
-                        continue
-                    if dependent in own or trigger in own:
-                        continue  # the node already settles presence; nothing to push out
-
-                    def r(t: dict, _k: str = trigger, _d: str = dependent) -> None:
-                        rest = {k: v for k, v in t.get("dependencies", {}).items() if k != _k}
-                        t["dependencies"] = rest
-                        if not rest:
-                            t.pop("dependencies")
-                        t["required"] = sorted({*t.get("required", []), _k})
-                        t["not"] = {"required": [_d]}  # every instance omits the dependent
-
-                    emit(pointer, "dependencies", f"{trigger!r} present, {dependent!r} not", r)
-
-        n = node.get("minProperties")
-        req = len([k for k in node.get("required", []) if isinstance(k, str)])
-        if isinstance(n, int) and not isinstance(n, bool) and n > max(req, 0):
-            # ``n > len(required)`` is the step's own satisfiability: an object with
-            # at most n-1 keys still has to carry every required one, and a
-            # ``minProperties`` no larger than the required count is already implied
-            # by ``required`` -- stepping it would grade ``required`` under another
-            # name.
-            def r(t: dict, _n: int = n) -> None:
-                t.pop("minProperties", None)
-                t["maxProperties"] = _n - 1
-
-            emit(pointer, "minProperties", f"minProperties {n} -> maxProperties {n - 1}", r)
-
-        n = node.get("maxProperties")
-        if isinstance(n, int) and not isinstance(n, bool) and _admits_more_than(node, n):
-
-            def r(t: dict, _n: int = n) -> None:
-                t.pop("maxProperties", None)
-                t["minProperties"] = _n + 1
-
-            emit(pointer, "maxProperties", f"maxProperties {n} -> minProperties {n + 1}", r)
-
-        negated = node.get("not")
-        if isinstance(negated, dict) and negated:
-            # The general step, and the only one that needs no reading of the
-            # subschema at all: the thing the document FORBIDS becomes a CONJUNCT,
-            # so every instance satisfies it and the original refuses on ``not``.
-            # An empty ``not`` is skipped because the document then admits nothing
-            # and there is no instance to draw.
-            def r(t: dict) -> None:
-                t.setdefault("allOf", []).append(t.pop("not"))
-
-            emit(
-                pointer,
-                "not",
-                f"not {sorted(negated)} -> the same as a conjunct",
-                r,
-                states=negated,
-                complement=True,
-            )
-
-        if isinstance(node.get("if"), dict):
-            # A conditional is "if C then T", so an instance violating exactly it
-            # satisfies C and violates T.  Both legs are stated as conjuncts and the
-            # conditional itself is dropped, which makes the step exclusive: every
-            # instance drawn matches the condition and fails the branch.  The
-            # ``else`` leg is the same with C negated.
-            for keyword in ("then", "else"):
-                branch = node.get(keyword)
-                if not isinstance(branch, dict) or not branch:
-                    continue
-
-                def r(t: dict, _k: str = keyword) -> None:
-                    condition = t.pop("if")
-                    taken = t.pop(_k)
-                    t.pop("then", None)
-                    t.pop("else", None)
-                    t.setdefault("allOf", []).extend(
-                        [condition if _k == "then" else {"not": condition}, {"not": taken}]
-                    )
-
-                emit(
-                    pointer,
-                    keyword,
-                    f"if/{keyword} -> the condition, the branch negated",
-                    r,
-                    states=[node["if"], branch],
-                    complement=True,
-                )
-
-        for keyword in ("oneOf", "anyOf"):
-            branches = node.get(keyword)
-            if not isinstance(branches, list) or not branches:
-                continue
-            # Violating a combinator means matching NO branch, which is a violation
-            # of ``anyOf`` (at least one) and of ``oneOf`` (exactly one) alike.  So
-            # every branch is negated as a conjunct.  A combinator exhaustive over
-            # its own type has an UNSATISFIABLE negation and no violating instance
-            # exists; the step is still emitted and ``check_refuses`` reports it as
-            # ``no_evidence``, which is what a site with no instance is.  Screening
-            # it here was tried and REMOVED: ``canonicalish`` on the rewritten node
-            # cost 63.7 s against 0.0 s for 120 documents and rejected 0 of 2,205
-            # sites, so it was 500x for no decision.
-            def r(t: dict, _k: str = keyword) -> None:
-                t.setdefault("allOf", []).extend({"not": b} for b in t.pop(_k))
-
-            emit(
-                pointer,
-                keyword,
-                f"{keyword} of {len(branches)} -> every branch negated",
-                r,
-                states=branches,
-                complement=True,
-            )
-
-        for k, v in node.items():
-            if k in _DESCEND_MAP and isinstance(v, dict):
-                for kk, vv in v.items():
-                    rec(vv, f"{pointer}/{k}/{_esc(kk)}")
-            elif k in _DESCEND_ONE and isinstance(v, (dict, list)):
-                rec(v, f"{pointer}/{k}")
-            elif k in _DESCEND_LIST and isinstance(v, list):
-                rec(v, f"{pointer}/{k}")
-
-    rec(schema, "")
-    out: list[Step] = []
-    for key, positions in found.items():
-        _, keyword, describe, _stated_value = key
-        # Shallowest first, so the position a report NAMES is the outermost one
-        # stating the fact rather than whichever the document happens to spell
-        # first -- `rec` follows the document's own key order, which would make
-        # the reported pointer a function of how the file was written.
-        ordered = sorted(positions, key=lambda p: (p.count("/"), p))
-        out.append(
-            Step(keyword, describe, rewrites[key], tuple(ordered), complement=complements[key])
-        )
-    return out
-
-
-def _stated(value: Any) -> str:
-    """A stable identity for the value a rewrite is derived from.
-
-    Digested rather than carried whole because the value is a SUBSCHEMA for every
-    branch that passes one -- a resolved document's ``anyOf`` branch list is
-    megabytes at the largest site -- and the key only ever needs equality.
-    """
-    if value is None:
-        return ""
-    text = json.dumps(value, sort_keys=True, default=str)
-    return hashlib.blake2b(text.encode(), digest_size=16).hexdigest()
 
 
 # --------------------------------------------------------------------------- #
@@ -1208,66 +453,31 @@ class FormatStrategyVerdict:
 @dataclass
 class AcceptsResult:
     examples: int = 0
-    outcome: str = "unrun"  # pass | model_refused_valid | strategy_error | model_error
+    #: pass | model_refused_valid | model_dropped_a_fact | strategy_error | model_error
+    outcome: str = "unrun"
     detail: str = ""
     counterexample: str = ""
+    #: How many of :attr:`examples` were dumped back out and still admitted by the
+    #: DOCUMENT.  The denominator ``check_pair`` reads to tell a pair whose class
+    #: round-tripped every instance from one the generator never reached.
+    round_tripped: int = 0
 
 
 @dataclass
-class RefusesResult:
-    keyword: str = ""
-    pointer: str = ""
-    describe: str = ""
-    # every position the fact was stepped at; more than one means the document
-    # restates it (a root and an `allOf` conjunct, say) and all of them were
-    # rewritten together -- see `Step`
-    positions: tuple[str, ...] = ()
-    examples: int = 0
-    control_fired: int = 0  # step did not push the instance out of the schema
-    refused: int = 0
-    accepted_invalid: int = 0
-    error_types: dict[str, int] = field(default_factory=dict)
-    # which keyword the ORIGINAL document actually rejected the instances on;
-    # the step's own keyword is not a safe label (see violated_keywords)
-    violated: dict[str, int] = field(default_factory=dict)
-    counterexample: str = ""
-    counterexample_violated: list[str] = field(default_factory=list)
-    harness: str = ""
-    #: The stepped document admits no instance at all, so there is nothing that
-    #: violates exactly this keyword here.  Recorded rather than silently dropped,
-    #: and NOT a harness error: see ``check_refuses``.  Written only for a
-    #: COMPLEMENT step, where the emptiness is the document's own property.
-    unsatisfiable: str = ""
-    #: For a WITNESS step the harness could not build: the keywords stated at this
-    #: step's instance location that it did not rewrite, each with its position.
-    #: ``harness`` carries the same names, so a report that prints only the one
-    #: line still names them; see ``contradicting``.
-    collides: tuple[str, ...] = ()
-    #: Set only where the whole GROUP admitted nothing and one position alone did
-    #: bite: the position the instance was pushed out of.  ``positions`` still
-    #: holds every position stating the fact, so the pair of them says the
-    #: denominator came from one statement of it rather than all -- which is why
-    #: it is recorded instead of left to be inferred from a smaller count.
-    stepped_at: str = ""
-    #: Set where the WITNESS strategy admitted nothing: the check could not DRAW an
-    #: instance, so the obstruction is the GENERATOR and not the model.  ``harness``
-    #: carries the same text and still makes this a ``harness_error``; this field is
-    #: what :attr:`PairReport.no_instrument` reads to tell the two things
-    #: ``harness_error`` means apart -- "hypothesis has no instance for this shape"
-    #: and "the harness broke" -- which are not the same finding and do not have the
-    #: same owner.  Written only for a WITNESS step, exactly as
-    #: :attr:`unsatisfiable` is written only for a COMPLEMENT one.
-    undrawable: str = ""
+class LivenessResult:
+    """One payload the DOCUMENT refuses, offered to the entry point under test."""
 
-    @property
-    def outcome(self) -> str:
-        if self.harness:
-            return "harness_error"
-        if self.accepted_invalid:
-            return "model_accepted_invalid"
-        if self.refused:
-            return "pass"
-        return "no_evidence"  # control fired on every example: nothing was graded
+    #: Which perturbation produced the payload, naming the fact it broke
+    #: (``"drops the required key 'x'"``), or ``""`` when none was found.
+    how: str = ""
+    #: Which keywords the document refused the payload on -- asked of the document
+    #: rather than assumed from the perturbation, because a perturbation can break
+    #: more than it aimed at.
+    violated: tuple[str, ...] = ()
+    payload: str = ""
+    detail: str = ""
+    #: pass | schema_half_not_connected | model_error | no_payload
+    outcome: str = "unrun"
 
 
 # --------------------------------------------------------------------------- #
@@ -1331,39 +541,230 @@ def check_format_strategy(
     return v
 
 
+class _DumpRefused(Exception):
+    """The class constructed a value whose DUMP its own document refuses.
+
+    Raised from inside the accepts check's body and caught BY NAME, so the verdict
+    is ``model_dropped_a_fact`` and not the ``model_error`` any other exception from
+    the body reads as.  The instance that showed it is reported verbatim: there is
+    no shrink phase to simplify it, and at the default ``examples=1`` there is one
+    generated instance for a shrink to have worked on anyway.
+    """
+
+
+def _wire_dump(value: Any) -> Any:
+    """What ``value`` looks like on the wire, by pydantic's own reading.
+
+    ``mode="json"`` so a ``datetime`` and a URL come back as the strings their
+    documents declare; ``by_alias`` because a document's key is the alias wherever
+    the two differ; and ``exclude_unset`` because a key the payload never carried
+    is not a fact the document stated about it -- dumping the model's rendering of
+    absence instead would charge the class for a ``null`` the instance never had.
+
+    A scalar root is an ``Annotated`` ALIAS and not a class (D2), so there is no
+    ``model_dump`` to call and the adapter for the value's own type is the dump:
+    it is the same conversion pydantic would apply to that field inside a class.
+    """
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json", by_alias=True, exclude_unset=True)
+    return TypeAdapter(type(value)).dump_python(value, mode="json")
+
+
+#: A key no document in any bundle declares, used to probe a closed object.
+_ALIEN_KEY = "__adcp_harness_not_a_property__"
+
+#: Values spanning the JSON types, tried in order as a whole-instance replacement.
+#: One of them has a different JSON type from any instance, so a document that
+#: states a root ``type`` at all refuses at least one.
+_ALIEN_VALUES: tuple[Any, ...] = (None, "__adcp_harness__", -1, [], {}, True)
+
+
+def refusing_payload(
+    schema: dict, instance: Any, *, validator_cls: Any = None
+) -> tuple[Any, str] | None:
+    """One payload the DOCUMENT refuses, derived from one it ACCEPTS.
+
+    Section 6 asks for one payload the schema refuses per class, routed through the
+    entry point once.  It is DERIVED from the accepted instance
+    rather than drawn, which is the whole saving: a draw from a mutated document
+    costs ``from_schema`` another canonicalisation of the whole document, and the
+    27,791 of those is what this rebuild removes.
+
+    Three perturbations, tried in this order, and the order is the point:
+
+    1. **drop a key the root ``required`` names.**  A missing required key is the
+       plainest thing a document refuses, so it is the cheapest proof that the
+       schema half ran at all.
+    2. **replace the whole instance with a value of another JSON type.**  Reaches a
+       root that demands no key, and a scalar root, which the first cannot.
+    3. **add a property no document declares.**  Last, so it is reached only by a
+       root that admits every scalar -- an open object.
+
+    **Every candidate is screened by the DOCUMENT**, which is what keeps this from
+    asserting a refusal the document does not make: ``conforms`` has to answer
+    ``False`` before a payload is offered to anything.  Where no candidate is
+    refused the document admits all three shapes, there is no invalid payload to
+    find, and ``None`` says so rather than a perturbation being forced through.
+    """
+    cls = validator_cls or validator_for(schema)
+
+    def refused(candidate: Any) -> bool:
+        return conforms(schema, candidate, validator_cls=cls) is False
+
+    if isinstance(instance, dict):
+        for key in schema.get("required", []) if isinstance(schema.get("required"), list) else []:
+            if key in instance:
+                candidate = {k: v for k, v in instance.items() if k != key}
+                if refused(candidate):
+                    return candidate, f"drops the required key {key!r}"
+    for alien in _ALIEN_VALUES:
+        if type(alien) is not type(instance) and refused(alien):
+            return alien, f"replaces the instance with {alien!r}"
+    if isinstance(instance, dict):
+        candidate = {**instance, _ALIEN_KEY: 1}
+        if refused(candidate):
+            return candidate, f"adds the property {_ALIEN_KEY!r}"
+    return None
+
+
+def check_liveness(
+    schema: dict,
+    accept: Callable[[Any], Any],
+    instance: Any,
+    *,
+    validator_cls: Any = None,
+) -> LivenessResult:
+    """Offer one payload the document refuses to the entry point, ONCE per class.
+
+    **This is a LIVENESS check on the wiring and it is not a measurement of the
+    class.**  Section 6 is explicit about why, and about why it used to be read the
+    other way: pydantic is DELIBERATELY less strict than the schema.  D4 gives the
+    schema the acceptance decision and pydantic the construction, so a model holds
+    the document's types and emits the document's schema rather than reimplementing
+    every JSON Schema keyword -- which is the whole reason ``strict_validate``
+    exists.  So a payload the schema refuses says nothing about the generated code
+    on EITHER route: ``model_validate`` may accept it by design, and ``accept``
+    refuses it because the document answered.
+
+    What one refusal through ``accept`` does prove is that this class's schema half
+    is CONNECTED and that the ref it names resolves to the document it names.  That
+    is worth asserting once per class, and it is what the 27,791-site sweep was
+    already asserting -- 27,791 times, at the cost of the suite's entire wall clock.
+
+    An ACCEPTANCE is therefore ``schema_half_not_connected``: the document refuses
+    this payload and the entry point did not, so either the schema half is not
+    running or ``__adcp_schema__`` does not resolve to this document.
+
+    **A refusal means pydantic's ``ValidationError`` and nothing else**, and that is
+    measured rather than chosen: over 838 graded pairs, 0 refused this payload with
+    any other exception, so admitting a foreign exception as a refusal would cost
+    nothing today and would hide the one thing it could ever hide -- an entry point
+    raising something the caller cannot catch, which is how the specification's own
+    probe came to read a pair nothing graded as green.  So a foreign exception is
+    ``model_error`` with its type in ``detail``, which is a verdict and not a pass.
+    """
+    res = LivenessResult()
+    cls = validator_cls or validator_for(schema)
+    found = refusing_payload(schema, instance, validator_cls=cls)
+    if found is None:
+        res.outcome = "no_payload"
+        return res
+    payload, how = found
+    res.how = how
+    res.payload = _dump(payload)
+    res.violated = tuple(violated_keywords(schema, payload, validator_cls=cls))
+    try:
+        accept(payload)
+    except ValidationError:
+        res.outcome = "pass"
+    except Exception as e:  # not a refusal this caller could catch
+        res.outcome = "model_error"
+        res.detail = f"{type(e).__name__}: {e}"[:300]
+    else:
+        res.outcome = "schema_half_not_connected"
+    return res
+
+
 def check_accepts(
     schema: dict,
     accept: Callable[[Any], Any],
     *,
     examples: int = 25,
     custom_formats: Mapping[str, Any] = (),
+    dump: Callable[[Any], Any] | None = None,
+    seen: list[Any] | None = None,
 ) -> AcceptsResult:
-    """The accepts check: every instance the schema admits, ``accept`` admits.
+    """The accepts check: every instance the schema admits, ``accept`` admits --
+    and what it constructed, DUMPED back out, is an instance the schema admits too.
 
     This is where a model NARROWER than its document fails, and the annotations
     are load-bearing here even behind a schema check: the schema half passes an
     instance it admits, and then the constructor runs on it.  A ``maxLength``
     the annotation invented, or a required field the model does not declare, is
     refused at construction and reported.
+
+    **The dump is the half that reads what the class DID with the value**, and the
+    accepts check alone cannot: a class that takes an instance and loses a key, or
+    renames one, or coerces it to a shape the document refuses, accepts every
+    instance there is.  So the constructed value goes back out through ``dump`` and
+    the DOCUMENT decides again, which costs one validation and no draw.  ``dump``
+    defaults to the pydantic reading of "what this value looks like on the wire" --
+    ``mode="json"``, by alias, and only the fields the payload actually set, because
+    a field the instance never carried is not a fact the document stated about it.
+
+    A pair whose ``dump`` raises is a ``model_error`` like any other construction
+    failure; a dump the document refuses is ``model_dropped_a_fact``, named for what
+    it is rather than for the check that caught it.
+
+    **``Phase.shrink`` is NOT in the phase list, and that is a measured decision
+    rather than an omission.**  Hypothesis caps a shrink at its own
+    ``MAX_SHRINKING_SECONDS``, 300 s, so each FAILING pair could cost five minutes
+    of a worker's wall clock -- measured here: one failing pair held a core at 99%
+    for over ten minutes across two of its checks, against 0.1-0.4 s for a passing
+    one.  What a shrink buys is a smaller counterexample, and at the default
+    ``examples=1`` there is exactly ONE generated instance, so shrinking it cannot
+    reach a different failure -- it can only simplify the one already reported in
+    ``counterexample``.  ``Phase.target`` is out with it because no call site
+    supplies a ``target()``, so it had nothing to steer.
     """
     res = AcceptsResult()
     cf = dict(custom_formats)
-    seen: list[Any] = []
+    #: The instances this check drew, in order, HANDED BACK to the caller when it
+    #: supplies a list.  ``check_pair`` reads the first one and derives the refused
+    #: payload from it, which is what keeps the liveness check from costing a second
+    #: draw -- the one saving in this module that is a reuse rather than a deletion.
+    seen = [] if seen is None else seen
+    validator_cls = validator_for(schema)
 
     def body(instance: Any) -> None:
         res.examples += 1
         seen.append(instance)
-        accept(instance)
+        built = accept(instance)
+        back = dump(built) if dump is not None else _wire_dump(built)
+        if conforms(schema, back, validator_cls=validator_cls) is False:
+            # The CAUSE goes first, because ``detail`` is truncated and a reason at
+            # the end of a megabyte of dumped instance is a reason nothing can read.
+            raise _DumpRefused(
+                "the document refuses the dump on "
+                f"{', '.join(violated_keywords(schema, back, validator_cls=validator_cls))}"
+                f"; dumped {_dump(back)} from {_dump(instance)}"
+            )
+        res.round_tripped += 1
 
     try:
-        run = given(instance=strategy(schema, cf))(body)
-        run = settings(
-            max_examples=examples,
-            phases=[Phase.explicit, Phase.generate, Phase.target, Phase.shrink],
-            **_SETTINGS,
-        )(run)
-        run()
+        with canonicalisation_shared_within_one_call():
+            run = given(instance=strategy(schema, cf))(body)
+            run = settings(
+                max_examples=examples,
+                phases=[Phase.explicit, Phase.generate],
+                **_SETTINGS,
+            )(run)
+            run()
         res.outcome = "pass"
+    except _DumpRefused as e:
+        res.outcome = "model_dropped_a_fact"
+        res.detail = str(e)[:400]
+        res.counterexample = _dump(seen[-1]) if seen else ""
     except ValidationError as e:
         err = e.errors()[0]
         res.outcome = "model_refused_valid"
@@ -1376,175 +777,6 @@ def check_accepts(
         res.outcome = "model_error"
         res.detail = f"{type(e).__name__}: {e}"[:400]
         res.counterexample = _dump(seen[-1]) if seen else ""
-    return res
-
-
-def check_refuses(
-    schema: dict,
-    accept: Callable[[Any], Any],
-    step: Step,
-    *,
-    examples: int = 25,
-    custom_formats: Mapping[str, Any] = (),
-    force_path_to_site: bool = True,
-) -> RefusesResult:
-    """The refuses check: an instance violating exactly ``step.keyword`` is refused.
-
-    **A WITNESS group that admits nothing is retried one position at a time**,
-    because the obligation is to grade the KEYWORD at that location and a group
-    is a claim about how many positions state it, not part of the obligation.
-    Measured on ``core/inventory-list-application.json``, the only pair in the
-    emitted 448 that reaches this: a ``required`` group over ``/oneOf/0`` and
-    ``/oneOf/1`` dropping ``list_type``, which is the root ``discriminator``'s own
-    propertyName.  Forbidding it in BOTH branches leaves the root ``oneOf``
-    nothing to pick and the stepped document admits nothing; forbidding it in ONE
-    leaves the other branch requiring it, so exactly one branch can match -- 6 of
-    25 examples bite and the ORIGINAL refuses every one of them on ``required``.
-
-    That is not a weaker step. The mutation stays exclusive at the position it is
-    applied to; what shrinks is the DENOMINATOR, because the instance is pushed
-    out of one statement of the fact and not all of them, and the control counts
-    the rest. The lane that introduced grouping across a branch hop said so of
-    that case already: the ORIGINAL document decides, so a group that pushes out
-    only some branches reports a fired control and never a false pass.
-
-    A COMPLEMENT step is NOT retried. Its emptiness is the document's own
-    property rather than a witness the harness chose badly, so narrowing it would
-    turn an honest ``no_evidence`` into a different question.
-
-    ``force_path_to_site`` is passed to ``Step.materialize``; see ``force_path``
-    for why the default is on and why it touches only the generated-from document.
-
-    WHAT A GREEN RESULT CANNOT DISTINGUISH: where ``accept`` validates against
-    the document before constructing, the refusal is implied by the control.
-    ``violated_keywords`` asks the original document which keyword bit, and an
-    entry point validating against that same document with the same library must
-    then refuse -- so a pass says the entry point's accepted set is the
-    document's, which is the obligation, and says nothing about whether the
-    annotations underneath would have refused too.  ``compare_schema`` is what
-    grades those.
-    """
-    whole = _refuses_once(
-        schema,
-        accept,
-        step,
-        examples=examples,
-        custom_formats=custom_formats,
-        force_path_to_site=force_path_to_site,
-    )
-    if whole.outcome != "harness_error" or len(step.positions) == 1:
-        return whole
-    for one in step.positions:
-        narrowed = _refuses_once(
-            schema,
-            accept,
-            dataclasses.replace(step, positions=(one,)),
-            examples=examples,
-            custom_formats=custom_formats,
-            force_path_to_site=force_path_to_site,
-        )
-        if narrowed.refused or narrowed.accepted_invalid:
-            # The fact is still stated at every position; only one was pushed out,
-            # so the report keeps the group and names the position that bit.
-            narrowed.positions = step.positions
-            narrowed.stepped_at = one
-            return narrowed
-    return whole  # every position alone admits nothing too; report the group
-
-
-def _refuses_once(
-    schema: dict,
-    accept: Callable[[Any], Any],
-    step: Step,
-    *,
-    examples: int,
-    custom_formats: Mapping[str, Any],
-    force_path_to_site: bool,
-) -> RefusesResult:
-    """One attempt at ``step``, over exactly the positions it holds.
-
-    Private, because which positions an attempt pushes out is ``check_refuses``'s
-    decision and nothing outside it should be able to ask for a subset.
-    """
-    res = RefusesResult(
-        keyword=step.keyword,
-        pointer=step.pointer,
-        describe=step.describe,
-        positions=step.positions,
-    )
-    cf = dict(custom_formats)
-    validator_cls = validator_for(schema)
-
-    def body(instance: Any) -> None:
-        res.examples += 1
-        bit = violated_keywords(schema, instance, validator_cls=validator_cls)
-        if not bit:
-            res.control_fired += 1  # the step did not bite here; grades nothing
-            return
-        for k in bit:
-            res.violated[k] = res.violated.get(k, 0) + 1
-        try:
-            accept(instance)
-        except ValidationError as e:
-            res.refused += 1
-            t = e.errors()[0]["type"]
-            res.error_types[t] = res.error_types.get(t, 0) + 1
-        else:
-            res.accepted_invalid += 1
-            if not res.counterexample:
-                res.counterexample = _dump(instance)
-                res.counterexample_violated = bit
-
-    try:
-        run = given(instance=strategy(step.materialize(schema, force=force_path_to_site), cf))(body)
-        run = settings(max_examples=examples, phases=[Phase.explicit, Phase.generate], **_SETTINGS)(
-            run
-        )
-        run()
-    except Unsatisfiable as e:
-        # TWO DIFFERENT THINGS RAISE THIS and the verdict is not the same for
-        # them, so the step says which it is (``Step.complement``) rather than
-        # the catch site guessing from the exception, which is identical for
-        # both -- an empty strategy and a filter nothing clears, measured.
-        #
-        # A COMPLEMENT step put the document's own statement back negated, so
-        # what it admits IS the set of instances the document refuses here.
-        # Empty means NO INSTANCE EXISTS that violates exactly this keyword at
-        # this site, so nothing was graded -- ``no_evidence``, the
-        # zero-denominator verdict, and NOT a harness error.  The distinction is
-        # not cosmetic: a harness error reddens the whole pair, so this would
-        # fail a class that is perfectly faithful.  The shapes are an
-        # ``if``/``then`` whose condition implies its branch and a combinator
-        # exhaustive over its own type (``anyOf`` of ``string`` and
-        # ``not string``).
-        #
-        # A WITNESS step substituted a bound the HARNESS chose, so empty means
-        # only that this witness does not exist -- the document still refuses
-        # what the keyword forbids, and the check simply could not build an
-        # instance.  That is reported, with the contradicting keyword named,
-        # because §6 forbids a green mark over a site nothing graded and
-        # ``no_evidence`` is in ``PairReport``'s admitted set.
-        detail = f"{type(e).__name__}: {e}"[:160]
-        if step.complement:
-            res.unsatisfiable = detail
-        else:
-            res.collides = contradicting(schema, step)
-            named = ", ".join(res.collides) or "nothing at this instance location"
-            res.harness = f"{detail} | contradicted by: {named}"[:300]
-            # **Only where NOTHING contradicts the step**, and that gate is the whole
-            # difference between the two things an empty witness means.  A keyword at
-            # the same instance location that contradicts it is a reason the harness
-            # could act on -- group the positions, step the other keyword -- so §6's
-            # rule stands and the pair's verdict is a refusal
-            # (``test_an_unsteppable_site_is_reported_rather_than_passed`` is exactly
-            # that site, a ``maxLength`` stepped against a conjunct's ``const``).
-            # With nothing contradicting it, the document forbids the witness nowhere
-            # and the strategy still produced none: that is the GENERATOR, and
-            # ``PairReport.no_instrument`` records it.
-            if not res.collides:
-                res.undrawable = f"nothing at this instance location contradicts the step; {_why(e)}"
-    except Exception as e:
-        res.harness = f"{type(e).__name__}: {e}"[:300]
     return res
 
 
@@ -2692,15 +1924,13 @@ class Pair:
     #: FAIL-SAFE for a nested one -- see :func:`compare_schema`.
     document: dict | None = None
 
-
 @dataclass
 class PairReport:
     name: str
     model_repr: str = ""
     accepts: AcceptsResult | None = None
-    refuses: list[RefusesResult] = field(default_factory=list)
+    liveness: LivenessResult | None = None
     comparison: ComparisonResult | None = None
-    step_sites: int = 0
     missing_formats: list[str] = field(default_factory=list)
     #: The DOCUMENT's own positions where a ``format`` and a ``pattern`` meet,
     #: filled by :func:`check_pair` because a report does not hold the document it
@@ -2710,16 +1940,18 @@ class PairReport:
 
     @property
     def graded_instances(self) -> int:
-        """The refuses check's denominator: instances that reached the model.
+        """How many instances reached the class and came back out through its dump.
 
-        An instance the step failed to push out of the document grades nothing
-        and is counted by the control instead.
+        The one denominator this harness has, and it is the accepts check's: an
+        instance is drawn, constructed, dumped, and the document decides on the
+        dump.  A pair reporting zero here was never exercised by an instance at
+        all, which :attr:`outcome` turns into a refusal rather than a pass.
         """
-        return sum(r.refused + r.accepted_invalid for r in self.refuses)
+        return self.accepts.round_tripped if self.accepts is not None else 0
 
     @property
     def no_instrument(self) -> tuple[str, ...]:
-        """Every check of this pair that could not DRAW, each with its CAUSE.
+        """Every check of this pair that could not DRAW, with its CAUSE.
 
         **Tracking, with no ratchet on it, and that is the decision rather than an
         omission.**  A shrink-only count assumes a fixed or shrinking population and
@@ -2730,32 +1962,21 @@ class PairReport:
         not merely premature.
 
         **The CAUSE matters more than the count**, because this is the population the
-        eventual generator work starts from, so each entry names a shape to act on
-        rather than "cannot draw":
-
-        * the ACCEPTS check reports hypothesis's own message -- which carries the
-          filtered-draw count -- beside the document's own positions where a
-          ``format`` and a ``pattern`` meet (:func:`filtered_formats`), because that
-          is the shape ``hypothesis_jsonschema``'s ``string_schema`` filters and
-          cannot satisfy.  The positions are DERIVED from the document, not guessed:
-          hypothesis raises over the whole schema and names no node.
-        * a REFUSES step reports its keyword and its position, and it lands here
-          only where NOTHING at that instance location contradicts it
-          (:attr:`RefusesResult.undrawable` says why). A step contradicted by a
-          NAMED keyword is a harness defect and still reddens the pair under §6's
-          rule -- that is what separates this from a tolerance.
+        eventual generator work starts from, so the entry names a shape to act on
+        rather than "cannot draw": hypothesis's own message -- which carries the
+        filtered-draw count -- beside the document's own positions where a ``format``
+        and a ``pattern`` meet (:func:`filtered_formats`), because that is the shape
+        ``hypothesis_jsonschema``'s ``string_schema`` filters and cannot satisfy.
+        The positions are DERIVED from the document, not guessed: hypothesis raises
+        over the whole schema and names no node.
         """
-        out: list[str] = []
-        if self.accepts is not None and self.accepts.outcome == "strategy_error":
-            where = "; ".join(self.accepts_filtered_formats) or (
-                "no format-beside-pattern position in this document"
-            )
-            why = self.accepts.detail.split(" Try making")[0].strip()[:200]
-            out.append(f"accepts: {where}; {why}")
-        out += [
-            f"refuses {r.keyword!r} at {r.pointer or '/'}: {r.undrawable}" for r in self.refuses if r.undrawable
-        ]
-        return tuple(out)
+        if self.accepts is None or self.accepts.outcome != "strategy_error":
+            return ()
+        where = "; ".join(self.accepts_filtered_formats) or (
+            "no format-beside-pattern position in this document"
+        )
+        why = self.accepts.detail.split(" Try making")[0].strip()[:200]
+        return (f"accepts: {where}; {why}",)
 
     @property
     def outcome(self) -> str:
@@ -2764,12 +1985,12 @@ class PairReport:
         Structural here rather than a convention a caller is trusted to apply,
         because a report can enforce it and a reader cannot.  What it guards is a
         pair no instance reached: an entry point raising an exception this module
-        does not catch leaves every step at ``harness_error`` with nothing
-        graded.  It is NOT what catches a model wider than its document --
-        measured, a model with ``Any`` on every field passes the refuses check
-        over the same 75 instances a faithful one does, so the denominator is
-        identical and the schema comparison is the only check that separates
-        them.
+        does not catch leaves the accepts check with nothing round-tripped.
+
+        The order is the same one it always had, and for the same reason: a MODEL
+        defect outranks an INSTRUMENT one, so the comparison is read before
+        ``no_instrument``, and the zero-denominator exits come last so a pair whose
+        generator produced nothing names that instead of "nothing was graded".
         """
         if self.missing_formats:
             return "missing_formats"
@@ -2780,24 +2001,16 @@ class PairReport:
         # the model.  Every other accepts outcome is a verdict and still wins.
         if self.accepts.outcome not in ("pass", "strategy_error"):
             return "accepts:" + self.accepts.outcome
-        bad = [
-            r.outcome
-            for r in self.refuses
-            if r.outcome not in ("pass", "no_evidence") and not r.undrawable
-        ]
-        if bad:
-            return "refuses:" + bad[0]
+        if self.liveness is None:
+            return "liveness:unrun"
+        if self.liveness.outcome not in ("pass", "no_payload"):
+            return "liveness:" + self.liveness.outcome
         if self.comparison is None or self.comparison.outcome not in ("pass", "no_evidence"):
             return "comparison:" + (self.comparison.outcome if self.comparison else "unrun")
-        # AFTER the comparison, so a model defect is never reported as an instrument
-        # one, and BEFORE the two zero-denominator verdicts, so a pair whose steps
-        # were all undrawable names that instead of "nothing was graded".
         if self.no_instrument:
             return "no_instrument"
-        if not self.step_sites:
-            return "no_constraint_to_step"  # the document states nothing to step
         if not self.graded_instances:
-            return "no_refuses_check_evidence"
+            return "no_accepts_check_evidence"
         return "pass"
 
 
@@ -2805,75 +2018,49 @@ def check_pair(
     pair: Pair,
     *,
     accepts_examples: int = 1,
-    refuses_examples: int = 1,
-    max_steps: int | None = 4,
     custom_formats: Mapping[str, Any] = (),
 ) -> PairReport:
-    """Two tests per class: one instance the document accepts, one it refuses.
+    """ONE CLASS AGAINST ONE SCHEMA: the whole harness, per section 6.
 
-    **Why one and not twenty-five.**  ``refuses_examples`` is per STEP SITE, so 25
-    over a 40-site document drew 1,000 instances for one class, and 25 over the
-    13,123 sites this suite steps drew 328,075.  Measured on one pair
-    (``core/assets/zip-asset.json#``, 40 sites, quiet box): 40.00 s, of which
-    99.4% was Hypothesis drawing and 0.2% was the validation it fed.  The whole
-    suite ran about six hours at eight workers, which is why three full-suite
-    runs were launched and killed in one day and why no merge on this branch has
-    a green suite behind it.
+    Resolve the document once (the caller's documents arrive resolved), draw a
+    payload the schema accepts, construct the class from it, dump the instance and
+    compare the dump against the schema; send one payload the schema refuses
+    through the entry point, which proves that class's schema half is connected; and
+    compare the class's own ``model_json_schema()`` against the document.  That is
+    1,055 units of work over
+    the graded population rather than 27,791, and the only recursion anywhere in it
+    belongs to reference resolution.
 
-    One generated instance per site is enough to catch the mistakes this stage of
-    the project makes -- a class wider than its schema, a keyword silently
-    ignored -- and the cost of the variety we give up is stated where it is paid:
-    a site whose single instance does not happen to violate the stepped keyword
-    reports as a control rather than a grade, so the graded denominator falls and
-    some sites stop being graded at all.  That is a DELIBERATE CEILING, accepted
-    to reach the full population; the upgrade path is one witness CONSTRUCTED per
-    site to violate exactly the keyword it names, supplied through Hypothesis's
-    own ``example(...)`` into the ``Phase.explicit`` these call sites already ask
-    for and never feed (salesagent-j3k2l.27).
+    **``max_steps`` and ``refuses_examples`` are gone with the check they
+    parametrised.**  A step site mutated one keyword, drew an instance the mutated
+    schema accepts, and handed it to ``accept`` -- which validates against THE
+    DOCUMENT first, so the assertion was that ``jsonschema`` rejects a payload
+    violating the schema it was handed and the generated class took no part in the
+    outcome.  Nothing read the result of those 27,791 draws that a faithful class
+    and a class carrying ``Any`` on every field did not produce identically.
 
-    A caller that needs the old depth passes it: the parameters did not go away.
+    The payload the liveness check offers is DERIVED from the accepted instance
+    (:func:`refusing_payload`) and screened by the document, so it costs no draw.
+    That is the one place a pair's instance is reused, and the reuse is why there are
+    two document validations per pair instead of thousands.
     """
     rep = PairReport(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
     )
     rep.missing_formats = sorted(missing_formats(pair.schema, custom_formats))
     rep.accepts_filtered_formats = filtered_formats(pair.schema)
+    accepted: list[Any] = []
     rep.accepts = check_accepts(
-        pair.schema, pair.accept, examples=accepts_examples, custom_formats=custom_formats
+        pair.schema,
+        pair.accept,
+        examples=accepts_examples,
+        custom_formats=custom_formats,
+        seen=accepted,
     )
-    all_steps = steps(pair.schema)
-    rep.step_sites = len(all_steps)
-    chosen = _spread(all_steps, max_steps)
-    for s in chosen:
-        rep.refuses.append(
-            check_refuses(
-                pair.schema,
-                pair.accept,
-                s,
-                examples=refuses_examples,
-                custom_formats=custom_formats,
-            )
-        )
+    rep.liveness = (
+        check_liveness(pair.schema, pair.accept, accepted[0])
+        if accepted
+        else LivenessResult(outcome="no_payload", detail="the accepts check drew no instance")
+    )
     rep.comparison = compare_schema(pair.schema, pair.model, document=pair.document)
     return rep
-
-
-def _spread(all_steps: list[Step], limit: int | None) -> list[Step]:
-    """Pick up to ``limit`` steps, one per keyword before repeating any."""
-    if limit is None or len(all_steps) <= limit:
-        return all_steps
-    by_kw: dict[str, list[Step]] = {}
-    for s in all_steps:
-        by_kw.setdefault(s.keyword, []).append(s)
-    out: list[Step] = []
-    while len(out) < limit:
-        progressed = False
-        for kw in sorted(by_kw):
-            if by_kw[kw]:
-                out.append(by_kw[kw].pop(0))
-                progressed = True
-                if len(out) >= limit:
-                    break
-        if not progressed:
-            break
-    return out

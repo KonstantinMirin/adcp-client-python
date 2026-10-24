@@ -493,12 +493,12 @@ def test_the_root_reaches_the_comparison_through_check_pair() -> None:
     def accept(x: Any) -> Any:
         return Faithful.model_validate(x)
 
-    with_root = check_pair(Pair("holder", node, Faithful, accept, document=root), max_steps=0)
+    with_root = check_pair(Pair("holder", node, Faithful, accept, document=root))
     assert with_root.comparison is not None
     assert with_root.comparison.added == [], with_root.comparison.added
     assert with_root.comparison.outcome == "pass", with_root.comparison
 
-    without = check_pair(Pair("holder", node, Faithful, accept), max_steps=0)
+    without = check_pair(Pair("holder", node, Faithful, accept))
     assert without.comparison is not None
     assert without.comparison.added, "the default must not resolve a sibling definition"
 

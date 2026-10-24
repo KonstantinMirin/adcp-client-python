@@ -2,7 +2,7 @@
 
 **Why this file exists at all, and what the harness does and does not reach.**
 ``tests/test_emit.py`` grades every emitted pair through the three checks, and for
-an enumeration two of the three are nearly blind: the accepts and refuses checks
+an enumeration two of the three are nearly blind: the accepts and invalid-payload checks
 run through ``strict_validate``, whose SCHEMA half refuses a non-member whatever
 the annotation says, so they grade the document and not the model.  Measured as a
 test below (:func:`test_the_schema_comparison_is_what_grades_this_row`), and the
@@ -584,9 +584,9 @@ def test_the_schema_comparison_is_what_grades_this_row() -> None:
         return adapter.validate_python(payload)
 
     assert check_accepts(doc, wide_accept).outcome == "pass"
-    wide = check_pair(Pair(name="wide", schema=doc, model=str, accept=wide_accept), max_steps=None)
+    wide = check_pair(Pair(name="wide", schema=doc, model=str, accept=wide_accept))
     assert wide.accepts.outcome == "pass"
-    assert [r.outcome for r in wide.refuses] == ["pass"]
+    assert wide.liveness.outcome == "pass", (wide.liveness.how, wide.liveness.detail)
     assert wide.graded_instances > 0, wide.graded_instances
     assert wide.outcome.startswith("comparison:"), wide.outcome
 

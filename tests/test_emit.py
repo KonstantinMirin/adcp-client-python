@@ -70,17 +70,17 @@ from codegen.refusal import Refusal
 from codegen.harness import (
     AcceptsResult,
     check_accepts,
-    check_refuses,
+    check_liveness,
     ComparisonResult,
+    LivenessResult,
     Pair,
     PairReport,
-    RefusesResult,
     _closed,  # noqa: PLC2701 -- the harness's own reading of a closed additionalProperties
     _composed,  # noqa: PLC2701 -- and its own folding of an allOf conjunct's facts
     check_pair,
     compare_schema,
     conforms,
-    steps,
+    refusing_payload,
     violated_keywords,
 )
 from codegen.lower import rules
@@ -414,21 +414,24 @@ def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
 # the three checks
 # --------------------------------------------------------------------------- #
 def test_pagination_request_passes_all_three_checks() -> None:
-    """Step 1's own document, over EVERY constraint site it has.
+    """Step 1's own document, through every check the harness has.
 
-    The refuses check's denominator is asserted, not just the verdict: a green
-    mark without the count beside it says nothing, because a pair no instance
-    reached reports no failure either.
+    The DENOMINATORS are asserted and not just the verdicts: a green mark without
+    the count beside it says nothing, because a pair no instance reached reports no
+    failure either.  There are two of them now and they are different questions --
+    how many instances were drawn, constructed and round-tripped, and which fact the
+    one refused payload broke.
     """
-    # ``refuses_examples=25`` EXPLICITLY, because this test asserts the DENOMINATOR
-    # (3 sites x 25 = 75) and not just the pass mark.  check_pair defaults to 1 per
-    # site since salesagent-j3k2l.27, so a test that cares about depth states it.
-    rep = check_pair(pair_of(pagination()), max_steps=None, refuses_examples=25)
+    rep = check_pair(pair_of(pagination()), accepts_examples=25)
     assert rep.missing_formats == []
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
-    assert rep.step_sites == 3, rep.step_sites  # minimum, maximum, additionalProperties
-    assert [r.outcome for r in rep.refuses] == ["pass"] * 3
-    assert rep.graded_instances == 75, rep.graded_instances
+    assert rep.accepts.examples == 25, rep.accepts.examples
+    assert rep.graded_instances == 25, rep.graded_instances  # every one dumped back out
+    assert rep.liveness.outcome == "pass", (rep.liveness.how, rep.liveness.detail)
+    # The document states ``additionalProperties: false`` and demands no key, so the
+    # payload is a whole-instance replacement and the document bites on ``type``.
+    assert rep.liveness.how == "replaces the instance with None", rep.liveness.how
+    assert rep.liveness.violated == ("type",), rep.liveness.violated
     assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
     assert rep.comparison.compared == 10, rep.comparison.compared
     assert rep.outcome == "pass"
@@ -466,23 +469,19 @@ def test_the_schema_comparison_grades_the_generated_code_and_the_other_two_do_no
     an annotation can be.  Graded through the PRODUCTION entry point -- which
     validates against the document and only then constructs, and is therefore the
     only entry point grading acceptance says anything about -- it is
-    indistinguishable from a faithful model: the accepts check passes, all three
-    steps of the refuses check pass, and the denominator is the SAME 75 instances
-    the faithful model is graded over.  The schema half refuses every stepped
-    instance, so the verdict is the schema's and the annotations are never
-    consulted.
+    indistinguishable from a faithful model on every check but one: the accepts
+    check passes over the SAME 25 instances, each one dumps back out to something
+    the document still admits, and the refused payload is refused by both.
 
-    **That is strictly worse than the specification's §6 states, and the
-    correction matters.**  §6 records this as a pass "with a refuses-check
-    denominator of zero instances", which would make the zero-denominator rule
-    enough to catch it.  It is not: the zero came from the probe's own
-    hand-rolled entry point raising ``jsonschema.ValidationError`` (which
-    ``check_refuses`` does not catch, so every step reported ``harness_error``)
-    while the probe's verdict read ``accepted_invalid == 0`` as green.  Measured
-    both ways in the same process: the FAITHFUL model gets the same zero through
-    that wrapper, so the zero was a property of the wrapper and not of the model.
-    Through the real one, both models get 75.  So the schema comparison is not a
-    second opinion -- it is the only thing that separates them.
+    **The refused payload is refused by the WIDE model too, and section 6 says that
+    is the whole point of keeping exactly one.**  Pydantic is DELIBERATELY less
+    strict than the schema -- D4 gives the schema the acceptance decision -- so a
+    payload the schema refuses measures nothing about the class on either route:
+    ``model_validate`` may accept it by design, and ``strict_validate`` refuses it
+    because the document answered.  What the one refusal proves is LIVENESS, that
+    this class's schema half is connected and its ref resolves to its document, and
+    it proves that for the wide class exactly as for the faithful one.  The 27,791
+    per-keyword sites this replaced were proving the same thing 27,791 times.
 
     Falsifiable here: delete the comparison and a wide model passes this file.
     """
@@ -496,16 +495,16 @@ def test_the_schema_comparison_grades_the_generated_code_and_the_other_two_do_no
 
     wide = check_pair(
         Pair(name="wide", schema=schema, model=Wide, accept=Wide.strict_validate),
-        max_steps=None,
-        refuses_examples=25,
+        accepts_examples=25,
     )
     # Both at the same explicit depth: the point of this test is that the two
     # denominators are IDENTICAL, so neither may depend on check_pair's default.
-    faithful = check_pair(pair_of(pagination()), max_steps=None, refuses_examples=25)
+    faithful = check_pair(pair_of(pagination()), accepts_examples=25)
 
     assert wide.accepts.outcome == faithful.accepts.outcome == "pass"
-    assert [r.outcome for r in wide.refuses] == [r.outcome for r in faithful.refuses] == ["pass"] * 3
-    assert wide.graded_instances == faithful.graded_instances == 75
+    assert wide.liveness.outcome == faithful.liveness.outcome == "pass"
+    assert wide.liveness.how == faithful.liveness.how
+    assert wide.graded_instances == faithful.graded_instances == 25
 
     assert faithful.comparison.outcome == "pass"
     assert wide.comparison.outcome == "model_drops_a_fact"
@@ -522,141 +521,193 @@ def test_the_schema_comparison_grades_the_generated_code_and_the_other_two_do_no
     assert "/properties/max_results/default: the document says 50, the model None" in wide.comparison.differs
 
 
-def test_a_zero_refuses_check_denominator_is_not_reportable_as_a_pass() -> None:
+def test_a_zero_denominator_is_not_reportable_as_a_pass() -> None:
     """The other half of the rule, and it needs its own fixture.
 
-    The rule is right -- a pair no instance reached is graded by nothing in the
-    refuses check -- and the test above shows it is not what catches a wide
-    model.  So it is graded here on the thing that does produce a zero
-    denominator: an entry point that refuses with an exception
-    ``check_refuses`` does not catch, which is what the specification's own probe
-    did.  Every step reports ``harness_error``, the denominator is 0, and the
-    pair's verdict is a refusal rather than a pass.
+    The rule is right -- a pair no instance reached is graded by nothing -- and the
+    test above shows it is not what catches a wide model.  So it is graded here on
+    the thing that does produce a zero denominator: an entry point that refuses
+    with an exception that is not pydantic's, which is what the specification's own
+    probe did.  Nothing round-trips, the denominator is 0, and the pair's verdict
+    names the entry point rather than passing.
+
+    **Both halves of the harness are graded here, because a foreign exception can
+    arrive at either.**  The accepts check offers an instance the document admits,
+    and the liveness check offers one it refuses; an entry point raising something the
+    caller cannot catch at either of them used to read as a pair with nothing wrong.
+    ``check_liveness`` is asserted directly with an entry point of its own, because
+    one that refuses a VALID instance and one that refuses an invalid one with the
+    wrong exception are two different wirings.
     """
     schema = schema_at(SchemaRef(PAGINATION, "#"))
     model = pagination().model
 
     def foreign_error(payload: Any) -> Any:
-        jsonschema.validate(payload, schema)  # raises jsonschema's error, not pydantic's
+        # Refuses with jsonschema's error and not pydantic's, on an instance the
+        # document ADMITS -- a string schema against this document's object root.
+        jsonschema.validate(payload, {"type": "string"})
         return model.model_validate(payload)
 
-    rep = check_pair(
-        Pair(name="foreign", schema=schema, model=model, accept=foreign_error), max_steps=None
-    )
-    assert [r.outcome for r in rep.refuses] == ["harness_error"] * 3
+    rep = check_pair(Pair(name="foreign", schema=schema, model=model, accept=foreign_error))
+    assert rep.accepts.outcome == "model_error", rep.accepts.detail
+    assert "ValidationError" in rep.accepts.detail
     assert rep.graded_instances == 0
-    assert rep.outcome.startswith("refuses:harness_error")
+    assert rep.outcome == "accepts:model_error"
+
+    # ... and the same exception on the liveness check's path.
+    def foreign_refusal(_payload: Any) -> Any:
+        raise jsonschema.ValidationError("not pydantic's error")
+
+    live = check_liveness(schema, foreign_refusal, {"max_results": 1})
+    assert live.how == "replaces the instance with None", live.how
+    assert live.outcome == "model_error", (live.outcome, live.detail)
+    assert live.detail.startswith("ValidationError"), live.detail
+    # And the real entry point IS the refusal, over the same payload.
+    assert check_liveness(schema, model.strict_validate, {"max_results": 1}).outcome == "pass"
 
 
-def test_the_two_zero_denominator_verdicts_are_never_pass() -> None:
+def test_a_zero_denominator_verdict_is_never_pass() -> None:
     """The rule itself, on a report built to have a zero denominator.
 
     The test above reaches the zero through an entry point that errors, so the
-    verdict it gets is ``refuses:harness_error`` and the two remaining branches
-    -- the ones that say "nothing reached the model and nothing went wrong" --
-    are not exercised by it.  No document in this population produces them with
-    every step healthy, so they are graded here on a report rather than on a
-    pipeline, which is the right level: the rule is a property of
-    ``PairReport``.
+    verdict it gets is ``accepts:model_error`` and the branch that says "nothing
+    reached the model and nothing went wrong" is not exercised by it.  No document
+    in this population produces that with every check healthy, so it is graded here
+    on a report rather than on a pipeline, which is the right level: the rule is a
+    property of ``PairReport``.
 
-    Both are asserted to be something other than ``pass``, so deleting either
-    branch fails this test rather than silently turning a pair nothing reached
-    into a green mark.
+    Asserted to be something other than ``pass``, so deleting the branch fails this
+    test rather than silently turning a pair nothing reached into a green mark.
     """
-    ok = AcceptsResult(examples=25, outcome="pass")
     fine = ComparisonResult(compared=7)
+    refused = LivenessResult(how="replaces the instance with None", outcome="pass")
 
-    nothing_to_step = PairReport(name="n", accepts=ok, comparison=fine, refuses=[], step_sites=0)
-    assert nothing_to_step.graded_instances == 0
-    assert nothing_to_step.outcome == "no_constraint_to_step"
-
-    control_fired = PairReport(
-        name="c",
-        accepts=ok,
+    nothing_round_tripped = PairReport(
+        name="n",
+        accepts=AcceptsResult(examples=25, outcome="pass", round_tripped=0),
+        liveness=refused,
         comparison=fine,
-        refuses=[RefusesResult(keyword="minimum", pointer="/", examples=25, control_fired=25)],
-        step_sites=1,
     )
-    assert control_fired.refuses[0].outcome == "no_evidence"
-    assert control_fired.graded_instances == 0
-    assert control_fired.outcome == "no_refuses_check_evidence"
+    assert nothing_round_tripped.graded_instances == 0
+    assert nothing_round_tripped.outcome == "no_accepts_check_evidence"
 
-    # ... and one instance reaching the model is the whole difference.
+    # ... and one instance reaching the model and coming back out is the whole
+    # difference.
     reached = PairReport(
         name="r",
-        accepts=ok,
+        accepts=AcceptsResult(examples=25, outcome="pass", round_tripped=1),
+        liveness=refused,
         comparison=fine,
-        refuses=[RefusesResult(keyword="minimum", pointer="/", examples=25, refused=1)],
-        step_sites=1,
     )
     assert reached.graded_instances == 1
     assert reached.outcome == "pass"
 
 
-def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none() -> None:
-    """Which pairs take the ``no_constraint_to_step`` exit, and why.
+#: **The harness result over the whole population, as pins.**  Every one of these
+#: was MEASURED on this tree after the section-6 rebuild; none is carried from the
+#: per-keyword harness, because three of that one's figures no longer exist to
+#: re-point -- the step-site count, the refuses-check instance total, and the
+#: ``no_constraint_to_step`` partition.
+#:
+#: Each is an EQUALITY.  The old refuses-check instance total was a floor, because
+#: it counted hypothesis draws across 27,791 step sites and seven readings of it on
+#: indistinguishable trees spread over 0.4%.  There is one draw per pair now and the
+#: schema comparison walks a document, so every figure here is a function of
+#: (bundle, emitted tree) and reproduces exactly.
+PAIRS_PIN = 1055
+#: Measured: 1,048 pass, and the seven that do not are named in
+#: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.
+OUTCOME_PINS: dict[str, int] = {
+    "pass": 1048,
+    "accepts:model_dropped_a_fact": 3,
+    "comparison:model_drops_a_fact": 2,
+    "no_instrument": 2,
+}
+#: One instance per pair, minus the 2 whose generator could not draw one and the 3
+#: whose DUMP the document refused -- a failing example is reported, not counted.
+ROUND_TRIPPED_PIN = 1050
+COMPARED_PIN = 36060
+MODEL_FACTS_PIN = 12840
+#: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND ``MISSING_PIN`` IS RED.**  Zero is
+#: the specification's symmetric comparison -- a fact the model adds reddens and a
+#: fact it drops reddens -- and salesagent-j3k2l.28 owns the gap.  Re-pointing them
+#: at the measurement is the thing that row says not to do.  Measured on this tree:
+#: ``missing`` is 2 and ``differs`` is 0, against 10 and 13 when .28 was filed, so
+#: most of that row has landed.  The 2 remaining are one ``description`` each at an
+#: ``additionalProperties`` node (``a2ui/component.json``, ``a2ui/surface.json``).
+MISSING_PIN = 0
+DIFFERS_PIN = 0
+URL_TYPED_PIN = 1266
+NO_PAYLOAD_PIN = 2
+#: Which perturbation ``refusing_payload`` reached, counted by its first word.
+#: A partition and not a total: which one bites is a property of the DOCUMENT's own
+#: root shape, so a shift here says the population's roots moved.
+LIVENESS_PINS: dict[str, int] = {"drops": 592, "replaces": 461, "": 2}
 
-    The population test counts them; this one says they are the documents whose
-    own content leaves ``steps()`` nothing to do, read off ``steps()`` rather
-    than off a list.  A pair that landed there for any other reason -- a model
-    defect, a generator failure -- would not satisfy this.
+
+@functools.cache
+def graded_reports() -> list[tuple[Graded, PairReport]]:
+    """Every graded pair, graded ONCE.
+
+    **One pass over the population, shared by the three tests that read a total.**
+    Each of them used to grade all 1,055 pairs itself, so the suite made three
+    passes and two of them were single indivisible pytest items -- xdist
+    distributes BY TEST, so a test looping the population cannot be split and the
+    other workers cannot help it.  Caching here makes the pole one pass instead of
+    three; the per-pair test below stays parametrised, because that is the form
+    xdist CAN spread.
+
+    ``functools.cache`` and not a fixture, because ``graded()`` and ``pair_of``
+    are module functions and the reports are a pure function of the emitted tree.
     """
-    graded_reports = [(g, check_pair(pair_of(g), max_steps=None)) for g in graded()]
-    # Selected on the OUTCOME and no longer on "not pass", because the population has
-    # a second non-pass exit now: ``no_instrument``, for a pair whose accepts or
-    # refuses check could not DRAW. The assertion under the list is what keeps this a
-    # selection rather than a hole -- it says those two are the only exits there are,
-    # so a third could not hide behind this one.
-    excused = [g for g, r in graded_reports if r.outcome == "no_constraint_to_step"]
-    assert [f"{g.ref.document}{g.ref.pointer}" for g in excused] == [
-        "core/context.json#",
-        # Added by D5's alias module: `core/creative-brief.json` was refused on a
-        # constrained scalar inside a container, and this nested class of it
-        # states no keyword `steps()` can step.
-        "core/creative-brief.json#/properties/messaging",
-        # Added by this step: `core/creative-policy.json` was refused on a
-        # `uniqueItems`, and this nested class of it states no keyword `steps()`
-        # can step.
-        "core/creative-policy.json#/properties/provenance_requirements",
-        "core/ext.json#",
-        "core/media-buy-legacy-terms-ref.json#",
-        # Added by D2's const row (salesagent-j3k2l.16): each of these states a
-        # `const` and nothing else `steps()` can step.
-        "creative/preview-render.json#/oneOf/0/properties/embedding",
-        "creative/preview-render.json#/oneOf/1/properties/embedding",
-        "creative/preview-render.json#/oneOf/2/properties/embedding",
-        "error-details/account-setup-required.json#",
-        "error-details/audience-too-small.json#",
-        "error-details/budget-too-low.json#",
-        "error-details/conflict.json#",
-        "error-details/creative-rejected.json#",
-        "error-details/stale-response.json#/properties/upstream",
-        "error-details/stale-response.json#/properties/original_error",
-        "sponsored-intelligence/si-identity.json#/properties/privacy_policy_acknowledged",
-        "sponsored-intelligence/si-identity.json#/properties/user/properties/shipping_address",
-        "sponsored-intelligence/si-identity.json#/properties/user",
-    ]
-    # The two exits are the only two, so the list above is exhaustive over the
-    # non-pass population rather than one slice of it.
-    assert {r.outcome for _, r in graded_reports} == {
-        "pass",
-        "no_constraint_to_step",
-        "no_instrument",
-    }, {r.outcome for _, r in graded_reports}
-    # Step 6 added two of them and they are the two it ought to add: a mapping root
-    # is ``dict[str, Any]`` over an ``additionalProperties: true`` document, which
-    # states no keyword ``steps()`` can step.  The accepts check and the schema
-    # comparison still grade both, which the loop below requires.
-    assert {"core/context.json#", "core/ext.json#"} <= {
-        f"{g.ref.document}{g.ref.pointer}" for g in excused
-    }
-    for g in excused:
-        assert steps(schema_at(g.ref)) == [], g.ref
-        rep = check_pair(pair_of(g), max_steps=None)
-        assert rep.outcome == "no_constraint_to_step"
-        assert rep.accepts.outcome == "pass"
-        assert rep.comparison.outcome == "pass"
-        assert rep.comparison.compared > 0
+    return [(g, check_pair(pair_of(g))) for g in graded()]
+
+
+def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for() -> None:
+    """``no_payload`` is the complement of the accepts check's draw, and nothing else.
+
+    ``refusing_payload`` tries three perturbations of an accepted instance and screens
+    every one against the DOCUMENT, so ``no_payload`` could in principle mean either of
+    two things: the document admits all three shapes, or there was no accepted instance
+    to perturb.  **Measured over the population, it only ever means the second.**  Every
+    one of the 1,053 pairs the accepts check drew an instance for yielded a payload the
+    document refuses, and the 2 that did not are exactly the 2 whose generator could not
+    draw -- so the derivation reaches every pair it is given anything to work with.
+
+    That is worth a test because the first reading of it was wrong, and it was mine: I
+    expected ``core/context.json`` and ``core/ext.json``, the
+    ``additionalProperties: true`` mapping roots, to refuse nothing.  They state
+    ``type: object``, so the whole-instance replacement with ``None`` is refused and they
+    are graded like everything else.  A document refusing NOTHING would have to state no
+    root type at all, and this bundle has none.
+    """
+    reports = graded_reports()
+    excused = sorted(
+        f"{g.ref.document}{g.ref.pointer}" for g, r in reports if r.liveness.outcome == "no_payload"
+    )
+    assert excused == [
+        "core/reference-renderer.json#",
+        "core/reference-renderer.json#/properties/provenance",
+    ], excused
+    # Read off the reports rather than off the list: each one is a pair whose accepts
+    # check could not DRAW, and the liveness result says exactly that.
+    for g, r in reports:
+        if r.liveness.outcome == "no_payload":
+            assert r.accepts.outcome == "strategy_error", (g.ref, r.accepts.outcome)
+            assert r.liveness.detail == "the accepts check drew no instance", r.liveness.detail
+            assert r.liveness.how == "", r.liveness.how
+        else:
+            assert r.liveness.how, (g.ref, r.liveness.outcome)
+    # The two mapping roots this test's own premise got wrong, asserted the right way
+    # round: they state a root type, so the replacement IS refused and they ARE graded.
+    for name in ("core/context.json#", "core/ext.json#"):
+        g = next(x for x in graded() if f"{x.ref.document}{x.ref.pointer}" == name)
+        schema = schema_at(g.ref)
+        assert schema.get("required", []) == [] and schema["type"] == "object", g.ref
+        assert refusing_payload(schema, {}) == (None, "replaces the instance with None")
+        rep = check_pair(pair_of(g))
+        assert rep.outcome == "pass" and rep.liveness.outcome == "pass"
+        assert rep.graded_instances > 0 and rep.comparison.compared > 0
 
 
 def _grades_a_cause(cause: str, where: str = "") -> None:
@@ -664,66 +715,55 @@ def _grades_a_cause(cause: str, where: str = "") -> None:
 
     Graded by SHAPE and not by a sentence: the first cut asserted the substring
     ``"contradicted by"``, the gate fix reworded that half to ``"contradicts the
-    step"``, and all four undrawable pairs then reddened on the wording while the
-    pairs themselves were exactly as intended.  A test that pins prose grades the
-    prose.
+    step"``, and every undrawable pair then reddened on the wording while the pairs
+    themselves were exactly as intended.  A test that pins prose grades the prose.
 
     Three obligations, each read off the structure:
 
-    * WHICH check could not draw -- the entry names ``accepts`` or ``refuses``;
-    * WHERE -- an accepts cause names the document's own format-beside-pattern
-      positions (there is no single node for hypothesis to blame, so the positions
-      are derived from the document), and a refuses cause names the pointer its step
-      sits at;
+    * WHICH check could not draw -- the entry names ``accepts``, and that is now the
+      only check in this harness that draws at all;
+    * WHERE -- the document's own format-beside-pattern positions, derived from the
+      document because hypothesis raises over the whole schema and names no node;
     * WHY -- hypothesis's own exception name, which carries the filtered-draw count.
     """
-    assert cause.startswith(("accepts: ", "refuses ")), (where, cause)
+    assert cause.startswith("accepts: "), (where, cause)
     assert "Unsatisfiable" in cause or "RecursionError" in cause, (where, cause)
-    if cause.startswith("accepts: "):
-        assert ": format " in cause, (where, cause)
-    else:
-        assert " at /" in cause, (where, cause)
+    assert ": format " in cause, (where, cause)
 
 
 @pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
 def test_every_class_passes_all_three_checks(row: Graded) -> None:
     """N: emitted AND graded green against the schema the class itself names.
 
-    Two verdicts other than ``pass`` are allowed through, and each is asserted
-    against its own evidence rather than taken on trust:
-
-    * ``no_constraint_to_step``, where the document genuinely states no keyword
-      ``steps()`` can step -- asserted against ``steps()`` itself;
-    * ``no_instrument``, where a check could not DRAW an instance, so the
-      obstruction is ``hypothesis`` and not the model -- asserted by requiring each
-      cause to name a shape (a format beside a pattern, or the keyword that
-      contradicts a witness) and not merely to exist.
+    One verdict other than ``pass`` is allowed through, and it is asserted against
+    its own evidence rather than taken on trust: ``no_instrument``, where the
+    accepts check could not DRAW an instance, so the obstruction is ``hypothesis``
+    and not the model -- asserted by requiring each cause to name a shape (a format
+    beside a pattern) and not merely to exist.
 
     **The schema comparison is asserted for EVERY pair, including an undrawable
-    one**, and that is what keeps the second exit from being a hole: the comparison
-    needs no generator, it runs on both of them, and it is the only check that
-    separates a faithful model from a wide one.
+    one**, and that is what keeps the exit from being a hole: the comparison needs
+    no generator, it runs on both of them, and it is the only check that separates a
+    faithful model from a wide one.
+
+    **Parametrised, and that is load-bearing for the suite's wall clock.** xdist
+    distributes by TEST, so this is 1,055 work items that spread across the workers
+    while the three tests reading a population TOTAL are one item each.
     """
     pair = pair_of(row)
-    rep = check_pair(pair, max_steps=None)
+    rep = check_pair(pair)
     assert rep.missing_formats == []
     assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
     if rep.accepts.outcome != "strategy_error":
         assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
-    bad = [
-        (r.keyword, r.pointer, r.outcome, r.counterexample, r.harness)
-        for r in rep.refuses
-        if not r.undrawable
-    ]
-    assert [b for b in bad if b[2] not in ("pass", "no_evidence")] == []
+        assert rep.graded_instances > 0, "nothing was constructed and dumped back out"
+    assert rep.liveness.outcome in ("pass", "no_payload"), (rep.liveness.outcome, rep.liveness.how)
     if rep.outcome == "no_instrument":
         assert rep.no_instrument, rep.name
         for cause in rep.no_instrument:
             _grades_a_cause(cause)
-    elif rep.outcome != "pass":
-        assert rep.outcome == "no_constraint_to_step", rep.outcome
-        assert steps(pair.schema) == []
-        assert rep.comparison.compared > 0
+    else:
+        assert rep.outcome == "pass", rep.outcome
 
 
 def test_the_schema_comparison_sees_a_fact_the_model_adds_as_well() -> None:
@@ -1346,7 +1386,7 @@ def test_a_date_time_with_no_offset_is_refused_by_the_schema_half() -> None:
         verdicts.append(schema_says)
     assert True in verdicts and False in verdicts, verdicts  # not vacuous either way
 
-    rep = check_pair(pair_of(g), max_steps=None)
+    rep = check_pair(pair_of(g))
     assert rep.missing_formats == []
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
     assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.added)
@@ -1355,19 +1395,20 @@ def test_a_date_time_with_no_offset_is_refused_by_the_schema_half() -> None:
 def test_the_harness_and_the_runtime_decide_a_format_the_same_way() -> None:
     """One schema, one verdict: the control and the refusal cannot disagree.
 
-    The refuses check asks the ORIGINAL document which keyword bit
-    (``violated_keywords``) and treats an instance nothing bit as grading nothing
-    (``conforms``, the control).  ``strict_validate``'s schema half asks the same
-    document.  If those two build validators with different vocabularies, a step
-    is excused on the strength of a keyword one of them cannot see -- so the
-    harness passes the same ``FORMAT_CHECKER`` ``_refuse`` does, and this is what
-    says so.
+    The harness asks the ORIGINAL document which keyword bit
+    (``violated_keywords``) and screens a candidate payload against it
+    (``conforms``) before offering the payload to anything.
+    ``strict_validate``'s schema half asks the same document.  If those two build
+    validators with different vocabularies, the harness screens a payload in or
+    out on the strength of a keyword the runtime cannot see -- so the harness
+    passes the same ``FORMAT_CHECKER`` ``_refuse`` does, and this is what says so.
 
-    Measured without it: the suite went fully green, because the one place a
-    format reaches the control is the ``pattern`` step's candidate screen and the
-    corpus now clears that screen either way.  So the agreement had no instrument
-    at all and this is it.  A ``format``-violating instance is the one case
-    ``steps()`` cannot produce on its own, so it is written here rather than
+    Measured without it: the suite went fully green, because no check in the
+    harness produces a ``format``-violating instance on its own -- the accepts
+    check draws instances the document ADMITS and ``hypothesis_jsonschema``
+    honours a format it knows, and ``refusing_payload`` perturbs requiredness and
+    JSON type rather than a string's shape.  So the agreement has no instrument
+    other than this one, and the violating instance is written here rather than
     drawn.
     """
     g = next(r for r in graded() if r.ref == SchemaRef("core/datetime-range.json", "#"))
@@ -1586,92 +1627,150 @@ def _matching(pattern: str, examples: int = 2) -> list[str]:
     return out
 
 
-def test_the_step_result_is_counted_over_the_whole_population() -> None:
-    """One number for the step, with its denominators, because a per-pair green
-    mark does not add up to one and nobody can sum 44 of them by eye."""
-    reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    # **THIS ASSERTION IS RED, IT IS RED ON TRUNK TOO, AND salesagent-j3k2l.18 DID NOT
-    # CLEAR IT.**  Stated here rather than left to be rediscovered:
-    #
-    # * the pair count is **811** on this tree and **808** at trunk ``29c553504``,
-    #   measured twice as ``len(graded())``, which needs no grading run.  The 503 this
-    #   line asserted is 305 out ON TRUNK, before any part of this lane existed, so it
-    #   is not this branch's doing.  The +3 IS this lane's: `core/attribution-window.json`
-    #   contributes its root plus its two ``allOf`` property nodes.
-    # * the ``pass`` and ``no_constraint_to_step`` figures below are **NOT measured**.
-    #   Getting them means grading all 811 pairs at ``max_steps=None``, which ran for
-    #   over 50 minutes here without finishing.  491 and 12 are trunk's own numbers and
-    #   are left exactly as trunk has them: a guessed pass count would be a number
-    #   nobody measured, which is worse than a red line that says so.
-    #
-    # So the pair count is corrected to what was measured and the other two are
-    # deliberately untouched.  Clearing this test needs the full pair grading and is
-    # not this row's work.
-    assert len(reports) == 811, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 758
-    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 25
-    assert sum(1 for r in reports if r.outcome == "no_instrument") == 9
-    assert sum(1 for r in reports if r.outcome == "refuses:harness_error") == 3
-    assert sum(1 for r in reports if r.outcome == "comparison:model_drops_a_fact") == 16
-    # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
-    # reproducible. The refuses-check instance total counts hypothesis DRAWS
-    # rather than schema facts, and seven careful readings of it, on trees whose
-    # source I could not distinguish, gave 31,923 / 32,031 / 32,037 / 32,045 /
-    # 32,045 / 32,059 / 34,935 -- the last on the named-type tree, which moved the
-    # population legitimately. Ruled out against hash seed (four runs, three
-    # seeds, identical over a fixed subset), enumeration order (sorted, reversed,
-    # shuffled, identical), untracked emitted files (tracked == on disk), and
-    # worker count. The five other figures here reproduced EXACTLY between two
-    # independent instruments, which is why they are equalities and this is not.
-    #
-    # A floor still carries the denominator: it says the refuses check reached a
-    # class at least this many times, so a collapse or a large regression still
-    # reddens. An equality would assert a reproducibility the instrument does not
-    # have, and a test that fails when nothing changed teaches the next reader to
-    # edit the number instead of reading it.
-    # Re-measured on the merged tree rather than carried over or minimised: this run
-    # reads 49,766, and the floor sits ~0.7% under it -- about twice the 0.4% spread
-    # the seven readings above show -- so a collapse reddens and a reread does not.
-    # Re-measured at TWO TESTS PER CLASS (salesagent-j3k2l.27): ``refuses_examples``
-    # defaults to 1 per step site instead of 25, so this is 9,047 on this tree against
-    # a floor ~1.6% under it.  The 49,400 this line asserted was measured on a 503-pair
-    # tree at 25 examples per site and was never true here.
-    assert sum(r.graded_instances for r in reports) >= 8900  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 25858  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 9440  # model-only facts examined
+def test_the_harness_result_is_counted_over_the_whole_population() -> None:
+    """One number for the harness, with its denominators, because a per-pair green
+    mark does not add up to one and nobody can sum 1,055 of them by eye.
+
+    **Every figure below was re-measured on this tree after the rebuild and none
+    was carried forward.**  The harness grades one class against one schema now, so
+    three of the old figures no longer exist to re-point: the step-site count, the
+    refuses-check instance total, and the ``no_constraint_to_step`` partition.  What
+    replaces the first two is ``graded_instances``, which counts instances DRAWN,
+    CONSTRUCTED and DUMPED BACK OUT to something the document still admits -- one
+    per pair at the default depth, so it is an equality and not a floor.
+
+    Read off :func:`graded_reports`, which grades the population ONCE for the three
+    tests that need a total.
+    """
+    reports = [r for _, r in graded_reports()]
+    assert len(reports) == PAIRS_PIN, len(reports)
+    by_outcome = collections.Counter(r.outcome for r in reports)
+    assert dict(by_outcome) == OUTCOME_PINS, dict(by_outcome)
+    # One instance per pair at the default depth.  Spelled as the arithmetic rather
+    # than as a bare number, so the pin and the outcome partition above are two
+    # readings of one fact and cannot drift apart: a pair whose generator could not
+    # draw and a pair whose dump the document refused both round-trip nothing.
+    assert ROUND_TRIPPED_PIN == PAIRS_PIN - OUTCOME_PINS["no_instrument"] - OUTCOME_PINS[
+        "accepts:model_dropped_a_fact"
+    ]
+    assert sum(r.graded_instances for r in reports) == ROUND_TRIPPED_PIN
+    assert sum(r.comparison.compared for r in reports) == COMPARED_PIN
+    assert sum(r.comparison.model_facts for r in reports) == MODEL_FACTS_PIN
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
-    # **THE TWO ASSERTIONS BELOW ARE RED, DELIBERATELY, AND salesagent-j3k2l.28 OWNS
-    # THEM.**  Every count above is now measured and green, so this test fails HERE and
-    # the failure names the comparison rather than burying it behind a stale pin.
-    #
-    # Measured over all 811 pairs: ``missing`` is 10 and ``differs`` is 13, in 16 pairs.
-    # NEITHER IS A SAFETY DEFECT, and ``added == 0`` above is the proof -- the model
-    # narrows nothing anywhere in the population, which is the half that could admit an
-    # instance the document rejects.  The 10 missing facts are 5 x ``required: []`` and
-    # 5 x ``enum: [false, true]`` on a boolean, which constrain nothing; the 13 differs
-    # are all ``/properties/context/description``, where the emitter takes the ``$ref``
-    # target's description instead of the referring document's.
-    #
-    # Attribution was MEASURED, not assumed: pre-``.21`` trunk ``2b605b164`` graded 734
-    # pairs with 1 discrepancy, and post-``.21`` grades 808 with 23.  So ``.21`` made 74
-    # more documents emittable and they exercise a defect that was already there.
-    #
-    # THE FIX IS NOT TO RE-POINT THESE TO 10 AND 13.  Zero is the specification's
-    # symmetric comparison: a fact the model adds reddens and a fact it drops reddens.
-    # ``.28`` folds the two no-op shapes by shape (an ``enum: [false]`` on a boolean is
-    # NOT a no-op and must still compare) and resolves the description divergence in the
-    # emitter.
-    assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
-    assert sum(len(r.comparison.differs) for r in reports) == 0
+    assert sum(len(r.comparison.missing) for r in reports) == MISSING_PIN
+    assert sum(len(r.comparison.differs) for r in reports) == DIFFERS_PIN
     # D5's URL-type rows, the one category that excuses a fact the model does not
-    # state, and 74 is the sum of its three: 37 `minLength: 1` (every URL type
-    # renders it), 36 `maxLength: 2083` (`HttpUrl` renders it, and 36 of the 37
-    # positions take that arm), and the ONE `pattern` the bundle states on a
+    # state: 37 `minLength: 1` (every URL type renders it), `maxLength: 2083`
+    # (`HttpUrl` renders it), and the ONE `pattern` the bundle states on a
     # `format: uri` node -- `core/platform-extension-ref.json`, which is also the
     # one position on the `AdCPUrl` arm and so the one with no `maxLength`.
     # A position inside a nested class is graded twice, at its own pair and at its
     # parent's, so it is larger than the annotation sites the tree has.
-    assert sum(len(r.comparison.url_typed) for r in reports) == 76
+    assert sum(len(r.comparison.url_typed) for r in reports) == URL_TYPED_PIN
+    # The one refused payload per pair, partitioned by the fact it broke.  A
+    # partition and not a total, because the three perturbations are tried in order
+    # and which one bites is a property of the DOCUMENT: a shift here means the
+    # population's root shapes moved, which is a fact worth reading.
+    assert dict(collections.Counter(r.liveness.how.split(" ")[0] for r in reports)) == LIVENESS_PINS
+
+
+def test_the_non_pass_pairs_are_named_and_attributed() -> None:
+    """Every pair that is not ``pass``, by name, with what it is.
+
+    **A census and not a tolerance.**  Nothing here excuses anything:
+    ``test_every_class_passes_all_three_checks`` still reddens on all five of the
+    first two groups, and this test exists so the failures are NAMED rather than
+    counted -- a count of five tells the next reader nothing about which five or
+    why, and the section-6 rebuild is the first thing to measure them.
+
+    Three groups, and the attribution of each was measured rather than assumed:
+
+    * ``accepts:model_dropped_a_fact`` -- NEW with the dump half of the accepts
+      check, which is the one thing in this harness that reads what a class DID with
+      a value.  Two of them are pydantic URL normalisation against a document's own
+      ``pattern``: ``core/attestation-issuer.json``'s origin states
+      ``^https://[^/?#@]+$``, the class carries a URL type (which cannot carry the
+      pattern -- D5, ``_schema_half_enforces``), and the type re-emits
+      ``https://a.com/`` with a path separator the pattern forbids.  The third is
+      D8's retention rule meeting a ``minProperties``: the class is ``extra="ignore"``
+      so an undeclared key is accepted and dropped, and an instance whose ONLY key is
+      an undeclared one dumps to ``{}``, which the document refuses.  Neither is an
+      artifact of the dump's own keywords -- measured, the same node dumped WITHOUT
+      ``exclude_unset`` is refused too, on ``type`` instead of ``minProperties``.
+    * ``comparison:model_drops_a_fact`` -- PRE-EXISTING at the base, and the proof is
+      that ``compare_schema`` is byte-identical to ``7ffad8134``'s (md5 of the
+      function, measured).  Both are one ``description`` at an
+      ``additionalProperties`` node and both belong to salesagent-j3k2l.28.
+    * ``no_instrument`` -- the ``format``-beside-``pattern`` shape
+      ``hypothesis_jsonschema``'s ``string_schema`` filters and cannot satisfy, which
+      is an admitted exit rather than a failure (salesagent-j3k2l.10), and the
+      schema comparison still grades both pairs.
+    """
+    reports = graded_reports()
+    by_outcome: dict[str, list[str]] = {}
+    for g, r in reports:
+        if r.outcome != "pass":
+            by_outcome.setdefault(r.outcome, []).append(f"{g.ref.document}{g.ref.pointer}")
+    # SORTED, because the order ``graded()`` returns is module-walk order and a nested
+    # pair precedes its root in it.  The membership is the obligation; the order is an
+    # artifact of the walk, and asserting it would grade the walk.
+    by_outcome = {k: sorted(v) for k, v in by_outcome.items()}
+    assert by_outcome == {
+        "accepts:model_dropped_a_fact": [
+            "core/attestation-capabilities.json#",
+            "core/attestation-issuer.json#/oneOf/2",
+            "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
+            "/properties/render_guidance",
+        ],
+        "comparison:model_drops_a_fact": ["a2ui/component.json#", "a2ui/surface.json#"],
+        "no_instrument": [
+            "core/reference-renderer.json#",
+            "core/reference-renderer.json#/properties/provenance",
+        ],
+    }, by_outcome
+    # Each cause is read off the report rather than taken from the list above, so a
+    # pair that landed in one of these groups for a DIFFERENT reason reddens here.
+    for g, r in reports:
+        if r.outcome == "accepts:model_dropped_a_fact":
+            assert r.accepts.detail.startswith("the document refuses the dump on "), (
+                g.ref,
+                r.accepts.detail,
+            )
+        elif r.outcome == "comparison:model_drops_a_fact":
+            assert [m for m in r.comparison.missing if "/description:" in m], r.comparison.missing
+            assert r.comparison.added == [] and r.comparison.differs == []
+        elif r.outcome == "no_instrument":
+            for cause in r.no_instrument:
+                _grades_a_cause(cause, r.name)
+            # The comparison needs no generator and still grades an undrawable pair,
+            # which is what keeps this exit from being a hole.
+            assert r.comparison.outcome == "pass" and r.comparison.compared > 0
+
+
+def test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for() -> None:
+    """The liveness check's own denominator, and what it is NOT.
+
+    Section 6 keeps one refused payload per class and routes it through the entry
+    point, so the question this answers is "how many classes' schema halves were
+    shown to be connected, and was any of them silent".  ``no_payload`` is the complement and is enumerated
+    by name in ``test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for``.
+
+    ``schema_half_not_connected`` is pinned at ZERO rather than tracked, because an
+    acceptance there is not a tolerance: the document refuses this payload and the
+    entry point did not, so either the schema half is not running for that class or
+    its ``__adcp_schema__`` does not resolve to the document it names.
+    """
+    reports = [r for _, r in graded_reports()]
+    assert sum(1 for r in reports if r.liveness.outcome == "schema_half_not_connected") == 0, [
+        (r.name, r.liveness.how, r.liveness.violated) for r in reports
+        if r.liveness.outcome == "schema_half_not_connected"
+    ]
+    assert sum(1 for r in reports if r.liveness.outcome == "pass") == PAIRS_PIN - NO_PAYLOAD_PIN
+    assert sum(1 for r in reports if r.liveness.outcome == "no_payload") == NO_PAYLOAD_PIN
+    # The document decided, at every pair: a perturbation nothing bit is never
+    # offered to the class, so every payload that reached one violates a keyword the
+    # document names.
+    assert all(r.liveness.violated for r in reports if r.liveness.outcome == "pass")
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
@@ -1752,9 +1851,10 @@ def test_strict_validate_decides_acceptance_against_the_document() -> None:
 
     What nothing else in this file reaches: that the schema half of
     ``strict_validate`` runs at all, and that the keyword it refuses on is the
-    DOCUMENT'S name for it.  ``check_pair`` cannot grade either -- ``steps()``
-    has no nullability step, and a model graded through ``strict_validate``
-    refuses whatever the control already says the document refuses.  Measured:
+    DOCUMENT'S name for it.  ``check_pair`` cannot grade either -- it offers one
+    perturbation of an accepted instance, and a model graded through
+    ``strict_validate`` refuses whatever the document refuses whichever half
+    answered.  Measured:
     with the schema check deleted from ``strict_validate``, this is the only test
     in the suite that goes red.
     """
@@ -4015,199 +4115,24 @@ def test_a_reference_cycle_refuses_rather_than_recurring(tmp_path) -> None:
 # --------------------------------------------------------------------------- #
 # step 7: D6's six keyword families
 # --------------------------------------------------------------------------- #
-#: One reference-free bundle document per step-7 keyword, chosen by SEARCHING the
-#: bundle for the first document that carries the keyword and no ``$ref`` -- so
-#: each is cheap to read and self-contained, and the selection is recorded here
-#: rather than re-run, because a pinned case is what a later bundle change can be
-#: seen to move.  ``then`` and ``else`` are listed separately because they are two
-#: steps with two different rewrites, not one keyword with two spellings.
-STEP7_CASES = {
-    "uniqueItems": "core/acceptance-policy-profile-ids.json",
-    "not": "core/account-timezone-capability.json",
-    "then": "core/account-timezone-capability.json",
-    "else": "core/reporting-consumer-status.json",
-    "anyOf": "core/account-authorization.json",
-    "oneOf": "a2ui/bound-value.json",
-    "dependencies": "core/canvas-constraint.json",
-    "minProperties": "a2ui/component.json",
-    "maxProperties": "a2ui/component.json",
-}
-
-#: Step 7's EXIT condition, as a number per family: how many sites ``steps()``
-#: finds over the whole 1,054-document portable population.  **Every one of these
-#: was 0** before this step -- the nine keywords the harness stepped were wholly
-#: disjoint from D6's six families, so every rule the step lowers would have been
-#: graded by nothing in either direction.
-STEP7_SITES = {
-    "uniqueItems": (462, 198),
-    "not": (439, 192),
-    "then": (582, 186),
-    "else": (58, 44),
-    "anyOf": (444, 200),
-    "oneOf": (212, 165),
-    "dependencies": (85, 27),
-    "minProperties": (47, 40),
-    "maxProperties": (19, 10),
-}
-
-
-@functools.lru_cache(maxsize=1)
-def _step_census() -> dict[str, tuple[int, int]]:
-    """``keyword -> (sites, documents)`` over every portable document.
-
-    Read off ``steps()`` itself, over the bundle, so a family that stopped being
-    stepped shows as a 0 rather than as a test nobody noticed had gone quiet.
-    """
-    sites: dict[str, int] = {}
-    documents: dict[str, set[str]] = {}
-    for document in bundle.portable(BUNDLE):
-        for s in steps(bundle.read(BUNDLE, document)):
-            sites[s.keyword] = sites.get(s.keyword, 0) + 1
-            documents.setdefault(s.keyword, set()).add(document)
-    return {k: (v, len(documents[k])) for k, v in sites.items()}
-
-
-def test_the_harness_steps_every_one_of_d6s_six_families() -> None:
-    """The step's exit condition, with both denominators for each family.
-
-    D6 names six families and the harness stepped NONE of them: its nine keywords
-    were ``min``/``maxItems``, ``min``/``maxLength``, ``minimum``, ``maximum``,
-    ``required``, ``additionalProperties``, ``pattern`` and ``enum``, and step 7's
-    set is disjoint from that one.  So a rule could be emitted, carried, and wrong
-    in either direction with nothing to report it -- the bundle's 485
-    ``uniqueItems`` occurrences were 0 of 5,545 site rows.
-
-    Pinned per family rather than summed: a total can stay put while one family
-    falls to zero, and the family is the unit D6 is stated in.
-    """
-    census = _step_census()
-    for keyword, (expected_sites, expected_documents) in STEP7_SITES.items():
-        assert census.get(keyword) == (expected_sites, expected_documents), (
-            keyword,
-            census.get(keyword),
-        )
-    families = {
-        "oneOf/anyOf over required": ("oneOf", "anyOf"),
-        "if/then/else": ("then", "else"),
-        "dependencies": ("dependencies",),
-        "min/maxProperties": ("minProperties", "maxProperties"),
-        "uniqueItems": ("uniqueItems",),
-        "not": ("not",),
-    }
-    assert len(families) == 6
-    for family, keywords in families.items():
-        assert sum(census[k][0] for k in keywords) > 0, family
-    assert sum(census[k][0] for ks in families.values() for k in ks) == 2348
-
-
-def test_a_step_of_a_whole_instance_keyword_bites_the_document_that_states_it() -> None:
-    """The step as an INSTRUMENT: does it produce an instance the document refuses?
-
-    Graded without any model, because that is the question: ``check_refuses``
-    calls ``violated_keywords`` on the ORIGINAL document and counts an instance it
-    does not refuse as the control firing.  ``accept`` here refuses nothing, so
-    everything the step pushed out is read off ``examples - control_fired``.
-
-    One family is deliberately NOT exclusive and is asserted as such.  Forcing a
-    duplicate is the one thing draft-07 cannot say, so where the item schema's
-    value set is not countable the ``uniqueItems`` step draws two elements from one
-    schema and most draws differ: 6 of 20 bite on the pinned case and the control
-    counts the other 14.  One refusal is enough to grade a site; reporting that as
-    exclusive would be the claim that is false.
-    """
-    bit: dict[str, tuple[int, int]] = {}
-    for keyword, document in STEP7_CASES.items():
-        schema = bundle.read(BUNDLE, document)
-        chosen = [s for s in steps(schema) if s.keyword == keyword]
-        assert chosen, (keyword, document)
-        examples = fired = 0
-        for s in chosen:
-            r = check_refuses(schema, lambda _instance: None, s, examples=20)
-            assert not r.harness, (keyword, s.pointer, r.harness)
-            examples += r.examples
-            fired += r.control_fired
-        bit[keyword] = (examples - fired, examples)
-    assert bit == {
-        "uniqueItems": (6, 20),  # two draws from one schema: not exclusive, by design
-        "not": (60, 60),
-        "then": (80, 80),
-        "else": (20, 20),
-        "anyOf": (20, 20),
-        "oneOf": (20, 20),
-        "dependencies": (20, 20),
-        "minProperties": (20, 20),
-        "maxProperties": (20, 20),
-    }, bit
-
-
-def test_an_unsatisfiable_step_is_no_evidence_and_not_a_harness_error() -> None:
-    """A step with no violating instance graded nothing; it did not break.
-
-    The two families that NEGATE part of a document can produce an unsatisfiable
-    stepped document -- an ``if`` whose condition implies its branch, a
-    combinator exhaustive over its type.  ``hypothesis`` raises ``Unsatisfiable``
-    and ``check_refuses`` records it as the zero-denominator verdict, because
-    reporting it as a harness error reddens the whole PAIR and a class with no
-    violating instance at one site is not thereby unfaithful.
-
-    Screening those sites out of ``steps()`` was tried and removed: asking
-    ``canonicalish`` about the rewritten node cost 63.7 s against 0.0 s over 120
-    documents and rejected 0 of 2,205 sites, so it was 500x the cost for no
-    decision.  The classification is where the knowledge is cheap.
-    """
-    exhaustive = {
-        "title": "Exhaustive",
-        "type": "object",
-        "properties": {"a": {"type": "string"}},
-        "anyOf": [{"required": ["a"]}, {"not": {"required": ["a"]}}],
-    }
-    (s,) = [x for x in steps(exhaustive) if x.keyword == "anyOf"]
-    r = check_refuses(exhaustive, lambda _instance: None, s, examples=10)
-    assert r.unsatisfiable, r
-    assert not r.harness, r.harness
-    assert r.outcome == "no_evidence"
-    assert r.refused + r.accepted_invalid == 0
-
-
-def test_force_path_holds_a_sibling_if_through_then_and_else() -> None:
-    """A site under a ``then`` is reachable only if its sibling ``if`` matches.
-
-    Nothing made it match: ``hypothesis_jsonschema`` draws the minimal object and
-    the condition is a ``const`` on an optional key, so the four ``maximum`` sites
-    under ``core/canvas-constraint.json``'s ``then`` were graded by the control
-    rather than by the model.  ``force_path`` now adds the condition as a conjunct
-    of the node holding it, negated for an ``else``.
-
-    Both rates, from the same inputs in the same process, which is what
-    ``force=False`` exists for.
-
-    **The forced side is pinned exactly and the unforced side is bounded**, and
-    that asymmetry is measured rather than cautious: the unforced rate is 26 of 80
-    in a fresh process and 32 of 80 under the suite, because
-    ``hypothesis``'s derandomized stream is not identical across the two contexts.
-    The forced rate is 0 of 80 in both, which is the hop's actual claim -- it
-    makes the site reachable on EVERY example, so there is nothing left for the
-    context to move.  Pinning 26 would be pinning the context.
-    """
-    document = "core/canvas-constraint.json"
-    raw = bundle.read(BUNDLE, document)
-    schema = bundle.resolved(BUNDLE, document) if bundle.references(raw) else raw
-    under = [s for s in steps(schema) if "/then/" in s.pointer]
-    assert len(under) == 4, [s.pointer for s in under]
-    assert {s.keyword for s in under} == {"maximum"}
-    rates = {}
-    for forced in (False, True):
-        examples = fired = 0
-        for s in under:
-            r = check_refuses(
-                schema, lambda _instance: None, s, examples=20, force_path_to_site=forced
-            )
-            examples += r.examples
-            fired += r.control_fired
-        rates[forced] = (fired, examples)
-    assert rates[True] == (0, 80), rates
-    assert rates[False][1] == 80, rates
-    assert 20 <= rates[False][0] <= 60, rates  # a substantial minority, both contexts
+# step 7: D6's six keyword families
+# --------------------------------------------------------------------------- #
+# **The four tests that stood here are deleted with the machinery they graded.**
+# They asserted that ``steps()`` found a site for each of D6's six families, that a
+# stepped whole-instance keyword bit the document that states it, that an
+# unsatisfiable step reported no_evidence rather than a harness error, and that
+# ``force_path`` held a sibling ``if`` through ``then``/``else``.  Every one of them
+# graded the step machinery, and section 6 removed it: "a step site asserts that
+# ``jsonschema`` rejects a payload violating the schema it was handed. The generated
+# class takes no part in the outcome."  So those four tests graded a property of a
+# third-party validator and of a mutation helper with no consumer.
+#
+# **What grades D6's rules instead is immediately below, and it always did.**
+# ``RULE_VIOLATIONS`` carries a hand-written payload per rule and routes it through
+# ``model_validate`` -- the class's OWN validation, which is where section 6 says an
+# an invalid payload reaches pydantic's own validators -- and asserts the keyword
+# both halves name.  That
+# is the check the deleted four were standing next to rather than doing.
 
 
 #: Every emitted class that carries a rule, with a payload that violates exactly
@@ -4272,7 +4197,7 @@ def test_only_the_model_validate_path_observes_a_rule() -> None:
     which is what lets the two be separated at all.
     """
     carriers = sorted({document for document, _payload, _keyword in RULE_VIOLATIONS})
-    before = [check_pair(pair_of(g), max_steps=None) for g in graded()
+    before = [check_pair(pair_of(g)) for g in graded()
               if g.ref.document in carriers and g.ref.pointer == "#"]
     assert len(before) == len(carriers) == 3
     assert all(r.outcome == "pass" for r in before), [(r.name, r.outcome) for r in before]
@@ -4289,7 +4214,7 @@ def test_only_the_model_validate_path_observes_a_rule() -> None:
             assert caught.value.errors()[0]["type"] == keyword, document
             accepted += 1
         assert accepted == 3
-        after = [check_pair(pair_of(g), max_steps=None) for g in graded()
+        after = [check_pair(pair_of(g)) for g in graded()
                  if g.ref.document in carriers and g.ref.pointer == "#"]
         assert [r.outcome for r in after] == [r.outcome for r in before]
     finally:
@@ -4501,15 +4426,26 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
     Three directions, because the second alone would pass for a class that renders
     the fact and enforces nothing:
 
-    1. the step census still finds the keyword (the instrument did not go quiet);
+    1. the bundle still STATES the keyword, counted off ``bundle.nodes`` (the
+       population did not go quiet);
     2. the tree carries it, at a NON-EMPTY set of sites, and every one of them is a
        ``properties/<name>`` array whose holding class states ``UniqueItems`` for
        that field -- so a site the lowering missed reddens here;
     3. one of those classes REFUSES a duplicate through ``model_validate``, which is
        the only path a rule is observable on (D4 leaves acceptance to the schema).
     """
-    census = _step_census()
-    assert census["uniqueItems"] == (462, 198)
+    # Direction 1, read off the bundle's own walk rather than off ``steps()``, which
+    # section 6 deleted: the step census read 462 sites over these same 198 documents
+    # because a step merged the positions stating ONE fact, and the occurrence count
+    # is the figure that does not depend on a mutation helper existing.
+    stating = [
+        (document, pointer)
+        for document in bundle.portable(BUNDLE)
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document))
+        if isinstance(node, dict) and "uniqueItems" in node
+    ]
+    assert len(stating) == 485, len(stating)
+    assert len({document for document, _ in stating}) == 198
 
     carried = [
         f"{document}{pointer or '/'}"

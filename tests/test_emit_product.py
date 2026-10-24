@@ -42,7 +42,7 @@ import pytest
 from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit
 from codegen import constraints as constraints_module
-from codegen.harness import Pair, check_pair, compare_schema, steps
+from codegen.harness import Pair, check_pair, compare_schema
 from codegen.refusal import Refusal
 
 REPO = Path(__file__).resolve().parents[1]
@@ -775,12 +775,12 @@ def test_the_inherited_bound_is_live_on_the_model_validate_path(tmp_path, monkey
     """**The control, and it asserts on ``model_validate`` for a measured reason.**
 
     The brief's probe was "make a subclass redeclare an inherited field and
-    confirm the refuses check catches the widening".  It does not.  Both of the
-    first two checks call ``strict_validate``, whose schema half decides against
-    the document before anything is constructed, so the document refuses whatever
-    the annotations say: measured, a class carrying ``Any = None`` over this
-    typed base field grades identically to this one, and so does a class with no
-    bases at all.
+    confirm the per-keyword refuses check catches the widening".  It does not,
+    and section 6 deleted that check for exactly this reason: it called
+    ``strict_validate``, whose schema half decides against the document before
+    anything is constructed, so the document refused whatever the annotations
+    said -- measured, a class carrying ``Any = None`` over this typed base field
+    graded identically to this one, and so did a class with no bases at all.
 
     The widening is on the ``model_validate`` path, which D4 keeps public and
     which builds WITHOUT consulting the schema.  So that is where the inherited
@@ -842,14 +842,14 @@ def test_a_narrowing_restatement_is_declared_by_the_subclass(tmp_path, monkeypat
             cls.model_validate({"kind": bad, "label": "xy"})
 
 
-def test_the_accepts_and_refuses_checks_are_green_with_a_denominator(
+def test_the_accepts_and_liveness_checks_are_green_with_a_denominator(
     tmp_path, monkeypatch
 ) -> None:
-    """Checks 1 and 2 over the probe, with the refuses check's count asserted.
+    """The instance checks over the probe, with the denominator asserted.
 
     A green mark without the count beside it says nothing: a pair no instance
-    reached leaves every step unrun, and ``PairReport.outcome`` refuses a zero
-    denominator for exactly that reason.
+    reached leaves the accepts check with nothing round-tripped, and
+    ``PairReport.outcome`` refuses a zero denominator for exactly that reason.
     """
     cls, _, schema = _emit_probe(
         tmp_path,
@@ -857,21 +857,22 @@ def test_the_accepts_and_refuses_checks_are_green_with_a_denominator(
         name="s4checks",
         own={"adcp_major_version": SHADOW, "label": {"type": "string", "minLength": 2}},
     )
-    # Explicit depth: this test asserts the denominator (4 refuses x 25 = 100).
-    rep = check_pair(Pair("probe", schema, cls, cls.strict_validate), refuses_examples=25)
+    # Explicit depth: this test asserts the denominator, which is the number of
+    # instances drawn, constructed AND dumped back out to something the document
+    # still admits -- not the number drawn.
+    rep = check_pair(Pair("probe", schema, cls, cls.strict_validate), accepts_examples=25)
     assert rep.accepts is not None and rep.accepts.outcome == "pass", rep.accepts
-    assert [r.outcome for r in rep.refuses] == ["pass"] * 4, [
-        (r.keyword, r.outcome, r.harness) for r in rep.refuses
-    ]
-    assert rep.graded_instances == 100, rep.graded_instances
-    assert rep.step_sites == 7
-    # The document states a constraint in BOTH halves -- its own properties and
-    # its conjuncts -- and the step list reaches both, which is what says the
-    # composed document was graded and not just the root.  ``_spread`` takes one
-    # step per keyword, and ``minLength`` is stated in both halves, so the four
-    # it chose all happen to sit in a conjunct.
-    assert {s.pointer.split("/")[1] for s in steps(schema)} == {"", "allOf", "properties"}
-    assert {r.pointer.split("/")[1] for r in rep.refuses} == {"allOf"}
+    assert rep.graded_instances == 25, rep.graded_instances
+    # The liveness check offers one payload the document refuses, through the entry
+    # point: the probe's document demands ``adcp_major_version`` in a conjunct, so
+    # dropping it is what the document refuses and the schema half has to answer.
+    assert rep.liveness.outcome == "pass", (rep.liveness.how, rep.liveness.detail)
+    assert rep.liveness.how.startswith("drops the required key"), rep.liveness.how
+    assert "required" in rep.liveness.violated, rep.liveness.violated
+    # The schema comparison is NOT this test's subject and is deliberately not
+    # asserted: the probe's document is a hand-built shadow of a composition, and
+    # what the comparison says about it is the subject of the restatement tests
+    # above.  Asserting ``rep.outcome`` here would make this test fail on theirs.
 
 
 # --------------------------------------------------------------------------- #
