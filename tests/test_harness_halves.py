@@ -164,6 +164,17 @@ def test_a_silent_schema_half_is_reported_and_that_is_the_whole_content_of_the_c
     nothing required accepts a payload the document refuses.  Through the real entry
     point the same class passes (above), which is what makes this a check on the WIRING:
     the difference between the two is whether ``_refuse`` ran.
+
+    **This is NOT an assertion that a correct class's ``model_validate`` must refuse a
+    schema-invalid payload, and such an assertion would be wrong.**  Pydantic is
+    DELIBERATELY less strict than the schema (D4): a model holds the document's types
+    and emits the document's schema rather than reimplementing every JSON Schema
+    keyword, which is why ``strict_validate`` exists at all.  What is asserted here is
+    the harness's own reporting -- that an entry point with NO schema half is named
+    rather than passed -- and the fixture is a hand-written widened class supplied for
+    that purpose.  No production pair reaches this branch: ``check_pair`` passes
+    ``pair.accept``, and over all 1,055 graded pairs the measured count of
+    ``schema_half_not_connected`` is 0.
     """
     result = harness.check_liveness(DOC, NoRequired.model_validate, {"a": "x", "b": 1})
     assert result.outcome == "schema_half_not_connected"
