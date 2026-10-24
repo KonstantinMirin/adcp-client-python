@@ -794,10 +794,25 @@ which is why the paragraph above finds a class carrying `Any` on every field ind
 from a faithful one. 13,140 of those sites at 0.228 s each is the suite's entire wall clock,
 spent on a property of a third-party validator.
 
-**An invalid payload is informative only through the class's own validation.** Route it to
-`model_validate`, where pydantic's generated validators decide, and an acceptance is a real
-defect in the emitted code. Route it to `strict_validate` and the document answers first, so
-nothing about the class is observed.
+**PYDANTIC IS DELIBERATELY LESS STRICT THAN THE SCHEMA, so neither path makes a refusal
+informative.** D4 is unchanged and correct: the schema decides acceptance and pydantic builds
+the value. A model's job is to hold the document's types and to emit the document's schema, not
+to reimplement every JSON Schema keyword — which is exactly why `strict_validate` exists. So a
+payload the schema refuses tells you nothing about the generated code on either route.
+`model_validate` MAY accept it, by design, and that is not a defect. `strict_validate` refuses
+it because the document answered, and that is not a measurement of the class.
+
+**So the refuses direction is a LIVENESS check on the wiring, needed once per class.** One
+refused payload through `strict_validate` proves that class's schema half is connected and that
+`__adcp_schema__` resolves to the document it names. That is worth asserting once, and it is
+what the per-keyword sweep was already asserting 13,140 times.
+
+**The conformance claim is carried entirely by the comparison.** `model_json_schema()` equal to
+the document is the statement that every constraint reaching the model is the document's own and
+no other — which is the only sense in which a generated class can be faithful, given that the
+model is not the validator. A keyword the model does not carry shows up as `missing`, and a
+constraint the model invents shows up as `added`. Nothing a per-keyword refusal sweep can
+discover is absent from those two lists.
 
 **Reference resolution happens once per bundle, and its result is reused.** Documents reference
 each other, so resolution is the one place recursion is unavoidable — and it is also the only
