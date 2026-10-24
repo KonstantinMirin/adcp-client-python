@@ -1334,19 +1334,20 @@ def test_a_date_time_with_no_offset_is_refused_by_the_schema_half() -> None:
 def test_the_harness_and_the_runtime_decide_a_format_the_same_way() -> None:
     """One schema, one verdict: the control and the refusal cannot disagree.
 
-    The refuses check asks the ORIGINAL document which keyword bit
-    (``violated_keywords``) and treats an instance nothing bit as grading nothing
-    (``conforms``, the control).  ``strict_validate``'s schema half asks the same
-    document.  If those two build validators with different vocabularies, a step
-    is excused on the strength of a keyword one of them cannot see -- so the
-    harness passes the same ``FORMAT_CHECKER`` ``_refuse`` does, and this is what
-    says so.
+    The harness asks the ORIGINAL document which keyword bit
+    (``violated_keywords``) and screens a candidate payload against it
+    (``conforms``) before offering the payload to anything.
+    ``strict_validate``'s schema half asks the same document.  If those two build
+    validators with different vocabularies, the harness screens a payload in or
+    out on the strength of a keyword the runtime cannot see -- so the harness
+    passes the same ``FORMAT_CHECKER`` ``_refuse`` does, and this is what says so.
 
-    Measured without it: the suite went fully green, because the one place a
-    format reaches the control is the ``pattern`` step's candidate screen and the
-    corpus now clears that screen either way.  So the agreement had no instrument
-    at all and this is it.  A ``format``-violating instance is the one case
-    ``steps()`` cannot produce on its own, so it is written here rather than
+    Measured without it: the suite went fully green, because no check in the
+    harness produces a ``format``-violating instance on its own -- the accepts
+    check draws instances the document ADMITS and ``hypothesis_jsonschema``
+    honours a format it knows, and ``refusing_payload`` perturbs requiredness and
+    JSON type rather than a string's shape.  So the agreement has no instrument
+    other than this one, and the violating instance is written here rather than
     drawn.
     """
     g = next(r for r in graded() if r.ref == SchemaRef("core/datetime-range.json", "#"))
@@ -1565,92 +1566,72 @@ def _matching(pattern: str, examples: int = 2) -> list[str]:
     return out
 
 
-def test_the_step_result_is_counted_over_the_whole_population() -> None:
-    """One number for the step, with its denominators, because a per-pair green
-    mark does not add up to one and nobody can sum 44 of them by eye."""
-    reports = [check_pair(pair_of(g)) for g in graded()]
-    # **THIS ASSERTION IS RED, IT IS RED ON TRUNK TOO, AND salesagent-j3k2l.18 DID NOT
-    # CLEAR IT.**  Stated here rather than left to be rediscovered:
-    #
-    # * the pair count is **811** on this tree and **808** at trunk ``29c553504``,
-    #   measured twice as ``len(graded())``, which needs no grading run.  The 503 this
-    #   line asserted is 305 out ON TRUNK, before any part of this lane existed, so it
-    #   is not this branch's doing.  The +3 IS this lane's: `core/attribution-window.json`
-    #   contributes its root plus its two ``allOf`` property nodes.
-    # * the ``pass`` and ``no_constraint_to_step`` figures below are **NOT measured**.
-    #   Getting them means grading all 811 pairs at ``max_steps=None``, which ran for
-    #   over 50 minutes here without finishing.  491 and 12 are trunk's own numbers and
-    #   are left exactly as trunk has them: a guessed pass count would be a number
-    #   nobody measured, which is worse than a red line that says so.
-    #
-    # So the pair count is corrected to what was measured and the other two are
-    # deliberately untouched.  Clearing this test needs the full pair grading and is
-    # not this row's work.
-    assert len(reports) == 811, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 758
-    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 25
-    assert sum(1 for r in reports if r.outcome == "no_instrument") == 9
-    assert sum(1 for r in reports if r.outcome == "refuses:harness_error") == 3
-    assert sum(1 for r in reports if r.outcome == "comparison:model_drops_a_fact") == 16
-    # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
-    # reproducible. The refuses-check instance total counts hypothesis DRAWS
-    # rather than schema facts, and seven careful readings of it, on trees whose
-    # source I could not distinguish, gave 31,923 / 32,031 / 32,037 / 32,045 /
-    # 32,045 / 32,059 / 34,935 -- the last on the named-type tree, which moved the
-    # population legitimately. Ruled out against hash seed (four runs, three
-    # seeds, identical over a fixed subset), enumeration order (sorted, reversed,
-    # shuffled, identical), untracked emitted files (tracked == on disk), and
-    # worker count. The five other figures here reproduced EXACTLY between two
-    # independent instruments, which is why they are equalities and this is not.
-    #
-    # A floor still carries the denominator: it says the refuses check reached a
-    # class at least this many times, so a collapse or a large regression still
-    # reddens. An equality would assert a reproducibility the instrument does not
-    # have, and a test that fails when nothing changed teaches the next reader to
-    # edit the number instead of reading it.
-    # Re-measured on the merged tree rather than carried over or minimised: this run
-    # reads 49,766, and the floor sits ~0.7% under it -- about twice the 0.4% spread
-    # the seven readings above show -- so a collapse reddens and a reread does not.
-    # Re-measured at TWO TESTS PER CLASS (salesagent-j3k2l.27): ``refuses_examples``
-    # defaults to 1 per step site instead of 25, so this is 9,047 on this tree against
-    # a floor ~1.6% under it.  The 49,400 this line asserted was measured on a 503-pair
-    # tree at 25 examples per site and was never true here.
-    assert sum(r.graded_instances for r in reports) >= 8900  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 25858  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 9440  # model-only facts examined
+def test_the_harness_result_is_counted_over_the_whole_population() -> None:
+    """One number for the harness, with its denominators, because a per-pair green
+    mark does not add up to one and nobody can sum 1,055 of them by eye.
+
+    **Every figure below was re-measured on this tree after the rebuild and none
+    was carried forward.**  The harness grades one class against one schema now, so
+    three of the old figures no longer exist to re-point: the step-site count, the
+    refuses-check instance total, and the ``no_constraint_to_step`` partition.  What
+    replaces the first two is ``graded_instances``, which counts instances DRAWN,
+    CONSTRUCTED and DUMPED BACK OUT to something the document still admits -- one
+    per pair at the default depth, so it is an equality and not a floor.
+
+    Read off :func:`graded_reports`, which grades the population ONCE for the three
+    tests that need a total.
+    """
+    reports = [r for _, r in graded_reports()]
+    assert len(reports) == PAIRS_PIN, len(reports)
+    by_outcome = collections.Counter(r.outcome for r in reports)
+    assert dict(by_outcome) == OUTCOME_PINS, dict(by_outcome)
+    # One instance per pair at the default depth, minus the pairs whose generator
+    # could not draw one -- so this and the ``no_instrument`` count above are two
+    # readings of the same fact and cannot drift apart.
+    assert sum(r.graded_instances for r in reports) == PAIRS_PIN - by_outcome["no_instrument"]
+    assert sum(r.comparison.compared for r in reports) == COMPARED_PIN
+    assert sum(r.comparison.model_facts for r in reports) == MODEL_FACTS_PIN
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
-    # **THE TWO ASSERTIONS BELOW ARE RED, DELIBERATELY, AND salesagent-j3k2l.28 OWNS
-    # THEM.**  Every count above is now measured and green, so this test fails HERE and
-    # the failure names the comparison rather than burying it behind a stale pin.
-    #
-    # Measured over all 811 pairs: ``missing`` is 10 and ``differs`` is 13, in 16 pairs.
-    # NEITHER IS A SAFETY DEFECT, and ``added == 0`` above is the proof -- the model
-    # narrows nothing anywhere in the population, which is the half that could admit an
-    # instance the document rejects.  The 10 missing facts are 5 x ``required: []`` and
-    # 5 x ``enum: [false, true]`` on a boolean, which constrain nothing; the 13 differs
-    # are all ``/properties/context/description``, where the emitter takes the ``$ref``
-    # target's description instead of the referring document's.
-    #
-    # Attribution was MEASURED, not assumed: pre-``.21`` trunk ``2b605b164`` graded 734
-    # pairs with 1 discrepancy, and post-``.21`` grades 808 with 23.  So ``.21`` made 74
-    # more documents emittable and they exercise a defect that was already there.
-    #
-    # THE FIX IS NOT TO RE-POINT THESE TO 10 AND 13.  Zero is the specification's
-    # symmetric comparison: a fact the model adds reddens and a fact it drops reddens.
-    # ``.28`` folds the two no-op shapes by shape (an ``enum: [false]`` on a boolean is
-    # NOT a no-op and must still compare) and resolves the description divergence in the
-    # emitter.
-    assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
-    assert sum(len(r.comparison.differs) for r in reports) == 0
+    assert sum(len(r.comparison.missing) for r in reports) == MISSING_PIN
+    assert sum(len(r.comparison.differs) for r in reports) == DIFFERS_PIN
     # D5's URL-type rows, the one category that excuses a fact the model does not
-    # state, and 74 is the sum of its three: 37 `minLength: 1` (every URL type
-    # renders it), 36 `maxLength: 2083` (`HttpUrl` renders it, and 36 of the 37
-    # positions take that arm), and the ONE `pattern` the bundle states on a
+    # state: 37 `minLength: 1` (every URL type renders it), `maxLength: 2083`
+    # (`HttpUrl` renders it), and the ONE `pattern` the bundle states on a
     # `format: uri` node -- `core/platform-extension-ref.json`, which is also the
     # one position on the `AdCPUrl` arm and so the one with no `maxLength`.
     # A position inside a nested class is graded twice, at its own pair and at its
     # parent's, so it is larger than the annotation sites the tree has.
-    assert sum(len(r.comparison.url_typed) for r in reports) == 76
+    assert sum(len(r.comparison.url_typed) for r in reports) == URL_TYPED_PIN
+    # The one invalid payload per pair, partitioned by the fact it broke.  A
+    # partition and not a total, because the three perturbations are tried in order
+    # and which one bites is a property of the DOCUMENT: a shift here means the
+    # population's root shapes moved, which is a fact worth reading.
+    assert dict(collections.Counter(r.invalid.how.split(" ")[0] for r in reports)) == INVALID_PINS
+
+
+def test_the_invalid_payload_reaches_every_pair_the_document_refuses_anything_for() -> None:
+    """The invalid check's own denominator, and what it is NOT.
+
+    Section 6 keeps one invalid payload per class and routes it through the class's
+    OWN validation, so the question this answers is "how many classes were offered
+    one, and did any accept it".  ``no_payload`` is the complement and is enumerated
+    by name in ``test_the_pairs_with_no_invalid_payload_are_the_documents_that_refuse_nothing``.
+
+    ``model_accepted_invalid`` is pinned at ZERO rather than tracked, because an
+    acceptance there is a defect in emitted code and not a tolerance: pydantic's own
+    generated validators decided, and they admitted a payload the document refuses.
+    """
+    reports = [r for _, r in graded_reports()]
+    assert sum(1 for r in reports if r.invalid.outcome == "model_accepted_invalid") == 0, [
+        (r.name, r.invalid.how, r.invalid.violated) for r in reports
+        if r.invalid.outcome == "model_accepted_invalid"
+    ]
+    assert sum(1 for r in reports if r.invalid.outcome == "pass") == PAIRS_PIN - NO_PAYLOAD_PIN
+    assert sum(1 for r in reports if r.invalid.outcome == "no_payload") == NO_PAYLOAD_PIN
+    # The document decided, at every pair: a perturbation nothing bit is never
+    # offered to the class, so every payload that reached one violates a keyword the
+    # document names.
+    assert all(r.invalid.violated for r in reports if r.invalid.outcome == "pass")
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
@@ -1731,9 +1712,10 @@ def test_strict_validate_decides_acceptance_against_the_document() -> None:
 
     What nothing else in this file reaches: that the schema half of
     ``strict_validate`` runs at all, and that the keyword it refuses on is the
-    DOCUMENT'S name for it.  ``check_pair`` cannot grade either -- ``steps()``
-    has no nullability step, and a model graded through ``strict_validate``
-    refuses whatever the control already says the document refuses.  Measured:
+    DOCUMENT'S name for it.  ``check_pair`` cannot grade either -- it offers one
+    perturbation of an accepted instance, and a model graded through
+    ``strict_validate`` refuses whatever the document refuses whichever half
+    answered.  Measured:
     with the schema check deleted from ``strict_validate``, this is the only test
     in the suite that goes red.
     """

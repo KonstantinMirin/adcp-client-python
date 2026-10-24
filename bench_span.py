@@ -69,7 +69,7 @@ def main() -> None:
         pair = T.pair_of(by_name[name])
         pr = cProfile.Profile()
         pr.enable()
-        T.check_pair(pair, max_steps=None)
+        T.check_pair(pair)
         pr.disable()
         buf = io.StringIO()
         pstats.Stats(pr, stream=buf).sort_stats("tottime").print_stats(25)
@@ -83,7 +83,7 @@ def main() -> None:
     for name, why in SELECTION:
         pair = T.pair_of(by_name[name])
         start = time.perf_counter()
-        rep = T.check_pair(pair, max_steps=None)
+        rep = T.check_pair(pair)
         seconds = time.perf_counter() - start
         rows.append({"pair": name, "why": why, "seconds": round(seconds, 3), "outcome": rep.outcome})
         print(f"{seconds:9.3f}s  peak {_peak_mb():7.1f} MB  {rep.outcome:28s} {name}", flush=True)

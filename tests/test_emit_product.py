@@ -775,12 +775,12 @@ def test_the_inherited_bound_is_live_on_the_model_validate_path(tmp_path, monkey
     """**The control, and it asserts on ``model_validate`` for a measured reason.**
 
     The brief's probe was "make a subclass redeclare an inherited field and
-    confirm the refuses check catches the widening".  It does not.  Both of the
-    first two checks call ``strict_validate``, whose schema half decides against
-    the document before anything is constructed, so the document refuses whatever
-    the annotations say: measured, a class carrying ``Any = None`` over this
-    typed base field grades identically to this one, and so does a class with no
-    bases at all.
+    confirm the per-keyword refuses check catches the widening".  It does not,
+    and section 6 deleted that check for exactly this reason: it called
+    ``strict_validate``, whose schema half decides against the document before
+    anything is constructed, so the document refused whatever the annotations
+    said -- measured, a class carrying ``Any = None`` over this typed base field
+    graded identically to this one, and so did a class with no bases at all.
 
     The widening is on the ``model_validate`` path, which D4 keeps public and
     which builds WITHOUT consulting the schema.  So that is where the inherited

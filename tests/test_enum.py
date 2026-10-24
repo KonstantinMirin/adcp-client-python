@@ -2,7 +2,7 @@
 
 **Why this file exists at all, and what the harness does and does not reach.**
 ``tests/test_emit.py`` grades every emitted pair through the three checks, and for
-an enumeration two of the three are nearly blind: the accepts and refuses checks
+an enumeration two of the three are nearly blind: the accepts and invalid-payload checks
 run through ``strict_validate``, whose SCHEMA half refuses a non-member whatever
 the annotation says, so they grade the document and not the model.  Measured as a
 test below (:func:`test_the_schema_comparison_is_what_grades_this_row`), and the
