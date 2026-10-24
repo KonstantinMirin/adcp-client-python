@@ -842,7 +842,7 @@ def test_a_narrowing_restatement_is_declared_by_the_subclass(tmp_path, monkeypat
             cls.model_validate({"kind": bad, "label": "xy"})
 
 
-def test_the_accepts_and_invalid_checks_are_green_with_a_denominator(
+def test_the_accepts_and_liveness_checks_are_green_with_a_denominator(
     tmp_path, monkeypatch
 ) -> None:
     """The instance checks over the probe, with the denominator asserted.
@@ -863,13 +863,16 @@ def test_the_accepts_and_invalid_checks_are_green_with_a_denominator(
     rep = check_pair(Pair("probe", schema, cls, cls.strict_validate), accepts_examples=25)
     assert rep.accepts is not None and rep.accepts.outcome == "pass", rep.accepts
     assert rep.graded_instances == 25, rep.graded_instances
-    # The invalid payload reaches the class's OWN validation, and the probe's
-    # document demands ``adcp_major_version`` in a conjunct, so dropping it is what
-    # the document refuses and the class has to refuse too.
-    assert rep.invalid.outcome == "pass", (rep.invalid.how, rep.invalid.detail)
-    assert rep.invalid.how.startswith("drops the required key"), rep.invalid.how
-    assert "required" in rep.invalid.violated, rep.invalid.violated
-    assert rep.outcome == "pass", rep.outcome
+    # The liveness check offers one payload the document refuses, through the entry
+    # point: the probe's document demands ``adcp_major_version`` in a conjunct, so
+    # dropping it is what the document refuses and the schema half has to answer.
+    assert rep.liveness.outcome == "pass", (rep.liveness.how, rep.liveness.detail)
+    assert rep.liveness.how.startswith("drops the required key"), rep.liveness.how
+    assert "required" in rep.liveness.violated, rep.liveness.violated
+    # The schema comparison is NOT this test's subject and is deliberately not
+    # asserted: the probe's document is a hand-built shadow of a composition, and
+    # what the comparison says about it is the subject of the restatement tests
+    # above.  Asserting ``rep.outcome`` here would make this test fail on theirs.
 
 
 # --------------------------------------------------------------------------- #

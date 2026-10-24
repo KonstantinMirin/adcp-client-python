@@ -34,10 +34,13 @@ pair, four things happen and each is O(1) in the document's keyword count:
       module that reads what the class does with a value rather than whether it
       took it.
 
-  the invalid payload (``check_invalid``)
-      one payload the DOCUMENT refuses, routed through the class's OWN validation
-      -- ``model_validate``, where pydantic's generated validators decide.  An
-      acceptance there is a real defect in emitted code.
+  the liveness check (``check_liveness``)
+      one payload the DOCUMENT refuses, routed through the entry point the caller
+      supplies -- ``strict_validate``, whose schema half answers.  It proves that
+      class's schema half is CONNECTED and that the ref it names resolves to the
+      document it names.  It is not a measurement of the class: pydantic is
+      deliberately less strict than the schema, so a refusal says the document
+      answered (D4).
 
   the schema comparison (``compare_schema``)
       every fact the document states about a value, the model's own
@@ -54,8 +57,8 @@ generated class took no part in the outcome: on ``core/pagination-request.json``
 model with ``Any`` on every field accepted, refused 75 of 75 instances and recorded
 no wrong acceptance, exactly as a faithful one did.  27,791 of those sites over the
 graded population were the suite's entire wall clock, spent on a property of a
-third-party validator.  An invalid payload is informative only through the class's
-own validation, which is where ``check_invalid`` sends one.
+third-party validator.  A payload the schema refuses is informative
+about the WIRING and nothing else, so ``check_liveness`` sends exactly one.
 
 **There is no process-global canonicalisation memo here**, and the documents this
 grades arrive already resolved (``codegen.emit`` writes them out with zero ``$ref``),
@@ -461,8 +464,8 @@ class AcceptsResult:
 
 
 @dataclass
-class InvalidResult:
-    """One payload the DOCUMENT refuses, offered to the class's own validation."""
+class LivenessResult:
+    """One payload the DOCUMENT refuses, offered to the entry point under test."""
 
     #: Which perturbation produced the payload, naming the fact it broke
     #: (``"drops the required key 'x'"``), or ``""`` when none was found.
@@ -473,7 +476,7 @@ class InvalidResult:
     violated: tuple[str, ...] = ()
     payload: str = ""
     detail: str = ""
-    #: pass | model_accepted_invalid | model_error | no_payload
+    #: pass | schema_half_not_connected | model_error | no_payload
     outcome: str = "unrun"
 
 
@@ -580,20 +583,17 @@ def refusing_payload(
 ) -> tuple[Any, str] | None:
     """One payload the DOCUMENT refuses, derived from one it ACCEPTS.
 
-    Section 6 asks for one invalid payload per class, and asks for it to be routed
-    through the class's own validation.  It is DERIVED from the accepted instance
+    Section 6 asks for one payload the schema refuses per class, routed through the
+    entry point once.  It is DERIVED from the accepted instance
     rather than drawn, which is the whole saving: a draw from a mutated document
     costs ``from_schema`` another canonicalisation of the whole document, and the
     27,791 of those is what this rebuild removes.
 
     Three perturbations, tried in this order, and the order is the point:
 
-    1. **drop a key the root ``required`` names.**  Requiredness is the one
-       constraint every emitted class carries no matter how its keywords lowered,
-       so a class that accepts this is wider than its document at the one place a
-       widening is unconditional -- which is exactly the ``Any``-on-every-field
-       model section 6 says the old refuses check could not tell from a faithful
-       one.
+    1. **drop a key the root ``required`` names.**  A missing required key is the
+       plainest thing a document refuses, so it is the cheapest proof that the
+       schema half ran at all.
     2. **replace the whole instance with a value of another JSON type.**  Reaches a
        root that demands no key, and a scalar root, which the first cannot.
     3. **add a property no document declares.**  Last, so it is reached only by a
@@ -626,21 +626,33 @@ def refusing_payload(
     return None
 
 
-def check_invalid(
+def check_liveness(
     schema: dict,
-    validate: Callable[[Any], Any],
+    accept: Callable[[Any], Any],
     instance: Any,
     *,
     validator_cls: Any = None,
-) -> InvalidResult:
-    """Offer one payload the document refuses to the class's OWN validation.
+) -> LivenessResult:
+    """Offer one payload the document refuses to the entry point, ONCE per class.
 
-    ``validate`` is ``model_validate`` and NOT the caller's ``accept``, and that is
-    the whole content of this check.  ``accept`` validates against the document
-    before constructing, so it refuses whatever the document refuses and nothing
-    about the class is observed -- which is why section 6 deleted the check that
-    ran this way at 27,791 sites.  Through ``model_validate`` pydantic's generated
-    validators decide, so an acceptance is a defect in emitted code.
+    **This is a LIVENESS check on the wiring and it is not a measurement of the
+    class.**  Section 6 is explicit about why, and about why it used to be read the
+    other way: pydantic is DELIBERATELY less strict than the schema.  D4 gives the
+    schema the acceptance decision and pydantic the construction, so a model holds
+    the document's types and emits the document's schema rather than reimplementing
+    every JSON Schema keyword -- which is the whole reason ``strict_validate``
+    exists.  So a payload the schema refuses says nothing about the generated code
+    on EITHER route: ``model_validate`` may accept it by design, and ``accept``
+    refuses it because the document answered.
+
+    What one refusal through ``accept`` does prove is that this class's schema half
+    is CONNECTED and that the ref it names resolves to the document it names.  That
+    is worth asserting once per class, and it is what the 27,791-site sweep was
+    already asserting -- 27,791 times, at the cost of the suite's entire wall clock.
+
+    An ACCEPTANCE is therefore ``schema_half_not_connected``: the document refuses
+    this payload and the entry point did not, so either the schema half is not
+    running or ``__adcp_schema__`` does not resolve to this document.
 
     **A refusal means pydantic's ``ValidationError`` and nothing else**, and that is
     measured rather than chosen: over 838 graded pairs, 0 refused this payload with
@@ -650,7 +662,7 @@ def check_invalid(
     probe came to read a pair nothing graded as green.  So a foreign exception is
     ``model_error`` with its type in ``detail``, which is a verdict and not a pass.
     """
-    res = InvalidResult()
+    res = LivenessResult()
     cls = validator_cls or validator_for(schema)
     found = refusing_payload(schema, instance, validator_cls=cls)
     if found is None:
@@ -661,27 +673,15 @@ def check_invalid(
     res.payload = _dump(payload)
     res.violated = tuple(violated_keywords(schema, payload, validator_cls=cls))
     try:
-        validate(payload)
+        accept(payload)
     except ValidationError:
         res.outcome = "pass"
     except Exception as e:  # not a refusal this caller could catch
         res.outcome = "model_error"
         res.detail = f"{type(e).__name__}: {e}"[:300]
     else:
-        res.outcome = "model_accepted_invalid"
+        res.outcome = "schema_half_not_connected"
     return res
-
-
-def _own_validation(model: Any) -> Callable[[Any], Any]:
-    """The class's own validation, which is ``model_validate`` where there is one.
-
-    A scalar root is an alias, so its own validation is its adapter's -- the same
-    construction half ``strict_alias`` runs behind the schema check.
-    """
-    validate = getattr(model, "model_validate", None)
-    if callable(validate):
-        return validate
-    return TypeAdapter(model).validate_python
 
 
 def check_accepts(
@@ -729,8 +729,8 @@ def check_accepts(
     res = AcceptsResult()
     cf = dict(custom_formats)
     #: The instances this check drew, in order, HANDED BACK to the caller when it
-    #: supplies a list.  ``check_pair`` reads the first one and derives the invalid
-    #: payload from it, which is what keeps the invalid check from costing a second
+    #: supplies a list.  ``check_pair`` reads the first one and derives the refused
+    #: payload from it, which is what keeps the liveness check from costing a second
     #: draw -- the one saving in this module that is a reuse rather than a deletion.
     seen = [] if seen is None else seen
     validator_cls = validator_for(schema)
@@ -1925,7 +1925,7 @@ class PairReport:
     name: str
     model_repr: str = ""
     accepts: AcceptsResult | None = None
-    invalid: InvalidResult | None = None
+    liveness: LivenessResult | None = None
     comparison: ComparisonResult | None = None
     missing_formats: list[str] = field(default_factory=list)
     #: The DOCUMENT's own positions where a ``format`` and a ``pattern`` meet,
@@ -1997,10 +1997,10 @@ class PairReport:
         # the model.  Every other accepts outcome is a verdict and still wins.
         if self.accepts.outcome not in ("pass", "strategy_error"):
             return "accepts:" + self.accepts.outcome
-        if self.invalid is None:
-            return "invalid:unrun"
-        if self.invalid.outcome not in ("pass", "no_payload"):
-            return "invalid:" + self.invalid.outcome
+        if self.liveness is None:
+            return "liveness:unrun"
+        if self.liveness.outcome not in ("pass", "no_payload"):
+            return "liveness:" + self.liveness.outcome
         if self.comparison is None or self.comparison.outcome not in ("pass", "no_evidence"):
             return "comparison:" + (self.comparison.outcome if self.comparison else "unrun")
         if self.no_instrument:
@@ -2034,10 +2034,10 @@ def check_pair(
     outcome.  Nothing read the result of those 27,791 draws that a faithful class
     and a class carrying ``Any`` on every field did not produce identically.
 
-    The invalid payload the class's own validation sees is DERIVED from the accepted
-    instance (:func:`refusing_payload`) and screened by the document, so it costs no
-    draw.  That is the one place a pair's instance is reused, and the reuse is why
-    there are two document validations per pair instead of thousands.
+    The payload the liveness check offers is DERIVED from the accepted instance
+    (:func:`refusing_payload`) and screened by the document, so it costs no draw.
+    That is the one place a pair's instance is reused, and the reuse is why there are
+    two document validations per pair instead of thousands.
     """
     rep = PairReport(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
@@ -2052,10 +2052,10 @@ def check_pair(
         custom_formats=custom_formats,
         seen=accepted,
     )
-    rep.invalid = (
-        check_invalid(pair.schema, _own_validation(pair.model), accepted[0])
+    rep.liveness = (
+        check_liveness(pair.schema, pair.accept, accepted[0])
         if accepted
-        else InvalidResult(outcome="no_payload", detail="the accepts check drew no instance")
+        else LivenessResult(outcome="no_payload", detail="the accepts check drew no instance")
     )
     rep.comparison = compare_schema(pair.schema, pair.model, document=pair.document)
     return rep

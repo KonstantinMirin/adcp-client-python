@@ -586,7 +586,7 @@ def test_the_schema_comparison_is_what_grades_this_row() -> None:
     assert check_accepts(doc, wide_accept).outcome == "pass"
     wide = check_pair(Pair(name="wide", schema=doc, model=str, accept=wide_accept))
     assert wide.accepts.outcome == "pass"
-    assert wide.invalid.outcome == "pass", (wide.invalid.how, wide.invalid.detail)
+    assert wide.liveness.outcome == "pass", (wide.liveness.how, wide.liveness.detail)
     assert wide.graded_instances > 0, wide.graded_instances
     assert wide.outcome.startswith("comparison:"), wide.outcome
 

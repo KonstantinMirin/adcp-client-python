@@ -70,9 +70,9 @@ from codegen.refusal import Refusal
 from codegen.harness import (
     AcceptsResult,
     check_accepts,
-    check_invalid,
+    check_liveness,
     ComparisonResult,
-    InvalidResult,
+    LivenessResult,
     Pair,
     PairReport,
     _closed,  # noqa: PLC2701 -- the harness's own reading of a closed additionalProperties
@@ -421,18 +421,18 @@ def test_pagination_request_passes_all_three_checks() -> None:
     the count beside it says nothing, because a pair no instance reached reports no
     failure either.  There are two of them now and they are different questions --
     how many instances were drawn, constructed and round-tripped, and which fact the
-    one invalid payload broke.
+    one refused payload broke.
     """
     rep = check_pair(pair_of(pagination()), accepts_examples=25)
     assert rep.missing_formats == []
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
     assert rep.accepts.examples == 25, rep.accepts.examples
     assert rep.graded_instances == 25, rep.graded_instances  # every one dumped back out
-    assert rep.invalid.outcome == "pass", (rep.invalid.how, rep.invalid.detail)
+    assert rep.liveness.outcome == "pass", (rep.liveness.how, rep.liveness.detail)
     # The document states ``additionalProperties: false`` and demands no key, so the
     # payload is a whole-instance replacement and the document bites on ``type``.
-    assert rep.invalid.how == "replaces the instance with None", rep.invalid.how
-    assert rep.invalid.violated == ("type",), rep.invalid.violated
+    assert rep.liveness.how == "replaces the instance with None", rep.liveness.how
+    assert rep.liveness.violated == ("type",), rep.liveness.violated
     assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
     assert rep.comparison.compared == 10, rep.comparison.compared
     assert rep.outcome == "pass"
@@ -472,17 +472,17 @@ def test_the_schema_comparison_grades_the_generated_code_and_the_other_two_do_no
     only entry point grading acceptance says anything about -- it is
     indistinguishable from a faithful model on every check but one: the accepts
     check passes over the SAME 25 instances, each one dumps back out to something
-    the document still admits, and the invalid payload is refused by both.
+    the document still admits, and the refused payload is refused by both.
 
-    **The invalid payload is refused by the WIDE model too, and that is why it is
-    one payload rather than one per keyword.**  ``model_validate`` is where
-    pydantic's own validators decide, so an acceptance there is a real defect --
-    but a model with ``Any`` on every field still refuses ``None`` where the
-    document demands an object, because the ROOT shape is the one thing ``Any`` on
-    a field cannot widen.  §6 keeps this check for the widenings it does catch (a
-    class that declares no required key) and does not pretend it separates these
-    two.  The 27,791 per-keyword sites this replaced did not separate them either,
-    at about 50 minutes of wall clock.
+    **The refused payload is refused by the WIDE model too, and section 6 says that
+    is the whole point of keeping exactly one.**  Pydantic is DELIBERATELY less
+    strict than the schema -- D4 gives the schema the acceptance decision -- so a
+    payload the schema refuses measures nothing about the class on either route:
+    ``model_validate`` may accept it by design, and ``strict_validate`` refuses it
+    because the document answered.  What the one refusal proves is LIVENESS, that
+    this class's schema half is connected and its ref resolves to its document, and
+    it proves that for the wide class exactly as for the faithful one.  The 27,791
+    per-keyword sites this replaced were proving the same thing 27,791 times.
 
     Falsifiable here: delete the comparison and a wide model passes this file.
     """
@@ -503,8 +503,8 @@ def test_the_schema_comparison_grades_the_generated_code_and_the_other_two_do_no
     faithful = check_pair(pair_of(pagination()), accepts_examples=25)
 
     assert wide.accepts.outcome == faithful.accepts.outcome == "pass"
-    assert wide.invalid.outcome == faithful.invalid.outcome == "pass"
-    assert wide.invalid.how == faithful.invalid.how
+    assert wide.liveness.outcome == faithful.liveness.outcome == "pass"
+    assert wide.liveness.how == faithful.liveness.how
     assert wide.graded_instances == faithful.graded_instances == 25
 
     assert faithful.comparison.outcome == "pass"
@@ -534,10 +534,11 @@ def test_a_zero_denominator_is_not_reportable_as_a_pass() -> None:
 
     **Both halves of the harness are graded here, because a foreign exception can
     arrive at either.**  The accepts check offers an instance the document admits,
-    and the invalid check offers one it refuses; an entry point raising something the
+    and the liveness check offers one it refuses; an entry point raising something the
     caller cannot catch at either of them used to read as a pair with nothing wrong.
-    ``check_invalid`` is asserted directly, because the pair's own invalid payload
-    goes through ``model_validate`` and never through a caller's ``accept``.
+    ``check_liveness`` is asserted directly with an entry point of its own, because
+    one that refuses a VALID instance and one that refuses an invalid one with the
+    wrong exception are two different wirings.
     """
     schema = schema_at(SchemaRef(PAGINATION, "#"))
     model = pagination().model
@@ -554,16 +555,16 @@ def test_a_zero_denominator_is_not_reportable_as_a_pass() -> None:
     assert rep.graded_instances == 0
     assert rep.outcome == "accepts:model_error"
 
-    # ... and the same exception on the invalid payload's path.
+    # ... and the same exception on the liveness check's path.
     def foreign_refusal(_payload: Any) -> Any:
         raise jsonschema.ValidationError("not pydantic's error")
 
-    invalid = check_invalid(schema, foreign_refusal, {"max_results": 1})
-    assert invalid.how == "replaces the instance with None", invalid.how
-    assert invalid.outcome == "model_error", (invalid.outcome, invalid.detail)
-    assert invalid.detail.startswith("ValidationError"), invalid.detail
-    # And pydantic's own error IS the refusal, over the same payload.
-    assert check_invalid(schema, model.model_validate, {"max_results": 1}).outcome == "pass"
+    live = check_liveness(schema, foreign_refusal, {"max_results": 1})
+    assert live.how == "replaces the instance with None", live.how
+    assert live.outcome == "model_error", (live.outcome, live.detail)
+    assert live.detail.startswith("ValidationError"), live.detail
+    # And the real entry point IS the refusal, over the same payload.
+    assert check_liveness(schema, model.strict_validate, {"max_results": 1}).outcome == "pass"
 
 
 def test_a_zero_denominator_verdict_is_never_pass() -> None:
@@ -580,12 +581,12 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
     test rather than silently turning a pair nothing reached into a green mark.
     """
     fine = ComparisonResult(compared=7)
-    refused = InvalidResult(how="replaces the instance with None", outcome="pass")
+    refused = LivenessResult(how="replaces the instance with None", outcome="pass")
 
     nothing_round_tripped = PairReport(
         name="n",
         accepts=AcceptsResult(examples=25, outcome="pass", round_tripped=0),
-        invalid=refused,
+        liveness=refused,
         comparison=fine,
     )
     assert nothing_round_tripped.graded_instances == 0
@@ -596,7 +597,7 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
     reached = PairReport(
         name="r",
         accepts=AcceptsResult(examples=25, outcome="pass", round_tripped=1),
-        invalid=refused,
+        liveness=refused,
         comparison=fine,
     )
     assert reached.graded_instances == 1
@@ -642,7 +643,7 @@ NO_PAYLOAD_PIN = 2
 #: Which perturbation ``refusing_payload`` reached, counted by its first word.
 #: A partition and not a total: which one bites is a property of the DOCUMENT's own
 #: root shape, so a shift here says the population's roots moved.
-INVALID_PINS: dict[str, int] = {"drops": 592, "replaces": 461, "": 2}
+LIVENESS_PINS: dict[str, int] = {"drops": 592, "replaces": 461, "": 2}
 
 
 @functools.cache
@@ -663,7 +664,7 @@ def graded_reports() -> list[tuple[Graded, PairReport]]:
     return [(g, check_pair(pair_of(g))) for g in graded()]
 
 
-def test_the_pairs_with_no_invalid_payload_are_the_documents_that_refuse_nothing() -> None:
+def test_the_pairs_with_no_refused_payload_are_the_documents_that_refuse_nothing() -> None:
     """Which pairs take the ``no_payload`` exit, and why.
 
     ``refusing_payload`` tries three perturbations of an accepted instance and
@@ -681,7 +682,7 @@ def test_the_pairs_with_no_invalid_payload_are_the_documents_that_refuse_nothing
     document refuses anything at all.
     """
     reports = graded_reports()
-    excused = [g for g, r in reports if r.invalid.outcome == "no_payload"]
+    excused = [g for g, r in reports if r.liveness.outcome == "no_payload"]
     # The exits are exhaustive over the population rather than one slice of it, so a
     # verdict nobody listed could not hide behind this one.
     assert {r.outcome for _, r in reports} == set(OUTCOME_PINS), {
@@ -758,7 +759,7 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
     if rep.accepts.outcome != "strategy_error":
         assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
         assert rep.graded_instances > 0, "nothing was constructed and dumped back out"
-    assert rep.invalid.outcome in ("pass", "no_payload"), (rep.invalid.outcome, rep.invalid.how)
+    assert rep.liveness.outcome in ("pass", "no_payload"), (rep.liveness.outcome, rep.liveness.how)
     if rep.outcome == "no_instrument":
         assert rep.no_instrument, rep.name
         for cause in rep.no_instrument:
@@ -1668,11 +1669,11 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     # A position inside a nested class is graded twice, at its own pair and at its
     # parent's, so it is larger than the annotation sites the tree has.
     assert sum(len(r.comparison.url_typed) for r in reports) == URL_TYPED_PIN
-    # The one invalid payload per pair, partitioned by the fact it broke.  A
+    # The one refused payload per pair, partitioned by the fact it broke.  A
     # partition and not a total, because the three perturbations are tried in order
     # and which one bites is a property of the DOCUMENT: a shift here means the
     # population's root shapes moved, which is a fact worth reading.
-    assert dict(collections.Counter(r.invalid.how.split(" ")[0] for r in reports)) == INVALID_PINS
+    assert dict(collections.Counter(r.liveness.how.split(" ")[0] for r in reports)) == LIVENESS_PINS
 
 
 def test_the_non_pass_pairs_are_named_and_attributed() -> None:
@@ -1741,29 +1742,30 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
             assert r.comparison.outcome == "pass" and r.comparison.compared > 0
 
 
-def test_the_invalid_payload_reaches_every_pair_the_document_refuses_anything_for() -> None:
-    """The invalid check's own denominator, and what it is NOT.
+def test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for() -> None:
+    """The liveness check's own denominator, and what it is NOT.
 
-    Section 6 keeps one invalid payload per class and routes it through the class's
-    OWN validation, so the question this answers is "how many classes were offered
-    one, and did any accept it".  ``no_payload`` is the complement and is enumerated
-    by name in ``test_the_pairs_with_no_invalid_payload_are_the_documents_that_refuse_nothing``.
+    Section 6 keeps one refused payload per class and routes it through the entry
+    point, so the question this answers is "how many classes' schema halves were
+    shown to be connected, and was any of them silent".  ``no_payload`` is the complement and is enumerated
+    by name in ``test_the_pairs_with_no_refused_payload_are_the_documents_that_refuse_nothing``.
 
-    ``model_accepted_invalid`` is pinned at ZERO rather than tracked, because an
-    acceptance there is a defect in emitted code and not a tolerance: pydantic's own
-    generated validators decided, and they admitted a payload the document refuses.
+    ``schema_half_not_connected`` is pinned at ZERO rather than tracked, because an
+    acceptance there is not a tolerance: the document refuses this payload and the
+    entry point did not, so either the schema half is not running for that class or
+    its ``__adcp_schema__`` does not resolve to the document it names.
     """
     reports = [r for _, r in graded_reports()]
-    assert sum(1 for r in reports if r.invalid.outcome == "model_accepted_invalid") == 0, [
-        (r.name, r.invalid.how, r.invalid.violated) for r in reports
-        if r.invalid.outcome == "model_accepted_invalid"
+    assert sum(1 for r in reports if r.liveness.outcome == "schema_half_not_connected") == 0, [
+        (r.name, r.liveness.how, r.liveness.violated) for r in reports
+        if r.liveness.outcome == "schema_half_not_connected"
     ]
-    assert sum(1 for r in reports if r.invalid.outcome == "pass") == PAIRS_PIN - NO_PAYLOAD_PIN
-    assert sum(1 for r in reports if r.invalid.outcome == "no_payload") == NO_PAYLOAD_PIN
+    assert sum(1 for r in reports if r.liveness.outcome == "pass") == PAIRS_PIN - NO_PAYLOAD_PIN
+    assert sum(1 for r in reports if r.liveness.outcome == "no_payload") == NO_PAYLOAD_PIN
     # The document decided, at every pair: a perturbation nothing bit is never
     # offered to the class, so every payload that reached one violates a keyword the
     # document names.
-    assert all(r.invalid.violated for r in reports if r.invalid.outcome == "pass")
+    assert all(r.liveness.violated for r in reports if r.liveness.outcome == "pass")
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
@@ -4123,7 +4125,8 @@ def test_a_reference_cycle_refuses_rather_than_recurring(tmp_path) -> None:
 # **What grades D6's rules instead is immediately below, and it always did.**
 # ``RULE_VIOLATIONS`` carries a hand-written payload per rule and routes it through
 # ``model_validate`` -- the class's OWN validation, which is where section 6 says an
-# invalid payload is informative -- and asserts the keyword both halves name.  That
+# an invalid payload reaches pydantic's own validators -- and asserts the keyword
+# both halves name.  That
 # is the check the deleted four were standing next to rather than doing.
 
 
