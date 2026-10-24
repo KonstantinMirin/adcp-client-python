@@ -655,6 +655,15 @@ def check_liveness(
     this payload and the entry point did not, so either the schema half is not
     running or ``__adcp_schema__`` does not resolve to this document.
 
+    **That verdict is a statement about the WIRING and never about pydantic's
+    strictness, and the distinction is load-bearing enough to say twice.**  Pass this
+    a bare ``model_validate`` and it will report ``schema_half_not_connected`` on a
+    perfectly correct class, because a correct class MAY accept a schema-invalid
+    payload -- that is D4, and section 6 says so in as many words.  So ``accept`` is
+    the entry point the caller ships, the one whose schema half answers first; the
+    only thing an acceptance can mean through THAT is that the half is missing.
+    ``check_pair`` passes ``pair.accept`` and there is no other production call site.
+
     **A refusal means pydantic's ``ValidationError`` and nothing else**, and that is
     measured rather than chosen: over 838 graded pairs, 0 refused this payload with
     any other exception, so admitting a foreign exception as a refusal would cost
