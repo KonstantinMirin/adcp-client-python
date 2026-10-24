@@ -544,10 +544,11 @@ def check_format_strategy(
 class _DumpRefused(Exception):
     """The class constructed a value whose DUMP its own document refuses.
 
-    Raised from inside the accepts check's body so hypothesis shrinks to the
-    smallest instance that shows it, and caught by name so the verdict is
-    ``model_dropped_a_fact`` and not the ``model_error`` any other exception from
-    the body would read as.
+    Raised from inside the accepts check's body and caught BY NAME, so the verdict
+    is ``model_dropped_a_fact`` and not the ``model_error`` any other exception from
+    the body reads as.  The instance that showed it is reported verbatim: there is
+    no shrink phase to simplify it, and at the default ``examples=1`` there is one
+    generated instance for a shrink to have worked on anyway.
     """
 
 
