@@ -222,7 +222,8 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     # (214) did not move, so the 2 are both INLINE and the baseline says so -- this
     # file is 1 failed / 22 passed at ``c9bfb5133`` and these four were the 4 green
     # ones that moved.
-    assert len(classes) == 484, len(classes)  # 214 roots, the rest inline
+    # 484 -> 506 at ``salesagent-j3k2l.28``, population growth again.
+    assert len(classes) == 506, len(classes)  # 214 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -277,7 +278,8 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
                 keywords_seen.add(value)
     # 2692 -> 2892 on fe0e185f9, population growth; 2892 -> 2917 at
     # ``salesagent-j3k2l.40``, the same 5 documents.
-    assert names == 2917, names
+    # 2917 -> 2993 at ``salesagent-j3k2l.28``, population growth again.
+    assert names == 2993, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -343,7 +345,8 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
     # ``salesagent-j3k2l.40``.  Still not derived from the CLASS count above, which
     # moved by 2 against this 4 -- the two were equal at 277 and again at 333 by
     # coincidence of the populations, and this is the third pair that is not.
-    assert nodes == 545, nodes
+    # 545 -> 568 at ``salesagent-j3k2l.28``, population growth again.
+    assert nodes == 568, nodes
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -498,7 +501,9 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
     # salesagent-j3k2l.28 gave the fifth fold's `enum` arm when its population went to
     # zero: label the dormancy, do not delete a legitimate shape or let a dead arm read
     # as live.
-    assert (sites, len(documents), inherited) == (128, 78, 0), (
+    # (128, 78, 0) -> (131, 81, 0) at ``salesagent-j3k2l.28``: 3 more documents
+    # reference a root enum, and ``inherited`` stays 0, which is the claim.
+    assert (sites, len(documents), inherited) == (131, 81, 0), (
         sites,
         len(documents),
         inherited,
@@ -1014,4 +1019,5 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     # that would grade importability, which the whole-tree import in
     # ``tests/test_emit.py`` already grades, and would retire the only check on what a
     # module DECLARES -- the check that has now caught two separate defects.
-    assert checked == 977, checked
+    # 977 -> 1013 at ``salesagent-j3k2l.28``, population growth again.
+    assert checked == 1013, checked

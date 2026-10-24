@@ -206,6 +206,56 @@ def _inner(decided: Decided, pointer: str, what: str) -> compiler.Type:
     return decided.type
 
 
+def _contents(node: dict, pointer: str, symbol: str, what: str, mod: Module) -> compiler.Type:
+    """The type of a container's CONTENTS -- its element, or its mapping's value.
+
+    One function for the two, because the two are the same question asked at two
+    pointers: the node is a schema of its own, at a pointer of its own, and the
+    container is one type word above it.  A container's KEY and a multi-type ARM are
+    not that question and do not come here -- an arm is the node RE-CUT to one type,
+    so its annotations are the node's own and the field holding the union already
+    carries them, and a ``propertyNames`` node is a statement about a key rather than
+    a value at a pointer the comparison reads.
+
+    **An ANNOTATION on an inner node had nowhere to go either, and unlike a constraint
+    it was dropped in SILENCE.**  :func:`_inner` refuses a constraint and a ``format``
+    by name because dropping one would widen the model; a ``description`` narrows
+    nothing, so it was dropped with no refusal and no rendering -- and §6 says a
+    ``description`` is never folded and that where the comparison reports one the
+    EMITTER is what changes.  Measured: ``comparison.missing`` was **4 facts over 4
+    pairs**, every one of them ``.../additionalProperties/description`` and every one
+    of them ``'Component properties'`` -- ``a2ui/component.json``,
+    ``a2ui/surface.json`` and the two ``sponsored-intelligence`` responses that compose
+    a surface (``salesagent-j3k2l.28``).
+
+    **The node is NAMED, which is the mechanism this pipeline already has for a node
+    whose facts need a carrier.**  ``compiler.name_the_node`` declares the
+    ``Annotated`` alias a fragment-referenced node already gets, from the same
+    ``_alias_for`` -- so the annotation a container's contents carry and the annotation
+    a referenced node carries have ONE spelling, and ``dict[str, X]`` where ``X`` is a
+    local symbol is a plain reference the compiler needs nothing extra for.  The name
+    is D3's nested rule, already computed by the caller and passed in, so none is
+    derived here.
+
+    Gated on the type not being LOCAL already: a node D2 makes a class, or one the walk
+    has named, carries its own description in its own declaration, and a second alias
+    over it would be a second name for one node (P2).  ``compiler.Module.declare``
+    refuses a symbol or a pointer twice by name, so a collision is a refusal rather
+    than a silent overwrite.
+
+    What this still drops is every annotation ``_alias_for`` does not carry -- a
+    ``default`` on an inner node has no slot on an alias and would still read as
+    ``missing``, which is the safe direction and is visible.  0 inner nodes of the
+    bundle state one.
+    """
+    decided = mod.decide(node, pointer, symbol, mod)
+    type_ = _inner(decided, pointer, what)
+    description = node.get("description")
+    if type_.local or not (isinstance(description, str) and description):
+        return type_
+    return compiler.name_the_node(mod, symbol, pointer, node, decided).type
+
+
 # --------------------------------------------------------------------------- #
 # the rows
 # --------------------------------------------------------------------------- #
@@ -240,7 +290,7 @@ def array(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
             kind=Kind.VERDICT,
         )
     at = f"{pointer}/items"
-    element = _inner(mod.decide(items, at, name_hint + "Item", mod), at, "the element")
+    element = _contents(items, at, name_hint + "Item", "the element", mod)
     return Decided(compiler.Type(container="list", of=(element,)), bounds)
 
 
@@ -315,7 +365,7 @@ def _value(node: Any, pointer: str, name_hint: str, mod: Module) -> compiler.Typ
         return compiler.Type("typing.Any")
     if not isinstance(node, dict):
         raise Refusal("additionalProperties", pointer, f"not a schema: {node!r}", kind=Kind.VERDICT)
-    return _inner(mod.decide(node, pointer, name_hint + "Value", mod), pointer, "the value")
+    return _contents(node, pointer, name_hint + "Value", "the value", mod)
 
 
 #: Why a mapping whose KEY TEXT is constrained by a regular expression is refused, and

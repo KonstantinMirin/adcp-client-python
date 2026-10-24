@@ -244,7 +244,31 @@ def schema_at(ref: SchemaRef) -> dict:
     return applied_schema(_document(ref.document), ref.pointer)
 
 
-def _refuse(schema: dict, payload: Any, name: str) -> None:
+def _refuse_at(ref: SchemaRef, payload: Any, name: str) -> None:
+    """:func:`_refuse` for a node a :class:`SchemaRef` names: the DOCUMENT is the scope.
+
+    **One call so the node and its resolution scope cannot be supplied separately**,
+    which is the defect this closes.  ``bundle.resolved`` inlines a REMOTE reference
+    and leaves a LOCAL one, so a node at ``#/definitions/box_decoration`` can say
+    ``{"$ref": "#/definitions/rectangle"}`` -- a pointer relative to the DOCUMENT
+    ROOT.  Handed the node as its own schema, ``jsonschema`` resolves ``#/`` within
+    that node and raises ``PointerToNowhere``, so ``strict_validate`` refused EVERY
+    payload, including the ones the document accepts: measured at 5 pairs over
+    ``core/placement-presentation.json`` and ``core/bidding-policy-capability.json``,
+    each reporting the raise rather than a verdict about any value
+    (``salesagent-j3k2l.28``).  0 such pairs existed before, because every document
+    carrying one was refused by name.
+
+    The two production entry points -- a class's ``strict_validate`` and an alias's
+    -- both reach the schema half through here, so neither can read a node without
+    its document.  :func:`_refuse` stays the mechanism and takes a schema, which is
+    what a caller grading a hand-written document has.
+    """
+    root = _document(ref.document)
+    _refuse(applied_schema(root, ref.pointer), payload, name, root=root)
+
+
+def _refuse(schema: dict, payload: Any, name: str, *, root: dict | None = None) -> None:
     """Raise pydantic's ``ValidationError`` for every way ``schema`` refuses ``payload``.
 
     The schema check runs over the WHOLE payload before anything is constructed,
@@ -255,6 +279,19 @@ def _refuse(schema: dict, payload: Any, name: str) -> None:
     one refusal and one error shape.  An alias and a class differ only in how
     they are constructed afterwards; what the document accepts is the same
     question and must not get a second answer.
+
+    ``root`` is what a LOCAL ``$ref`` inside ``schema`` resolves against, and it
+    defaults to ``schema`` -- correct for a whole document, and wrong for a NODE of
+    one, which is why :func:`_refuse_at` exists and is what both production entry
+    points call.  The validator is built on ``root`` and ``evolve``d onto
+    ``schema``, so the resolution scope is the document's while the assertions
+    applied are the node's.  Verified to refuse THROUGH the reference as well as at
+    the node: a ``width: 0`` against a referenced ``rectangle``'s ``minimum: 1``, a
+    ``layer`` outside a referenced enum and a ``fill_color`` against a referenced
+    ``pattern`` are each reported with its own keyword and pointer.
+
+    The DRAFT is read off ``root`` and not off ``schema``, for the same reason: a
+    nested node declares no ``$schema`` and its document does.
 
     **``format`` IS ASSERTED, and the checker comes from the document's own
     draft.**  ``jsonschema`` treats ``format`` as a pure annotation unless it is
@@ -277,9 +314,11 @@ def _refuse(schema: dict, payload: Any, name: str) -> None:
     after-validator for a ``model_validate`` one -- and two spellings of one
     refusal is one place for them to grow two error shapes for one keyword.
     """
-    validator = jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
+    scope = schema if root is None else root
+    validator = jsonschema.validators.validator_for(scope, jsonschema.Draft7Validator)
+    at_the_node = validator(scope, format_checker=validator.FORMAT_CHECKER).evolve(schema=schema)
     errors = sorted(
-        validator(schema, format_checker=validator.FORMAT_CHECKER).iter_errors(payload),
+        at_the_node.iter_errors(payload),
         key=lambda e: [str(p) for p in e.absolute_path],
     )
     refuse(
@@ -329,7 +368,7 @@ def strict_alias(ref: SchemaRef, symbol: str, alias: Any) -> Callable[[Any], Any
     adapter = TypeAdapter(alias, config=ConfigDict(regex_engine=REGEX_ENGINE))
 
     def strict_validate(payload: Any) -> Any:
-        _refuse(schema_at(ref), payload, symbol)
+        _refuse_at(ref, payload, symbol)
         return adapter.validate_python(payload)
 
     strict_validate.__doc__ = f"Validate against {ref.document}, then construct {symbol}."
@@ -367,7 +406,7 @@ class AdCPBaseModel(RuleBound):
         The schema is the one this class names.  There is no lookup to get wrong
         and no second place to read one from.
         """
-        _refuse(schema_at(cls.__adcp_schema__), payload, cls.__name__)
+        _refuse_at(cls.__adcp_schema__, payload, cls.__name__)
         return cls.model_validate(payload)
 
 

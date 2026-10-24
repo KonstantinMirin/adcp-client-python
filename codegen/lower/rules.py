@@ -27,8 +27,7 @@ pair is a committed test, so the ceiling is measured rather than claimed.
 carries the rule: the array a FIELD holds.  467 of the bundle's 485 occurrences are at a
 ``properties/<name>`` slot, so D2's *a rule on the nearest class* makes the class holding
 the array the one that states it, and :func:`_distinct` reads it off this node's own
-``properties`` -- the same reach :func:`conditional_properties` already makes into
-``if``/``then``/``else``.  The array row's own keyword screen is left alone, which is the
+``properties``.  The array row's own keyword screen is left alone, which is the
 decision rather than an omission: an array with no class above it (a mapping value, a
 document root, a combinator branch -- 18 of the 485) keeps refusing on ``uniqueItems`` by
 name, and that is the true reason, because a rule has nowhere to live there.
@@ -85,10 +84,6 @@ KEYWORDS = compiler.RULE_KEYWORDS
 #: one; a conditional and a combinator would, and do not.
 ON_A_VALUE = frozenset({"not"})
 
-#: The three keywords a conditional is spelled with, in the order a document writes
-#: them, so the properties collected out of them are in document order too.
-_CONDITIONAL = ("if", "then", "else")
-
 #: The two combinators, and the order a rule tuple lists them in.
 _COMBINATORS = ("oneOf", "anyOf")
 
@@ -99,14 +94,10 @@ class Lowered:
 
     ``rules`` is the SOURCE of each constructor, in document order, which is what makes
     the emitted tuple a function of the document rather than of a dict's iteration
-    (P7).  ``properties`` holds the declarations of properties the node mentions ONLY
-    inside a conditional -- the field has to exist for the instance to carry the value
-    the conditional talks about.  ``imports`` is ``(module, name)``, the shape
-    ``emit.Module.imports`` holds.
+    (P7).  ``imports`` is ``(module, name)``, the shape ``emit.Module.imports`` holds.
     """
 
     rules: list[str] = field(default_factory=list)
-    properties: dict[str, dict] = field(default_factory=dict)
     imports: set[tuple[str, str]] = field(default_factory=set)
     #: The property keys whose array this node states is DISTINCT, in document order.
     #: Names only, because the keyword's two consequences belong to the compiler: it
@@ -118,7 +109,7 @@ class Lowered:
 
 
 def lower(node: dict) -> Lowered:
-    """Every rule one object node states, and the properties only its conditionals name."""
+    """Every rule one object node states."""
     out = Lowered()
     _depends(node, out)
     _count(node, out)
@@ -126,9 +117,6 @@ def lower(node: dict) -> Lowered:
     _combinator(node, out)
     _conditional(node, out)
     _distinct(node, out)
-    for name, declaration in conditional_properties(node).items():
-        if name not in (node.get("properties") or {}):
-            out.properties[name] = declaration
     if out.rules:
         out.imports.add((RUNTIME_MODULE, "Rule"))
         out.imports.add(("typing", "ClassVar"))
@@ -310,45 +298,6 @@ def _conditional(node: dict, out: Lowered) -> None:
         out.imports.add((RUNTIME_MODULE, "Match"))
 
 
-def conditional_properties(node: dict) -> dict[str, dict]:
-    """Every property declared inside this node's conditionals, in document order.
-
-    A property the node declares only under ``then`` or ``else`` still arrives on the
-    wire, so the class needs an optional field to carry it, and the declaration there is
-    what types it.  ``if`` is walked too, because a key an ``if`` tests on is a key the
-    instance may carry.
-
-    Declared twice and DIFFERENTLY -- two branches narrowing the same key -- the key
-    gets the annotations only, which lowers to ``Any``: picking one branch's type would
-    make the field refuse an instance the other branch admits, which is a failure of the
-    accepts check for a model that must be at least as wide as its document.
-    """
-    found: dict[str, list[dict]] = {}
-
-    def walk(sub: Any) -> None:
-        if not isinstance(sub, dict):
-            return
-        for name, declaration in (sub.get("properties") or {}).items():
-            if isinstance(declaration, dict):
-                found.setdefault(name, []).append(declaration)
-        for keyword in _CONDITIONAL:
-            walk(sub.get(keyword))
-
-    for keyword in _CONDITIONAL:
-        walk(node.get(keyword))
-    return {
-        name: (
-            declarations[0]
-            if all(d == declarations[0] for d in declarations)
-            else {k: v for k, v in declarations[0].items() if k in ANNOTATIONS}
-        )
-        for name, declarations in found.items()
-    }
-
-
-# --------------------------------------------------------------------------- #
-# the readings, each of which answers None for "not about presence"
-# --------------------------------------------------------------------------- #
 def _whole(value: Any) -> int | None:
     """``value`` if it is a JSON integer, which ``True`` is not."""
     return value if isinstance(value, int) and not isinstance(value, bool) else None
@@ -446,9 +395,8 @@ def _branch(sub: Any) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
     """A ``then``/``else`` as ``(must be present, must be absent)``, or ``None``.
 
     A ``properties`` in the branch is ignored rather than refused: it narrows a VALUE,
-    which is the schema's statement and not a rule's (see the module docstring), and its
-    declarations are collected separately by :func:`conditional_properties`.  A ``not``
-    is read only when it forbids ONE name -- ``not: {"required": [a, b]}`` forbids the
+    which is the schema's statement and not a rule's (see the module docstring).  A
+    ``not`` is read only when it forbids ONE name -- ``not: {"required": [a, b]}`` forbids the
     PAIR, and a list of individually-absent keys would be stronger than the document.
     """
     if not isinstance(sub, dict):

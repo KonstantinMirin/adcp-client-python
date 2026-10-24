@@ -8,6 +8,9 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
+A2UIComponentComponentValue = Annotated[dict[str, Any], Field(description='Component properties')]
+
+
 class A2UIComponent(AdCPBaseModel):
     """
     A component in an A2UI surface
@@ -18,7 +21,7 @@ class A2UIComponent(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='a2ui/component.json', pointer='#')
     id: Annotated[str, Field(description='Unique identifier for this component within the surface')]
     parentId: Annotated[str | None, Field(description='ID of the parent component (null for root)')] = None
-    component: Annotated[dict[str, dict[str, Any]], Field(description='Component definition (keyed by component type)', max_length=1, min_length=1)]
+    component: Annotated[dict[str, A2UIComponentComponentValue], Field(description='Component definition (keyed by component type)', max_length=1, min_length=1)]
 
 
 __all__ = ["A2UIComponent"]
