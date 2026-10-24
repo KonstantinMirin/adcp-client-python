@@ -1796,15 +1796,15 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
         for g, r in reports
         if r.accepts.dump_exempt
     }
+    # THREE, not the eight that an exempt position lies inside: ``dump_exempt`` records
+    # what a pair's dump NEEDED, so the five ancestor pairs whose drawn instance never
+    # reached the node report nothing and a conditional pass stays readable among them.
     assert exempt == {
         "core/attestation-capabilities.json#": [
             "core/attestation-capabilities.json#/properties/accepted_issuers/items"
             "/properties/credential_origins/items/pattern",
             "core/attestation-capabilities.json#/properties/accepted_issuers/items"
             "/properties/issuer/oneOf/2/properties/origin/pattern",
-        ],
-        "core/attestation-issuer.json#": [
-            "core/attestation-issuer.json#/oneOf/2/properties/origin/pattern"
         ],
         "core/attestation-issuer.json#/oneOf/2": [
             "core/attestation-issuer.json#/oneOf/2/properties/origin/pattern"

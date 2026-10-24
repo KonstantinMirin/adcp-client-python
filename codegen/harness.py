@@ -476,16 +476,27 @@ class AcceptsResult:
     #: round-tripped every instance from one the generator never reached.
     round_tripped: int = 0
 
-    #: The exempt positions in force for this pair, ``"<document>#<pointer>/<keyword>"``
-    #: each, from ``codegen.dump_exemptions``.
+    #: The exempt positions this pair's dump actually NEEDED,
+    #: ``"<document>#<pointer>/<keyword>"`` each, from ``codegen.dump_exemptions``.
     #:
     #: **REPORTED and not silent, which is the precedent every other excused fact in
     #: this module follows** -- ``_schema_half_enforces``, ``_narrows_nothing`` and
     #: ``url_typed`` all put the excuse on the result where a reader of the pair meets
     #: it.  An exemption the harness does not report is one nobody reading a green
     #: pair can see, and this is the only check that reads what a class DID with a
-    #: value.  So a pair that passes BECAUSE a keyword was struck says so here, and a
-    #: non-empty list beside ``outcome == "pass"`` is a conditional pass.
+    #: value.  So a non-empty list beside ``outcome == "pass"`` is a CONDITIONAL pass.
+    #:
+    #: **"Needed" and not "in force", and the difference was measured.**  An entry
+    #: applies to every pair whose node CONTAINS the position, which it must -- an
+    #: ancestor pair's dump carries the nested node, which is exactly why
+    #: ``core/attestation-capabilities.json#`` is refused for a position inside
+    #: ``core/attestation-issuer.json``.  But 8 pairs contain one of the four
+    #: positions and only 3 are refused without it: the other 5 are ancestors whose
+    #: drawn instance never reached the node.  Reporting all 8 would make this field
+    #: mean "an exemption lies somewhere inside me", which is not a fact about the
+    #: pair's verdict, and would make a conditional pass unreadable among pairs that
+    #: pass on their own merits.  So the dump is re-validated against the UNSTRUCK
+    #: node and the label is recorded only where that refuses it.
     dump_exempt: list[str] = field(default_factory=list)
 
 
@@ -791,7 +802,6 @@ def check_accepts(
     dump_schema = (
         schema if ref is None else dump_exemptions.struck(schema, ref.document, ref.pointer)
     )
-    res.dump_exempt = [] if ref is None else dump_exemptions.labels(ref.document, ref.pointer)
     dump_validator_cls = validator_cls if dump_schema is schema else validator_for(dump_schema)
 
     def body(instance: Any) -> None:
@@ -799,12 +809,21 @@ def check_accepts(
         seen.append(instance)
         built = accept(instance)
         back = dump(built) if dump is not None else _wire_dump(built)
+        if dump_schema is not schema and conforms(schema, back, validator_cls=validator_cls) is (
+            False
+        ):
+            # The strike MATTERED for this instance: the unstruck node refuses this
+            # dump and the struck one is about to be asked.  Recorded here rather than
+            # once per call, so the field says what this pair needed and not what lies
+            # inside it -- see ``AcceptsResult.dump_exempt``.
+            assert ref is not None  # dump_schema differs only when a ref was supplied
+            res.dump_exempt = dump_exemptions.labels(ref.document, ref.pointer)
         if conforms(dump_schema, back, validator_cls=dump_validator_cls) is False:
             # The CAUSE goes first, because ``detail`` is truncated and a reason at
             # the end of a megabyte of dumped instance is a reason nothing can read.
+            broke = violated_keywords(dump_schema, back, validator_cls=dump_validator_cls)
             raise _DumpRefused(
-                "the document refuses the dump on "
-                f"{', '.join(violated_keywords(dump_schema, back, validator_cls=dump_validator_cls))}"
+                f"the document refuses the dump on {', '.join(broke)}"
                 f"; dumped {_dump(back)} from {_dump(instance)}"
             )
         res.round_tripped += 1

@@ -186,7 +186,9 @@ def _graded_positions() -> set[str]:
     for info in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
         module = importlib.import_module(info.name)
         for value in vars(module).values():
-            ref = getattr(value, "__dict__", {}).get("__adcp_schema__") if isinstance(value, type) else None
+            if not isinstance(value, type):
+                continue
+            ref = value.__dict__.get("__adcp_schema__")
             if isinstance(ref, SchemaRef) and value.__module__ == info.name:
                 out.add(f"{ref.document}#{ref.pointer.lstrip('#')}")
         ref = vars(module).get("__adcp_schema__")
@@ -517,6 +519,45 @@ def test_an_unexempt_pair_reports_no_exemption_and_still_passes() -> None:
     non-empty one readable as a conditional pass rather than as noise every pair
     carries."""
     report = harness.check_pair(_pair("core/pagination-request.json", "#"))
+    assert report.outcome == "pass", (report.outcome, report.accepts.detail)
+    assert report.accepts.dump_exempt == [], report.accepts.dump_exempt
+
+
+#: The pairs an exempt position lies INSIDE but whose own dump does not need it: an
+#: ancestor whose drawn instance never reached the node.  Named, because the first
+#: version of the reported field recorded all eight pairs an entry applies to and that
+#: made a conditional pass unreadable -- five of the eight pass on their own merits.
+ANCESTORS = (
+    ("core/attestation-issuer.json", "#"),
+    ("core/attestation-capabilities.json", "#/properties/accepted_issuers/items"),
+    ("core/provenance.json", "#"),
+    ("core/provenance.json", "#/properties/disclosure"),
+    (
+        "core/provenance.json",
+        "#/properties/disclosure/properties/jurisdictions/items",
+    ),
+)
+
+
+@pytest.mark.parametrize(("document", "pointer"), ANCESTORS, ids=lambda x: str(x)[:60])
+def test_an_ancestor_of_an_exempt_position_reports_nothing_it_did_not_need(
+    document: str, pointer: str
+) -> None:
+    """An entry applies to every pair whose node CONTAINS it, and must.
+
+    An ancestor pair's dump carries the nested node, which is exactly why
+    ``core/attestation-capabilities.json#`` is refused for a position authored in
+    ``core/attestation-issuer.json``.  So ``applying_to`` matching by prefix is right.
+
+    What would be wrong is REPORTING it everywhere it applies.  These five pairs
+    contain an exempt position and pass without it, because their drawn instance never
+    reached the node -- so the strike is available to them and they do not use it.
+    ``dump_exempt`` records what the dump NEEDED, which keeps a non-empty list meaning
+    "this pair passes conditionally" rather than "an exemption exists somewhere below
+    me".  Both halves are asserted: the entry does apply, and nothing is reported.
+    """
+    assert dump_exemptions.applying_to(document, pointer), (document, pointer)
+    report = harness.check_pair(_pair(document, pointer))
     assert report.outcome == "pass", (report.outcome, report.accepts.detail)
     assert report.accepts.dump_exempt == [], report.accepts.dump_exempt
 
