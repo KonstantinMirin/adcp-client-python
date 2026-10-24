@@ -473,7 +473,7 @@ class InvalidResult:
     violated: tuple[str, ...] = ()
     payload: str = ""
     detail: str = ""
-    #: pass | model_accepted_invalid | no_payload | harness_error
+    #: pass | model_accepted_invalid | model_error | no_payload
     outcome: str = "unrun"
 
 
@@ -642,10 +642,13 @@ def check_invalid(
     ran this way at 27,791 sites.  Through ``model_validate`` pydantic's generated
     validators decide, so an acceptance is a defect in emitted code.
 
-    A refusal is the obligation and ANY exception is one; the exception's own shape
-    is a separate obligation, graded where the error shape is decided, so a refusal
-    that is not a ``ValidationError`` passes here with the type recorded in
-    ``detail`` rather than being read as this check's failure.
+    **A refusal means pydantic's ``ValidationError`` and nothing else**, and that is
+    measured rather than chosen: over 838 graded pairs, 0 refused this payload with
+    any other exception, so admitting a foreign exception as a refusal would cost
+    nothing today and would hide the one thing it could ever hide -- an entry point
+    raising something the caller cannot catch, which is how the specification's own
+    probe came to read a pair nothing graded as green.  So a foreign exception is
+    ``model_error`` with its type in ``detail``, which is a verdict and not a pass.
     """
     res = InvalidResult()
     cls = validator_cls or validator_for(schema)
@@ -661,9 +664,9 @@ def check_invalid(
         validate(payload)
     except ValidationError:
         res.outcome = "pass"
-    except Exception as e:  # still a refusal; the shape is another check's question
-        res.outcome = "pass"
-        res.detail = f"refused with {type(e).__name__}: {e}"[:300]
+    except Exception as e:  # not a refusal this caller could catch
+        res.outcome = "model_error"
+        res.detail = f"{type(e).__name__}: {e}"[:300]
     else:
         res.outcome = "model_accepted_invalid"
     return res

@@ -531,12 +531,21 @@ def test_a_zero_denominator_is_not_reportable_as_a_pass() -> None:
     with an exception that is not pydantic's, which is what the specification's own
     probe did.  Nothing round-trips, the denominator is 0, and the pair's verdict
     names the entry point rather than passing.
+
+    **Both halves of the harness are graded here, because a foreign exception can
+    arrive at either.**  The accepts check offers an instance the document admits,
+    and the invalid check offers one it refuses; an entry point raising something the
+    caller cannot catch at either of them used to read as a pair with nothing wrong.
+    ``check_invalid`` is asserted directly, because the pair's own invalid payload
+    goes through ``model_validate`` and never through a caller's ``accept``.
     """
     schema = schema_at(SchemaRef(PAGINATION, "#"))
     model = pagination().model
 
     def foreign_error(payload: Any) -> Any:
-        jsonschema.validate(payload, schema)  # raises jsonschema's error, not pydantic's
+        # Refuses with jsonschema's error and not pydantic's, on an instance the
+        # document ADMITS -- a string schema against this document's object root.
+        jsonschema.validate(payload, {"type": "string"})
         return model.model_validate(payload)
 
     rep = check_pair(Pair(name="foreign", schema=schema, model=model, accept=foreign_error))
@@ -544,6 +553,17 @@ def test_a_zero_denominator_is_not_reportable_as_a_pass() -> None:
     assert "ValidationError" in rep.accepts.detail
     assert rep.graded_instances == 0
     assert rep.outcome == "accepts:model_error"
+
+    # ... and the same exception on the invalid payload's path.
+    def foreign_refusal(_payload: Any) -> Any:
+        raise jsonschema.ValidationError("not pydantic's error")
+
+    invalid = check_invalid(schema, foreign_refusal, {"max_results": 1})
+    assert invalid.how == "replaces the instance with None", invalid.how
+    assert invalid.outcome == "model_error", (invalid.outcome, invalid.detail)
+    assert invalid.detail.startswith("ValidationError"), invalid.detail
+    # And pydantic's own error IS the refusal, over the same payload.
+    assert check_invalid(schema, model.model_validate, {"max_results": 1}).outcome == "pass"
 
 
 def test_a_zero_denominator_verdict_is_never_pass() -> None:
@@ -594,18 +614,35 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
 #: indistinguishable trees spread over 0.4%.  There is one draw per pair now and the
 #: schema comparison walks a document, so every figure here is a function of
 #: (bundle, emitted tree) and reproduces exactly.
-PAIRS_PIN = 0
-OUTCOME_PINS: dict[str, int] = {}
-COMPARED_PIN = 0
-MODEL_FACTS_PIN = 0
+PAIRS_PIN = 1055
+#: Measured: 1,048 pass, and the seven that do not are named in
+#: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.
+OUTCOME_PINS: dict[str, int] = {
+    "pass": 1048,
+    "accepts:model_dropped_a_fact": 3,
+    "comparison:model_drops_a_fact": 2,
+    "no_instrument": 2,
+}
+#: One instance per pair, minus the 2 whose generator could not draw one and the 3
+#: whose DUMP the document refused -- a failing example is reported, not counted.
+ROUND_TRIPPED_PIN = 1050
+COMPARED_PIN = 36060
+MODEL_FACTS_PIN = 12840
+#: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND ``MISSING_PIN`` IS RED.**  Zero is
+#: the specification's symmetric comparison -- a fact the model adds reddens and a
+#: fact it drops reddens -- and salesagent-j3k2l.28 owns the gap.  Re-pointing them
+#: at the measurement is the thing that row says not to do.  Measured on this tree:
+#: ``missing`` is 2 and ``differs`` is 0, against 10 and 13 when .28 was filed, so
+#: most of that row has landed.  The 2 remaining are one ``description`` each at an
+#: ``additionalProperties`` node (``a2ui/component.json``, ``a2ui/surface.json``).
 MISSING_PIN = 0
 DIFFERS_PIN = 0
-URL_TYPED_PIN = 0
-NO_PAYLOAD_PIN = 0
+URL_TYPED_PIN = 1266
+NO_PAYLOAD_PIN = 2
 #: Which perturbation ``refusing_payload`` reached, counted by its first word.
 #: A partition and not a total: which one bites is a property of the DOCUMENT's own
 #: root shape, so a shift here says the population's roots moved.
-INVALID_PINS: dict[str, int] = {}
+INVALID_PINS: dict[str, int] = {"drops": 592, "replaces": 461, "": 2}
 
 
 @functools.cache
@@ -647,7 +684,7 @@ def test_the_pairs_with_no_invalid_payload_are_the_documents_that_refuse_nothing
     excused = [g for g, r in reports if r.invalid.outcome == "no_payload"]
     # The exits are exhaustive over the population rather than one slice of it, so a
     # verdict nobody listed could not hide behind this one.
-    assert {r.outcome for _, r in reports} == {"pass", "no_instrument"}, {
+    assert {r.outcome for _, r in reports} == set(OUTCOME_PINS), {
         r.outcome for _, r in reports
     }
     assert [f"{g.ref.document}{g.ref.pointer}" for g in excused] == [
@@ -1610,10 +1647,14 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     assert len(reports) == PAIRS_PIN, len(reports)
     by_outcome = collections.Counter(r.outcome for r in reports)
     assert dict(by_outcome) == OUTCOME_PINS, dict(by_outcome)
-    # One instance per pair at the default depth, minus the pairs whose generator
-    # could not draw one -- so this and the ``no_instrument`` count above are two
-    # readings of the same fact and cannot drift apart.
-    assert sum(r.graded_instances for r in reports) == PAIRS_PIN - by_outcome["no_instrument"]
+    # One instance per pair at the default depth.  Spelled as the arithmetic rather
+    # than as a bare number, so the pin and the outcome partition above are two
+    # readings of one fact and cannot drift apart: a pair whose generator could not
+    # draw and a pair whose dump the document refused both round-trip nothing.
+    assert ROUND_TRIPPED_PIN == PAIRS_PIN - OUTCOME_PINS["no_instrument"] - OUTCOME_PINS[
+        "accepts:model_dropped_a_fact"
+    ]
+    assert sum(r.graded_instances for r in reports) == ROUND_TRIPPED_PIN
     assert sum(r.comparison.compared for r in reports) == COMPARED_PIN
     assert sum(r.comparison.model_facts for r in reports) == MODEL_FACTS_PIN
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
@@ -1632,6 +1673,72 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     # and which one bites is a property of the DOCUMENT: a shift here means the
     # population's root shapes moved, which is a fact worth reading.
     assert dict(collections.Counter(r.invalid.how.split(" ")[0] for r in reports)) == INVALID_PINS
+
+
+def test_the_non_pass_pairs_are_named_and_attributed() -> None:
+    """Every pair that is not ``pass``, by name, with what it is.
+
+    **A census and not a tolerance.**  Nothing here excuses anything:
+    ``test_every_class_passes_all_three_checks`` still reddens on all five of the
+    first two groups, and this test exists so the failures are NAMED rather than
+    counted -- a count of five tells the next reader nothing about which five or
+    why, and the section-6 rebuild is the first thing to measure them.
+
+    Three groups, and the attribution of each was measured rather than assumed:
+
+    * ``accepts:model_dropped_a_fact`` -- NEW with the dump half of the accepts
+      check, which is the one thing in this harness that reads what a class DID with
+      a value.  Two of them are pydantic URL normalisation against a document's own
+      ``pattern``: ``core/attestation-issuer.json``'s origin states
+      ``^https://[^/?#@]+$``, the class carries a URL type (which cannot carry the
+      pattern -- D5, ``_schema_half_enforces``), and the type re-emits
+      ``https://a.com/`` with a path separator the pattern forbids.  The third is
+      D8's retention rule meeting a ``minProperties``: the class is ``extra="ignore"``
+      so an undeclared key is accepted and dropped, and an instance whose ONLY key is
+      an undeclared one dumps to ``{}``, which the document refuses.  Neither is an
+      artifact of the dump's own keywords -- measured, the same node dumped WITHOUT
+      ``exclude_unset`` is refused too, on ``type`` instead of ``minProperties``.
+    * ``comparison:model_drops_a_fact`` -- PRE-EXISTING at the base, and the proof is
+      that ``compare_schema`` is byte-identical to ``7ffad8134``'s (md5 of the
+      function, measured).  Both are one ``description`` at an
+      ``additionalProperties`` node and both belong to salesagent-j3k2l.28.
+    * ``no_instrument`` -- the ``format``-beside-``pattern`` shape
+      ``hypothesis_jsonschema``'s ``string_schema`` filters and cannot satisfy, which
+      is an admitted exit rather than a failure (salesagent-j3k2l.10), and the
+      schema comparison still grades both pairs.
+    """
+    reports = graded_reports()
+    by_outcome: dict[str, list[str]] = {}
+    for g, r in reports:
+        if r.outcome != "pass":
+            by_outcome.setdefault(r.outcome, []).append(f"{g.ref.document}{g.ref.pointer}")
+    assert by_outcome == {
+        "accepts:model_dropped_a_fact": [
+            "core/attestation-capabilities.json#",
+            "core/attestation-issuer.json#/oneOf/2",
+            "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
+            "/properties/render_guidance",
+        ],
+        "comparison:model_drops_a_fact": ["a2ui/component.json#", "a2ui/surface.json#"],
+        "no_instrument": [
+            "core/reference-renderer.json#",
+            "core/reference-renderer.json#/properties/provenance",
+        ],
+    }, by_outcome
+    # Each cause is read off the report rather than taken from the list above, so a
+    # pair that landed in one of these groups for a DIFFERENT reason reddens here.
+    for g, r in reports:
+        if r.outcome == "accepts:model_dropped_a_fact":
+            assert "the document refuses it on " in r.accepts.detail, (g.ref, r.accepts.detail)
+        elif r.outcome == "comparison:model_drops_a_fact":
+            assert [m for m in r.comparison.missing if "/description:" in m], r.comparison.missing
+            assert r.comparison.added == [] and r.comparison.differs == []
+        elif r.outcome == "no_instrument":
+            for cause in r.no_instrument:
+                _grades_a_cause(cause, r.name)
+            # The comparison needs no generator and still grades an undrawable pair,
+            # which is what keeps this exit from being a hole.
+            assert r.comparison.outcome == "pass" and r.comparison.compared > 0
 
 
 def test_the_invalid_payload_reaches_every_pair_the_document_refuses_anything_for() -> None:
