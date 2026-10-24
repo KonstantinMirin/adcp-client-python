@@ -223,11 +223,15 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     # file is 1 failed / 22 passed at ``c9bfb5133`` and these four were the 4 green
     # ones that moved.
     # 484 -> 506 at ``salesagent-j3k2l.28``, population growth again.
-    # 506 -> MEASURE at ``salesagent-j3k2l.38``, and this one is a SHRINK meeting that
+    # 506 -> 502 at ``salesagent-j3k2l.38``, and this one is a SHRINK meeting that
     # growth: D3's content dedup collapses identical nodes, so the two rows moved this
     # count in opposite directions and the merged value is RE-MEASURED on the merged
-    # tree rather than either side's number or the difference between them.
-    assert len(classes) == 506, len(classes)  # 214 roots, the rest inline
+    # tree rather than either side's number or the difference between them.  4 of the 10
+    # collapsed nodes are enumerations -- ``signal-definition-enrichment``'s
+    # ``lookback_window``, ``image_carousel``'s ``allowed_card_asset_types`` and
+    # ``bidding-policy-capability``'s two ``definitions`` entries, the last two reachable
+    # only because .28's rows emit that document.
+    assert len(classes) == 502, len(classes)  # 214 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -283,10 +287,10 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
     # 2692 -> 2892 on fe0e185f9, population growth; 2892 -> 2917 at
     # ``salesagent-j3k2l.40``, the same 5 documents.
     # 2917 -> 2993 at ``salesagent-j3k2l.28``, population growth again.
-    # 2993 -> MEASURE at ``salesagent-j3k2l.38``: the enum classes the content dedup
-    # collapses take their members with them, so this shrinks against that growth and
-    # the merged value is re-measured rather than picked.
-    assert names == 2993, names
+    # 2993 -> 2979 at ``salesagent-j3k2l.38``: the 4 enum classes the content dedup
+    # collapses take their members with them (8, 2, 2 and 2), so this shrinks against
+    # that growth and the merged value is re-measured rather than picked.
+    assert names == 2979, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):

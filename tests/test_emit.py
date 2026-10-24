@@ -618,26 +618,34 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
 #: applies to both sides" names are gone, so 14 more documents emit and bring their own
 #: nested pairs.  Re-measured, not derived from the document count: a document carries
 #: between one and a dozen pairs.
-PAIRS_PIN = 1085
-#: Measured: 1,080 pass, and the five that do not are named in
+#: 1085 -> 1079 at ``salesagent-j3k2l.38``: D3's content dedup collapses 10 nodes, and
+#: the 6 of them that are CLASSES are 6 pairs that no longer exist.  The other 4 are
+#: enumerations, which carry no ``__adcp_schema__`` and were never pairs -- which is why
+#: this moves by 6 against that row's 10 and the two numbers are different senses.
+PAIRS_PIN = 1079
+#: Measured: 1,074 pass, and the five that do not are named in
 #: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.  The
 #: ``comparison:model_drops_a_fact`` group is GONE rather than smaller, which is
 #: ``salesagent-j3k2l.28``'s exit: ``added``, ``missing`` and ``differs`` are all 0.
 OUTCOME_PINS: dict[str, int] = {
-    "pass": 1080,
+    "pass": 1074,
     "accepts:model_dropped_a_fact": 3,
     "no_instrument": 2,
 }
 #: One instance per pair, minus the 2 whose generator could not draw one and the 3
 #: whose DUMP the document refused -- a failing example is reported, not counted.
-ROUND_TRIPPED_PIN = 1080
-COMPARED_PIN = 38224
-MODEL_FACTS_PIN = 13715
+ROUND_TRIPPED_PIN = 1074
+#: 38224 -> 38181 and 13715 -> 13709 at ``salesagent-j3k2l.38``: a collapsed class is a
+#: pair whose keywords are no longer compared.  ``URL_TYPED_PIN`` was RE-MEASURED on the
+#: same pass and is unchanged at 1328, so it is left where .28 put it rather than
+#: re-pointed.
+COMPARED_PIN = 38181
+MODEL_FACTS_PIN = 13709
 #: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND BOTH ARE NOW GREEN.**  Zero is the
 #: specification's symmetric comparison -- a fact the model adds reddens and a fact it
 #: drops reddens -- and it was pinned here while ``MISSING_PIN`` was RED, because
 #: re-pointing a pin at the measurement is what salesagent-j3k2l.28 said not to do.
-#: That row closed it: ``added``, ``missing`` and ``differs`` are 0 over all 1,085
+#: That row closed it: ``added``, ``missing`` and ``differs`` are 0 over all 1,079
 #: pairs, against 0 / 2 / 0 at ``760e898c6`` and 0 / 10 / 13 when .28 was filed.  The
 #: last 2 were one ``description`` each at an ``additionalProperties`` node, where an
 #: annotation on a container's CONTENTS had no carrier.
@@ -648,7 +656,10 @@ NO_PAYLOAD_PIN = 2
 #: Which perturbation ``refusing_payload`` reached, counted by its first word.
 #: A partition and not a total: which one bites is a property of the DOCUMENT's own
 #: root shape, so a shift here says the population's roots moved.
-LIVENESS_PINS: dict[str, int] = {"drops": 610, "replaces": 473, "": 2}
+#: 610/473/2 -> 605/472/2 at ``salesagent-j3k2l.38``, and it is the partition moving with
+#: the pair count rather than the root shapes moving: 5 collapsed classes were reached by
+#: ``drops`` and 1 by ``replaces``, and the three still sum to ``PAIRS_PIN``.
+LIVENESS_PINS: dict[str, int] = {"drops": 605, "replaces": 472, "": 2}
 
 
 @functools.cache
@@ -4984,10 +4995,10 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     # defect salesagent-j3k2l.38 is about -- the ceiling it replaced counted 36 bundle
     # repeats and asserted that 0 were REACHED -- so the three counts are stated and a
     # run that collapses nothing fails here rather than passing over an empty loop.
-    assert declared == 1349, declared
-    assert groups == 7, groups
-    assert adoptions == 8, adoptions
-    assert sum(1 for d in out.adopted if out.adopted[d]) == 6
+    assert declared == 1403, declared
+    assert groups == 9, groups
+    assert adoptions == 10, adoptions
+    assert sum(1 for d in out.adopted if out.adopted[d]) == 7, out.adopted
 
 
 def test_a_refusals_kind_is_declared_by_its_producer_and_a_chain_takes_its_targets() -> None:
