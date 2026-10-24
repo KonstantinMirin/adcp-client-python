@@ -16,9 +16,14 @@
 # REQUIRES A CLEAN TREE: uncommitted work in either file is destroyed. It refuses to
 # run otherwise, because that destruction happened once while this was being written.
 #
-# A COLLECTION ERROR IS NOT A GREEN RUN. The first version of the verdict matched
-# only "N failed", so a malformed perturbation that left a SyntaxError was reported
-# as STAYED GREEN and hid the fact that it had not applied. The verdict counts errors.
+# A COLLECTION ERROR IS NOT A GREEN RUN, AND THAT IS A GENERAL DEFECT IN EVERY
+# PASS/FAIL SCRAPER, not a quirk of this script. The first version of the verdict
+# below matched only "N failed". A malformed perturbation left a SyntaxError, pytest
+# reported "1 error", and the case scored STAYED GREEN -- so a perturbation that never
+# ran was recorded as a guard that cannot redden, which is the exact opposite of what
+# it measured. Any scraper that reads a run as green by failing to match "failed" has
+# the same hole: an errored run is indistinguishable from a passing one. The verdict
+# here matches "failed|error", and anything else reading pytest output should too.
 set -u
 cd "$(dirname "$0")" || exit 1
 
@@ -75,3 +80,27 @@ run "struck() copies a pair that has no entry" "returned_by_identity"
 
 edit "import pathlib;p=pathlib.Path('$T');s=p.read_text();a='    return harness._wire_dump(pair.accept(seen[-1]))';assert s.count(a)==1;p.write_text(s.replace(a,'    return seen[-1]'))"
 run "the DUMP replaced by the input: the premise goes dead" "strike_explains"
+
+# --------------------------------------------------------------------------- #
+# the WIRING. Everything above grades the set and the strike; these three grade
+# that check_pair reaches them. The first of them is not hypothetical: before the
+# ref was threaded, every other case in this file passed while the suite's own
+# verdict for the three pairs was unchanged.
+# --------------------------------------------------------------------------- #
+H=codegen/harness.py
+restore_h() { git checkout -- "$H"; }
+
+edit "import pathlib;p=pathlib.Path('$H');s=p.read_text();a='        seen=accepted,\n        ref=pair.ref,';assert s.count(a)==1;p.write_text(s.replace(a,'        seen=accepted,'))"
+out=$(py -m pytest "$T" -q -k "check_pair_passes_the_exempt" 2>&1 | tail -3)
+if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then v=REDDENS; else v="STAYED GREEN"; fi
+printf '%-56s %-12s %s\n' "check_pair stops threading the pair's ref" "$v" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
+restore_h
+
+edit "import pathlib;p=pathlib.Path('$E');s=p.read_text();a='    return [f\"{e.document}#{e.pointer}/{e.keyword}\" for e in applying_to(ref_document, ref_pointer)]';assert s.count(a)==1;p.write_text(s.replace(a,'    return []'))"
+out=$(py -m pytest "$T" -q -k "check_pair_passes_the_exempt" 2>&1 | tail -3)
+if echo "$out" | grep -qE "[0-9]+ (failed|error)"; then v=REDDENS; else v="STAYED GREEN"; fi
+printf '%-56s %-12s %s\n' "the exemption applied but NOT reported" "$v" "$(echo "$out" | grep -oE '[0-9]+ (passed|failed|error).*' | head -1)"
+git checkout -- "$E"
+
+edit "import pathlib;p=pathlib.Path('$T');s=p.read_text();a='    return out\n\n\ndef test_the_minproperties_entry_is_the_only_copy';assert s.count(a)==1;p.write_text(s.replace(a,'    out.add(\"account/list-accounts-request.json#/properties/account/oneOf/1/properties/brand/properties/brand_kit_override/properties/logo/properties/provenance/properties/disclosure/properties/jurisdictions/items/properties/render_guidance\")\n    return out\n\n\ndef test_the_minproperties_entry_is_the_only_copy'))"
+run "a SECOND copy becomes a graded pair's own node" "only_copy_that_is_a_pairs_own_node"

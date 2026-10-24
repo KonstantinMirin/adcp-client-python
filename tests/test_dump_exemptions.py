@@ -89,6 +89,7 @@ def _pair(document: str, pointer: str) -> harness.Pair:
         model=model,
         accept=model.strict_validate,
         document=schema_at(SchemaRef(document, "#")),
+        ref=ref,
     )
 
 
@@ -169,25 +170,60 @@ def test_every_entry_resolves_and_still_states_its_value(entry: Exemption) -> No
     assert node[entry.keyword] == entry.value, (entry.keyword, node[entry.keyword], entry.value)
 
 
-def test_the_minproperties_entry_is_the_only_one_that_is_a_pairs_own_root() -> None:
-    """The accepted exposure, asserted as a number rather than left as a sentence.
+def _graded_positions() -> set[str]:
+    """``"<document>#<pointer>"`` for every class and alias the emitted tree carries.
 
-    Entry four's authored node is inlined all over the packaged tree, and the module
-    says only the one named position is a pair's own root -- at the others the node is
-    nested inside a larger pair, where a refusal needs a drawn instance that gives
-    ``render_guidance`` exactly one key and that key undeclared.  This pins the size of
-    that exposure, so it cannot grow unnoticed: if resolution starts inlining the node
-    somewhere new, the number moves and a reader looks.
+    The pairing read off the classes themselves, the way ``check_pair``'s caller reads
+    it: a class from the module that DEFINES it, and D2's root-scalar row from the
+    module that carries the ``__adcp_schema__`` for its alias.
+    """
+    import importlib
+    import pkgutil
+
+    import adcp.types._schemas as pkg
+
+    out: set[str] = set()
+    for info in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
+        module = importlib.import_module(info.name)
+        for value in vars(module).values():
+            ref = getattr(value, "__dict__", {}).get("__adcp_schema__") if isinstance(value, type) else None
+            if isinstance(ref, SchemaRef) and value.__module__ == info.name:
+                out.add(f"{ref.document}#{ref.pointer.lstrip('#')}")
+        ref = vars(module).get("__adcp_schema__")
+        if isinstance(ref, SchemaRef):
+            out.add(f"{ref.document}#{ref.pointer.lstrip('#')}")
+    return out
+
+
+def test_the_minproperties_entry_is_the_only_copy_that_is_a_pairs_own_node() -> None:
+    """The accepted exposure, asserted as the INVARIANT and not as a count.
+
+    Entry four's authored node is inlined all over the packaged tree.  Only where a
+    copy is a graded pair's OWN node does the dump refuse with certainty -- the dump is
+    then ``{}`` at the root.  Where the copy is nested inside a larger pair, a refusal
+    needs a drawn instance that gives ``render_guidance`` exactly one key and that key
+    undeclared, which is the latent exposure the module names.
+
+    **The count of copies is deliberately NOT pinned, and the first version of this
+    test pinned it and was wrong.**  It asserted 90, and merging ``.28`` forward moved
+    it to 92 because that row emits more documents -- so the pin reddened on
+    population growth, which the metric pins to HAPPEN.  A number that moves whenever
+    the build succeeds is noise.  The invariant does not move: exactly one copy is a
+    pair's own node, and it is the one in the set.  A second copy becoming a pair's own
+    node reddens here, which is the condition that would actually produce a new
+    certain refusal.
     """
     entry = next(e for e in EXEMPT if e.keyword == "minProperties")
-    copies = [
+    copies = {
         f"{f.relative_to(PACKAGED)}#{ptr}"
         for f in PACKAGED.rglob("*.json")
         for ptr, node in _walk(json.loads(f.read_text()))
         if isinstance(node, dict) and "minProperties" in node and "additionalProperties" not in node
-    ]
-    assert f"{entry.document}#{entry.pointer}" in copies, copies[:3]
-    assert len(copies) == 90, len(copies)
+    }
+    assert len(copies) > 1, copies  # the denominator: there IS an exposure to bound
+    graded = _graded_positions()
+    assert graded, "the denominator is empty: no pair would be checked"
+    assert copies & graded == {f"{entry.document}#{entry.pointer}"}, copies & graded
 
 
 # --------------------------------------------------------------------------- #
@@ -444,6 +480,45 @@ def test_the_strike_removes_only_the_named_keywords(
     assert {k: v for k, v in kept.items() if k in now} == {
         k: v for k, v in now.items() if k in kept
     }
+
+
+@pytest.mark.parametrize(
+    ("document", "pointer", "keyword"), REFUSED_TODAY, ids=lambda x: str(x)[:60]
+)
+def test_check_pair_passes_the_exempt_pair_and_reports_why(
+    document: str, pointer: str, keyword: str
+) -> None:
+    """**The WIRING, through the production entry point, which nothing else grades.**
+
+    Everything above grades the set and the strike.  This grades the one thing they
+    cannot: that ``check_pair`` actually reaches them.  Before the ``ref`` was threaded
+    from ``check_pair`` into ``check_accepts``, every test in this file passed while the
+    suite's own verdict for these three pairs was unchanged -- the strike was correct
+    and connected to nothing.
+
+    Both halves again, and the second is the precedent the lead held me to: the pair
+    PASSES, and it says why.  An exemption the harness does not report is one no reader
+    of a green pair can see, so ``dump_exempt`` carries the positions in force and a
+    non-empty list beside a pass is a CONDITIONAL pass.
+    """
+    pair = _pair(document, pointer)
+    report = harness.check_pair(pair)
+    assert report.outcome == "pass", (report.outcome, report.accepts.detail)
+    assert report.accepts.round_tripped == 1, report.accepts
+    assert report.accepts.dump_exempt, report.accepts
+    assert all(label.endswith(f"/{keyword}") for label in report.accepts.dump_exempt), (
+        report.accepts.dump_exempt,
+        keyword,
+    )
+
+
+def test_an_unexempt_pair_reports_no_exemption_and_still_passes() -> None:
+    """``dump_exempt`` is empty for a pair with no entry, which is what makes a
+    non-empty one readable as a conditional pass rather than as noise every pair
+    carries."""
+    report = harness.check_pair(_pair("core/pagination-request.json", "#"))
+    assert report.outcome == "pass", (report.outcome, report.accepts.detail)
+    assert report.accepts.dump_exempt == [], report.accepts.dump_exempt
 
 
 def test_a_pair_with_no_entry_is_returned_by_identity() -> None:

@@ -195,6 +195,18 @@ def applying_to(ref_document: str, ref_pointer: str) -> tuple[Exemption, ...]:
     )
 
 
+def labels(ref_document: str, ref_pointer: str) -> list[str]:
+    """What the harness REPORTS for this pair: one label per exemption in force.
+
+    ``"<document>#<pointer>/<keyword>"``, which names the position and the keyword
+    together because the position alone does not say what was excused.  Derived from
+    the same :func:`applying_to` the strike uses, so the report and the strike cannot
+    disagree about which entries applied -- the one failure mode a separately-passed
+    list of labels would have.
+    """
+    return [f"{e.document}#{e.pointer}/{e.keyword}" for e in applying_to(ref_document, ref_pointer)]
+
+
 def struck(schema: dict, ref_document: str, ref_pointer: str) -> dict:
     """``schema`` with every applicable exempt keyword removed, or ``schema`` itself.
 
