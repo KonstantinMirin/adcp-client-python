@@ -503,33 +503,65 @@ def test_the_root_reaches_the_comparison_through_check_pair() -> None:
     assert without.comparison.added, "the default must not resolve a sibling definition"
 
 
-def test_a_const_at_a_named_node_is_a_rendering_question_and_is_not_silenced() -> None:
-    """The symptom ``salesagent-j3k2l.33`` names as SEPARATE, pinned as separate.
+def test_a_one_member_enum_is_the_const_it_spells_and_a_wider_set_is_not() -> None:
+    """``salesagent-j3k2l.33`` pinned this symptom as a RENDERING question; §6
+    settles it the other way, and ``salesagent-j3k2l.28`` is where it was reached.
 
-    The document states ``const: X`` at a property and the compiler declares a
-    one-member ENUM class for it (``compiler.name_the_node``), so the comparison
-    reports one ``missing`` const and one ``added`` enum.  That is reachable only
-    through the documents these two readings unlock, and it is a question about
-    what the emitter RENDERS -- so neither reading here may make it go quiet.
+    ``const: x`` and ``enum: [x]`` admit exactly the same instance, so a report of a
+    difference between them is a report about the TEXT -- which §6 forbids in as many
+    words ("A test that fails while the emitted behaviour is unchanged is grading a
+    spelling, and it is the test that is wrong"), and D14 the same of every check here
+    ("A check asserts what a class accepts, refuses, or states about itself -- never
+    the text that expresses it").
 
-    This is the test that fails if a later widening of the document-side reading
-    buys that pair's green by excusing a model-only ``enum``.
+    **It is also not separable after resolution, which is the measurement that forced
+    it.**  ``canonicalish`` rewrites a one-member ``enum`` into a ``const`` while
+    inlining a remote ``$ref``, and it drops the node's ``type`` and ``description``
+    doing it -- so a document that wrote ``const: x`` and one that wrote
+    ``enum: [x]`` reach the comparison as the same bytes, and no gate can ask which it
+    was.  Live instance: ``creative/audit-observation.json``'s own resolved ``code``
+    node is ``{"type": "string", "enum": ["OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"],
+    "description": ...}`` and the copy inlined into
+    ``creative/get-creative-features-terminal-success.json`` is
+    ``{"const": "OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"}``.  The model is faithful to
+    the spelling its OWN document wrote, and no emitter change can make the referrer's
+    pair green, because that pair grades another document's resolved copy.
+
+    What must still report is a different ACCEPTED SET, and that is what this pins.
     """
     root = document({"const": "x"}, {"type": "string"})
 
-    class OneMemberEnum(Base):
+    class Literally(Base):
         v: Literal["x"]
 
-    class Enumerated(Base):
+    class OneMember(Base):
         v: Annotated[str, Field(json_schema_extra={"enum": ["x"]})]
 
-    # A `Literal` renders `const` AND `type`, so it agrees -- the rendering that
-    # does not agree is the one that names the node as an enumeration.
-    assert graded(root, OneMemberEnum).outcome == "pass", graded(root, OneMemberEnum)
+    class TwoMembers(Base):
+        v: Annotated[str, Field(json_schema_extra={"enum": ["x", "y"]})]
 
-    res = graded(root, Enumerated)
-    assert "/properties/v/const" in keys(res.missing), res.missing
-    assert "/properties/v/enum" in keys(res.added), res.added
+    class TheWrongMember(Base):
+        v: Literal["y"]
+
+    # A `Literal` renders `const` and a one-member enumeration renders `enum`; both
+    # admit the string "x" and nothing else, so both agree with the document.
+    assert graded(root, Literally).outcome == "pass", graded(root, Literally)
+    assert graded(root, OneMember).outcome == "pass", graded(root, OneMember)
+
+    # Two members is a WIDER set, and one member that is not the document's is a
+    # different one.  Neither is a spelling and both are reported -- the first as the
+    # pin the model drops beside the enumeration it invents, because two members have
+    # no ``const`` spelling to be folded into and so the two words stay separate.
+    two = graded(root, TwoMembers)
+    assert "/properties/v/const" in keys(two.missing), two
+    assert "/properties/v/enum" in keys(two.added), two
+    wrong = graded(root, TheWrongMember)
+    assert "/properties/v/const" in keys(wrong.differs), wrong
+
+    # And the other direction: a document stating TWO members against a model pinning
+    # one is a model NARROWER than its document, which is the `added`/`differs` half.
+    wider = document({"type": "string", "enum": ["x", "y"]}, {"type": "string"})
+    assert graded(wider, Literally).outcome != "pass", graded(wider, Literally)
 
 
 # --------------------------------------------------------------------------- #
@@ -632,21 +664,22 @@ class StatesAString(Base):
 
 
 @pytest.mark.parametrize(
-    ("conjunct", "model", "why"),
+    ("conjunct", "model", "keyword", "why"),
     [
-        ({"enum": [False]}, StatesABoolean, "one member PINS the value to false"),
-        ({"enum": [True]}, StatesABoolean, "and the other one pins it to true"),
+        ({"enum": [False]}, StatesABoolean, "const", "one member PINS the value to false"),
+        ({"enum": [True]}, StatesABoolean, "const", "and the other one pins it to true"),
         (
             {"enum": [False, True, None]},
             StatesABoolean,
+            "enum",
             "a third member is not the boolean domain",
         ),
-        ({"enum": ["a", "b"]}, StatesAString, "a string enumeration is no rewrite"),
+        ({"enum": ["a", "b"]}, StatesAString, "enum", "a string enumeration is no rewrite"),
     ],
     ids=["false-only", "true-only", "three-members", "strings"],
 )
 def test_a_conjunct_enum_outside_the_boolean_DOMAIN_still_compares(
-    conjunct: dict, model: Any, why: str
+    conjunct: dict, model: Any, keyword: str, why: str
 ) -> None:
     """**The test that distinguishes this reading from widening the fold.**
 
@@ -658,7 +691,170 @@ def test_a_conjunct_enum_outside_the_boolean_DOMAIN_still_compares(
     This reading does not touch the gate: it undoes a rewrite the resolver
     performed, and a conjunct's enum that is not one of the two rewritten shapes
     reaches the comparison untouched and is reported.
+
+    ``keyword`` is which word the fact is REPORTED under, and the two one-member
+    cases say ``const`` rather than ``enum`` because :func:`harness._one_member_enum`
+    writes a one-member set as the ``const`` it is -- on the conjunct too, which is
+    what keeps that spelling the same on both sides (``salesagent-j3k2l.28``).  The
+    fact is still compared and still missing either way, which is what this test is
+    for; a parameter rather than a looser assertion, so a case that stopped being
+    reported at all still fails.
     """
     res = graded(composing({"description": "d"}, conjunct), model)
-    assert "/properties/v/enum" in keys(res.missing), f"{why}: {res}"
+    assert f"/properties/v/{keyword}" in keys(res.missing), f"{why}: {res}"
     assert res.constrains_nothing == [], f"{why}: {res.constrains_nothing}"
+
+
+# --------------------------------------------------------------------------- #
+# reading four: a ONE-MEMBER value set, which draft-07 spells two ways
+# (salesagent-j3k2l.28)
+#
+# `const: v` and `enum: [v]` admit exactly the same instance.  Each side reaches
+# a node by its own route and picks its own spelling: a document states either,
+# `canonicalish` rewrites a one-member `enum` into a `const` while INLINING a
+# remote `$ref`, and the model states whichever its own lowering chose -- D2's
+# `const` row renders a `Literal` and so a `const`, a one-member enum node
+# becomes a one-member `StrEnum` and so an `enum`.  So a faithful class read as
+# both dropping a `const` and adding an `enum` at a node where nothing disagreed:
+# 3 facts in each direction over
+# `creative/get-creative-features-terminal-success.json`.
+#
+# `_one_member_enum` writes the one-member spelling as the `const` it is, on BOTH
+# sides and on an `allOf` conjunct too.  Same discipline as the sections above:
+# the tests that matter are the ones that must still REPORT, and they are in
+# `test_a_one_member_enum_is_the_const_it_spells_and_a_wider_set_is_not` above
+# and in the three negatives at the end of this one.
+# --------------------------------------------------------------------------- #
+# No docstring: a model's docstring IS its root `description`, and the document
+# the probe grades against states none.
+class EnumeratesX(Base):  # `enum: ['x']` -- a one-member enumeration's spelling
+    v: Annotated[str, Field(json_schema_extra={"enum": ["x"]})]
+
+
+def test_the_fold_fires_on_the_DOCUMENT_side() -> None:
+    """The document writes the one-member ``enum`` and the model writes the ``const``.
+
+    Nothing is folded on the model's side here -- it has no ``enum`` to fold -- so a
+    pass is the document's node having been rewritten.  Probed directly as well as
+    through the pair, so a green that came from somewhere else is not read as this.
+    """
+    from codegen.harness import _one_member_enum  # noqa: PLC0415
+
+    node = {"type": "string", "enum": ["x"], "description": "d"}
+    assert _one_member_enum(node) == {"type": "string", "const": "x", "description": "d"}
+
+    class Faithful(Base):
+        v: Annotated[Literal["x"], Field(description="d")]
+
+    res = graded(holder(node), Faithful)
+    assert (res.added, res.missing, res.differs) == ([], [], []), res
+    assert res.outcome == "pass", res
+
+
+def test_the_fold_fires_on_the_MODEL_side() -> None:
+    """The document writes the ``const`` and the model writes the one-member ``enum``.
+
+    The live shape: the document's own copy of the node writes ``enum`` and the
+    referrer's resolved copy writes ``const``, so the class generated from the first
+    is graded against the second.
+    """
+    from codegen.harness import _one_member_enum  # noqa: PLC0415
+
+    assert _one_member_enum({"enum": ["x"], "type": "string"}) == {
+        "const": "x",
+        "type": "string",
+    }
+    res = graded(holder({"const": "x"}), EnumeratesX)
+    assert (res.added, res.missing, res.differs) == ([], [], []), res
+    assert res.outcome == "pass", res
+
+
+def test_the_fold_fires_on_a_CONJUNCT_one_level_down() -> None:
+    """§6's "including one level down, inside a branch it folded".
+
+    ``_composed`` folds an ``allOf`` conjunct's facts into the node and the conjunct
+    arrives already resolved, so its spelling is whichever the resolver left -- and
+    the conjunct is read through this fold before its facts are folded in, exactly as
+    it is read through ``_uncanonicalized``.  Without that, a base declaring a
+    one-member ``enum`` inlined as a conjunct would report against a model that
+    spells the same pin as a ``const``.
+    """
+    root = composing({"description": "d"}, {"enum": ["x"]})
+
+    class Faithful(Base):
+        v: Annotated[Literal["x"], Field(description="d")]
+
+    res = graded(root, Faithful)
+    assert (res.added, res.missing, res.differs) == ([], [], []), res
+
+
+@pytest.mark.parametrize(
+    ("node", "why"),
+    [
+        ({"type": "boolean", "enum": [False, True]}, "two members, and the boolean rewrite"),
+        ({"type": "string", "enum": ["x", "y"]}, "two members have no const spelling"),
+        ({"const": "x", "enum": ["x"]}, "a node stating BOTH: draft-07 conjoins them"),
+        ({"type": "string", "const": "x"}, "already a const: there is nothing to rewrite"),
+        ({"type": "string"}, "no value set at all"),
+    ],
+    ids=["boolean-pair", "two-strings", "both-keywords", "already-const", "neither"],
+)
+def test_the_fold_fires_on_NEITHER_side_outside_its_shape(node: dict, why: str) -> None:
+    """The control: the fold is the identity everywhere but a one-member ``enum``.
+
+    Asserted on the node itself rather than through a pair, because a pair that
+    happens to pass says nothing about which rewrite produced the pass.
+    """
+    from codegen.harness import _one_member_enum  # noqa: PLC0415
+
+    assert _one_member_enum(node) == node, why
+
+
+def test_the_boolean_rewrite_still_reaches_its_own_restoration() -> None:
+    """The two folds meet at ``{"enum": [null]}`` and must not fight.
+
+    ``_uncanonicalized`` restores ``{"const": null}`` as ``{"type": "null"}`` and
+    ``{"enum": [false, true]}`` as ``{"type": "boolean"}``.  A one-member ``enum`` of
+    ``null`` is the first one's shape reached by the other spelling, so this fold runs
+    FIRST and hands it over rather than leaving a third spelling nothing restores.
+    """
+    from codegen.harness import _one_member_enum, _uncanonicalized  # noqa: PLC0415
+
+    assert _uncanonicalized(_one_member_enum({"enum": [None]}))[0] == {"type": "null"}
+    assert _uncanonicalized(_one_member_enum({"const": None}))[0] == {"type": "null"}
+    # and the boolean pair is untouched by this fold and restored by that one
+    assert _one_member_enum({"enum": [False, True]}) == {"enum": [False, True]}
+    assert _uncanonicalized({"enum": [False, True]})[0] == {"type": "boolean"}
+
+
+def test_a_model_pinning_a_DIFFERENT_member_is_still_reported() -> None:
+    """The fold rewrites a spelling and excuses no accepted set.
+
+    Both spellings of the disagreement: the document pins ``x`` and the model pins
+    ``y``, written once as a ``Literal`` and once as a one-member enumeration, and
+    both are reported at the ``const`` the two sides are now compared under.
+    """
+
+    class EnumeratesY(Base):
+        v: Annotated[str, Field(json_schema_extra={"enum": ["y"]})]
+
+    class PinsY(Base):
+        v: Literal["y"]
+
+    for model in (EnumeratesY, PinsY):
+        res = graded(holder({"type": "string", "enum": ["x"]}), model)
+        assert "/properties/v/const" in keys(res.differs), (model.__name__, res)
+
+
+def test_a_model_that_pins_NOTHING_is_still_reported() -> None:
+    """The other must-report half: a model that drops the pin entirely.
+
+    ``str`` admits every string and the document admits one, so the model is WIDER
+    than its document -- which is the ``missing`` the fold must not swallow.
+    """
+
+    class AnyString(Base):
+        v: str
+
+    res = graded(holder({"type": "string", "enum": ["x"]}), AnyString)
+    assert "/properties/v/const" in keys(res.missing), res

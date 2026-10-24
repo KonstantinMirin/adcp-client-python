@@ -1183,7 +1183,18 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     # branch that composes, and now that a composing branch is lowered it refuses at
     # ``/definitions/default_language/allOf/0`` -- a verdict, on a base that is an
     # alias, three hops inside a section.  No member left; the other 8 are unchanged.
-    assert len(inside) == 9, inside
+    #
+    # 9 -> 7 at ``salesagent-j3k2l.28``, and BOTH halves of the move are the walk
+    # finishing rather than stopping earlier.  Two documents LEFT because they emit:
+    # ``core/bidding-policy-capability.json`` (refused at
+    # ``/definitions/policy_profile/properties/supported_combinations/items/oneOf/0``)
+    # and ``core/targeting-overlay-support.json`` (at
+    # ``/definitions/countrySupport/anyOf/0``) -- both on the local-``$ref`` branch
+    # guard that row removed.  And ``governance/reported-outcome-error.json``'s
+    # pointer went DEEPER, ``/definitions/bounded_value/anyOf/0`` ->
+    # ``/definitions/bounded_value_level_3/anyOf/1``, for the same reason: the first
+    # branch lowers now and the walk reaches the third level.  No member joined.
+    assert len(inside) == 7, inside
     # Pinned by name because a count alone cannot say the pointer went INTO a
     # section.  This was ``core/response-payload-jws-envelope.json`` at
     # ``/definitions/response_payload/properties/typ``; that document EMITS as of

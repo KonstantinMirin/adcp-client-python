@@ -614,35 +614,41 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
 #: indistinguishable trees spread over 0.4%.  There is one draw per pair now and the
 #: schema comparison walks a document, so every figure here is a function of
 #: (bundle, emitted tree) and reproduces exactly.
-PAIRS_PIN = 1055
-#: Measured: 1,048 pass, and the seven that do not are named in
-#: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.
+#: 1055 -> 1085 at ``salesagent-j3k2l.28``: the three refusals section 6's "every fold
+#: applies to both sides" names are gone, so 14 more documents emit and bring their own
+#: nested pairs.  Re-measured, not derived from the document count: a document carries
+#: between one and a dozen pairs.
+PAIRS_PIN = 1085
+#: Measured: 1,080 pass, and the five that do not are named in
+#: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.  The
+#: ``comparison:model_drops_a_fact`` group is GONE rather than smaller, which is
+#: ``salesagent-j3k2l.28``'s exit: ``added``, ``missing`` and ``differs`` are all 0.
 OUTCOME_PINS: dict[str, int] = {
-    "pass": 1048,
+    "pass": 1080,
     "accepts:model_dropped_a_fact": 3,
-    "comparison:model_drops_a_fact": 2,
     "no_instrument": 2,
 }
 #: One instance per pair, minus the 2 whose generator could not draw one and the 3
 #: whose DUMP the document refused -- a failing example is reported, not counted.
-ROUND_TRIPPED_PIN = 1050
-COMPARED_PIN = 36060
-MODEL_FACTS_PIN = 12840
-#: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND ``MISSING_PIN`` IS RED.**  Zero is
-#: the specification's symmetric comparison -- a fact the model adds reddens and a
-#: fact it drops reddens -- and salesagent-j3k2l.28 owns the gap.  Re-pointing them
-#: at the measurement is the thing that row says not to do.  Measured on this tree:
-#: ``missing`` is 2 and ``differs`` is 0, against 10 and 13 when .28 was filed, so
-#: most of that row has landed.  The 2 remaining are one ``description`` each at an
-#: ``additionalProperties`` node (``a2ui/component.json``, ``a2ui/surface.json``).
+ROUND_TRIPPED_PIN = 1080
+COMPARED_PIN = 38224
+MODEL_FACTS_PIN = 13715
+#: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND BOTH ARE NOW GREEN.**  Zero is the
+#: specification's symmetric comparison -- a fact the model adds reddens and a fact it
+#: drops reddens -- and it was pinned here while ``MISSING_PIN`` was RED, because
+#: re-pointing a pin at the measurement is what salesagent-j3k2l.28 said not to do.
+#: That row closed it: ``added``, ``missing`` and ``differs`` are 0 over all 1,085
+#: pairs, against 0 / 2 / 0 at ``760e898c6`` and 0 / 10 / 13 when .28 was filed.  The
+#: last 2 were one ``description`` each at an ``additionalProperties`` node, where an
+#: annotation on a container's CONTENTS had no carrier.
 MISSING_PIN = 0
 DIFFERS_PIN = 0
-URL_TYPED_PIN = 1266
+URL_TYPED_PIN = 1328
 NO_PAYLOAD_PIN = 2
 #: Which perturbation ``refusing_payload`` reached, counted by its first word.
 #: A partition and not a total: which one bites is a property of the DOCUMENT's own
 #: root shape, so a shift here says the population's roots moved.
-LIVENESS_PINS: dict[str, int] = {"drops": 592, "replaces": 461, "": 2}
+LIVENESS_PINS: dict[str, int] = {"drops": 610, "replaces": 473, "": 2}
 
 
 @functools.cache
@@ -1144,6 +1150,15 @@ def test_the_three_allof_decisions_that_no_case_above_grades() -> None:
     ], ceiling.differs
 
 
+#: The three pointer segments a conditional is spelled with.  A node under one is a
+#: CONDITION or a conditional narrowing, which D6 makes a rule on the nearest class and
+#: which ``lower.rules`` declines where it narrows a value -- so nothing is lowered at
+#: such a pointer and no type is selected there.  Same reading ``_base.SAME_INSTANCE``
+#: excludes ``if`` for, and the one
+#: ``test_the_assertion_is_inherited_down_a_chain_of_combinator_hops`` uses.
+_CONDITIONAL_SEGMENTS = frozenset({"if", "then", "else"})
+
+
 def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     """D5's format rule, over every format site the population has.
 
@@ -1180,6 +1195,9 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     assert set(emit.FORMAT_TYPES) <= checked, sorted(set(emit.FORMAT_TYPES) - checked)
 
     seen: dict[str, int] = {}
+    #: The format sites the emitter never visits, by format: a position under a
+    #: conditional.  Its own counter rather than a skip, so the exclusion is a figure.
+    conditional: dict[str, int] = {}
     #: format -> the type names it actually selected over this population.  More
     #: than one means the DOCUMENT chose, which is D5's `uri` row.
     arms: dict[str, set[str]] = {}
@@ -1202,6 +1220,20 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
         for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
             fmt = node.get("format")
             if not isinstance(fmt, str):
+                continue
+            if any(seg in _CONDITIONAL_SEGMENTS for seg in pointer.split("/")):
+                # **A position under a CONDITIONAL is not lowered at all, so no type
+                # is selected there and asserting one would grade a mechanism this
+                # pipeline does not have.**  D6 makes a conditional a RULE on the
+                # nearest class and ``lower.rules`` declines a branch that narrows a
+                # VALUE -- its module docstring records that ceiling on
+                # ``core/canvas-constraint.json``'s ``if unit == "percent" then
+                # x.maximum = 100``.  First reached when
+                # ``sponsored-intelligence/si-ui-element.json`` emitted
+                # (``salesagent-j3k2l.28``), whose ``/allOf/1/then`` states a
+                # ``format: uri``.  COUNTED below rather than skipped silently, so the
+                # exclusion has a size and a shrink in it is visible.
+                conditional[fmt] = conditional.get(fmt, 0) + 1
                 continue
             seen[fmt] = seen.get(fmt, 0) + 1
             # **A MULTI-TYPE node carries a format too, and this used to RAISE on
@@ -1236,7 +1268,17 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert fmt not in annotated_formats, (document, pointer, fmt)
                 arms.setdefault(fmt, set()).add(name)
 
-    assert seen == {"date-time": 190, "uri": 131, "date": 5, "email": 5, "hostname": 3}, seen
+    # Re-measured at ``salesagent-j3k2l.28``: ``date-time`` 190 -> 194 and ``uri``
+    # 131 -> 133, over the 14 documents the three closed refusals let emit.
+    assert seen == {"date-time": 194, "uri": 133, "date": 5, "email": 5, "hostname": 3}, seen
+    # The excluded population, named and sized -- and it is SIX sites, not the one
+    # that reddened.  **The other five were passing by accident**, which is the finding:
+    # the import assertion is MODULE-wide, so a conditional-position ``uri`` in a module
+    # that also states one at a lowered pointer was satisfied by its neighbour's import.
+    # ``si-ui-element.json``'s ``/allOf/1/then/properties/data/properties/url`` is the
+    # one with no neighbour to carry it, so it is the one that showed when the document
+    # emitted (``salesagent-j3k2l.28``).
+    assert conditional == {"uri": 5, "date-time": 1}, conditional
     # **BOTH arms of D5's `uri` row are reached by this population**, so neither is
     # graded by an empty loop: of the 131 `uri` sites, 15 state a `^https://` pattern
     # and take `AdCPUrl` (across 12 documents, `core/platform-extension-ref.json`
@@ -1266,7 +1308,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _rendered(emitted, key, g.model)
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 326, stated
+    assert stated == 333, stated  # 326 -> 333 at salesagent-j3k2l.28
 
 
 def _model_schema(model: Any) -> dict:
@@ -1683,7 +1725,14 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     counted -- a count of five tells the next reader nothing about which five or
     why, and the section-6 rebuild is the first thing to measure them.
 
-    Three groups, and the attribution of each was measured rather than assumed:
+    TWO groups now, and the attribution of each was measured rather than assumed.  The
+    third was ``comparison:model_drops_a_fact`` -- one ``description`` each at an
+    ``additionalProperties`` node, ``a2ui/component.json`` and ``a2ui/surface.json``,
+    pre-existing at the base and proven so by ``compare_schema`` being byte-identical
+    to ``7ffad8134``'s.  ``salesagent-j3k2l.28`` closed it in the EMITTER, which is
+    what §6 says happens where the comparison reports a ``description``: an annotation
+    on a container's CONTENTS had no carrier, and ``containers._contents`` now names
+    such a node.  The group is gone rather than smaller.
 
     * ``accepts:model_dropped_a_fact`` -- NEW with the dump half of the accepts
       check, which is the one thing in this harness that reads what a class DID with
@@ -1697,10 +1746,6 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
       an undeclared one dumps to ``{}``, which the document refuses.  Neither is an
       artifact of the dump's own keywords -- measured, the same node dumped WITHOUT
       ``exclude_unset`` is refused too, on ``type`` instead of ``minProperties``.
-    * ``comparison:model_drops_a_fact`` -- PRE-EXISTING at the base, and the proof is
-      that ``compare_schema`` is byte-identical to ``7ffad8134``'s (md5 of the
-      function, measured).  Both are one ``description`` at an
-      ``additionalProperties`` node and both belong to salesagent-j3k2l.28.
     * ``no_instrument`` -- the ``format``-beside-``pattern`` shape
       ``hypothesis_jsonschema``'s ``string_schema`` filters and cannot satisfy, which
       is an admitted exit rather than a failure (salesagent-j3k2l.10), and the
@@ -1722,7 +1767,6 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
             "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
             "/properties/render_guidance",
         ],
-        "comparison:model_drops_a_fact": ["a2ui/component.json#", "a2ui/surface.json#"],
         "no_instrument": [
             "core/reference-renderer.json#",
             "core/reference-renderer.json#/properties/provenance",
@@ -1736,9 +1780,6 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
                 g.ref,
                 r.accepts.detail,
             )
-        elif r.outcome == "comparison:model_drops_a_fact":
-            assert [m for m in r.comparison.missing if "/description:" in m], r.comparison.missing
-            assert r.comparison.added == [] and r.comparison.differs == []
         elif r.outcome == "no_instrument":
             for cause in r.no_instrument:
                 _grades_a_cause(cause, r.name)
@@ -1932,13 +1973,45 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
     graded below: a reference is an IMPORT in the generated module (P2) and is
     never inlined there.  The two are not in tension -- one is where a type LIVES
     and the other is what a document MEANS.
+
+    **THE OBLIGATION IS "DECIDABLE LOCALLY", AND A LOCAL POINTER IS.**  The sentence
+    above says why -- an ABSOLUTE URI has no store and goes to the network -- and a
+    ``#/definitions/x`` needs no store at all, only the document as its resolution
+    scope.  ``bundle.resolved`` inlines a remote reference and leaves a local one, so
+    a packaged document CAN carry one, and the first ones to be packaged arrived with
+    ``salesagent-j3k2l.28``: ``core/placement-presentation.json`` and
+    ``core/bidding-policy-capability.json``, which were refused by name until that row.
+    ``_base._refuse_at`` evolves a document-rooted validator onto the node, so the
+    pointer resolves, and ``tests/test_applied_schema.py`` asserts BOTH halves of that
+    -- every local reference a graded pair holds resolves, and the schema half refuses
+    THROUGH it.  So the split is read with ``bundle.split_ref``, which is the one
+    reading of the ``#`` this project has, rather than by looking for the key.
     """
     documents = {g.ref.document for g in graded()}
+    local: dict[str, int] = {}
     for document in sorted(documents):
-        assert bundle.references(schema_at(SchemaRef(document, "#"))) == [], document
+        remote, here = [], 0
+        for pointer, reference in bundle.references(schema_at(SchemaRef(document, "#"))):
+            if bundle.split_ref(reference)[0]:
+                remote.append((pointer, reference))
+            else:
+                here += 1
+        assert remote == [], document
+        if here:
+            local[document] = here
     # And the control: the bundle DOES have references, so the assertion above is
     # over documents that had something to resolve rather than over nothing.
     assert [d for d in documents if bundle.references(bundle.read(BUNDLE, d))]
+    # The local population, named rather than tolerated, so a document joining it is
+    # visible and so the assertion above is not satisfied by an empty set.
+    # Counted ONCE PER DOCUMENT, at its root.  ``tests/test_applied_schema.py`` counts
+    # the same references once per (PAIR, reference) and gets 8 and 16, because a
+    # nested node's references are read again at its parent's pair -- two denominators
+    # for one fact, and each says which it is.
+    assert local == {
+        "core/bidding-policy-capability.json": 4,
+        "core/placement-presentation.json": 8,
+    }, local
 
 
 # --------------------------------------------------------------------------- #
@@ -2639,7 +2712,12 @@ def test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_
         for d in sorted({g.ref.document for g in graded()})
         if bundle.read(BUNDLE, d).get("type") is None and "properties" in bundle.read(BUNDLE, d)
     ]
-    assert len(bare) == 7, bare
+    # 7 -> 9 at ``salesagent-j3k2l.28``: two more ``formats/canonical`` documents
+    # (``audio_hosted``, ``video_hosted``) emit now that the union fold's refusal is
+    # gone, and each has the same shape -- a root stating ``properties`` whose
+    # ``type`` arrives through its ``allOf`` conjunct.  The claim asserted of each is
+    # unchanged, and it is now graded over 9.
+    assert len(bare) == 9, bare
     for document in bare:
         doc = schema_at(SchemaRef(document, "#"))
         assert _composed(doc).get("type") == "object", (document, _composed(doc).get("type"))
@@ -3300,15 +3378,22 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
 
 
 def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
-    """D8's typed row, graded on a constructed document because 0 reach it.
+    """D8's typed row, and the EXTRAS STORE now has exactly one live document.
 
     Measured: 727 documents mention ``additionalProperties`` and 51 carry a typed one.
-    7 of the 51 emit now and every one of those is the MAPPING path; the extras store
-    needs a node declaring ``properties`` AND a typed ``additionalProperties``, the
-    bundle has 14 such nodes, and none of their documents is emitted -- so the store
-    itself is reached by 0 documents.  The mechanism is built anyway because it is
-    this row's named defect, and the zero is asserted so the row cannot be read as
-    covered by the bundle.
+    10 of the 51 emit, and the extras store needs a node declaring ``properties`` AND
+    a typed ``additionalProperties`` -- the bundle has 14 such nodes, and ONE of their
+    documents emits: ``core/canonical-media-buy-features.json``, which
+    ``salesagent-j3k2l.28`` unblocked.  Until then the store was reached by 0
+    documents and graded only by the constructed one at the end of this test.
+
+    **The one document is also where the store's first defect showed**, which is the
+    reason to say "one" rather than to stop asserting the number: dmcg reported a
+    ``typing.Dict`` import for an annotation it rendered ``dict[str, bool]``, so the
+    module carried an import it does not use.  Fixed in ``compiler.render`` by the
+    rule the ``ConfigDict`` line beside it already follows -- take the imports the
+    rendered annotation's own names call for.  A mechanism with a population of 0 is
+    green for free; this one has 1, and that is what found it.
     """
     typed = [
         d
@@ -3343,11 +3428,14 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     assert emitted_typed == [
         "a2ui/component.json",
         "collection/get-collection-list-response.json",
+        "core/canonical-media-buy-features.json",
         "core/product-change-map.json",
         "core/reporting-file-entry.json",
         "core/tasks-list-response.json",
         "error-details/vendor-error-codes.json",
+        "property/property-feature-result.json",
         "protocol/list-tasks-response.json",
+        "sponsored-intelligence/si-ui-element.json",
     ], emitted_typed
     store = [
         (d, pointer or "/")
@@ -3358,7 +3446,26 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         and "properties" in node
     ]
     assert len(store) == 14, store
-    assert [row for row in store if row[0] in out.emitted] == [], store
+    # ONE of the 14, named: the store stopped being a mechanism with no document the
+    # moment ``salesagent-j3k2l.28`` let this one emit, and the pointer is the root's
+    # own node.  Asserted as the row rather than as a count, so a second document
+    # joining it is read as a new site and not as a number going up.
+    assert [row for row in store if row[0] in out.emitted] == [
+        ("core/canonical-media-buy-features.json", "/")
+    ], store
+    # and it really does carry the store, read off the emitted module
+    assert "__pydantic_extra__: dict[str, bool]" in _source(
+        "core/canonical-media-buy-features.json"
+    )
+    # and the import it does NOT need is gone.  Read off the typing import line and
+    # not off the whole module, because ``ConfigDict(`` contains ``Dict`` -- the same
+    # trap the rule in ``compiler.render`` is written to avoid.
+    (typing_line,) = [
+        line
+        for line in _source("core/canonical-media-buy-features.json").splitlines()
+        if line.startswith("from typing import ")
+    ]
+    assert "Dict" not in typing_line.split("import ", 1)[1].split(", "), typing_line
 
     doc = {
         "title": "Typed",
@@ -5034,11 +5141,17 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # of the refusal set entirely (39 -> 27).  A chain's floor on the DEFERRED side
     # falls as rows land, so it is re-measured rather than held; what it grades is
     # that both answers still occur, with a denominator beside each.
+    #
+    # Re-measured again at ``salesagent-j3k2l.28``, in the directions this paragraph
+    # already names: 169 -> 166 chained, because 3 more chained refusals became
+    # emissions, and the DEFERRED side fell hardest (27 -> 20) because the three
+    # refusals that row closed were deferrals that others chained to.  142 -> 146 on
+    # the verdict side.
     chained = {d: r for d, r in out.refusals.items() if r["kind"] == refusal_module.Kind.CHAINED}
-    assert len(chained) >= 169, len(chained)
+    assert len(chained) >= 166, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 142, dict(split)
-    assert split[refusal_module.Kind.DEFERRED] >= 27, dict(split)
+    assert split[refusal_module.Kind.VERDICT] >= 146, dict(split)
+    assert split[refusal_module.Kind.DEFERRED] >= 20, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
         max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values())
@@ -5109,7 +5222,32 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # passes (five cleared for the five .40 really emitted), and ``692, 66`` fails on
     # the floor alone with pending unmoved.  The three failures all land HERE and not
     # on an earlier assertion, which the ordering makes worth stating.
-    emitted_pin, pending_pin = 691, 66
+    #
+    # **RE-POINTED 691, 66 -> 705, 48 BY ``salesagent-j3k2l.28``, AND THE FOUR IT DID
+    # NOT EMIT ARE NAMED HERE, which is the only form a re-point may take.**  That row
+    # cleared 18 pending: 14 by emitting, and 4 by reaching a VERDICT.  It minted none
+    # of those four.  Each is a CHAINED refusal whose first blocker was one of the
+    # three one-sided-fold deferrals the row removed, and whose SECOND blocker was a
+    # verdict already being produced for its target at ``760e898c6`` -- so the walk got
+    # FURTHER and found the real refusal, which is the opposite of the trade this pin
+    # exists to refuse.  Measured by A/B against the base's ``codegen/``, with each
+    # target's verdict read off its own refusal:
+    #
+    #   core/targeting-overlay-requirements.json -> core/geo-region-requirement.json
+    #       /properties/countries/propertyNames on ``pattern`` (containers._PATTERN_KEY)
+    #   core/targeting-overlay-support.json      -> core/geo-region-support.json
+    #       the same verdict at the same pointer
+    #   media-buy/package-control.json -> core/targeting-input.json ->
+    #       core/targeting-unknown-age-eligibility-constraint.json at ``/`` on ``if``:
+    #       a root is exactly one kind and this one's is read from ``if``
+    #   media-buy/package-update.json  -> core/optimization-goal.json at
+    #       /oneOf/0/properties/standard/allOf/0 on ``allOf``: ViewabilityStandard is
+    #       an alias, so it cannot be a base (D2)
+    #
+    # Four producers, none of them that row's, and all four already firing at the base.
+    # A re-point whose 4 could not be named and attributed would be the trade wearing
+    # this pin's clothes; these can, so the pin moves and the names stay here.
+    emitted_pin, pending_pin = 705, 48
     assert len(out.emitted) >= emitted_pin + max(0, pending_pin - pending), {
         "emitted, and its pin": (len(out.emitted), emitted_pin),
         "pending, and its pin": (pending, pending_pin),

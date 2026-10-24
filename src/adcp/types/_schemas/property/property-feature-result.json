@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Feature values for a single property from a governance agent.",
+  "properties": {
+    "coverage_status": {
+      "description": "Whether this property is covered by this governance agent: covered (has data), not_covered (not measured), pending (measurement in progress)",
+      "enum": [
+        "covered",
+        "not_covered",
+        "pending"
+      ],
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "features": {
+      "additionalProperties": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "A single feature value for a property. Structure varies by feature type (binary, quantitative, categorical).",
+        "maxProperties": 8,
+        "properties": {
+          "confidence": {
+            "description": "Confidence score for this value (0-1)",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "details": {
+            "description": "Additional vendor-specific details about this measurement",
+            "type": "object"
+          },
+          "expires_at": {
+            "description": "When this certification/value expires (for time-limited certifications)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "ext": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            "title": "Extension Object",
+            "type": "object"
+          },
+          "measured_at": {
+            "description": "When this specific value was measured",
+            "format": "date-time",
+            "type": "string"
+          },
+          "methodology_version": {
+            "description": "Version of the methodology used to calculate this value",
+            "type": "string"
+          },
+          "unit": {
+            "description": "Unit of measurement for quantitative values (e.g., 'gCO2e/1000_impressions', 'percentage')",
+            "type": "string"
+          },
+          "value": {
+            "description": "The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.",
+            "oneOf": [
+              {
+                "enum": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "Property Feature Value",
+        "type": "object"
+      },
+      "description": "Map of feature_id to feature value",
+      "type": "object"
+    },
+    "last_evaluated": {
+      "description": "When features were last evaluated for this property",
+      "format": "date-time",
+      "type": "string"
+    },
+    "property": {
+      "description": "The property these features apply to",
+      "oneOf": [
+        {
+          "description": "Domain string (e.g., 'example.com')",
+          "type": "string"
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.",
+          "examples": [
+            "cnn_ctv_app",
+            "homepage",
+            "mobile_ios",
+            "instagram"
+          ],
+          "pattern": "^[a-z0-9_]+$",
+          "title": "Property ID",
+          "type": "string",
+          "x-entity": "property"
+        }
+      ]
+    }
+  },
+  "required": [
+    "property",
+    "coverage_status"
+  ],
+  "title": "Property Feature Result",
+  "type": "object"
+}

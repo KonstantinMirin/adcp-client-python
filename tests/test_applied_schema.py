@@ -41,7 +41,10 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from adcp.types._base import AdCPBaseModel, applied_schema, schema_at
+from pydantic import ValidationError
+
+from adcp.types import _base
+from adcp.types._base import AdCPBaseModel, SchemaRef, applied_schema, schema_at
 from codegen import bundle, emit
 from codegen.refusal import Refusal
 
@@ -355,7 +358,12 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     # 686 -> 691 at ``salesagent-j3k2l.40``: a union BRANCH that composes is lowered
     # by ``compiler.lower_composition`` now, so 3 of the 10 documents waiting on the
     # shared conjunct reader emit and 2 chained onto them follow.
-    assert len(out.emitted) == 691
+    # 691 -> 705 at ``salesagent-j3k2l.28``: the three refusals section 6's "every
+    # fold applies to both sides" names are gone -- two whose stated reason was a
+    # claim about a harness ``.32``/``.33`` had already changed, and one whose
+    # hazard no emitter produces -- so the 9 + 8 + 3 documents they held emit, less
+    # the 6 that refuse on a second keyword once the first refusal is lifted.
+    assert len(out.emitted) == 705
     assert [d for d, r in out.refusals.items() if "nothing enclosing it" in r["detail"]] == []
 
 
@@ -529,3 +537,125 @@ def test_the_assertion_is_inherited_down_a_chain_of_combinator_hops() -> None:
         if any(seg in ("if", "not", "then", "else") for seg in p.split("/"))
     )
     assert through_a_conditional == 639, through_a_conditional
+
+
+# --------------------------------------------------------------------------- #
+# the RESOLUTION SCOPE of a nested node's schema (salesagent-j3k2l.28)
+#
+# `applied_schema` says WHICH assertions a nested node's schema carries;  this is
+# the other half of the same question -- what a `$ref` inside that node resolves
+# AGAINST.  `bundle.resolved` inlines a REMOTE reference and leaves a LOCAL one, so
+# a node at `#/definitions/box_decoration` can say `{"$ref": "#/definitions/
+# rectangle"}`: a pointer relative to the DOCUMENT ROOT.  Handed the node alone as
+# its own schema, `jsonschema` resolves `#/` within the node and raises
+# `PointerToNowhere`, so `strict_validate` refused EVERY payload -- 5 pairs,
+# reporting `accepts:model_error` rather than a verdict about any value.  0 such
+# pairs existed before, because every document carrying one was refused by name.
+# --------------------------------------------------------------------------- #
+#: A payload `core/placement-presentation.json#/definitions/box_decoration` ACCEPTS,
+#: whose every constraint but `kind` is reached through a local `$ref`: `layer` and
+#: `fill_color` name `#/definitions/{layer,color}` and `bounds` names
+#: `#/definitions/rectangle`, whose own `minimum: 1` is two references deep.
+THROUGH_A_LOCAL_REF = (
+    "core/placement-presentation.json",
+    "#/definitions/box_decoration",
+    {
+        "kind": "box",
+        "layer": "behind_creative",
+        "bounds": {"x": 0, "y": 0, "width": 1, "height": 1},
+        "fill_color": "#ffffff",
+    },
+)
+
+
+def test_a_nested_nodes_schema_resolves_a_local_ref_against_its_document() -> None:
+    """The schema half ACCEPTS what the document accepts, and REFUSES through the
+    reference -- which is what says the scope was widened and not the schema.
+
+    Both halves on one pair, because a scope that resolved and asserted nothing would
+    pass the first assertion alone: a reading that answered a ``$ref`` with the empty
+    schema accepts every payload and is indistinguishable from this one until a
+    constraint BEHIND the reference is asked to bite.
+    """
+    import test_emit  # the tree reader, one reading for the whole suite  # noqa: PLC0415
+
+    document, pointer, accepted = THROUGH_A_LOCAL_REF
+    (cls,) = [
+        g.model
+        for g in test_emit.graded()
+        if (g.ref.document, g.ref.pointer) == (document, pointer)
+    ]
+    assert cls.strict_validate(accepted)
+
+    # each refusal is a constraint the node reaches only through a local `$ref`
+    for payload, keyword, loc in [
+        ({**accepted, "bounds": {**accepted["bounds"], "width": 0}}, "minimum", ("bounds", "width")),
+        ({**accepted, "layer": "sideways"}, "enum", ("layer",)),
+        ({**accepted, "fill_color": "ffffff"}, "pattern", ("fill_color",)),
+    ]:
+        with pytest.raises(ValidationError) as caught:
+            cls.strict_validate(payload)
+        (error,) = caught.value.errors()
+        assert (error["type"], error["loc"]) == (keyword, loc), error
+
+
+def test_reading_the_node_alone_cannot_resolve_it_and_refuses_everything() -> None:
+    """The BREAK, and it is the emitter's own state before this change: ``_refuse``
+    handed the node as its own schema.
+
+    It is not a near miss -- the node is unvalidatable, so the pair reports nothing
+    about any value.  Asserted as the raise ``jsonschema`` makes rather than as an
+    outcome string, so a later change that merely relabels it still fails here.
+    """
+    document, pointer, accepted = THROUGH_A_LOCAL_REF
+    node = schema_at(SchemaRef(document=document, pointer=pointer))
+    validator = jsonschema.validators.validator_for(node, jsonschema.Draft7Validator)
+    with pytest.raises(jsonschema.exceptions._WrappedReferencingError):
+        list(validator(node).iter_errors(accepted))
+
+    # and the document-rooted validator, which is what `_refuse` builds, resolves it
+    root = _base._document(document)
+    rooted = jsonschema.validators.validator_for(root, jsonschema.Draft7Validator)
+    assert list(rooted(root).evolve(schema=node).iter_errors(accepted)) == []
+
+
+def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
+    """The DENOMINATOR, which is the one thing the outcome pins cannot say.
+
+    ``test_the_harness_result_is_counted_over_the_whole_population`` pins
+    ``accepts:model_error`` at 0, and before this row that pin was green FOR FREE: **0
+    graded pairs of the committed tree held a document-side local ``$ref`` at all**,
+    because every document carrying one was refused by name
+    (``codegen.lower.union``'s deleted guard measured it). A green mark over an empty
+    population says nothing, so this names the population and asserts it is not empty.
+
+    Counted as (pair, reference) sites and reported per document, so a shrink is
+    readable rather than a number going down.
+    """
+    import collections  # noqa: PLC0415
+    import sys  # noqa: PLC0415
+
+    sys.path.insert(0, str(Path(__file__).parent))
+    from test_emit import graded  # noqa: PLC0415
+
+    def local_refs(node: object) -> list[str]:
+        if isinstance(node, dict):
+            found = [node["$ref"]] if isinstance(node.get("$ref"), str) else []
+            return found + [r for v in node.values() for r in local_refs(v)]
+        if isinstance(node, list):
+            return [r for v in node for r in local_refs(v)]
+        return []
+
+    per_document: collections.Counter[str] = collections.Counter()
+    for g in graded():
+        root = _base._document(g.ref.document)
+        for reference in local_refs(schema_at(g.ref)):
+            if not reference.startswith("#"):
+                continue
+            per_document[g.ref.document] += 1
+            # and it resolves, which is what the scope widening is for
+            assert applied_schema(root, reference), (g.ref, reference)
+    assert dict(per_document) == {
+        "core/bidding-policy-capability.json": 8,
+        "core/placement-presentation.json": 16,
+    }, dict(per_document)

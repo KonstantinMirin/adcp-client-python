@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "A single feature value for a property. Structure varies by feature type (binary, quantitative, categorical).",
+  "properties": {
+    "confidence": {
+      "description": "Confidence score for this value (0-1)",
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "details": {
+      "additionalProperties": true,
+      "description": "Additional vendor-specific details about this measurement",
+      "type": "object"
+    },
+    "expires_at": {
+      "description": "When this certification/value expires (for time-limited certifications)",
+      "format": "date-time",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "measured_at": {
+      "description": "When this specific value was measured",
+      "format": "date-time",
+      "type": "string"
+    },
+    "methodology_version": {
+      "description": "Version of the methodology used to calculate this value",
+      "type": "string"
+    },
+    "unit": {
+      "description": "Unit of measurement for quantitative values (e.g., 'gCO2e/1000_impressions', 'percentage')",
+      "type": "string"
+    },
+    "value": {
+      "description": "The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.",
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "required": [
+    "value"
+  ],
+  "title": "Property Feature Value",
+  "type": "object"
+}

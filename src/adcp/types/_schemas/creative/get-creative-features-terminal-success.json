@@ -1,0 +1,290 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Terminal success response. In AdCP 3.x evaluation_id is an optional migration field that providers SHOULD emit; it becomes required in AdCP 4.0. When present, it is the provider-side reconciliation identity allocated when the evaluation was accepted and remains stable across exact replays and asynchronous completion.",
+  "not": {
+    "anyOf": [
+      {
+        "required": [
+          "errors"
+        ]
+      },
+      {
+        "properties": {
+          "status": {
+            "const": "submitted"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    ]
+  },
+  "properties": {
+    "audit_observations": {
+      "description": "Non-blocking audit observations from the governance agent. Observations surface audit-worthy claims that are not verifier refutations and are not rejection grounds by themselves.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "Non-blocking observation emitted by a creative governance agent. Audit observations surface claims that deserve human or downstream audit review but are not verifier refutations and are not rejection grounds by themselves.",
+        "maxProperties": 7,
+        "properties": {
+          "code": {
+            "const": "OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"
+          },
+          "details": {
+            "additionalProperties": {
+              "not": {}
+            },
+            "description": "Audit-safe structured details. Mirrors the safe allowlist keys used for `PROVENANCE_CLAIM_CONTRADICTED`; value shapes remain observation-specific. Top-level `ext` remains the standard protocol extension point, but details do not allow arbitrary verifier response fields.",
+            "maxProperties": 6,
+            "properties": {
+              "agent_url": {
+                "description": "Governance agent URL that produced the observation.",
+                "format": "uri",
+                "type": "string"
+              },
+              "claimed_value": {
+                "additionalProperties": {
+                  "not": {}
+                },
+                "description": "Compact object of claimed provenance values that triggered the observation.",
+                "maxProperties": 2,
+                "properties": {
+                  "disclosure_required": {
+                    "const": false
+                  },
+                  "human_oversight": {
+                    "enum": [
+                      "edited",
+                      "directed"
+                    ]
+                  }
+                },
+                "required": [
+                  "disclosure_required",
+                  "human_oversight"
+                ],
+                "type": "object"
+              },
+              "confidence": {
+                "description": "Confidence score for the observation, when applicable.",
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "feature_id": {
+                "description": "Feature or policy check that produced the observation.",
+                "type": "string"
+              },
+              "observed_value": {
+                "description": "Verifier observation relevant to the claim, when applicable.",
+                "type": [
+                  "null",
+                  "boolean",
+                  "number",
+                  "string"
+                ]
+              },
+              "substituted_for": {
+                "description": "Buyer-nominated verifier URL when the seller or orchestrator used a different on-list governance agent.",
+                "format": "uri",
+                "type": "string"
+              }
+            },
+            "required": [
+              "agent_url",
+              "claimed_value"
+            ],
+            "type": "object"
+          },
+          "ext": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            "title": "Extension Object",
+            "type": "object"
+          },
+          "field": {
+            "description": "Resolved creative manifest path for the risky claim side of the observation, for example `creative_manifest.provenance.disclosure.required`. Some observations are triggered by a combination of fields; `field` anchors the primary claim, not necessarily every field in the trigger condition.",
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable summary suitable for an audit queue. Do not include PII, cross-tenant data, or vendor-only report details.",
+            "type": "string"
+          },
+          "recovery": {
+            "const": "informational"
+          },
+          "severity": {
+            "const": "audit-worthy"
+          }
+        },
+        "required": [
+          "code",
+          "details",
+          "field",
+          "message",
+          "recovery",
+          "severity"
+        ],
+        "title": "Creative Audit Observation",
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "consumption": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Structured consumption details for this evaluation. Informational \u2014 lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth.",
+      "properties": {
+        "duration_seconds": {
+          "description": "Processing time billed, in seconds. For compute-time pricing models.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "images_generated": {
+          "description": "Number of images produced during generation.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "renders": {
+          "description": "Number of render passes performed (video, animation).",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tokens": {
+          "description": "LLM or generation tokens consumed during creative generation.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "title": "Creative Consumption",
+      "type": "object"
+    },
+    "context": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "title": "Context Object",
+      "type": "object"
+    },
+    "currency": {
+      "description": "ISO 4217 currency code for vendor_cost.",
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "detail_url": {
+      "description": "URL to the vendor's full assessment report. The vendor controls what information is disclosed and access control.",
+      "format": "uri",
+      "type": "string"
+    },
+    "evaluation_id": {
+      "description": "Provider-generated identity for this evaluation. Optional in AdCP 3.x and required in AdCP 4.0. Providers SHOULD emit it in 3.x. When present, it MUST be stable across exact response replays and, for async work whose submitted acknowledgement included evaluation_id, MUST be identical to that value. Used for result provenance, consumption and provider-cost reconciliation, and support; it is not an idempotency key or task identity.",
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "creative_evaluation"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "pricing_option_id": {
+      "description": "Which rate card pricing option was applied for this evaluation. Present when the governance agent charges for evaluations and account was provided in the request.",
+      "type": "string",
+      "x-entity": "vendor_pricing_option"
+    },
+    "results": {
+      "description": "Feature values for the evaluated creative",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "A single feature evaluation result for a creative. Uses the same value structure as property-feature-value (value, confidence, expires_at, etc.).",
+        "maxProperties": 10,
+        "properties": {
+          "confidence": {
+            "description": "Confidence score for this value (0-1)",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "details": {
+            "description": "Additional vendor-specific details about this evaluation",
+            "type": "object"
+          },
+          "expires_at": {
+            "description": "When this evaluation expires and should be refreshed",
+            "format": "date-time",
+            "type": "string"
+          },
+          "ext": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            "title": "Extension Object",
+            "type": "object"
+          },
+          "feature_id": {
+            "description": "The feature that was evaluated (e.g., 'auto_redirect', 'brand_consistency'). Features prefixed with 'registry:' reference standardized policies from the shared policy registry (e.g., 'registry:eu_ai_act_article_50'). Unprefixed feature IDs are agent-defined.",
+            "type": "string"
+          },
+          "measured_at": {
+            "description": "When this feature was evaluated",
+            "format": "date-time",
+            "type": "string"
+          },
+          "methodology_version": {
+            "description": "Version of the methodology used to evaluate this feature",
+            "type": "string"
+          },
+          "policy_id": {
+            "$comment": "x-entity deliberately omitted \u2014 a PolicyEntry reference can resolve to either a governance_registry_policy or a governance_inline_policy depending on the authorizing entry's source. See issue #2685.",
+            "description": "Optional attribution \u2014 when this feature was evaluated for the purpose of a specific policy, policy_id references the authorizing PolicyEntry. Creative agents and sellers populate when the measurement was motivated by a specific policy; do NOT populate when the feature is a generic measurement (carbon score, brand consistency) unrelated to any policy. See /docs/governance/policy-attribution.",
+            "type": "string"
+          },
+          "unit": {
+            "description": "Unit of measurement for quantitative values (e.g., 'percentage', 'score')",
+            "type": "string"
+          },
+          "value": {
+            "description": "The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.",
+            "oneOf": [
+              {
+                "enum": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": [
+          "feature_id",
+          "value"
+        ],
+        "title": "Creative Feature Result",
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "vendor_cost": {
+      "description": "Cost incurred for this evaluation, denominated in currency.",
+      "minimum": 0,
+      "type": "number"
+    }
+  },
+  "required": [
+    "results"
+  ],
+  "title": "GetCreativeFeaturesSuccess",
+  "type": "object"
+}
