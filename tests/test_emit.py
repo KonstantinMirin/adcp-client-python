@@ -77,7 +77,6 @@ from codegen.harness import (
     PairReport,
     _closed,  # noqa: PLC2701 -- the harness's own reading of a closed additionalProperties
     _composed,  # noqa: PLC2701 -- and its own folding of an allOf conjunct's facts
-    _own_validation,  # noqa: PLC2701 -- and its reading of "the class's own validation"
     check_pair,
     compare_schema,
     conforms,
