@@ -874,7 +874,7 @@ is a construction, not a property to assert: `_normalize` serves the model side 
 side from one body of code, each supplied its own `$ref` root, and a fold it applies to one side
 it finds on the other — including one level down, inside a branch it folded. A fold running on
 one side alone reports a faithful class as narrower than its own document, which is the `added`
-direction and the only one that makes a correct SDK refuse valid traffic. Three instances exist
+direction and the only one that makes a correct SDK refuse valid traffic. Three instances existed
 because `_normalize` was written for the side that visibly needed canonicalizing:
 
 1. **A type list.** `creative/creative-feature-result.json` at `/properties/value` states
@@ -891,12 +891,27 @@ because `_normalize` was written for the side that visibly needed canonicalizing
    in order to read its key reads as a property the document does not state.
 
 **A class the comparison cannot grade is not emitted, and the comparison is not relaxed to
-admit it.** Each of those three documents is refused today with a reason ending "the harness's
-row", and that is the correct call in both directions: a class no check grades satisfies the
-partition and demonstrates nothing, and widening the comparison removes the only check that
-reads the generated code. The obligation runs the other way — the harness row lands first, then
-the document emits and is graded. Such a document stays pending, and its pending belongs to the
-harness rather than to a keyword row. The instrument comes before the product.
+admit it.** A class no check grades satisfies the partition and demonstrates nothing, and
+widening the comparison removes the only check that reads the generated code. The obligation
+runs the other way — the harness row lands first, then the document emits and is graded. Such a
+document stays pending, and its pending belongs to the harness rather than to a keyword row.
+The instrument comes before the product.
+
+**All three are closed, and two of them were closed by the harness row that had already
+landed.** `salesagent-j3k2l.32` and `.33` made `_normalize` serve both sides with a per-side
+`$ref` root and taught it to read `oneOf` as well as `anyOf` and to read each branch through
+the finite-type rewrite one level down — so 1 and 2 were already answered while the refusals
+that cited them stayed in place, each stating as its reason a claim about a harness that had
+since changed. **A refusal's reason is a measurement and goes stale like one.** Measured by
+lifting each guard and grading the whole population (`salesagent-j3k2l.28`): the local-`$ref`
+guard cost **8 documents** and produced **0 reports of any kind** once lifted — its 43 `added`
+facts have no site left — and the type-list guard cost **9**, both of whose fold arms grade
+green. Number 3 is different: its refusal names "the field a conditional needs in order to read
+its key", and no such field is ever emitted. `Rules.properties` collected a conditional-only
+property declaration and **nothing ever turned one into a field** — the refusal was its only
+reader — so the `added` fact it refused to risk had no producer, and `si-ui-element.json` with
+its two referrers grades green. The guard, the carrier and the collector are gone together.
+Together the three took emitted from **691 to 705 of 1054 portable**, and `added` stayed 0.
 
 **Number 3 is applied to an `allOf` CONJUNCT as well as to the node, and before the conjunct's
 facts are folded in.** A conjunct is an inlined base and arrives already resolved, so the
@@ -920,10 +935,62 @@ was unreachable until a referenced plain boolean emitted and number 4 until a do
 `uniqueItems` did, so the arrival of a fifth is a sign the emitted population grew rather than
 that the comparison is wrong.
 
+**One arrived on cue, and it is the one fold that CANNOT be a one-sided restoration.**
+`canonicalish` writes a one-member `enum` out as a `const` — the same mechanism as number 3, at
+a set of one rather than at a type's whole domain, and dropping the node's `type` and
+`description` the same way. Measured on the pair that first reached it:
+`creative/audit-observation.json`'s own resolved `code` node is
+`{"type": "string", "enum": ["OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"], "description": ...}` and
+the copy inlined into `creative/get-creative-features-terminal-success.json` is
+`{"const": "OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"}` — so a class faithful to the spelling its
+own document wrote reported as both dropping a `const` and adding an `enum`, 3 facts in each
+direction over 1 pair (`salesagent-j3k2l.28`).
+
+**A restoration cannot answer it, because after resolution the two cases are the same bytes.**
+A document that wrote `const: v` and one that wrote `enum: [v]` both reach the comparison as
+`{"const": v}`, and the resolver dropped the keys that would have told them apart — so no gate
+can ask which it was, and numbers 3 and 4's exact-node discipline has nothing to match on.
+What is available is the equality itself: `const: v` and `enum: [v]` admit the same instance,
+so `_one_member_enum` writes the one-member spelling as the `const` it is **on both sides and
+on an `allOf` conjunct too**, which is this section's own rule applied to a spelling rather than
+to a rewrite. Toward `const` and not toward `enum`, because the rows that answer the dropped
+`type` and the dropped `description` at a one-member set are already there and keyed on a
+`const` — `_entails_type`'s `const` derivation over **832 typeless const nodes** and
+`_narrows_nothing`'s `const` row — and folding the other way would have left both answering
+nothing while a second derivation over the `enum` answered instead.
+
+**What that costs is a difference `salesagent-j3k2l.33` pinned as a rendering question, and
+this section settles it the other way.** A document stating `const: x` whose class renders a
+one-member enumeration no longer reports, and the pin that required it to
+(`test_a_const_at_a_named_node_is_a_rendering_question_and_is_not_silenced`) is replaced by one
+that requires every different ACCEPTED SET to report. The ground is this section's own: a test
+that fails while the emitted behaviour is unchanged is grading a spelling, and D14 says a check
+asserts what a class accepts, refuses or states about itself and never the text that expresses
+it. `{"const": "x", "type": "string"}` and `{"enum": ["x"], "type": "string"}` are the same
+statement about every instance.
+
 **A `description` is NEVER folded, and this is the one difference the comparison must keep.**
 A fold hides every future divergence at the pointer it covers, and a description is the one fact
 in these documents a human reads. Where the comparison reports one, the emitter is wrong and the
 emitter is what changes.
+
+**The last `missing` in the comparison was the emitter changing, and what it changed was a
+CARRIER rather than a rule.** An annotation on a node INSIDE a container had nowhere to go, and
+unlike a constraint it was dropped in silence: `containers._inner` refuses a constraint or a
+`format` it cannot carry BY NAME, because dropping one would widen the model, while a
+`description` narrows nothing and so went nowhere with no refusal and no rendering. That was the
+whole of `comparison.missing` — **4 facts over 4 pairs**, every one
+`.../additionalProperties/description` and every one `'Component properties'`
+(`a2ui/component.json`, `a2ui/surface.json`, and the two `sponsored-intelligence` responses that
+compose a surface). The fix is the mechanism this pipeline already has for a node whose facts
+need a carrier: `containers._contents` NAMES such a node through the same
+`compiler.name_the_node` a fragment-referenced node goes through, so the annotation on a
+container's contents and the annotation on a referenced node have one spelling, and
+`dict[str, X]` over a local symbol is a plain reference the compiler needs nothing extra for.
+It applies at an array's element and a mapping's value and nowhere else: a multi-type ARM is the
+node re-cut, so its annotations are the node's own and the field holding the union already
+carries them, and a `propertyNames` node is a statement about a key. Measured cost: **2 lines in
+one emitted module**, and `missing` reached 0 over 1085 graded pairs.
 
 **The description-authority rule: a document's own declaration carries the description at its
 own pointer.** Three documents can state a description for one field — the `$ref` target, the

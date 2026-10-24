@@ -908,7 +908,11 @@ def _entails_type(doc: dict, value: Any) -> bool:
     * a ``const``.  ``{"const": "platform"}`` admits exactly the string ``"platform"``, so
       ``type: string`` beside it forbids nothing the node already admits.  pydantic renders
       a ``Literal`` as ``{"const": ..., "type": ...}`` and there is no spelling of a
-      literal that omits the type.
+      literal that omits the type.  It is also where a ONE-MEMBER ``enum`` arrives, on
+      either side: :func:`_one_member_enum` writes that spelling as this one, so this
+      derivation and the ``description`` row beside it in :func:`_narrows_nothing` answer
+      a one-member set however the side that holds it spelled it
+      (``salesagent-j3k2l.28``).
     * a ``oneOf``/``anyOf`` whose EVERY branch declares the same ``type``.  Draft-07
       requires an instance to satisfy a branch, so a root that states no ``type`` of its
       own and whose branches all state ``object`` admits only objects.  §4's union base is
@@ -1243,6 +1247,55 @@ def _admitted(value: Any, doc: Mapping[str, Any]) -> bool:
 _FINITE = ({"enum": [False, True]}, "boolean"), ({"const": None}, "null")
 
 
+def _one_member_enum(node: dict) -> dict:
+    """``{"enum": [v]}`` written as the ``const`` it is.
+
+    **One accepted set in two spellings, so the two sides are written the same one.**
+    ``enum: [v]`` and ``const: v`` admit exactly the same instance and draft-07 offers
+    both, and the two sides reach a node by their own routes: a document states either,
+    ``canonicalish`` rewrites a one-member ``enum`` into a ``const`` while INLINING a
+    remote reference, and the model states whichever its own lowering chose -- D2's
+    ``const`` row renders a ``Literal`` and so a ``const``, while a one-member enum node
+    becomes a one-member ``StrEnum`` and so an ``enum``.  So a faithful class read as
+    both dropping a ``const`` and adding an ``enum`` at a node where nothing disagreed.
+
+    Measured at 3 facts in each direction over 1 pair:
+    ``creative/get-creative-features-terminal-success.json``'s ``audit_observations``
+    ``items`` inlines ``creative/audit-observation.json``, whose ``code``, ``severity``
+    and ``recovery`` are each a one-member ``enum``.  **The same document's own pair is
+    green and that is the tell**: ``bundle.resolved`` of ``audit-observation.json``
+    keeps ``{"type": "string", "enum": ["OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"], ...}``
+    whole, and the referrer's resolved copy of that very node is
+    ``{"const": "OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"}`` -- the rewrite happens on the
+    inlining path and nowhere else, which is the same mechanism
+    :func:`_uncanonicalized` folds out at a boolean (``salesagent-j3k2l.28``).
+
+    **Toward ``const`` and not toward ``enum``, because ``const`` is where the rows that
+    answer a one-member set already are.**  The resolver drops the node's ``type`` and
+    its ``description`` when it rewrites, and both halves are already decided for a
+    ``const`` node -- the ``type`` by :func:`_entails_type`'s ``const`` derivation, over
+    a population of **832 typeless const nodes** that
+    ``test_the_document_type_word_is_not_restated_beside_the_literal`` asserts it fires
+    at every one of, and the ``description`` by :func:`_narrows_nothing`'s ``const``
+    row.  Folding the other way would have left both of those answering nothing the
+    comparison asks while a second derivation over the ``enum`` answered instead, which
+    is two rows for one fact.
+
+    ``{"enum": [false, true]}`` is NOT one member and is untouched: it is a boolean and
+    :func:`_uncanonicalized` restores it as the ``type`` the document wrote.
+    ``{"enum": [null]}`` folds to ``{"const": null}``, which is that same restoration's
+    other entry, so the one spelling reaches it from both -- 0 sites today.
+
+    A node stating BOTH keywords is left alone.  Draft-07 CONJOINS them, so the two are
+    separate statements there and each is compared as its side writes it; 0 nodes of the
+    bundle state the pair.
+    """
+    members = node.get("enum")
+    if "const" in node or not isinstance(members, list) or len(members) != 1:
+        return node
+    return {**{k: v for k, v in node.items() if k != "enum"}, "const": members[0]}
+
+
 def _uncanonicalized(doc: dict) -> tuple[dict, bool]:
     """The document's node with the resolver's FINITE-TYPE rewrite undone.
 
@@ -1416,9 +1469,13 @@ def _normalize(
     ``#/definitions/x`` is relative to the document root, which is why
     :class:`Pair` carries the document and not only the node.
 
-    Three normalizations, and each one is forced by a decision this pipeline made
+    Four normalizations, and each one is forced by a decision this pipeline made
     rather than by anything arbitrary in pydantic:
 
+    * **A one-member value set, which draft-07 spells two ways.**
+      :func:`_one_member_enum` writes a one-member ``enum`` as the ``const`` it is, on
+      both sides, because the document and the model each reach that node by their own
+      route and pick their own spelling of one accepted set.
     * **A local ``$ref``.**  A nested object is a nested CLASS and a
       cross-document reference is an IMPORT (P2), so pydantic hoists both into
       ``$defs`` and references them.  ``codegen.bundle.resolved`` inlines a REMOTE
@@ -1492,9 +1549,9 @@ def _normalize(
 
       **KNOWN CEILING: a bare type beside a DESCRIPTION does not fold either.**
       ``{"type": "string", "description": "..."}`` is a bare type as far as the
-      accepted set goes, and ``lower.union._bare_type`` reads it as one, but this
-      keeps the exact-key test -- folding would throw the branch's own description
-      away, and the direction of the miss is safe: the node stays a combinator,
+      accepted set goes, but this keeps the exact-key test -- folding would throw the
+      branch's own description away, and the direction of the miss is safe: the node
+      stays a combinator,
       states no fact in :data:`FACTS`, and the pair reddens rather than passing
       blind.  0 of the 3 fold positions in this bundle carry one.
     * **The outer keys win.**  ``default`` and ``description`` sit outside the
@@ -1515,6 +1572,7 @@ def _normalize(
     """
     if depth > 16 or not isinstance(node, dict):  # a self-referential $defs chain
         return node if isinstance(node, dict) else {}
+    node = _one_member_enum(node)
     if "$ref" in node:
         target = _target(node["$ref"], root)
         # ``declared_null`` deliberately does NOT travel through here.  It would be an
@@ -1671,7 +1729,7 @@ def _composed(doc: Any, depth: int = 0) -> Any:
         # gate is correct and unchanged: an untyped ``enum: [false, true]`` the
         # DOCUMENT itself states is still compared, because this rewrites a
         # CONJUNCT the resolver wrote and nothing else.
-        c = _uncanonicalized(_composed(conjunct, depth + 1))[0]
+        c = _uncanonicalized(_one_member_enum(_composed(conjunct, depth + 1)))[0]
         for kw in FACTS:
             if kw != "required" and kw in c and kw not in out:
                 out[kw] = c[kw]

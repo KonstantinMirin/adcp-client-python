@@ -1188,3 +1188,110 @@ def test_breaking_the_shared_reader_reddens_the_product_row_and_the_union_row(
     assert "core/probe-union.json" in union, union
     assert union["core/probe-union.json"]["detail"].startswith(LAST_ARM), union
     assert union["core/probe-union.json"]["pointer"] == "/oneOf/0/allOf/0", union
+
+
+#: The a2ui shape exactly: a mapping whose VALUE is a schema of its own carrying a
+#: ``description`` and nothing the compiler's ``DataType`` can hold.  ``minProperties``
+#: and ``maxProperties`` ride the FIELD, so the only fact at the value's own pointer is
+#: the annotation.
+ANNOTATED_VALUE = {
+    "component": {
+        "type": "object",
+        "description": "Component definition (keyed by component type)",
+        "minProperties": 1,
+        "maxProperties": 1,
+        "additionalProperties": {"type": "object", "description": "Component properties"},
+    },
+    "tags": {
+        "type": "array",
+        "description": "a list whose ELEMENT carries one too",
+        "items": {"type": "object", "description": "one tag"},
+    },
+    "label": {"type": "string", "minLength": 2},
+}
+
+
+def test_an_annotation_on_a_containers_contents_reaches_the_wire(tmp_path, monkeypatch) -> None:
+    """``docs/plan/rebuild-plan.md`` §6: a ``description`` is never folded, and where
+    the comparison reports one the EMITTER is what changes (``salesagent-j3k2l.28``).
+
+    An annotation on a node INSIDE a container had nowhere to go, and unlike a
+    constraint it was dropped in SILENCE: ``containers._inner`` refuses a constraint
+    and a ``format`` by name because dropping one would widen the model, while a
+    ``description`` narrows nothing and so was dropped with no refusal and no
+    rendering.  It was the whole of ``comparison.missing`` -- 4 facts over 4 pairs,
+    every one ``.../additionalProperties/description`` and every one
+    ``'Component properties'``.
+
+    ``containers._contents`` now NAMES such a node, through the same
+    ``compiler.name_the_node`` a fragment-referenced node already goes through, so the
+    annotation has one spelling.  Both inner positions the comparison reads are probed
+    -- a mapping's value and an array's element -- and the real emitter and the real
+    comparison are what grade it.
+    """
+    # ``shared`` because this probe is graded by the COMPARISON, and only then does
+    # the fixture state the root description a composing document in the population
+    # has -- ``_probe`` says why.  It takes no part in the dimension this judges.
+    cls, text, schema = _emit_probe(
+        tmp_path,
+        monkeypatch,
+        name="s4innerann",
+        own=ANNOTATED_VALUE,
+        shared={"spare": {"type": "string", "description": "the base's spare"}},
+    )
+
+    # The alias is named by D3's nested rule and the field references it, so the
+    # annotation is not restated inline.
+    assert (
+        "ProbeComposingComponentValue = Annotated[dict[str, Any], "
+        "Field(description='Component properties')]" in text
+    ), text
+    assert "component: Annotated[dict[str, ProbeComposingComponentValue]" in text, text
+    assert "ProbeComposingTagsItem = Annotated[dict[str, Any], Field(description='one tag')]" in text, text
+    assert "tags: Annotated[list[ProbeComposingTagsItem] | None" in text, text
+
+    comparison = compare_schema(schema, cls)
+    assert (comparison.added, comparison.missing, comparison.differs) == ([], [], []), comparison
+    # and the fact really is on the wire.  The field is optional, so D4 renders it
+    # ``T | None`` and pydantic states the mapping in the live arm of an ``anyOf`` --
+    # which is the arm ``harness._normalize`` unwraps and the arm the assertion reads.
+    rendered = cls.model_json_schema()["properties"]["component"]
+    (live,) = [a for a in rendered["anyOf"] if a.get("type") != "null"]
+    assert live["additionalProperties"]["description"] == "Component properties", rendered
+
+
+def test_breaking_the_inner_annotation_carrier_reddens_the_comparison(
+    tmp_path, monkeypatch
+) -> None:
+    """The same probe with the carrier BROKEN, because a rendering that cannot be
+    missed is not graded.
+
+    ``_contents`` reduced to the ``_inner`` call it replaced IS the emitter before this
+    change: the decided type is handed up and the node's own annotation goes nowhere.
+    The comparison then names each lost annotation at its own pointer, and nothing
+    else moves -- which is what says the two positions are the whole of the defect.
+    """
+    from codegen.lower import containers  # noqa: PLC0415
+
+    monkeypatch.setattr(
+        containers,
+        "_contents",
+        lambda node, pointer, symbol, what, mod: containers._inner(
+            mod.decide(node, pointer, symbol, mod), pointer, what
+        ),
+    )
+    cls, text, schema = _emit_probe(
+        tmp_path,
+        monkeypatch,
+        name="s4innerbrk",
+        own=ANNOTATED_VALUE,
+        shared={"spare": {"type": "string", "description": "the base's spare"}},
+    )
+    assert "ProbeComposingComponentValue" not in text, "the patch did not reach"
+
+    comparison = compare_schema(schema, cls)
+    assert comparison.added == [], comparison.added
+    assert {str(m).split(":", 1)[0] for m in comparison.missing} == {
+        "/properties/component/additionalProperties/description",
+        "/properties/tags/items/description",
+    }, sorted(comparison.missing)

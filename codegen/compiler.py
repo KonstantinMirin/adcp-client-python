@@ -1015,11 +1015,6 @@ class Rules:
       today, so the object row's former unconditional admission was latent rather
       than live -- and this step makes more documents emit, which is what would have
       reached it.
-    * ``properties`` are the properties the node declares ONLY inside a conditional.
-      They still arrive on the wire, so the class needs a field to carry one, and a
-      rule naming a key the class has no field for is worse than no rule: under D8's
-      ``ignore`` the key is dropped, the rule reads it as absent, and the constructor
-      refuses a payload the document admits.
     * ``body`` is the class-body line binding ``_adcp_rules``, with its imports.
       Empty text where the node states no rule this lowering can express, which D4
       makes correct rather than a refusal (``codegen.lower.rules``' module docstring
@@ -1034,49 +1029,8 @@ class Rules:
     """
 
     screen: frozenset[str]
-    properties: Mapping[str, dict]
     body: Rendered
     distinct: tuple[str, ...]
-
-
-def conditional_only(stated: Rules, declared: Collection[str], pointer: str) -> None:
-    """Refuse a class whose only declaration of a key is inside a CONDITIONAL.
-
-    :attr:`Rules.properties` exists because a rule naming a key the class has no field
-    for refuses a payload the document admits, so the field has to exist.  But a field
-    is a FACT AT ``<pointer>/properties/<key>``, and a key only a conditional names has
-    no declaration there -- ``harness._composed`` folds a document's conjuncts and
-    deliberately does not fold its conditionals (``harness._NEVER_GROUPED``), so the
-    document the symmetric comparison reads declares no such property and the class
-    stating one is an ``added`` fact.
-
-    **Both halves are right and the pair is not satisfiable, so the document refuses.**
-    Declaring the field adds a fact; omitting it while keeping the rule narrows the
-    constructor below the document; omitting both drops the rule.  A hand-written
-    comparison row is what the plan's invariant allows for a fact the lowering needs
-    and the document does not state, and it is the harness's to write, not this row's.
-
-    Measured over the 1,054 portable documents: 26 nodes in 9 documents name a property
-    inside a conditional, and in 8 of the 9 the key is ALSO declared at the node's own
-    ``properties`` or by a conjunct, so this refuses exactly ONE --
-    ``sponsored-intelligence/si-ui-element.json``, whose ``/allOf/6/then`` names ``apps``
-    and whose root declares ``type`` and ``data`` only.  Without this refusal that one
-    document and the two pairs referencing it were the ``added`` 3 of 5 on this tree,
-    and its nested ``apps`` value class carried an ``__adcp_schema__`` pointer that does
-    not resolve at all -- the one unbuildable pair of 990.
-    """
-    orphan = sorted(k for k in stated.properties if k not in declared)
-    if orphan:
-        raise Refusal(
-            "if",
-            pointer,
-            f"a conditional names {orphan} and no node of this class declares one: the "
-            "field is needed for the rule to read the key, and declaring it states a "
-            "property at <pointer>/properties/<key> that the document does not (the "
-            "comparison folds conjuncts and not conditionals), so the two cannot both "
-            "hold and a comparison row for the added fact is the harness's to write",
-            kind=Kind.DEFERRED,
-        )
 
 
 def rules_at(node: dict, *also: dict) -> Rules:
@@ -1103,16 +1057,12 @@ def rules_at(node: dict, *also: dict) -> Rules:
 
     lowered = [rules.lower(n) for n in (node, *also)]
     screen = RULE_KEYWORDS if rules.presence_only(node) else RULE_KEYWORDS - {"oneOf", "anyOf"}
-    properties: dict[str, dict] = {}
-    for one in lowered:
-        properties.update({k: v for k, v in one.properties.items() if k not in properties})
     sources = [source for one in lowered for source in one.rules]
     distinct: list[str] = []
     for one in lowered:
         distinct += [key for key in one.distinct if key not in distinct]
     return Rules(
         screen=frozenset(screen),
-        properties=properties,
         body=Rendered(
             text=rules.block(sources),
             imports=set().union(*(one.imports for one in lowered)),
@@ -1497,13 +1447,6 @@ def lower_object(
             "an object node with no property declared",
             kind=Kind.VERDICT,
         )
-    # A key a conditional names and this node does not declare has no field to be and
-    # no fact to state, so the document refuses rather than the class choosing one of
-    # the two wrong answers (:func:`conditional_only` carries the reasoning).  0 object
-    # nodes over the portable population reach it: every conditional-named key in this
-    # bundle is also declared at the node that states the conditional -- which is what
-    # makes the field below a RESTATEMENT of a declaration the document has.
-    conditional_only(stated, props, pointer)
     required = node.get("required", [])
     if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
         raise Refusal(
@@ -1837,15 +1780,7 @@ def lower_composition(
             kind=Kind.DEFERRED,
         )
 
-    # A property only a conditional names, read over the rule-bearing conjuncts as well
-    # because most of this population states its conditional there and not at the root.
-    # A key NOTHING else declares refuses: it has no field to be and no fact to state,
-    # and :func:`conditional_only` carries both halves of why.  A key that IS
-    # declared somewhere -- the root's own ``properties``, an inline conjunct's, or an
-    # inherited base's -- needs nothing here: the conditional is then a restatement of a
-    # declaration the document has, and that declaration is the one that stands.
     stated = rules_at(doc, *conjunct_rules)
-    conditional_only(stated, {*local, *inherited}, pointer)
 
     own: dict[str, dict] = {}
     #: The keys whose field is the inherited one wearing this document's annotations.
