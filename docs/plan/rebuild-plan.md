@@ -913,6 +913,29 @@ reader — so the `added` fact it refused to risk had no producer, and `si-ui-el
 its two referrers grades green. The guard, the carrier and the collector are gone together.
 Together the three took emitted from **691 to 705 of 1054 portable**, and `added` stayed 0.
 
+**And the local-`$ref` guard DID still hold, for a reason it never stated — which is why the
+comparison is one of three checks and not the whole verdict.** Its stated reason was about the
+comparison and was stale; what was still true is that a NODE is not a resolution scope.
+`SchemaRef(document, "#/definitions/box_decoration")` names a node whose own
+`{"$ref": "#/definitions/rectangle"}` is a pointer into the DOCUMENT ROOT, so given the node
+alone the PRODUCT raised `PointerToNowhere` and `strict_validate` refused **every** payload
+including the ones the document accepts, while the INSTRUMENT's generator raised
+`_RefResolutionError` and the accepts check labelled it `model_error` — a statement about the
+generator wearing the model's name. Both were invisible to the comparison, which reported
+`added` 0 / `missing` 0 / `differs` 0 over all 1,085 pairs on the same tree. **A count is
+evidence for its own instrument and for no other.**
+
+Both halves are answered by giving the node its document as the scope, and the two answers must
+agree because §6 grades the schema the runtime decides with. `_base._refuse_at` reads the
+document once and evolves a document-rooted validator onto the node — one call, so a caller
+cannot supply a node without its root — and `harness.check_pair` resolves the node against
+`pair.document` for the two INSTANCE checks. The COMPARISON keeps the UNRESOLVED node on
+purpose: what it grades is what the document STATES at that pointer, and `_normalize`'s
+both-sided `$ref` reading has exactly these pairs as its bundle population, so grading the
+inlined node would take that reading back to 0 sites. Measured: **0** graded pairs held a
+document-side local `$ref` before this row, which is what made the outcome pin green for free,
+and it is now **24 sites over 2 documents**.
+
 **Number 3 is applied to an `allOf` CONJUNCT as well as to the node, and before the conjunct's
 facts are folded in.** A conjunct is an inlined base and arrives already resolved, so the
 rewrite has dropped the `type` off any boolean the base declared. Gap-filling that conjunct's

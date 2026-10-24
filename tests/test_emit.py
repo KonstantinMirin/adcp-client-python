@@ -614,35 +614,41 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
 #: indistinguishable trees spread over 0.4%.  There is one draw per pair now and the
 #: schema comparison walks a document, so every figure here is a function of
 #: (bundle, emitted tree) and reproduces exactly.
-PAIRS_PIN = 1055
-#: Measured: 1,048 pass, and the seven that do not are named in
-#: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.
+#: 1055 -> 1085 at ``salesagent-j3k2l.28``: the three refusals section 6's "every fold
+#: applies to both sides" names are gone, so 14 more documents emit and bring their own
+#: nested pairs.  Re-measured, not derived from the document count: a document carries
+#: between one and a dozen pairs.
+PAIRS_PIN = 1085
+#: Measured: 1,080 pass, and the five that do not are named in
+#: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.  The
+#: ``comparison:model_drops_a_fact`` group is GONE rather than smaller, which is
+#: ``salesagent-j3k2l.28``'s exit: ``added``, ``missing`` and ``differs`` are all 0.
 OUTCOME_PINS: dict[str, int] = {
-    "pass": 1048,
+    "pass": 1080,
     "accepts:model_dropped_a_fact": 3,
-    "comparison:model_drops_a_fact": 2,
     "no_instrument": 2,
 }
 #: One instance per pair, minus the 2 whose generator could not draw one and the 3
 #: whose DUMP the document refused -- a failing example is reported, not counted.
-ROUND_TRIPPED_PIN = 1050
-COMPARED_PIN = 36060
-MODEL_FACTS_PIN = 12840
-#: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND ``MISSING_PIN`` IS RED.**  Zero is
-#: the specification's symmetric comparison -- a fact the model adds reddens and a
-#: fact it drops reddens -- and salesagent-j3k2l.28 owns the gap.  Re-pointing them
-#: at the measurement is the thing that row says not to do.  Measured on this tree:
-#: ``missing`` is 2 and ``differs`` is 0, against 10 and 13 when .28 was filed, so
-#: most of that row has landed.  The 2 remaining are one ``description`` each at an
-#: ``additionalProperties`` node (``a2ui/component.json``, ``a2ui/surface.json``).
+ROUND_TRIPPED_PIN = 1080
+COMPARED_PIN = 38224
+MODEL_FACTS_PIN = 13715
+#: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND BOTH ARE NOW GREEN.**  Zero is the
+#: specification's symmetric comparison -- a fact the model adds reddens and a fact it
+#: drops reddens -- and it was pinned here while ``MISSING_PIN`` was RED, because
+#: re-pointing a pin at the measurement is what salesagent-j3k2l.28 said not to do.
+#: That row closed it: ``added``, ``missing`` and ``differs`` are 0 over all 1,085
+#: pairs, against 0 / 2 / 0 at ``760e898c6`` and 0 / 10 / 13 when .28 was filed.  The
+#: last 2 were one ``description`` each at an ``additionalProperties`` node, where an
+#: annotation on a container's CONTENTS had no carrier.
 MISSING_PIN = 0
 DIFFERS_PIN = 0
-URL_TYPED_PIN = 1266
+URL_TYPED_PIN = 1328
 NO_PAYLOAD_PIN = 2
 #: Which perturbation ``refusing_payload`` reached, counted by its first word.
 #: A partition and not a total: which one bites is a property of the DOCUMENT's own
 #: root shape, so a shift here says the population's roots moved.
-LIVENESS_PINS: dict[str, int] = {"drops": 592, "replaces": 461, "": 2}
+LIVENESS_PINS: dict[str, int] = {"drops": 610, "replaces": 473, "": 2}
 
 
 @functools.cache
@@ -1683,7 +1689,14 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     counted -- a count of five tells the next reader nothing about which five or
     why, and the section-6 rebuild is the first thing to measure them.
 
-    Three groups, and the attribution of each was measured rather than assumed:
+    TWO groups now, and the attribution of each was measured rather than assumed.  The
+    third was ``comparison:model_drops_a_fact`` -- one ``description`` each at an
+    ``additionalProperties`` node, ``a2ui/component.json`` and ``a2ui/surface.json``,
+    pre-existing at the base and proven so by ``compare_schema`` being byte-identical
+    to ``7ffad8134``'s.  ``salesagent-j3k2l.28`` closed it in the EMITTER, which is
+    what §6 says happens where the comparison reports a ``description``: an annotation
+    on a container's CONTENTS had no carrier, and ``containers._contents`` now names
+    such a node.  The group is gone rather than smaller.
 
     * ``accepts:model_dropped_a_fact`` -- NEW with the dump half of the accepts
       check, which is the one thing in this harness that reads what a class DID with
@@ -1697,10 +1710,6 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
       an undeclared one dumps to ``{}``, which the document refuses.  Neither is an
       artifact of the dump's own keywords -- measured, the same node dumped WITHOUT
       ``exclude_unset`` is refused too, on ``type`` instead of ``minProperties``.
-    * ``comparison:model_drops_a_fact`` -- PRE-EXISTING at the base, and the proof is
-      that ``compare_schema`` is byte-identical to ``7ffad8134``'s (md5 of the
-      function, measured).  Both are one ``description`` at an
-      ``additionalProperties`` node and both belong to salesagent-j3k2l.28.
     * ``no_instrument`` -- the ``format``-beside-``pattern`` shape
       ``hypothesis_jsonschema``'s ``string_schema`` filters and cannot satisfy, which
       is an admitted exit rather than a failure (salesagent-j3k2l.10), and the
@@ -1722,7 +1731,6 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
             "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
             "/properties/render_guidance",
         ],
-        "comparison:model_drops_a_fact": ["a2ui/component.json#", "a2ui/surface.json#"],
         "no_instrument": [
             "core/reference-renderer.json#",
             "core/reference-renderer.json#/properties/provenance",
@@ -1736,9 +1744,6 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
                 g.ref,
                 r.accepts.detail,
             )
-        elif r.outcome == "comparison:model_drops_a_fact":
-            assert [m for m in r.comparison.missing if "/description:" in m], r.comparison.missing
-            assert r.comparison.added == [] and r.comparison.differs == []
         elif r.outcome == "no_instrument":
             for cause in r.no_instrument:
                 _grades_a_cause(cause, r.name)

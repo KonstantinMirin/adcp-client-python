@@ -172,14 +172,25 @@ def missing_formats(schema: Any, custom_formats: Mapping[str, Any]) -> set[str]:
 # --------------------------------------------------------------------------- #
 # resolution
 # --------------------------------------------------------------------------- #
-def resolve(schema: dict, *, store: Mapping[str, Any], base_uri: str = "") -> dict:
+def resolve(
+    schema: dict, *, store: Mapping[str, Any], base_uri: str = "", referrer: Any = None
+) -> dict:
     """Inline every ``$ref`` using hypothesis_jsonschema's own resolver.
 
     ``store`` maps an absolute URI to the document at it.  A ``$ref`` that is not
     in the store raises, by the library's design: it never fetches remotely.
+
+    ``referrer`` is what a LOCAL pointer (``#/definitions/x``) resolves against, and
+    it defaults to ``schema`` -- which is right for a whole document and wrong for a
+    NODE of one.  ``bundle.resolved`` inlines a remote reference and leaves a local
+    one, so a nested node's own ``$ref`` is a pointer into the DOCUMENT ROOT: given
+    the node as its own referrer, the library raises
+    ``_RefResolutionError: Unresolvable JSON pointer``.  Pass the document and the
+    same call inlines it (``salesagent-j3k2l.28``).
     """
     doc = copy.deepcopy(schema)
-    resolver = LocalResolver(base_uri=base_uri, referrer=copy.deepcopy(doc), store=dict(store))
+    scope = copy.deepcopy(doc if referrer is None else referrer)
+    resolver = LocalResolver(base_uri=base_uri, referrer=scope, store=dict(store))
     return resolve_all_refs(doc, resolver=resolver)
 
 
@@ -2117,15 +2128,45 @@ def check_pair(
     rep.missing_formats = sorted(missing_formats(pair.schema, custom_formats))
     rep.accepts_filtered_formats = filtered_formats(pair.schema)
     accepted: list[Any] = []
+    #: **The two INSTANCE checks need a self-contained schema and the comparison does
+    #: not, which is the whole of why this line exists.**  ``bundle.resolved`` inlines
+    #: a remote reference and leaves a LOCAL one, so a nested node can say
+    #: ``{"$ref": "#/definitions/rectangle"}`` -- a pointer into its DOCUMENT.  Handed
+    #: that node alone, ``hypothesis_jsonschema``'s generator raises
+    #: ``_RefResolutionError`` and the pair reports ``model_error``, which is a
+    #: statement about the GENERATOR wearing the model's name: measured at 5 pairs
+    #: over ``core/placement-presentation.json`` and
+    #: ``core/bidding-policy-capability.json`` (``salesagent-j3k2l.28``).  Resolving
+    #: against the document is what ``adcp.types._base._refuse`` does for the same
+    #: reason, by evolving a document-rooted validator onto the node, so the schema
+    #: the runtime decides with and the schema the harness draws from agree.
+    #:
+    #: The COMPARISON keeps the UNRESOLVED node on purpose: what it grades is what the
+    #: document STATES at that pointer, and ``_normalize`` reads a ``$ref`` on both
+    #: sides against a per-side root -- which is ``salesagent-j3k2l.32``/``.33``'s
+    #: landed reading and whose bundle population is exactly these pairs.  Grading the
+    #: inlined node instead would take that reading's population back to 0.
+    #:
+    #: FAIL-SAFE, and the direction matters: with no document supplied -- which is
+    #: ``Pair``'s own default and what a caller grading a bare node passes -- a local
+    #: ``$ref`` does not resolve and the library RAISES, so the unresolved node is
+    #: used and the checks report what they report.  Resolution is a convenience for
+    #: the generator, never a licence: a reference the resolution cannot inline leaves
+    #: the node stating no fact, every fact the model carries reads as ``added``, and
+    #: the pair reddens rather than passing blind.
+    try:
+        drawn_from = resolve(pair.schema, store={}, referrer=pair.document)
+    except Exception:  # noqa: BLE001 -- any resolution failure falls back to the node
+        drawn_from = pair.schema
     rep.accepts = check_accepts(
-        pair.schema,
+        drawn_from,
         pair.accept,
         examples=accepts_examples,
         custom_formats=custom_formats,
         seen=accepted,
     )
     rep.liveness = (
-        check_liveness(pair.schema, pair.accept, accepted[0])
+        check_liveness(drawn_from, pair.accept, accepted[0])
         if accepted
         else LivenessResult(outcome="no_payload", detail="the accepts check drew no instance")
     )

@@ -566,8 +566,22 @@ def render(decided: Class) -> Rendered:
         if imp.from_ and imp.import_:
             out.imports.add((imp.from_, imp.import_))
     if extra_field is not None:
+        # The same rule as ``ConfigDict`` below, and for the same reason: dmcg reports
+        # the import for a type its ``DataType`` COULD render, while rendering the
+        # modern spelling -- ``dict[str, bool]`` with a reported ``typing.Dict``.  So
+        # the extras store's imports are filtered by the names its rendered ANNOTATION
+        # uses, read off the HINT rather than off ``out.text``, which contains
+        # ``ConfigDict(`` and would match ``Dict`` as a substring.  Measured: this is
+        # the tree's ONLY typed ``__pydantic_extra__``
+        # (``core/canonical-media-buy-features.json``, first reachable at
+        # ``salesagent-j3k2l.28``), and ``typing.Dict`` was the one name dmcg reported
+        # for it that the line does not use.  The direction is safe either way: a
+        # class name that merely CONTAINS a reported name keeps an import the line
+        # does not need, which is an unused import and never a ``NameError``.
+        used = {word for word in extra_field.type_hint.replace("[", " ").replace("]", " ")
+                .replace(",", " ").replace("|", " ").split()}
         for imp in extra_field.imports:
-            if imp.from_ and imp.import_:
+            if imp.from_ and imp.import_ and imp.import_ in used:
                 out.imports.add((imp.from_, imp.import_))
     # ``ConfigDict`` is kept exactly when the rendered text uses the name, read
     # off the text rather than off what we asked for.  dmcg reports the import
