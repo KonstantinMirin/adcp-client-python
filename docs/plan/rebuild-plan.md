@@ -791,8 +791,9 @@ to `strict_validate` — which runs `_refuse(schema_at(ref), payload, symbol)`, 
 THE DOCUMENT and only then constructing. So a step site asserts that `jsonschema` rejects a
 payload violating the schema it was handed. The generated class takes no part in the outcome,
 which is why the paragraph above finds a class carrying `Any` on every field indistinguishable
-from a faithful one. 13,140 of those sites at 0.228 s each is the suite's entire wall clock,
-spent on a property of a third-party validator.
+from a faithful one. 27,791 of those sites is the suite's entire wall clock, spent on a
+property of a third-party validator. The count grows with the emitted population; an earlier
+revision quoted 13,140, measured before the population grew.
 
 **PYDANTIC IS DELIBERATELY LESS STRICT THAN THE SCHEMA, so neither path makes a refusal
 informative.** D4 is unchanged and correct: the schema decides acceptance and pydantic builds
@@ -814,14 +815,36 @@ model is not the validator. A keyword the model does not carry shows up as `miss
 constraint the model invents shows up as `added`. Nothing a per-keyword refusal sweep can
 discover is absent from those two lists.
 
-**Reference resolution happens once per bundle, and its result is reused.** Documents reference
-each other, so resolution is the one place recursion is unavoidable — and it is also the only
-reason canonicalisation was ever repeated. Resolving once removes the repetition instead of
-caching it. `_CANON_MEMO` is therefore DELETED, not bounded: an unbounded process-global dict
-keyed on a serialized schema, holding a canonicalised copy per key, grows by roughly 340 entries
-per pair and has pushed a ten-worker run into a kernel kill. A cache with a measured hit rate
-and no measured size is the defect, and a repetition that resolution removes needs no cache at
-all.
+**Reference resolution happens once per bundle, and the packaged documents carry no `$ref` at
+all** — 682 files, 0 occurrences, measured. So resolution is already done before the harness
+runs, and it is NOT the reason canonicalisation repeats.
+
+**Canonicalisation repeats inside the library's own recursion, and sharing it within one call is
+required.** `hypothesis_jsonschema`'s `merged` re-enters `canonicalish` for every subschema it
+sorts (`_canonicalise.py:631`), so a single `from_schema` call on one fully resolved document
+re-canonicalises the same subtrees. Nothing upstream of the library can remove that. Measured on
+`core/macro-declaration.json#` (18,301 bytes, one pair, one process, no pytest, no profiler):
+
+| from_schema | time | memo entries | memory |
+|---|---|---|---|
+| sharing within the call | 43.58 s | 504 | 142 MB |
+| no sharing at all | >600 s, stopped while still building | — | — |
+
+One pair without sharing costs more than the whole population costs with it, so deleting the
+sharing is not an option and an earlier revision of this section was wrong to require it.
+
+**What is banned is the process-global form, not sharing.** `_CANON_MEMO` was a module-global
+dict with no eviction, keyed on a serialized schema and holding a canonicalised copy per key: it
+grew by roughly 340 entries per pair, retained everything for the life of the process, and
+pushed a ten-worker run into a kernel kill at 83% with no summary. `_install_canon_memo` made it
+worse by rebinding every holder at import time, from shipped code, after a `sys.modules` scan
+that silently misses any later import.
+
+**The sharing is scoped to one call**: a context manager around the accepts check that installs,
+yields, and restores in a `finally`. It is bounded by one document's subschemas — 504 at the
+measured worst — its lifetime is one call, it is discarded on return and on raise, and its size
+is a figure rather than an unknown. A cache with a measured hit rate and no measured size is the
+defect; a cache whose bound is one document and whose lifetime is one call is not that.
 
 **The comparison folds out the RESOLVER's canonicalizations, and that is a named category
 rather than a series of patches.** The harness grades against the document as
