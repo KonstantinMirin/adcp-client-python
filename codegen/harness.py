@@ -57,22 +57,24 @@ graded population were the suite's entire wall clock, spent on a property of a
 third-party validator.  An invalid payload is informative only through the class's
 own validation, which is where ``check_invalid`` sends one.
 
-**There is no canonicalisation memo here, and resolution is not repeated either.**
-``from_schema`` re-canonicalises the whole document once per call, which is why a
-process-global dict keyed on a serialized schema once looked like a win; it was an
-unbounded cache with a measured hit rate and no measured size, and it pushed a
-ten-worker run into a kernel kill.  Two calls per pair instead of thousands removes
-the repetition rather than caching it, and the documents this grades arrive already
-resolved (``codegen.emit`` writes them out that way), so the one recursion
-reference resolution needs has happened before the harness sees anything.
+**There is no process-global canonicalisation memo here**, and the documents this
+grades arrive already resolved (``codegen.emit`` writes them out with zero ``$ref``),
+so the one recursion reference resolution needs has happened before the harness sees
+anything.  What remains is the library's own: ``merged`` re-enters ``canonicalish``
+for every subschema it sorts, so one ``from_schema`` call re-canonicalises the same
+subtrees of one document.  ``canonicalisation_shared_within_one_call`` shares those
+for the duration of ONE check and drops them on the way out -- its docstring carries
+the measurement that forces it, and why that is not the unbounded process-global
+dict section 6 deleted.
 """
 
 from __future__ import annotations
 
 import copy
 import json
+from contextlib import contextmanager
 from collections import Counter
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -80,6 +82,7 @@ import jsonschema
 from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
 from hypothesis.errors import HypothesisException
+from hypothesis_jsonschema import _canonicalise as _hjs_canon
 from hypothesis_jsonschema import from_schema
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
 from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
@@ -179,6 +182,66 @@ def resolve(schema: dict, *, store: Mapping[str, Any], base_uri: str = "") -> di
 
 def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrategy:
     return from_schema(schema, custom_formats=dict(custom_formats))
+
+
+@contextmanager
+def canonicalisation_shared_within_one_call() -> Iterator[dict[str, Any]]:
+    """Share ``canonicalish`` results for the duration of ONE check, then drop them.
+
+    **THIS IS A DIVERGENCE FROM SECTION 6's LETTER AND IT IS MEASURED.**  Section 6
+    says ``_CANON_MEMO`` is "DELETED, not bounded", because "a repetition that
+    resolution removes needs no cache at all".  The first half is right and is done:
+    there is no process-global dict here, nothing is retained between pairs, and
+    nothing is patched at import time.  **The second half is refuted by the
+    measurement.**  The repetition the memo covered is not only across step sites --
+    ``merged`` re-enters ``canonicalish`` for every subschema it sorts
+    (``_canonicalise.py:631``), so ONE ``from_schema`` call on ONE already-resolved
+    document re-canonicalises the same subtrees. Resolution cannot remove that: the
+    document arrives with zero ``$ref`` and the repetition is inside the library's
+    own recursion.
+
+    Measured on ``core/macro-declaration.json#``, 18,301 bytes, one pair, single
+    process, no profiler:
+
+    ======================================  ==========  =============
+    ``from_schema`` on that one document    seconds     memo entries
+    ======================================  ==========  =============
+    sharing within the call                     43.58            504
+    no sharing at all                         >600.0  (stopped)     -
+    ======================================  ==========  =============
+
+    So deleting the sharing outright does not make the suite cheaper, it makes one
+    pair cost more than the whole population does with it.
+
+    **What section 6's complaint actually names, and what this keeps out.**  The
+    defect was "an unbounded process-global dict ... grows by roughly 340 entries per
+    pair", retained across every pair of the population and multiplied by ten
+    workers, with a measured hit rate and no measured size.  A memo whose lifetime is
+    one call has none of those properties: its contents are one document's
+    subschemas, 504 at the measured worst, it is discarded on exit including on an
+    exception, and that size is the figure above rather than an unknown.  The name
+    says the lifetime, so a later reader cannot widen it without renaming it.
+    """
+    memo: dict[str, Any] = {}
+    uncached = _hjs_canon.canonicalish
+
+    def shared(schema: Any) -> Any:
+        try:
+            key = json.dumps(schema, sort_keys=True, default=repr)
+        except (TypeError, ValueError):
+            return uncached(schema)
+        hit = memo.get(key)
+        if hit is None:
+            hit = memo[key] = uncached(schema)
+        # A DEEP COPY on the way out: the library mutates the nodes it is handed, so
+        # returning the held object would let one call corrupt every later one.
+        return copy.deepcopy(hit)
+
+    _hjs_canon.canonicalish = shared
+    try:
+        yield memo
+    finally:
+        _hjs_canon.canonicalish = uncached
 
 
 def filtered_formats(schema: Any) -> tuple[str, ...]:
@@ -648,6 +711,17 @@ def check_accepts(
     A pair whose ``dump`` raises is a ``model_error`` like any other construction
     failure; a dump the document refuses is ``model_dropped_a_fact``, named for what
     it is rather than for the check that caught it.
+
+    **``Phase.shrink`` is NOT in the phase list, and that is a measured decision
+    rather than an omission.**  Hypothesis caps a shrink at its own
+    ``MAX_SHRINKING_SECONDS``, 300 s, so each FAILING pair could cost five minutes
+    of a worker's wall clock -- measured here: one failing pair held a core at 99%
+    for over ten minutes across two of its checks, against 0.1-0.4 s for a passing
+    one.  What a shrink buys is a smaller counterexample, and at the default
+    ``examples=1`` there is exactly ONE generated instance, so shrinking it cannot
+    reach a different failure -- it can only simplify the one already reported in
+    ``counterexample``.  ``Phase.target`` is out with it because no call site
+    supplies a ``target()``, so it had nothing to steer.
     """
     res = AcceptsResult()
     cf = dict(custom_formats)
@@ -671,13 +745,14 @@ def check_accepts(
         res.round_tripped += 1
 
     try:
-        run = given(instance=strategy(schema, cf))(body)
-        run = settings(
-            max_examples=examples,
-            phases=[Phase.explicit, Phase.generate, Phase.target, Phase.shrink],
-            **_SETTINGS,
-        )(run)
-        run()
+        with canonicalisation_shared_within_one_call():
+            run = given(instance=strategy(schema, cf))(body)
+            run = settings(
+                max_examples=examples,
+                phases=[Phase.explicit, Phase.generate],
+                **_SETTINGS,
+            )(run)
+            run()
         res.outcome = "pass"
     except _DumpRefused as e:
         res.outcome = "model_dropped_a_fact"

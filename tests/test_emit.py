@@ -583,6 +583,31 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
     assert reached.outcome == "pass"
 
 
+#: **The harness result over the whole population, as pins.**  Every one of these
+#: was MEASURED on this tree after the section-6 rebuild; none is carried from the
+#: per-keyword harness, because three of that one's figures no longer exist to
+#: re-point -- the step-site count, the refuses-check instance total, and the
+#: ``no_constraint_to_step`` partition.
+#:
+#: Each is an EQUALITY.  The old refuses-check instance total was a floor, because
+#: it counted hypothesis draws across 27,791 step sites and seven readings of it on
+#: indistinguishable trees spread over 0.4%.  There is one draw per pair now and the
+#: schema comparison walks a document, so every figure here is a function of
+#: (bundle, emitted tree) and reproduces exactly.
+PAIRS_PIN = 0
+OUTCOME_PINS: dict[str, int] = {}
+COMPARED_PIN = 0
+MODEL_FACTS_PIN = 0
+MISSING_PIN = 0
+DIFFERS_PIN = 0
+URL_TYPED_PIN = 0
+NO_PAYLOAD_PIN = 0
+#: Which perturbation ``refusing_payload`` reached, counted by its first word.
+#: A partition and not a total: which one bites is a property of the DOCUMENT's own
+#: root shape, so a shift here says the population's roots moved.
+INVALID_PINS: dict[str, int] = {}
+
+
 @functools.cache
 def graded_reports() -> list[tuple[Graded, PairReport]]:
     """Every graded pair, graded ONCE.
