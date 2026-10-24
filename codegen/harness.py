@@ -741,9 +741,12 @@ def check_accepts(
         built = accept(instance)
         back = dump(built) if dump is not None else _wire_dump(built)
         if conforms(schema, back, validator_cls=validator_cls) is False:
+            # The CAUSE goes first, because ``detail`` is truncated and a reason at
+            # the end of a megabyte of dumped instance is a reason nothing can read.
             raise _DumpRefused(
-                f"dumped {_dump(back)} from {_dump(instance)}; the document refuses it on "
+                "the document refuses the dump on "
                 f"{', '.join(violated_keywords(schema, back, validator_cls=validator_cls))}"
+                f"; dumped {_dump(back)} from {_dump(instance)}"
             )
         res.round_tripped += 1
 

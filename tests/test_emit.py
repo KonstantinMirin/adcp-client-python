@@ -663,52 +663,51 @@ def graded_reports() -> list[tuple[Graded, PairReport]]:
     return [(g, check_pair(pair_of(g))) for g in graded()]
 
 
-def test_the_pairs_with_no_refused_payload_are_the_documents_that_refuse_nothing() -> None:
-    """Which pairs take the ``no_payload`` exit, and why.
+def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for() -> None:
+    """``no_payload`` is the complement of the accepts check's draw, and nothing else.
 
-    ``refusing_payload`` tries three perturbations of an accepted instance and
-    screens every one against the DOCUMENT, so ``no_payload`` means the document
-    admits all three: it demands no key, it states no root ``type`` that any of the
-    six alien values violates, and it declares no closed object.  That is a real
-    property of a document and this test reads it off the document rather than off
-    a list -- a pair that landed there for any other reason would not satisfy the
-    loop at the bottom.
+    ``refusing_payload`` tries three perturbations of an accepted instance and screens
+    every one against the DOCUMENT, so ``no_payload`` could in principle mean either of
+    two things: the document admits all three shapes, or there was no accepted instance
+    to perturb.  **Measured over the population, it only ever means the second.**  Every
+    one of the 1,053 pairs the accepts check drew an instance for yielded a payload the
+    document refuses, and the 2 that did not are exactly the 2 whose generator could not
+    draw -- so the derivation reaches every pair it is given anything to work with.
 
-    **This replaced ``no_constraint_to_step``**, which counted the documents
-    ``steps()`` found no keyword to mutate in.  Section 6: "the harness grades one
-    class against one schema, and it does not iterate over keywords" -- so there
-    are no step sites to have none of, and the question that survives is whether a
-    document refuses anything at all.
+    That is worth a test because the first reading of it was wrong, and it was mine: I
+    expected ``core/context.json`` and ``core/ext.json``, the
+    ``additionalProperties: true`` mapping roots, to refuse nothing.  They state
+    ``type: object``, so the whole-instance replacement with ``None`` is refused and they
+    are graded like everything else.  A document refusing NOTHING would have to state no
+    root type at all, and this bundle has none.
     """
     reports = graded_reports()
-    excused = [g for g, r in reports if r.liveness.outcome == "no_payload"]
-    # The exits are exhaustive over the population rather than one slice of it, so a
-    # verdict nobody listed could not hide behind this one.
-    assert {r.outcome for _, r in reports} == set(OUTCOME_PINS), {
-        r.outcome for _, r in reports
-    }
-    assert [f"{g.ref.document}{g.ref.pointer}" for g in excused] == [
-        # `core/context.json` and `core/ext.json` are mapping roots: step 6 lowers an
-        # `additionalProperties: true` document to `dict[str, Any]`, and such a
-        # document demands no key, closes nothing and states only `type: object` --
-        # which `{}` satisfies, so every candidate is admitted.
-        "core/context.json#",
-        "core/ext.json#",
-    ], [f"{g.ref.document}{g.ref.pointer}" for g in excused]
-    for g in excused:
+    excused = sorted(
+        f"{g.ref.document}{g.ref.pointer}" for g, r in reports if r.liveness.outcome == "no_payload"
+    )
+    assert excused == [
+        "core/reference-renderer.json#",
+        "core/reference-renderer.json#/properties/provenance",
+    ], excused
+    # Read off the reports rather than off the list: each one is a pair whose accepts
+    # check could not DRAW, and the liveness result says exactly that.
+    for g, r in reports:
+        if r.liveness.outcome == "no_payload":
+            assert r.accepts.outcome == "strategy_error", (g.ref, r.accepts.outcome)
+            assert r.liveness.detail == "the accepts check drew no instance", r.liveness.detail
+            assert r.liveness.how == "", r.liveness.how
+        else:
+            assert r.liveness.how, (g.ref, r.liveness.outcome)
+    # The two mapping roots this test's own premise got wrong, asserted the right way
+    # round: they state a root type, so the replacement IS refused and they ARE graded.
+    for name in ("core/context.json#", "core/ext.json#"):
+        g = next(x for x in graded() if f"{x.ref.document}{x.ref.pointer}" == name)
         schema = schema_at(g.ref)
-        assert schema.get("required", []) == [], g.ref
-        assert schema.get("additionalProperties") is not False, g.ref
-        # Read off the function itself: with a `{}` instance in hand it finds nothing.
-        assert refusing_payload(schema, {}) is None, g.ref
+        assert schema.get("required", []) == [] and schema["type"] == "object", g.ref
+        assert refusing_payload(schema, {}) == (None, "replaces the instance with None")
         rep = check_pair(pair_of(g))
-        # The accepts check and the schema comparison still grade both of them, which
-        # is what keeps `no_payload` from being a hole rather than an exit.
-        assert rep.outcome == "pass"
-        assert rep.accepts.outcome == "pass"
-        assert rep.graded_instances > 0
-        assert rep.comparison.outcome == "pass"
-        assert rep.comparison.compared > 0
+        assert rep.outcome == "pass" and rep.liveness.outcome == "pass"
+        assert rep.graded_instances > 0 and rep.comparison.compared > 0
 
 
 def _grades_a_cause(cause: str, where: str = "") -> None:
@@ -1712,6 +1711,10 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     for g, r in reports:
         if r.outcome != "pass":
             by_outcome.setdefault(r.outcome, []).append(f"{g.ref.document}{g.ref.pointer}")
+    # SORTED, because the order ``graded()`` returns is module-walk order and a nested
+    # pair precedes its root in it.  The membership is the obligation; the order is an
+    # artifact of the walk, and asserting it would grade the walk.
+    by_outcome = {k: sorted(v) for k, v in by_outcome.items()}
     assert by_outcome == {
         "accepts:model_dropped_a_fact": [
             "core/attestation-capabilities.json#",
@@ -1729,7 +1732,10 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     # pair that landed in one of these groups for a DIFFERENT reason reddens here.
     for g, r in reports:
         if r.outcome == "accepts:model_dropped_a_fact":
-            assert "the document refuses it on " in r.accepts.detail, (g.ref, r.accepts.detail)
+            assert r.accepts.detail.startswith("the document refuses the dump on "), (
+                g.ref,
+                r.accepts.detail,
+            )
         elif r.outcome == "comparison:model_drops_a_fact":
             assert [m for m in r.comparison.missing if "/description:" in m], r.comparison.missing
             assert r.comparison.added == [] and r.comparison.differs == []
@@ -1747,7 +1753,7 @@ def test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for
     Section 6 keeps one refused payload per class and routes it through the entry
     point, so the question this answers is "how many classes' schema halves were
     shown to be connected, and was any of them silent".  ``no_payload`` is the complement and is enumerated
-    by name in ``test_the_pairs_with_no_refused_payload_are_the_documents_that_refuse_nothing``.
+    by name in ``test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for``.
 
     ``schema_half_not_connected`` is pinned at ZERO rather than tracked, because an
     acceptance there is not a tolerance: the document refuses this payload and the
