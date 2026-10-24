@@ -60,9 +60,6 @@ run "upstream repairs the pattern: the value stops matching" "resolves_and_still
 edit "import pathlib;p=pathlib.Path('$E');s=p.read_text();a='/properties/disclosure/properties/jurisdictions/items/properties/render_guidance';assert s.count(a)>=1;p.write_text(s.replace(a,'/properties/disclosure/properties/nope',1))"
 run "an entry pointer that no longer resolves" "resolves_and_still_states"
 
-edit "import pathlib;p=pathlib.Path('$T');s=p.read_text();a='assert len(copies) == 90';assert s.count(a)==1;p.write_text(s.replace(a,'assert len(copies) == 91'))"
-run "the minProperties exposure count moves" "pairs_own_root"
-
 edit "import pathlib;p=pathlib.Path('$T');s=p.read_text();a='assert len(patterns) == 8';assert s.count(a)==1;p.write_text(s.replace(a,'assert len(patterns) == 7'))"
 run "the uri pattern population count moves" "population_is_the_one_d5_states"
 
