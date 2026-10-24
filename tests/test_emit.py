@@ -4822,7 +4822,11 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     """
     portable = sorted(bundle.portable(BUNDLE))
     out = emit.emit(BUNDLE, portable)
-    assert len(out.emitted) == 691, len(out.emitted)
+    # The document TOTAL is not restated here: it is another test's assertion and it
+    # moves whenever a row admits more of the bundle, which would make this check's
+    # failure read as a dedup defect.  What this one needs is only that the loop below
+    # has documents to run over.
+    assert out.emitted, "nothing emitted: every assertion below would pass vacuously"
 
     groups = adoptions = declared = 0
     for document in sorted(out.emitted):
@@ -4841,7 +4845,7 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
 
         here = out.declared[document]
         declared += len(here)
-        assert set(here) <= set(keys), (document, sorted(set(here) - set(keys)))
+        assert set(here) <= set(at), (document, sorted(set(here) - set(at)))
 
         for key, pointers in by_content.items():
             if len(pointers) < 2 or not any(p in here for p in pointers):

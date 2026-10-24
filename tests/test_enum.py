@@ -222,7 +222,13 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     # (214) did not move, so the 2 are both INLINE and the baseline says so -- this
     # file is 1 failed / 22 passed at ``c9bfb5133`` and these four were the 4 green
     # ones that moved.
-    assert len(classes) == 484, len(classes)  # 214 roots, the rest inline
+    # 484 -> 482 at ``salesagent-j3k2l.38``, and this one is a SHRINK rather than
+    # population growth: D3's content dedup collapsed 8 nodes, 2 of them enumerations
+    # (``core/signal-definition-enrichment.json``'s ``lookback_window`` onto
+    # ``refresh_cadence``, and ``formats/canonical/image_carousel.json``'s
+    # ``allowed_card_asset_types`` onto ``allowed_card_media_asset_types``).  The other
+    # 6 are object classes and do not count here.
+    assert len(classes) == 482, len(classes)  # 214 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -276,8 +282,10 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
     # 2692 -> 2892 on fe0e185f9, population growth; 2892 -> 2917 at
-    # ``salesagent-j3k2l.40``, the same 5 documents.
-    assert names == 2917, names
+    # ``salesagent-j3k2l.40``, the same 5 documents.  2917 -> 2907 at
+    # ``salesagent-j3k2l.38``, a shrink and not growth: the 2 enum classes D3's content
+    # dedup collapsed carried 8 and 2 members.
+    assert names == 2907, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
