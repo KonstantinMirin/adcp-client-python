@@ -904,34 +904,29 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
         assert refusing.refusals[document]["pointer"] == "/"
 
 
-def test_identical_enum_nodes_under_one_document_are_unreached_by_this_step() -> None:
-    """D3's content dedup, as a ceiling with its denominator.
-
-    D3 says two nodes with identical content are one node.  This row emits two
-    classes for them, and that is a gap -- 36 such repeats over 21 documents.
-    Every one of them sits under ``oneOf``/``allOf``/``definitions``/``items``,
-    positions this step does not descend into, so the REACHED count is 0 and the
-    fix belongs to the step whose population reaches one.
-    """
-    emitted = set(emit.emit(BUNDLE, population()).emitted)
-    repeats = reached = 0
-    for document in bundle.portable(BUNDLE):
-        seen: dict[str, list[str]] = {}
-        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
-            if "enum" not in node:
-                continue
-            seen.setdefault(json.dumps(node, sort_keys=True), []).append(pointer)
-        for pointers in seen.values():
-            if len(pointers) < 2:
-                continue
-            repeats += len(pointers) - 1
-            parts = [[p for p in ptr.split("/") if p] for ptr in pointers]
-            if document in emitted and all(
-                all(hop[i] == "properties" for i in range(0, len(hop), 2)) for hop in parts
-            ):
-                reached += 1
-    assert repeats == 36, repeats
-    assert reached == 0, reached
+# ``test_identical_enum_nodes_under_one_document_are_unreached_by_this_step`` stood
+# here, and salesagent-j3k2l.38 CLOSED it rather than re-pointing it.  It was D3's
+# content dedup as a ceiling: 36 enum repeats over 21 documents, 0 of them REACHED, and
+# "the fix belongs to the step whose population reaches one".  That step arrived, the
+# reached count became 1, and the issue says explicitly that re-pointing 0 to 1 would
+# convert a defect into a baseline.
+#
+# It is gone because the check that replaced it SUBSUMES it in both directions.  The
+# ceiling was enum-only and its reach test was a pointer-spelling proxy -- all hops are
+# ``properties`` pairs -- and the defect was never enum-only: the walk declared two
+# classes for one node at 7 content groups over 6 documents, and 5 of the 7 are OBJECT
+# classes.  The proxy also undercounted its own population: of the 2 enum groups,
+# ``formats/canonical/image_carousel.json``'s two pointers reach the node through an
+# ``items`` hop, which the proxy rejected while the walk descends it.
+# ``tests/test_emit.py::test_identical_content_is_one_class_and_different_content_is_
+# never_one`` grades every node of every document the whole bundle emits, through the
+# very function the collapse is keyed on, and asserts its three denominators -- so a run
+# that collapses nothing fails there rather than passing over an empty loop.
+#
+# The ceiling's own census is not lost, it is explained: 36 bundle-side enum repeats and
+# 8 walk-side collapses are two different populations, and the difference is documents
+# the emitter refuses and positions no row descends.  The new check counts what the walk
+# DECLARED, which is the only population a dedup can be graded over.
 
 
 def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:

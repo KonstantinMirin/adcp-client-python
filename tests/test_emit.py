@@ -4794,6 +4794,91 @@ def test_every_portable_document_is_emitted_or_refused_by_name() -> None:
     assert unnamed == {}, unnamed
 
 
+def test_identical_content_is_one_class_and_different_content_is_never_one() -> None:
+    """D3's content dedup, over every node of every document the whole bundle emits.
+
+    **Both directions, because a dedup that cannot tell them apart is worse than the
+    duplication it removes.**  The three clauses are the whole of the rule, each one
+    computed over a population this asserts the size of (D14), and each one perturbed
+    and recorded as reddening in salesagent-j3k2l.38's notes:
+
+    1. no content group DECLARES two symbols -- which is the defect: one node, two
+       classes, both exported, each graded against the same node.
+    2. every ADOPTION's two nodes really are identical.  This is the direction that
+       matters more: clause 1 can be satisfied by collapsing everything, and this is
+       what says the collapse never joined two nodes the document separates.
+    3. the surviving symbol is the one D3's nested rule derives at the node's FIRST
+       position in the document's own key order.  ``emit.decide_type`` states that
+       choice, and it decides a PUBLIC class name, so a flip in walk order reddens here
+       instead of silently renaming an export.
+
+    **The population is read off the walk's own two records**, ``Emitted.declared`` and
+    ``Emitted.adopted``, rather than off the emitted text: a module's text has two class
+    statements and no way to say which node each one lowered, which is why the defect
+    this grades survived a suite that reads the tree.  The content key is
+    ``emit.content_key``, the function the collapse itself is keyed on, so the check and
+    the collapse cannot come to disagree about what identical means -- and §9's open
+    question is about exactly that disagreement between two instruments.
+    """
+    portable = sorted(bundle.portable(BUNDLE))
+    out = emit.emit(BUNDLE, portable)
+    assert len(out.emitted) == 691, len(out.emitted)
+
+    groups = adoptions = declared = 0
+    for document in sorted(out.emitted):
+        doc = bundle.read(BUNDLE, document)
+        # The per-pointer facts ``content_key`` reads, built the way ``lower_document``
+        # builds them, so the key here is the production key.
+        mod = compiler.Module(
+            document=document, object_constrained=bundle.constrained_to_object(doc)
+        )
+        walked = list(bundle.nodes(doc))  # ONE walk: document order, and the nodes
+        order = {pointer: i for i, (pointer, _) in enumerate(walked)}
+        at = dict(walked)
+        by_content: dict[str, list[str]] = {}
+        for pointer, node in walked:
+            by_content.setdefault(emit.content_key(node, pointer, mod), []).append(pointer)
+
+        here = out.declared[document]
+        declared += len(here)
+        assert set(here) <= set(keys), (document, sorted(set(here) - set(keys)))
+
+        for key, pointers in by_content.items():
+            if len(pointers) < 2 or not any(p in here for p in pointers):
+                continue
+            groups += 1
+            # Clause 1.
+            symbols = {here[p] for p in pointers if p in here}
+            assert len(symbols) == 1, (document, key[:120], sorted(symbols))
+
+        for pointer, symbol in out.adopted[document].items():
+            adoptions += 1
+            declaring = [p for p, s in here.items() if s == symbol]
+            assert len(declaring) == 1, (document, symbol, declaring)
+            # Clause 2: the adopting node and the declaring node are the same node, and
+            # asserted on the NODES rather than on ``content_key``.  The key is the
+            # production function, so a key weakened to collapse two different nodes
+            # would weaken this comparison in step and the clause would pass vacuously
+            # -- which is this file's own rule about a fixture derived from the thing it
+            # grades.  Python's own equality over the two parsed nodes, plus the one
+            # position fact the decision reads, is what the key is supposed to encode.
+            assert at[pointer] == at[declaring[0]], (document, pointer, declaring[0])
+            assert (pointer in mod.object_constrained) == (
+                declaring[0] in mod.object_constrained
+            ), (document, pointer, declaring[0])
+            # Clause 3: the survivor is the FIRST of them in document order.
+            assert order[declaring[0]] < order[pointer], (document, pointer, declaring[0])
+
+    # The denominators.  A dedup check whose population reaches one instance is the
+    # defect salesagent-j3k2l.38 is about -- the ceiling it replaced counted 36 bundle
+    # repeats and asserted that 0 were REACHED -- so the three counts are stated and a
+    # run that collapses nothing fails here rather than passing over an empty loop.
+    assert declared == 1349, declared
+    assert groups == 7, groups
+    assert adoptions == 8, adoptions
+    assert sum(1 for d in out.adopted if out.adopted[d]) == 6
+
+
 def test_a_refusals_kind_is_declared_by_its_producer_and_a_chain_takes_its_targets() -> None:
     """``Refusal``'s own contract, which is what makes the partition unanswerable by grep.
 

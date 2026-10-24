@@ -264,28 +264,115 @@ def relative_module(frm: str, to: str) -> str:
 # --------------------------------------------------------------------------- #
 # the walk: what each node IS
 # --------------------------------------------------------------------------- #
+def content_key(node: dict, pointer: str, mod: Module) -> str:
+    """D3's content equality, AND the statement of where it cuts a reference cycle.
+
+    Two nodes are the same node when this returns the same string for both.  It is
+    the node's own JSON with every mapping ordered -- so a key order no instance can
+    observe is not a difference -- plus the one fact about the node's POSITION that
+    the decision reads.
+
+    **A ``$ref`` is compared as a STRING and is never followed, and that is the cut.**
+    §9 records that two instruments once disagreed about whether two nodes were
+    identical entirely because each cut a reference cycle somewhere else, and D3 says
+    the comparison has to state its rule.  Here there is no recursion to cut: the node
+    is read as the document wrote it, so a cycle through a ``$ref`` is cut at the
+    reference, at depth 0, on every node and not only on a cyclic one.
+
+    **The cost of that cut is a measured population, not a hypothetical.**  Two nodes
+    that name ONE target through two spellings of the same reference are NOT equal
+    here, and the bundle has 17 such targets: 968 distinct reference strings over 4,200
+    sites, 0 of them relative, and 17 (document, pointer) pairs reached both by a local
+    ``#/definitions/x`` and by the document's own absolute URI carrying the same
+    fragment.  Those pairs are not collapsed, which is the conservative direction --
+    two classes where one would do, never one class where the document means two -- and
+    following the reference to compare the targets is the thing §9 says has to state
+    its cut before anything does it.
+
+    **The POSITION bit is ``mod.object_constrained``, and the key is wrong without
+    it.**  ``bundle.constrained_to_object`` is a set of POINTERS: a node stating no
+    ``type`` of its own is lowered as an object where an enclosing node applies
+    ``type: "object"`` to the same instance, and is refused where none does.  So two
+    nodes of byte-identical JSON at two such positions decide DIFFERENTLY, and a key
+    over the JSON alone would hand the refused position the class the admitted one
+    declared -- a model stating what that position's document does not.  1,390 of the
+    bundle's nodes declare ``properties`` with no ``type``, 556 of them in that set and
+    834 outside it, so both sides of the bit are populated.  Nothing else the decision
+    reads is per-pointer: ``mod.asserted`` and ``mod.root`` are per document, and
+    ``mod.named`` is handled by :func:`decide_type` itself.
+    """
+    return json.dumps(
+        [node, pointer in mod.object_constrained], sort_keys=True, separators=(",", ":")
+    )
+
+
 def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     """What one schema node IS, plus a SYMBOL where another document names the node.
 
-    The decision is :func:`_decide`'s, unchanged.  What is here is the one thing a
-    node reached by a fragment reference needs and a node reached only by its parent
-    does not: a name in this module, so the referring module imports a symbol rather
-    than copying a schema (section 2's rule).
+    The decision is :func:`_decide`'s, unchanged.  What is here is the two things a
+    node reached by a fragment reference or by a second parent needs and a node
+    reached once by its own parent does not: a name in this module, so the referring
+    module imports a symbol rather than copying a schema (section 2's rule), and D3's
+    content dedup.
 
-    It wraps rather than living inside ``_decide`` because it applies to every arm
+    It wraps rather than living inside ``_decide`` because both apply to every arm
     equally -- an array, a scalar, a mapping and a multi-type node are all annotations
-    with no name -- and ``_decide`` returns from ten places, so putting the test in
-    there would be ten tests or one more wrapper.  A class or an enumeration comes
+    with no name -- and ``_decide`` returns from ten places, so putting the tests in
+    there would be twenty tests or one more wrapper.  A class or an enumeration comes
     back ``local`` already, having declared itself under this very ``name_hint``, so
     nothing is named twice and no second symbol appears for one node.
 
     ``mod.named`` is a function of the BUNDLE (``bundle.named_nodes``), not of the
     run's document set, so whether a node gets a name does not depend on who else was
     emitted.
+
+    **D3: nodes with identical content are one node.**  The memo is consulted BEFORE
+    ``_decide`` and seeded after it, so the second occurrence of a node decides to the
+    symbol the first DECLARED and no second class is written for it.  Three things
+    make that the whole of the rule rather than an optimisation:
+
+    * The memo is seeded only where the walk declared a symbol AT THIS NODE'S OWN
+      POINTER (``mod.declared.get(pointer)``), which is exactly D2's class and
+      enumeration rows and :func:`compiler.name_the_node`'s alias.  An annotation
+      declares nothing, so an identical annotation is simply decided again -- to the
+      same annotation, since the inputs are the same string -- and a ``$ref`` whose
+      symbol this module IMPORTED is not seeded either, because the import is already
+      in ``mod.imports`` and section 2's rule is an import of a symbol the TARGET
+      declares.  A node that declares a symbol at its pointer and then decides to a
+      CONTAINER over it is therefore not seeded; a nested union is the shape that would
+      be, and it is covered anyway because its BRANCHES collapse through this very
+      wrapper and two identical branch lists then decide to one annotation.  0 such
+      pairs survive the run, and clause 1 of the check reddens by name if one appears.
+    * **The surviving symbol is the one D3's nested rule derives at the node's FIRST
+      position, in the document's own key order**, and that is the choice this row
+      states rather than leaves to be read off whichever key is walked first.  D3
+      derives a name PER POSITION, so a node at two positions has two derivations and
+      no rule picks between them; the alternative readings are both worse.  Naming it
+      from its own content is what D5 bans for an alias ("an alias names a constraint,
+      never a concept") and for an enumeration the content is a member list, not a
+      name.  Naming it from the bundle is unavailable and measured so: 0 of the 1,271
+      identical-content groups have a bundle ROOT carrying that content, so D5's first
+      rung reaches none of them.  And refusing the document loses a class the bundle
+      can state.  ``tests/test_emit.py`` asserts the survivor against the first
+      position, so a flip in walk order reddens instead of renaming a public symbol.
+    * **No pointer is registered for the collapsed node**, so a cross-document ``$ref``
+      naming the second position refuses DEFERRED by name -- the loud outcome
+      ``emit.emit``'s binder already mints for a pointer the walk declares no symbol
+      at.  Measured: the walk collapses 8 pointers (7 content groups over 15 positions),
+      and 0 of the 8 are among the bundle's 216 named nodes -- so the arm is unreachable
+      today and the step whose population reaches one decides whether the reference
+      follows the collapse.
     """
+    key = content_key(node, pointer, mod)
+    collapsed = mod.collapsed.get(key)
+    if collapsed is not None:
+        mod.adopted[pointer] = collapsed
+        return Decided(compiler.Type(collapsed, local=True))
     decided = _decide(node, pointer, name_hint, mod)
     if pointer in mod.named and not decided.type.local:
-        return compiler.name_the_node(mod, name_hint, pointer, node, decided)
+        decided = compiler.name_the_node(mod, name_hint, pointer, node, decided)
+    if mod.declared.get(pointer) == decided.type.path:
+        mod.collapsed[key] = decided.type.path
     return decided
 
 
@@ -868,6 +955,22 @@ class Emitted:
     #: through its own ``__adcp_schema__``.
     emitted: dict[str, str] = field(default_factory=dict)
     refusals: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: document -> ``Module.declared``, which is pointer -> the symbol declared for the
+    #: node at it.  The run's own record of WHERE each symbol came from, and the only
+    #: thing D3's content dedup can be graded over: the question "do two declared
+    #: symbols name nodes of identical content" is asked of pointers, and the emitted
+    #: TEXT has none -- a reader of the module sees two class statements and cannot say
+    #: which node each one lowered.  Written from the one map every declaration passes
+    #: through (:meth:`Module.declare`), so the check and the collapse read one record
+    #: and cannot disagree about what was declared.
+    declared: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: document -> ``Module.adopted``: pointer -> the symbol the node at it adopted under
+    #: D3's content dedup, because an earlier node of identical content declared it.
+    #: With :attr:`declared` this is the whole of what the dedup did, and it is what
+    #: ``tests/test_emit.py`` grades it over -- in both directions, since an adoption
+    #: whose two nodes are NOT identical is the failure that matters more than a missed
+    #: collapse.
+    adopted: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 def _composed_nodes(bundle_dir: Path, known: set[str]) -> dict[str, frozenset[str]]:
@@ -1126,6 +1229,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         rel = module_path(document)
         out.files[f"{rel}.py"] = render(mod, symbol, composed.get(document, frozenset()))
         out.emitted[document] = f"{PACKAGE}.{rel.replace('/', '.')}"
+        out.declared[document] = dict(mod.declared)
+        out.adopted[document] = dict(mod.adopted)
         # The document travels WITH the module, at its own bundle-relative path,
         # because ``__adcp_schema__`` names that path and ``strict_validate``
         # reads it to decide acceptance (D4).  The bundle is a build-time input
