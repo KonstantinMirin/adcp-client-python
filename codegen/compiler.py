@@ -939,6 +939,27 @@ class Module:
     #: record of its own: a node declared because the walk reached it and a node
     #: declared because a local reference asked for it are one entry here.
     declared: dict[str, str] = field(default_factory=dict)
+    #: D3's content dedup: ``the key of a node's content -> the symbol declared for the
+    #: FIRST node with that content``.  Two nodes with identical content are ONE node, so
+    #: the second occurrence decides to the symbol the first declared rather than
+    #: declaring a second class for it.  Written and read by ``emit.decide_type``, which
+    #: is the one per-node walk, and keyed by ``emit.content_key`` -- which is where the
+    #: equality, and the place it cuts a reference cycle, is stated.
+    #:
+    #: Per MODULE, which is per document (D1).  Two documents that inline identical
+    #: content keep a class each: collapsing them would need a rule for which module owns
+    #: the survivor, D1 gives a node exactly one home, and 0 of the bundle's 1,271
+    #: identical-content groups have a ROOT carrying that content for a ``$ref`` to reach.
+    collapsed: dict[str, str] = field(default_factory=dict)
+    #: The other half of that record, and the half a check can read: ``pointer -> the
+    #: symbol the node at it ADOPTED`` because an earlier node of identical content had
+    #: already declared one.  ``collapsed`` is keyed by content, which says what was
+    #: collapsed and not WHERE, and "where" is the only thing a grader can compare a
+    #: node against -- so the dedup is graded by asking, of every adoption, whether the
+    #: adopting pointer's content really equals the declaring pointer's.  Written by
+    #: ``emit.decide_type`` on the same line that returns the adopted symbol, so an
+    #: adoption that went unrecorded is an adoption that did not happen.
+    adopted: dict[str, str] = field(default_factory=dict)
     #: The pointers :func:`local_reference` is in the middle of declaring, innermost last.
     #: A pointer meeting itself here is a local reference CYCLE, which refuses by name
     #: rather than recurring -- the same shape, and the same reason, as ``emit.emit``'s
