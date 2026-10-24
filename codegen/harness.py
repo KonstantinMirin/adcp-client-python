@@ -2021,8 +2021,9 @@ def check_pair(
     Resolve the document once (the caller's documents arrive resolved), draw a
     payload the schema accepts, construct the class from it, dump the instance and
     compare the dump against the schema; send one payload the schema refuses
-    through the class's own validation; and compare the class's own
-    ``model_json_schema()`` against the document.  That is 1,055 units of work over
+    through the entry point, which proves that class's schema half is connected; and
+    compare the class's own ``model_json_schema()`` against the document.  That is
+    1,055 units of work over
     the graded population rather than 27,791, and the only recursion anywhere in it
     belongs to reference resolution.
 
