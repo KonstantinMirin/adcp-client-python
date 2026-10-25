@@ -56,6 +56,7 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter, Valid
 
 from adcp.types._base import (
     AdCPBaseModel,
+    applied_schema,
     BranchDispatchMixin,
     REGEX_ENGINE,
     SchemaRef,
@@ -1307,8 +1308,12 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
       selects that type, asserted on the AST by the type's import being present
       and by no ``json_schema_extra`` carrying that format in the same module --
       so the fact lives in exactly one place;
-    * every other format rides as an annotation on the node's own scalar type,
-      so the first side cannot be satisfied by dropping the format.
+    * every other format rides on the node's own scalar type, so the first side
+      cannot be satisfied by dropping the format.  WHERE it rides is the POSITION's
+      answer and not the format's: ``json_schema_extra`` on the field, or -- at an
+      ELEM, a MAPV or a union BRANCH, which have no field -- a named alias in
+      ``adcp.types.constraints``.  Both are asserted, because either one dropped is
+      a model wider than its document and silently so.
 
     And in both cases the format reaches the model's OWN schema, asserted site by
     site against the document, which is where the schema comparison grades it.
@@ -1318,9 +1323,11 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     (334 sites: ``date-time`` 190, ``uri`` 131, ``date`` 5, ``email`` 5, ``hostname`` 3),
     because that is the denominator the rule is stated over.  Re-measured at
     64131600f (``salesagent-j3k2l.29``): every count here is over the documents
-    ``graded()`` names, so each one moved as the emitted population grew, and
-    ``hostname`` is a format the census did not use to see at all -- it has no
-    ``FORMAT_TYPES`` row, so its 3 sites ride the second arm below.
+    ``graded()`` names, so each one moved as the emitted population grew.  Two
+    formats have no ``FORMAT_TYPES`` row and so ride the second arm below:
+    ``hostname``, at 3 array ELEMENTS, and ``uri-template``, on one branch of
+    ``core/macro-bearing-url.json``'s root union -- and both of those are positions
+    with no field, so both are carried by a named alias (``salesagent-j3k2l.41``).
     """
     checked = emit.asserted_formats(bundle.read(BUNDLE, PAGINATION))
     # The two dependencies `pyproject` names are what put these in the draft's
@@ -1380,7 +1387,15 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             # ``format``), so the format selects the type of the arm that defines it
             # and the ``null`` arm takes none of it.  Asserted over the arms, which is
             # what the emitter actually reads.
-            kinds = node["type"] if isinstance(node["type"], list) else [node["type"]]
+            # **A node stating a format and NO type takes the type the document
+            # APPLIES to it**, which is what the emitter reads: a branch of a root
+            # union sees the root's ``type`` (``lower.union.applied_type``, over
+            # ``_base.applied_schema``).  Read any other way this raised ``KeyError``
+            # on ``core/macro-bearing-url.json``'s three branches, whose own nodes
+            # state a format and a pattern and nothing else -- latent until that
+            # document emitted.
+            applied = applied_schema(bundle.read(BUNDLE, document), pointer).get("type")
+            kinds = applied if isinstance(applied, list) else [applied]
             assert [k for k in kinds if k != "null"], (document, pointer, kinds)
             assert all(k in emit.SCALAR or k == "null" for k in kinds), (
                 document,
@@ -1394,7 +1409,26 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             # unimported.
             choose = emit.FORMAT_TYPES.get(fmt) if fmt in checked else None
             if choose is None:
-                assert fmt in annotated_formats, (document, pointer, fmt)
+                # **Where no type is selected, section 5's ``format`` row has TWO
+                # answers and the position decides which.**  On a FIELD the format
+                # rides as ``json_schema_extra``; at a position with no field of its
+                # own -- an ELEM, a MAPV, a union BRANCH -- a named alias in
+                # ``adcp.types.constraints`` carries it, because a
+                # ``json_schema_extra`` written on the field holding a union would
+                # state the branch's format for every other branch too.  The alias
+                # NAME is asked of the production function rather than spelled here,
+                # so the two cannot disagree about what the module declares; the
+                # constraints are read off the node for the same reason the name is a
+                # function of the whole shape.
+                stated_constraints = {k: node[k] for k in compiler.CONSTRAINTS if k in node}
+                word = next(k for k in kinds if k != "null")
+                alias = constraints_module.symbol(word, stated_constraints, format=fmt)
+                assert fmt in annotated_formats or (constraints_module.MODULE, alias) in imported, (
+                    document,
+                    pointer,
+                    fmt,
+                    alias,
+                )
             else:
                 selected = choose(node)
                 module, name = selected.rsplit(".", 1)
@@ -1409,7 +1443,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     # moves two or three of these at once -- ``date-time`` went 190 -> 194 -> 196 and
     # ``uri`` 131 -> 133 -> 135 over two rows, each a correct move, neither predictable
     # from the other.
-    assert set(seen) == {"date-time", "uri", "date", "email", "hostname"}, seen
+    assert set(seen) == {"date-time", "uri", "date", "email", "hostname", "uri-template"}, seen
     assert all(seen.values()), seen
     # The excluded population, named and sized -- and it is SIX sites, not the one
     # that reddened.  **The other five were passing by accident**, which is the finding:
@@ -2402,6 +2436,15 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
             "#/definitions/layer",
             "#/definitions/rectangle",
         ],
+        # The third joined at ``salesagent-j3k2l.41``: its bounded-value definitions
+        # are a union whose array and mapping branches carry their own bound, which
+        # now rides on a generic alias instead of refusing the document.
+        "governance/reported-outcome-error.json": [
+            "#/definitions/bounded_scalar",
+            "#/definitions/bounded_value",
+            "#/definitions/bounded_value_level_2",
+            "#/definitions/bounded_value_level_3",
+        ],
     }, {d: sorted(r) for d, r in local.items()}
 
 
@@ -3287,7 +3330,6 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "core/format-option-ref.json": "additionalProperties",
     "core/frequency-cap-impression-constraints.json": "properties",
     "core/frequency-cap-interval-constraints.json": "properties",
-    "core/macro-bearing-url.json": "format",
     "core/optimization-goal.json": "allOf",
     "core/placement-selection.json": "required",
     "core/postal-area.json": "$ref",
@@ -4010,10 +4052,23 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     # one emitted tree: it was 1,528 when every pair graded here was, and 1,750 once
     # eleven more documents brought their nodes with them.
     claimed("mapping nodes of a graded pair", mappings)
+    # The six added at ``salesagent-j3k2l.41`` are the documents whose constrained-key
+    # mappings the walk could not reach before: three carry a mapping's own key COUNT,
+    # which now rides on a generic alias, and ``reported-outcome-error``'s three are
+    # inside the definitions its bounded-value union reaches.
     assert constrained == [
         ("core/geo-region-support.json#", "/properties/countries"),
         ("core/product-change-map.json#", "/"),
+        ("governance/reported-outcome-error.json#", "/definitions/bounded_object"),
+        ("governance/reported-outcome-error.json#", "/properties/details"),
+        ("governance/reported-outcome-error.json#", "/properties/ext"),
         ("trusted-match/identity-match-response.json#", "/properties/tmpx_providers"),
+        ("trusted-match/publisher-targeting-kv-config.json#", "/properties/targeting_kv_mapping"),
+        ("trusted-match/publisher-tmpx-config.json#", "/properties/tmpx_macro_mapping"),
+        (
+            "trusted-match/publisher-tmpx-config.json#",
+            "/properties/tmpx_macro_mapping/additionalProperties",
+        ),
     ], constrained
     assert set(constrained) <= mappings, constrained
     # ... and each of them is NAMED rather than widened.  The symbol is asked of the
@@ -4024,7 +4079,14 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     spelled = {kw for kw, _ in constraints_module.SPELLING}
     for document, pointer in constrained:
         path = document.removesuffix("#")
-        node = harness.at(bundle.read(BUNDLE, path), pointer if pointer != "/" else "")
+        # **The node is read off the RESOLVED schema, which is where the set above came
+        # from.**  Read off ``bundle.read`` instead -- the document as written -- a
+        # pointer whose node is a local ``$ref`` resolves to the reference itself and
+        # neither key keyword is there, so the site died with a ``KeyError`` rather than
+        # failing an assertion.  Latent until a document whose constrained mapping sits
+        # behind a ``#/definitions`` reference emitted
+        # (``governance/reported-outcome-error.json``, ``salesagent-j3k2l.41``).
+        node = harness.at(schema_at(SchemaRef(path, "#")), pointer if pointer != "/" else "")
         key = node.get("propertyNames") or {"pattern": next(iter(node["patternProperties"]))}
         facts = {k: v for k, v in key.items() if k in spelled}
         named = constraints_module.symbol("string", facts)
@@ -4368,6 +4430,13 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # and now emit.  Both are the MAPPING path again -- the typed
     # ``additionalProperties`` is the value schema of the very mapping whose key
     # carries the pattern -- so the store assertion below is unchanged by them too.
+    #
+    # 13 -> 16 at ``salesagent-j3k2l.41``, all three NAMED for the same reason:
+    # ``governance/reported-outcome-error.json`` and the two ``trusted-match`` configs
+    # each refused on a fact at a position with no field -- an array bound on a union
+    # branch, and a mapping's own key count -- and each now emits with that fact on a
+    # named type.  All three are the MAPPING path, so the store assertion below is
+    # unchanged by them.
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
         "a2ui/component.json",
@@ -4379,10 +4448,13 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         "core/reporting-file-entry.json",
         "core/tasks-list-response.json",
         "error-details/vendor-error-codes.json",
+        "governance/reported-outcome-error.json",
         "property/property-feature-result.json",
         "protocol/list-tasks-response.json",
         "sponsored-intelligence/si-ui-element.json",
         "trusted-match/identity-match-response.json",
+        "trusted-match/publisher-targeting-kv-config.json",
+        "trusted-match/publisher-tmpx-config.json",
     ], emitted_typed
     store = [
         (d, pointer or "/")
@@ -4393,12 +4465,16 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         and "properties" in node
     ]
     claimed("nodes declaring properties beside a typed additionalProperties", store)
-    # ONE of the 14, named: the store stopped being a mechanism with no document the
-    # moment ``salesagent-j3k2l.28`` let this one emit, and the pointer is the root's
-    # own node.  Asserted as the row rather than as a count, so a second document
-    # joining it is read as a new site and not as a number going up.
+    # TWO of the 14, named: the store stopped being a mechanism with no document the
+    # moment ``salesagent-j3k2l.28`` let the first one emit, and the pointer is the
+    # root's own node.  Asserted as the rows rather than as a count, so a third
+    # document joining them is read as a new site and not as a number going up.  The
+    # second arrived at ``salesagent-j3k2l.41``: ``reported-outcome-error``'s root
+    # declares ``properties`` beside a typed ``additionalProperties``, so it is the
+    # STORE path and not the mapping one.
     assert [row for row in store if row[0] in out.emitted] == [
-        ("core/canonical-media-buy-features.json", "/")
+        ("core/canonical-media-buy-features.json", "/"),
+        ("governance/reported-outcome-error.json", "/"),
     ], store
     # and it really does carry the store, read off the emitted module
     assert "__pydantic_extra__: dict[str, bool]" in _source(
@@ -4544,7 +4620,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # document's -- the integer arm takes no string bound. Built by hand from the
     # alias the emitter would have used, because the emitter refuses to reach it.
     arm_alias = {"StrMinLen4": None}
-    exec(constraints_module.declare({named: ("string", {"minLength": 4})}), arm_alias)  # noqa: S102
+    exec(constraints_module.declare({named: ("string", {"minLength": 4}, None)}), arm_alias)  # noqa: S102
 
     class Armed(AdCPBaseModel):
         v: arm_alias[named] | int  # type: ignore[name-defined,valid-type]
@@ -4709,7 +4785,33 @@ def test_a_declared_null_is_never_read_as_absence() -> None:
     assert [a.split(": ")[0] for a in res.added] == ["/properties/v/default"], res.added
 
 
-def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -> None:
+#: The documents this test asserted as REFUSED in an earlier revision and that now
+#: emit, each at the row that named the inner type its refusal asked for.  Read off
+#: the run rather than off the tree, so none of it can pass on a stale file.  A name
+#: moves INTO this map when a row clears it and never out, which is why it is a map and
+#: not a count: a count said only that the group had changed size.
+_WAS_REFUSED_INSIDE_A_CONTAINER: dict[str, tuple[str, ...]] = {
+    "an inner scalar constraint, named in the alias module": (
+        "brand/rights-terms.json",
+        "property/property-list-filters.json",
+    ),
+    # salesagent-j3k2l.41: a format with no type selected, at an array ELEMENT.
+    "an inner format, named in the alias module": (
+        "core/requirements/html-asset-requirements.json",
+        "core/requirements/javascript-asset-requirements.json",
+        "core/requirements/url-asset-requirements.json",
+    ),
+    # salesagent-j3k2l.41: a mapping's own key count, on a mapping that is itself
+    # another mapping's value.  The alias is GENERIC, which is what lets it be named
+    # without the value type in the symbol.
+    "a container's own bound, named by a generic alias": (
+        "trusted-match/publisher-targeting-kv-config.json",
+        "trusted-match/publisher-tmpx-config.json",
+    ),
+}
+
+
+def test_a_constraint_inside_a_container_is_named_and_nothing_is_left_refused() -> None:
     """D5's alias module, read from the side it was built for, and the residual.
 
     A constraint on what is INSIDE a container has no slot in the compiler's
@@ -4719,24 +4821,27 @@ def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -
     D5's alias module would have to name -- and the alias module is what retires it.
     Naming the inner type is the whole of the fix: once the constraint is on the
     type, ``dict[str, StrMinLen1]`` and ``list[StrMatchingEFC12812]`` are plain
-    references and ``_inner`` sees nothing to carry.
+    references and ``compiler.carried`` sees nothing to carry.
 
-    Three halves, because the row did not disappear:
+    Three halves, and the third is now EMPTY:
 
-    * the inner type IS named, at 10 container positions in 7 modules;
-    * the two documents the previous revision of this test named BY NAME as refused
-      on an inner ``^[A-Z]{2}$`` now emit;
-    * and what still refuses is of two shapes, each one a thing D5's alias module
-      declines to name rather than a keyword nothing lowers.  A ``format`` no type is
-      selected for, which would be DROPPED rather than carried -- 3 documents, all
-      three on ``format: hostname`` inside an array's ``items``.  And a CONTAINER's
-      own bound at a container position -- 2 documents, both a mapping's
-      ``minProperties``/``maxProperties`` on a mapping that is itself another
-      mapping's value.  ``codegen/constraints.py``'s docstring excludes a constrained
-      container by the NAMING rule and not by omission: the symbol would have to carry
-      the value type, and a value type is a domain word.  Both joined at
-      ``salesagent-j3k2l.64``, which lowered the key those two documents refused on
-      first and let the walk reach their nested mapping.
+    * the inner type IS named, at a set of container positions in a set of modules;
+    * every document an earlier revision of this test named BY NAME as refused now
+      emits -- the two on an inner ``^[A-Z]{2}$``, then the three on ``format:
+      hostname`` inside an array's ``items`` and the two on a mapping's own
+      ``minProperties``/``maxProperties`` (``salesagent-j3k2l.41``);
+    * and the residual is empty.  An empty part is asserted as empty and not
+      ``claimed``: the design asks for this one to be nothing, and the two directions
+      above are what keep that from being a derivation that matches nothing -- a
+      refusal still minted at this position would land in the map and redden here,
+      while a document that stopped emitting reddens in the loop above it.
+
+    ``codegen/constraints.py``'s docstring used to exclude a constrained container by
+    the NAMING rule rather than by omission -- the symbol would have to carry the value
+    type, and a value type is a domain word.  That holds for a NON-generic alias and
+    that is the premise that changed: a parameter is not a domain word, so
+    ``NonEmptyList[T]`` and ``DictMaxProperties32[K, V]`` name the bound for every
+    content type at once and the use site supplies the contents.
 
     That the inner fact survives into the model's rendered schema is graded by
     ``test_an_arrays_bound_is_the_lists_and_not_its_elements``, which compares the
@@ -4744,48 +4849,22 @@ def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -
     it is not restated here.
     """
     out = emit.emit(BUNDLE, population())
+
+    # Every document the earlier revisions named as refused HERE, now emitted.
+    released = claimed(
+        "documents once refused on a constraint inside a container",
+        {d for names in _WAS_REFUSED_INSIDE_A_CONTAINER.values() for d in names},
+        inside=population(),
+    )
+    assert released <= set(out.emitted), sorted(released - set(out.emitted))
+
+    # And the residual, read off the refusal DETAIL the one producer writes
+    # (``compiler.carried``), so a refusal minted at any of the three positions it
+    # serves lands here whichever lowering asked.
     inner = {
-        d: r
-        for d, r in out.refusals.items()
-        if "D5" in r["detail"] and "no constraint inside a container" in r["detail"]
+        d: r for d, r in out.refusals.items() if "compiler.Type carries no constraint" in r["detail"]
     }
-    # Down from 15, and the survivors are a FORMAT with no selected type, which has
-    # nowhere to go inside a container and which the comparison would not see go (the
-    # accepts check draws through `hypothesis_jsonschema`, which honours a format it
-    # knows), plus a CONTAINER's own bound at a container position, which D5's naming
-    # rule declines.  The residual is NAMED on both counts, so a document joining or
-    # leaving it is attributable; the count said only that the group had changed size.
-    claimed("documents still refused on a constraint inside a container", inner)
-    assert {d: r["keyword"] for d, r in inner.items()} == {
-        "core/requirements/html-asset-requirements.json": "format",
-        "core/requirements/javascript-asset-requirements.json": "format",
-        "core/requirements/url-asset-requirements.json": "format",
-        "trusted-match/publisher-targeting-kv-config.json": "minProperties",
-        "trusted-match/publisher-tmpx-config.json": "maxProperties",
-    }, inner
-    for document, row in inner.items():
-        node = bundle.read(BUNDLE, document)
-        for part in row["pointer"].strip("/").split("/"):
-            node = node[part]
-        if row["keyword"] == "format":
-            assert node["format"] == "hostname", (document, node)
-            assert node["format"] not in emit.FORMAT_TYPES, "a selected type would not refuse"
-            assert "hostname" in row["detail"], row
-            continue
-        # The container arm: the refusing node is itself a MAPPING -- an object with
-        # no ``properties`` -- so the bound is the container's own and the type that
-        # would carry it is a ``dict[K, V]``, which is the shape D5 names no alias for.
-        assert node.get("type") == "object" and "properties" not in node, (document, node)
-        from codegen.lower import containers as lower_containers
-
-        assert row["keyword"] in lower_containers.KEY_BOUNDS, row
-        assert str(node[row["keyword"]]) in row["detail"], row
-
-    # The two the previous revision asserted as REFUSED, now emitted -- read off the
-    # run rather than off the tree, so this cannot pass on a stale file.
-    for was_refused in ("brand/rights-terms.json", "property/property-list-filters.json"):
-        assert was_refused in out.emitted, was_refused
-        assert was_refused not in out.refusals, out.refusals.get(was_refused)
+    assert inner == {}, inner
 
     # And the naming, as the SET of container positions whose INNER type is a symbol
     # the module imports from ``adcp.types.constraints``.  Both halves non-empty rather
@@ -5005,6 +5084,20 @@ def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> 
     assert len(emit.emit(BUNDLE, population()).beside) == 1
 
 
+def _is_type_variable(node: ast.Assign) -> bool:
+    """Is this module-level assignment a type VARIABLE rather than an alias.
+
+    ``T = TypeVar("T")`` is machinery and not a name the module provides: a generic
+    container alias (``NonEmptyList = Annotated[list[T], Field(min_length=1)]``) is
+    subscripted at the use site, so the parameter is never imported anywhere and
+    counting it as a declared alias would make the reverse direction below red
+    forever.  Matched on the CALL being ``TypeVar``, so an alias whose value happens
+    to be any other call is still counted.
+    """
+    value = node.value
+    return isinstance(value, ast.Call) and getattr(value.func, "id", "") == "TypeVar"
+
+
 def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_named() -> None:
     """D5's alias module, in BOTH directions, with its denominators.
 
@@ -5046,7 +5139,9 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
     declared = {
         node.targets[0].id
         for node in module.body
-        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
+        if isinstance(node, ast.Assign)
+        and isinstance(node.targets[0], ast.Name)
+        and not _is_type_variable(node)
     }
     reexported = {
         alias.asname or alias.name
@@ -6217,10 +6312,20 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # cleared, so it now refuses directly on its own ``pattern``. Eight chains left
     # the refusal set. The deferred side fell hardest again (20 -> 14) because what
     # this row cleared were deferrals that others chained to.
+    # **The DEFERRED side fell 14 -> 5 at ``salesagent-j3k2l.41``, which is the floor
+    # doing its job and not a regression.**  That row cleared five deferrals other
+    # documents chained to -- a default on a required property, a format inside a
+    # container, a format on a union branch, and an array's and a mapping's own bound
+    # on one -- so 12 chains left the refusal set with them (158 is unchanged because
+    # 12 chains also arrived: a document whose first refusal cleared now chains to its
+    # NEXT target).  The VERDICT side rose 144 -> 153 for the same reason: three of
+    # those chains now resolve to ``uniqueItems`` with no class above the array, which
+    # its producer mints as a verdict.  Both floors are re-measured on this tree, which
+    # is what the paragraphs above do at every row.
     assert len(chained) >= 158, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 144, dict(split)
-    assert split[refusal_module.Kind.DEFERRED] >= 14, dict(split)
+    assert split[refusal_module.Kind.VERDICT] >= 153, dict(split)
+    assert split[refusal_module.Kind.DEFERRED] >= 5, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
         max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values())

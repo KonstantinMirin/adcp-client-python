@@ -688,10 +688,87 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     # then stays inline, which is what every site did before this row existed.
     path = constraints_module.resolve(kind, constraints)
     if path is not None:
-        if path.startswith(f"{constraints_module.MODULE}."):
-            constraints_module.record(mod.aliases, path.rsplit(".", 1)[1], kind, constraints)
-        return Decided(compiler.Type(path), format=fmt)
+        return Decided(_named_alias(path, kind, constraints, mod), format=fmt)
     return Decided(compiler.Type(SCALAR[kind]), constraints, format=fmt)
+
+
+def _named_alias(
+    path: str,
+    kind: str,
+    constraints: Mapping[str, Any],
+    mod: compiler.Module,
+    fmt: str | None = None,
+) -> compiler.Type:
+    """One resolved shape's :class:`compiler.Type`, with the alias recorded.
+
+    The record and the type go together or they do not go: an alias referenced and not
+    recorded is an ``ImportError`` in the written tree, and one recorded and not
+    referenced is a line in a public module nothing reads.  Shared by the two callers
+    that resolve a shape -- the scalar tail of :func:`decide_type` and
+    :func:`name_the_constraint` -- so there is one place that pairs them.
+
+    Only an alias in ``adcp.types.constraints`` is recorded: rung 2 resolves to a
+    pydantic name, which that module does not declare and ``Type``'s dotted path
+    imports directly.
+
+    A CONTAINER alias is generic, so its arguments come with it
+    (``NonEmptyList[MediaBuyStatus]``): ``of`` carries the decided types and
+    ``compiler.Type``'s ``alias`` container writes the subscript.
+    """
+    if path.startswith(f"{constraints_module.MODULE}."):
+        constraints_module.record(mod.aliases, path.rsplit(".", 1)[1], kind, constraints, format=fmt)
+    return compiler.Type(path)
+
+
+def name_the_constraint(decided: Decided, mod: compiler.Module) -> compiler.Type | None:
+    """Section 2's NAMED carrier for a decided node whose position has no field.
+
+    ``compiler.carried`` asks this at the three positions that cannot hold a fact on a
+    field of their own -- an array's ELEM, a mapping's MAPV and a union BRANCH -- and
+    refuses when it answers ``None``.  It is here, and reached through the
+    :class:`compiler.Module` like ``decide`` and ``bind``, because the names are
+    ``codegen.constraints``'s and that module imports ``compiler``: asking from
+    ``compiler`` would close a cycle, and a lowering may import neither.
+
+    **It does not re-read the node, and that is deliberate.**  Everything it needs is
+    on the :class:`Decided` the walk already produced -- the scalar's own type word is
+    recoverable from :data:`SCALAR`, a container names itself in ``Type.container`` --
+    so there is no second reading of a node's constraints to disagree with
+    :func:`decide_type`'s.
+
+    Two shapes reach it, and they are the two that can arrive with a fact still on
+    them:
+
+    * a bare SCALAR carrying a ``format`` no type was selected for.  Constraints
+      alone never arrive here, because :func:`decide_type` has already resolved a
+      spellable scalar shape to an alias -- what arrives with constraints on it is a
+      shape the alias module declined, and the answer is the same ``None``.
+    * a CONTAINER carrying its own bound: ``minItems``/``maxItems`` on a list,
+      ``minProperties``/``maxProperties`` on a mapping.  The alias is GENERIC and the
+      container's own contents are its arguments, which is what lets it be named at
+      all (``constraints.CONTAINER``).
+    """
+    kind = _CONTAINER_WORD.get(decided.type.container) or _SCALAR_WORD.get(decided.type.path)
+    if kind is None:
+        return None
+    path = constraints_module.resolve(kind, decided.constraints, format=decided.format)
+    if path is None:
+        return None
+    inner = _named_alias(path, kind, decided.constraints, mod, fmt=decided.format)
+    if kind not in constraints_module.CONTAINER:
+        return inner
+    args = decided.type.of if decided.type.key is None else (decided.type.key, *decided.type.of)
+    return compiler.Type(path=inner.path, container="alias", of=args)
+
+
+#: The document's own type word for each container ``Type.container`` names, and for
+#: each scalar path :data:`SCALAR` maps to.  Both are inversions and both are written
+#: here rather than at the call site, so the two spellings of a type have ONE mapping
+#: between them (``constraints.SCALAR_PATH`` is the same arrangement one module over).
+#: ``union`` is absent: a union is not a node's own type word, so a union carrying a
+#: constraint has no shape for this module to name and refuses.
+_CONTAINER_WORD = {"list": "array", "dict": "object"}
+_SCALAR_WORD = {path: word for word, path in SCALAR.items()}
 
 
 # --------------------------------------------------------------------------- #
@@ -940,6 +1017,7 @@ def lower_document(
         root=symbol,
         bind=bind,
         decide=decide_type,
+        name_constraint=name_the_constraint,
         asserted=asserted_formats(doc),
         named=named,
         # The SUBSCHEMA behind each named pointer, read off ``bundle.nodes`` -- the one
@@ -1029,6 +1107,14 @@ class Emitted:
     #: whose two nodes are NOT identical is the failure that matters more than a missed
     #: collapse.
     adopted: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: Section 5's ``default`` row, the REPORTED half: ``document -> {pointer -> the
+    #: value dropped}``, for a default the document states on a REQUIRED property.
+    #: Dropping it changes no accepted set -- the key is in every admitted instance,
+    #: so the default can never apply -- but a fact the emitter discards in silence is
+    #: the one defect nothing else here catches, so it leaves the run by name and
+    #: pointer.  A document with no such default has no entry, so the mapping names
+    #: exactly the drops rather than every document emitted.
+    drops: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def _composed_nodes(bundle_dir: Path, known: set[str]) -> dict[str, frozenset[str]]:
@@ -1289,6 +1375,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         out.emitted[document] = f"{PACKAGE}.{rel.replace('/', '.')}"
         out.declared[document] = dict(mod.declared)
         out.adopted[document] = dict(mod.adopted)
+        if mod.drops:
+            out.drops[document] = dict(mod.drops)
         # The document travels WITH the module, at its own bundle-relative path,
         # because ``__adcp_schema__`` names that path and ``strict_validate``
         # reads it to decide acceptance (D4).  The bundle is a build-time input
@@ -1327,10 +1415,10 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     # is one symbol, and ``check_injective`` (inside ``declare``) fails the build
     # if two shapes ever derive one name -- which would annotate two fields with
     # one alias, one of them stating a constraint its document does not.
-    aliases: dict[str, tuple[str, dict[str, Any]]] = {}
+    aliases: dict[str, constraints_module.Shape] = {}
     for document in sorted(lowered):
-        for name, (kind, cons) in lowered[document][0].aliases.items():
-            constraints_module.record(aliases, name, kind, cons)
+        for name, (kind, cons, fmt) in lowered[document][0].aliases.items():
+            constraints_module.record(aliases, name, kind, cons, format=fmt)
     out.beside[f"{constraints_module.MODULE.rsplit('.', 1)[1]}.py"] = constraints_module.declare(
         aliases
     )
@@ -1428,6 +1516,17 @@ def main(argv: list[str] | None = None) -> int:
             f"not written: {', '.join(sorted(out.beside))} "
             f"(D5's alias module is a whole-run artifact; pass --package to write it)"
         )
+    # Section 5's ``default`` row says "dropped and REPORTED", and this line is the
+    # report.  Printed BEFORE the refusals, because a drop is a fact about a document
+    # this run EMITTED: a reader scanning the refusals for a document's name would not
+    # find it, and the drop would then be invisible to everyone but the suite.
+    for document in sorted(out.drops):
+        for pointer, value in sorted(out.drops[document].items()):
+            print(
+                f"dropped {document} at {pointer} on default: the document says "
+                f"{value!r} and the property is REQUIRED, so the default can never be "
+                "applied and no rendering carries it"
+            )
     for document in sorted(out.refusals):
         r = out.refusals[document]
         print(

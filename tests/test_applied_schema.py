@@ -54,8 +54,10 @@ from tests.nodeset import claimed, partitions, ratchet
 #: (that is the ``population()`` run, and the two have been confused in three
 #: briefings).  Direction: an emitting row only adds documents.  The history, each move
 #: a row doing its work: 674, 686 (bcb0b8ca8), 691 (.40), 705 (.28), 716 (.21),
-#: 719 (.64, a mapping's key is a type).
-EMITTED_FLOOR = 719
+#: 719 (.64, a mapping's key is a type), 731 (.41, a fact at a position with no field
+#: to carry it: a dropped default on a required property, a format inside a container
+#: or on a union branch, and an array's or a mapping's own bound on one).
+EMITTED_FLOOR = 731
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -722,5 +724,9 @@ def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
     assert set(per_document) == {
         "core/bidding-policy-capability.json",
         "core/placement-presentation.json",
+        # The third joined at ``salesagent-j3k2l.41``: its bounded-value definitions
+        # reference each other locally, and the array and mapping branches that carry
+        # their own bound now have a named type to carry it on.
+        "governance/reported-outcome-error.json",
     }, dict(per_document)
     assert all(per_document.values()), dict(per_document)

@@ -14,6 +14,13 @@ are not thereby the same idea.  A ``pattern`` has no readable name that is not a
 concept, so it contributes eight hex digits of its own SHA-256.  Two distinct
 constraints deriving one name is a build failure rather than a shared alias.
 
+A bound on a CONTAINER is named here too, and such an alias is GENERIC: the bound is
+the alias and the contents are its parameter, so ``NonEmptyList[MediaBuyStatus]`` is a
+list of statuses with at least one member and ``NonEmptyList`` names the bound once for
+every content type.  ``NonEmptyList[T]`` is declared whatever a run met, because the
+design names it and a consumer annotating a non-empty list of their own imports it from
+here.
+
 Two names here are DECISIONS rather than derivations, and together they are this
 SDK's whole answer for ``format: uri``: a field's type FOLLOWS THE DOCUMENT'S OWN
 PATTERN.
@@ -39,12 +46,17 @@ entry point is the document's.
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, TypeVar
 
 from pydantic import AnyUrl, Field, HttpUrl, UrlConstraints
 
 
+K = TypeVar("K")
+T = TypeVar("T")
+V = TypeVar("V")
+
 AdCPUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]
+DictMaxProperties32 = Annotated[dict[K, V], Field(max_length=32)]
 FloatGt0 = Annotated[float, Field(gt=0.0)]
 FloatGt0Lt1 = Annotated[float, Field(gt=0.0, lt=1.0)]
 FloatGt0Max1 = Annotated[float, Field(gt=0.0, le=1.0)]
@@ -54,6 +66,7 @@ FloatMin1 = Annotated[float, Field(ge=1.0)]
 FloatMin1Max3600 = Annotated[float, Field(ge=1.0, le=3600.0)]
 FloatMinNeg180Max180 = Annotated[float, Field(ge=-180.0, le=180.0)]
 FloatMinNeg90Max90 = Annotated[float, Field(ge=-90.0, le=90.0)]
+IntMin0Max1000 = Annotated[int, Field(ge=0, le=1000)]
 IntMin0Max150 = Annotated[int, Field(ge=0, le=150)]
 IntMin0Max23 = Annotated[int, Field(ge=0, le=23)]
 IntMin0Max8192 = Annotated[int, Field(ge=0, le=8192)]
@@ -71,6 +84,10 @@ IntMin1Max90 = Annotated[int, Field(ge=1, le=90)]
 IntMin1Max99 = Annotated[int, Field(ge=1, le=99)]
 IntMin2 = Annotated[int, Field(ge=2)]
 IntMin6Max256 = Annotated[int, Field(ge=6, le=256)]
+ListMaxItems32 = Annotated[list[T], Field(max_length=32)]
+NonEmptyList = Annotated[list[T], Field(min_length=1)]
+StrFormatHostname = Annotated[str, Field(json_schema_extra={'format': 'hostname'})]
+StrFormatUriTemplate = Annotated[str, Field(json_schema_extra={'format': 'uri-template'})]
 StrMatching02AE7B1E = Annotated[str, Field(pattern='^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$')]
 StrMatching05DF6832 = Annotated[str, Field(pattern='^[1-9]\\d*\\.(0|[1-9]\\d*)$')]
 StrMatching1FB30C8A = Annotated[str, Field(pattern='^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*$')]
@@ -89,6 +106,7 @@ StrMatching586BED7E = Annotated[str, Field(pattern='^P(?!$)(\\d+Y)?(\\d+M)?(\\d+
 StrMatching59861E88 = Annotated[str, Field(pattern='^[a-z0-9_-]+$')]
 StrMatching5E987613 = Annotated[str, Field(pattern='^[A-Fa-f0-9]{64}$')]
 StrMatching5E9BB4AD = Annotated[str, Field(pattern='^P(?=.*[1-9])(?=\\d|T)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$')]
+StrMatching60409A9F = Annotated[str, Field(pattern='^https?://(?:[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?|\\[[0-9A-Fa-f:.]+\\])(?::[0-9]{1,5})?(?:[/?#](?:[^%\\s\\u0000-\\u001F\\u007F"<>`\\\\]|%[0-9A-Fa-f]{2}|%%[A-Za-z0-9_.:-]+%%)*)?$')]
 StrMatching60986A4B = Annotated[str, Field(pattern='^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$')]
 StrMatching611F08F3 = Annotated[str, Field(pattern='^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$')]
 StrMatching6566D789 = Annotated[str, Field(pattern='^[a-z0-9][a-z0-9._+-]*$')]
@@ -124,6 +142,7 @@ StrMatchingF01B4765 = Annotated[str, Field(pattern='^#[0-9A-Fa-f]{6}$')]
 StrMatchingF1F3DC8E = Annotated[str, Field(pattern='^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$')]
 StrMatchingF601B9EB = Annotated[str, Field(pattern='^[0-9]+(\\.[0-9]+)?:[0-9]+(\\.[0-9]+)?$')]
 StrMaxLen100 = Annotated[str, Field(max_length=100)]
+StrMaxLen1000 = Annotated[str, Field(max_length=1000)]
 StrMaxLen128 = Annotated[str, Field(max_length=128)]
 StrMaxLen20 = Annotated[str, Field(max_length=20)]
 StrMaxLen200 = Annotated[str, Field(max_length=200)]
@@ -135,12 +154,15 @@ StrMaxLen256 = Annotated[str, Field(max_length=256)]
 StrMaxLen256Matching4B53B494 = Annotated[str, Field(max_length=256, pattern='^(?:/(?:[^~/\\u0000-\\u001F\\u007F]|~0|~1)*)*$')]
 StrMaxLen256Matching59721198 = Annotated[str, Field(max_length=256, pattern='^[^\\u0000-\\u001F\\u007F]*$')]
 StrMaxLen30 = Annotated[str, Field(max_length=30)]
+StrMaxLen4000 = Annotated[str, Field(max_length=4000)]
 StrMaxLen4096 = Annotated[str, Field(max_length=4096)]
 StrMaxLen50 = Annotated[str, Field(max_length=50)]
 StrMaxLen500 = Annotated[str, Field(max_length=500)]
 StrMaxLen512 = Annotated[str, Field(max_length=512)]
+StrMaxLen512Matching7C270D5A = Annotated[str, Field(max_length=512, pattern='^[a-zA-Z0-9/_.-]+$')]
 StrMaxLen64 = Annotated[str, Field(max_length=64)]
 StrMaxLen64Matching107885CB = Annotated[str, Field(max_length=64, pattern='^x_[a-z0-9]+(?:_[a-z0-9]+)*$')]
+StrMaxLen64Matching2AA13120 = Annotated[str, Field(max_length=64, pattern='^[a-z0-9-]+$')]
 StrMaxLen8 = Annotated[str, Field(max_length=8)]
 StrMaxLen8192 = Annotated[str, Field(max_length=8192)]
 StrMinLen1 = Annotated[str, Field(min_length=1)]
@@ -185,3 +207,4 @@ StrMinLen2MaxLen63MatchingD5112E5A = Annotated[str, Field(max_length=63, min_len
 StrMinLen32 = Annotated[str, Field(min_length=32)]
 StrMinLen32MaxLen255Matching3AEA6666 = Annotated[str, Field(max_length=255, min_length=32, pattern='^[A-Za-z0-9_.:-]{32,255}$')]
 StrMinLen3MaxLen3 = Annotated[str, Field(max_length=3, min_length=3)]
+StrMinLen3MaxLen63MatchingBF870236 = Annotated[str, Field(max_length=63, min_length=3, pattern='^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$')]

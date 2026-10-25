@@ -1390,7 +1390,7 @@ def test_breaking_the_inner_annotation_carrier_reddens_the_comparison(
         containers,
         "_contents",
         lambda node, pointer, symbol, what, mod: containers._inner(
-            mod.decide(node, pointer, symbol, mod), pointer, what
+            mod.decide(node, pointer, symbol, mod), pointer, what, mod
         ),
     )
     cls, text, schema = _emit_probe(
