@@ -210,6 +210,110 @@ that fired, so an ERRORED run is never read as a caught perturbation. Baseline g
 | P-E2 | the null-BRANCH test relaxed to any typed branch | RED, clause 5: the population asserted empty is not |
 | P-F | **the alias dispatch removed from the lowering** | RED on this row's check (a `KeyError` from `_symbol` running the emitter against a tree that still carries the module — a red, and an error rather than an assertion) and RED on the step's arithmetic with `38 == 40`, which is the legible one |
 
+## PART TWO: D2's `Literal` amendment, after it was recorded at trunk
+
+The two documents this row refused on a name D3 resolves for nothing were reported, not
+named locally, and the decision came back as a D2 amendment: "an `enum` node →
+`StrEnum`/`IntEnum` where a name reaches it, and a `Literal` of its members where none
+does." Implemented here. No prediction was committed for this half, because the decision
+arrived with its population already measured; what follows is measurement only.
+
+### Where the question is answered, and the measurement that put it there
+
+The obvious route — have the union row pass "this branch has no name" down to the walk —
+is wrong twice. D13 forbids a lowering importing a sibling lowering, and the signal is
+far too wide: measured over the 1,054 portable documents, **353 combinator-branch
+positions in 77 documents have no D3 identity**, of which 18 need a name and **3 of those
+sit in a document that emits today** (`sponsored-intelligence/si-capabilities.json`, three
+object-with-properties branches under `/properties/modalities`). Handing an empty name
+hint to all of them turns a green document red.
+
+So the question is answered from the node and its POINTER, in `lower/enum.py`, and nothing
+is passed down. That is sound for an enum node specifically: of the four steps in which D3
+resolves a branch name, only the title can ever apply to one — `_const_pin` reads the
+branch's `properties` and an enum node declares none, a `required` list likewise, and the
+type-word step names a branch only where the root types differ, which two string value sets
+never do. An enum node therefore has a name where it declares a `title` or where its
+position supplies one, and a combinator branch is the only position supplying none. That
+reading reaches exactly **4 untitled enum branches in 4 documents**, 2 of them at a root.
+
+### Measured
+
+| | |
+|---|---|
+| emitted | 710 → **716** |
+| verdicts | 305 → **299** |
+| pending | 39 → **39**, unchanged |
+| accounted | 1,015 → **1,015**, unchanged — the six moved between buckets, they were already accounted |
+| graded pairs | 1,084 → **1,090** |
+| `added` / `missing` / `differs` | **0 / 0 / 0**, unchanged |
+
+Over the whole row, against the base `7efac56cb`: emitted 705 → 716, verdicts 301 → 299,
+pending 48 → 39, accounted 1,006 → 1,015, graded pairs 1,079 → 1,090.
+
+**The six, mine and chained apart.** Mine: `core/geo-place-system.json`,
+`core/geo-place-type.json`. Chained: `core/geo-place-area.json`,
+`core/geo-place-catalog-entry.json`, `core/get-geo-place-resolution-request.json`,
+`core/get-geo-place-resolution-response.json`. And one moved verdict → verdict rather than
+clearing: `core/geo-place-requirement.json`, from `$ref` at `/properties/systems/propertyNames`
+to `pattern` at `/definitions/catalogRequirement/properties/countries/propertyNames`.
+
+### The green document that changed shape, which is the finding
+
+`error-details/accessibility-violation.json` emitted before the amendment and emits after
+it, so no count shows what happened to it. Its
+`/properties/violations/items/properties/failure_kind/oneOf/0` is an untitled enum branch
+that worked only because at a nested position the hint is the property's own derived name
+and nothing competed for it.
+
+- **It loses a class.** `AccessibilityViolationDetailsViolationsItemFailureKind`, a
+  `StrEnum` of eight members, is gone, and `from enum import StrEnum` with it. One class and
+  one public symbol fewer in that module.
+- **The field states the values inline**: `failure_kind` was
+  `AccessibilityViolationDetailsViolationsItemFailureKind | StrMaxLen64Matching107885CB` and
+  is now `Literal['alt_text_missing', …, 'other'] | StrMaxLen64Matching107885CB` — the same
+  eight values beside the same open string.
+- **Its pair count is unchanged and its comparison still passes.** An enumeration carries no
+  `__adcp_schema__` and was never a graded pair, so losing the class removes none: the pair
+  count moves 1,084 → 1,090 by the six new documents alone, and `added`/`missing`/`differs`
+  stay 0 over all 1,090.
+
+`src/adcp/types/constraints.py` also moved, by one line: `StrMatchingCE72C7C2` for
+`'^[A-Z]{2}-[A-Z0-9]{1,3}$'`, which a newly-emitted geo-place document needs. Additive; no
+existing alias changed.
+
+`media-buy/get-products-request.json`, the fourth untitled enum branch, is unchanged and
+still refused on `discriminator` at `/properties/refine/items` — out of the amendment's
+reach, as expected.
+
+### The check this row would have fooled
+
+`test_the_const_row_has_exactly_one_lowering` walks `compiler`, `union` and `const` for a
+`Type(literals=…)` construction and pins the result at `["const"]`. `lower.enum.literal`
+builds one too, and `lower_enum` was not in that list — so the assertion would have gone on
+reading `["const"]` while a second row built the same annotation. `lower_enum` is in the walk
+now and the pin is `["const", "enum"]`, with the invariant restated as what it actually is:
+**one lowering per KEYWORD, not one builder of `Literal`**. A `const` is a one-member value
+set and an unnamed `enum` is the same construct with more members, so two keywords render a
+`Literal` and each still has exactly one lowering. P-H is the probe: dropping `lower_enum`
+from the walk reddens with `['const'] == ['const', 'enum']`.
+
+Its corollary moved too. It asserted that `core/start-timing.json` refuses on `type` at
+`/oneOf/0` for being a scalar branch; that document emits now, so the assertion raised
+`KeyError`. Measured over all 1,054 portable documents: **0** are refused on a branch's own
+non-object type, so the attribution row has no refused document left to point at. The
+assertion reads the emitted shape instead.
+
+### Perturbation, after the amendment
+
+All ten redden; `BASE` is the unperturbed control and is green. P-A through P-F2 are
+unchanged from Part One. The two new ones:
+
+| probe | what was broken | result |
+|---|---|---|
+| P-G | `resolves_no_name` answers False, so an untitled enum branch claims a name again | RED |
+| P-H | `lower_enum` dropped from the DRY walk's module list | RED: `['const'] == ['const', 'enum']` |
+
 ### What moved in the suite besides the new check
 
 `test_a_union_root_emits_a_base_plus_one_subclass_per_branch` and the seven shape tests beside
