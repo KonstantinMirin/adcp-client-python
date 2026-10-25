@@ -66,6 +66,7 @@ from codegen import bundle, compiler, emit, harness
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.lower import const as lower_const
+from codegen.lower import enum as lower_enum
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.harness import (
@@ -2499,6 +2500,15 @@ def test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which() -> 
        (the name is not a ``ClassDef``, and both halves are module-scope statements) and
        then off the IMPORTED module, because whether a name is a class is a property of
        the object and the text cannot say it.
+    **WHERE A THIRD SHAPE EXTENDS THIS, named so it is not a surprise.**
+    ``salesagent-j3k2l.52`` gives D2 a third reading of a union root -- branches that differ
+    only in permitted VALUES are a rule on one class rather than a class per branch -- and it
+    is sequenced after this row. It does not collide with the dispatch: every branch of that
+    shape declares the same property set, so ``declares_a_class`` answers True for each and
+    the alias is not reached. What it must extend is clause 2's equality below, which says the
+    two halves exhaust the emitted roots; a third half makes that equality fail by naming the
+    documents in neither, which is the legible failure rather than a silent one.
+
     5. **where each spelling of a declared null actually lives**, so the lowering's claim
        about it cannot go stale in silence: 0 union roots carry a ``null`` branch and 0
        roots carry a ``type`` LIST, while 57 sites state ``null`` inside a ``type`` list
@@ -2580,10 +2590,17 @@ def test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which() -> 
     assert len(roots) == 126, len(roots)
     assert len(scalar_instance) == 5, scalar_instance
     assert len(with_a_class_branch) == 121, len(with_a_class_branch)
-    assert len(emitted_unions()) == 40, emitted_unions()
-    # Clause 3: 38 before this row and 38 after it.
+    # 40 -> 42 when D2's Literal amendment landed in this same row: the two
+    # geo-place documents stopped refusing on a name D3 resolves for nothing and
+    # emitted as aliases.
+    assert len(emitted_unions()) == 42, emitted_unions()
+    # Clause 3, and the pin that carries it: **38 before this row, 38 after the alias
+    # dispatch, and 38 after the Literal amendment.** The total moved twice and the
+    # base half has not moved at all, which is the whole of §8 -- the alias path has
+    # never taken a root off BranchDispatchMixin, and a single total would have
+    # absorbed it either time.
     assert len(emitted_union_bases()) == 38, emitted_union_bases()
-    assert len(emitted_union_aliases()) == 2, emitted_union_aliases()
+    assert len(emitted_union_aliases()) == 4, emitted_union_aliases()
     assert null_branch_roots == [], null_branch_roots
     assert root_type_lists == [], root_type_lists
     assert null_in_a_type_list == 57, null_in_a_type_list
@@ -3017,8 +3034,13 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # ``test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which`` holds the
     # base half at 38 and the alias half at 2 -- because a single total here would absorb
     # a root swapping sides, and §8 says no step takes a root off ``BranchDispatchMixin``.
-    assert len(emitted) == 40, emitted
-    assert len(refused) == 86
+    #
+    # **40 / 86 -> 42 / 84, D2's Literal amendment, in this same row.** An untitled
+    # enum branch is a Literal of its members and claims no symbol, so
+    # core/geo-place-system.json and core/geo-place-type.json stop colliding with
+    # their own root's name and emit as aliases.
+    assert len(emitted) == 42, emitted
+    assert len(refused) == 84
     assert len(emitted) + len(refused) == len(roots)
     assert emitted == emitted_unions()
 
@@ -3052,7 +3074,10 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "properties": 19,  # a root conjunct; see lower/union.py's docstring
         "$ref": 13,  # a bare-$ref branch, or a chain naming the target that refused
         "required": 2,  # step 7 (D6)
-        "title": 2,  # D3: an untitled enum branch of an alias root has no name to derive
+        # The `title` row (2) is GONE, and it was the row this amendment removed: an
+        # untitled enum branch claims no symbol now, so neither geo-place document
+        # collides with its own root's name. Nothing was re-pointed to absorb it --
+        # both documents left the refused half entirely.
         "additionalProperties": 1,
         "anyOf": 1,  # a conjunct of SHAPES inside a branch the reader now reaches
         "const": 1,  # a branch pinning its whole value, reached past its conjuncts
@@ -5860,15 +5885,36 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
     assert "const" in lower_union.BRANCH_HANDLED
     builds = [
         name
-        for name, module in (("compiler", compiler), ("union", lower_union), ("const", lower_const))
+        for name, module in (
+            ("compiler", compiler),
+            ("union", lower_union),
+            ("const", lower_const),
+            # ADDED AT ``salesagent-j3k2l.21``, and adding it is the point rather than
+            # bookkeeping: ``lower.enum.literal`` builds a ``Literal`` too, and without
+            # this entry the walk below could not see it -- the assertion would have gone
+            # on reading ``["const"]`` while a second row built the same annotation.
+            ("enum", lower_enum),
+        )
         for node in ast.walk(ast.parse(inspect.getsource(module)))
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "Type"
         and any(k.arg == "literals" for k in node.keywords)
     ]
-    assert builds == ["const"], builds
-    # and the one document it attributes refuses on its own keyword, not on a deferral
-    r = emit.emit(BUNDLE, ["core/start-timing.json"]).refusals["core/start-timing.json"]
-    assert (r["keyword"], r["pointer"]) == ("type", "/oneOf/0"), r
-    assert "a branch of type 'string' is step 6" in r["detail"], r
+    # **THE INVARIANT IS ONE LOWERING PER KEYWORD, not one builder of ``Literal``**, and
+    # D2's amendment is what makes the distinction visible: a ``const`` is a one-member
+    # value set and an ``enum`` no name reaches is the same construct with more members,
+    # so both render a ``Literal`` and each keyword still has exactly one lowering. Two
+    # rows, two keywords; what this refuses is a THIRD builder, or either keyword
+    # acquiring a second.
+    assert builds == ["const", "enum"], builds
+    # The document this row attributes used to be ``core/start-timing.json``, refused on
+    # ``type`` at ``/oneOf/0`` for being a scalar branch. It EMITS now -- a union root of
+    # scalars is an alias (``salesagent-j3k2l.21``) and its ``const`` branch is the
+    # ``Literal`` arm of one -- so the attribution row has no refused document left to
+    # point at. Measured over all 1,054 portable documents: **0** are refused on a
+    # branch's own non-object type. The row stays, asserted above by resolving the name
+    # in ``BRANCH_HANDLED``; what is asserted here instead is the emitted shape, which is
+    # the same claim read off the artifact rather than off a refusal.
+    module = emit.lower_document("core/start-timing.json", bundle.read(BUNDLE, "core/start-timing.json"))[0]
+    assert "Literal['asap']" in "\n".join(b for b in module.blocks), module.blocks

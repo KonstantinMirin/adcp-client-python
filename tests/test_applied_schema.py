@@ -363,7 +363,12 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     # claim about a harness ``.32``/``.33`` had already changed, and one whose
     # hazard no emitter produces -- so the 9 + 8 + 3 documents they held emit, less
     # the 6 that refuse on a second keyword once the first refusal is lifted.
-    assert len(out.emitted) == 705
+    # 705 -> 716 at ``salesagent-j3k2l.21``, in two steps of one row: a union root whose
+    # instance the DOCUMENT says is a scalar is an alias rather than a base plus
+    # subclasses (+5, of which 2 are alias roots and 3 released through their ``$ref``),
+    # and then D2's amendment renders a value set no name reaches as a ``Literal`` (+6,
+    # of which 2 are the geo-place pair and 4 released through their ``$ref``).
+    assert len(out.emitted) == 716
     assert [d for d, r in out.refusals.items() if "nothing enclosing it" in r["detail"]] == []
 
 

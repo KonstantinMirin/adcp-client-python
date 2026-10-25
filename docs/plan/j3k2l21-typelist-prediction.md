@@ -148,10 +148,11 @@ reports is the collision rather than the gap, which the lowering's docstring rec
 measurement.
 
 **Trunk confirmed this independently and after the fact.** Four commits landed on
-`docs/plan/rebuild-plan.md` while this row was in flight, one of which gives D3's ladder a
-fourth rung — the branch's own root type word — before its refusal, and states that the rung
-"names a branch only where the root types differ". Both branches of both documents state
-`string`, so the new rung refuses them too. Implementing rung 4 would not clear these two.
+`docs/plan/rebuild-plan.md` while this row was in flight, one of which adds a step to the
+order in which D3 resolves a branch name — the branch's own root type word, tried before the
+refusal — and states that the step "names a branch only where the root types differ". Both
+branches of both documents state `string`, so that step refuses them too, and implementing it
+would not have cleared these two.
 
 **3. The prediction treated a verdict as something the row would not mint.** P6 said verdicts
 would not move. They moved by +4, which is +8 minus the 4 documents that stopped being
