@@ -241,8 +241,8 @@ A step that wants to change one of these reports it and stops.
   **A value set that no name reaches is a `Literal`, which is the rendering `const` already
   takes.** A `const` is a one-member value set and D2 renders it without naming it; an `enum` is
   the same construct with more members. So an untitled `enum` branch states its members as a
-  `Literal` instead of claiming the node's hint, and D3's ladder is not consulted — a lowering
-  that can proceed without a name does, rather than inventing one.
+  `Literal` instead of claiming the node's hint, and D3 resolves no name for it — a lowering that
+  can proceed without a name does, rather than inventing one.
   `core/geo-place-system.json` and `core/geo-place-type.json` are each an `anyOf` of an untitled
   `enum` of strings and a constrained string: the known values beside anything matching the
   pattern. 4 such branches exist in 4 documents, 2 of them at a root.
