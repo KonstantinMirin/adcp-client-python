@@ -238,12 +238,29 @@ A step that wants to change one of these reports it and stops.
   name produces the wrapper, not the constraint.
 - **D3 — names.** Root: `pascal_case(title)`, keeping acronyms. Nested: parent name +
   `pascal_case(property)`. Union branch: title, else the discriminator `const`, else the sorted
-  required set, else refuse the document by name and pointer. **A branch named by anything other
-  than its own title is qualified by its base's name**, because a discriminator `const` yields
-  `ById` and a required set yields `ExplicitPackagesWithFixedAllocation` — names that collide
-  across documents and carry nothing of the root they belong to. Nodes with identical content
-  are one node; content equality is the only deduplication. A name is an input to a lowering and
-  is never computed inside one.
+  required set, else **the branch's own root type word**, else refuse the document by name and
+  pointer. **A branch named by anything other than its own title is qualified by its base's
+  name**, because a discriminator `const` yields `ById` and a required set yields
+  `ExplicitPackagesWithFixedAllocation` — names that collide across documents and carry nothing
+  of the root they belong to.
+
+  **The type-word rung carries a second unnamed branch at one node.** The first three rungs read
+  a name off the branch's own content, and a node may hold two branches that state none of them.
+  Such a branch takes its own root type word, qualified by the base's name.
+  `governance/reported-outcome-error.json#/definitions/bounded_value_level_3` is an `anyOf` of
+  three untitled branches: a `$ref`, an array stating `maxItems: 32`, and an object stating
+  `maxProperties: 32`. The `$ref` needs no name; the other two each need a carrier under D5's
+  third rung, and they are `BoundedValueLevel3Array` and `BoundedValueLevel3Object`.
+
+  The word is the schema's own, so it is derived rather than invented. **Two branches of the same
+  root type refuse**: the rung names a branch only where the root types differ. An index or an
+  ordinal would name every branch after nothing the schema states.
+
+  **A branch that cannot be named is refused, never wrapped**, because a wrapper changes what the
+  class is called and leaves the naming problem untouched.
+
+  Nodes with identical content are one node; content equality is the only deduplication. A name
+  is an input to a lowering and is never computed inside one.
 
   **Two nodes are compared by content, never by title**, and the comparison must say where it
   cuts a reference cycle. Two instruments that cut differently disagree about whether two nodes
@@ -830,8 +847,8 @@ re-canonicalises the same subtrees. Nothing upstream of the library can remove t
 | sharing within the call | 43.58 s | 504 | 142 MB |
 | no sharing at all | >600 s, stopped while still building | — | — |
 
-One pair without sharing costs more than the whole population costs with it, so deleting the
-sharing is not an option and an earlier revision of this section was wrong to require it.
+One pair without sharing costs more than the whole population costs with it, so the
+canonicalisation is shared and the sharing is not optional.
 
 **What is banned is the process-global form, not sharing.** `_CANON_MEMO` was a module-global
 dict with no eviction, keyed on a serialized schema and holding a canonicalised copy per key: it
