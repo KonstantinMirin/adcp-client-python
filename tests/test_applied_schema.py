@@ -334,6 +334,14 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
         "core/canonical-account-ref.json",
         "core/canonical-reporting-commitment.json",
         "media-buy/acceptance-policy-requirement.json",
+        # One more since `salesagent-j3k2l.43`: a composition merges by intersection
+        # (section 2), so the restatement of `task` at `/oneOf/0/properties/task` that
+        # the old merge rule refused -- it stated an `enum` where the base stated
+        # `enum` and `type` -- is now the intersection, and the document emits.  Its
+        # root constrains the instance to an object and its three BRANCH classes sit
+        # at nodes that root constrains, so it joins this population.  What the
+        # refusal means is unchanged and the per-row loop below grades every one.
+        "core/canonical-media-buy-action.json",
     }
     for g in rows:
         bare = _node(bundle.read(BUNDLE, g.ref.document), g.ref.pointer.lstrip("#"))

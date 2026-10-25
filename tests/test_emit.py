@@ -1267,9 +1267,15 @@ def test_the_three_allof_decisions_that_no_case_above_grades() -> None:
 
     assert compare_schema(nested, Outer).outcome == "pass"
 
-    # The ceiling: the node's own bound wins over a conjunct's, so a class stating
-    # the TIGHTER effective bound is reported as differing.  A false failure, which
-    # is the safe direction, and measured at 0 documents.
+    # **The ceiling this line pinned IS CLOSED, and the pin's own words are what moved
+    # it**: "pinned here so replacing the gap-fill with a per-keyword intersection has to
+    # move this line".  ``salesagent-j3k2l.43`` replaced it -- ``harness._tighter`` reads
+    # a keyword both views state as the intersection, "a bound is the tighter one"
+    # (section 2) -- so the document side of this node now says 99, the model says 99,
+    # and there is nothing to differ about.  Before, the node's own bound won over the
+    # conjunct's and a class stating the tighter EFFECTIVE bound was reported as
+    # differing: a false failure in the safe direction, measured at 0 documents, and now
+    # at 0 synthetic nodes as well.
     collides = {
         "type": "object",
         "allOf": [{"type": "object", "properties": {"n": {"maximum": 99}}}],
@@ -1280,9 +1286,15 @@ def test_the_three_allof_decisions_that_no_case_above_grades() -> None:
         n: int | None = Field(default=None, le=99)
 
     ceiling = compare_schema(collides, StatesTheTighter)
-    assert ceiling.differs == [
-        "/properties/n/maximum: the document says 100, the model 99"
-    ], ceiling.differs
+    assert ceiling.differs == [], ceiling.differs
+    # And it closed in the direction that matters rather than by going quiet: the
+    # document side states the intersection, so the comparison has a fact to compare and
+    # agrees on it.  A fold that simply dropped the keyword would also report no
+    # `differs`, and this is what tells the two apart.
+    assert ceiling.outcome == "pass", (ceiling.added, ceiling.missing, ceiling.differs)
+    assert compare_schema(collides, AdCPBaseModel).differs or compare_schema(
+        collides, AdCPBaseModel
+    ).missing, "the node states a bound the comparison can see; otherwise the line above is vacuous"
 
 
 #: The three pointer segments a conditional is spelled with.  A node under one is a
@@ -5704,9 +5716,34 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
         node = raw.get(g.ref.pointer.removeprefix("#"))
         if not isinstance(node, dict):
             continue  # a class at a pointer the raw walk does not reach
+        # **The node's own ``properties`` AND every inline conjunct's**, which is the
+        # one map ``compiler.lower_composition`` builds: a draft-07 ``allOf`` conjunct
+        # applies to the same instance, so its ``properties`` are this node's fields and
+        # a ``uniqueItems`` among them is this class's rule.  Reading the node's own
+        # ``properties`` alone put the two sides at different scopes again -- the same
+        # defect as the MRO read above, from the document side -- and reported
+        # ``core/demographic-targeting-intent.json#/properties/age`` as stating two
+        # ``UniqueItems`` against a document of ``[]``, where the document states both
+        # inside ``/properties/age/allOf/1/properties``.
+        #
+        # A ``$ref`` conjunct is SKIPPED, by the attribution rule this comparison is
+        # already built on: those properties are the target's and are graded on the
+        # target's own pair.  The nested ``allOf`` is followed because production
+        # follows it (section 5's ``allOf`` row at CONJ).
+        declares: dict[str, Any] = dict(node.get("properties") or {})
+        unread = list(node.get("allOf") or [])
+        while unread:
+            conjunct = unread.pop(0)
+            if not isinstance(conjunct, dict):
+                continue
+            keys = {k for k in conjunct if k not in compiler.ANNOTATIONS}
+            if keys == {"$ref"}:
+                continue
+            unread.extend(conjunct.get("allOf") or [])
+            declares.update(conjunct.get("properties") or {})
         want = sorted(
             key
-            for key, declaration in (node.get("properties") or {}).items()
+            for key, declaration in declares.items()
             if isinstance(declaration, dict)
             and declaration.get("type") == "array"
             and declaration.get("uniqueItems") is True
