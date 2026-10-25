@@ -221,7 +221,8 @@ A step that wants to change one of these reports it and stops.
   keyed on the class name, which comes from the schema `title`. A consumer's import therefore
   survives an upstream file rename; the document path is a build input, not an API.
 - **D2 — what becomes a class.** An object with `properties` → a model. An `enum` node →
-  `StrEnum`/`IntEnum`. A `oneOf`/`anyOf` → a base, one subclass per branch, and a union alias.
+  `StrEnum`/`IntEnum` where a name reaches it, and a `Literal` of its members where none does.
+  A `oneOf`/`anyOf` → a base, one subclass per branch, and a union alias.
   Everything else is an annotation or a rule: scalar → an annotation; array → `list[X]`; typed
   `additionalProperties` or `patternProperties` → a mapping (D5 types its key); `const` →
   `Literal`; typeless → `Any`;
@@ -236,14 +237,75 @@ A step that wants to change one of these reports it and stops.
   only untitled branch has no derivable name **refuses** rather than being wrapped, because a
   wrapper changes what the class is called and leaves the naming problem untouched. Needing a
   name produces the wrapper, not the constraint.
+
+  **A value set that no name reaches is a `Literal`, which is the rendering `const` already
+  takes.** A `const` is a one-member value set and D2 renders it without naming it; an `enum` is
+  the same construct with more members. So an untitled `enum` branch whose POSITION supplies no
+  name states its members as a `Literal`, and D3 resolves no name for it — a lowering that can
+  proceed without a name does, rather than inventing one.
+
+  **A position supplies a name or it does not, and that is not an accident of collision.** A
+  branch under a property takes the property's own derived name, which is free. A branch of a
+  ROOT union takes none, because the root's own class holds that name. So
+  `error-details/accessibility-violation.json` at
+  `/properties/violations/items/properties/failure_kind` keeps a named `StrEnum`: its `oneOf`
+  states eight canonical values beside `^x_[a-z0-9]+(?:_[a-z0-9]+)*$`, and the document's own
+  description calls the first set canonical and the second a vendor-local extension. Those are
+  two concepts and a consumer dispatches on the first, so the canonical set keeps an importable
+  symbol and the extension sits beside it. A `Literal` there would state the same eight values
+  and give a consumer nothing to import.
+  `core/geo-place-system.json` and `core/geo-place-type.json` are each an `anyOf` of an untitled
+  `enum` of strings and a constrained string: the known values beside anything matching the
+  pattern. 4 such branches exist in 4 documents, 2 of them at a root.
+
+  A `StrEnum` is still what a NAMED enum node becomes, and the name is what decides between
+  them. An enum reached by a title or a property has a public symbol and keeps it.
+
+  **A union whose branches differ only in permitted VALUES is a rule, not a class per branch.**
+  Where every branch declares the same property set, and every one of those properties is
+  constrained only by a value keyword — `type`, `enum`, `const`, `pattern`, `format`, a bound,
+  or a `not` over those — the union says which value combinations are permitted and not which
+  shapes exist. It becomes one class carrying the shared properties, and one rule on that class.
+  15 nodes in the bundle are this shape, over 42 branches, so a class per branch would declare
+  27 symbols that carry no distinct content.
+
+  `core/postal-country-system.json` is the largest at ten branches: an object of `country` and
+  `system`, pairing each country with the postal systems it admits, the last branch reaching
+  every other country through a `not` over the ten it names. One class holds `country` and
+  `system` and the table is the rule. **A revision that adds a country changes the document and
+  the rule reads it; no symbol a consumer imports moves.** That is the property this reading buys
+  — an open vocabulary stated as a schema churns, and the churn stays out of the public surface.
+
+  **A union whose branches share a property set but differ in a property's SCHEMA is a shape
+  union and keeps a class per branch.** 12 nodes, 85 branches: `core/registry-event.json` is 20
+  branches over `entity_type`, `event_type` and a `payload` that differs at each one. D3 names
+  those from the discriminator `const`, so each class is named for the value it carries rather
+  than by position.
 - **D3 — names.** Root: `pascal_case(title)`, keeping acronyms. Nested: parent name +
   `pascal_case(property)`. Union branch: title, else the discriminator `const`, else the sorted
-  required set, else refuse the document by name and pointer. **A branch named by anything other
-  than its own title is qualified by its base's name**, because a discriminator `const` yields
-  `ById` and a required set yields `ExplicitPackagesWithFixedAllocation` — names that collide
-  across documents and carry nothing of the root they belong to. Nodes with identical content
-  are one node; content equality is the only deduplication. A name is an input to a lowering and
-  is never computed inside one.
+  required set, else **the branch's own root type word**, else refuse the document by name and
+  pointer. **A branch named by anything other than its own title is qualified by its base's
+  name**, because a discriminator `const` yields `ById` and a required set yields
+  `ExplicitPackagesWithFixedAllocation` — names that collide across documents and carry nothing
+  of the root they belong to.
+
+  **The type-word rung carries a second unnamed branch at one node.** The first three rungs read
+  a name off the branch's own content, and a node may hold two branches that state none of them.
+  Such a branch takes its own root type word, qualified by the base's name.
+  `governance/reported-outcome-error.json#/definitions/bounded_value_level_3` is an `anyOf` of
+  three untitled branches: a `$ref`, an array stating `maxItems: 32`, and an object stating
+  `maxProperties: 32`. The `$ref` needs no name; the other two each need a carrier under D5's
+  third rung, and they are `BoundedValueLevel3Array` and `BoundedValueLevel3Object`.
+
+  The word is the schema's own, so it is derived rather than invented. **Two branches of the same
+  root type refuse**: the rung names a branch only where the root types differ. An index or an
+  ordinal would name every branch after nothing the schema states.
+
+  **A branch that cannot be named is refused, never wrapped**, because a wrapper changes what the
+  class is called and leaves the naming problem untouched.
+
+  Nodes with identical content are one node; content equality is the only deduplication. A name
+  is an input to a lowering and is never computed inside one.
 
   **Two nodes are compared by content, never by title**, and the comparison must say where it
   cuts a reference cycle. Two instruments that cut differently disagree about whether two nodes
@@ -648,6 +710,32 @@ A step that wants to change one of these reports it and stops.
   **A check that matches a spelling is deleted rather than extended.** There are infinitely many
   ways to write the thing it bans and it tests one, so it buys nothing and costs a parse.
 
+  **A clause detects a defect only in what its INPUT can change.** A check reading the committed
+  tree grades BEHAVIOUR — what a class accepts, refuses and states about itself — and cannot
+  redden when the emitter changes, because the modules on disk do not move. A check that must
+  detect an EMITTER defect reads a fresh run's output. Both are legitimate and the defect is a
+  clause that claims one while reading the other: perturbing the emitter leaves it green, so it
+  is graded by nothing.
+
+  Measured over the suite: 46 checks read the committed tree alone, 54 read a fresh run alone,
+  and 12 read both. The 46 are sound because ONE check ties the tree to the emitter —
+  `test_the_committed_tree_is_what_a_fresh_run_emits` runs `emit` into a temporary directory and
+  compares the whole file set and every byte of it, with the alias module beside it. That check
+  carries the other 46, so it is never narrowed and never compares against recorded output: an
+  earlier revision compared the tree against an earlier run of the same emitter and so graded the
+  change rather than the inputs.
+
+  **A check that partitions a population enumerates the cases its DECISION names, not the cases
+  the population happens to hold, and asserts that an empty part is empty.** A part with no
+  member today is the one the next cleared document arrives in, and a partition built from what
+  exists greets it with a crash instead of a verdict. D8 names four readings of
+  `additionalProperties` — `false`, `true`, typed, absent — and `codegen/lower/containers.py`
+  measures that no document the emitter can emit carries a typed one, so the check for it was
+  written over three parts. `governance/reported-outcome-error.json` states
+  `additionalProperties: {"$ref": "#/definitions/bounded_value"}` at its root, and the first
+  document to emit it met a lookup with three keys. Four parts, the typed one asserted empty
+  while it is empty, would have named the arrival instead.
+
   **A check over a CLOSED set of forms is a population check and survives.** The distinction is
   whether the set of ways to do the banned thing can be enumerated. The import rule is the worked
   case, and the measurement settles it: reaching another module has exactly two forms in Python,
@@ -830,8 +918,8 @@ re-canonicalises the same subtrees. Nothing upstream of the library can remove t
 | sharing within the call | 43.58 s | 504 | 142 MB |
 | no sharing at all | >600 s, stopped while still building | — | — |
 
-One pair without sharing costs more than the whole population costs with it, so deleting the
-sharing is not an option and an earlier revision of this section was wrong to require it.
+One pair without sharing costs more than the whole population costs with it, so the
+canonicalisation is shared and the sharing is not optional.
 
 **What is banned is the process-global form, not sharing.** `_CANON_MEMO` was a module-global
 dict with no eviction, keyed on a serialized schema and holding a canonicalised copy per key: it

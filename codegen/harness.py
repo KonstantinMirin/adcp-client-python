@@ -261,31 +261,81 @@ def canonicalisation_shared_within_one_call() -> Iterator[dict[str, Any]]:
         _hjs_canon.canonicalish = uncached
 
 
-def filtered_formats(schema: Any) -> tuple[str, ...]:
-    """Every position where a ``format`` and a ``pattern`` meet, with both values.
+def format_pattern_positions(schema: Any) -> list[tuple[str, dict]]:
+    """Every position where a ``format`` and a ``pattern`` meet, node and pointer.
 
-    **The shape ``hypothesis_jsonschema`` cannot draw**, and the reason is in its own
-    source: ``string_schema`` takes the FORMAT's strategy and then applies the pattern
-    as a ``.filter()``, with the comment *"This isn't really supported, but we'll do
-    our best with a filter"*.  Where the pattern restricts the value beyond what the
-    format strategy happens to emit, every draw is filtered out and ``hypothesis``
-    raises ``Unsatisfiable`` over the WHOLE schema, naming no node.
-
-    So this names the nodes, derived from the document rather than guessed, and
-    :attr:`PairReport.no_instrument` reports them beside hypothesis's own message --
-    which carries the filtered-draw count.  Measured on the emitted population:
-    ``core/reference-renderer.json`` states ``format: uri`` beside
-    ``pattern: ^https://github\\.com/`` and 459 of 459 draws are filtered, at 10, 25
-    and 50 examples alike.
+    **The shape ``hypothesis_jsonschema`` has no generator for**, and the reason is in
+    its own source: ``string_schema`` takes the FORMAT's strategy and then applies the
+    pattern as a ``.filter()``, with the comment *"This isn't really supported, but
+    we'll do our best with a filter"*.  Where the pattern restricts the value beyond
+    what the format strategy happens to emit, every draw is filtered out and
+    ``hypothesis`` raises ``Unsatisfiable`` over the WHOLE schema, naming no node.
 
     It is not gated on the format being ASSERTED, and that is deliberate: the filter
     runs whether or not a checker is installed, so the drawing problem is the same.
+
+    **This is the CO-OCCURRENCE census and not the undrawable population**, which is
+    the distinction :func:`undrawable_formats` exists to draw: over the 3.2 bundle 73
+    positions in 47 of 1,054 documents state the two keywords together, in 8 distinct
+    ``(format, pattern)`` pairs, and 72 of the 73 DRAW.
     """
-    return tuple(
-        f"{pointer or '/'}: format {node['format']!r} beside pattern {node['pattern']!r}"
+    return [
+        (pointer or "/", node)
         for pointer, node in _nodes(schema)
         if isinstance(node.get("format"), str) and isinstance(node.get("pattern"), str)
-    )
+    ]
+
+
+def _drawing_this_node(instance: Any) -> None:
+    """The body :func:`undrawable_formats` draws into: the draw IS the measurement.
+
+    Named rather than a lambda because ``hypothesis`` puts this function's name in
+    ``Unsatisfiable``'s own sentence, which :func:`_why` carries into the report.
+    """
+
+
+def undrawable_formats(
+    schema: Any, *, custom_formats: Mapping[str, Any] = (), examples: int = 25
+) -> tuple[str, ...]:
+    """Of the positions :func:`format_pattern_positions` names, the ones a draw cannot reach.
+
+    **Co-occurrence is not the undrawable shape, and the measurement is the whole
+    difference.** 72 of the bundle's 73 format-beside-pattern positions draw, because
+    ``hypothesis_jsonschema``'s ``uri`` strategy emits ``https://A.COM`` and that
+    matches every one of the bundle's patterns that pins the scheme or the general host
+    shape -- 7 of its 8 distinct pairs.  The eighth pins a LITERAL host,
+    ``^https://github\\.com/`` at
+    ``core/reference-renderer.json#/properties/provenance/properties/source_repository``,
+    and no generic generator reaches a literal host: 459 of 459 draws are filtered, at
+    10, 25 and 50 examples alike.
+
+    So a cause naming every co-occurrence would admit a ``strategy_error`` from ANY
+    cause, as long as the document states the two keywords somewhere.  This draws each
+    node ALONE and keeps the ones that failed, with hypothesis's own reason per
+    position -- which is what makes :attr:`PairReport.no_instrument` conditional on a
+    measurement of the shape rather than on two keywords meeting.
+
+    **Derandomized, so the answer is a function of (node, library version)** and P7's
+    determinism holds over it.
+
+    KNOWN CEILING: a node undrawable only IN CONTEXT -- a conjunct narrowing the
+    pattern beside it -- draws here and is not named, so its pair reddens rather than
+    being admitted.  That is the safe direction and it is visible: an exit this check
+    cannot explain is a failure and not a tolerance.  The upgrade path is to draw the
+    node as the generator sees it, which needs the merged node the library builds
+    internally.
+    """
+    out: list[str] = []
+    for pointer, node in format_pattern_positions(schema):
+        try:
+            run = given(instance=strategy(node, dict(custom_formats)))(_drawing_this_node)
+            settings(max_examples=examples, phases=[Phase.generate], **_SETTINGS)(run)()
+        except Exception as e:  # noqa: BLE001 -- any failure to draw names the position
+            out.append(
+                f"{pointer}: format {node['format']!r} beside pattern"
+                f" {node['pattern']!r} [{_why(e)}]"
+            )
+    return tuple(out)
 
 
 def validator_for(schema: dict) -> Any:
@@ -849,7 +899,12 @@ def check_accepts(
         res.counterexample = _dump(seen[-1]) if seen else ""
     except (HypothesisRefResolutionError, HypothesisException, RecursionError) as e:
         res.outcome = "strategy_error"
-        res.detail = f"{type(e).__name__}: {e}"[:400]
+        #: ``_why`` and not the raw message: hypothesis's advice to whoever wrote the
+        #: test was pushing the filtered-draw count past the truncation, and the cut
+        #: belongs HERE rather than in the reader -- :attr:`PairReport.no_instrument`
+        #: re-split the same sentence for want of this line, which is one rule in two
+        #: places and the one that goes stale.
+        res.detail = _why(e)
     except Exception as e:  # a model that raises something other than ValidationError
         res.outcome = "model_error"
         res.detail = f"{type(e).__name__}: {e}"[:400]
@@ -2320,11 +2375,13 @@ class PairReport:
     liveness: LivenessResult | None = None
     comparison: ComparisonResult | None = None
     missing_formats: list[str] = field(default_factory=list)
-    #: The DOCUMENT's own positions where a ``format`` and a ``pattern`` meet,
-    #: filled by :func:`check_pair` because a report does not hold the document it
-    #: graded.  Read by :attr:`no_instrument` to name the shape behind an accepts
-    #: check that could not draw.
-    accepts_filtered_formats: tuple[str, ...] = ()
+    #: The DOCUMENT's own format-beside-pattern positions a draw CANNOT REACH, each
+    #: measured by drawing that node alone (:func:`undrawable_formats`).  Filled by
+    #: :func:`check_pair` because a report does not hold the document it graded, and
+    #: filled only where the accepts check errored, because that is the only pair it
+    #: says anything about.  Read by :attr:`no_instrument` to name the shape behind an
+    #: accepts check that could not draw.
+    accepts_undrawable: tuple[str, ...] = ()
 
     @property
     def graded_instances(self) -> int:
@@ -2352,19 +2409,28 @@ class PairReport:
         **The CAUSE matters more than the count**, because this is the population the
         eventual generator work starts from, so the entry names a shape to act on
         rather than "cannot draw": hypothesis's own message -- which carries the
-        filtered-draw count -- beside the document's own positions where a ``format``
-        and a ``pattern`` meet (:func:`filtered_formats`), because that is the shape
-        ``hypothesis_jsonschema``'s ``string_schema`` filters and cannot satisfy.
-        The positions are DERIVED from the document, not guessed: hypothesis raises
-        over the whole schema and names no node.
+        filtered-draw count -- beside the document's own positions a draw cannot
+        reach, because that is the shape ``hypothesis_jsonschema``'s ``string_schema``
+        filters and cannot satisfy.  The positions are DERIVED from the document, not
+        guessed: hypothesis raises over the whole schema and names no node.
+
+        **They are the MEASURED positions and not the co-occurrences**
+        (:func:`undrawable_formats`), and the difference is this exit's whole
+        admissibility: 72 of the bundle's 73 format-beside-pattern positions draw, so
+        an entry naming every co-occurrence would speak for a ``strategy_error`` from
+        any cause at all in a document that happens to state the two keywords
+        somewhere.
+
+        **So this is EMPTY where no position of the document is undrawable, and that
+        is the refusal rather than a gap.**  A generator failure nothing explains has
+        no admitted exit: :attr:`outcome` reads this and reports
+        ``accepts:strategy_error``, which is a verdict on the pair.
         """
         if self.accepts is None or self.accepts.outcome != "strategy_error":
             return ()
-        where = "; ".join(self.accepts_filtered_formats) or (
-            "no format-beside-pattern position in this document"
-        )
-        why = self.accepts.detail.split(" Try making")[0].strip()[:200]
-        return (f"accepts: {where}; {why}",)
+        if not self.accepts_undrawable:
+            return ()
+        return (f"accepts: {'; '.join(self.accepts_undrawable)}; {self.accepts.detail}",)
 
     @property
     def outcome(self) -> str:
@@ -2379,6 +2445,12 @@ class PairReport:
         defect outranks an INSTRUMENT one, so the comparison is read before
         ``no_instrument``, and the zero-denominator exits come last so a pair whose
         generator produced nothing names that instead of "nothing was graded".
+
+        **``no_instrument`` is ADMITTED only where a measured position explains the
+        generator's failure**, which is ``salesagent-j3k2l.10``'s decision made
+        structural: the shape is the designed exit, so a ``strategy_error`` nothing
+        identifies as that shape falls through to ``accepts:strategy_error`` and is a
+        verdict on the pair like any other accepts outcome.
         """
         if self.missing_formats:
             return "missing_formats"
@@ -2395,8 +2467,8 @@ class PairReport:
             return "liveness:" + self.liveness.outcome
         if self.comparison is None or self.comparison.outcome not in ("pass", "no_evidence"):
             return "comparison:" + (self.comparison.outcome if self.comparison else "unrun")
-        if self.no_instrument:
-            return "no_instrument"
+        if self.accepts.outcome == "strategy_error":
+            return "no_instrument" if self.no_instrument else "accepts:strategy_error"
         if not self.graded_instances:
             return "no_accepts_check_evidence"
         return "pass"
@@ -2436,7 +2508,6 @@ def check_pair(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
     )
     rep.missing_formats = sorted(missing_formats(pair.schema, custom_formats))
-    rep.accepts_filtered_formats = filtered_formats(pair.schema)
     accepted: list[Any] = []
     #: **The two INSTANCE checks need a self-contained schema and the comparison does
     #: not, which is the whole of why this line exists.**  ``bundle.resolved`` inlines
@@ -2476,6 +2547,13 @@ def check_pair(
         seen=accepted,
         ref=pair.ref,
     )
+    #: Measured only where the generator errored, because that is the only pair the
+    #: measurement says anything about -- 2 of 1,079 on the emitted tree, so the
+    #: isolated draws cost nothing over the population.  The node is drawn from the
+    #: SAME schema the accepts check drew from, so a position the resolution inlined
+    #: is screened too.
+    if rep.accepts.outcome == "strategy_error":
+        rep.accepts_undrawable = undrawable_formats(drawn_from, custom_formats=custom_formats)
     rep.liveness = (
         check_liveness(drawn_from, pair.accept, accepted[0])
         if accepted
