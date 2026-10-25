@@ -5518,3 +5518,259 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
     r = emit.emit(BUNDLE, ["core/start-timing.json"]).refusals["core/start-timing.json"]
     assert (r["keyword"], r["pointer"]) == ("type", "/oneOf/0"), r
     assert "a branch of type 'string' is step 6" in r["detail"], r
+
+
+# --------------------------------------------------------------------------- #
+# D7's conjunct contribution rule, and the composition the comparison reads
+# --------------------------------------------------------------------------- #
+#: The population every clause of :func:`test_every_conjunct_contributes_every_part_of_itself`
+#: runs over, stated rather than read back off the structure it grades (D14).  All of it is
+#: measured over ``population()``, the documents the COMMITTED TREE carries, because the
+#: identity clauses import the class the node declared.
+#:
+#: ``CONJUNCTS_BY_PART`` is a PARTITION of ``CONJUNCTS`` -- it sums to it, which the test
+#: asserts -- so a conjunct moving from one part to another reddens even where the total
+#: does not.  The two field/name counts are a second AXIS over the same sites rather than a
+#: second count of them: a row that stopped declaring a conjunct's properties would keep
+#: ``fields`` at 2 and drop ``field_keys`` from 7.
+COMPOSING_DOCUMENTS = 174
+COMPOSING_NODES = 185
+CONJUNCTS = 376
+CONJUNCTS_BY_PART = {
+    "base": 134,
+    "fields": 2,
+    "fields+rule": 2,
+    "required": 2,
+    "rule": 236,
+}
+CONJUNCT_FIELD_KEYS = 7
+CONJUNCT_REQUIRED_NAMES = 2
+#: Conjuncts carrying a name draft-07 does not define, and the DROPS the run records for
+#: them.  One each, and the same one: ``media-buy/sync-catalogs-request.json`` at
+#: ``/allOf/1`` states ``errorMessage`` (ajv-errors) beside its ``not``.
+CONJUNCT_FOREIGN_NAMES = 1
+DROPPED_NAMES = 1
+
+
+def test_every_conjunct_contributes_every_part_of_itself() -> None:
+    """D7's conjunct contribution rule, over every conjunct of every composing class.
+
+    "A conjunct contributes every part of itself, and each part lowers by the decision
+    that covers it."  The reader implemented two of the parts and refused a conjunct
+    whose parts fell under two of them, so the clauses below are one per PART, each
+    asserted on the CLASS the node declared rather than on the compiler's own reading of
+    the conjunct:
+
+    1. a ``$ref`` conjunct is a BASE -- the symbol its target declares is in the class's
+       MRO.  Resolved through ``bundle.split_ref`` and the target's own ``declared``
+       record, so a conjunct bound to the wrong class reddens rather than being counted.
+    2. a conjunct's ``properties`` are this class's FIELDS, by key.
+    3. a conjunct's ``required`` is this class's requiredness, and the field it names
+       carries NO DEFAULT -- which is D7's requiredness overlay in the words D7 uses, and
+       the half that was silently satisfied by an inherited optional field.
+    4. a conjunct's D6 rule reaches the class's ``_adcp_rules``, counted against every
+       node whose rules are this class's: the node itself and every conjunct that
+       contributes anything.  The COUNT is what catches the defect this row fixed -- a
+       conjunct the loop did not hand to ``rules_at`` leaves the tuple short.
+    5. a name draft-07 does not define contributes NOTHING and is REPORTED: the run
+       records the drop at that conjunct's pointer, and the class has no field for it.
+
+    Each clause's population is counted and asserted at a stated literal below, and the
+    per-part counts are asserted to PARTITION the conjunct total -- so a clause that
+    stops matching anything fails here instead of passing over an empty loop.
+    """
+    from codegen.lower import rules as rules_lowering
+
+    out = emit.emit(BUNDLE, population())
+    assert out.emitted, "nothing emitted: every clause below would pass vacuously"
+    known = set(bundle.portable(BUNDLE))
+
+    documents: set[str] = set()
+    nodes = conjuncts = field_keys = required_names = foreign_names = 0
+    parts: collections.Counter[str] = collections.Counter()
+    for document in sorted(out.emitted):
+        doc = bundle.read(BUNDLE, document)
+        here = out.declared[document]
+        module = importlib.import_module(out.emitted[document])
+        for pointer, node in bundle.nodes(doc):
+            if not isinstance(node.get("allOf"), list) or pointer not in here:
+                continue
+            nodes += 1
+            documents.add(document)
+            # **Clause 0: the class imported below IS this run's output.**  Every clause
+            # after it reads the COMMITTED module, so without this one a change to the
+            # lowering is graded against a tree written before it -- measured by
+            # perturbation: removing the line that binds a ``$ref`` conjunct as a base
+            # left clauses 1 to 3 green, because the committed class still had the base.
+            # ``test_the_committed_tree_is_what_a_fresh_run_emits`` catches such a
+            # change over the whole tree; this makes it caught HERE too, for the modules
+            # whose conjuncts this grades, so a clause cannot be satisfied by a stale file.
+            written = out.files[f"{emit.module_path(document)}.py"]
+            assert written == (TREE / f"{emit.module_path(document)}.py").read_text(), document
+            cls = getattr(module, here[pointer])
+            ancestry = {base.__name__ for base in cls.__mro__}
+            rule_nodes = [node]
+            for index, conjunct in enumerate(node["allOf"]):
+                if not isinstance(conjunct, dict):
+                    continue
+                where = f"{pointer}/allOf/{index}"
+                conjuncts += 1
+                keys = {
+                    k
+                    for k in conjunct
+                    if k not in compiler.ANNOTATIONS and not k.startswith("x-")
+                }
+                # Clause 5.  The name is dropped, the drop is on the record at this
+                # conjunct's own pointer, and nothing on the class answers to it.
+                for name in sorted(keys - compiler.DRAFT07):
+                    foreign_names += 1
+                    assert any(
+                        line.startswith(f"{where}: {name}:")
+                        for line in out.drops.get(document, [])
+                    ), (document, where, name, out.drops.get(document))
+                    assert compiler.field_name(name) not in cls.model_fields, (document, where)
+                keys &= compiler.DRAFT07
+                if keys == {"$ref"}:
+                    # Clause 1.
+                    parts["base"] += 1
+                    head, into = bundle.split_ref(conjunct["$ref"])
+                    target = bundle.document_for(head, known)
+                    assert target is not None, (document, where, conjunct["$ref"])
+                    assert out.declared[target][into] in ancestry, (
+                        document,
+                        where,
+                        out.declared[target][into],
+                        sorted(ancestry),
+                    )
+                    continue
+                named = []
+                if "properties" in keys:
+                    # Clause 2.
+                    named.append("fields")
+                    for key in conjunct["properties"]:
+                        field_keys += 1
+                        assert compiler.field_name(key) in cls.model_fields, (
+                            document,
+                            where,
+                            key,
+                            sorted(cls.model_fields),
+                        )
+                if "required" in keys:
+                    # Clause 3.
+                    named.append("required")
+                    for key in conjunct["required"]:
+                        required_names += 1
+                        field = cls.model_fields[compiler.field_name(key)]
+                        assert field.is_required(), (document, where, key)
+                if keys & compiler.rules_at(conjunct).screen:
+                    named.append("rule")
+                if keys:
+                    rule_nodes.append(conjunct)
+                parts["+".join(named) or "nothing"] += 1
+            # Clause 4, over the whole conjunct list at once, because a class binds
+            # ``_adcp_rules`` ONCE: the tuple is as long as the sources every node whose
+            # rules are this class's states.  ``rules.lower`` is the production reduction,
+            # which is what makes a DROPPED conjunct the only thing this can catch -- and
+            # that is the defect, since a reduction that renders nothing is D4's answer
+            # and not a contribution.
+            sources = [src for one in rule_nodes for src in rules_lowering.lower(one).rules]
+            # ``cls.__dict__`` and not ``getattr``: ``_adcp_rules`` is a ``ClassVar``, so
+            # a subclass that declares none reads its BASE's tuple and the clause would
+            # grade the base's rules against this node's sources.  Measured on
+            # ``account/report-usage-response.json``, whose two conjuncts are both bare
+            # ``$ref``s and whose class answered with ``ProtocolEnvelope``'s
+            # ``ForbiddenGroups``.
+            assert len(cls.__dict__.get("_adcp_rules", ())) == len(sources), (
+                document,
+                pointer,
+                sources,
+            )
+
+    assert len(documents) == COMPOSING_DOCUMENTS, len(documents)
+    assert nodes == COMPOSING_NODES, nodes
+    assert conjuncts == CONJUNCTS, conjuncts
+    assert dict(parts) == CONJUNCTS_BY_PART, dict(parts)
+    # The partition, asserted rather than trusted: a part that stopped matching would
+    # otherwise move one number and leave the total alone.
+    assert sum(CONJUNCTS_BY_PART.values()) == CONJUNCTS
+    assert field_keys == CONJUNCT_FIELD_KEYS, field_keys
+    assert required_names == CONJUNCT_REQUIRED_NAMES, required_names
+    assert foreign_names == CONJUNCT_FOREIGN_NAMES, foreign_names
+    assert sum(len(v) for v in out.drops.values()) == DROPPED_NAMES, out.drops
+
+
+#: How often each of the three folds that read a COMPOSED document by intersection
+#: changes the reading, over the whole graded population.  Every one is non-zero on
+#: purpose: a fold whose population is 0 passes for free, which is what the local-``$ref``
+#: fold's pin was doing before ``salesagent-j3k2l.28`` measured it.
+#:
+#: ``vocabulary`` is the ``const``/``enum`` axis collapse (6 sites), ``tighter`` the
+#: keyword intersection (2, both ``enum``), and ``agreed`` the resolver's conditional
+#: rewrite read as the facts its branches agree on (1).  They are counted where the fold
+#: CHANGES something, not where it is called, so a gate that stopped matching reddens.
+COMPOSED_FOLD_SITES = {"vocabulary": 6, "tighter:enum": 2, "agreed": 1}
+
+
+def test_the_comparison_reads_a_composed_document_by_intersection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """D7's intersection rule on the COMPARISON's side, and the population it reaches.
+
+    The document side flattens an ``allOf`` the way a composing class does
+    (``harness._composed``), and it did that by GAP-FILL: the first view of a keyword two
+    views state won and the rest were dropped. That is the "KNOWN CEILING" its own
+    docstring named and measured as a population of zero, and the population is no longer
+    zero -- a composing class faithful to the INTERSECTION read as adding a ``const``,
+    dropping an ``enum``, and stating a four-member vocabulary where its document stated
+    five.
+
+    Three folds answer it, each counted here where it CHANGES the reading:
+
+    * ``_one_vocabulary`` -- a ``const`` and the ``enum`` it pins are one axis, so the
+      merged node carries the pin and not both.
+    * ``_tighter`` -- a keyword both views state composes to the INTERSECTION: an enum to
+      the common members, a bound to the tighter value.
+    * ``_agreed`` -- an ``anyOf`` whose branches carry ONE title is the resolver's
+      conditional rewrite, and the facts its branches agree on are the node's own.
+
+    **The counts are the point and so is their being non-zero.**  A fold with no site is
+    green for free; this run states how many sites each one has and reddens if a gate
+    stops matching, if a document leaves the population, or if a fourth fold starts
+    firing. Beside them, the comparison's own verdict over the same run: 0 facts in all
+    three directions, which is the pins in ``test_the_graded_population_is_the_whole_of_it``
+    read here against the fold counts that produce them.
+    """
+    hits: collections.Counter[str] = collections.Counter()
+    tighter, vocabulary, agreed = harness._tighter, harness._one_vocabulary, harness._agreed
+
+    def counted_tighter(keyword: str, node: Any, conjunct: Any) -> Any:
+        answer = tighter(keyword, node, conjunct)
+        if answer is not harness._UNDECIDED and answer != node:
+            hits[f"tighter:{keyword}"] += 1
+        return answer
+
+    def counted_vocabulary(node: dict, conjunct: dict) -> tuple[dict, dict]:
+        left, right = vocabulary(node, conjunct)
+        if left is not node or right is not conjunct:
+            hits["vocabulary"] += 1
+        return left, right
+
+    def counted_agreed(branches: list[dict]) -> dict:
+        answer = agreed(branches)
+        if answer:
+            hits["agreed"] += 1
+        return answer
+
+    monkeypatch.setattr(harness, "_tighter", counted_tighter)
+    monkeypatch.setattr(harness, "_one_vocabulary", counted_vocabulary)
+    monkeypatch.setattr(harness, "_agreed", counted_agreed)
+
+    pairs = graded()
+    assert pairs, "no graded pair: every count below would be 0 and would say nothing"
+    red = 0
+    for one in pairs:
+        pair = pair_of(one)
+        result = harness.compare_schema(pair.schema, pair.model, document=pair.document)
+        red += len(result.added) + len(result.missing) + len(result.differs)
+    assert red == 0, red
+    assert dict(hits) == COMPOSED_FOLD_SITES, dict(hits)

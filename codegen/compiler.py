@@ -1780,7 +1780,7 @@ def lower_composition(
             # The INTERSECTION and not the narrower node alone (D7, :func:`_intersection`):
             # both declarations apply to the same instance, so a keyword only the wider
             # one states is still the composed node's.
-            local[key], at[key] = _intersection(node, prior), where
+            local[key], at[key] = _intersection(node, prior, mod.resolve_node), where
         elif _restatement(prior, node, mod.resolve_node) is None:
             raise Refusal(
                 _disagreeing(node, prior),
@@ -1983,7 +1983,9 @@ def lower_composition(
             # The INTERSECTION where it NARROWS (D7, :func:`_intersection`), and the node
             # itself where only the requiredness moved: there the content is the base's
             # already, so there is nothing of the base's to merge back in.
-            own[key] = _intersection(node, inherited[key]) if verdict else node
+            own[key] = (
+                _intersection(node, inherited[key], mod.resolve_node) if verdict else node
+            )
             if _constraining(own[key]).get("uniqueItems") is True and not _constraining(
                 node
             ).get("uniqueItems"):
@@ -2034,13 +2036,39 @@ def lower_composition(
             # ``slots`` restates a ``default`` and no ``description``, where reading the
             # restatement's silence as an answer left the base's description reported
             # ``missing`` instead of zero facts.
-            own[key] = node
+            # **The INTERSECTION here too, and the arm below is no longer "the node
+            # states nothing" but "the intersection is the base's".**  Once silence
+            # stopped being a loosening (:func:`_restatement`), a restatement can reach
+            # this arm stating LESS than the base -- ``{"type": "integer"}`` over
+            # ``{"type": "integer", "minimum": 3}`` says the same thing about every
+            # instance and differs only in its annotations -- and lowering THAT node
+            # alone drops the base's bound, which is the shadow this whole rule exists
+            # to make unspellable.  The intersection is the base's content wearing this
+            # document's annotations, and it is the same expression the EMPTY case used,
+            # so there is one answer for both.
+            own[key] = _intersection(node, inherited[key], mod.resolve_node)
             if not _constraining(node):
+                # The node has no type of ITS OWN, so the field is the base's DECIDED
+                # field: re-deciding declares the nested classes again, in this module,
+                # at a pointer this document does not have (:attr:`Shape.decided`).
+                #
+                # The condition is "the NODE constrains nothing" and deliberately not
+                # "the INTERSECTION is the base's", which is the same thing for this
+                # shape and NOT the same thing for an EQUAL restatement: an equal one
+                # intersects to the base's content too, and §6's clause 2 says its own
+                # node is what the field is decided from -- all 15 of them are a bare
+                # ``$ref`` whose resolved target carries its own annotations, and
+                # reusing there put the base's annotation back at a pointer the document
+                # declares itself.  Measured: 17 documents stopped emitting.
+                #
+                # KNOWN CEILING for the PARTIAL shape between the two -- a restatement
+                # stating less than the base and the same -- whose intersection is
+                # lowered as a node: a subschema-valued keyword it takes from the base
+                # (an ``items``, a nested ``properties``) is declared at a pointer this
+                # document does not have, and ``schema_at`` raises when the pair is
+                # graded.  0 such sites in the emitted population, and the failure is
+                # loud rather than silent, which is why this is named rather than coded.
                 reuse[key] = _reused(key, inherited_fields, inherited_from, at[key], mod)
-                own[key] = {
-                    **{k: v for k, v in inherited[key].items() if k in RENDERED},
-                    **node,
-                }
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
 
     # **D7's REQUIREDNESS OVERLAY: the composition makes an inherited field required and
@@ -2062,14 +2090,24 @@ def lower_composition(
     #
     # The TYPE is the base's decided field (``reuse``) rather than a second decision of
     # the base's node: re-deciding declares the nested classes again, in this module, at
-    # a pointer this document does not have (:func:`fields`' ``reuse`` says why).  The
-    # ``default`` is dropped because D7 says so and because ``fields`` refuses one on a
-    # required property by name -- two statements of one fact.
+    # a pointer this document does not have (:func:`fields`' ``reuse`` says why).
+    #
+    # **D7 also says "and no default", and that half is NOT written here**, because it
+    # has no population: measured over every node of every one of the 1,054 portable
+    # documents, 25 nodes carry a ``required``-only conjunct and **0 of them compose a
+    # base that declares a ``default`` for a name the conjunct requires**.  An arm for it
+    # would be a derivation matching nothing, which is green for free (the same ground
+    # this row's own docstring refuses a ``required``-only conjunct arm AT A ROOT on, and
+    # a stripped ``default`` was measured as unobservable: the perturbation that kept it
+    # left the suite green).  If such a base ever appears, ``fields`` refuses the
+    # document BY NAME -- "a default on a REQUIRED property has no rendering that does
+    # not also make the property optional" -- which is the accurate answer and already
+    # written.
     for key in sorted(required - inherited_required - set(own)):
         if key not in inherited:
             continue  # ``fields`` refuses a required name no view declares, by name
         reuse[key] = _reused(key, inherited_fields, inherited_from, pointer, mod)
-        own[key] = {k: v for k, v in inherited[key].items() if k != "default"}
+        own[key] = dict(inherited[key])
 
     decided = fields(
         own,
@@ -2279,7 +2317,9 @@ def _at_least_as_tight(
     return False
 
 
-def _intersection(child: dict, base: dict) -> dict:
+def _intersection(
+    child: dict, base: dict, resolve: Callable[[str], dict | None] | None = None
+) -> dict:
     """The declaration a NARROWING restatement's field is decided from.
 
     D7 in its own words: "where composed schemas constrain the same property, the field
@@ -2295,8 +2335,18 @@ def _intersection(child: dict, base: dict) -> dict:
     so reading it the other way here is the two halves disagreeing: measured on
     ``core/forecast-rate-range.json``, whose ``low``/``mid``/``high`` narrow
     ``core/forecast-range.json``'s bounds and state no description, where the child
-    alone reported the base's three descriptions ``missing``.  The same expression the
-    annotation-only arm of :func:`lower_composition` already uses, for the same reason.
+    alone reported the base's three descriptions ``missing``.
+
+    **"Silent" means silent AFTER RESOLUTION, and that is the whole of §6's clause 2.**
+    A child that is a bare ``$ref`` states no description in the document's TEXT and
+    states its target's at the pointer the comparison grades, because the resolver
+    inlines the target there -- so gap-filling the base's over it puts a description the
+    document does not carry at a pointer the document declares itself.  Measured at 17
+    ``differs``, every one ``/properties/context/description``: a response root composing
+    ``core/protocol-envelope.json``, whose envelope states the long "Relationship to
+    per-task body-level ``context`` declarations" text as a ``$ref`` sibling while the
+    document's own node resolves to ``core/context.json``'s own short text.
+    :func:`_dereferenced` is what makes the two readings one.
 
     **This is a no-op at every site that narrowed before D7's intersection rule landed**,
     and that is why it is safe: the old predicate required the child to state every
@@ -2325,8 +2375,9 @@ def _intersection(child: dict, base: dict) -> dict:
         if covered & axis:
             covered |= axis
     merged = {**{k: v for k, v in b.items() if k not in covered}, **c}
+    resolved = _dereferenced(child, resolve)
     annotated = {
-        **{k: v for k, v in base.items() if k in RENDERED},
+        **{k: v for k, v in base.items() if k in RENDERED and k not in resolved},
         **{k: v for k, v in child.items() if k not in merged},
     }
     return {**annotated, **merged}
@@ -2407,7 +2458,7 @@ def _restatement(
     # child restating a strict SUBSET of the base's keywords with the same values
     # intersects to the base itself, states no new fact, and is the inherited field
     # (``_annotates_differently`` then decides whether the annotations differ).
-    return _as_enum(_constraining(_intersection(dc, db))) != b
+    return _as_enum(_constraining(_intersection(dc, db, resolve))) != b
 
 
 def _dereferenced(
