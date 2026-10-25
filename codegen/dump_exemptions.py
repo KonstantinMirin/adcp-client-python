@@ -117,8 +117,8 @@ _D8 = (
     "stating a property count it does not let a reader satisfy"
 )
 
-#: **The whole exemption.**  Five positions: four on :data:`ORIGIN_ONLY`, which are
-#: DERIVED, and one on ``minProperties``, which is pinned.
+#: **The whole exemption.**  Six positions: five on :data:`ORIGIN_ONLY`, which are
+#: DERIVED against the packaged tree, and one on ``minProperties``, which is pinned.
 #:
 #: Three of the four are one authored node, ``core/attestation-issuer.json``'s
 #: ``AttestationOriginIssuer.origin``, which the resolver inlines into
@@ -193,6 +193,25 @@ EXEMPT: tuple[Exemption, ...] = (
         # still unemitted, and it was counting source positions, so an inlined copy of an
         # already-exempted node had nowhere to be counted.
         document="core/audience-evidence-requirements.json",
+        pointer=(
+            "/properties/accepted_attestation_issuers/items/oneOf/2/properties/origin"
+        ),
+        keyword="pattern",
+        value=ORIGIN_ONLY,
+        reason=_RFC,
+    ),
+    Exemption(
+        # A FOURTH packaged copy of entry one's authored node, at the same pointer shape
+        # as the entry above, in a different document.
+        #
+        # It reaches a pair only on the MERGED compiler.  Neither ``salesagent-j3k2l.43``
+        # nor ``.67`` emits this document alone; the composition rule and the
+        # nested-union sibling rule together clear its last refusal, so the first tree
+        # that carries it is the one a merge of the two emits.  That is the case the
+        # derived check exists for: under an absolute count this position would have
+        # obliged a second rise of a shrink-only pin within the hour, and the pin could
+        # not have said WHICH position was missing.
+        document="core/product-audience-evidence-requirements.json",
         pointer=(
             "/properties/accepted_attestation_issuers/items/oneOf/2/properties/origin"
         ),
