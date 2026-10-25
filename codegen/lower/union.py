@@ -69,6 +69,18 @@ source.  The emitter writes the derived property onto the base as
 it.  A ``$ref`` branch pins through its target, so the pins are read off the inherited
 shape and not off the branch node -- which is the same place its fields come from.
 
+THAT IS §4's FIRST SOURCE OF THREE, and the third is :func:`overlapping`: where the
+branches are PAIRWISE DISJOINT the payload selects its own branch, so the base needs no
+key and the structural union is a dispatch rather than a fallback.  Disjointness is
+derived from the branches themselves (:func:`separates`) and a pair the derivation cannot
+separate counts as overlapping, because admitting a union on an unproven disjointness is
+the defect the source exists to avoid.  A root matching none of the three refuses, and
+what it refuses ON is OVERLAP: with an unseparated pair, a branch could only be reached
+by trying each and keeping the first that validates, which makes the answer a property of
+declaration order rather than of the payload.  §4's SECOND source -- a key the bundle's
+manifest states -- is ``salesagent-j3k2l.60``'s row and is unwritten, which is why the
+overlap refusal is a DEFERRAL.
+
 An ``allOf`` conjunct list used to be the fourth entry here and is not one: it was never
 unlowerable, only unreachable.  The conjuncts sit at the branch's own node, so the grader
 has a pointer for every one of them, and what was missing was that the conjunct reader
@@ -431,11 +443,13 @@ def discriminator(planned: Sequence[Branch], doc: dict) -> str:
     the keyword.  Where they confirm several and the document names none, the choice IS
     a function of spelling and this refuses rather than taking the alphabetically first.
 
-    Empty is never returned: a root matching neither of §4's two sources refuses, and
-    the second source -- a key the bundle's manifest states -- is ``salesagent-j3k2l.60``'s
-    row.  So the refusal here is a DEFERRAL naming it: the obstruction is unwritten code
-    and not a property of the document, of pydantic or of the pointer space, and a
-    verdict would count a clearable document as finally refused.
+    **Empty IS returned, and it means "this root has no KEY to dispatch on".**  It does
+    not mean the root has no dispatch: §4's third source is the branches being pairwise
+    disjoint, which needs no key, and :func:`overlapping` is what asks that question of
+    the same branches.  So an empty answer here is a question handed on rather than a
+    refusal, and the refusal that does fire belongs to the third source.  Measured over
+    the 1,054 portable documents: 7 roots reach that hand-off, 5 of them are disjoint and
+    emit, and 2 overlap.
     """
     maps = [pins(p.properties) for p in planned]
     shared = set.intersection(*(set(m) for m in maps))
@@ -595,6 +609,121 @@ def _why_no_pin(planned: Sequence[Branch]) -> str:
     )
 
 
+# --------------------------------------------------------------------------- #
+# §4's THIRD dispatch source: branches no instance satisfies twice
+# --------------------------------------------------------------------------- #
+def requires(plan: Branch) -> frozenset[str]:
+    """The names this branch requires.
+
+    Its own ``required``, or -- for a bare ``$ref`` branch -- the target's, which is
+    where that branch's fields come from (§4's two bases).  One reading, beside
+    :attr:`Branch.properties`, which answers the same question about the other half of a
+    branch's shape.
+    """
+    if plan.inherits is not None:
+        return frozenset(plan.inherits.shape.required)
+    named = plan.node.get("required")
+    return frozenset(named) if isinstance(named, list) else frozenset()
+
+
+def admits_only_what_it_declares(plan: Branch) -> bool:
+    """Does this branch FORBID every name outside its own property map?
+
+    ``additionalProperties: false`` says so, and a ``patternProperties`` beside it takes
+    it back for whatever the pattern matches -- so a node carrying one admits names this
+    cannot enumerate and the answer is no.
+
+    **A bare ``$ref`` branch answers NO, and that is §4's own instruction rather than a
+    gap this hides.**  Closure is a fact about the NODE, the branch's node is the
+    reference, and ``compiler.Shape`` carries a target's properties and its ``required``
+    and not its ``additionalProperties`` -- so the derivation cannot read the target's
+    closure from here, and §4 says "a pair the derivation cannot separate is treated as
+    overlapping, because admitting a union on an unproven disjointness is the defect this
+    source exists to avoid".  Reading it would need ``compiler.Shape`` to carry the fact,
+    which is a change to the shared record and not this row's.
+    """
+    return plan.node.get("additionalProperties") is False and "patternProperties" not in plan.node
+
+
+def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
+    """What tells these two branches apart, or ``None`` where nothing does.
+
+    §4's third dispatch source names three separators and all three are here, each
+    read off the branches themselves:
+
+    * **one property pinned to different ``const`` values** -- an instance carrying one
+      value fails the branch pinning the other, so no instance satisfies both;
+    * **a ``required`` name one branch declares and another forbids** -- an instance
+      carrying the name fails the forbidding branch and one without it fails the
+      requiring branch;
+    * **scalar branches of different ``type``**.
+
+    ``a_type`` and ``b_type`` are the ``type`` the DOCUMENT applies to each branch
+    (:func:`applied_type`), because a branch stating none of its own has the root's.
+
+    **MEASURED, one separator at a time, by turning each off and re-emitting.**  Over the
+    7 roots that reach the derivation (30 pairs, 24 of them separated):
+
+    * the pinned ``const`` decides 6 pairs, all of ``core/audience-selector.json``, whose
+      four branches pin ``value_type`` three ways and ``type`` the fourth.  Off: emitted
+      732 -> 730, that root and ``governance/audience-constraints.json`` behind it;
+    * the required/forbidden name decides 18 pairs across 5 roots.  Off: emitted
+      **732 -> 689**, which is the whole weight of the source;
+    * the scalar type decides 0, and off, nothing moves.
+
+    **The third separator's set is empty at this position, and it is written anyway.**
+    Two checks upstream make it so: :func:`lower_union` refuses a root whose own ``type``
+    is neither absent nor ``"object"``, and :func:`_plan` refuses a branch whose own
+    ``type`` is neither -- so every branch the derivation is handed has an applied type of
+    ``None`` or ``"object"`` and no pair of them differs as scalars.  A union whose
+    branches ARE scalars is a root scalar and reaches :func:`_alias` instead, which
+    declares no branch classes and so needs no dispatch at all.  It is written because §4
+    names three separators and a derivation missing one is narrower than the section it
+    implements, and it is GRADED directly on a constructed pair -- the same ground
+    :func:`declares_a_class` keeps its 0-of-126 guard on.
+    """
+    first, second = pins(a.properties), pins(b.properties)
+    for key in sorted(set(first) & set(second)):
+        if first[key] != second[key]:
+            return f"{key!r} is pinned to {first[key]!r} on one branch and {second[key]!r} on the other"
+    for one, other in ((a, b), (b, a)):
+        if not admits_only_what_it_declares(other):
+            continue
+        declared = set(other.properties or {})
+        forbidden = sorted(requires(one) - declared)
+        if forbidden:
+            return (
+                f"one branch requires {forbidden} and the other declares no such "
+                "property and admits no name outside its own map"
+            )
+    scalars = a_type not in (None, "object") and b_type not in (None, "object")
+    if scalars and a_type != b_type:
+        return f"the branches are scalars of type {a_type!r} and {b_type!r}"
+    return None
+
+
+def overlapping(planned: Sequence[Branch], doc: dict, pointer: str, kw: str) -> list[str]:
+    """Every PAIR of branches §4's third source cannot separate, named.
+
+    Pairwise and not globally, because that is what the section says: "Where the
+    branches are pairwise disjoint, the payload selects its own branch and the order
+    they are tried in cannot change which one it reaches."  One unseparated pair is
+    enough to make the answer a property of declaration order, which is what the refusal
+    below is about.
+
+    The pairs are returned rather than a boolean, so the refusal can NAME them: a reader
+    of "these branches overlap" cannot tell which two without re-running the emitter, and
+    a root with twelve branches has sixty-six pairs.
+    """
+    applied = [applied_type(doc, pointer, kw, i) for i in range(len(planned))]
+    return [
+        f"{planned[i].pointer} and {planned[j].pointer}"
+        for i in range(len(planned))
+        for j in range(i + 1, len(planned))
+        if separates(planned[i], planned[j], applied[i], applied[j]) is None
+    ]
+
+
 def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> str:
     """Emit the base, the branches and the module trailer; return the base's symbol.
 
@@ -670,58 +799,71 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
         _plan(branches[i], f"{pointer}/{kw}/{i}", symbol, doc, mod) for i in range(len(branches))
     ]
     on = discriminator(planned, doc)
-    if not on and any(p.inherits is not None for p in planned):
-        # **The dispatch is REQUIRED of a root whose branches own no fields**, and that
-        # is a fact about field ownership rather than about the spelling ``$ref``: a
-        # branch that inherits its whole property map declares nothing of its own, so
-        # nothing of its own node tells it from a sibling -- not a title, not a required
-        # set -- and the pin is the whole of both its identity (§4 "Names") and its
-        # dispatch (§4's first dispatch source).  With neither, the arm can only be
-        # reached by trying each branch and keeping the first that validates, which §4
-        # refuses because the answer is then decided by declaration order rather than by
-        # the payload.
+    overlaps = overlapping(planned, doc, pointer, kw) if not on else []
+    if overlaps:
+        # **§4's three dispatch sources, and the refusal for a union matching none of
+        # them.**  The first is a ``const`` every branch pins on one shared property
+        # (:func:`discriminator`), the second a key the bundle's manifest states, and the
+        # third branches no instance satisfies twice (:func:`overlapping`).  What the
+        # refusal is ON is OVERLAP: with an unseparated pair, a branch can only be reached
+        # by trying each and keeping the first that validates, and the answer is then a
+        # property of declaration order rather than of the payload.
         #
-        # **§4's sentence "a union matching neither refuses" is READ NARROWLY HERE, and
-        # the number is why -- not because §4 contradicts itself.**  It does not, and
-        # the two lists it keeps apart are worth stating, because reading them as one is
-        # a mistake this comment used to make.  §4 "Names" gives a union branch three
-        # NAMING choices (its own ``title``; else the ``const`` it pins on the
-        # discriminating property; else its sorted ``required`` set), which decide what a
-        # branch class is CALLED.  §4's dispatch paragraph gives two DISPATCH sources (a
-        # ``const`` every branch pins on one shared property, and a key the bundle's
-        # manifest states).  §5's ``required`` row settles which list the required set
-        # belongs to, in its own words -- "BRANCH -> the branch class's requiredness, and
-        # the third of the branch-naming choices".  NAMING, not dispatch.  So a branch
-        # named by its required set has no dispatch source either way, and §4's refusal
-        # sentence applies to it without touching the naming rule.
+        # **The DERIVATION is what keeps this small, and the number is the point.**  This
+        # site read ``not on and any(p.inherits is not None ...)`` -- a narrow reading of
+        # §4's refusal sentence, scoped to a root whose branches own no fields, because
+        # the literal reading cost 43 documents at the time it was written and the
+        # section then named only two sources.  §4's third source replaces that scoping
+        # with a derivation, and the measurement over the 1,054 portable documents is
+        # that **7 roots reach the derivation, 5 separate and 2 overlap**:
         #
-        # What the narrow reading is for, then, is SCOPE and not consistency: the literal
-        # reading refuses documents that emit on trunk today, which is a pre-existing
-        # question about trunk rather than anything this row introduces -- this row's
-        # emitted SET equals trunk's.  Measured on this tree by firing this refusal
-        # unconditionally: **emitted 716 -> 673**, 7 roots reported directly
-        # (``a2ui/bound-value``, ``adagents``, ``brand``, ``core/account-ref``,
-        # ``core/audience-selector``, ``core/canonical-account-ref``,
-        # ``core/postal-area``) and 51 documents chained onto them; 4 of the 7 were
-        # emitting.  Deciding whether §4 requires those is the design document's
-        # owner's, and is filed with both readings and that measurement.  No document
-        # reaches this path today, so the scoping changes nothing observable.
+        # * ``a2ui/bound-value`` (10 pairs), ``core/account-ref`` (1),
+        #   ``core/canonical-account-ref`` (1) and ``core/postal-area`` (1) separate on a
+        #   required name the other branch forbids; ``core/audience-selector`` (6)
+        #   separates on a pinned ``const``.  All five get past the dispatch, and the
+        #   four that were emitting keep emitting -- **the emitted set is unchanged**.
+        # * ``adagents`` (1 pair, both branches open so neither forbids anything) and
+        #   ``brand`` (5 of 10 pairs; ``/oneOf/1`` and ``/oneOf/3`` both require AND
+        #   declare ``house``, so one instance satisfies both) refuse here.
         #
-        # What the derivation does regardless: the discriminator is WRITTEN wherever it
-        # derives, so 34 of the 38 bases in the tree dispatch on a key instead of on a
-        # structural union, and the other 4 carry ``_BRANCH_DISCRIMINATOR = ""``.
+        # **Both of those two were already refusing, deeper, and this moves the report
+        # to the root.**  ``adagents`` read an ``anyOf`` conjunct at
+        # ``/oneOf/1/allOf/0`` and stays a deferral; ``brand`` read a scalar base at
+        # ``/definitions/default_language/allOf/0``, which is a VERDICT, so its
+        # resolution changes from verdict to deferral and the tree's verdict count falls
+        # by one.  The deeper obstruction is untouched and reports again once the overlap
+        # is resolved.  The root's dispatch is decided before its branches are declared,
+        # for the reason the naming pass is: a root-level fact is reported against the
+        # root.
+        #
+        # **The kind is a DEFERRAL and not a verdict**, because the second source is
+        # unwritten: a union whose discriminant is in the ENVELOPE is
+        # ``salesagent-j3k2l.60``'s row, which emits such a root as a mapping keyed by
+        # that field rather than as the base plus branches here, and a lowering cannot
+        # read the manifest to ask whether this document is one (§3's one dispatch seam).
+        # A verdict would count a clearable document as finally refused.
+        #
+        # What the derivation does regardless of this refusal: the discriminator is
+        # WRITTEN wherever it derives, so 34 of the 38 bases in the tree dispatch on a key
+        # instead of on a structural union, and the other 4 carry
+        # ``_BRANCH_DISCRIMINATOR = ""`` and reach their branches through §4's third
+        # source.
         raise Refusal(
             kw,
             pointer,
-            "no branch dispatch is derivable, and every branch here inherits its whole "
-            "property map, so nothing of a branch's own node tells it from a sibling: "
-            "§4's two sources are a const every branch pins on one shared property to a "
-            "distinct value, and a key the bundle's manifest states.  The branches "
-            f"confirm no such property ({_why_no_pin(planned)}), and the manifest source "
-            "is the row for a union whose discriminant is in the envelope "
-            "(salesagent-j3k2l.60), which emits such a root as a MAPPING keyed by that "
-            "field rather than as the base plus branches here.  A branch is never chosen "
-            "by trying each and keeping the first that validates",
+            "no branch dispatch is derivable and the branches OVERLAP: §4's three "
+            "sources are a const every branch pins on one shared property to a distinct "
+            "value, a key the bundle's manifest states, and branches no instance "
+            "satisfies twice.  The branches confirm no such property "
+            f"({_why_no_pin(planned)}), and these pairs are separated by no pinned const, "
+            f"no required name the other forbids and no scalar type: {overlaps}.  So a "
+            "branch could only be reached by trying each and keeping the first that "
+            "validates, which makes the answer a property of declaration order rather "
+            "than of the payload.  The manifest source is the row for a union whose "
+            "discriminant is in the envelope (salesagent-j3k2l.60), which emits such a "
+            "root as a MAPPING keyed by that field rather than as the base plus branches "
+            "here, and a lowering cannot read the manifest to ask whether this document "
+            "is one",
             kind=Kind.DEFERRED,
         )
     planned = [_named(p, symbol, doc) for p in planned]

@@ -3289,8 +3289,14 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "account/list-account-changes-response.json": "allOf",
     "account/sync-accounts-response.json": "allOf",
     "account/sync-governance-response.json": "allOf",
-    "adagents.json": "anyOf",
-    "brand.json": "allOf",
+    # Both read a keyword from inside a BRANCH until ``salesagent-j3k2l.67`` -- an
+    # ``anyOf`` conjunct at ``/oneOf/1/allOf/0`` and a scalar base at
+    # ``/definitions/default_language/allOf/0`` -- and both now read the root's own
+    # union keyword, because §4's third dispatch source decides the root's dispatch
+    # before its branches are declared and finds their branches OVERLAPPING.  The
+    # deeper obstructions are untouched and report again once the overlap is resolved.
+    "adagents.json": "oneOf",
+    "brand.json": "oneOf",
     "brand/acquire-rights-response.json": "allOf",
     "brand/creative-approval-response.json": "allOf",
     "brand/get-brand-identity-response.json": "allOf",
