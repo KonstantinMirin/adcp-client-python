@@ -1029,6 +1029,14 @@ class Emitted:
     #: whose two nodes are NOT identical is the failure that matters more than a missed
     #: collapse.
     adopted: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: Section 5's ``default`` row, the REPORTED half: ``document -> {pointer -> the
+    #: value dropped}``, for a default the document states on a REQUIRED property.
+    #: Dropping it changes no accepted set -- the key is in every admitted instance,
+    #: so the default can never apply -- but a fact the emitter discards in silence is
+    #: the one defect nothing else here catches, so it leaves the run by name and
+    #: pointer.  A document with no such default has no entry, so the mapping names
+    #: exactly the drops rather than every document emitted.
+    drops: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def _composed_nodes(bundle_dir: Path, known: set[str]) -> dict[str, frozenset[str]]:
@@ -1289,6 +1297,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         out.emitted[document] = f"{PACKAGE}.{rel.replace('/', '.')}"
         out.declared[document] = dict(mod.declared)
         out.adopted[document] = dict(mod.adopted)
+        if mod.drops:
+            out.drops[document] = dict(mod.drops)
         # The document travels WITH the module, at its own bundle-relative path,
         # because ``__adcp_schema__`` names that path and ``strict_validate``
         # reads it to decide acceptance (D4).  The bundle is a build-time input
@@ -1428,6 +1438,17 @@ def main(argv: list[str] | None = None) -> int:
             f"not written: {', '.join(sorted(out.beside))} "
             f"(D5's alias module is a whole-run artifact; pass --package to write it)"
         )
+    # Section 5's ``default`` row says "dropped and REPORTED", and this line is the
+    # report.  Printed BEFORE the refusals, because a drop is a fact about a document
+    # this run EMITTED: a reader scanning the refusals for a document's name would not
+    # find it, and the drop would then be invisible to everyone but the suite.
+    for document in sorted(out.drops):
+        for pointer, value in sorted(out.drops[document].items()):
+            print(
+                f"dropped {document} at {pointer} on default: the document says "
+                f"{value!r} and the property is REQUIRED, so the default can never be "
+                "applied and no rendering carries it"
+            )
     for document in sorted(out.refusals):
         r = out.refusals[document]
         print(

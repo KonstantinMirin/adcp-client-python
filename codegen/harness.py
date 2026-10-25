@@ -1089,7 +1089,7 @@ def _url_typed(got: Mapping[str, Any]) -> bool:
     )
 
 
-def _constrains_nothing(keyword: str, doc: Mapping[str, Any]) -> bool:
+def _constrains_nothing(keyword: str, doc: Mapping[str, Any], *, required: bool = False) -> bool:
     """Does a DOCUMENT fact constrain its accepted set, or not?
 
     The fifth resolver canonicalization, and the mirror of :func:`_narrows_nothing`:
@@ -1097,11 +1097,19 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any]) -> bool:
     whether a DOCUMENT-only fact constrains anything at all.  A fact that admits
     exactly what its absence admits is not dropped by a model that omits it, so
     reporting it as ``missing`` says the model is wider than its schema when it is
-    not.  Measured on the 1,054-document bundle: 5 facts in 1 of its 2 shapes, and
-    nothing else reaches this.
+    not.  Measured on the 1,054-document bundle: 5 facts in 1 of its 3 shapes, plus
+    the third shape's own sites, and nothing else reaches this.
 
     * **``required: []``** -- an empty list demands no key, which is what silence
-      demands.  5 sites, and all 5 of the facts this fold accounts for today.
+      demands.  5 sites, and all 5 of the facts the first two arms account for today.
+    * **``default`` on a property the enclosing node REQUIRES** -- a default is
+      applied to an instance that OMITS the key, and a required key is in every
+      instance the document admits, so the default can never be applied and its
+      absence from the model admits and refuses exactly what its presence would.
+      Section 5's ``default`` row drops it for that reason (``compiler.fields``,
+      which also REPORTS the drop), and this arm is the grading half of the same
+      decision, gated on the same shape.  5 of the bundle's 339 property defaults
+      sit on a required property.
     * **``enum: [false, true]`` at a node the document declares ``boolean``** --
       the two members are the whole of the boolean domain, so the enum admits
       exactly what ``boolean`` admits.  **0 sites in the bundle, and the arm is
@@ -1130,6 +1138,12 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any]) -> bool:
       ``"boolean"`` and a list spelling does not qualify.
     * ``required: ["x"]`` demands a key and must still compare, so the value is
       required to be empty rather than merely a list.
+    * A ``default`` on an OPTIONAL property is the one case where a default does
+      something -- the key may be omitted and the value then applies -- so it must
+      still compare, and the gate is ``required`` and not the keyword's name.  That
+      is also why ``required`` is a parameter here rather than something read off
+      ``doc``: requiredness is stated by the ENCLOSING node, which this function is
+      not handed, and reading it off the node itself would make every default fold.
 
     This is NOT the place to excuse a fact that is merely hard to render.  A
     document fact the model cannot express is ``missing``, and that is the report
@@ -1145,7 +1159,7 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any]) -> bool:
             and {type(m) for m in members} == {bool}
             and set(members) == {True, False}
         )
-    return False
+    return keyword == "default" and required
 
 
 def _schema_half_enforces(keyword: str, doc: Mapping[str, Any], got: Mapping[str, Any]) -> bool:
@@ -2095,7 +2109,7 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
                 # The fifth canonicalization: a document fact that constrains
                 # nothing is not dropped by a model that omits it.  Counted apart
                 # from ``missing`` so the fold stays auditable at its positions.
-                if _constrains_nothing(kw, doc):
+                if _constrains_nothing(kw, doc, required=required):
                     res.constrains_nothing.append(
                         f"{where}: the document says {doc[kw]!r}, which admits exactly "
                         "what its absence admits"

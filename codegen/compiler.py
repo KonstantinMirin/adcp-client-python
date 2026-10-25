@@ -1005,6 +1005,14 @@ class Module:
     #: dotted path on :class:`Type` produces it through the field, like
     #: ``pydantic.AwareDatetime``.
     aliases: dict[str, tuple[str, dict[str, Any]]] = field(default_factory=dict)
+    #: Section 5's ``default`` row: ``pointer -> the value DROPPED`` at it, for a
+    #: default on a REQUIRED property.  The row is "dropped and REPORTED", and this is
+    #: the report: the drop happens inside the walk, where nothing is printed, so the
+    #: fact rides out on the module the way :attr:`aliases` and :attr:`adopted` do and
+    #: ``emit.emit`` collects it per document for the CLI and for the suite.  A list
+    #: and not a count, because the pointer is what makes it auditable: a reader can
+    #: go to the node and see the default the model does not carry.
+    drops: dict[str, Any] = field(default_factory=dict)
 
     def declare(self, name: str, pointer: str, block: str) -> None:
         if name in self.names:
@@ -1288,22 +1296,30 @@ def fields(
         default = MISSING
         if "default" in sub:
             if is_required:
-                # No rendering carries it: a pydantic field with a default is not
-                # required, so transcribing one here would widen the model's
-                # accepted set to admit an instance omitting a key the document
-                # demands -- and the schema half of `strict_validate` would hide
-                # that in both acceptance directions.  5 of the bundle's 339
-                # property defaults sit on a required property; the step whose
-                # population reaches one decides between `json_schema_extra` and
-                # refusing.
-                raise Refusal(
-                    "default",
-                    at,
-                    "a default on a REQUIRED property has no rendering that does not also "
-                    "make the property optional",
-                    kind=Kind.DEFERRED,
-                )
-            default = sub["default"]
+                # Section 5's ``default`` row: **on a REQUIRED property, dropped and
+                # reported, because no rendering makes a field both required and
+                # defaulted.**  A pydantic field with a default is not required, so
+                # transcribing one here would widen the model's accepted set to admit
+                # an instance omitting a key the document demands -- and the schema
+                # half of ``strict_validate`` would hide that in both acceptance
+                # directions.
+                #
+                # Dropping it changes NO accepted set, which is why the row drops it
+                # rather than refusing the document: the key is present in every
+                # instance the document admits, so the default can never be applied
+                # and a model that omits it accepts and rejects exactly what the
+                # document does.  ``harness._constrains_nothing`` says the same thing
+                # on the grading side, gated on the same shape, so the fact is folded
+                # rather than reported as a drop the model got wrong.
+                #
+                # REPORTED, and that half is not optional: a fact the document states
+                # and the emitter silently discards is the one failure this pipeline
+                # has no other guard against.  :attr:`Module.drops` carries it out to
+                # ``emit.emit``, which prints it and hands it to the suite.  5 of the
+                # bundle's 339 property defaults sit on a required property.
+                mod.drops[at] = sub["default"]
+            else:
+                default = sub["default"]
         doc = sub.get("description")
         built.append(
             Property(
