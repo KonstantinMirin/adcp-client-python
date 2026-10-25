@@ -172,6 +172,25 @@ base's own model schema. That covers every path pydantic validates *through*: a 
 three, and most union roots are nested, which is where an override leaves a document satisfying
 no branch to parse as a loose base.
 
+**Which branch a payload is, is DERIVED from bundle data, never from a hand-written map.** Two
+sources, tried in this order; a union matching neither refuses by name and pointer. A branch is
+never chosen by trying each and keeping the first that validates: branches overlap, so that
+answer is decided by declaration order.
+
+1. **A `const` every branch pins on one shared property.** The union carries
+   `Field(discriminator=<property>)` and each branch subclasses both its `$ref` target and the
+   base, so the key alone selects the branch and pydantic reports against that branch rather
+   than all of them. The branches are the authority; `discriminator` confirms (D16). Measured:
+   `core/assets/asset-union.json` 21 of 21, `core/pricing-option.json` 10 of 10,
+   `core/format.json`'s asset union 12 of 12.
+2. **A key the bundle's manifest states.** `manifest.task_result_resolution` declares
+   `discriminator_field: "task_type"` and `terminal_schema_pointer_template:
+   "/tools/{task_type}/response_schema"` beside `terminal_schema_overrides`, and
+   `manifest.tools` carries 78 entries, each with a `response_schema` and an
+   `async_response_schemas`. `core/async-response-data.json` (42 branches, no property common
+   to all 42) and `compliance/task-completion-data.json` (4) emit as a mapping keyed by task,
+   read from the manifest. The discriminant is in the envelope, not the payload.
+
 **`__new__` on the mixin covers `Base(**data)`**, which no schema can reach — `BaseModel.
 __init__` validates with `self_instance=self`, so the object is already allocated by the time
 validation runs and direct construction returns a base instance whose serializer is the union.
@@ -627,27 +646,31 @@ A step that wants to change one of these reports it and stops.
   `anyOf` over `required` (exactly one, or at least one, of these field groups is present);
   `if`/`then`/`else` (a field is required only when another holds a given value);
   `dependencies` (if A is present, B is required); `minProperties` and `maxProperties` (a bound
-  on the count of set fields); `uniqueItems` (a list's items are distinct); and `not` (a
-  subschema that must not match). Those six are the whole population. Everything else is an
+  on the count of set fields); `uniqueItems` (a list's items are distinct); `not` (a
+  subschema that must not match); and `contains` (at least one item matches a subschema).
+  Those seven are the whole population. Everything else is an
   annotation, which pydantic enforces on the constructor without a rule. A rule narrows the
   constructor; acceptance stays with the schema (D4).
 
-  **Those six are seven. `contains` is a rule, and the closure claim above was measured
-  false.** An array holding at least one item that matches a subschema spans a collection and
-  has no field-level annotation in pydantic, which is this decision's own membership test, and
-  it occurs at **120 sites in 46 documents**. The plan named the keyword only as a position the
-  census walk descends (§6) and as a deferral count (§7.1), never as a family, while this
-  decision said its six were the whole population. Seven families, and `contains` is one.
+  **Where no class sits above a value, the value's own annotated type carries the rule.** A
+  class above is the better carrier because it can read sibling fields, so the class position is
+  preferred wherever one exists; where none does, the rule hangs off the type as an
+  after-validator — `AtLeastOne` for `contains`, `NotValue` for a `not` over a `const` or
+  `enum`, `Distinct` for a `uniqueItems` no class holds. `_runtime.RuleBound` reads which KEYS
+  are present, so it is not the carrier for a rule over elements.
 
-  **`propertyNames` at a RULE position is decided by neither side, and is named rather than
-  decided.** D5 types a mapping's KEY from `propertyNames`, and §6's own census rule says that
-  under `not`, `if`, `then` or `else` a keyword is a rule and no type is lowered from it — so a
-  `propertyNames` below a conditional falls between the two. Two nodes carry it, both at
+  **A rule's condition can test membership.** A `Match` clause reads a property's `const` or
+  `enum`, and also `value in field` — which is what a `contains` inside an `if` states (102 of
+  the 120 sites; 55 of them a bare `{"const": …}`). A membership test is part of a condition and
+  never a validator of its own.
+
+  **`propertyNames` at a RULE position states nothing on the model; the schema half answers
+  and the ceiling is named.** D5 types a mapping's KEY from `propertyNames`, but a rule position
+  constrains which keys a conditional TESTS rather than which keys an instance may carry, so
+  there is no key type to annotate and no value whose type could hold an after-validator. It is
+  the one position the carrier sentence above does not reach. Two nodes, both at
   `core/catalog-item-availability-state.json#/allOf/0/else`, in the signature
-  `{not, propertyNames, required}`; it is the whole of the residue the signature survey could
-  not place in a family (`salesagent-j3k2l.53`). The minimum reading is that it joins this
-  list as an eighth family. Nothing forces the question until a document reaching those two
-  nodes emits, and a row that decides it decides it with a document in hand.
+  `{not, propertyNames, required}`.
 - **D7 — bases are derived, and composition merges by intersection.** An `allOf` of `$ref`s
   makes those referenced classes the bases, so every base an emitted class has is a schema its
   document composes.
@@ -794,6 +817,13 @@ A step that wants to change one of these reports it and stops.
   part of the document, so they are retained, and silence says only that they are permitted, so
   they are accepted and dropped. Retaining a property the document never mentions would be the
   SDK adding a claim the schema does not make.
+
+  **On an `allOf` conjunct** (5 sites, all 5 stating `true`): `true` is the identity and
+  contributes nothing, `false` on any conjunct closes the composed object, and two typed ones
+  intersect their value schemas by D7. `additionalProperties` sees only the `properties`
+  declared in its own schema object, so `false` on an overlay would reject the fields its
+  sibling conjunct contributes; the composed class reads `extra` from the root. A typed conjunct
+  beside a `true` one is a widening and refuses (§ 5.1.4).
 
   A consumer who wants stricter or looser behaviour than the schema sets it on a subclass. The
   SDK does not read an environment to decide, and no generated class carries a policy that is
@@ -1057,8 +1087,14 @@ A step that wants to change one of these reports it and stops.
   so that one document's three members emit with no documentation. It is CARRIED, as the
   second spelling the enum row reads (§ 5.1.3) — the one `x-` name this decision admits as
   something rather than nothing.
-- **D16 — `discriminator` constrains no instance, and names a branch only where D3's second
-  rung needs it.** 81 sites
+- **D16 — `discriminator` constrains no instance; it names a branch where D3's second rung
+  needs it, and it confirms a dispatch key rather than establishing one.** §4 derives dispatch
+  from the branches: a union whose branches each pin one property to a distinct `const`
+  dispatches on that property whether or not the document declares the keyword
+  (`core/format.json`'s asset union pins `asset_type` on 12 branches and declares no
+  `discriminator`), and a declared keyword the branches do not confirm is not a dispatch source
+  (`core/requirements/catalog-field-binding.json` declares `kind` and one of its three branches
+  is inline). 81 sites
   in 73 documents, 28 distinct values, 51 of them at a document root; the value is always
   `{"propertyName": "<key>"}`. It is OpenAPI's keyword and not draft-07's, so `jsonschema` has
   no validator for it: measured at every site over the same thirteen-instance corpus, **0
@@ -1167,16 +1203,16 @@ differ; where the code reads it today (module.function); the decision it follows
 | keyword | sites / docs | compiles to, by position | where today | from |
 |---|---|---|---|---|
 | `type` | 11,217 / 1,001 | A scalar word → `str` / `int` / `float` / `bool` (`compiler.SCALAR`), unless D5 names a constrained type or `format` selects one. `object` with `properties` → a class. `object` without → `dict[K, V]`. `array` → `list[X]`. `null` → `None`. A LIST of words → `A \| B`, each sibling keyword on the one type word that can carry it (`containers.ARM`; 62 sites). ABSENT (a bare node) → `Any`. ABSENT beside `properties` (1,391 nodes) → an object where an enclosing node applies `type: object` to the same instance (§4; `bundle.constrained_to_object`, 556 of the 1,391), refused where none does.<br>ROOT → selects the D2 row. BRANCH → inherits the root's word (§4). CONJ → `object` or absent; any other word composes no object and refuses. RULE (125) → nothing is lowered. | `emit._decide`; `bundle.is_*_root`; `containers.multi_type`; `compiler.lower_object`; `compiler.lower_composition`; `union._plan` | D2, D5, §4 |
-| `description` | 9,591 / 1,054 | PROP → `Field(description=…)`. ROOT class → the docstring; ROOT alias → `Field(description=…)` on the alias; ROOT enum → the enum's docstring. ELEM / MAPV → the node is NAMED and the alias carries it (§6's carrier rule). BRANCH that is a class → the class's docstring (165 root-union, 94 nested-union sites); a non-object BRANCH of a nested union (25 sites) → no carrier today, see § 5.1.4. CONJ (28) → nothing; the class carries the composed node's own. RULE (40) → nothing. A `$ref` sibling (1,166 sites) wins over the target's; a composed base's loses to the document's own (§6's description-authority rule). Never folded by the comparison. | `compiler.fields` → `_field`; `compiler.render`; `compiler._alias_for`; `lower.enum.decide`; `containers._contents` → `compiler.name_the_node`; `compiler.declare_object` | D2, §6 |
+| `description` | 9,591 / 1,054 | PROP → `Field(description=…)`. ROOT class → the docstring; ROOT alias → `Field(description=…)` on the alias; ROOT enum → the enum's docstring. ELEM / MAPV → the node is NAMED and the alias carries it (§6's carrier rule). BRANCH that is a class → the class's docstring (165 root-union, 94 nested-union sites); a non-object BRANCH of a nested union (25 sites) → the branch's own annotated type, `Annotated[str, Field(description=…)]` (§ 5.1.4). CONJ (28) → nothing; the class carries the composed node's own. RULE (40) → nothing. A `$ref` sibling (1,166 sites) wins over the target's; a composed base's loses to the document's own (§6's description-authority rule). Never folded by the comparison. | `compiler.fields` → `_field`; `compiler.render`; `compiler._alias_for`; `lower.enum.decide`; `containers._contents` → `compiler.name_the_node`; `compiler.declare_object` | D2, §6 |
 | `required` | 4,198 / 677 | On an object node → the named fields are required: no `\| None`, no default (D4). Naming a property no node declares → refused (a presence rule with no field; `compiler.fields`). CONJ (59) → unioned into the composed class's `required` (D7); a `required`-only conjunct → the overlay: the field redeclared with the base's type and no default (D7). ROOT (501) → the root class's requiredness; a ROOT beside a union → `_ROOT_REQUIRED` on the base, inherited by every branch (§4; D2's object-facets clause). BRANCH (815) → the branch class's requiredness, and D3's third rung reads the sorted set as the branch's name. RULE (2,174): in a presence-only `oneOf` / `anyOf` branch → `RequiredGroups`; under `not` → `ForbiddenGroups`; in `if` → the keys a `Match` clause tests (434 of 591 `if` sites are readable); in `then` / `else` → `ConditionalRequired` / `NegatedConditional` (388 + 46 reduce; 200 + 12 reduce to nothing). `required: []` → nothing (`harness._constrains_nothing`). | `compiler.fields`; `compiler.lower_composition`; `union.ROOT_CONJUNCTS` (refuses today); `union.branch_identity`; `rules._combinator`, `_negated`, `_clauses`, `_branch` | D2, D4, D6, D7, §4 |
 | `properties` | 3,291 / 764 | A class with one field per key (D2). PROP / ELEM / MAPV / DEF → a nested class named by D3 (`<Property>`, `<Property>Item`, `<Property>Value`, `<Root><Key>`). CONJ (78) → fields of the composed class, merged by D7's restatement rule (narrower wins; neither narrowing refuses). ROOT beside a union (`{properties, oneOf}` and kin, 88 nodes) → fields on the base, inherited by every branch (D2's object-facets clause). BRANCH (572) → the branch class. RULE (1,060): under `if` → the values a `Match` clause tests, read only where const / enum; under `then` / `else` (310 sites) → nothing, the schema half narrows the value (D4); under `not` → nothing. | `compiler.lower_object`; `compiler.lower_composition.declare`; `union.ROOT_CONJUNCTS` (refuses today); `rules._clauses`, `_values`, `_branch` | D2, D3, D6, D7 |
-| `additionalProperties` | 1,891 / 727 | On a class: `false` → `extra="forbid"`; `true` → `allow`; typed → `allow` with a typed `__pydantic_extra__`, the same `dict[K, V]` a mapping lowers to; absent → `ignore` (D8). On a mapping (no `properties`) → the VALUE type; `true` / `{}` → `Any`; `false` → refused (admits only the empty object; a rule on a value). Beside `patternProperties` → refused (two value schemas). ROOT beside a union → the base's D8 reading (D2's object-facets clause). CONJ (5 sites) → undecided, § 5.1.4. RULE (3) → nothing. Its PRESENCE gates the `minProperties` rule (`rules._count`). | `compiler.declare_object`; `containers.mapping`, `_value`; `union.ROOT_CONJUNCTS` (refuses today); `compiler.INLINE` (refuses the conjunct) | D8, D2 |
+| `additionalProperties` | 1,891 / 727 | On a class: `false` → `extra="forbid"`; `true` → `allow`; typed → `allow` with a typed `__pydantic_extra__`, the same `dict[K, V]` a mapping lowers to; absent → `ignore` (D8). On a mapping (no `properties`) → the VALUE type; `true` / `{}` → `Any`; `false` → refused (admits only the empty object; a rule on a value). Beside `patternProperties` → refused (two value schemas). ROOT beside a union → the base's D8 reading (D2's object-facets clause). CONJ (5 sites, all 5 stating `true`) → nothing: `true` on a conjunct is the identity because draft-07 forces it on any overlay, `false` on any conjunct closes the composed object, and two typed ones intersect by D7 (§ 5.1.4). RULE (3) → nothing. Its PRESENCE gates the `minProperties` rule (`rules._count`). | `compiler.declare_object`; `containers.mapping`, `_value`; `union.ROOT_CONJUNCTS` (refuses today); `compiler.INLINE` (refuses the conjunct) | D8, D2 |
 | `items` | 1,830 / 484 | `list[X]`, X decided by the same walk and named `<Property>Item` where it needs a symbol (D3, §6's carrier rule). A list-valued `items` → refused (tuple validation; 0 sites, all 1,830 are schemas). ROOT array (5) → `RootModel[list[X]]` (D2). RULE (44) → nothing. | `containers.array` → `_contents`; `containers.root` (refuses the root row today) | D2, D3 |
 | `const` | 1,486 / 347 | `Literal[value]`; the type word is not restated (pydantic renders it). Values are `str` 1,310, `bool` 161, `int` 15; an object, array, `null` or float → refused. A const on a BRANCH's property → also D3's second rung's naming input. A const AT a branch node (pins the whole branch) → the branch is a scalar: refused at a root union (`core/start-timing.json`), a `Literal` member of a nested one. RULE (678): under `if` → a `Match` clause's value; under `then` / `else` / `not` → nothing (schema half). The comparison folds `enum: [v]` to `const` (§6). | `lower.const.decide`; `union._const_pin`; `rules._values` | D2, D3, §6 |
 | `title` | 1,460 / 1,054 | ROOT → the symbol: `pascal_case(title)`; missing or not an identifier → refused. BRANCH (356) → D3's first rung, the branch class's name. PROP (22) / DEF (23) / CONJ (3) / ELEM (2) → nothing: a nested node is named by its property or its entry key, so a nested title is not read. Never rendered (pydantic's own `title` is not a compared fact). D15: its presence selects `StrEnum` over `Literal` for an enum node. | `emit.lower_document` → `compiler.class_name`; `union.branch_identity` | D3, D15 |
-| `$ref` | 1,173 / 354 declaring (+ 3,027 pure; 4,200 sites) | Another document's root (3,682 sites) → an IMPORT of that module's symbol; nothing of the target is copied. A fragment of another document (113) → an import of a symbol the target DECLARES (`emit.exported`). Local `#/…` (405) → the entry decided on demand in this module, named `<Root><Key>`; a cycle refuses. An annotation sibling → the sibling's description wins (§6 rule 1); a constraining sibling → refused (draft-07 ignores it, the resolver merges it; 0 sites). CONJ → a BASE (D7); a `$ref` with a sibling in a conjunct → refused on the sibling. KEY → the key type. A bare-`$ref` BRANCH of a ROOT union (5 all-`$ref` sites, 58 branch sites) → undecided, § 5.1.4; of a nested union → a member type. | `emit._decide`; `compiler.local_reference`; `emit.emit.bind`; `compiler.lower_composition`; `containers._key`; `union._plan` (refuses the root case) | D1, D2, D3, D7, §6 |
+| `$ref` | 1,173 / 354 declaring (+ 3,027 pure; 4,200 sites) | Another document's root (3,682 sites) → an IMPORT of that module's symbol; nothing of the target is copied. A fragment of another document (113) → an import of a symbol the target DECLARES (`emit.exported`). Local `#/…` (405) → the entry decided on demand in this module, named `<Root><Key>`; a cycle refuses. An annotation sibling → the sibling's description wins (§6 rule 1); a constraining sibling → refused (draft-07 ignores it, the resolver merges it; 0 sites). CONJ → a BASE (D7); a `$ref` with a sibling in a conjunct → refused on the sibling. KEY → the key type. A bare-`$ref` BRANCH of a ROOT union (7 roots, 94 branch sites) → a class with TWO bases, the target and the union's base (§ 5.1.4; §4 for the dispatch). Of a nested union → a member type. | `emit._decide`; `compiler.local_reference`; `emit.emit.bind`; `compiler.lower_composition`; `containers._key`; `union._plan` (refuses the root case) | D1, D2, D3, D7, §6 |
 | `minimum` | 1,083 / 288 | `ge` on the TYPE (D5): rung 2 `NonNegativeInt` / `NonNegativeFloat` for `minimum: 0` (672 sites), rung 3 alias (`IntMin1`, `FloatMin0Max1`, …) otherwise. ELEM (19) / MAPV (7) → the alias inside `list[…]` / `dict[str, …]`. BRANCH (4) → the alias as the member type. RULE (18) → nothing. Rendered through `Constraints(minimum=…)` → `Field(ge=…)`. | `emit._decide` → `constraints.resolve`, `standard`, `symbol`; `compiler.CONSTRAINTS` → `_field` | D5 |
-| `minItems` | 1,075 / 347 | **Decided here (§ 5.1.2): `min_length` on the annotation of the ARRAY'S OWN TYPE, at every position.** Constrains at 1,044 of 1,075 sites. PROP (1,023) → `Annotated[list[X], Field(min_length=n)]` on the field. BRANCH (21) → on the branch's own type and never on the field holding the union (D5's worked instance). MAPV (6) / ELEM → the container's type must be NAMED to carry it (D5). DEF (6) → the entry's alias carries it when referenced. ROOT (5) → the root-array row. RULE (14) → nothing. `minItems: 0` (1 site) states nothing. Where the named carrier LIVES for an array of a document type is contradiction C2, § 5.1.4. | `containers.array` → `compiler._field` (PROP); `union.nested` (refuses BRANCH); `containers._inner` (refuses MAPV / ELEM); `compiler.name_the_node` (DEF) | D5, § 5.1.2 |
+| `minItems` | 1,075 / 347 | **Decided here (§ 5.1.2): `min_length` on the annotation of the ARRAY'S OWN TYPE, at every position.** Constrains at 1,044 of 1,075 sites. PROP (1,023) → `Annotated[list[X], Field(min_length=n)]` on the field. BRANCH (21) → on the branch's own type and never on the field holding the union (D5's worked instance). MAPV (6) / ELEM → the container's type must be NAMED to carry it (D5). DEF (6) → the entry's alias carries it when referenced. ROOT (5) → the root-array row. RULE (14) → nothing. `minItems: 0` (1 site) states nothing. The carrier is `constraints`' one generic alias `NonEmptyList[T]`, and a scalar-or-list union is one list-typed field with a promoting `BeforeValidator` (§ 5.1.4). | `containers.array` → `compiler._field` (PROP); `union.nested` (refuses BRANCH); `containers._inner` (refuses MAPV / ELEM); `compiler.name_the_node` (DEF) | D5, § 5.1.2 |
 | `enum` | 1,069 / 535 | A named node → `StrEnum` / `IntEnum`, the base read off the members (`str` 1,066, `int` 3; 164 typeless admitted); `enumDescriptions` → member docstrings. ROOT (214) → the enum with a module-level `strict_validate`. PROP (575) → a nested enum named `<Property>`. An UNTITLED BRANCH of a root union (`core/geo-place-system.json`, `-type.json`) → a `Literal` of the members (D2). KEY (1) → refused by name with the key set (D5). RULE (138): under `if` → `Match` values; else nothing. Mixed member types, an empty list or a duplicate member → refused. The comparison folds a one-member enum to `const` and `[false, true]` on a boolean to `type`. | `lower.enum.decide`; `emit._enum_root`; `union._plan` (refuses the Literal branch today); `containers._key`; `rules._values` | D2, D3, D5, §6 |
 | `$schema` | 1,054 / 1,054 | Nothing on the class. It SELECTS THE VALIDATOR the schema half runs — `strict_validate` and the harness ask `validator_for(doc)`, draft-07 for every document — and through it the format checkers the walk may select a type for (`emit.asserted_formats`). So it is the one annotation that decides a behaviour, and it decides it on the schema half. All ROOT; 1 distinct value; 0 refusals / 13,702. Admitted by name. | `harness.validator_for`; `emit.asserted_formats`; `compiler._DRAFT_ANNOTATIONS`; `emit._ANNOTATIONS` (left out of refusal reports) | D4, D15 |
 | `pattern` | 830 / 345 | `pattern` on the type: rung 3 alias `StrMatching<8 hex of SHA-256>`. On `format: uri` → SELECTS the type — `AdCPUrl` for exactly `^https://` (47), `HttpUrl` otherwise (253) — and the pattern stays with the schema half (D5). ELEM (123) / BRANCH (14) → the alias as element / member type. ROOT (9) → the root alias over the rung-3 alias. KEY (13) → an annotated `str` key (D5) — refused today as a verdict, § 5.1.4. RULE (10) → nothing. Engine: §4 derives `python-re` per class for look-around (4 of 111 patterns); today every class takes `python-re` (§ 5.1.4). | `constraints.symbol`, `_digest`, `url_type`; `containers._key` (refuses KEY); `_base.REGEX_ENGINE` | D5, §4 |
@@ -1186,19 +1222,19 @@ differ; where the code reads it today (module.function); the decision it follows
 | `maxLength` | 607 / 243 | `max_length` on the type (alias `StrMaxLen256`, …), the same positions as `minLength`; KEY (7) → the key type. On a URL type → refused (4 sites, all `maxLength: 2048`). | `constraints.symbol`; `containers._key`; `emit._decide` | D5 |
 | `if` | 591 / 186 | A `Match` clause list where it states `required` plus `properties` with `const` / `enum` values (434 of 591); otherwise nothing, and the schema half answers (157). With `then` / `else` → a rule on the nearest class. CONJ (542 — the `{if, then}` conjuncts) → the COMPOSED class's rule. ROOT (14) → the root class's rule. BRANCH (3) → the branch class's rule. RULE (30, nested) → nothing. | `rules._conditional`, `_clauses`; `compiler.lower_composition` (conjunct rules) → `declare_object` → `rules_at` | D6, D7 |
 | `then` | 588 / 186 | `ConditionalRequired(Match…, require=, forbid=)` from its `required` and a `not: {required: [one]}` (388 reduce; 200 reduce to nothing). Its `properties` (305 sites) → nothing on the model; the schema half narrows the value (D4). Positions as `if`. | `rules._conditional`, `_branch` | D6, D4 |
-| `uniqueItems` | 485 / 198 | PROP (467) → `UniqueItems(key)` rule on the class holding the array, plus `json_schema_extra={"uniqueItems": true}` on the field so the comparison grades it; the keyword is stripped off the array's own declaration. CONJ overlay on a `$ref` (`core/catalog-selection.json`, 3 sites) → a constrained type under D5 (D7). No class above (18: ROOT 4, MAPV 6, DEF 4, BRANCH 3, RULE 1) → the plan does not decide, § 5.1.4. All 485 state `true`. The comparison's fourth fold derives a `maxItems` from it over a countable set. | `rules._distinct`; `compiler.fields`, `Property.distinct` → `_field`; `containers.array` (refuses the 18) | D2, D6, D7 |
-| `not` | 471 / 192 | `not: {required: …}` and `anyOf` / `allOf` of those → `ForbiddenGroups` (398 sites). `not: {const}` / `{enum}` (18) → nothing on the model; the schema half refuses the value (D4). Any other shape (53) → nothing; the schema half. `not: {}` (2) → admits nothing; the typeless row's `Any` carries it. BRANCH (167) / CONJ (72) / ROOT (42) → that class's rule. RULE (167, nested) → nothing. PROP (11, a scalar's) → the schema half. D6 lists `not` as a family without this split, § 5.1.4. | `rules._negated`, `_required_groups`; `rules.ON_A_VALUE`; `emit._decide` | D6, D4 |
+| `uniqueItems` | 485 / 198 | PROP (467) → `UniqueItems(key)` rule on the class holding the array, plus `json_schema_extra={"uniqueItems": true}` on the field so the comparison grades it; the keyword is stripped off the array's own declaration. CONJ overlay on a `$ref` (`core/catalog-selection.json`, 3 sites) → a constrained type under D5 (D7). No class above (18: ROOT 4, MAPV 6, DEF 4, BRANCH 3, RULE 1) → a `Distinct` after-validator on the array's own annotated type, beside the `json_schema_extra` (decided, § 5.1.4). All 485 state `true`. The comparison's fourth fold derives a `maxItems` from it over a countable set. | `rules._distinct`; `compiler.fields`, `Property.distinct` → `_field`; `containers.array` (refuses the 18) | D2, D6, D7 |
+| `not` | 471 / 192 | `not: {required: …}` and `anyOf` / `allOf` of those → `ForbiddenGroups` (398 sites). `not: {const}` / `{enum}` (18) → a `NotValue` after-validator on the value's own annotated type (§ 5.1.4). Any other shape (53) → nothing on the model; the schema half answers and the ceiling is named. `not: {}` (2) → admits nothing; the typeless row's `Any` carries it. BRANCH (167) / CONJ (72) / ROOT (42) → that class's rule. RULE (167, nested) → nothing. PROP (11, a scalar's) → the 18/53 split above. | `rules._negated`, `_required_groups`; `rules.ON_A_VALUE`; `emit._decide` | D6, D4 |
 | `anyOf` | 450 / 200 | Presence-only (every branch `required`-only; 296 sites, 30 ROOT) → `RequiredGroups(groups, "anyOf")`. Shapes at ROOT (19) → a base with `BranchDispatchMixin`, one subclass per branch, `_branch_combinator()` returning `"anyOf"` (§4). Shapes nested (135: PROP 74, ELEM 20, DEF 17, MAPV 5, KEY 1) → one type `A \| B`; a sibling beside it → refused. CONJ (8) → one subclass per branch over the composed bases (D7). RULE (257): under `not` → the union of the branches' groups; else nothing. KEY (1) → a union of key types (D5). A union whose branches differ only in VALUES (15 nodes, 42 branches) → one class and a rule (D2). | `rules._combinator`; `union.lower_union`; `union.nested`; `compiler.lower_composition` (refuses the CONJ case today); `rules._required_groups` | D2, D6, D7, §4 |
 | `default` | 342 / 143 | PROP (337) → the field's default (`= value`, `has_default`); `None` is a default (`MISSING` is absence). On a REQUIRED property (5 sites) → dropped and reported (D4). DEF (3) / RULE (2) → the same: 18 of the 19 sit on a property of a nested object, the other (`brand.json#/definitions/default_language`) on an `allOf` node. On a node that becomes an alias → no slot (0 inner nodes state one). `default: null` on an optional property is not an added fact (§6). Compared by the comparison. | `compiler.fields` → `_field`; `compiler._alias_for` | D4, §6 |
 | `oneOf` | 212 / 165 | Shapes at ROOT (107) → the base plus subclasses, `_branch_combinator()` returning `"oneOf"`. Shapes nested (104: PROP 42, ELEM 40, DEF 11, MAPV 3) → `A \| B`, which admits an instance satisfying two branches; the schema half enforces exclusivity (D4). Presence-only (1) → `RequiredGroups(…, "oneOf")`. CONJ (3) → subclasses over the composed bases (D7). RULE (2) → nothing ("not exactly one" has no group form). ROOT with `properties` / `required` / `additionalProperties` / `allOf` beside → D2's object-facets clause and D7's envelope rule. | `union.lower_union`; `union.nested`; `rules._combinator`; `union.ROOT_CONJUNCTS` (refuses the facets today) | D2, D4, D6, D7, §4 |
 | `maximum` | 197 / 115 | `le` on the type (alias `…Max100`); positions as `minimum`. | `constraints.symbol`; `compiler.CONSTRAINTS` | D5 |
 | `examples` | 166 / 140 | Nothing on the model. The accepts check replays every one through `strict_validate` (§6): a payload the DOCUMENT refuses is a spec defect reported by document and pointer; one the document accepts and the class refuses is ours. ROOT 112, PROP 53, ELEM 1. 0 refusals / 2,158. | `harness` (the accepts check); `compiler._DRAFT_ANNOTATIONS` | §6, D15 |
 | `maxItems` | 147 / 88 | `max_length` on the array's own type — the `minItems` rule with the other bound. PROP (136) → the field. BRANCH (3) → the branch's own type (`governance/reported-outcome-error.json#/definitions/bounded_value_level_3/anyOf/1`). DEF 2. RULE 6 → nothing. | `containers.array`; `union.nested` (refuses BRANCH today) | D5, § 5.1.2 |
-| `contains` | 120 / 46 | On a typed array (18: PROP 13, CONJ 4, DEF 1) → nothing on the model; the schema half enforces it (D4), the constructor does not, and the ceiling is named (`containers._ARRAY_HANDLED`). RULE (102, nested) → nothing. In an `allOf` of `contains`-only conjuncts beside an array's own bounds (3 nodes) → the conjunct rule (D7). D6's seventh family; its mechanism is contradiction C8, § 5.1.4. | `containers._ARRAY_HANDLED` (admits); `harness.FACTS` (does not grade it) | D4, D6, D7 |
+| `contains` | 120 / 46 | An existential quantifier, and the model states the predicate (§ 5.1.4). On a typed array (18: PROP 13, CONJ 4, DEF 1) → `AtLeastOne(**{property: const})` or `AtLeastOne(value)` on the array's own annotated type. RULE (102, nested; 55 of them a bare `const` inside an `if`) → D6's MEMBERSHIP clause, `value in field`, not a validator. In an `allOf` of `contains`-only conjuncts beside an array's own bounds (3 nodes) → the conjunct rule (D7). D6's seventh family. | `containers._ARRAY_HANDLED` (admits); `harness.FACTS` (does not grade it) | D4, D6, D7 |
 | `else` | 58 / 44 | `NegatedConditional(…)` from its `required` and single-name `not` (46 reduce; 12 nothing). Its `properties` (5) → nothing. CONJ 43, RULE 12, ROOT 3. | `rules._conditional`, `_branch` | D6 |
 | `exclusiveMinimum` | 58 / 30 | **Decided here (§ 5.1.2): `gt` on the type.** Rung 3 alias `FloatGt0` (57 sites) / `IntGt0` (1). Constrains at 58 of 58. PROP (53) → the field's type. ELEM (5) → the alias inside `list[…]`. Never rendered as `ge`: 672 sites say `minimum: 0` and 58 say `exclusiveMinimum: 0`, and the two differ on exactly one instance. | `constraints.SPELLING` ("Gt"); `compiler.CONSTRAINTS` → `_field` (dmcg spells it `gt`) | D5, § 5.1.2 |
 | `$comment` | 48 / 28 | Nothing. A note to a reader, admitted by name. CONJ 33 (on `{if, then}` conjuncts), PROP 8, ROOT 6, RULE 1. 0 refusals / 624. | `compiler._DRAFT_ANNOTATIONS` | D15 |
-| `minProperties` | 48 / 40 | On a class → `PropertyCount(minimum=…)`, written only where `additionalProperties` is STATED (a dropped key would make the rule refuse what the document accepts). On a mapping → `Field(min_length=…)` on the dict's type, which pydantic renders back as `minProperties` — a position D2 and D6 do not state, § 5.1.4. CONJ (1) → the composed class's rule. BRANCH (1) → the branch class's rule. PROP 23, ROOT 13, DEF 4, ELEM 3, MAPV 2, RULE 1. | `rules._count`; `containers.KEY_BOUNDS` → `compiler.KEY_COUNT` | D6, D2 |
+| `minProperties` | 48 / 40 | On a class → `PropertyCount(minimum=…)`, written only where `additionalProperties` is STATED (a dropped key would make the rule refuse what the document accepts). On a mapping → `Field(min_length=…)` on the dict's type, which pydantic renders back as `minProperties`; a `PropertyCount` rule counts declared fields and a dict has none (decided, § 5.1.4). CONJ (1) → the composed class's rule. BRANCH (1) → the branch class's rule. PROP 23, ROOT 13, DEF 4, ELEM 3, MAPV 2, RULE 1. | `rules._count`; `containers.KEY_BOUNDS` → `compiler.KEY_COUNT` | D6, D2 |
 | `definitions` | 41 / 41 | Nothing by itself: a bag of named subschemas, admitted at every node. Each entry is declared ON DEMAND when a `$ref` names it, as the node's own kind, under `<Root><Key>` (D3 with the document as the parent); an entry nothing references is not declared (11 of 157). ROOT 40, PROP 1. | `compiler.DEFINITION_SECTIONS`; `compiler.local_reference` | D2, D3 |
 | `dependencies` | 32 / 27 | The list form → `Dependencies(trigger, names)` (60 entries, all 60 list-form). The schema form (0 entries) is skipped silently today; D14 says a part asserted empty refuses by name, § 5.1.4. ROOT 19, ELEM 8, PROP 4, RULE 1. | `rules._depends` | D6, D14 |
 | `propertyNames` | 26 / 21 | The mapping's KEY type (D5): a `$ref` → that type; `minLength` / `maxLength` → `StrMinLen1` (renders as `propertyNames.minLength`); `pattern` (13) → an annotated `str` — refused today as a verdict, § 5.1.4; `enum` (1) → refused by name with the key set; `anyOf` → a union of key types. RULE (3; the two `core/catalog-item-availability-state.json` nodes) → undecided (D6). PROP 18, ROOT 3, DEF 1, MAPV 1. | `containers._key` | D5, D6 |
@@ -1275,9 +1311,8 @@ one shorter than the bound, refused with the keyword and accepted without); the 
 witness artifacts with their cause named — 29 refused both ways (16 beside a `contains` that
 refuses the same short array, 13 where the element type refuses the `null` filler), 1 whose
 node holds an unresolved `$ref`, and `core/creative-localization.json#/properties/target_variants`,
-which states `minItems: 0` and forbids nothing. The decision is the compilation; WHERE the
-named carrier lives for an array of a document type is contradiction C2 below and is not
-decided here.
+which states `minItems: 0` and forbids nothing. The carrier for an array of a document type is
+`constraints`' generic `NonEmptyList[T]` (§ 5.1.4).
 
 **`exclusiveMinimum`, `exclusiveMaximum` → `gt` / `lt` on the type, never `ge` / `le`.** Both
 constrain at every site (58 of 58, 4 of 4, by the same witness: the bound's own value). `gt`
@@ -1310,7 +1345,7 @@ by name — it is, and the omission has no effect.
 
 #### 5.1.3 The five diagnosed
 
-**`discriminator` (81 sites, 73 documents) — two readings, both measured.** It constrains
+**`discriminator` (81 sites, 73 documents) — three readings, all measured.** It constrains
 nothing: 0 refusals over 1,053 validations (D16). At a ROOT (51 sites) `union.ROOT_HANDLED`
 admits it and `union._const_pin` reads its `propertyName`. Below a root (ELEM 19, PROP 7, DEF 3,
 BRANCH 1) `union.nested`'s sibling screen refuses it as "a sibling of a nested oneOf/anyOf is a
@@ -1319,7 +1354,8 @@ that cannot constrain (`core/assets/card-asset.json#/properties/media`,
 `media-buy/get-products-request.json#/properties/refine/items`,
 `media-buy/outcome-target.json#/properties/goal` among them). `compiler.BUNDLE_ANNOTATIONS`'
 note, that it "COULD CONSTRAIN AN INSTANCE", is the false reading and the one that costs
-documents. **And it IS a naming input, which D16's draft denied.** D3's second rung reads "the
+documents. **It is a naming input**, and separately it CONFIRMS a dispatch key that §4 derives
+from the branches (D16). D3's second rung reads "the
 discriminator `const`": the const a branch pins on the discriminating property. At 71 of 81
 sites each branch pins exactly one const and the keyword restates it; at **10 sites a branch
 pins two or more** (`core/registry-event.json` pins `entity_type` and `event_type` on all 20
@@ -1335,15 +1371,12 @@ branch pins more than one const, which is what the rung's own words say. The cha
 line in `union.nested`'s screen and the deletion of the `BUNDLE_ANNOTATIONS` note; `_const_pin`
 is already right. D16 is amended below to say so.
 
-**`contains` (120 sites, 46 documents) — the seventh family, and its mechanism is open.** D6's
-membership test — a keyword with no field-level annotation, spanning a collection — admits it,
-so D6's "those six are the whole population" was false and D6 is amended (the survey's
-decision). What `contains` compiles to is nothing on the model at every position: on the 18
-typed-array nodes `containers._ARRAY_HANDLED` admits it and the schema half enforces it; on the
-102 nested nodes no type is lowered. Whether that is "a rule carried by the schema half" (the
-reading the code gives `not` over a value, `rules.ON_A_VALUE`) or a rule D6 still owes an
-after-validator for is contradiction C8 below: `_runtime.RuleBound` reads which KEYS are
-present and `contains` is about elements, so no rule in D6's present shape can carry it.
+**`contains` (120 sites, 46 documents) — D6's seventh family.** D6's membership test — a
+keyword with no field-level annotation, spanning a collection — admits it. It compiles to an
+`AtLeastOne` after-validator on the array's own annotated type at the 18 field positions, and
+to a `Match` MEMBERSHIP clause at the 102 rule positions (§ 5.1.4). `_runtime.RuleBound` reads
+which KEYS are present, so it is not the carrier: a rule over elements hangs off the value's
+type, not off the holding class.
 
 **`x-enum-descriptions` (1 site) — a second spelling the enum row does not read.**
 `enums/signal-value-type.json` carries it and no `enumDescriptions`; the document emits today
@@ -1381,65 +1414,120 @@ be NARROWER than its document; filed upstream as adcontextprotocol/adcp#8472 and
 here. The change is one literal set in `compiler.py` replacing the five predicate reads,
 exactly as D15 states.
 
-#### 5.1.4 Where the code and the plan disagree, and what this section did not decide
+#### 5.1.4 Shapes a keyword row points at, and where the code lags
 
-**Contradictions this section reports and stops on.** Each would need a sentence in a decision
-this section does not own; a row in § 5.1.1 that meets one says so.
+**Each shape, and what it emits.** A row in § 5.1.1 that meets one points here.
 
-- **C2 — where a bound over an array of a document type is named.** D5's third rung puts an
-  alias we emit in `adcp.types.constraints`, a module with no document and no domain, and says
-  an alias names a constraint and never a concept. Its worked instance for `minItems` on a
-  branch is `Annotated[list[MediaBuyStatus], Field(min_length=1)]`, whose annotation names a
-  document type: it cannot live in `constraints` without naming a concept and importing from
-  the private tree. §6's other carrier, `compiler.name_the_node`, declares such an alias in
-  the document's own module under D3's nested name, and §6 limits it to "an array's element
-  and a mapping's value and nowhere else" — not a branch. What decides it: a D5 sentence
-  placing a constrained container whose element is a document type in the referring
-  document's module under D3's nested name, leaving `constraints` to shapes over scalars and
-  `Any`. Population: 21 `minItems` and 3 `maxItems` sites on a branch, 6 `minItems` on a
-  mapping value. (`salesagent-j3k2l.41`.)
-- **C8 — what kind of rule `contains` is.** D6 defines a rule as a hand-written after-validator
-  in `_runtime.py` reading a class-level tuple, and the survey makes `contains` the seventh
-  family. `RuleBound` reads key presence; `contains` is about elements, so no after-validator
-  of D6's shape carries it, and the code admits it as the schema half's statement instead,
-  exactly as it carries `not` over a value. What decides it: a D6 sentence admitting a family
-  whose only enforcement is the schema half (D4) and naming the constructor's ceiling, or a
-  `Contains` after-validator validating elements against the subschema at construction. The
-  `not`-over-a-value split (18 + 53 sites) needs the same sentence.
-- **C9 — a root union whose branches are all bare `$ref`s.** §4 emits a base plus one SUBCLASS
-  per branch; a `$ref` branch's class is the target's own and descends from no base, so
-  `union._plan` refuses it. D16 says D3's first rung names those branches; what the CLASS is
-  for `core/assets/asset-union.json` (21 branches) and `core/pricing-option.json` (10) is not
-  stated anywhere. 5 sites. What decides it: a §4 sentence on whether an all-`$ref` union is a
-  type alias `A | B | …` (no base, no `isinstance`) or a base whose branches are generated
-  subclasses of the targets.
-- **C10 — `additionalProperties` on an `allOf` conjunct.** D8 derives `extra` from the root's
-  and `compiler.INLINE` refuses a conjunct carrying one on the claim that there are 0 such
-  conjuncts; measured, **5 sites** carry `properties` and `additionalProperties` together
-  (`core/demographic-targeting-intent.json#/properties/age/allOf/1`,
-  `creative/sync-creatives-request.json#/properties/creatives/items/allOf/1`, and three under
-  `media-buy/`). What decides it: a D8 sentence on how two `additionalProperties` readings of
-  one instance combine — `false` wins over anything, typed over `true`, two typed intersect
-  their value schemas by D7's rule. (`salesagent-j3k2l.43` holds the first of the five.)
+- **A scalar, or a non-empty array of that scalar** (21 of the 25 bounded-branch sites). One
+  field, typed as the list, with a `BeforeValidator` promoting a bare scalar:
 
-**Positions the plan does not state, where the code has a reading.** Each is a finding and not
-a decision; the reading is named so a decision can be written against it.
+  ```python
+  primary: Annotated[list[HexColor], Field(min_length=1), BeforeValidator(as_list)]
+  ```
 
-- `minProperties` / `maxProperties` on a MAPPING: the code carries them as `Field(min_length
-  / max_length)` on the dict's type (`compiler.KEY_COUNT`), since a `PropertyCount` rule
-  counts fields and a `dict` has none; D2 and D6 name only the class position. Consistent with
-  D6's own membership test (an annotation exists), so the sentence it needs is one.
-- `uniqueItems` on an array NO class holds (18 sites: 4 roots, 6 mapping values, 4 definitions
-  entries, 3 branches, 1 under a rule): D2 puts the rule on the nearest class and there is
-  none; the code refuses as a verdict. The position is `salesagent-j3k2l.26`'s.
-- `not` over a value, and `not` of any shape but a required group (18 + 53 sites): the code
-  writes no rule and leaves it to the schema half; D6 lists `not` whole.
-- `description` on a non-object branch of a NESTED union (25 sites): a nested union is one
-  type, a scalar member has no class and no alias, so the description has no carrier; §6's
-  carrier rule covers an element and a mapping value only.
-- `propertyNames` at a RULE position (2 nodes): named undecided by the survey's D6 amendment.
-- `dependencies` in the schema form: 0 entries, skipped by `rules._depends` with a `continue`;
-  D14 says a part asserted empty refuses by name.
+  Both wire forms are accepted and the dump emits the list form. `adcp.types.constraints`
+  declares the bound once as `type NonEmptyList[T] = Annotated[list[T], Field(min_length=1)]`,
+  which names a constraint and not a concept, so D5's third rung carries it and a use site
+  reads `NonEmptyList[MediaBuyStatus]`.
+
+  The remaining 4 sites are a different shape:
+  `brand.json#/definitions/localized_string_list` is `array of string | array of entry`, and
+  `governance/reported-outcome-error.json`'s `bounded_value`, `bounded_value_level_2` and
+  `bounded_value_level_3` carry a third, object branch. (`salesagent-j3k2l.41`.)
+- **`contains` on an array** — at least one element matches, where `items` constrains every
+  element. The model states the predicate, not the subschema. 120 sites, two positions.
+
+  A field position (18: PROP 13, CONJ 4, DEF 1) carries an `AtLeastOne` after-validator on the
+  array's own annotated type:
+
+  ```python
+  blocked_impacts: Annotated[
+      list[Impact], Field(min_length=1, max_length=16), AtLeastOne(effect="blocked")
+  ]
+  ```
+
+  Two call shapes cover every measured subschema: `AtLeastOne(**{property: const})` where the
+  subschema requires properties pinned to a const, and `AtLeastOne(value)` where it is a bare
+  `const` or one-member `enum` over scalars.
+
+  A rule position (102, of which 55 are a bare `{"const": …}` inside an `if`) is a membership
+  test and carries no validator. D6's `Match` clause grows a MEMBERSHIP clause spelling
+  `value in field`.
+
+  `not` over a value takes the same two positions: over a `const` or `enum` (18) a `NotValue`
+  after-validator on the value's own annotated type; any other shape (53) states nothing on
+  the model and names the ceiling, as `not: {}` does.
+- **A root union whose branches are `$ref`s.** A branch is a class with TWO bases: its `$ref`
+  target, which supplies the fields, and the union's base, which supplies
+  `BranchDispatchMixin`, `_ROOT_REQUIRED` and `_branch_combinator()`. §4 says which branch a
+  payload is. 7 roots, 94 branch sites; every branch of all 7 is a `$ref` with at most an
+  annotation sibling, so none needs the constrained-`$ref` reading D2 refuses.
+
+  | root | branches | dispatch |
+  | --- | --- | --- |
+  | `core/async-response-data.json` | 42 | manifest `task_type` |
+  | `core/assets/asset-union.json` | 21 | `asset_type` const pin |
+  | `core/requirements/asset-requirements.json` | 12 | none — refuses |
+  | `core/pricing-option.json` | 10 | `pricing_model` const pin |
+  | `compliance/task-completion-data.json` | 4 | manifest `task_type` |
+  | `core/requirements/catalog-field-binding.json` | 3 | `kind`, declared; one branch inline |
+  | `core/media-buy-available-action-id.json` | 2 | none — refuses |
+
+  A union refuses where nothing in the bundle states which branch a payload is. For
+  `core/requirements/asset-requirements.json` the 12 branches all declare `required: []`, its
+  description defers to a sibling field on the parent
+  `core/requirements/offering-asset-constraint.json`, and only the filename links the enum
+  value `image` to `image-asset-requirements.json`. A filename is not a stated relation, so it
+  is not a dispatch source (`adcontextprotocol/adcp#8476`).
+- **`additionalProperties` on an `allOf` conjunct.** `true` is the identity and contributes
+  nothing; `false` on any conjunct closes the composed object; two typed ones intersect their
+  value schemas by D7. 5 sites, all 5 stating `true`:
+
+  ```
+  core/demographic-targeting-intent.json            /properties/age/allOf/1
+  creative/sync-creatives-request.json              /properties/creatives/items/allOf/1
+  media-buy/get-media-buy-delivery-response.json    …/totals/allOf/1
+  media-buy/media-buy-delivery-webhook-result.json  …/totals/allOf/1
+  media-buy/media-buy-delivery-webhook-result.json  …/by_package/items/allOf/1
+  ```
+
+  `additionalProperties` sees only the `properties` declared in its own schema object, so
+  `false` on an overlay would reject the fields its sibling conjunct contributes. The composed
+  class reads `extra` from the root under D8:
+
+  ```python
+  class DemographicTargetingIntentAge(DemographicAgeRange):
+      model_config = ConfigDict(extra="allow")
+      accepted_bases: NonEmptyList[AgeDeterminationBasis] | None = None
+      accepted_verification_methods: NonEmptyList[AgeVerificationMethod] | None = None
+  ```
+
+  A typed conjunct beside a `true` one is a widening and refuses. The `contains` inside this
+  node is a rule position: *if `accepted_verification_methods` is present, then
+  `accepted_bases` is required and must include `"verified"`.* (`salesagent-j3k2l.43` holds the
+  first of the five.)
+
+**Where no class sits above a value, the value's own annotated type carries the rule as an
+after-validator.** That is the general sentence; the five positions below are it applied.
+
+- `minProperties` / `maxProperties` on a MAPPING → `Field(min_length / max_length)` on the
+  dict's type (`compiler.KEY_COUNT`), which pydantic renders back as the document's own keyword.
+  A `PropertyCount` rule counts declared fields and a dict has none.
+- `uniqueItems` on an array no class holds (18 sites: ROOT 4, MAPV 6, DEF 4, BRANCH 3, RULE 1)
+  → a `Distinct` after-validator on the array's own annotated type, beside
+  `json_schema_extra={"uniqueItems": true}` so the comparison grades it. The 467 PROP sites keep
+  the `UniqueItems(key)` class rule: a class above can read sibling fields and an annotation
+  cannot.
+- `description` on a non-object branch of a NESTED union (25 sites) → the branch's own annotated
+  type, `Annotated[str, Field(description=…)]`. Where the branch is a class the docstring wins
+  (165 root-union, 94 nested-union sites).
+- `propertyNames` at a RULE position (2 nodes, both in
+  `core/catalog-item-availability-state.json`) → nothing on the model; the schema half answers
+  and the ceiling is named. A rule position constrains which keys a conditional tests, so there
+  is no key type to annotate.
+- `dependencies` in the schema form (0 entries) → refuses by name on the first occurrence, per
+  D14. `rules._depends`' silent `continue` is the defect. The list form (60 entries, all 60) is
+  unchanged.
 
 **Where the code lags a decision the plan already holds.** The plan decides; these are rows
 to implement, not questions.
@@ -1459,6 +1547,12 @@ to implement, not questions.
   rendering is the document's own spelling.
 - D7's conjunct rule: a `required`-only overlay, a conjunct whose content is a union, a
   conjunct carrying `errorMessage` — refused as deferrals (`salesagent-j3k2l.43`).
+- §4's two-based branch for a `$ref` branch of a root union: `union._plan` refuses all 7 roots
+  with "a bare `$ref` branch has no node to declare a subclass from", and the KIND is VERDICT.
+  A verdict means the obstruction is a property of the document, of pydantic, or of the pointer
+  space; this one is unwritten code, so the kind is DEFERRED and 14 documents (the 7 plus 7
+  refused through them) are counted as finally refused while being clearable. A row clearing it
+  reports the emitted and verdict deltas separately, never their sum.
 - §4's regex engine derived per class: `_base.REGEX_ENGINE` is `python-re` for every class.
 - D4's dropped-and-reported default on a required property: refused as a deferral
   (`salesagent-j3k2l.41`).
