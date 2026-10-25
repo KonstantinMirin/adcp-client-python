@@ -335,6 +335,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # names and not as the difference of two counts.
     assert sorted(cleared - set(composing())) == [
         "core/catalog.json",
+        # Two more since ``salesagent-j3k2l.43``, and both are RELEASED rather than
+        # claimed: neither composes at its own root, so neither is in ``composing()``;
+        # each one's only blocker was a ``$ref`` into a document whose conjunct that row
+        # lowered.  ``core/media-buy-support-requirements.json`` chains to
+        # ``core/media-buy-frequency-cap-requirement.json`` and
+        # ``core/package-targeting-resolution.json`` chains two hops to
+        # ``core/demographic-targeting-intent.json``.  They belong in this list for the
+        # reason the four below do -- the row cleared them without claiming them -- and
+        # they are named here so the row's own credit stays separate from the release.
+        "core/media-buy-support-requirements.json",
+        "core/package-targeting-resolution.json",
         "core/reporting-delivery-ready-webhook.json",
         "error-details/authorization-required.json",
         "error-details/macro-resolution-failed.json",
