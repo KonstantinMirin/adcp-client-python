@@ -3307,6 +3307,20 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         row = out.refusals[document]
         assert row["keyword"] and row["pointer"], document
         refused_on[document] = row["keyword"]
+    # **FOUR LEFT AND ONE WAS RE-ATTRIBUTED AT ``salesagent-j3k2l.43``, and nothing
+    # arrived.**  The four left because they EMIT:
+    # ``core/canonical-media-buy-action.json`` (was ``const``),
+    # ``core/collection-selection.json`` and ``core/placement-selection.json``
+    # (``required``) and ``core/product-execution-requirement.json`` (``not``) -- the
+    # requiredness overlay and the fields-and-a-rule conjunct, which is this row's work,
+    # plus the restatement the intersection rule now reads instead of refusing.
+    #
+    # The one re-attributed is ``media-buy/control-media-buy-response.json``, ``$ref`` ->
+    # ``const``: its refusal was CHAINED through
+    # ``core/canonical-media-buy-action.json``, which now emits, so the walk gets further
+    # and names its own verdict at
+    # ``/oneOf/0/properties/warnings/items/allOf/1/properties/code``.  That is the
+    # attribution moving in the honest direction, which is what this profile is for.
     assert refused_on == {
     "account/get-account-financials-response.json": "allOf",
     "account/list-account-changes-response.json": "allOf",
@@ -3342,10 +3356,8 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "core/audience-characteristic.json": "allOf",
     "core/brand-response-authorization-result.json": "properties",
     "core/budget-allocation.json": "$ref",
-    "core/canonical-media-buy-action.json": "const",
     "core/canonical-placement.json": "properties",
     "core/catchment.json": "properties",
-    "core/collection-selection.json": "required",
     "core/creative-asset.json": "allOf",
     "core/creative-manifest.json": "allOf",
     "core/delivery-metric-aggregate.json": "allOf",
@@ -3354,11 +3366,9 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "core/frequency-cap-impression-constraints.json": "properties",
     "core/frequency-cap-interval-constraints.json": "properties",
     "core/optimization-goal.json": "allOf",
-    "core/placement-selection.json": "required",
     "core/postal-area.json": "$ref",
     "core/postal-country-system.json": "properties",
     "core/pricing-option.json": "$ref",
-    "core/product-execution-requirement.json": "not",
     "core/product-format-declaration.json": "allOf",
     "core/registry-event.json": "properties",
     "core/requirements/asset-requirements.json": "$ref",
@@ -3380,7 +3390,7 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "error-details/vast-version-mismatch.json": "properties",
     "media-buy/build-creative-response.json": "allOf",
     "media-buy/buy-products-request.json": "allOf",
-    "media-buy/control-media-buy-response.json": "$ref",
+    "media-buy/control-media-buy-response.json": "const",
     "media-buy/create-media-buy-request.json": "allOf",
     "media-buy/create-media-buy-response.json": "allOf",
     "media-buy/decline-proposals-response.json": "properties",
