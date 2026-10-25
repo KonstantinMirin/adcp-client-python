@@ -240,9 +240,20 @@ A step that wants to change one of these reports it and stops.
 
   **A value set that no name reaches is a `Literal`, which is the rendering `const` already
   takes.** A `const` is a one-member value set and D2 renders it without naming it; an `enum` is
-  the same construct with more members. So an untitled `enum` branch states its members as a
-  `Literal` instead of claiming the node's hint, and D3 resolves no name for it — a lowering that
-  can proceed without a name does, rather than inventing one.
+  the same construct with more members. So an untitled `enum` branch whose POSITION supplies no
+  name states its members as a `Literal`, and D3 resolves no name for it — a lowering that can
+  proceed without a name does, rather than inventing one.
+
+  **A position supplies a name or it does not, and that is not an accident of collision.** A
+  branch under a property takes the property's own derived name, which is free. A branch of a
+  ROOT union takes none, because the root's own class holds that name. So
+  `error-details/accessibility-violation.json` at
+  `/properties/violations/items/properties/failure_kind` keeps a named `StrEnum`: its `oneOf`
+  states eight canonical values beside `^x_[a-z0-9]+(?:_[a-z0-9]+)*$`, and the document's own
+  description calls the first set canonical and the second a vendor-local extension. Those are
+  two concepts and a consumer dispatches on the first, so the canonical set keeps an importable
+  symbol and the extension sits beside it. A `Literal` there would state the same eight values
+  and give a consumer nothing to import.
   `core/geo-place-system.json` and `core/geo-place-type.json` are each an `anyOf` of an untitled
   `enum` of strings and a constrained string: the known values beside anything matching the
   pattern. 4 such branches exist in 4 documents, 2 of them at a root.
