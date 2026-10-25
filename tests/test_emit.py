@@ -694,13 +694,18 @@ def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() 
 #: the 6 of them that are CLASSES are 6 pairs that no longer exist.  The other 4 are
 #: enumerations, which carry no ``__adcp_schema__`` and were never pairs -- which is why
 #: this moves by 6 against that row's 10 and the two numbers are different senses.
-PAIRS_PIN = 1079
+#: 1079 -> 1090 at ``salesagent-j3k2l.21``: eleven more documents emit, each at
+#: least one pair, and the StrEnum that row removed from
+#: ``error-details/accessibility-violation.json`` took no pair with it -- an
+#: enumeration carries no ``__adcp_schema__`` and was never one.
+PAIRS_PIN = 1090
 #: Measured: 1,074 pass, and the five that do not are named in
 #: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.  The
 #: ``comparison:model_drops_a_fact`` group is GONE rather than smaller, which is
 #: ``salesagent-j3k2l.28``'s exit: ``added``, ``missing`` and ``differs`` are all 0.
 OUTCOME_PINS: dict[str, int] = {
-    "pass": 1077,
+    # 1077 -> 1088 at ``salesagent-j3k2l.21``, all eleven new pairs passing.
+    "pass": 1088,
     "no_instrument": 2,
 }
 #: One instance per pair, minus the 2 whose generator could not draw one and the 3
@@ -712,9 +717,14 @@ OUTCOME_PINS: dict[str, int] = {
 #: directions -- the exemption turns 3 non-pass pairs into passes and the dedup removes
 #: 6 pairs -- so all three were RE-MEASURED on the merged tree rather than picked from
 #: either side or differenced: 1083 -> 1077, 38224 -> 38181, 13715 -> 13709.
-ROUND_TRIPPED_PIN = 1077
-COMPARED_PIN = 38181
-MODEL_FACTS_PIN = 13709
+#: 1077 -> 1088 at ``salesagent-j3k2l.21``, one instance per new pair.
+ROUND_TRIPPED_PIN = 1088
+#: 38181 -> 38450 and 13709 -> 13776 at ``salesagent-j3k2l.21``: eleven more pairs
+#: have their keywords compared. ``URL_TYPED_PIN`` was RE-MEASURED on the same pass
+#: and is UNCHANGED at 1328, so it is left where it was rather than re-pointed --
+#: the new documents' URL types are all on arms the comparison already excused.
+COMPARED_PIN = 38450
+MODEL_FACTS_PIN = 13776
 #: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND BOTH ARE NOW GREEN.**  Zero is the
 #: specification's symmetric comparison -- a fact the model adds reddens and a fact it
 #: drops reddens -- and it was pinned here while ``MISSING_PIN`` was RED, because
@@ -733,7 +743,10 @@ NO_PAYLOAD_PIN = 2
 #: 610/473/2 -> 605/472/2 at ``salesagent-j3k2l.38``, and it is the partition moving with
 #: the pair count rather than the root shapes moving: 5 collapsed classes were reached by
 #: ``drops`` and 1 by ``replaces``, and the three still sum to ``PAIRS_PIN``.
-LIVENESS_PINS: dict[str, int] = {"drops": 605, "replaces": 472, "": 2}
+#: 605/472/2 -> 612/476/2 at ``salesagent-j3k2l.21``, and it is the partition moving
+#: with the pair count rather than the root shapes moving: the eleven new documents
+#: split 7 ``drops`` and 4 ``replaces``, and the three still sum to ``PAIRS_PIN``.
+LIVENESS_PINS: dict[str, int] = {"drops": 612, "replaces": 476, "": 2}
 
 
 @functools.cache
@@ -1355,7 +1368,14 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
 
     # Re-measured at ``salesagent-j3k2l.28``: ``date-time`` 190 -> 194 and ``uri``
     # 131 -> 133, over the 14 documents the three closed refusals let emit.
-    assert seen == {"date-time": 194, "uri": 133, "date": 5, "email": 5, "hostname": 3}, seen
+    # Re-measured at ``salesagent-j3k2l.21``: ``date-time`` 194 -> 196 and ``uri``
+    # 133 -> 135, over the eleven documents that row made emittable.
+    # ``core/start-timing.json``'s ``format: date-time`` branch is one of the two
+    # date-times, and the ``format: uri`` branch of each of
+    # ``core/geo-place-system.json`` and ``core/geo-place-type.json`` is one of the two
+    # uris -- each a position inside an ALIAS root rather than a class, which is the
+    # shape that row added and which this table reaches the same way.
+    assert seen == {"date-time": 196, "uri": 135, "date": 5, "email": 5, "hostname": 3}, seen
     # The excluded population, named and sized -- and it is SIX sites, not the one
     # that reddened.  **The other five were passing by accident**, which is the finding:
     # the import assertion is MODULE-wide, so a conditional-position ``uri`` in a module
@@ -1393,7 +1413,13 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _rendered(emitted, key, g.model)
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 333, stated  # 326 -> 333 at salesagent-j3k2l.28
+    # 326 -> 333 at salesagent-j3k2l.28, 333 -> 334 at salesagent-j3k2l.21: one more
+    # PROPERTY of a graded pair states a format, in the eleven documents that row made
+    # emittable. It moves by one where the format-TYPE table above moves by four,
+    # because this loop counts a document's own ``properties`` entries while that one
+    # counts every position a format selects a type at -- including the arms of an
+    # alias root, which have no property to be a property of.
+    assert stated == 334, stated
 
 
 def _model_schema(model: Any) -> dict:
@@ -5481,7 +5507,10 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     # is the number of NAMES clause 2 compared, so it is the one that says the identity
     # check ran at all, and ``unverifiable`` is the groups it could not reach.
     assert unverifiable == 0, unverifiable
-    assert declared == 1413, declared
+    # 1413 -> 1425 at ``salesagent-j3k2l.21``: eleven new modules declare twelve
+    # symbols between them, and the StrEnum removed from
+    # ``error-details/accessibility-violation.json`` gives one back.
+    assert declared == 1425, declared
     assert groups == 9, groups
     assert adoptions == 10, adoptions
     assert identities == 19, identities
@@ -5646,10 +5675,17 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # refusals that row closed were deferrals that others chained to.  142 -> 146 on
     # the verdict side.
     chained = {d: r for d, r in out.refusals.items() if r["kind"] == refusal_module.Kind.CHAINED}
-    assert len(chained) >= 166, len(chained)
+    # **166 -> 158, 146 -> 144 and 20 -> 14 at ``salesagent-j3k2l.21``, and the
+    # DIRECTION is the point these floors exist for.** They fall as rows land: seven
+    # of this row's eleven emissions were chained refusals, and
+    # ``core/geo-place-requirement.json`` stopped being chained at all -- its target
+    # cleared, so it now refuses directly on its own ``pattern``. Eight chains left
+    # the refusal set. The deferred side fell hardest again (20 -> 14) because what
+    # this row cleared were deferrals that others chained to.
+    assert len(chained) >= 158, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 146, dict(split)
-    assert split[refusal_module.Kind.DEFERRED] >= 20, dict(split)
+    assert split[refusal_module.Kind.VERDICT] >= 144, dict(split)
+    assert split[refusal_module.Kind.DEFERRED] >= 14, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
         max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values())

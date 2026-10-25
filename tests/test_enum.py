@@ -231,7 +231,13 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     # ``lookback_window``, ``image_carousel``'s ``allowed_card_asset_types`` and
     # ``bidding-policy-capability``'s two ``definitions`` entries, the last two reachable
     # only because .28's rows emit that document.
-    assert len(classes) == 502, len(classes)  # 214 roots, the rest inline
+    # 502 -> 503 at ``salesagent-j3k2l.21``, and the net hides two moves in opposite
+    # directions: the eleven new modules declare 2 enum classes
+    # (``GeographicPlaceCatalogEntryStatus``, ``MediaBuyAvailableActionTask``) and D2's
+    # Literal amendment removes 1 --
+    # ``AccessibilityViolationDetailsViolationsItemFailureKind``, whose branch no name
+    # reaches. Enumerated per module, not differenced.
+    assert len(classes) == 503, len(classes)  # 214 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -290,7 +296,12 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
     # 2993 -> 2979 at ``salesagent-j3k2l.38``: the 4 enum classes the content dedup
     # collapses take their members with them (8, 2, 2 and 2), so this shrinks against
     # that growth and the merged value is re-measured rather than picked.
-    assert names == 2979, names
+    # **2979 -> 2977 at ``salesagent-j3k2l.21``, and this pin FELL while the tree
+    # grew**, which is why the decomposition is stated rather than the delta: the
+    # eleven new modules add 6 members across 2 enum classes, and the StrEnum D2's
+    # Literal amendment removed from
+    # ``error-details/accessibility-violation.json`` had 8. +6 - 8 = -2.
+    assert names == 2977, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -357,7 +368,9 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
     # moved by 2 against this 4 -- the two were equal at 277 and again at 333 by
     # coincidence of the populations, and this is the third pair that is not.
     # 545 -> 568 at ``salesagent-j3k2l.28``, population growth again.
-    assert nodes == 568, nodes
+    # 568 -> 574 at ``salesagent-j3k2l.21``: six more enum nodes are reached, in the
+    # eleven documents that row made emittable.
+    assert nodes == 574, nodes
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -514,7 +527,10 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
     # as live.
     # (128, 78, 0) -> (131, 81, 0) at ``salesagent-j3k2l.28``: 3 more documents
     # reference a root enum, and ``inherited`` stays 0, which is the claim.
-    assert (sites, len(documents), inherited) == (131, 81, 0), (
+    # (131, 81, 0) -> (134, 83, 0) at ``salesagent-j3k2l.21``: three more reference
+    # sites in two more documents, and ``inherited`` stays 0 -- which is the half that
+    # matters, because a new site binding a COPY rather than the class would show here.
+    assert (sites, len(documents), inherited) == (134, 83, 0), (
         sites,
         len(documents),
         inherited,
@@ -913,9 +929,18 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
         refusing = emit.emit(BUNDLE, population())
     finally:
         compiler.ANNOTATIONS = original
-    assert sorted(set(refusing.refusals) - set(out.refusals)) == enum_rooted
-    assert len(refusing.emitted) == len(out.emitted) - 3, len(refusing.emitted)
-    for document in enum_rooted:
+    # **THE PRICE IS FOUR DOCUMENTS NOW, NOT THREE, AND THAT IS
+    # ``salesagent-j3k2l.21``.**  The docstring above priced it at "exactly the 3 enum
+    # roots with no cascade", and the carriers list says why that was true:
+    # ``core/media-buy-available-action-id.json`` carries ``enumMetadata`` and is NOT an
+    # enum root, so this row's own set could not reach it -- and it did not emit, so
+    # unannotating the keyword cost nothing there. It emits now (a union root of scalars
+    # is an alias), so refusing ``enumMetadata`` would refuse it too. The price is read
+    # off the measurement rather than held at the figure the comment argued.
+    priced = sorted([*enum_rooted, "core/media-buy-available-action-id.json"])
+    assert sorted(set(refusing.refusals) - set(out.refusals)) == priced, priced
+    assert len(refusing.emitted) == len(out.emitted) - 4, len(refusing.emitted)
+    for document in priced:
         assert refusing.refusals[document]["keyword"] == "enumMetadata"
         assert refusing.refusals[document]["pointer"] == "/"
 
@@ -1026,4 +1051,6 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     # ``tests/test_emit.py`` already grades, and would retire the only check on what a
     # module DECLARES -- the check that has now caught two separate defects.
     # 977 -> 1013 at ``salesagent-j3k2l.28``, population growth again.
-    assert checked == 1013, checked
+    # 1013 -> 1039 at ``salesagent-j3k2l.21``: the eleven new modules import 26 names
+    # between them, every one of which this closure check resolves.
+    assert checked == 1039, checked

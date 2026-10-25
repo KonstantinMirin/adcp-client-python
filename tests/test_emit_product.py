@@ -215,7 +215,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # refusals section 6 names as one-sided folds are gone, so 11 more documents of
     # this 599-document population emit.  Re-measured in one pass with the rest; the
     # row's own contribution moved with it (147 -> 152) and the delta held at 228.
-    assert len(with_row.emitted) == 592, "N, over a bundle of 1,054"
+    # **592 -> 607 at ``salesagent-j3k2l.21``, and the +15 against that row's +11 over
+    # the whole bundle is the CLOSURE, enumerated rather than reasoned.** This
+    # population is 599 documents and ``emit`` emits the ``$ref`` closure of it, so a
+    # newly-emitting document brings its reference targets in with it. The 15 are that
+    # row's own 11, plus four enum documents reached only through them --
+    # ``enums/action-not-allowed-reason.json``, ``enums/media-buy-action-mode.json``,
+    # ``enums/media-buy-valid-action.json`` and
+    # ``enums/seller-policy-decline-reason.json``. Over the WHOLE portable set those
+    # four were already emitting, so they are not a status change there: a count is
+    # evidence for its own population and these are two populations. Nothing was lost.
+    assert len(with_row.emitted) == 607, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
