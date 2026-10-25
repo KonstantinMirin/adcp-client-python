@@ -1,0 +1,229 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Details payload for ACTION_NOT_ALLOWED errors. Lets buyer SDKs offer a structured recovery path without a separate get_media_buys round-trip. Producer-authored extension values remain buyer-visible and MUST NOT contain vendor identifiers, internal object names, internal IDs, stack traces, or other producer-private implementation details.",
+  "properties": {
+    "attempted_action": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "const": "update_media_buy_frequency_cap"
+        },
+        {
+          "enum": [
+            "pause",
+            "cancel",
+            "resume",
+            "update_name",
+            "add_packages",
+            "update_dates",
+            "extend_flight",
+            "update_budget",
+            "update_pacing",
+            "shorten_flight",
+            "sync_creatives",
+            "update_bidding",
+            "decrease_budget",
+            "increase_budget",
+            "remove_creative",
+            "remove_packages",
+            "update_packages",
+            "replace_creative",
+            "update_targeting",
+            "reallocate_budget",
+            "update_flight_dates",
+            "update_frequency_caps",
+            "update_budget_allocation",
+            "update_creative_assignments"
+          ]
+        }
+      ],
+      "description": "The action the request mapped to, per the normative action-to-field mapping in update_media_buy task-reference.",
+      "enumMetadata": {
+        "update_media_buy_frequency_cap": {
+          "update_fields": [
+            "frequency_cap"
+          ]
+        }
+      },
+      "title": "Media Buy Available Action ID"
+    },
+    "currently_available_actions": {
+      "description": "Echo of the buy's resolved `available_actions[]` at rejection time. Buyer SDKs render this to the caller as the recovery option set.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "An action currently available on a media buy, resolved against the buy's current status, accepted commercial_terms.change_terms, account authorization, and applicable governance delegation. Authoritative for current availability, but not a replacement for negotiated rights: when explicit change_terms exist, this projection may temporarily omit an action because state changed, but MUST NOT silently replace its negotiated service mode, SLA, constraints, conditions, or contract reference. The containing array is uniquely keyed by action.",
+        "maxProperties": 7,
+        "properties": {
+          "action": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "anyOf": [
+              {
+                "const": "update_media_buy_frequency_cap"
+              },
+              {
+                "enum": [
+                  "pause",
+                  "cancel",
+                  "resume",
+                  "update_name",
+                  "add_packages",
+                  "update_dates",
+                  "extend_flight",
+                  "update_budget",
+                  "update_pacing",
+                  "shorten_flight",
+                  "sync_creatives",
+                  "update_bidding",
+                  "decrease_budget",
+                  "increase_budget",
+                  "remove_creative",
+                  "remove_packages",
+                  "update_packages",
+                  "replace_creative",
+                  "update_targeting",
+                  "reallocate_budget",
+                  "update_flight_dates",
+                  "update_frequency_caps",
+                  "update_budget_allocation",
+                  "update_creative_assignments"
+                ]
+              }
+            ],
+            "description": "The action identifier.",
+            "enumMetadata": {
+              "update_media_buy_frequency_cap": {
+                "update_fields": [
+                  "frequency_cap"
+                ]
+              }
+            },
+            "title": "Media Buy Available Action ID"
+          },
+          "applicable_package_ids": {
+            "description": "For a package-scoped action, the exact packages currently eligible. Omission means every relevant package. Root actions omit this field.",
+            "items": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "A package identifier to which a package-scoped media-buy action currently applies.",
+              "minLength": 1,
+              "title": "Applicable Package ID",
+              "type": "string",
+              "x-entity": "package"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "change_term_id": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "The accepted proposal change_terms[].term_id from which this current-state action projection was derived.",
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Media Buy Change Term ID",
+            "type": "string",
+            "x-entity": "media_buy_change_term"
+          },
+          "mode": {
+            "enum": [
+              "self_serve",
+              "seller_managed",
+              "requires_approval",
+              "conditional_self_serve"
+            ]
+          },
+          "sla": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": {
+              "not": {}
+            },
+            "description": "Optional SLA commitment for this action on this buy. Absence means no commitment, not zero commitment.",
+            "maxProperties": 2,
+            "properties": {
+              "completion_max": {
+                "description": "Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
+                "examples": [
+                  "PT1H",
+                  "PT24H",
+                  "P2D"
+                ],
+                "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+                "type": "string"
+              },
+              "response_max": {
+                "description": "Maximum elapsed time from when the buyer issues the action to when the seller acknowledges receipt (mode-appropriate: synchronous response for self_serve, tolerance decision for conditional_self_serve, or queue acknowledgement for seller_managed and legacy requires_approval). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
+                "examples": [
+                  "PT5M",
+                  "PT4H",
+                  "P1D"
+                ],
+                "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+                "type": "string"
+              }
+            },
+            "title": "SLA Window",
+            "type": "object"
+          },
+          "task": {
+            "enum": [
+              "sync_creatives",
+              "refine_proposals",
+              "control_media_buy"
+            ]
+          },
+          "terms_ref": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "deprecated": true,
+            "description": "Deprecated 3.1 opaque commercial-terms pointer. A 3.2 compatibility projection MAY echo change_term_id here for older buyers, but new buyers MUST prefer change_term_id and MUST NOT assume an arbitrary 3.1 value identifies an accepted change term.",
+            "title": "Media Buy Terms Reference",
+            "type": "string",
+            "x-deprecated-in": "3.2.0",
+            "x-removed-in": "4.0.0"
+          }
+        },
+        "required": [
+          "action",
+          "mode"
+        ],
+        "title": "Media Buy Available Action",
+        "type": "object",
+        "x-adcp-validation": {
+          "verifier_constraints": {
+            "applicable_package_scope": "Every applicable_package_ids value identifies a package of this media buy.",
+            "change_term_link": "When change_term_id is present, it resolves to exactly one accepted_proposal.commercial_terms.change_terms[].term_id whose action, service_mode, and processing_sla agree with this projection.",
+            "legacy_alias_agreement": "When change_term_id and deprecated terms_ref are both present and terms_ref is being used as the proposal-term link, their values are identical. A 3.1 terms_ref with no accepted change term remains an opaque legacy commercial pointer and MUST NOT be reinterpreted as authority."
+          }
+        }
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "decline_reason": {
+      "enum": [
+        "other",
+        "inventory",
+        "frequency_cap",
+        "notice_period",
+        "contract_terms",
+        "share_of_voice",
+        "minimum_commitment"
+      ]
+    },
+    "reason": {
+      "enum": [
+        "wrong_status",
+        "mode_mismatch",
+        "condition_unresolved",
+        "not_supported_on_buy",
+        "not_supported_on_product"
+      ]
+    }
+  },
+  "required": [
+    "attempted_action",
+    "reason"
+  ],
+  "title": "Action Not Allowed Details",
+  "type": "object"
+}
