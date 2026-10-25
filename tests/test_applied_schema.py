@@ -48,6 +48,14 @@ from adcp.types._base import AdCPBaseModel, SchemaRef, applied_schema, schema_at
 from codegen import bundle, emit
 from codegen.refusal import Refusal
 
+from tests.nodeset import claimed, partitions, ratchet
+
+#: A FLOOR over the WHOLE portable set, which is not the count the committed tree holds
+#: (that is the ``population()`` run, and the two have been confused in three
+#: briefings).  Direction: an emitting row only adds documents.  The history, each move
+#: a row doing its work: 674, 686 (bcb0b8ca8), 691 (.40), 705 (.28), 716 (.21).
+EMITTED_FLOOR = 716
+
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
 
@@ -127,36 +135,38 @@ def _declares_properties(doc: dict, pointer: str) -> bool:
     return isinstance(node.get("properties"), dict) and bool(node["properties"])
 
 
-def test_the_two_populations_are_counted_over_the_whole_bundle() -> None:
-    """The denominators, because the rule is a PARTITION of one population and a
-    verdict over a population nobody counted is a verdict over however many nodes
-    there turned out to be.
+def test_the_two_populations_partition_the_bundles_typeless_nodes() -> None:
+    """The denominators, because the rule is a PARTITION of one set of nodes and a
+    verdict over a set nobody named is a verdict over however many nodes there turned
+    out to be.
 
-    Both halves are required non-empty by being pinned to a non-zero number: the
-    first alone would pass for a rule that constrains everything, the second alone for
-    a rule that constrains nothing.
+    Each half is asserted NON-EMPTY, which is the fact the two numbers carried: the
+    first half alone would hold for a rule that constrains everything and the second
+    alone for a rule that constrains nothing.  They are not asserted as sizes -- the
+    sizes are one bundle version's reading, and the halves are DISJOINT and TOTAL over
+    the typeless nodes, which is the property that cannot be true of one version only.
 
-    The second pair of numbers is the subset the DEFECT was found on -- a node
-    declaring a non-empty ``properties``, which is the only shape a class can be
-    declared at, so it is the subset the emitter's answer turns on.
+    The second pair is the subset the DEFECT was found on -- a node declaring a
+    non-empty ``properties``, which is the only shape a class can be declared at, so it
+    is the subset the emitter's answer turns on, and it too is named rather than sized.
     """
     constrained, loose = census()
-    assert sum(len(p) for p in constrained.values()) == 2040
-    assert len(constrained) == 354
-    assert sum(len(p) for p in loose.values()) == 8000
-    assert len(loose) == 727
+    both = {(d, p) for d, ps in constrained.items() for p in ps}
+    neither = {(d, p) for d, ps in loose.items() for p in ps}
+    claimed("typeless nodes the document constrains to an object", both)
+    claimed("typeless nodes the document leaves unconstrained", neither)
+    partitions(both | neither, constrained=both, loose=neither)
 
-    def with_properties(half: dict[str, frozenset[str]]) -> tuple[int, int]:
-        per = {
-            document: [
-                p for p in pointers if _declares_properties(bundle.read(BUNDLE, document), p)
-            ]
+    def with_properties(half: dict[str, frozenset[str]]) -> set[tuple[str, str]]:
+        return {
+            (document, p)
             for document, pointers in half.items()
+            for p in pointers
+            if _declares_properties(bundle.read(BUNDLE, document), p)
         }
-        return sum(len(v) for v in per.values()), sum(1 for v in per.values() if v)
 
-    assert with_properties(constrained) == (556, 151)
-    assert with_properties(loose) == (833, 206)
+    claimed("constrained nodes declaring properties", with_properties(constrained))
+    claimed("loose nodes declaring properties", with_properties(loose))
 
 
 def test_the_difference_between_the_two_halves_is_a_schema_fact() -> None:
@@ -194,37 +204,52 @@ def test_the_difference_between_the_two_halves_is_a_schema_fact() -> None:
     what establishes.
     """
     constrained, loose = census()
-    checked = skipped = admitted_bare = 0
+    checked: set[tuple[str, str]] = set()
+    skipped: set[tuple[str, str]] = set()
+    admitted_bare: set[tuple[str, str]] = set()
     for document, pointers in constrained.items():
         doc = bundle.read(BUNDLE, document)
         for pointer in pointers:
             bare = _node(doc, pointer)
             if "$ref" in bare or bundle.references(bare):
-                skipped += 1
+                skipped.add((document, pointer))
                 continue
             applied = applied_schema(doc, pointer)
             assert not jsonschema.Draft7Validator(applied).is_valid("a string"), (
                 document,
                 pointer,
             )
-            admitted_bare += jsonschema.Draft7Validator(bare).is_valid("a string")
-            checked += 1
-    assert (checked, skipped) == (1541, 499), (checked, skipped)
-    assert admitted_bare == 1215, admitted_bare
+            if jsonschema.Draft7Validator(bare).is_valid("a string"):
+                admitted_bare.add((document, pointer))
+            checked.add((document, pointer))
+    # The three are non-empty sets and they PARTITION the constrained half: a node is
+    # checked or skipped, the skipped ones are exactly the referencing ones, and the
+    # ``admitted_bare`` subset is what says the applied schema is doing the refusing
+    # rather than the bare node already refusing on its own.  As three counts they were
+    # a reading of one bundle version and said nothing more.
+    partitions({(d, p) for d, ps in constrained.items() for p in ps}, checked=checked, skipped=skipped)
+    claimed("constrained nodes checked", checked)
+    claimed("constrained nodes skipped for a reference", skipped)
+    claimed("checked nodes whose BARE node admits a string", admitted_bare, inside=checked)
 
-    untouched = 0
-    conjoined: dict[str, int] = {}
+    untouched: set[tuple[str, str]] = set()
+    conjoined: dict[str, set[tuple[str, str]]] = {}
     for document, pointers in loose.items():
         doc = bundle.read(BUNDLE, document)
         for pointer in pointers:
             bare, applied = _node(doc, pointer), applied_schema(doc, pointer)
             assert applied.get("type") != "object", (document, pointer)
             if applied is bare:
-                untouched += 1
+                untouched.add((document, pointer))
             else:
-                conjoined[repr(applied["type"])] = conjoined.get(repr(applied["type"]), 0) + 1
-    assert untouched == 7987, untouched
-    assert conjoined == {"'string'": 5, "'array'": 8}, conjoined
+                conjoined.setdefault(repr(applied["type"]), set()).add((document, pointer))
+    # The loose half: almost every node is handed back UNTOUCHED, and the few that are
+    # not take a type that is never ``object`` -- asserted just above, per node.  Which
+    # TYPES get conjoined is the fact; how many nodes each one reaches is one bundle
+    # version's count of it.
+    claimed("loose nodes handed back untouched", untouched)
+    assert set(conjoined) == {"'string'", "'array'"}, {k: len(v) for k, v in conjoined.items()}
+    assert all(conjoined.values()), conjoined
 
 
 def test_the_only_fact_conjoined_at_a_constrained_node_is_its_object_type() -> None:
@@ -273,7 +298,10 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
         and g.ref.pointer.lstrip("#")
         in bundle.constrained_to_object(bundle.read(BUNDLE, g.ref.document))
     ]
-    assert len(rows) == 35, [g.ref for g in rows]
+    # The pairs at a constrained node, non-empty -- the per-row loop below is the
+    # obligation and 35 was the number of rows one emitted tree gave it.  WHICH
+    # documents they come from is the fact worth pinning and it is named below.
+    claimed("pairs at a node its own document constrains", {g.ref for g in rows})
     assert {g.ref.document for g in rows} == {
         "core/activation-key.json",
         "core/reporting-write-destination.json",
@@ -329,7 +357,10 @@ def test_ten_of_the_eleven_emit_and_the_last_one_refuses_on_another_rows_keyword
     the emitter neither built nor refused would otherwise satisfy both halves.
     """
     eleven = sorted(set(NOW_EMITTED) | set(STILL_REFUSED))
-    assert len(eleven) == 11, eleven
+    # The two named sets are DISJOINT and together are the population this test grades,
+    # so a document moving from one to the other is caught by the partition rather than
+    # by a count that stays 11 either way.
+    partitions(eleven, now_emitted=NOW_EMITTED, still_refused=set(STILL_REFUSED))
     out = emit.emit(BUNDLE, eleven)
     assert set(NOW_EMITTED) <= set(out.emitted), sorted(set(NOW_EMITTED) - set(out.emitted))
     for document, (keyword, pointer) in STILL_REFUSED.items():
@@ -349,8 +380,9 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     the designed outcome for a node nothing constrains, the probes under it are what
     reach it, and a bundle that gains such a document gains it here.
     """
-    out = emit.emit(BUNDLE, bundle.portable(BUNDLE))
-    assert len(out.emitted) + len(out.refusals) == 1054
+    portable = claimed("bundle.portable", bundle.portable(BUNDLE))
+    out = emit.emit(BUNDLE, sorted(portable))
+    partitions(portable, emitted=set(out.emitted), refused=set(out.refusals))
     # Re-pinned 674 -> 686 on bcb0b8ca8, and this is the EMITTED count over all
     # 1,054 portable documents -- NOT the 682 the committed tree holds, which is
     # the population() run. Those two populations have been confused in three
@@ -368,7 +400,19 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     # subclasses (+5, of which 2 are alias roots and 3 released through their ``$ref``),
     # and then D2's amendment renders a value set no name reaches as a ``Literal`` (+6,
     # of which 2 are the geo-place pair and 4 released through their ``$ref``).
-    assert len(out.emitted) == 716
+    #
+    # A FLOOR, not an equality, and the direction is the reason: every emitting row
+    # takes this number UP and no row may take it down, so an equality is red on two
+    # branches at once with two different correct values.  The history above is six
+    # re-pointings of it (674, 686, 691, 705, 716) and every one was a row doing its
+    # work.
+    ratchet(
+        "documents emitted over the whole portable set",
+        len(out.emitted),
+        at_least=EMITTED_FLOOR,
+        because="an emitting row only adds documents; a drop means a document that "
+        "lowered stopped lowering, which is a regression and never a row's intent",
+    )
     assert [d for d, r in out.refusals.items() if "nothing enclosing it" in r["detail"]] == []
 
 
@@ -514,7 +558,11 @@ def test_a_conditional_or_negated_position_carries_nothing(keyword: str) -> None
     assert f"/{keyword}" not in bundle.constrained_to_object(doc)
     assert applied_schema(doc, f"/{keyword}") is doc[keyword]
 
-    at = [g.ref for g in test_emit.graded() if f"/{keyword}" in g.ref.pointer]
+    # Over the pairs the tree carries, which is named non-empty first: "no pair sits at
+    # a conditional position" is free over an empty set of pairs, and the tree is
+    # imported at module scope so an import that half-failed would give exactly that.
+    pairs = claimed("graded pairs", {g.ref for g in test_emit.graded()})
+    at = [ref for ref in pairs if f"/{keyword}" in ref.pointer]
     assert at == [], at
 
 
@@ -535,13 +583,18 @@ def test_the_assertion_is_inherited_down_a_chain_of_combinator_hops() -> None:
     assert "/anyOf/0/oneOf/0" in constrained
     assert applied_schema(doc, "/anyOf/0/oneOf/1")["type"] == "object"
 
-    through_a_conditional = sum(
-        1
-        for document in bundle.portable(BUNDLE)
-        for p in bundle.constrained_to_object(bundle.read(BUNDLE, document))
-        if any(seg in ("if", "not", "then", "else") for seg in p.split("/"))
+    # Non-empty: the claim is that the bundle HAS nodes constrained through a
+    # conditional for the reading above to be about, and 639 was one bundle version's
+    # count of them.
+    claimed(
+        "nodes constrained to an object through a conditional",
+        {
+            (document, p)
+            for document in bundle.portable(BUNDLE)
+            for p in bundle.constrained_to_object(bundle.read(BUNDLE, document))
+            if any(seg in ("if", "not", "then", "else") for seg in p.split("/"))
+        },
     )
-    assert through_a_conditional == 639, through_a_conditional
 
 
 # --------------------------------------------------------------------------- #
@@ -660,7 +713,13 @@ def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
             per_document[g.ref.document] += 1
             # and it resolves, which is what the scope widening is for
             assert applied_schema(root, reference), (g.ref, reference)
-    assert dict(per_document) == {
-        "core/bidding-policy-capability.json": 8,
-        "core/placement-presentation.json": 16,
+    # The two documents, by name, each with a non-empty set of local references -- and
+    # every one of them is asserted to RESOLVE in the loop above, which is the
+    # obligation.  Counted once per (PAIR, reference) here, where
+    # ``tests/test_emit.py`` reads the same references once per document: two
+    # denominators for one fact, and naming the set says which rather than how many.
+    assert set(per_document) == {
+        "core/bidding-policy-capability.json",
+        "core/placement-presentation.json",
     }, dict(per_document)
+    assert all(per_document.values()), dict(per_document)

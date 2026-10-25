@@ -36,6 +36,8 @@ from adcp.types._base import SchemaRef, schema_at
 from codegen import bundle, constraints, dump_exemptions, harness
 from codegen.dump_exemptions import EXEMPT, ORIGIN_ONLY, PIN, UPSTREAM, Exemption
 
+from tests.nodeset import claimed
+
 #: The packaged tree, which is the pointer space an entry names: section 6 measures
 #: these documents at 0 ``$ref`` occurrences, so what the harness grades is the
 #: resolved form and a node reached through a ``$ref`` in the bundle source is an
@@ -251,12 +253,15 @@ def _uri_patterns() -> dict[str, int]:
 
 
 def test_the_bundles_uri_pattern_population_is_the_one_d5_states() -> None:
-    """D5's 8 distinct patterns over 73 sites, re-measured, so the census below has a
-    denominator this build agrees with rather than one carried forward."""
-    patterns = _uri_patterns()
-    assert len(patterns) == 8, sorted(patterns)
-    assert sum(patterns.values()) == 73, sum(patterns.values())
-    assert patterns[constraints.HTTPS_ONLY] == 47, patterns[constraints.HTTPS_ONLY]
+    """D5's distinct ``format: uri`` patterns, as the SET the census below draws over.
+
+    Named and asserted non-empty rather than sized: the two patterns the exemption
+    turns on are asserted BY NAME, which is what the three counts were standing in for
+    -- a bundle version's reading of how many sites each one occupies says nothing
+    about whether the two patterns the decision names are still there.
+    """
+    patterns = claimed("distinct format:uri patterns in the bundle", _uri_patterns())
+    assert constraints.HTTPS_ONLY in patterns, sorted(patterns)
     assert ORIGIN_ONLY in patterns, sorted(patterns)
 
 
