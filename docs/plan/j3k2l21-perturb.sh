@@ -18,7 +18,7 @@ run() {   # run(<name>, <-k expr>)
   code=$?
   line=$(printf '%s\n' "$out" | grep -E '^(FAILED|ERROR)|[0-9]+ (passed|failed|error)' | tail -2 | tr '\n' ' ')
   case $code in
-    0) verdict="GREEN -- PERTURBATION NOT CAUGHT" ;;
+    0) verdict="GREEN (BASE is the control and SHOULD be green; for a P- row this means NOT CAUGHT)" ;;
     1) verdict="RED (test failure)" ;;
     2) verdict="RED (interrupted)" ;;
     3) verdict="RED (internal error)" ;;
@@ -120,9 +120,33 @@ p.write_text(s)
 EOF
 run P-F "$MINE"
 echo
-echo "=== P-F also against the step's arithmetic (40 / 86)"
+echo "=== P-F also against the step's arithmetic (42 / 84)"
 run P-F2 "$ARITH"; restore
 
 echo
+echo "=== P-G  D2's Literal amendment: resolves_no_name answers False, so an untitled"
+echo "         enum branch claims a name again and the geo-place pair refuses"
+python3 -c "
+import pathlib
+p = pathlib.Path('codegen/lower/enum.py'); s = p.read_text()
+old = '    if node.get(\"title\"):'
+assert s.count(old) == 1
+p.write_text(s.replace(old, '    return False  # PERTURBED\n' + old, 1))
+"
+run P-G "$MINE"; git checkout -- codegen/lower/enum.py
+
+echo
+echo "=== P-H  the widened DRY walk: lower_enum dropped from the module list, which is"
+echo "         the exact blind spot this row would otherwise have left behind"
+python3 -c "
+import pathlib
+p = pathlib.Path('tests/test_emit.py'); s = p.read_text()
+old = '            (\"enum\", lower_enum),\n'
+assert s.count(old) == 1
+p.write_text(s.replace(old, '', 1))
+"
+run P-H "const_row_has_exactly_one_lowering"; restore
+
+echo
 echo "=== restored; working tree:"
-git status --short "$T" "$U"
+git status --short "$T" "$U" codegen/lower/enum.py
