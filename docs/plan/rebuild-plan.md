@@ -221,7 +221,8 @@ A step that wants to change one of these reports it and stops.
   keyed on the class name, which comes from the schema `title`. A consumer's import therefore
   survives an upstream file rename; the document path is a build input, not an API.
 - **D2 — what becomes a class.** An object with `properties` → a model. An `enum` node →
-  `StrEnum`/`IntEnum`. A `oneOf`/`anyOf` → a base, one subclass per branch, and a union alias.
+  `StrEnum`/`IntEnum` where a name reaches it, and a `Literal` of its members where none does.
+  A `oneOf`/`anyOf` → a base, one subclass per branch, and a union alias.
   Everything else is an annotation or a rule: scalar → an annotation; array → `list[X]`; typed
   `additionalProperties` or `patternProperties` → a mapping (D5 types its key); `const` →
   `Literal`; typeless → `Any`;
@@ -236,6 +237,18 @@ A step that wants to change one of these reports it and stops.
   only untitled branch has no derivable name **refuses** rather than being wrapped, because a
   wrapper changes what the class is called and leaves the naming problem untouched. Needing a
   name produces the wrapper, not the constraint.
+
+  **A value set that no name reaches is a `Literal`, which is the rendering `const` already
+  takes.** A `const` is a one-member value set and D2 renders it without naming it; an `enum` is
+  the same construct with more members. So an untitled `enum` branch states its members as a
+  `Literal` instead of claiming the node's hint, and D3's ladder is not consulted — a lowering
+  that can proceed without a name does, rather than inventing one.
+  `core/geo-place-system.json` and `core/geo-place-type.json` are each an `anyOf` of an untitled
+  `enum` of strings and a constrained string: the known values beside anything matching the
+  pattern. 4 such branches exist in 4 documents, 2 of them at a root.
+
+  A `StrEnum` is still what a NAMED enum node becomes, and the name is what decides between
+  them. An enum reached by a title or a property has a public symbol and keeps it.
 - **D3 — names.** Root: `pascal_case(title)`, keeping acronyms. Nested: parent name +
   `pascal_case(property)`. Union branch: title, else the discriminator `const`, else the sorted
   required set, else **the branch's own root type word**, else refuse the document by name and
