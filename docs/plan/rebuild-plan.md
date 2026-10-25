@@ -252,7 +252,7 @@ and a document satisfying no branch fails each branch at field validation, where
 Branches subclass the base, so they do not exist while the base is built: the hook returns the
 base's own schema then, and the declaring module calls `model_rebuild(force=True)` afterwards.
 
-**Which branch a payload is, is derived from bundle data, never from a hand-written map.** Two
+**Which branch a payload is, is derived from bundle data, never from a hand-written map.** Three
 sources, in order:
 
 1. **A `const` every branch pins on one shared property.** The union carries
@@ -262,11 +262,20 @@ sources, in order:
    discriminator field and a template resolving a schema from it, and `manifest.tools` is the
    table. Such a union emits as a mapping keyed by that field: its discriminant is in the
    envelope, not in the payload.
+3. **Branches no instance satisfies twice.** Where the branches are pairwise disjoint, the
+   payload selects its own branch and the order they are tried in cannot change which one it
+   reaches. Disjointness is derived from the branches themselves: one property pinned to
+   different `const` values, a `required` name one branch declares and another forbids, or
+   scalar branches of different `type`. A pair the derivation cannot separate is treated as
+   overlapping, because admitting a union on an unproven disjointness is the defect this source
+   exists to avoid.
 
-A union matching neither refuses. A branch is never chosen by trying each and keeping the first
-that validates — branches overlap, so that answer is decided by declaration order rather than by
-the payload. A hand-written map per document is the same defect deferred: it is complete with
-respect to itself, so a branch added upstream leaves it silently wrong.
+A union matching none of the three refuses, and what it refuses on is OVERLAP: a branch is never
+chosen by trying each and keeping the first that validates, because overlapping branches make
+that answer a property of declaration order rather than of the payload. Where nothing overlaps
+there is no order to depend on, which is why the third source is a dispatch and not a relaxation.
+A hand-written map per document is a fourth source and is refused: it is complete with respect to
+itself, so a branch added upstream leaves it silently wrong.
 
 ---
 
