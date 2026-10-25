@@ -1,12 +1,15 @@
-"""Emit Python types for bundle documents named on the command line.
+"""The WALK: it reads a bundle document and decides what each node becomes.
 
-    python -m codegen.emit --bundle schemas/cache/3.2 core/pagination-request.json
+The command is ``python -m codegen`` and it lives in ``codegen/__main__.py``,
+which holds the argument parser and the refusal report and nothing else:
+
+    python -m codegen --bundle schemas/cache/3.2 core/pagination-request.json
 
 The committed tree is the same command over this step's whole population, which
 is derived from the bundle and never listed by hand (``tests/test_emit.py``
 grades the tree against exactly this):
 
-    python -m codegen.emit --bundle schemas/cache/3.2 $(python -c 'from pathlib \
+    python -m codegen --bundle schemas/cache/3.2 $(python -c 'from pathlib \
       import Path; from codegen import bundle; b = Path("schemas/cache/3.2"); \
       print(*[d for d in bundle.portable(b) if bundle.is_leaf_object(bundle.read(b, d)) \
       or bundle.references_a_property(bundle.read(b, d)) \
@@ -24,16 +27,25 @@ to ``datamodel-code-generator``'s pydantic-v2 model layer, which writes the
 Python.  dmcg's parser never runs.
 
 **D13 divides the walk between this module and ``codegen.compiler``**, and the cut
-is the import rule rather than a taxonomy.  What is HERE is the CLI, the module
-writer (the header, the import block, the ``__all__``), the refusal report,
-:func:`decide_type` -- the per-node dispatch, because the answer for an array, a
-mapping or a multi-type node lives in a lowering -- and :data:`ROWS`, the dispatch
-table.  What is in ``compiler`` is everything a lowering is handed: the field
-builder, the class declarer, the alias declarer, the keyword screen, D3's name
-rules and the carriers.  A lowering under ``codegen/lower/`` therefore imports
-``codegen.compiler`` and ``codegen.refusal`` and never this module, which is what
-keeps ``python -m codegen.emit`` from binding this module twice under ``runpy``;
-``tests/test_import_rule.py`` asserts it by AST.
+is the layering rather than a taxonomy.  What is HERE is the module writer (the
+header, the import block, the ``__all__``), :func:`decide_type` -- the per-node
+dispatch, because the answer for an array, a mapping or a multi-type node lives in
+a lowering -- and :data:`ROWS`, the dispatch table.  What is in ``compiler`` is
+everything a lowering is handed: the field builder, the class declarer, the alias
+declarer, the keyword screen, D3's name rules and the carriers.
+
+**The per-node decision used to be unreachable BY NAME from either of them, and
+the entry-point module is what changed that.**  ``python -m codegen.emit`` executed
+this file as ``__main__`` under ``runpy``, so any module that then reached
+``codegen.emit`` by name held a SECOND module object -- a second :data:`ROWS` and a
+second :func:`decide_type` -- and the prohibition that prevented it cost three
+callables carried on :class:`compiler.Module`, which is how a lowering decided a
+child node and named a constraint.  ``codegen/__main__.py`` removes the reason: no
+module of this compiler is ever bound as ``__main__``, so this module is imported
+once, by name, on every path.  :func:`decide_type` is therefore reached through
+``compiler.decide`` and :func:`name_the_constraint` through ``compiler.carried``,
+and the context carries DATA rather than functions.  ``tests/test_import_rule.py``
+is down to the two boundaries that are about design (§8, §9).
 
 The bundle directory is an argument (D9) and there is no default, so no version
 literal can enter this package.  The output path is a function of the document
@@ -72,11 +84,8 @@ does, with two hash seeds.
 
 from __future__ import annotations
 
-import collections
-import argparse
 import functools
 import json
-import sys
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -725,10 +734,12 @@ def name_the_constraint(decided: Decided, mod: compiler.Module) -> compiler.Type
 
     ``compiler.carried`` asks this at the three positions that cannot hold a fact on a
     field of their own -- an array's ELEM, a mapping's MAPV and a union BRANCH -- and
-    refuses when it answers ``None``.  It is here, and reached through the
-    :class:`compiler.Module` like ``decide`` and ``bind``, because the names are
-    ``codegen.constraints``'s and that module imports ``compiler``: asking from
-    ``compiler`` would close a cycle, and a lowering may import neither.
+    refuses when it answers ``None``.  It is HERE, and ``compiler.carried`` defers the
+    import of it to call time, because the names are ``codegen.constraints``'s and
+    that module imports ``compiler``: a module-level import from ``compiler`` would
+    close that cycle.  It used to be carried on :class:`compiler.Module` as a callable
+    for a second reason as well -- ``codegen.emit`` was unnameable while ``runpy``
+    bound it twice -- and ``codegen/__main__.py`` retired that half.
 
     **It does not re-read the node, and that is deliberate.**  Everything it needs is
     on the :class:`Decided` the walk already produced -- the scalar's own type word is
@@ -990,12 +1001,6 @@ def lower_document(
     bind: Callable[[str, str], Target] = _no_binder,
     named: frozenset[str] = frozenset(),
 ) -> tuple[Module, str]:
-    # D2's shape rows dispatch through ``codegen.lower.ROWS``, one module per row.
-    # Imported inside the function because a row's module imports this module's
-    # ``fields``/``declare_object`` by name: one direction is lazy, so the two
-    # never form an import cycle whichever is loaded first.
-    from codegen import lower
-
     title = doc.get("title")
     if not isinstance(title, str) or not title:
         raise Refusal(
@@ -1016,8 +1021,6 @@ def lower_document(
         document=document,
         root=symbol,
         bind=bind,
-        decide=decide_type,
-        name_constraint=name_the_constraint,
         asserted=asserted_formats(doc),
         named=named,
         # The SUBSCHEMA behind each named pointer, read off ``bundle.nodes`` -- the one
@@ -1518,77 +1521,3 @@ def write(out: Emitted, tree: Path, package: Path | None = None) -> None:
     for path in sorted(tree.rglob("*")):
         if path.suffix in EMITTED_SUFFIXES and path not in intended and path.is_file():
             path.unlink()
-
-
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="codegen.emit", description=__doc__)
-    ap.add_argument("--bundle", type=Path, required=True, help="the schema bundle directory")
-    ap.add_argument("--tree", type=Path, default=TREE, help="where the modules are written")
-    ap.add_argument(
-        "--package",
-        type=Path,
-        default=None,
-        help="where D5's alias module is written; a WHOLE-RUN artifact, so a run over "
-        "part of the population must leave it out (see `write`)",
-    )
-    ap.add_argument("document", nargs="+", help="bundle-relative document paths")
-    ns = ap.parse_args(argv)
-
-    out = emit(ns.bundle, ns.document)
-    write(out, ns.tree, ns.package)
-    if ns.package is None:
-        print(
-            f"not written: {', '.join(sorted(out.beside))} "
-            f"(D5's alias module is a whole-run artifact; pass --package to write it)"
-        )
-    # Section 5's ``default`` row says "dropped and REPORTED", and this line is the
-    # report.  Printed BEFORE the refusals, because a drop is a fact about a document
-    # this run EMITTED: a reader scanning the refusals for a document's name would not
-    # find it, and the drop would then be invisible to everyone but the suite.
-    for document in sorted(out.drops):
-        for pointer, value in sorted(out.drops[document].items()):
-            print(
-                f"dropped {document} at {pointer} on default: the document says "
-                f"{value!r} and the property is REQUIRED, so the default can never be "
-                "applied and no rendering carries it"
-            )
-    for document in sorted(out.refusals):
-        r = out.refusals[document]
-        print(
-            f"refused {document} ({r['resolved']}) at {r['pointer']} "
-            f"on {r['keyword']}: {r['detail']}"
-        )
-    # A NAME THE CLASS CARRIES NOTHING FOR is not a refusal and is printed as its own
-    # line: the document emitted, and what the reader needs to know is that one name at
-    # one pointer reached no class.
-    for document in sorted(out.carries_nothing):
-        for line in out.carries_nothing[document]:
-            print(f"carries nothing for {document} at {line}")
-    # **The report names the KINDS and not "refused" alone.**  "refused" admits "not
-    # built yet", which is how `emitted + refused == 1054` stayed green over 385
-    # documents waiting on rows nobody had written, so the one figure the exit
-    # condition counts -- emitted plus VERDICTS -- is printed beside the partition
-    # rather than left to a reader to assemble.
-    counted = collections.Counter(r["resolved"] for r in out.refusals.values())
-    verdicts = sum(counted[k] for k in refusal.FINAL_KINDS)
-    print(
-        f"emitted {len(out.emitted)} / refused {len(out.refusals)} "
-        f"({', '.join(f'{k} {n}' for k, n in sorted(counted.items()))}); "
-        f"accounted {len(out.emitted) + verdicts}; "
-        f"{len(set(ns.document))} named, the rest reached through a $ref"
-    )
-    return 1 if out.refusals else 0
-
-
-if __name__ == "__main__":
-    # Through the PACKAGE, not through this copy of it.  ``python -m codegen.emit``
-    # executes this file as ``__main__`` under ``runpy``, so anything that reached
-    # ``codegen.emit`` by name would hold a SECOND module object.  D13 removed the
-    # one importer that did -- a lowering now imports ``codegen.compiler``, where
-    # ``Module``, ``Shape``, ``Target`` and ``Decided`` live, and ``Refusal``
-    # already lives in a module no ``-m`` can name (D12).  This re-entry is what
-    # keeps that true for ``ROWS`` and :func:`decide_type` as well: one entry
-    # point, so there is one of every row and one decider.
-    from codegen.emit import main as _main
-
-    sys.exit(_main())

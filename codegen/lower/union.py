@@ -1094,7 +1094,7 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
                 kind=Kind.VERDICT,
             )
         hint = branch_identity(branch, name_hint, node) or name_hint
-        decided = mod.decide(branch, at, hint, mod)
+        decided = compiler.decide(branch, at, hint, mod)
         # **The branch's own bound rides on the branch's own TYPE, never on the field
         # holding the union** (section 5's ``minItems``/``maxItems`` row, and section
         # 2's reasoning for every constraint).  The field holds the other branches too,
@@ -1121,7 +1121,8 @@ def _inherited(branch: dict, pointer: str, root: str, mod: compiler.Module) -> I
     off it -- the symbol and the :class:`compiler.Shape` -- are the two things a ``$ref``
     conjunct's base already takes from ``mod.bind`` in ``compiler.lower_composition``.
 
-    **``mod.decide`` is what reads the reference**, and it is read ONCE here, because
+    **:func:`compiler.decide` is what reads the reference**, and it is read ONCE here,
+    because
     ``emit.decide_type``'s ``$ref`` arm is the one place in this generator that decides
     which of the two resolutions a reference is: an absolute one binds a module and
     imports its symbol, a LOCAL ``#/...`` one names a node of the document being written
@@ -1139,7 +1140,7 @@ def _inherited(branch: dict, pointer: str, root: str, mod: compiler.Module) -> I
     base: §4 "What becomes what" makes a scalar root an ``Annotated`` alias,
     and subclassing one is a ``TypeError`` at import.
     """
-    decided = mod.decide(branch, pointer, root, mod)
+    decided = compiler.decide(branch, pointer, root, mod)
     symbol = decided.type.path
     shape = mod.shapes.get(symbol)
     if shape is None and not decided.type.local:
@@ -1229,7 +1230,7 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
         # are already the union base (§4, and ``isinstance(payload, Base)`` depends on
         # it), so a composing branch wants that base AND whatever its conjuncts name --
         # which is ``compiler.lower_composition``'s ``bases`` argument, prepending the
-        # union base to the conjuncts' own.  ``mod.decide`` is not the way to it and
+        # union base to the conjuncts' own.  ``compiler.decide`` is not the way to it and
         # never was: it would declare a composition class that does not descend from
         # this base, so the branch would not answer ``isinstance``, which is the same
         # reason a bare ``$ref`` branch refuses above.

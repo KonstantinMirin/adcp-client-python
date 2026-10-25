@@ -5336,7 +5336,7 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
     caller passes.  So the two runs are two processes with different
     ``PYTHONHASHSEED`` values, which is the perturbation this property has.
     """
-    cmd = [sys.executable, "-m", "codegen.emit", "--bundle", str(BUNDLE), "--tree"]
+    cmd = [sys.executable, "-m", "codegen", "--bundle", str(BUNDLE), "--tree"]
     outs = []
     for seed in ("0", "12345"):
         into = Path(tempfile.mkdtemp())
@@ -5352,12 +5352,15 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
 def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
     """D12, graded through the entry point that breaks it.
 
-    ``python -m codegen.emit`` runs the emitter as ``__main__``.  With ``Refusal``
-    defined in that module, a lowering that imports ``codegen.emit`` to raise one
-    raises a DIFFERENT class from the one ``main``'s ``except`` names, so every
-    refusal escapes as an unhandled traceback and the run writes nothing -- while
-    the in-process path, which imports the module once, stays green.  Three lanes
-    measured that independently.
+    ``python -m codegen`` runs the emitter through ``codegen/__main__.py``, which is
+    the one file ``runpy`` binds as ``__main__``.  When the command was ``python -m
+    codegen.emit`` and ``Refusal`` was defined in that module, a lowering that
+    imported ``codegen.emit`` to raise one raised a DIFFERENT class from the one
+    ``main``'s ``except`` names, so every refusal escaped as an unhandled traceback
+    and the run wrote nothing -- while the in-process path, which imports the module
+    once, stayed green.  Three lanes measured that independently.  The entry-point
+    module is what makes the two paths the same import graph, and this test is where
+    the command itself is graded.
 
     So this runs the CLI, over a bundle whose two documents are one emittable and
     one refused, and requires the refusal to be REPORTED: exit 1, the document
@@ -5388,7 +5391,7 @@ def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
         [
             sys.executable,
             "-m",
-            "codegen.emit",
+            "codegen",
             "--bundle",
             str(tmp_path),
             "--tree",

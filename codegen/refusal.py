@@ -1,9 +1,10 @@
 """The one refusal type, in a module that is never an entry point.  D12.
 
-**Why it does not live in ``codegen/emit.py``.**  ``python -m codegen.emit`` runs
-under ``runpy``, which executes the named module as ``__main__`` -- and a lowering
-that imports ``codegen.emit`` for the exception imports it a SECOND time, under
-its real name.  The class then has two identities: ``except Refusal`` in the
+**Why it does not live in ``codegen/emit.py``.**  the command was once ``python -m
+codegen.emit``, which runs under ``runpy`` -- that executes the named module as
+``__main__``, and a lowering that imports ``codegen.emit`` for the exception
+imports it a SECOND time, under its real name.  The class then has two
+identities: ``except Refusal`` in the
 ``__main__`` copy does not catch the ``Refusal`` a lowering raised from the
 ``codegen.emit`` copy, so the CLI writes nothing over the whole population while
 the in-process path -- which imports the module once, by name -- stays green.
@@ -13,6 +14,12 @@ diagnosing it from scratch.  It is structural and the fix is structural: the
 exception lives in a module that no ``-m`` invocation can name, so there is one
 class object no matter how the run was started.  Nothing is imported here, which
 is also what keeps the import graph acyclic once every lowering needs it.
+
+``codegen/__main__.py`` now holds the command and the same rule is general: no
+module of this compiler is ever bound as ``__main__``, so no module of it has two
+identities.  This one keeps its own guarantee regardless of where the entry point
+sits, which is what makes it unconditional rather than a consequence of today's
+command line.
 """
 
 from __future__ import annotations

@@ -75,7 +75,7 @@ The emitter, over one document, which is the whole command (D9: the bundle
 directory is an argument and there is no default):
 
 ```bash
-PYTHONPATH=. uv run --no-sync python -m codegen.emit \
+PYTHONPATH=. uv run --no-sync python -m codegen \
   --bundle schemas/cache/3.2 core/pagination-request.json
 PYTHONPATH=. uv run --no-sync python -m pytest tests/test_emit.py
 ```
