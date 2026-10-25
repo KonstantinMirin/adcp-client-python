@@ -34,13 +34,15 @@ import ast
 import functools
 import importlib
 import json
+import socket
 from pathlib import Path
 
+import jsonschema
 import pytest
 from pydantic import ValidationError
 
 from codegen import bundle, emit
-from codegen.refusal import Refusal
+from codegen.refusal import Kind, Refusal
 
 from tests.nodeset import claimed, partitions
 
@@ -1289,3 +1291,219 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
             for _, u in bundle.references(read("governance/policy-entry.json"))
             if bundle.split_ref(u)[0]
         }, document
+
+
+# --------------------------------------------------------------------------- #
+# what the carried document owes a reference under a section
+# (`salesagent-j3k2l.71`)
+# --------------------------------------------------------------------------- #
+#: A dead section holding a REMOTE reference, which is ``a2ui/si-catalog.json``'s shape
+#: reduced to one entry: the root asserts something of its own, the section asserts
+#: nothing, and the only reference in the document sits inside the dead entry.  The
+#: second fixture below is this one with a ``$ref`` naming the entry, so the pair
+#: differs in the one dimension the rule reads and in nothing else.
+DEAD_SECTION_REMOTE = {
+    "title": "Dead Section Catalog",
+    "type": "object",
+    "properties": {"label": {"type": "string"}},
+    "definitions": {
+        "Widget": {
+            "type": "object",
+            "properties": {"body": {"$ref": f"{BASE}core/target.json"}},
+            "required": ["body"],
+        }
+    },
+}
+
+
+def _remote_under_a_section() -> dict[str, list[tuple[str, str]]]:
+    """``document -> [(pointer, uri)]`` for every REMOTE reference the bundle spells
+    inside a ``definitions`` / ``$defs`` entry.
+
+    Read off the raw documents and off the one schema-position walk, so this is the
+    whole set the rule below splits rather than a set some run happened to reach.
+    """
+    out: dict[str, list[tuple[str, str]]] = {}
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        entries = bundle.section_entries(doc)
+        for pointer, uri in bundle.references(doc):
+            if bundle.split_ref(uri)[0] and bundle.pointers_above(pointer, entries):
+                out.setdefault(document, []).append((pointer, uri))
+    return out
+
+
+def test_a_remote_reference_under_a_section_is_owed_where_its_entry_is_declared() -> None:
+    """Section 5's on-demand rule, read on the SCHEMA half.
+
+    ``strict_validate`` decides against the document the emitter writes beside the
+    module, so what the carried document owes a reference is whatever the package's own
+    validation can reach.  Section 5 makes a section "nothing by itself", each entry
+    "declared on demand when a ``$ref`` names it"; section 3 adds "an entry nothing
+    references is not declared".  So the obligation follows DECLARATION: an entry some
+    ``$ref`` names has a class at its pointer and a reference under it is reached, and
+    an entry nothing names has none and is reached by nothing.
+
+    Both halves are named here and asserted non-empty, because a rule whose admitted
+    half is empty admits nothing and a rule whose counted half is empty refuses
+    nothing -- and either way it reads as working.
+    """
+    sites = _remote_under_a_section()
+    every = claimed(
+        "remote references the bundle spells inside a section entry",
+        {(d, p) for d, ps in sites.items() for p, _ in ps},
+    )
+    named = bundle.named_nodes(BUNDLE)
+
+    counted, admitted = set(), set()
+    for document, refs in sites.items():
+        # The RAW document and not ``bundle.resolved``: the predicate is a function of
+        # (document, named) and the references are at their own pointers either way, so
+        # resolving 1,054 documents to ask a positional question would cost the whole
+        # bundle's resolution for an answer that does not depend on it.
+        owed = set(
+            bundle.undecidable_references(
+                bundle.read(BUNDLE, document), named.get(document, frozenset())
+            )
+        )
+        for pointer, uri in refs:
+            (counted if (pointer, uri) in owed else admitted).add((document, pointer))
+
+    partitions(every, owed_resolution=counted, reached_by_nothing=admitted)
+    claimed("remote references under a DECLARED entry", counted, inside=every)
+    claimed("remote references under an entry nothing declares", admitted, inside=every)
+
+    # And the split is the DECLARATION and not the document, pointer depth or spelling:
+    # every admitted reference sits in an entry no ``$ref`` of the bundle names, and
+    # every counted one in an entry some ``$ref`` does.
+    for document, pointer in sorted(admitted):
+        doc = bundle.read(BUNDLE, document)
+        entries = bundle.pointers_above(pointer, bundle.section_entries(doc))
+        assert entries, (document, pointer)
+        assert not bundle.pointers_above(pointer, named.get(document, frozenset())), (
+            document,
+            pointer,
+            sorted(named.get(document, frozenset())),
+        )
+    for document, pointer in sorted(counted):
+        assert bundle.pointers_above(pointer, named.get(document, frozenset())), (
+            document,
+            pointer,
+        )
+
+
+def test_a_remote_reference_in_a_dead_section_leaves_the_document_decidable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The POSITIVE half on a bundle this file writes, and the measurement is a
+    validation with the network removed.
+
+    The document emits with the reference still in the schema it carries, and that
+    schema decides: ``jsonschema`` accepts and refuses instances through it while
+    ``socket.socket`` is a constructor that raises, so nothing is fetched.  A reference
+    in a dead entry is therefore not a document the package cannot decide with -- which
+    is what this check refused it for.
+    """
+    root = write_bundle(
+        tmp_path, {"a2ui/catalog.json": DEAD_SECTION_REMOTE, "core/target.json": TARGET}
+    )
+    out = emit.emit(root, ["a2ui/catalog.json"])
+    assert "a2ui/catalog.json" in out.emitted, out.refusals
+
+    # The entry is dead, so no class is declared at its pointer -- which is what makes
+    # the position unreachable, and it is asserted rather than assumed.
+    source = out.files["a2ui/catalog.py"]
+    assert "Widget" not in declared_in(source), sorted(declared_in(source))
+
+    carried = json.loads(out.files["a2ui/catalog.json"])
+    left = claimed(
+        "remote references the carried document still holds",
+        [p for p, u in bundle.references(carried) if bundle.split_ref(u)[0]],
+    )
+    entries = bundle.section_entries(carried)
+    assert all(bundle.pointers_above(p, entries) for p in left), (
+        sorted(left),
+        sorted(entries),
+    )
+
+    # THE NETWORK IS REMOVED, not mocked out at the resolver: anything that tried to
+    # fetch the target would have to open a socket, and this one raises on
+    # construction.  So the two validations below are the measurement of "decidable
+    # locally" rather than a restatement of the predicate under test.
+    class Refuses(socket.socket):
+        def __init__(self, *a: object, **k: object) -> None:
+            raise AssertionError("the validator opened a socket")
+
+    monkeypatch.setattr(socket, "socket", Refuses)
+    jsonschema.validate({"label": "x"}, carried)
+    with pytest.raises(jsonschema.ValidationError) as err:
+        jsonschema.validate({"label": 1}, carried)
+    assert err.value.validator == "type", err.value.validator
+
+
+def test_a_remote_reference_in_a_declared_entry_is_still_refused(tmp_path: Path) -> None:
+    """The NEGATIVE half, on the same fixture with the one dimension flipped.
+
+    A ``$ref`` names the entry, so section 5 declares it, a class grades at
+    ``#/definitions/Widget`` and ``_refuse_at`` evolves a validator onto that pointer --
+    which descends the entry's ``properties`` and meets the reference.  The document is
+    then one the package cannot decide with, and it refuses, with the kind that says the
+    reference is unresolved rather than that a lowering is missing.
+    """
+    live = {
+        **DEAD_SECTION_REMOTE,
+        "properties": {
+            **DEAD_SECTION_REMOTE["properties"],
+            "widget": {"$ref": "#/definitions/Widget"},
+        },
+    }
+    root = write_bundle(tmp_path, {"a2ui/catalog.json": live, "core/target.json": TARGET})
+    r = refusal_for(root, "a2ui/catalog.json")
+    assert r["keyword"] == "$ref", r
+    assert bundle.pointers_above(
+        r["pointer"], bundle.section_entries(bundle.read(root, "a2ui/catalog.json"))
+    ) == ["/definitions/Widget"], r
+    assert r["resolved"] is Kind.UNRESOLVED, r
+    assert f"{BASE}core/target.json" in r["detail"], r
+
+
+def test_a_property_named_definitions_is_a_property_and_not_a_section(tmp_path: Path) -> None:
+    """``section_entries`` reads the WALK, so a segment is a section only where the
+    keyword is.
+
+    A property may legitimately be named ``definitions`` -- ``harness.formats_used``
+    carries the same caution for ``default``, where a bundle met 95 of them -- and the
+    pointer ``/properties/definitions/properties/body`` is then a property's property,
+    which no reading of the pointer's TEXT can tell from a section entry.  The 3.2
+    bundle holds 0 such properties, so this is graded on a bundle this file writes.
+
+    What the two readings differ on is observable here and nowhere else: a reference at
+    that position is REACHED by the resolver -- ``properties`` is one of the keys it
+    descends, twice over -- so it is inlined and the document emits with no reference
+    left to classify.  A text reading would call the position a section entry, and the
+    only place that answer could still be read is a RAW document, which is what this
+    file's own census and ``test_emit``'s naming of the admitted entries read.
+    """
+    doc = {
+        "title": "Names A Property Definitions",
+        "type": "object",
+        "properties": {
+            "definitions": {
+                "type": "object",
+                "properties": {"body": {"$ref": f"{BASE}core/target.json"}},
+            }
+        },
+    }
+    assert bundle.section_entries(doc) == frozenset(), bundle.section_entries(doc)
+    claimed(
+        "references the document spells",
+        [p for p, _ in bundle.references(doc)],
+    )
+
+    root = write_bundle(tmp_path, {"a2ui/odd.json": doc, "core/target.json": TARGET})
+    out = emit.emit(root, ["a2ui/odd.json"])
+    assert "a2ui/odd.json" in out.emitted, out.refusals
+    carried = json.loads(out.files["a2ui/odd.json"])
+    assert bundle.references(carried) == [], bundle.references(carried)
+    body = carried["properties"]["definitions"]["properties"]["body"]
+    assert body["title"] == TARGET["title"], body

@@ -2404,20 +2404,55 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
     -- every local reference a graded pair holds resolves, and the schema half refuses
     THROUGH it.  So the split is read with ``bundle.split_ref``, which is the one
     reading of the ``#`` this project has, rather than by looking for the key.
+
+    **AND A REMOTE REFERENCE INSIDE A SECTION ENTRY NOTHING DECLARES IS DECIDABLE
+    TOO**, for a reason of the same shape: section 5 makes a ``definitions`` / ``$defs``
+    section "nothing by itself", each entry "declared on demand when a ``$ref`` names
+    it", and section 3 adds "an entry nothing references is not declared" -- so no class
+    grades at a pointer inside such an entry and no enclosing node's assertions descend
+    into one.  ``bundle.undecidable_references`` is the predicate, and the obligation
+    here is stated through it rather than as "no remote reference at all", which refused
+    ``a2ui/si-catalog.json`` for carrying 24 of them in one dead section
+    (``salesagent-j3k2l.71``).  The entries are NAMED below, the way the local set is,
+    and an entry some ``$ref`` does name is still owed its resolution --
+    ``tests/test_fragment_ref.py`` grades both directions on a bundle it writes.
     """
     documents = {g.ref.document for g in graded()}
+    named = bundle.named_nodes(BUNDLE)
     local: dict[str, set[str]] = {}
+    inert: dict[str, set[str]] = {}
     for document in sorted(documents):
-        remote: list[tuple[str, str]] = []
-        for pointer, reference in bundle.references(schema_at(SchemaRef(document, "#"))):
+        carried = schema_at(SchemaRef(document, "#"))
+        owed = bundle.undecidable_references(carried, named.get(document, frozenset()))
+        assert owed == [], (document, owed)
+        entries = bundle.section_entries(carried)
+        for pointer, reference in bundle.references(carried):
             if bundle.split_ref(reference)[0]:
-                remote.append((pointer, reference))
+                enclosing = bundle.pointers_above(pointer, entries)
+                assert enclosing, (document, pointer, reference)
+                inert.setdefault(document, set()).update(enclosing)
             else:
                 local.setdefault(document, set()).add(reference)
-        assert remote == [], document
     # And the control: the bundle DOES have references, so the assertion above is
     # over documents that had something to resolve rather than over nothing.
     assert [d for d in documents if bundle.references(bundle.read(BUNDLE, d))]
+    # The entries the admitted half sits in, by name.  One document, one dead section,
+    # and every entry in it unnamed by every ``$ref`` of the bundle -- which is what
+    # makes the position unreachable rather than merely unreached.
+    assert {d: sorted(e) for d, e in inert.items()} == {
+        "a2ui/si-catalog.json": [
+            "/definitions/Button",
+            "/definitions/Card",
+            "/definitions/Image",
+            "/definitions/IntegrationAction",
+            "/definitions/Link",
+            "/definitions/List",
+            "/definitions/ProductCard",
+            "/definitions/Text",
+        ]
+    }, {d: sorted(e) for d, e in inert.items()}
+    for document, entries in inert.items():
+        assert named.get(document, frozenset()) & entries == set(), (document, sorted(entries))
     # The local set, named rather than counted: the two documents that carry one, and
     # the REFERENCES each one carries, by target.  A count per document said only how
     # many there were, so a reference changing target was invisible to it and a
@@ -6361,8 +6396,20 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # grade rather than to sit loose.  Probed as six separate runs and not as
     # arithmetic over one measurement: the assertions are ORDERED, so a tightened pin
     # that an earlier one pre-empts is never reached and the arithmetic cannot say so.
+    #
+    # **UNRESOLVED IS AT 0 SINCE ``salesagent-j3k2l.71``, AND THE CEILING MOVES WITH
+    # IT RATHER THAN SITTING ONE ABOVE THE MEASUREMENT.**  That row's document
+    # (``a2ui/si-catalog.json``) was the kind's only instance in the bundle, and it
+    # emits: its 24 remote references are inside a section entry nothing declares, so
+    # the carried document decides without them.  **No document of the 3.2 bundle
+    # reaches ``Kind.UNRESOLVED`` any more**, which is worth saying rather than
+    # leaving as a pin with slack: the class is live code with no live instance, so
+    # what still grades it is ``tests/test_fragment_ref.py``'s constructed bundle,
+    # where a remote reference inside a DECLARED entry refuses on it.  The kind is
+    # kept, because the obligation it reports is real and a later bundle can carry
+    # one; the ceiling is 0 so a document arriving at it is loud here.
     assert resolved[refusal_module.Kind.DEFERRED] <= 65, resolved[refusal_module.Kind.DEFERRED]
-    assert resolved[refusal_module.Kind.UNRESOLVED] <= 1, resolved[refusal_module.Kind.UNRESOLVED]
+    assert resolved[refusal_module.Kind.UNRESOLVED] <= 0, resolved[refusal_module.Kind.UNRESOLVED]
 
     # Grow-only: what the exit condition actually counts.
     accounted = len(out.emitted) + len(verdicts)

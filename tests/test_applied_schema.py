@@ -56,8 +56,10 @@ from tests.nodeset import claimed, partitions, ratchet
 #: a row doing its work: 674, 686 (bcb0b8ca8), 691 (.40), 705 (.28), 716 (.21),
 #: 719 (.64, a mapping's key is a type), 731 (.41, a fact at a position with no field
 #: to carry it: a dropped default on a required property, a format inside a container
-#: or on a union branch, and an array's or a mapping's own bound on one).
-EMITTED_FLOOR = 731
+#: or on a union branch, and an array's or a mapping's own bound on one), 732 (.71, a
+#: remote reference inside a section entry nothing declares: a position the package's
+#: own validation never reaches, so the carried document decides without it).
+EMITTED_FLOOR = 732
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
