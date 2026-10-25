@@ -56,9 +56,16 @@ from tests.nodeset import claimed, partitions, ratchet
 #: a row doing its work: 674, 686 (bcb0b8ca8), 691 (.40), 705 (.28), 716 (.21),
 #: 719 (.64, a mapping's key is a type), 731 (.41, a fact at a position with no field
 #: to carry it: a dropped default on a required property, a format inside a container
-#: or on a union branch, and an array's or a mapping's own bound on one),
-#: 732 (.67, ``discriminator`` is §6's keyword at a nested union too).
-EMITTED_FLOOR = 732
+#: or on a union branch, and an array's or a mapping's own bound on one), 732 (.71, a
+#: remote reference inside a section entry nothing declares: a position the package's
+#: own validation never reaches, so the carried document decides without it).
+#:
+#: **.67 and .71 each took it to 732 on their own branches, and the merged tree is
+#: RE-MEASURED rather than resolved to either number or to their minimum.**  Each row
+#: emits a different document -- .67 ``media-buy/outcome-target.json`` (``discriminator``
+#: is §6's keyword at a nested union too) and .71 ``a2ui/si-catalog.json`` -- and taking
+#: a side, or the cautious-looking lower of the two, would loosen the floor by one.
+EMITTED_FLOOR = 733
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

@@ -139,6 +139,37 @@ def union_roots() -> list[str]:
 
 
 @functools.cache
+def _named() -> dict[str, frozenset[str]]:
+    """``bundle.named_nodes`` for the whole bundle, cached like every other
+    derivation here: it reads all 1,054 documents."""
+    return bundle.named_nodes(BUNDLE)
+
+
+def lowered_nodes(document: str) -> list[tuple[str, dict]]:
+    """Every node of a document the emitter LOWERS, as ``bundle.nodes`` pairs.
+
+    ``bundle.nodes`` walks every schema position, INCLUDING the inside of a
+    ``definitions`` / ``$defs`` entry nothing declares -- and section 3 says such an
+    entry "is not declared", so the emitter writes no type, no annotation and no import
+    for anything inside it.  A check that asserts a node produced something in the
+    module therefore ranges over this, not over every position: asking the whole walk
+    grades the emitter against a node it is correct not to have visited.
+
+    First reached when ``a2ui/si-catalog.json`` emitted (``salesagent-j3k2l.71``): its
+    dead section states a ``format: uri`` and a typed ``additionalProperties``, and two
+    checks here read both as positions the module had failed to carry.
+    """
+    doc = bundle.read(BUNDLE, document)
+    entries = bundle.section_entries(doc)
+    named = _named().get(document, frozenset())
+    return [
+        (pointer, node)
+        for pointer, node in bundle.nodes(doc)
+        if bundle.reaches(pointer, entries=entries, declared=named)
+    ]
+
+
+@functools.cache
 def population() -> list[str]:
     """What the committed tree is emitted from.  A reference TARGET is not here and
     does not need to be: ``emit`` walks ``$ref`` and emits the closure.
@@ -1358,7 +1389,10 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             if isinstance(key, ast.Constant) and key.value == "format"
             if isinstance(value, ast.Constant)
         }
-        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
+        # ``lowered_nodes`` and not the whole walk: a node inside a section entry
+        # nothing declares is not lowered, so no type is selected and no import is
+        # written for it, and the assertions below are about what the MODULE carries.
+        for pointer, node in lowered_nodes(document):
             fmt = node.get("format")
             if not isinstance(fmt, str):
                 continue
@@ -2404,20 +2438,55 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
     -- every local reference a graded pair holds resolves, and the schema half refuses
     THROUGH it.  So the split is read with ``bundle.split_ref``, which is the one
     reading of the ``#`` this project has, rather than by looking for the key.
+
+    **AND A REMOTE REFERENCE INSIDE A SECTION ENTRY NOTHING DECLARES IS DECIDABLE
+    TOO**, for a reason of the same shape: section 5 makes a ``definitions`` / ``$defs``
+    section "nothing by itself", each entry "declared on demand when a ``$ref`` names
+    it", and section 3 adds "an entry nothing references is not declared" -- so no class
+    grades at a pointer inside such an entry and no enclosing node's assertions descend
+    into one.  ``bundle.undecidable_references`` is the predicate, and the obligation
+    here is stated through it rather than as "no remote reference at all", which refused
+    ``a2ui/si-catalog.json`` for carrying 24 of them in one dead section
+    (``salesagent-j3k2l.71``).  The entries are NAMED below, the way the local set is,
+    and an entry some ``$ref`` does name is still owed its resolution --
+    ``tests/test_fragment_ref.py`` grades both directions on a bundle it writes.
     """
     documents = {g.ref.document for g in graded()}
+    named = bundle.named_nodes(BUNDLE)
     local: dict[str, set[str]] = {}
+    inert: dict[str, set[str]] = {}
     for document in sorted(documents):
-        remote: list[tuple[str, str]] = []
-        for pointer, reference in bundle.references(schema_at(SchemaRef(document, "#"))):
+        carried = schema_at(SchemaRef(document, "#"))
+        owed = bundle.undecidable_references(carried, named.get(document, frozenset()))
+        assert owed == [], (document, owed)
+        entries = bundle.section_entries(carried)
+        for pointer, reference in bundle.references(carried):
             if bundle.split_ref(reference)[0]:
-                remote.append((pointer, reference))
+                enclosing = bundle.pointers_above(pointer, entries)
+                assert enclosing, (document, pointer, reference)
+                inert.setdefault(document, set()).update(enclosing)
             else:
                 local.setdefault(document, set()).add(reference)
-        assert remote == [], document
     # And the control: the bundle DOES have references, so the assertion above is
     # over documents that had something to resolve rather than over nothing.
     assert [d for d in documents if bundle.references(bundle.read(BUNDLE, d))]
+    # The entries the admitted half sits in, by name.  One document, one dead section,
+    # and every entry in it unnamed by every ``$ref`` of the bundle -- which is what
+    # makes the position unreachable rather than merely unreached.
+    assert {d: sorted(e) for d, e in inert.items()} == {
+        "a2ui/si-catalog.json": [
+            "/definitions/Button",
+            "/definitions/Card",
+            "/definitions/Image",
+            "/definitions/IntegrationAction",
+            "/definitions/Link",
+            "/definitions/List",
+            "/definitions/ProductCard",
+            "/definitions/Text",
+        ]
+    }, {d: sorted(e) for d, e in inert.items()}
+    for document, entries in inert.items():
+        assert named.get(document, frozenset()) & entries == set(), (document, sorted(entries))
     # The local set, named rather than counted: the two documents that carry one, and
     # the REFERENCES each one carries, by target.  A count per document said only how
     # many there were, so a reference changing target was invisible to it and a
@@ -4406,12 +4475,18 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     rendered annotation's own names call for.  A mechanism with a population of 0 is
     green for free; this one has 1, and that is what found it.
     """
+    # ``lowered_nodes`` and not the whole walk, for the reason that helper states: a
+    # typed ``additionalProperties`` inside a section entry nothing declares reaches no
+    # class, so there is no extras store and no mapping for this check to find.
+    # ``a2ui/si-catalog.json`` is the document that showed it -- its dead section
+    # states one at ``/definitions/AppHandoff/properties/apps/additionalProperties`` --
+    # and it is excluded by the rule rather than by name (``salesagent-j3k2l.71``).
     typed = [
         d
         for d in bundle.portable(BUNDLE)
         if any(
             isinstance(n.get("additionalProperties"), dict) and n["additionalProperties"]
-            for _, n in bundle.nodes(bundle.read(BUNDLE, d))
+            for _, n in lowered_nodes(d)
         )
     ]
     # Non-empty, and inside the bundle: how many documents carry a typed
@@ -6389,22 +6464,35 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # arithmetic over one measurement: the assertions are ORDERED, so a tightened pin
     # that an earlier one pre-empts is never reached and the arithmetic cannot say so.
     #
-    # **UNRESOLVED re-pointed 1 -> 2 at ``salesagent-j3k2l.67``, and the document is
-    # named because a ceiling going UP is the move this pin exists to make visible.**
-    # ``core/requirements/catalog-field-binding.json`` was a VERDICT on a nested union's
-    # ``discriminator`` sibling; that keyword is §6's and is admitted now, so the walk
-    # gets one pointer further and meets
-    # ``#/definitions/ScalarBinding/properties/ext``, whose target ``core/ext.json``
-    # ``bundle.resolved`` leaves untouched under a ``definitions`` section.  The document
-    # MOVED rather than cleared -- out of the verdict column and into the pending one,
-    # on ``salesagent-j3k2l.71``'s ground -- which is the honest classification: the
-    # obstruction is unwritten code and a verdict would count a clearable document as
-    # finally refused.  The other member is ``a2ui/si-catalog.json``, unchanged.
+    # **UNRESOLVED IS AT 0 SINCE ``salesagent-j3k2l.71``, AND THE CEILING MOVES WITH
+    # IT RATHER THAN SITTING ONE ABOVE THE MEASUREMENT.**  That row's document
+    # (``a2ui/si-catalog.json``) was the kind's only instance in the bundle, and it
+    # emits: its 24 remote references are inside a section entry nothing declares, so
+    # the carried document decides without them.  **No document of the 3.2 bundle
+    # reaches ``Kind.UNRESOLVED`` any more**, which is worth saying rather than
+    # leaving as a pin with slack: the class is live code with no live instance, so
+    # what still grades it is ``tests/test_fragment_ref.py``'s constructed bundle,
+    # where a remote reference inside a DECLARED entry refuses on it.  The kind is
+    # kept, because the obligation it reports is real and a later bundle can carry
+    # one; the ceiling is 0 so a document arriving at it is loud here.
+    #
+    # **IT WAS LOUD, AND THE DOCUMENT ARRIVED ONE ROW LATER -- 0 -> 1 at
+    # ``salesagent-j3k2l.67``, MEASURED ON THE MERGED TREE AND NOT ON EITHER BRANCH.**
+    # That row admits ``discriminator`` beside a nested union (§6's row: it constrains
+    # nothing, and ``harness.FACTS`` does not look for it), so
+    # ``core/requirements/catalog-field-binding.json`` gets one pointer further than its
+    # old ``discriminator`` VERDICT and reaches
+    # ``#/definitions/ScalarBinding/properties/ext``, whose target ``core/ext.json`` is
+    # remote and inside an entry the document DOES declare -- which is precisely the
+    # shape the paragraph above says still refuses.  So the kind has a live instance
+    # again and the document MOVED rather than cleared: out of the verdict column and
+    # into the pending one, on this row's own ground.  Named rather than counted, for
+    # the reason a ceiling going UP exists.
     assert resolved[refusal_module.Kind.DEFERRED] <= 65, resolved[refusal_module.Kind.DEFERRED]
-    assert resolved[refusal_module.Kind.UNRESOLVED] <= 2, resolved[refusal_module.Kind.UNRESOLVED]
+    assert resolved[refusal_module.Kind.UNRESOLVED] <= 1, resolved[refusal_module.Kind.UNRESOLVED]
     assert {
         d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
-    } == {"a2ui/si-catalog.json", "core/requirements/catalog-field-binding.json"}, sorted(
+    } == {"core/requirements/catalog-field-binding.json"}, sorted(
         d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
     )
 
