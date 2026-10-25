@@ -117,7 +117,8 @@ def test_a_ref_branch_is_a_class_with_two_bases_and_the_dispatch_is_derived() ->
 
     Six properties, and each one is a thing a wrong implementation gets wrong:
 
-    * the branch is a class of its own, named by D3's rule 2 off the pin it inherits --
+    * the branch is a class of its own, named by §4 "Names"'s ``const`` choice off the
+      pin it inherits --
       so the root exports one symbol and the arms are reachable from it;
     * its bases are the union's base AND the target, in that order, so
       ``isinstance(payload, Base)`` holds for the arm and the target's fields arrive by
@@ -242,8 +243,9 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_defers_and_never_verdicts(
 
 
 def test_a_ref_branch_whose_target_is_not_a_class_refuses_by_name() -> None:
-    """A base has to be a class: D2 makes a scalar root an ``Annotated`` alias, and
-    subclassing one is a ``TypeError`` at import -- so it is refused by name rather than
+    """A base has to be a class: §4 "What becomes what" makes a scalar root an
+    ``Annotated`` alias, and subclassing one is a ``TypeError`` at import -- so it is
+    refused by name rather than
     emitted as a module nobody can import.  The same refusal
     ``compiler.lower_composition`` raises for a ``$ref`` conjunct, at the one other
     position a reference becomes a base.
@@ -345,8 +347,9 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
     # rows' fact and moves when they land.
     # ``core/media-buy-available-action-id.json`` is the ONE of the seven that emits,
     # and it does not emit through this row: its other branch declares
-    # ``type: "string"``, so the DOCUMENT says its instance is a scalar and D2 makes the
-    # root an ``Annotated`` alias with no branch classes and no dispatch at all
+    # ``type: "string"``, so the DOCUMENT says its instance is a scalar and §4 "What
+    # becomes what" makes the root an ``Annotated`` alias with no branch classes
+    # and no dispatch at all
     # (``states_a_scalar_instance``).  The row's own description predicted it would
     # REFUSE for want of a discriminant; it was already emitting, by the alias path, at
     # the trunk this row branched from.

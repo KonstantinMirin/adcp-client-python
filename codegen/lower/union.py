@@ -249,13 +249,14 @@ def keyword(doc: dict) -> str | None:
 def pins(props: Any) -> dict[str, Any]:
     """Every property of a property map that is pinned to a ``const``.
 
-    ONE reading, and two things read it: D3's second branch-naming rule
-    (:func:`_const_pin`) and §4's first dispatch source (:func:`discriminator`).  They
+    ONE reading, and two things read it: §4 "Names"'s second branch-naming
+    choice -- the ``const`` a branch pins on the discriminating property
+    (:func:`_const_pin`) -- and §4's first dispatch source (:func:`discriminator`).  They
     are the same question asked of the same map -- "which key does this branch pin, and
     to what" -- and a second reading is how a class could come to be NAMED after a key
     the union does not dispatch on.
 
-    A SCALAR pin only.  An object or an array ``const`` is refused by D2's ``const`` row
+    A SCALAR pin only.  An object or an array ``const`` is refused by §5's ``const`` row
     at the property itself, and a value that is not hashable has no place in the
     distinctness test :func:`discriminator` runs, so it is not a pin here either.
     """
@@ -279,8 +280,8 @@ def _const_pin(props: Any, doc: dict) -> Any:
     ``props`` is the branch's OWN property map, or -- for a bare ``$ref`` branch -- the
     map it inherits from its target (:class:`Branch`).  A ``$ref`` branch's fields come
     from the target by §4's own sentence, so its pin does too: read off the branch node
-    instead, every such branch pins nothing and D3's rule 2 would be dead at exactly the
-    position §4 names it for.
+    instead, every such branch pins nothing and that naming choice would be dead at the
+    exact position §4 names it for.
     """
     pinned = pins(props)
     named = (doc.get("discriminator") or {}).get("propertyName")
@@ -358,7 +359,7 @@ class Inherited:
 
     Two things come out of resolving such a branch and both are needed before any class
     is declared: the SYMBOL, which is the branch's second base, and the property map,
-    which is where D3's naming rule 2 and §4's dispatch derivation read the branch's
+    which is where §4 "Names"'s ``const`` choice and §4's dispatch derivation read the
     ``const`` pin.  Carried together because they are one resolution -- asked twice, the
     second ask is a second reading of what a ``$ref`` names.
     """
@@ -384,7 +385,7 @@ class Branch:
 
     ``name`` is EMPTY out of :func:`_plan` and written by :func:`_named` once every
     branch is planned, which is a sequencing fact and not a two-phase object for its own
-    sake: D3's naming rule 2 reads the ``const`` pin and §4's dispatch derivation reads
+    sake: §4 "Names"'s ``const`` choice reads the pin and §4's dispatch derivation reads
     the same pins across every branch, so a root with no derivable dispatch has to be
     reported on the dispatch -- not on whichever branch happens to be the first with no
     title.  Measured on ``core/requirements/asset-requirements.json``, whose 12 bare
@@ -563,11 +564,12 @@ def _alias(doc: dict, symbol: str, pointer: str, kw: str, mod: compiler.Module) 
 
 
 def _named(plan: Branch, root: str, doc: dict) -> Branch:
-    """D3's branch name written onto a planned branch, or the refusal that says why not.
+    """§4 "Names"'s branch name, written onto a planned branch, or the refusal
+    that says why not.
 
     The naming PASS, separate from :func:`_plan` for the reason :class:`Branch` states:
-    rule 2 reads the ``const`` pin that §4's dispatch derivation also reads, so the
-    dispatch is decided first and a root with none is reported on the dispatch.
+    the ``const`` choice reads the pin that §4's dispatch derivation also reads, so
+    the dispatch is decided first and a root with none is reported on the dispatch.
     """
     return replace(
         plan,
@@ -660,8 +662,9 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
     # PLAN every branch, then DERIVE the dispatch, then NAME them -- in that order,
     # because each step's input is the one before it.  A bare ``$ref`` branch's pin
     # lives on its target, so the targets have to be resolved before either the
-    # dispatch or D3's rule 2 can read one; and the dispatch has to be decided before
-    # the names so that a root with no derivable dispatch is reported on the dispatch
+    # dispatch or the ``const`` naming choice can read one; and the dispatch has to be
+    # decided before the names, so that a root with no derivable dispatch is reported
+    # on the dispatch
     # rather than on the first branch that happens to have no title.
     planned = [
         _plan(branches[i], f"{pointer}/{kw}/{i}", symbol, doc, mod) for i in range(len(branches))
@@ -672,31 +675,41 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
         # is a fact about field ownership rather than about the spelling ``$ref``: a
         # branch that inherits its whole property map declares nothing of its own, so
         # nothing of its own node tells it from a sibling -- not a title, not a required
-        # set -- and the pin is the whole of both its identity (D3 rule 2) and its
-        # dispatch (§4 source 1).  With neither, the arm can only be reached by trying
-        # each branch and keeping the first that validates, which §4 refuses because the
-        # answer is then decided by declaration order rather than by the payload.
+        # set -- and the pin is the whole of both its identity (§4 "Names") and its
+        # dispatch (§4's first dispatch source).  With neither, the arm can only be
+        # reached by trying each branch and keeping the first that validates, which §4
+        # refuses because the answer is then decided by declaration order rather than by
+        # the payload.
         #
-        # **§4's sentence "a union matching neither refuses" read over EVERY union root
-        # is not taken here, and the number is why.**  Measured on this tree by firing
-        # this refusal unconditionally: **emitted 716 -> 673**, 7 roots reported directly
+        # **§4's sentence "a union matching neither refuses" is READ NARROWLY HERE, and
+        # the number is why -- not because §4 contradicts itself.**  It does not, and
+        # the two lists it keeps apart are worth stating, because reading them as one is
+        # a mistake this comment used to make.  §4 "Names" gives a union branch three
+        # NAMING choices (its own ``title``; else the ``const`` it pins on the
+        # discriminating property; else its sorted ``required`` set), which decide what a
+        # branch class is CALLED.  §4's dispatch paragraph gives two DISPATCH sources (a
+        # ``const`` every branch pins on one shared property, and a key the bundle's
+        # manifest states).  §5's ``required`` row settles which list the required set
+        # belongs to, in its own words -- "BRANCH -> the branch class's requiredness, and
+        # the third of the branch-naming choices".  NAMING, not dispatch.  So a branch
+        # named by its required set has no dispatch source either way, and §4's refusal
+        # sentence applies to it without touching the naming rule.
+        #
+        # What the narrow reading is for, then, is SCOPE and not consistency: the literal
+        # reading refuses documents that emit on trunk today, which is a pre-existing
+        # question about trunk rather than anything this row introduces -- this row's
+        # emitted SET equals trunk's.  Measured on this tree by firing this refusal
+        # unconditionally: **emitted 716 -> 673**, 7 roots reported directly
         # (``a2ui/bound-value``, ``adagents``, ``brand``, ``core/account-ref``,
         # ``core/audience-selector``, ``core/canonical-account-ref``,
-        # ``core/postal-area``) and 51 documents chained onto them.  **Four of the 7 were
-        # emitting** -- ``a2ui/bound-value``, ``core/account-ref``,
-        # ``core/audience-selector``, ``core/canonical-account-ref`` -- and every one of
-        # those four tells its branches apart by their own REQUIRED SETS, which is §4's
-        # OWN branch naming rule 3.  So the blanket reading makes that rule dead at every
-        # position it applies to, and the two sentences of §4 cannot both be live.  The
-        # narrow reading keeps both: a branch with an identity of its own emits as it
-        # does today, a branch with none refuses.  **The conflict is reported rather than
-        # resolved by preference** (``salesagent-j3k2l.59``); deciding it needs §4
-        # amended, which is not this row's to do.
+        # ``core/postal-area``) and 51 documents chained onto them; 4 of the 7 were
+        # emitting.  Deciding whether §4 requires those is the design document's
+        # owner's, and is filed with both readings and that measurement.  No document
+        # reaches this path today, so the scoping changes nothing observable.
         #
-        # What the derivation does for those four and for the other 34 regardless: the
-        # discriminator is WRITTEN wherever it derives, so 34 of the 38 bases in the tree
-        # now dispatch on a key instead of on a structural union, and the 4 above carry
-        # ``_BRANCH_DISCRIMINATOR = ""`` and are unchanged.
+        # What the derivation does regardless: the discriminator is WRITTEN wherever it
+        # derives, so 34 of the 38 bases in the tree dispatch on a key instead of on a
+        # structural union, and the other 4 carry ``_BRANCH_DISCRIMINATOR = ""``.
         raise Refusal(
             kw,
             pointer,
@@ -945,15 +958,16 @@ def _inherited(branch: dict, pointer: str, root: str, mod: compiler.Module) -> I
     and ``compiler.local_reference`` declares it.  Reading the ``#`` here instead would
     be a second reading of ``bundle.split_ref``'s delimiter -- which that function's own
     docstring names as how a binder and a resolver come to disagree about which document
-    a reference names -- and a lowering may not import ``bundle`` at all (D13).
+    a reference names -- and a lowering may not import ``bundle`` at all (§3's one
+    dispatch seam).
 
     The SHAPE is then whichever side declared the class: ``mod.shapes`` for a local
     target, which ``compiler.declare_object`` wrote while ``local_reference`` was
     declaring it, and ``mod.bind`` for one in another document, which is the same call
     and the same memo the walk already made.  A target that is not a class has no shape
     on either side and refuses here, for the reason a ``$ref`` conjunct refuses as a
-    base: D2 makes a scalar root an ``Annotated`` alias and subclassing one is a
-    ``TypeError`` at import.
+    base: §4 "What becomes what" makes a scalar root an ``Annotated`` alias,
+    and subclassing one is a ``TypeError`` at import.
     """
     decided = mod.decide(branch, pointer, root, mod)
     symbol = decided.type.path
@@ -965,8 +979,9 @@ def _inherited(branch: dict, pointer: str, root: str, mod: compiler.Module) -> I
         raise Refusal(
             "$ref",
             pointer,
-            f"this branch references {branch['$ref']}, which D2 lowers to the annotation "
-            f"{symbol or decided.type.container or 'Any'!r} rather than to a class: a "
+            f"this branch references {branch['$ref']}, which the walk lowers to the "
+            f"annotation {symbol or decided.type.container or 'Any'!r} rather than to "
+            "a class: a "
             "branch is a class with two bases and an annotation cannot be one of them",
             kind=Kind.VERDICT,
         )
@@ -976,7 +991,7 @@ def _inherited(branch: dict, pointer: str, root: str, mod: compiler.Module) -> I
         raise Refusal(
             "$ref",
             pointer,
-            f"{symbol} is not a class, so it cannot be a base (D2 makes a scalar root an "
+            f"{symbol} is not a class, so it cannot be a base (a scalar root is an "
             "Annotated alias, and subclassing one is a TypeError at import)",
             kind=Kind.VERDICT,
         )
@@ -998,8 +1013,9 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
         # the union's base and the ``$ref`` target: the target supplies the fields and
         # the base supplies the dispatch, so ``isinstance(payload, Base)`` holds for the
         # arm and nothing of the target is copied (P2).  Named here with NO name yet,
-        # because D3's rule 2 reads the pin off the inherited property map and the
-        # dispatch derivation reads the same map -- :func:`lower_union` resolves every
+        # because §4 "Names"'s ``const`` choice reads the pin off the
+        # INHERITED property map and the dispatch derivation reads the same map --
+        # :func:`lower_union` resolves every
         # branch before it names any, so a root with no derivable dispatch is reported
         # on the dispatch rather than on the first branch that has no title.
         return Branch(
