@@ -6377,10 +6377,34 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # those chains now resolve to ``uniqueItems`` with no class above the array, which
     # its producer mints as a verdict.  Both floors are re-measured on this tree, which
     # is what the paragraphs above do at every row.
-    assert len(chained) >= 158, len(chained)
+    # **158 -> 152 AND THE DEFERRED SIDE 5 -> 1 AT ``salesagent-j3k2l.43``, WHICH IS THE
+    # FLOOR BEING LOWERED AND HAS TO BE SAID OUT LOUD.**  A chain floor falls when a row
+    # clears a TARGET other documents chained to, and that is the whole of what this row
+    # did: 10 pending documents cleared, so the chains onto them left the refusal set.
+    #
+    # The split is what makes it attributable rather than a number going down.  The
+    # deferred chains were 5 and are 1, and the 4 that left are exactly this row's four
+    # inheritors -- ``core/media-buy-support-requirements.json``,
+    # ``error-details/execution-requirement-unmet.json``,
+    # ``core/demographic-targeting-resolution.json`` and
+    # ``core/package-targeting-resolution.json``, each of which chained to a conjunct the
+    # reader now lowers and each of which now emits.  The one left is
+    # ``creative/validate-input-response.json``, chained to
+    # ``creative/validate-input-result.json``'s ``required`` refusal, which is row
+    # ``salesagent-j3k2l.56``'s and not this one's.  The verdict chains fell 153 -> 151
+    # for the same reason in the other kind: a document whose chain target now EMITS
+    # either emits with it or refuses directly, and ``media-buy/control-media-buy-response.json``
+    # is the measured instance -- it chained through ``core/canonical-media-buy-action.json``
+    # and now carries its own verdict at
+    # ``/oneOf/0/properties/warnings/items/allOf/1/properties/code``.
+    #
+    # So a falling chain floor is the SIGN of an emitting row rather than a regression,
+    # and the thing that distinguishes the two is naming which chains left and where
+    # their documents went -- which is what the paragraph above does.
+    assert len(chained) >= 152, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 153, dict(split)
-    assert split[refusal_module.Kind.DEFERRED] >= 5, dict(split)
+    assert split[refusal_module.Kind.VERDICT] >= 151, dict(split)
+    assert split[refusal_module.Kind.DEFERRED] >= 1, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
         max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values())
