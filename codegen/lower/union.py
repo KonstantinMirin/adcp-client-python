@@ -913,28 +913,16 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
             )
         hint = branch_identity(branch, name_hint, node) or name_hint
         decided = mod.decide(branch, at, hint, mod)
-        if decided.constraints or decided.format is not None:
-            # The arm's own bound has nowhere to go: ``compiler.Type`` carries none, so
-            # the keyword would reach the FIELD holding the union and bound every arm --
-            # ``Annotated[str | int, Field(min_length=4)]`` applying a string's bound to
-            # the integer arm, which is ``containers.multi_type``'s named defect at the
-            # other spelling of the same shape.  D5's alias module is what puts a bound
-            # on an arm's own type, and what reaches here still carrying one is a shape
-            # it has no spelling for.
-            stated = {
-                **decided.constraints,
-                **({"format": decided.format} if decided.format else {}),
-            }
-            raise Refusal(
-                sorted(stated)[0],
-                at,
-                f"this branch states {stated} and compiler.Type carries no constraint, "
-                "so the keyword would reach the field holding the union and bound every "
-                "arm; D5's alias module names an arm's own bounded type and has no "
-                "spelling for this shape",
-                kind=Kind.DEFERRED,
-            )
-        arms.append(decided.type)
+        # **The branch's own bound rides on the branch's own TYPE, never on the field
+        # holding the union** (section 5's ``minItems``/``maxItems`` row, and section
+        # 2's reasoning for every constraint).  The field holds the other branches too,
+        # so a bound written there would refuse values the document accepts --
+        # ``Annotated[str | int, Field(min_length=4)]`` applying a string's bound to the
+        # integer branch, which is ``containers.multi_type``'s named defect at the
+        # other spelling of the same shape.  ``compiler.carried`` is where the three
+        # positions with no field of their own ask for a named type, and it refuses a
+        # shape the alias module cannot spell rather than dropping it.
+        arms.append(compiler.carried(decided, at, "this branch", mod))
     unique = tuple(dict.fromkeys(arms))  # document order, deduped
     if len(unique) == 1:
         # Two branches that lower to one type are one type, and saying ``X | X`` would

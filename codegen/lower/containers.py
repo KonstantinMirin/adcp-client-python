@@ -205,31 +205,18 @@ ARM = {
 }
 
 
-def _inner(decided: Decided, pointer: str, what: str) -> compiler.Type:
-    """The decided type of something INSIDE a container, or a refusal.
+def _inner(decided: Decided, pointer: str, what: str, mod: Module) -> compiler.Type:
+    """The decided type of something INSIDE a container, named where it needs to be.
 
     A constraint or a format on an inner node has nowhere to go: the compiler's
     ``DataType`` carries neither, so putting the node inside ``list[...]`` or
-    ``dict[str, ...]`` would drop the fact and widen the model.  D5's answer is to
-    name the inner type, and ``codegen.constraints`` now does -- so what reaches
-    here with constraints still on it is a shape that module has no spelling for,
-    and what reaches here with a ``format`` still on it is a format no type is
-    selected for.  Both would be dropped, so both refuse, and the detail names the
-    constraint that would have to be named.  This module's docstring carries the
-    population.
+    ``dict[str, ...]`` would drop the fact and widen the model.  Section 2's answer is
+    to NAME the inner type, and ``compiler.carried`` is the one place the three
+    positions with no field ask for that name -- an ELEM and a MAPV here, and a union
+    BRANCH in ``lower.union``.  A shape the alias module cannot spell still refuses
+    there rather than being dropped.  This module's docstring carries the population.
     """
-    if decided.constraints or decided.format is not None:
-        stated = {**decided.constraints, **({"format": decided.format} if decided.format else {})}
-        raise Refusal(
-            sorted(stated)[0],
-            pointer,
-            f"{what} states {stated} and the compiler carries no constraint inside a "
-            "container, so D5 would have to name the type; the bundle names no titled "
-            "root with these facts and pydantic names no type for them, so D5's shared "
-            "alias module is the row that lowers it",
-            kind=Kind.DEFERRED,
-        )
-    return decided.type
+    return compiler.carried(decided, pointer, what, mod)
 
 
 def _contents(node: dict, pointer: str, symbol: str, what: str, mod: Module) -> compiler.Type:
@@ -275,11 +262,19 @@ def _contents(node: dict, pointer: str, symbol: str, what: str, mod: Module) -> 
     bundle state one.
     """
     decided = mod.decide(node, pointer, symbol, mod)
-    type_ = _inner(decided, pointer, what)
     description = node.get("description")
-    if type_.local or not (isinstance(description, str) and description):
-        return type_
-    return compiler.name_the_node(mod, symbol, pointer, node, decided).type
+    if not decided.type.local and isinstance(description, str) and description:
+        # **The node's OWN name is asked for FIRST, and the order is the P2 rule rather
+        # than a preference.**  A described node is named here anyway, and
+        # ``_alias_for`` puts the description, the constraints and the ``format`` on
+        # that one alias -- so asking :func:`_inner` first would resolve a SECOND name
+        # for the same node in ``adcp.types.constraints``, which this declaration then
+        # does not reference: two names for one node, and a line in a public module
+        # nothing reads.  Measured on ``trusted-match/publisher-tmpx-config.json``,
+        # whose described mapping value recorded ``DictMinProperties1MaxProperties2``
+        # and then rendered its bound inline under its own name.
+        return compiler.name_the_node(mod, symbol, pointer, node, decided).type
+    return _inner(decided, pointer, what, mod)
 
 
 # --------------------------------------------------------------------------- #
@@ -506,7 +501,7 @@ def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
     if "$ref" in node:
         # The one key kind that needs no alias: the bundle already names the type, so
         # P2 applies unchanged -- an import, and no constraint of the target copied.
-        return _inner(mod.decide(node, pointer, "", mod), pointer, "the key")
+        return _inner(mod.decide(node, pointer, "", mod), pointer, "the key", mod)
     if "enum" in node:
         raise Refusal(
             "enum",
@@ -524,7 +519,9 @@ def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
     # the document leaves it out, because ``propertyNames`` applies to a key and a JSON
     # key is a string: without it the node is typeless and the walk reads it as
     # ``Any``, which would drop the bound.
-    return _inner(mod.decide({"type": "string", **node}, pointer, "", mod), pointer, "the key")
+    return _inner(
+        mod.decide({"type": "string", **node}, pointer, "", mod), pointer, "the key", mod
+    )
 
 
 def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
@@ -631,7 +628,9 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
     for kind in kinds:
         cut = {"type": kind, **{k: v for k, v in node.items() if k in ARM[kind]}}
         at = f"{pointer}/type/{kind}"  # not a real pointer; it names the ARM that refused
-        arms.append(_inner(mod.decide(cut, pointer, name_hint, mod), at, f"the {kind!r} arm"))
+        arms.append(
+            _inner(mod.decide(cut, pointer, name_hint, mod), at, f"the {kind!r} arm", mod)
+        )
     unique = tuple(dict.fromkeys(arms))  # document order, deduped
     if len(unique) == 1:
         return Decided(unique[0])

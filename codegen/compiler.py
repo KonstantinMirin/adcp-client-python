@@ -204,8 +204,19 @@ class Type:
     a bound on the FIELD holding it (``Property.constraints``, rendered
     ``Field(min_length=...)``), and a bound on what is INSIDE a container has no
     slot in dmcg's ``DataType`` -- which is the gap D5 closes by naming the
-    inner type rather than the gap it looks like.  The container lowering refuses
-    an inner constraint it cannot name instead of dropping it.
+    inner type rather than the gap it looks like.  :func:`carried` is where a
+    position with no field asks for that name, and what still reaches it unnamed
+    refuses instead of being dropped.
+
+    ``container="alias"`` is the one shape dmcg cannot render itself and the one the
+    naming answer needs: a GENERIC alias applied to its arguments, ``path`` naming the
+    alias and ``of`` carrying them.  ``NonEmptyList[MediaBuyStatus]`` is what a bounded
+    array on a union BRANCH lowers to, and dmcg's ``DataType`` has no slot for it --
+    probed on the pinned version: a ``reference`` beside ``data_types`` renders the
+    ARGUMENT alone (``str``), and a ``reference`` alone renders the alias alone
+    (``NonEmptyList``), so either spelling silently loses half the type.  The
+    subscript is therefore composed HERE, which keeps section 1's seam: the walk
+    decides the alias and the arguments, and the compiler writes the text.
     """
 
     path: str = ""
@@ -245,6 +256,12 @@ class Type:
             )
         if self.container == "union":
             return _TYPES.data_type(data_types=[t.data_type() for t in self.of])
+        if self.container == "alias":
+            outer = _TYPES.get_data_type_from_full_path(self.path, is_custom_type=False)
+            args = ", ".join(t.data_type().type_hint for t in self.of)
+            return _TYPES.data_type(
+                type=f"{outer.type_hint}[{args}]", import_=outer.import_
+            )
         if self.path == "None":
             return _TYPES.data_type(type="None")
         if self.local:
@@ -894,6 +911,18 @@ def _no_binder(uri: str, pointer: str) -> Target:
     )
 
 
+def _no_namer(decided: Decided, mod: Module) -> Type | None:
+    """The default named carrier: nothing is named, so :func:`carried` refuses.
+
+    ``emit.name_the_constraint`` is the real one, and it is in ``emit`` because the
+    names are ``codegen.constraints``'s and that module imports this one.  Refusing is
+    the safe default and the only one: returning ``decided.type`` would DROP the facts
+    the caller came here with, which is the failure the whole arrangement exists to
+    make impossible.
+    """
+    return None
+
+
 def _no_decider(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     """The default node decider, and it refuses for ``_no_binder``'s reason.
 
@@ -927,6 +956,13 @@ class Module:
     bind: Callable[[str, str], Target] = _no_binder
     #: ``(node, pointer, name_hint, mod) -> Decided``; see ``emit.decide_type``.
     decide: Callable[[dict, str, str, "Module"], Decided] = _no_decider
+    #: ``(decided, mod) -> Type | None``; see ``emit.name_the_constraint``.  Section 2's
+    #: named carrier, for a position with no field to hold a decided node's facts.  It
+    #: is carried here, like :attr:`decide` and :attr:`bind`, for the same reason: the
+    #: names live in ``codegen.constraints``, which imports this module, so asking the
+    #: question from here directly would close a cycle.  The default names nothing,
+    #: which leaves :func:`carried` refusing -- never dropping.
+    name_constraint: Callable[[Decided, "Module"], "Type | None"] = _no_namer
     #: The formats this document's own draft asserts; see ``emit.asserted_formats``.
     #: Empty by default, so a node lowered outside ``lower_document`` selects no
     #: format-derived type rather than one nothing checks.
@@ -1004,7 +1040,7 @@ class Module:
     #: decider taking run-level state.  The IMPORT needs nothing from here: a
     #: dotted path on :class:`Type` produces it through the field, like
     #: ``pydantic.AwareDatetime``.
-    aliases: dict[str, tuple[str, dict[str, Any]]] = field(default_factory=dict)
+    aliases: dict[str, tuple[str, dict[str, Any], str | None]] = field(default_factory=dict)
     #: Section 5's ``default`` row: ``pointer -> the value DROPPED`` at it, for a
     #: default on a REQUIRED property.  The row is "dropped and REPORTED", and this is
     #: the report: the drop happens inside the walk, where nothing is printed, so the
@@ -1163,6 +1199,49 @@ def _why(key: str) -> tuple[str, Kind]:
         "scheduled; a non-keyword that ANNOTATES a node is named in "
         "compiler.BUNDLE_ANNOTATIONS and this is not one of those names"
     ), Kind.VERDICT
+
+
+def carried(decided: Decided, pointer: str, what: str, mod: Module) -> Type:
+    """The type of a node at a position with NO FIELD to carry its facts.
+
+    Three positions ask: an array's ELEM and a mapping's MAPV
+    (``lower.containers._contents``), and a union BRANCH (``lower.union.nested``).  One
+    function for the three, because it is one question -- *this node's ``format`` or
+    its bound has no slot in the annotation above it; what carries it?* -- and two
+    copies of the answer is how two positions come to drop a fact differently.  The two
+    refusals this replaced were already the same sentence twice, each naming the same
+    module as the row that would lower it.
+
+    Section 2 is the answer and it is the same at all three: **constraints bind to the
+    type, not the field.**  A named type nests into ``list[...]``, into a mapping value
+    and into a union branch, carrying its bound with it;
+    ``emit.name_the_constraint`` is where the name comes from.  On a BRANCH the
+    alternative is not merely unavailable but wrong: the field holds the other branches
+    too, so a bound written there refuses values the document accepts.
+
+    A shape with no name REFUSES, and the detail names the keyword that would have to
+    be named.  It is a DEFERRAL: the obstruction is a spelling ``codegen.constraints``
+    does not have yet, which is unwritten code and not a property of the document, of
+    pydantic or of the pointer space.
+    """
+    if not (decided.constraints or decided.format is not None):
+        return decided.type
+    named = mod.name_constraint(decided, mod)
+    if named is not None:
+        return named
+    stated = {
+        **decided.constraints,
+        **({"format": decided.format} if decided.format else {}),
+    }
+    raise Refusal(
+        sorted(stated)[0],
+        pointer,
+        f"{what} states {stated} and compiler.Type carries no constraint, so the "
+        "keyword would reach the field holding this node and bind every other node "
+        "under it; section 2 binds a constraint to the TYPE, and the alias module "
+        "codegen.constraints has no spelling for this shape",
+        kind=Kind.DEFERRED,
+    )
 
 
 def check_keywords(
