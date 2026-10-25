@@ -6616,7 +6616,7 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# D7's conjunct contribution rule, and the composition the comparison reads
+# a conjunct contributes every part of itself, and the composition the comparison reads
 # --------------------------------------------------------------------------- #
 #: The population every clause of :func:`test_every_conjunct_contributes_every_part_of_itself`
 #: runs over, stated rather than read back off the structure it grades (D14).  All of it is
@@ -6627,10 +6627,17 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
 #: asserts -- so a conjunct moving from one part to another reddens even where the total
 #: does not.  The two field/name counts are a second AXIS over the same sites rather than a
 #: second count of them: a row that stopped declaring a conjunct's properties would keep
-#: ``fields`` at 2 and drop ``field_keys`` from 7.
-COMPOSING_DOCUMENTS = 174
-COMPOSING_NODES = 185
-CONJUNCTS = 376
+#: ``fields`` at 3 and drop ``field_keys`` from 9.
+#:
+#: The walk below descends into a conjunct's OWN ``allOf`` the way
+#: ``compiler.lower_composition``'s worklist does, so a nested conjunct is counted here
+#: and its rule is one of the sources clause 4 reads.  One such conjunct is in the
+#: committed tree today (``core/demographic-targeting-intent.json`` at
+#: ``/properties/age/allOf/1/allOf/0``, an ``if``/``then``), and dropping the production
+#: push leaves the class one rule short of the sources, which is what clause 4 catches.
+COMPOSING_DOCUMENTS = 183
+COMPOSING_NODES = 197
+CONJUNCTS = 401
 #: The cases D7's DECISION names, not the cases this population happens to hold (D14): a
 #: conjunct is a base, or it contributes any combination of fields, requiredness and a
 #: rule, or it contributes nothing.  The empty parts are asserted empty, because a part
@@ -6641,17 +6648,17 @@ CONJUNCTS = 376
 #: ``/oneOf/0/properties/creatives/items/allOf/2``, an ``x-adcp-validation`` extension,
 #: and that node is not one the emitted tree declares a class at.
 CONJUNCTS_BY_PART = {
-    "base": 134,
+    "base": 141,
     "nothing": 0,
-    "fields": 2,
+    "fields": 3,
     "required": 2,
-    "rule": 236,
+    "rule": 253,
     "fields+required": 0,
     "fields+rule": 2,
     "required+rule": 0,
     "fields+required+rule": 0,
 }
-CONJUNCT_FIELD_KEYS = 7
+CONJUNCT_FIELD_KEYS = 9
 CONJUNCT_REQUIRED_NAMES = 2
 #: Conjuncts carrying a name draft-07 does not define, and the DROPS the run records for
 #: them.  One each, and the same one: ``media-buy/sync-catalogs-request.json`` at
@@ -6662,6 +6669,109 @@ CONJUNCT_FOREIGN_NAMES = 1
 #: reader is the only writer of that channel today; they are asserted separately so a
 #: second writer shows up as a disagreement rather than as one number moving.
 CARRIES_NOTHING_NAMES = 1
+
+#: Every conjunct in the WHOLE portable set that states ``additionalProperties``, as
+#: ``"<document> <pointer>"``.  Section 5's ``additionalProperties`` row gives four
+#: readings at CONJ and this names the sites that choose between them: ``true`` is the
+#: identity and contributes nothing, and the reader lowers that one alone because it is
+#: the only one with a site.  Stated as the SITES and not as a count, so a conjunct that
+#: starts stating ``false`` or a typed value arrives here by name rather than moving an
+#: integer -- and the reader refuses it, which is the pairing this set exists to keep
+#: visible.
+CONJUNCTS_STATING_EXTRA = {
+    "core/demographic-targeting-intent.json /properties/age/allOf/1",
+    "creative/sync-creatives-request.json /properties/creatives/items/allOf/1",
+    "media-buy/get-media-buy-delivery-response.json"
+    " /properties/media_buy_deliveries/items/properties/totals/allOf/1",
+    "media-buy/media-buy-delivery-webhook-result.json"
+    " /properties/media_buy_deliveries/items/properties/totals/allOf/1",
+    "media-buy/media-buy-delivery-webhook-result.json"
+    " /properties/media_buy_deliveries/items/properties/by_package/items/allOf/1",
+}
+
+#: Every conjunct in the WHOLE portable set carrying its own ``allOf``, same spelling.
+#: Section 5's ``allOf`` row at CONJ -- "the same rule applied to the conjunct's own
+#: conjuncts" -- and these are the three sites that exercise it.
+NESTED_CONJUNCT_SITES = {
+    "adagents.json /oneOf/1/properties/formats/items/allOf/1",
+    "core/demographic-targeting-intent.json /properties/age/allOf/1",
+    "core/geo-delivery-metrics.json /allOf/1",
+}
+
+#: The one nested conjunct whose rule reaches a class the committed tree carries, and the
+#: rule it reaches as.  The other two sites sit in documents that refuse for an unrelated
+#: cause (``adagents.json`` on its ``anyOf`` conjunct, ``core/geo-delivery-metrics.json``
+#: on a ``$ref`` whose target is a verdict), so this pair is the whole of what the nested
+#: arm can be graded ON TODAY -- which is why it is asserted by name rather than counted.
+NESTED_CONJUNCT_RULE = (
+    "core/demographic-targeting-intent.json",
+    "DemographicTargetingIntentAge",
+    "ConditionalRequired",
+)
+
+
+def test_a_conjunct_states_the_extra_identity_and_composes_its_own_conjuncts() -> None:
+    """Section 5's two CONJ clauses the reader had no case for, and their populations.
+
+    The ``allOf`` row says CONJ -> "the same rule applied to the conjunct's own
+    conjuncts", and the ``additionalProperties`` row says CONJ -> ``true`` is the
+    identity and contributes nothing.  A conjunct carrying either fell outside the
+    reader's admission set, so the keyword screen refused it and the document was
+    deferred to a row nobody had scheduled.
+
+    Three clauses, and the first two are what keep the arms from being derivations that
+    match nothing:
+
+    1. the sites stating ``additionalProperties`` are :data:`CONJUNCTS_STATING_EXTRA`,
+       and every one of them states ``True``.  The second half is the reason the reader
+       lowers the identity alone: a site stating ``false`` or a typed value would land in
+       this set and the reader refuses it, as a DEFERRAL naming the clause.
+    2. the sites carrying their own ``allOf`` are :data:`NESTED_CONJUNCT_SITES`, and
+       every one of them carries a non-empty list of schemas.
+    3. the one nested conjunct reachable through an emitted class contributes its rule TO
+       THAT CLASS (:data:`NESTED_CONJUNCT_RULE`).  This is the clause that reddens if the
+       worklist stops pushing a conjunct's own conjuncts: the class keeps its fields and
+       loses the ``ConditionalRequired``, which no count of conjuncts would show.
+
+    Both sets are asserted non-empty before they are compared, because a walk that
+    selected nothing would satisfy every clause over an empty loop.
+    """
+    extra: set[str] = set()
+    nested: set[str] = set()
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        for pointer, node in bundle.nodes(doc):
+            if not isinstance(node.get("allOf"), list):
+                continue
+            for index, conjunct in enumerate(node["allOf"]):
+                if not isinstance(conjunct, dict):
+                    continue
+                where = f"{document} {pointer}/allOf/{index}"
+                if "additionalProperties" in conjunct:
+                    extra.add(where)
+                    assert conjunct["additionalProperties"] is True, (
+                        where,
+                        conjunct["additionalProperties"],
+                    )
+                if "allOf" in conjunct:
+                    nested.add(where)
+                    assert isinstance(conjunct["allOf"], list) and conjunct["allOf"], (
+                        where,
+                        conjunct["allOf"],
+                    )
+                    assert all(isinstance(c, dict) for c in conjunct["allOf"]), where
+
+    assert extra, "no conjunct states additionalProperties: clause 1 would say nothing"
+    assert nested, "no conjunct carries its own allOf: clause 2 would say nothing"
+    assert extra == CONJUNCTS_STATING_EXTRA, extra ^ CONJUNCTS_STATING_EXTRA
+    assert nested == NESTED_CONJUNCT_SITES, nested ^ NESTED_CONJUNCT_SITES
+
+    document, symbol, rule = NESTED_CONJUNCT_RULE
+    out = emit.emit(BUNDLE, [document])
+    assert document in out.emitted, out.refusals.get(document)
+    cls = getattr(importlib.import_module(out.emitted[document]), symbol)
+    spelled = [type(r).__name__ for r in cls.__dict__.get("_adcp_rules", ())]
+    assert rule in spelled, (document, symbol, spelled)
 
 
 def test_every_conjunct_contributes_every_part_of_itself() -> None:
@@ -6725,10 +6835,20 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
             cls = getattr(module, here[pointer])
             ancestry = {base.__name__ for base in cls.__mro__}
             rule_nodes = [node]
-            for index, conjunct in enumerate(node["allOf"]):
+            # The SAME worklist ``compiler.lower_composition`` walks, because section 5's
+            # ``allOf`` row says CONJ -> the same rule applied to the conjunct's own
+            # conjuncts: a nested conjunct contributes to THIS class, so a walk that
+            # stopped at depth one would read its rule as absent and clause 4 would grade
+            # the class against sources that leave it out.
+            unread = [(f"{pointer}/allOf/{i}", c) for i, c in enumerate(node["allOf"])]
+            while unread:
+                where, conjunct = unread.pop(0)
                 if not isinstance(conjunct, dict):
                     continue
-                where = f"{pointer}/allOf/{index}"
+                if isinstance(conjunct.get("allOf"), list):
+                    unread.extend(
+                        (f"{where}/allOf/{j}", c) for j, c in enumerate(conjunct["allOf"])
+                    )
                 conjuncts += 1
                 keys = {
                     k
