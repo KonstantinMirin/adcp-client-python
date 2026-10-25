@@ -58,8 +58,16 @@ from tests.nodeset import claimed, partitions, ratchet
 #: to carry it: a dropped default on a required property, a format inside a container
 #: or on a union branch, and an array's or a mapping's own bound on one), 732 (.71, a
 #: remote reference inside a section entry nothing declares: a position the package's
-#: own validation never reaches, so the carried document decides without it).
-EMITTED_FLOOR = 732
+#: own validation never reaches, so the carried document decides without it),
+#: 745 (.43, a conjunct contributes every part of itself: 10 of these 13 are documents
+#: the conjunct reader was deferring -- 6 on their own ground and 4 through a ``$ref``
+#: chain -- and 3 were VERDICTS that the intersection rule turned into classes; the
+#: thirteenth is .71's, which is why 731 + 13 is 745 rather than 744).
+#:
+#: Both lanes moved this in flight, so it is RE-MEASURED on the merged tree rather than
+#: resolved by taking a side: 744 was this row's figure before .71 landed and 732 was
+#: .71's before this row did.
+EMITTED_FLOOR = 745
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -281,6 +289,26 @@ def test_the_only_fact_conjoined_at_a_constrained_node_is_its_object_type() -> N
     assert added == {"type": {"'object'"}}, added
 
 
+#: Nodes the root constrains to an object that ALSO constrain themselves, so the
+#: enclosing ``type`` adds nothing and this test's bare-versus-applied contrast has no
+#: content at them.  Excluded by NAME rather than derived from the assertion that would
+#: fail, because deriving it from that assertion makes the loop grade its own filter.
+#:
+#: The three are ``core/canonical-media-buy-action.json``'s branches, which emit since
+#: ``salesagent-j3k2l.43``: each one is ``{"allOf": [{"$ref":
+#: core/canonical-media-buy-action-fields.json}], "properties", "required"}``, and that
+#: target's own root states ``type: object`` -- so the branch node refuses a string on
+#: its own, before anything enclosing it is applied.  Measured directly:
+#: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False``.
+ALREADY_AN_OBJECT_ITSELF = frozenset(
+    {
+        "core/canonical-media-buy-action.json#/oneOf/0",
+        "core/canonical-media-buy-action.json#/oneOf/1",
+        "core/canonical-media-buy-action.json#/oneOf/2",
+    }
+)
+
+
 def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_admits() -> None:
     """End to end on the committed tree: the classes this made possible.
 
@@ -295,13 +323,22 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
     """
     import test_emit  # the tree reader, one reading for the whole suite
 
-    rows = [
+    constrained = [
         g
         for g in test_emit.graded()
         if isinstance(g.model, type)
         and issubclass(g.model, AdCPBaseModel)
         and g.ref.pointer.lstrip("#")
         in bundle.constrained_to_object(bundle.read(BUNDLE, g.ref.document))
+    ]
+    # The exclusion is asserted to BITE and to be drawn from the set it narrows, so a
+    # stale entry is an allowlist nobody can shrink and reddens here instead.
+    reached = {f"{g.ref.document}{g.ref.pointer}" for g in constrained}
+    assert ALREADY_AN_OBJECT_ITSELF <= reached, sorted(ALREADY_AN_OBJECT_ITSELF - reached)
+    rows = [
+        g
+        for g in constrained
+        if f"{g.ref.document}{g.ref.pointer}" not in ALREADY_AN_OBJECT_ITSELF
     ]
     # The pairs at a constrained node, non-empty -- the per-row loop below is the
     # obligation and 35 was the number of rows one emitted tree gave it.  WHICH

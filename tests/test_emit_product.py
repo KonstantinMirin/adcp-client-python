@@ -335,6 +335,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # names and not as the difference of two counts.
     assert sorted(cleared - set(composing())) == [
         "core/catalog.json",
+        # Two more since ``salesagent-j3k2l.43``, and both are RELEASED rather than
+        # claimed: neither composes at its own root, so neither is in ``composing()``;
+        # each one's only blocker was a ``$ref`` into a document whose conjunct that row
+        # lowered.  ``core/media-buy-support-requirements.json`` chains to
+        # ``core/media-buy-frequency-cap-requirement.json`` and
+        # ``core/package-targeting-resolution.json`` chains two hops to
+        # ``core/demographic-targeting-intent.json``.  They belong in this list for the
+        # reason the four below do -- the row cleared them without claiming them -- and
+        # they are named here so the row's own credit stays separate from the release.
+        "core/media-buy-support-requirements.json",
+        "core/package-targeting-resolution.json",
         "core/reporting-delivery-ready-webhook.json",
         "error-details/authorization-required.json",
         "error-details/macro-resolution-failed.json",
@@ -686,12 +697,19 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
     """The merge does not reach a restatement that DISAGREES, and that is the one
     thing a merge of the base's content could quietly swallow.
 
-    ``_restatement`` is asked first and is unchanged: a declaration that drops a
-    keyword the base states, or gives one a different value, is ``None`` and the
-    document refuses by the keyword the two disagree about.  Only a restatement
-    that says the SAME thing or NOTHING about the instance reaches the arm that
-    re-uses the base's field, so there is no reading on which a disagreement is
-    merged away.
+    ``_restatement`` is asked first: a declaration that says something at a keyword the
+    base also states which is NOT at least as tight is ``None``, and the document
+    refuses by the keyword the two disagree about.  Only a restatement at least as tight
+    everywhere the two overlap reaches :func:`compiler._intersection`, so there is no
+    reading on which a disagreement is merged away.
+
+    **The bound DROPPED is no longer here, and that is D7 rather than a relaxation.**
+    "Where composed schemas constrain the same property, the field carries the
+    INTERSECTION" -- so a restatement silent about the base's bound intersects to the
+    base's own content and the field is INHERITED, which is what
+    ``test_the_rule_is_symmetric...`` asserts of the decision. Its place is taken by the
+    shape the population actually holds: two ``items`` that conflict
+    (``media-buy/get-media-buys-response.json``'s ``indicators``).
     """
     base = {"type": "integer", "minimum": 3, "description": "the base's floor"}
     # The keyword is ``_disagreeing``'s: the FIRST the two do not agree about, in
@@ -700,7 +718,6 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
     for restated, keyword in (
         ({"type": "integer", "minimum": 1}, "minimum"),  # a LOOSER bound
         ({"type": "string"}, "minimum"),  # a different type, and the bound gone with it
-        ({"type": "integer"}, "minimum"),  # the bound dropped
     ):
         with pytest.raises(Refusal) as caught:
             _lower(
@@ -1000,19 +1017,25 @@ def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> No
     their intersection -- and an annotation carrying only the restatement would be
     WIDER than the document.
 
-    4 of the population's 100 restatement sites are incompatible, so this arm has
-    a population and is not a guard.  Graded on two local declarations of one key,
-    which needs no binder: the rule that decides them is the same symmetric one.
+    **3 documents of the 1,054 portable ones are refused by this rule**, re-measured
+    after D7's intersection rule landed, so the arm has a population and is not a guard:
+    ``governance/check-governance-response.json``'s ``action_binding``,
+    ``media-buy/get-media-buys-response.json``'s ``indicators`` and
+    ``signals/get-signals-response.json``'s ``range``.  **None of the three is a looser
+    BOUND**, which is why the fixture here is a conflicting ``items`` -- a tighter bound
+    is a narrowing under D7 and a looser one has no site.  Graded on two local
+    declarations of one key, which needs no binder: the rule that decides them is the
+    same symmetric one.
     """
     doc = {
         "title": "Probe",
         "type": "object",
-        "properties": {"n": {"type": "integer", "minimum": 1}},
-        "allOf": [{"properties": {"n": {"type": "integer", "minimum": 2}}}],
+        "properties": {"n": {"type": "array", "items": {"type": "integer"}}},
+        "allOf": [{"properties": {"n": {"type": "array", "items": {"type": "string"}}}}],
     }
     with pytest.raises(Refusal) as caught:
         _lower(doc)
-    assert caught.value.keyword == "minimum"
+    assert caught.value.keyword == "items"
     assert caught.value.pointer == "/allOf/0/properties/n"
     assert "neither declaration narrows the other" in caught.value.detail
 
@@ -1022,17 +1045,36 @@ def test_the_rule_is_symmetric_so_the_order_the_declarations_are_read_in_cannot_
 
     A generator that let the later conjunct win made its accepted set a function
     of member order, which is invisible in the output.  Asserted on the decision
-    itself, over the four outcomes it has to distinguish.
+    itself, over every outcome it has to distinguish, and then on the OUTPUT -- because
+    under D7 the decision's answer is one half and :func:`compiler._intersection` is the
+    other, and it is the pair that has to be order-independent.
+
+    **A TIGHTER bound narrows and a looser one refuses, which is D7 in its own words:**
+    "an enum is the intersection of the members, a bound is the tighter one, a ``const``
+    must agree".  An earlier revision read a tighter bound as a conflict, which is the
+    equality test this rule replaced.
+
+    **And silence is not a loosening.**  A restatement saying LESS than the base and the
+    same where they overlap intersects to the base's content and states no new fact, so
+    the field is inherited -- ``False``, not ``None``.
     """
     typed = {"type": "integer", "minimum": 1}
+    tighter = {"type": "integer", "minimum": 2}
     assert compiler._restatement({"default": 1}, typed) is False  # annotation-only: inherited
     assert compiler._restatement(dict(typed), typed) is False  # identical: inherited
-    assert compiler._restatement({**typed, "maximum": 9}, typed) is True  # narrows
-    assert compiler._restatement({"type": "integer", "minimum": 2}, typed) is None  # conflicts
-    # symmetric: swapping the arguments of a conflict is still a conflict, and
-    # swapping a narrowing reports the other direction rather than agreeing
-    assert compiler._restatement(typed, {"type": "integer", "minimum": 2}) is None
-    assert compiler._restatement(typed, {**typed, "maximum": 9}) is None
+    assert compiler._restatement({**typed, "maximum": 9}, typed) is True  # adds a keyword
+    assert compiler._restatement(tighter, typed) is True  # D7: a bound is the tighter one
+    assert compiler._restatement({"type": "string"}, typed) is None  # a different type
+    # The asymmetry is the rule working, not the rule disagreeing with itself: exactly
+    # one direction of a narrowing is a narrowing.  The LOOSER direction refuses -- a
+    # KNOWN CEILING D7 would have carry the base's bound, measured at 0 sites -- and a
+    # restatement that says less and the same is inherited.
+    assert compiler._restatement(typed, tighter) is None
+    assert compiler._restatement(typed, {**typed, "maximum": 9}) is False
+    # And the OUTPUT does not depend on which view was read first.
+    both = {"type": "integer", "minimum": 2, "maximum": 9}
+    assert compiler._intersection(tighter, {**typed, "maximum": 9}) == both
+    assert compiler._intersection({**typed, "maximum": 9}, tighter) == both
 
 
 @pytest.mark.parametrize(
@@ -1041,7 +1083,20 @@ def test_the_rule_is_symmetric_so_the_order_the_declarations_are_read_in_cannot_
         # a $ref with a sibling is not a base, and the SIBLING is the cause
         ({"$ref": "x", "minimum": 1}, "minimum"),
         ({"enum": ["a", "b"]}, "enum"),  # the enum narrowing: step 3's row
-        ({"required": ["a"], "not": {}}, "not"),
+        # A combinator of SHAPES: D7's own third case, and the one conjunct part this
+        # row still does not lower.  ``{"required": [...], "not": {...}}`` used to sit
+        # here and is now READ -- the requiredness is this node's and the ``not`` is
+        # this node's rule -- so a conjunct stating one refuses on ``required`` naming
+        # no property instead, which is ``fields``' own refusal and not this arm's.
+        (
+            {
+                "oneOf": [
+                    {"properties": {"a": {"type": "string"}}},
+                    {"properties": {"b": {"type": "string"}}},
+                ]
+            },
+            "oneOf",
+        ),
         ({"type": "object", "properties": {"a": {}}, "additionalProperties": False}, "additionalProperties"),
     ],
 )
@@ -1275,11 +1330,19 @@ def test_breaking_the_shared_reader_reddens_the_product_row_and_the_union_row(
     rows call and one test reaches is half-graded, and the half nobody reaches is
     the half that rots.  So the ``$ref``-conjunct arm is broken once -- ``$ref``
     added to ``compiler.ANNOTATIONS``, which makes a bare-``$ref`` conjunct carry no
-    live keyword at all -- and both callers must report the reader's own last-arm
-    deferral at the conjunct's own pointer.
+    live keyword at all -- and both callers must LOSE THE BASE the conjunct names.
 
     Broken in the READER and not in either caller on purpose: a break either caller
     could absorb would say nothing about the other.
+
+    **What the break shows is the lost base, not a refusal, and that changed with D7's
+    conjunct contribution rule.**  A conjunct with no constraining key contributes
+    nothing and the document still emits -- which is correct, and has a population of
+    one (``creative/sync-creatives-response.json``'s ``x-adcp-validation`` conjunct) --
+    so the reader's last arm is no longer reached by this break and asserting a refusal
+    would be asserting the old arm structure.  The class statement is the stronger
+    reading anyway: it says the base was BOUND, where a refusal only said the arm was
+    entered.
     """
     product_at = _probe(tmp_path, own={"label": {"type": "string"}}, name="brkprod")
     union_at = _union_probe(tmp_path, "brkunion")
@@ -1289,18 +1352,30 @@ def test_breaking_the_shared_reader_reddens_the_product_row_and_the_union_row(
     assert emit.emit(product_at, documents(product_at)).refusals == {}
     assert emit.emit(union_at, documents(union_at)).refusals == {}
 
+    # The control reads the BASE each row binds, so the red below is a base that stopped
+    # being bound and not a probe that never bound one.
+    whole = emit.emit(product_at, documents(product_at))
+    assert "class ProbeComposing(ProbeMarker, AdCPVersionEnvelope):" in (
+        whole.files["core/probe_composing.py"]
+    ), whole.files["core/probe_composing.py"]
+    arm = emit.emit(union_at, documents(union_at))
+    assert "class ComposingArm(ProbeUnion, ProbeMarker):" in (
+        arm.files["core/probe_union.py"]
+    ), arm.files["core/probe_union.py"]
+
     monkeypatch.setattr(compiler, "ANNOTATIONS", compiler.ANNOTATIONS | {"$ref"})
-    product = emit.emit(product_at, documents(product_at)).refusals
-    union = emit.emit(union_at, documents(union_at)).refusals
+    product = emit.emit(product_at, documents(product_at))
+    union = emit.emit(union_at, documents(union_at))
 
-    LAST_ARM = "this step lowers a $ref conjunct (a base) or an inline conjunct with properties"
-    assert "core/probe-composing.json" in product, product
-    assert product["core/probe-composing.json"]["detail"].startswith(LAST_ARM), product
-    assert product["core/probe-composing.json"]["pointer"] == "/allOf/0", product
-
-    assert "core/probe-union.json" in union, union
-    assert union["core/probe-union.json"]["detail"].startswith(LAST_ARM), union
-    assert union["core/probe-union.json"]["pointer"] == "/oneOf/0/allOf/0", union
+    # ONE break, BOTH rows: the conjunct's class is no longer a base of either.
+    assert product.refusals == {}, product.refusals  # it emits, wrongly, which is the point
+    assert "ProbeMarker" not in product.files["core/probe_composing.py"], (
+        product.files["core/probe_composing.py"]
+    )
+    assert union.refusals == {}, union.refusals
+    assert "ProbeMarker" not in union.files["core/probe_union.py"], (
+        union.files["core/probe_union.py"]
+    )
 
 
 #: The a2ui shape exactly: a mapping whose VALUE is a schema of its own carrying a

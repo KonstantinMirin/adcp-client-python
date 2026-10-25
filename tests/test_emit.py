@@ -1298,9 +1298,15 @@ def test_the_three_allof_decisions_that_no_case_above_grades() -> None:
 
     assert compare_schema(nested, Outer).outcome == "pass"
 
-    # The ceiling: the node's own bound wins over a conjunct's, so a class stating
-    # the TIGHTER effective bound is reported as differing.  A false failure, which
-    # is the safe direction, and measured at 0 documents.
+    # **The ceiling this line pinned IS CLOSED, and the pin's own words are what moved
+    # it**: "pinned here so replacing the gap-fill with a per-keyword intersection has to
+    # move this line".  ``salesagent-j3k2l.43`` replaced it -- ``harness._tighter`` reads
+    # a keyword both views state as the intersection, "a bound is the tighter one"
+    # (section 2) -- so the document side of this node now says 99, the model says 99,
+    # and there is nothing to differ about.  Before, the node's own bound won over the
+    # conjunct's and a class stating the tighter EFFECTIVE bound was reported as
+    # differing: a false failure in the safe direction, measured at 0 documents, and now
+    # at 0 synthetic nodes as well.
     collides = {
         "type": "object",
         "allOf": [{"type": "object", "properties": {"n": {"maximum": 99}}}],
@@ -1311,9 +1317,15 @@ def test_the_three_allof_decisions_that_no_case_above_grades() -> None:
         n: int | None = Field(default=None, le=99)
 
     ceiling = compare_schema(collides, StatesTheTighter)
-    assert ceiling.differs == [
-        "/properties/n/maximum: the document says 100, the model 99"
-    ], ceiling.differs
+    assert ceiling.differs == [], ceiling.differs
+    # And it closed in the direction that matters rather than by going quiet: the
+    # document side states the intersection, so the comparison has a fact to compare and
+    # agrees on it.  A fold that simply dropped the keyword would also report no
+    # `differs`, and this is what tells the two apart.
+    assert ceiling.outcome == "pass", (ceiling.added, ceiling.missing, ceiling.differs)
+    assert compare_schema(collides, AdCPBaseModel).differs or compare_schema(
+        collides, AdCPBaseModel
+    ).missing, "the node states a bound the comparison can see; otherwise the line above is vacuous"
 
 
 #: The three pointer segments a conditional is spelled with.  A node under one is a
@@ -2921,10 +2933,21 @@ def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
         bases = [b.id for b in classes[symbol].bases if isinstance(b, ast.Name)]
         assert bases == ["BranchDispatchMixin", "AdCPBaseModel"], (document, bases)
 
+        # **A branch class is one whose FIRST base is the union base**, not one whose
+        # only base is.  Section 4: "A branch whose schema is a ``$ref`` is a class with
+        # TWO bases: the target, which supplies the fields, and the union's base, which
+        # supplies the dispatch" -- row ``salesagent-j3k2l.59``'s shape, with the union
+        # base first so ``isinstance`` against the root's name holds.  This read
+        # ``== [symbol]`` and so recognised the one-based branch alone; the predicate was
+        # never reached because no two-based-branch document emitted until the
+        # intersection rule cleared ``core/canonical-media-buy-action.json``, whose three
+        # branches are each ``{"allOf": [{"$ref": ...}], "properties", "required"}`` and
+        # derive ``(CanonicalMediaBuyAction, CanonicalMediaBuyActionFields)``.  The
+        # docstring above already said "each deriving the base", which is this reading.
         branch_classes = sorted(
             name
             for name, node in classes.items()
-            if [b.id for b in node.bases if isinstance(b, ast.Name)] == [symbol]
+            if [b.id for b in node.bases if isinstance(b, ast.Name)][:1] == [symbol]
         )
         assert len(branch_classes) == len(doc[kw]), (document, branch_classes, len(doc[kw]))
 
@@ -3353,6 +3376,20 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         row = out.refusals[document]
         assert row["keyword"] and row["pointer"], document
         refused_on[document] = row["keyword"]
+    # **FOUR LEFT AND ONE WAS RE-ATTRIBUTED AT ``salesagent-j3k2l.43``, and nothing
+    # arrived.**  The four left because they EMIT:
+    # ``core/canonical-media-buy-action.json`` (was ``const``),
+    # ``core/collection-selection.json`` and ``core/placement-selection.json``
+    # (``required``) and ``core/product-execution-requirement.json`` (``not``) -- the
+    # requiredness overlay and the fields-and-a-rule conjunct, which is this row's work,
+    # plus the restatement the intersection rule now reads instead of refusing.
+    #
+    # The one re-attributed is ``media-buy/control-media-buy-response.json``, ``$ref`` ->
+    # ``const``: its refusal was CHAINED through
+    # ``core/canonical-media-buy-action.json``, which now emits, so the walk gets further
+    # and names its own verdict at
+    # ``/oneOf/0/properties/warnings/items/allOf/1/properties/code``.  That is the
+    # attribution moving in the honest direction, which is what this profile is for.
     assert refused_on == {
     "account/get-account-financials-response.json": "allOf",
     "account/list-account-changes-response.json": "allOf",
@@ -3388,10 +3425,8 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "core/audience-characteristic.json": "allOf",
     "core/brand-response-authorization-result.json": "properties",
     "core/budget-allocation.json": "$ref",
-    "core/canonical-media-buy-action.json": "const",
     "core/canonical-placement.json": "properties",
     "core/catchment.json": "properties",
-    "core/collection-selection.json": "required",
     "core/creative-asset.json": "allOf",
     "core/creative-manifest.json": "allOf",
     "core/delivery-metric-aggregate.json": "allOf",
@@ -3400,11 +3435,9 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "core/frequency-cap-impression-constraints.json": "properties",
     "core/frequency-cap-interval-constraints.json": "properties",
     "core/optimization-goal.json": "allOf",
-    "core/placement-selection.json": "required",
     "core/postal-area.json": "$ref",
     "core/postal-country-system.json": "properties",
     "core/pricing-option.json": "$ref",
-    "core/product-execution-requirement.json": "not",
     "core/product-format-declaration.json": "allOf",
     "core/registry-event.json": "properties",
     "core/requirements/asset-requirements.json": "$ref",
@@ -3426,7 +3459,7 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "error-details/vast-version-mismatch.json": "properties",
     "media-buy/build-creative-response.json": "allOf",
     "media-buy/buy-products-request.json": "allOf",
-    "media-buy/control-media-buy-response.json": "$ref",
+    "media-buy/control-media-buy-response.json": "const",
     "media-buy/create-media-buy-request.json": "allOf",
     "media-buy/create-media-buy-response.json": "allOf",
     "media-buy/decline-proposals-response.json": "properties",
@@ -5030,15 +5063,21 @@ def _prunable(bundle_dir: Path, name: str, extra: dict[str, Any] | None = None) 
     )
 
 
-#: What makes the second document stop emitting.  A ``required``-only ``allOf``
-#: conjunct: step 4's row claims the root, reaches the conjunct, and refuses because
-#: a conjunct with no ``properties`` has no base to subclass.  The test ASSERTS the
-#: refusal rather than assuming it, for the reason
-#: ``test_the_cli_reports_a_refusal_rather_than_raising_it`` records: that fixture
-#: once used ``not: {}``, a later row lowered it, and the test went on passing over a
-#: bundle with no refusal in it.  Whichever row claims this next moves the fixture,
-#: and the assertion is what says so out loud.
-_STOPS_EMITTING = {"allOf": [{"required": ["a"]}]}
+#: What makes the second document stop emitting.  A conjunct whose ``type`` is not
+#: ``object``: a conjunction of ``object`` and ``string`` admits no instance at all, so
+#: no class can stand for it and the refusal is a VERDICT -- the obstruction is the
+#: document's, not unwritten code's.
+#:
+#: **Third fixture for this slot, and the first whose refusal no row can claim.**  It
+#: was ``not: {}`` until step 7 lowered a ``not``; then
+#: ``{"allOf": [{"required": ["a"]}]}``, which read as "a conjunct with no
+#: ``properties`` has no base to subclass" -- until ``salesagent-j3k2l.43`` lowered
+#: exactly that as section 2's requiredness overlay and both fixtures stopped refusing
+#: anything.  Each time the comment said the next row would move it and each time the
+#: test caught it, because the refusal is ASSERTED rather than assumed.  A DEFERRAL is
+#: the wrong kind of thing to build a fixture on: it means "no row has written this
+#: yet", so a fixture resting on one has a scheduled expiry.  A verdict does not.
+_STOPS_EMITTING = {"allOf": [{"type": "string", "properties": {"a": {"type": "string"}}}]}
 
 
 def test_write_removes_a_file_the_run_no_longer_intends(tmp_path) -> None:
@@ -5291,19 +5330,20 @@ def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
     (tmp_path / "ok.json").write_text(
         json.dumps({"title": "Ok", "type": "object", "properties": {"a": {"type": "string"}}})
     )
-    # ``allOf`` and not ``not``: this fixture used ``not: {}``, which step 7 now
-    # LOWERS (a ``not`` is a rule or the schema's own statement, never a refusal),
-    # so the fixture stopped refusing anything and the test passed on a bundle
-    # with no refusal in it.  ``allOf`` is step 4's row and still refuses, and
-    # whichever row claims it next will move this fixture again -- which is the
-    # point: the fixture has to name a keyword the tree genuinely cannot lower.
+    # A conjunct whose ``type`` is not ``object``, which is the shape ``_STOPS_EMITTING``
+    # carries and for the reason stated there: this fixture was ``not: {}`` until step 7
+    # lowered a ``not``, then a ``required``-only conjunct until ``salesagent-j3k2l.43``
+    # lowered that as section 2's requiredness overlay, and both times the fixture
+    # stopped refusing anything. A conjunction of ``object`` and ``string`` admits no
+    # instance, so its refusal is a VERDICT and no row can claim it -- which is what a
+    # fixture asserting "this document is refused" has to rest on.
     (tmp_path / "no.json").write_text(
         json.dumps(
             {
                 "title": "No",
                 "type": "object",
                 "properties": {"a": {"type": "string"}},
-                "allOf": [{"required": ["a"]}],
+                **_STOPS_EMITTING,
             }
         )
     )
@@ -5329,12 +5369,13 @@ def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
     assert "Traceback" not in done.stderr, done.stderr
     assert done.returncode == 1, (done.returncode, done.stdout, done.stderr)
     assert "refused no.json" in done.stdout, done.stdout
-    # ``on required:`` and not ``on allOf:``: step 4's row claims this root now, so
-    # the walk reaches the conjunct and names the keyword that actually stopped it --
-    # a ``required``-only conjunct, which has no base to subclass and no properties to
-    # declare.  The fixture still refuses, which is all this test needs; the keyword
-    # moves with whichever row claims the root, and the comment above says so.
-    assert "on required:" in done.stdout, done.stdout
+    # ``on type:`` and not ``on allOf:``: step 4's row claims this root, so the walk
+    # reaches the conjunct and names the keyword that actually stopped it -- here the
+    # conjunct's own ``type``, because a conjunction of ``object`` and ``string`` admits
+    # no instance.  It read ``on required:`` while ``_STOPS_EMITTING`` was a
+    # ``required``-only conjunct, and ``salesagent-j3k2l.43`` lowered that as section 2's
+    # requiredness overlay; the fixture moved with it, for the reason stated there.
+    assert "on type:" in done.stdout, done.stdout
     assert (into / "ok.py").exists()
     assert not (into / "no.py").exists()
 
@@ -5761,9 +5802,34 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
         node = raw.get(g.ref.pointer.removeprefix("#"))
         if not isinstance(node, dict):
             continue  # a class at a pointer the raw walk does not reach
+        # **The node's own ``properties`` AND every inline conjunct's**, which is the
+        # one map ``compiler.lower_composition`` builds: a draft-07 ``allOf`` conjunct
+        # applies to the same instance, so its ``properties`` are this node's fields and
+        # a ``uniqueItems`` among them is this class's rule.  Reading the node's own
+        # ``properties`` alone put the two sides at different scopes again -- the same
+        # defect as the MRO read above, from the document side -- and reported
+        # ``core/demographic-targeting-intent.json#/properties/age`` as stating two
+        # ``UniqueItems`` against a document of ``[]``, where the document states both
+        # inside ``/properties/age/allOf/1/properties``.
+        #
+        # A ``$ref`` conjunct is SKIPPED, by the attribution rule this comparison is
+        # already built on: those properties are the target's and are graded on the
+        # target's own pair.  The nested ``allOf`` is followed because production
+        # follows it (section 5's ``allOf`` row at CONJ).
+        declares: dict[str, Any] = dict(node.get("properties") or {})
+        unread = list(node.get("allOf") or [])
+        while unread:
+            conjunct = unread.pop(0)
+            if not isinstance(conjunct, dict):
+                continue
+            keys = {k for k in conjunct if k not in compiler.ANNOTATIONS}
+            if keys == {"$ref"}:
+                continue
+            unread.extend(conjunct.get("allOf") or [])
+            declares.update(conjunct.get("properties") or {})
         want = sorted(
             key
-            for key, declaration in (node.get("properties") or {}).items()
+            for key, declaration in declares.items()
             if isinstance(declaration, dict)
             and declaration.get("type") == "array"
             and declaration.get("uniqueItems") is True
@@ -6397,10 +6463,34 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # those chains now resolve to ``uniqueItems`` with no class above the array, which
     # its producer mints as a verdict.  Both floors are re-measured on this tree, which
     # is what the paragraphs above do at every row.
-    assert len(chained) >= 158, len(chained)
+    # **158 -> 152 AND THE DEFERRED SIDE 5 -> 1 AT ``salesagent-j3k2l.43``, WHICH IS THE
+    # FLOOR BEING LOWERED AND HAS TO BE SAID OUT LOUD.**  A chain floor falls when a row
+    # clears a TARGET other documents chained to, and that is the whole of what this row
+    # did: 10 pending documents cleared, so the chains onto them left the refusal set.
+    #
+    # The split is what makes it attributable rather than a number going down.  The
+    # deferred chains were 5 and are 1, and the 4 that left are exactly this row's four
+    # inheritors -- ``core/media-buy-support-requirements.json``,
+    # ``error-details/execution-requirement-unmet.json``,
+    # ``core/demographic-targeting-resolution.json`` and
+    # ``core/package-targeting-resolution.json``, each of which chained to a conjunct the
+    # reader now lowers and each of which now emits.  The one left is
+    # ``creative/validate-input-response.json``, chained to
+    # ``creative/validate-input-result.json``'s ``required`` refusal, which is row
+    # ``salesagent-j3k2l.56``'s and not this one's.  The verdict chains fell 153 -> 151
+    # for the same reason in the other kind: a document whose chain target now EMITS
+    # either emits with it or refuses directly, and ``media-buy/control-media-buy-response.json``
+    # is the measured instance -- it chained through ``core/canonical-media-buy-action.json``
+    # and now carries its own verdict at
+    # ``/oneOf/0/properties/warnings/items/allOf/1/properties/code``.
+    #
+    # So a falling chain floor is the SIGN of an emitting row rather than a regression,
+    # and the thing that distinguishes the two is naming which chains left and where
+    # their documents went -- which is what the paragraph above does.
+    assert len(chained) >= 152, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 153, dict(split)
-    assert split[refusal_module.Kind.DEFERRED] >= 5, dict(split)
+    assert split[refusal_module.Kind.VERDICT] >= 151, dict(split)
+    assert split[refusal_module.Kind.DEFERRED] >= 1, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
         max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values())
@@ -6510,7 +6600,21 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # Four producers, none of them that row's, and all four already firing at the base.
     # A re-point whose 4 could not be named and attributed would be the trade wearing
     # this pin's clothes; these can, so the pin moves and the names stay here.
-    emitted_pin, pending_pin = 705, 48
+    # **RE-POINTED 705, 48 -> 744, 12 BY ``salesagent-j3k2l.43``, AND IT CLEARED NONE BY
+    # REFUSING**, which is the cheapest form the re-point above says a re-point may take:
+    # the row names the four it did not emit because it had four; this row has none.
+    # Measured over the whole portable set at its own tip: pending 22 -> 12, and every
+    # one of the 10 turns up in the emitted count -- 6 on their own ground
+    # (``core/collection-selection``, ``core/placement-selection``,
+    # ``core/media-buy-frequency-cap-requirement``, ``core/product-execution-requirement``,
+    # ``media-buy/sync-catalogs-request``, ``core/demographic-targeting-intent``) and 4
+    # released through a ``$ref`` chain onto them.  Emitted rose by 13 rather than 10
+    # because 3 VERDICTS became classes: ``core/audience-evidence-requirements``,
+    # ``core/canonical-media-buy-action`` and ``core/forecast-rate-range``, each refused
+    # for a restatement the intersection rule now merges instead of refusing.  Verdicts
+    # therefore FELL, 301 -> 298, which is the one direction this pin does not measure
+    # and is reported beside it rather than folded in.
+    emitted_pin, pending_pin = 744, 12
     assert len(out.emitted) >= emitted_pin + max(0, pending_pin - pending), {
         "emitted, and its pin": (len(out.emitted), emitted_pin),
         "pending, and its pin": (pending, pending_pin),
@@ -6686,3 +6790,447 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
     # the same claim read off the artifact rather than off a refusal.
     module = emit.lower_document("core/start-timing.json", bundle.read(BUNDLE, "core/start-timing.json"))[0]
     assert "Literal['asap']" in "\n".join(b for b in module.blocks), module.blocks
+
+
+# --------------------------------------------------------------------------- #
+# a conjunct contributes every part of itself, and the composition the comparison reads
+# --------------------------------------------------------------------------- #
+#: The population every clause of :func:`test_every_conjunct_contributes_every_part_of_itself`
+#: runs over, stated rather than read back off the structure it grades (D14).  All of it is
+#: measured over ``population()``, the documents the COMMITTED TREE carries, because the
+#: identity clauses import the class the node declared.
+#:
+#: The per-part sets PARTITION the conjunct sites -- `partitions` reports a site no part
+#: claims and a site two parts claim, each by name -- so a conjunct moving from one part
+#: to another is named rather than showing up as two integers that both changed.  The
+#: field and name counts are a second AXIS over the same sites rather than a second count
+#: of them: a row that stopped declaring a conjunct's properties would leave the
+#: ``fields`` part the same size and drop the key count.
+#:
+#: The walk below descends into a conjunct's OWN ``allOf`` the way
+#: ``compiler.lower_composition``'s worklist does, so a nested conjunct is counted here
+#: and its rule is one of the sources clause 4 reads.  One such conjunct is in the
+#: committed tree today (``core/demographic-targeting-intent.json`` at
+#: ``/properties/age/allOf/1/allOf/0``, an ``if``/``then``), and dropping the production
+#: push leaves the class one rule short of the sources, which is what clause 4 catches.
+#: The cases the decision names, which is what the partition's parts are keyed by: a
+#: conjunct is a base, or it contributes any combination of fields, requiredness and a
+#: rule, or it contributes nothing.  Stated as the CASES and not as their sizes -- the
+#: sizes were nine integers and `tests/test_every_check_names_its_set.py` refuses an
+#: equality on a derived count, for the reason it gives: every emitting row moves them,
+#: so two rows in flight compute two different correct values and no merge picks a side.
+CONJUNCT_PARTS = (
+    "base",
+    "nothing",
+    "fields",
+    "required",
+    "rule",
+    "fields+required",
+    "fields+rule",
+    "required+rule",
+    "fields+required+rule",
+)
+
+#: The parts of :data:`CONJUNCT_PARTS` this population does not hold, asserted empty BY
+#: NAME.  `partitions` is satisfied by an empty part without saying so, and a part with
+#: no member today is the one the next cleared document arrives in.
+#:
+#: ``nothing`` is empty HERE and has one member over the whole bundle: the one conjunct
+#: with no constraining key at all is ``creative/sync-creatives-response.json`` at
+#: ``/oneOf/0/properties/creatives/items/allOf/2``, an ``x-adcp-validation`` extension,
+#: and that node is not one the emitted tree declares a class at.
+CONJUNCT_PARTS_WITH_NO_SITE = (
+    "nothing",
+    "fields+required",
+    "required+rule",
+    "fields+required+rule",
+)
+
+#: Every conjunct in the WHOLE portable set that states ``additionalProperties``, as
+#: ``"<document> <pointer>"``.  Section 5's ``additionalProperties`` row gives four
+#: readings at CONJ and this names the sites that choose between them: ``true`` is the
+#: identity and contributes nothing, and the reader lowers that one alone because it is
+#: the only one with a site.  Stated as the SITES and not as a count, so a conjunct that
+#: starts stating ``false`` or a typed value arrives here by name rather than moving an
+#: integer -- and the reader refuses it, which is the pairing this set exists to keep
+#: visible.
+CONJUNCTS_STATING_EXTRA = {
+    "core/demographic-targeting-intent.json /properties/age/allOf/1",
+    "creative/sync-creatives-request.json /properties/creatives/items/allOf/1",
+    "media-buy/get-media-buy-delivery-response.json"
+    " /properties/media_buy_deliveries/items/properties/totals/allOf/1",
+    "media-buy/media-buy-delivery-webhook-result.json"
+    " /properties/media_buy_deliveries/items/properties/totals/allOf/1",
+    "media-buy/media-buy-delivery-webhook-result.json"
+    " /properties/media_buy_deliveries/items/properties/by_package/items/allOf/1",
+}
+
+#: Every conjunct in the WHOLE portable set carrying its own ``allOf``, same spelling.
+#: Section 5's ``allOf`` row at CONJ -- "the same rule applied to the conjunct's own
+#: conjuncts" -- and these are the three sites that exercise it.
+NESTED_CONJUNCT_SITES = {
+    "adagents.json /oneOf/1/properties/formats/items/allOf/1",
+    "core/demographic-targeting-intent.json /properties/age/allOf/1",
+    "core/geo-delivery-metrics.json /allOf/1",
+}
+
+#: The one nested conjunct whose rule reaches a class the committed tree carries, and the
+#: rule it reaches as.  The other two sites sit in documents that refuse for an unrelated
+#: cause (``adagents.json`` on its ``anyOf`` conjunct, ``core/geo-delivery-metrics.json``
+#: on a ``$ref`` whose target is a verdict), so this pair is the whole of what the nested
+#: arm can be graded ON TODAY -- which is why it is asserted by name rather than counted.
+NESTED_CONJUNCT_RULE = (
+    "core/demographic-targeting-intent.json",
+    "DemographicTargetingIntentAge",
+    "ConditionalRequired",
+)
+
+
+def test_a_conjunct_states_the_extra_identity_and_composes_its_own_conjuncts() -> None:
+    """Section 5's two CONJ clauses the reader had no case for, and their populations.
+
+    The ``allOf`` row says CONJ -> "the same rule applied to the conjunct's own
+    conjuncts", and the ``additionalProperties`` row says CONJ -> ``true`` is the
+    identity and contributes nothing.  A conjunct carrying either fell outside the
+    reader's admission set, so the keyword screen refused it and the document was
+    deferred to a row nobody had scheduled.
+
+    Three clauses, and the first two are what keep the arms from being derivations that
+    match nothing:
+
+    1. the sites stating ``additionalProperties`` are :data:`CONJUNCTS_STATING_EXTRA`,
+       and every one of them states ``True``.  The second half is the reason the reader
+       lowers the identity alone: a site stating ``false`` or a typed value would land in
+       this set and the reader refuses it, as a DEFERRAL naming the clause.
+    2. the sites carrying their own ``allOf`` are :data:`NESTED_CONJUNCT_SITES`, and
+       every one of them carries a non-empty list of schemas.
+    3. the one nested conjunct reachable through an emitted class contributes its rule TO
+       THAT CLASS (:data:`NESTED_CONJUNCT_RULE`).  This is the clause that reddens if the
+       worklist stops pushing a conjunct's own conjuncts: the class keeps its fields and
+       loses the ``ConditionalRequired``, which no count of conjuncts would show.
+
+    Both sets are asserted non-empty before they are compared, because a walk that
+    selected nothing would satisfy every clause over an empty loop.
+    """
+    extra: set[str] = set()
+    nested: set[str] = set()
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        for pointer, node in bundle.nodes(doc):
+            if not isinstance(node.get("allOf"), list):
+                continue
+            for index, conjunct in enumerate(node["allOf"]):
+                if not isinstance(conjunct, dict):
+                    continue
+                where = f"{document} {pointer}/allOf/{index}"
+                if "additionalProperties" in conjunct:
+                    extra.add(where)
+                    assert conjunct["additionalProperties"] is True, (
+                        where,
+                        conjunct["additionalProperties"],
+                    )
+                if "allOf" in conjunct:
+                    nested.add(where)
+                    assert isinstance(conjunct["allOf"], list) and conjunct["allOf"], (
+                        where,
+                        conjunct["allOf"],
+                    )
+                    assert all(isinstance(c, dict) for c in conjunct["allOf"]), where
+
+    assert extra, "no conjunct states additionalProperties: clause 1 would say nothing"
+    assert nested, "no conjunct carries its own allOf: clause 2 would say nothing"
+    assert extra == CONJUNCTS_STATING_EXTRA, extra ^ CONJUNCTS_STATING_EXTRA
+    assert nested == NESTED_CONJUNCT_SITES, nested ^ NESTED_CONJUNCT_SITES
+
+    document, symbol, rule = NESTED_CONJUNCT_RULE
+    out = emit.emit(BUNDLE, [document])
+    assert document in out.emitted, out.refusals.get(document)
+    cls = getattr(importlib.import_module(out.emitted[document]), symbol)
+    spelled = [type(r).__name__ for r in cls.__dict__.get("_adcp_rules", ())]
+    assert rule in spelled, (document, symbol, spelled)
+
+
+def test_every_conjunct_contributes_every_part_of_itself() -> None:
+    """D7's conjunct contribution rule, over every conjunct of every composing class.
+
+    "A conjunct contributes every part of itself, and each part lowers by the decision
+    that covers it."  The reader implemented two of the parts and refused a conjunct
+    whose parts fell under two of them, so the clauses below are one per PART, each
+    asserted on the CLASS the node declared rather than on the compiler's own reading of
+    the conjunct:
+
+    1. a ``$ref`` conjunct is a BASE -- the symbol its target declares is in the class's
+       MRO.  Resolved through ``bundle.split_ref`` and the target's own ``declared``
+       record, so a conjunct bound to the wrong class reddens rather than being counted.
+    2. a conjunct's ``properties`` are this class's FIELDS, by key.
+    3. a conjunct's ``required`` is this class's requiredness, and the field it names
+       carries NO DEFAULT -- which is D7's requiredness overlay in the words D7 uses, and
+       the half that was silently satisfied by an inherited optional field.
+    4. a conjunct's D6 rule reaches the class's ``_adcp_rules``, counted against every
+       node whose rules are this class's: the node itself and every conjunct that
+       contributes anything.  The COUNT is what catches the defect this row fixed -- a
+       conjunct the loop did not hand to ``rules_at`` leaves the tuple short.
+    5. a name draft-07 does not define contributes NOTHING and is REPORTED: the run
+       records the drop at that conjunct's pointer, and the class has no field for it.
+
+    Each clause's population is counted and asserted at a stated literal below, and the
+    per-part counts are asserted to PARTITION the conjunct total -- so a clause that
+    stops matching anything fails here instead of passing over an empty loop.
+    """
+    from codegen.lower import rules as rules_lowering
+
+    out = emit.emit(BUNDLE, population())
+    assert out.emitted, "nothing emitted: every clause below would pass vacuously"
+    known = set(bundle.portable(BUNDLE))
+
+    documents: set[str] = set()
+    composing: set[str] = set()
+    sites: set[str] = set()
+    field_keys = required_names = foreign_names = 0
+    # Keyed by the decision's own cases and holding the SITES, so a part is a set this
+    # check can partition rather than an integer it can only compare.  Seeded with every
+    # case, so a part with no member today is named and asserted empty rather than
+    # absent from the comparison (D14).
+    parts: dict[str, set[str]] = {name: set() for name in CONJUNCT_PARTS}
+    for document in sorted(out.emitted):
+        doc = bundle.read(BUNDLE, document)
+        here = out.declared[document]
+        module = importlib.import_module(out.emitted[document])
+        for pointer, node in bundle.nodes(doc):
+            if not isinstance(node.get("allOf"), list) or pointer not in here:
+                continue
+            composing.add(f"{document} {pointer}")
+            documents.add(document)
+            # **Clause 0: the class imported below IS this run's output** -- D14's "a
+            # clause detects a defect only in what its INPUT can change".  Every clause
+            # after it reads the COMMITTED module, and these clauses claim to grade the
+            # EMITTER, so without this one they are graded by nothing: measured by
+            # perturbation, removing the line that binds a ``$ref`` conjunct as a base
+            # left clauses 1 to 3 green, because the module on disk still had the base.
+            # ``test_the_committed_tree_is_what_a_fresh_run_emits`` is the tie D14 says
+            # carries every committed-tree reader; this states it for the modules whose
+            # conjuncts this grades, so the tie is part of THIS clause's input.
+            written = out.files[f"{emit.module_path(document)}.py"]
+            assert written == (TREE / f"{emit.module_path(document)}.py").read_text(), document
+            cls = getattr(module, here[pointer])
+            ancestry = {base.__name__ for base in cls.__mro__}
+            rule_nodes = [node]
+            # The SAME worklist ``compiler.lower_composition`` walks, because section 5's
+            # ``allOf`` row says CONJ -> the same rule applied to the conjunct's own
+            # conjuncts: a nested conjunct contributes to THIS class, so a walk that
+            # stopped at depth one would read its rule as absent and clause 4 would grade
+            # the class against sources that leave it out.
+            unread = [(f"{pointer}/allOf/{i}", c) for i, c in enumerate(node["allOf"])]
+            while unread:
+                where, conjunct = unread.pop(0)
+                if not isinstance(conjunct, dict):
+                    continue
+                if isinstance(conjunct.get("allOf"), list):
+                    unread.extend(
+                        (f"{where}/allOf/{j}", c) for j, c in enumerate(conjunct["allOf"])
+                    )
+                sites.add(f"{document} {where}")
+                keys = {
+                    k
+                    for k in conjunct
+                    if k not in compiler.ANNOTATIONS and not k.startswith("x-")
+                }
+                # Clause 5.  The name is dropped, the drop is on the record at this
+                # conjunct's own pointer, and nothing on the class answers to it.
+                for name in sorted(keys - compiler.DRAFT07):
+                    foreign_names += 1
+                    assert any(
+                        line.startswith(f"{where}: {name}:")
+                        for line in out.carries_nothing.get(document, [])
+                    ), (document, where, name, out.carries_nothing.get(document))
+                    assert compiler.field_name(name) not in cls.model_fields, (document, where)
+                keys &= compiler.DRAFT07
+                if keys == {"$ref"}:
+                    # Clause 1.
+                    parts["base"].add(f"{document} {where}")
+                    head, into = bundle.split_ref(conjunct["$ref"])
+                    target = bundle.document_for(head, known)
+                    assert target is not None, (document, where, conjunct["$ref"])
+                    assert out.declared[target][into] in ancestry, (
+                        document,
+                        where,
+                        out.declared[target][into],
+                        sorted(ancestry),
+                    )
+                    continue
+                named = []
+                if "properties" in keys:
+                    # Clause 2.
+                    named.append("fields")
+                    for key in conjunct["properties"]:
+                        field_keys += 1
+                        assert compiler.field_name(key) in cls.model_fields, (
+                            document,
+                            where,
+                            key,
+                            sorted(cls.model_fields),
+                        )
+                if "required" in keys:
+                    # Clause 3.
+                    named.append("required")
+                    for key in conjunct["required"]:
+                        required_names += 1
+                        field = cls.model_fields[compiler.field_name(key)]
+                        assert field.is_required(), (document, where, key)
+                if keys & compiler.rules_at(conjunct).screen:
+                    named.append("rule")
+                if keys:
+                    rule_nodes.append(conjunct)
+                parts["+".join(named) or "nothing"].add(f"{document} {where}")
+            # Clause 4, over the whole conjunct list at once, because a class binds
+            # ``_adcp_rules`` ONCE: the tuple is as long as the sources every node whose
+            # rules are this class's states.  ``rules.lower`` is the production reduction,
+            # which is what makes a DROPPED conjunct the only thing this can catch -- and
+            # that is the defect, since a reduction that renders nothing is D4's answer
+            # and not a contribution.
+            sources = [src for one in rule_nodes for src in rules_lowering.lower(one).rules]
+            # ``cls.__dict__`` and not ``getattr``: ``_adcp_rules`` is a ``ClassVar``, so
+            # a subclass that declares none reads its BASE's tuple and the clause would
+            # grade the base's rules against this node's sources.  Measured on
+            # ``account/report-usage-response.json``, whose two conjuncts are both bare
+            # ``$ref``s and whose class answered with ``ProtocolEnvelope``'s
+            # ``ForbiddenGroups``.
+            assert len(cls.__dict__.get("_adcp_rules", ())) == len(sources), (
+                document,
+                pointer,
+                sources,
+            )
+
+    # **The three sets this check ranges over, named and refused empty**, and then the
+    # per-part PARTITION over the conjunct sites.  All of it was an equality on a count
+    # until `tests/test_every_check_names_its_set.py` refused it: nine part counts and
+    # five totals is one bundle version's reading of quantities every emitting row
+    # moves, so two rows in flight compute two different correct values and a merge
+    # resolves it by picking a side.  A partition over the SITES says the same thing and
+    # says it by name -- a conjunct that moved from one part to another is reported as
+    # the site it is, not as two integers that both changed.
+    claimed("documents whose class composes", documents, inside=set(out.emitted))
+    claimed("composing nodes", composing)
+    partitions(
+        claimed("conjuncts of a composing node", sites),
+        **{name.replace("+", "_"): members for name, members in parts.items()},
+    )
+    # The parts the decision names and this population does not hold.  Asserted empty BY
+    # NAME, because a part with no member today is the one the next cleared document
+    # arrives in, and `partitions` is satisfied by an empty part without saying so.
+    for name in CONJUNCT_PARTS_WITH_NO_SITE:
+        assert not parts[name], (name, sorted(parts[name]))
+
+    # The second AXIS over the same sites: a row that stopped declaring a conjunct's
+    # properties would leave the `fields` part the same size and drop the key count.
+    # Floors, because an emitting row only adds -- the direction `ratchet` requires.
+    grows = (
+        "an emitting row only adds composing classes, so every count read off their "
+        "conjuncts rises; a fall means a document that lowered stopped lowering"
+    )
+    ratchet("property keys a conjunct declares", field_keys, at_least=9, because=grows)
+    ratchet("names a conjunct requires", required_names, at_least=2, because=grows)
+    ratchet("names draft-07 does not define", foreign_names, at_least=1, because=grows)
+    ratchet(
+        "names the run carries nothing for",
+        sum(len(v) for v in out.carries_nothing.values()),
+        at_least=1,
+        because=(
+            "the conjunct reader is the only writer of that channel, and a name it "
+            "admits and renders nothing for is reported rather than dropped in silence"
+        ),
+    )
+
+
+#: How often each of the three folds that read a COMPOSED document by intersection
+#: changes the reading, over the whole graded population.  Every one is non-zero on
+#: purpose: a fold whose population is 0 passes for free, which is what the local-``$ref``
+#: fold's pin was doing before ``salesagent-j3k2l.28`` measured it.
+#:
+#: ``vocabulary`` is the ``const``/``enum`` axis collapse (6 sites), ``tighter`` the
+#: keyword intersection (2, both ``enum``), and ``agreed`` the resolver's conditional
+#: rewrite read as the facts its branches agree on (1).  They are counted where the fold
+#: CHANGES something, not where it is called, so a gate that stopped matching reddens.
+#: The fold names, and a FLOOR on each one's sites rather than an equality: the obligation
+#: is that none of the three has a population of zero, because a fold with no site is
+#: green for free -- which is what the local-``$ref`` fold's pin was doing before
+#: ``salesagent-j3k2l.28`` measured it.  An equality here is one bundle version's reading
+#: of a quantity every emitting row moves, and `tests/test_every_check_names_its_set.py`
+#: refuses it for that reason.  The KEY SET is still asserted exactly, which is what
+#: catches a fourth fold starting to fire or one of the three stopping.
+COMPOSED_FOLD_FLOORS = {"vocabulary": 6, "tighter:enum": 2, "agreed": 1}
+
+
+def test_the_comparison_reads_a_composed_document_by_intersection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """D7's intersection rule on the COMPARISON's side, and the population it reaches.
+
+    The document side flattens an ``allOf`` the way a composing class does
+    (``harness._composed``), and it did that by GAP-FILL: the first view of a keyword two
+    views state won and the rest were dropped. That is the "KNOWN CEILING" its own
+    docstring named and measured as a population of zero, and the population is no longer
+    zero -- a composing class faithful to the INTERSECTION read as adding a ``const``,
+    dropping an ``enum``, and stating a four-member vocabulary where its document stated
+    five.
+
+    Three folds answer it, each counted here where it CHANGES the reading:
+
+    * ``_one_vocabulary`` -- a ``const`` and the ``enum`` it pins are one axis, so the
+      merged node carries the pin and not both.
+    * ``_tighter`` -- a keyword both views state composes to the INTERSECTION: an enum to
+      the common members, a bound to the tighter value.
+    * ``_agreed`` -- an ``anyOf`` whose branches carry ONE title is the resolver's
+      conditional rewrite, and the facts its branches agree on are the node's own.
+
+    **The counts are the point and so is their being non-zero.**  A fold with no site is
+    green for free; this run states how many sites each one has and reddens if a gate
+    stops matching, if a document leaves the population, or if a fourth fold starts
+    firing. Beside them, the comparison's own verdict over the same run: 0 facts in all
+    three directions, which is the pins in ``test_the_graded_population_is_the_whole_of_it``
+    read here against the fold counts that produce them.
+    """
+    hits: collections.Counter[str] = collections.Counter()
+    tighter, vocabulary, agreed = harness._tighter, harness._one_vocabulary, harness._agreed
+
+    def counted_tighter(keyword: str, node: Any, conjunct: Any) -> Any:
+        answer = tighter(keyword, node, conjunct)
+        if answer is not harness._UNDECIDED and answer != node:
+            hits[f"tighter:{keyword}"] += 1
+        return answer
+
+    def counted_vocabulary(node: dict, conjunct: dict) -> tuple[dict, dict]:
+        left, right = vocabulary(node, conjunct)
+        if left is not node or right is not conjunct:
+            hits["vocabulary"] += 1
+        return left, right
+
+    def counted_agreed(branches: list[dict]) -> dict:
+        answer = agreed(branches)
+        if answer:
+            hits["agreed"] += 1
+        return answer
+
+    monkeypatch.setattr(harness, "_tighter", counted_tighter)
+    monkeypatch.setattr(harness, "_one_vocabulary", counted_vocabulary)
+    monkeypatch.setattr(harness, "_agreed", counted_agreed)
+
+    pairs = graded()
+    assert pairs, "no graded pair: every count below would be 0 and would say nothing"
+    red = 0
+    for one in pairs:
+        pair = pair_of(one)
+        result = harness.compare_schema(pair.schema, pair.model, document=pair.document)
+        red += len(result.added) + len(result.missing) + len(result.differs)
+    assert red == 0, red
+    assert set(hits) == set(COMPOSED_FOLD_FLOORS), dict(hits)
+    for fold, floor in sorted(COMPOSED_FOLD_FLOORS.items()):
+        ratchet(
+            f"sites where the {fold} fold changes the reading",
+            hits[fold],
+            at_least=floor,
+            because=(
+                "a fold with no site is green for free, and an emitting row only adds "
+                "graded pairs for a fold to reach"
+            ),
+        )

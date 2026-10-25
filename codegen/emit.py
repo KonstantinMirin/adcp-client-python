@@ -1115,6 +1115,15 @@ class Emitted:
     #: pointer.  A document with no such default has no entry, so the mapping names
     #: exactly the drops rather than every document emitted.
     drops: dict[str, dict[str, Any]] = field(default_factory=dict)
+    #: document -> ``Module.carries_nothing``: what the document states at a pointer and
+    #: the class carries nothing for, because the name asserts nothing about any
+    #: instance.  A document with one still EMITS, so this is not part of the partition
+    #: and is not counted anywhere -- it is the report section 7's ``errorMessage`` row
+    #: asks for, and the CLI prints it beside the refusals.
+    #:
+    #: Separate from :attr:`drops` for the reason
+    #: :attr:`compiler.Module.carries_nothing` states: two channels, two names.
+    carries_nothing: dict[str, list[str]] = field(default_factory=dict)
 
 
 def _composed_nodes(bundle_dir: Path, known: set[str]) -> dict[str, frozenset[str]]:
@@ -1281,7 +1290,17 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             # root-scalar alias, and a named node that is not one either -- which is
             # what lets a composing row refuse it as a base rather than writing a
             # module that cannot be imported.
-            return Target(relative_module(referencing, target), symbol, mod.shapes.get(symbol))
+            # The target's own root node travels with the symbol, and only for a
+            # reference with NO fragment: section 2's intersection rule asks whether one bare
+            # ``$ref`` narrows another, which is a fact about the two targets
+            # (``compiler.Module.resolve_node``).  Read off the record ``lower`` already
+            # keeps, so nothing is re-read and the node is the one that was lowered.
+            return Target(
+                relative_module(referencing, target),
+                symbol,
+                mod.shapes.get(symbol),
+                node=None if into else lowered[target][2],
+            )
 
         return do
 
@@ -1381,6 +1400,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         out.adopted[document] = dict(mod.adopted)
         if mod.drops:
             out.drops[document] = dict(mod.drops)
+        if mod.carries_nothing:
+            out.carries_nothing[document] = list(mod.carries_nothing)
         # The document travels WITH the module, at its own bundle-relative path,
         # because ``__adcp_schema__`` names that path and ``strict_validate``
         # reads it to decide acceptance (D4).  The bundle is a build-time input
@@ -1537,6 +1558,12 @@ def main(argv: list[str] | None = None) -> int:
             f"refused {document} ({r['resolved']}) at {r['pointer']} "
             f"on {r['keyword']}: {r['detail']}"
         )
+    # A NAME THE CLASS CARRIES NOTHING FOR is not a refusal and is printed as its own
+    # line: the document emitted, and what the reader needs to know is that one name at
+    # one pointer reached no class.
+    for document in sorted(out.carries_nothing):
+        for line in out.carries_nothing[document]:
+            print(f"carries nothing for {document} at {line}")
     # **The report names the KINDS and not "refused" alone.**  "refused" admits "not
     # built yet", which is how `emitted + refused == 1054` stayed green over 385
     # documents waiting on rows nobody had written, so the one figure the exit

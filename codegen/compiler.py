@@ -863,6 +863,17 @@ class Shape:
     decided: Mapping[str, "Property"] = field(default_factory=dict)
     #: The symbols the declaring module had declared; see above.
     declares: frozenset[str] = frozenset()
+    #: The class's own ``description``, which is the description its NODE states.
+    #: Written by :func:`declare_object` beside :attr:`decided`, for the reason that
+    #: one exists: a subclass cannot read it off the base's node, because it does not
+    #: have the base's node.  §6's description-authority rule clause 3 -- silence
+    #: inherits -- read at a CLASS rather than at a field: a composing class whose own
+    #: node states no description states the one its base does, because that is what
+    #: the COMPOSED document states at the composing node's pointer and
+    #: ``harness._composed`` folds it in there.  pydantic cannot be left to do it:
+    #: ``cls.__doc__`` is ``None`` for a subclass with no docstring of its own, so the
+    #: fact reaches ``model_json_schema()`` only if the emitter writes it.
+    description: str | None = None
 
 
 @dataclass(frozen=True)
@@ -879,6 +890,13 @@ class Target:
     module: str
     symbol: str
     shape: Shape | None = None
+    #: The target's own ROOT NODE, for the ONE reader that needs the schema rather than
+    #: the symbol: section 2's intersection rule asked of two declarations that are each a bare
+    #: ``$ref`` (:func:`Module.resolve_node`).  ``None`` for a reference carrying a
+    #: FRAGMENT, which is the scope rather than an omission -- the binder has already
+    #: looked the fragment's SYMBOL up and a node navigator here would be a second
+    #: pointer walk -- so such a pair stays undecidable and refuses.
+    node: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -1049,6 +1067,50 @@ class Module:
     #: and not a count, because the pointer is what makes it auditable: a reader can
     #: go to the node and see the default the model does not carry.
     drops: dict[str, Any] = field(default_factory=dict)
+
+    #: What this document STATES and the class carries nothing for, one line each, as
+    #: ``"<pointer>: <name>: <why>"``.  The channel section 7's ``errorMessage`` row
+    #: needs: a name draft-07 does not define asserts nothing about an instance, so
+    #: dropping it cannot widen the class and the document still emits -- which makes it
+    #: neither a refusal nor nothing.  A refusal would lose the document for a name that
+    #: constrains no instance; silence is how a reader comes to believe the class
+    #: carries it.  ``emit`` collects these per document and the CLI prints them.
+    #:
+    #: **Separate from :attr:`drops`, which is one keyword's own rule.**  ``drops``
+    #: carries section 5's ``default``-on-a-required-property, keyed by pointer and
+    #: holding the value; this carries any name the walk admits and renders nothing for.
+    #: The two were one attribute for the length of one merge -- this row and the
+    #: ``default`` row each added a ``Module.drops``, with different types -- and a
+    #: dataclass takes the second declaration silently, so the earlier writer's
+    #: ``mod.drops[pointer] = value`` met a list.  One name per channel.
+    carries_nothing: list[str] = field(default_factory=list)
+
+    def resolve_node(self, uri: str) -> dict | None:
+        """The schema a cross-document reference names, or ``None``.
+
+        For section 2's intersection rule and for nothing else: two declarations that are each
+        a bare ``$ref`` state the same KIND of thing about an instance and whether one
+        narrows the other is a fact about the two TARGETS, which no amount of reading
+        the two references can answer.  Measured on the one site:
+        ``core/media-buy-frequency-cap-requirement.json`` at
+        ``/allOf/1/properties/supported_control_modes/items`` references a one-member
+        enumeration where the base it composes references a three-member one, and the
+        one member IS one of the three -- a narrowing the reference pair cannot show.
+
+        ``None`` for anything undecidable -- a local reference, a fragment, a target
+        that refuses -- and the caller then treats the pair as not ordered and refuses
+        the document.  That is the safe direction: a reference the merge rule cannot
+        read is a declaration it must not claim is narrower.
+
+        **A reference is never DEREFERENCED into the field**, only into the predicate
+        (:func:`_restatement`).  The field is decided from the document's own ``$ref``,
+        because a cross-document reference is an IMPORT and not a copy (P2) -- the thing
+        ``test_a_cross_document_reference_is_an_import_and_not_a_copy`` exists to catch.
+        """
+        try:
+            return self.bind(uri, "").node
+        except Refusal:
+            return None
 
     def declare(self, name: str, pointer: str, block: str) -> None:
         if name in self.names:
@@ -1504,6 +1566,7 @@ def declare_object(
         shape,
         decided={**shape.decided, **{p.wire: p for p in props}},
         declares=frozenset(mod.declared.values()) | {name},
+        description=description if isinstance(description, str) and description else None,
     )
     if imports:
         mod.imports |= imports
@@ -1624,6 +1687,29 @@ def lower_object(
 #: class attribute.  There are 0 such conjuncts over the population, so this
 #: refuses rather than choosing between them.
 INLINE = frozenset({"type", "properties", "required"})
+
+#: What a conjunct may carry BESIDE its fields and its rules, each part lowered by the
+#: decision covering it.  Section 5 decides both, per keyword and at CONJ:
+#:
+#: * ``additionalProperties`` -- "CONJ -> ``true`` is the identity and contributes
+#:   nothing, ``false`` on any conjunct closes the composed object, and two typed ones
+#:   intersect their value schemas; a typed conjunct beside a ``true`` one is a widening
+#:   and refuses."  Measured over the 1,054 portable documents: **5 conjuncts state the
+#:   keyword and all 5 state ``true``**, so the identity is the only reading with a
+#:   population and the other three are not written.  A conjunct stating anything else
+#:   refuses, as a DEFERRAL naming the clause -- the obstruction is unwritten code, not
+#:   the document.  (``INLINE`` left the keyword out on the ground that a conjunct
+#:   carrying one would be a second source for one class attribute, which is true of
+#:   ``false`` and of a typed value and is not true of the identity.)
+#: * ``allOf`` -- section 5's ``allOf`` row, "CONJ -> the same rule applied to the
+#:   conjunct's own conjuncts".  A conjunct IS a node, so one carrying its own conjunct
+#:   list contributes what those contribute, at their own pointers.  Measured: **3 sites
+#:   over 3 documents** -- ``adagents.json`` at
+#:   ``/oneOf/1/properties/formats/items/allOf/1``,
+#:   ``core/demographic-targeting-intent.json`` at ``/properties/age/allOf/1`` and
+#:   ``core/geo-delivery-metrics.json`` at ``/allOf/1`` -- and every nested conjunct of
+#:   all three states ``if``/``then`` and nothing else.
+CONJ_COMPOSES = frozenset({"additionalProperties", "allOf"})
 
 #: What the composing node itself may carry beside its conjunct list.
 #:
@@ -1811,6 +1897,12 @@ def lower_composition(
     required: set[str] = set(_required(doc, pointer))
     #: The conjuncts that state a RULE of this node rather than a base or fields.
     conjunct_rules: list[dict] = []
+    #: The description the FIRST base that states one states, for a composing node that
+    #: states none of its own (:attr:`Shape.description`).  First and not last, and not
+    #: a merge, because that is what ``harness._composed`` gap-fills on the document
+    #: side -- ``if kw not in out`` over the conjuncts in order -- and the two halves
+    #: have to read one composed document the same way.
+    inherited_description: str | None = None
 
     def declare(key: str, node: Any, where: str) -> None:
         prior = local.get(key)
@@ -1826,9 +1918,12 @@ def lower_composition(
         # at the root and as an ``enum`` in a conjunct, which is the enum
         # narrowing and refuses here -- the intersection needs step 3's enum
         # lowering and cannot be stated from this row.
-        if _restatement(node, prior):
-            local[key], at[key] = node, where
-        elif _restatement(prior, node) is None:
+        if _restatement(node, prior, mod.resolve_node):
+            # The INTERSECTION and not the narrower node alone (section 2, :func:`_intersection`):
+            # both declarations apply to the same instance, so a keyword only the wider
+            # one states is still the composed node's.
+            local[key], at[key] = _intersection(node, prior, mod.resolve_node), where
+        elif _restatement(prior, node, mod.resolve_node) is None:
             raise Refusal(
                 _disagreeing(node, prior),
                 where,
@@ -1840,11 +1935,43 @@ def lower_composition(
     for key, sub in (doc.get("properties") or {}).items():
         declare(key, sub, f"{pointer}/properties/{key}")
 
-    for i, conjunct in enumerate(doc["allOf"]):
-        where = f"{pointer}/allOf/{i}"
+    #: The conjuncts still to read, each with the pointer it sits at.  A WORKLIST
+    #: rather than an ``enumerate`` because of :data:`CONJ_COMPOSES`' second entry: a
+    #: conjunct carrying its own ``allOf`` pushes those conjuncts here, so ONE loop
+    #: reads every depth, the keyword screen is asked once per node, and a refusal
+    #: points at the pointer that carried the keyword rather than at the outermost
+    #: conjunct.  Breadth-first, which is document order within each depth.
+    unread: list[tuple[str, Any]] = [
+        (f"{pointer}/allOf/{i}", c) for i, c in enumerate(doc["allOf"])
+    ]
+    while unread:
+        where, conjunct = unread.pop(0)
         if not isinstance(conjunct, dict):
             raise Refusal("allOf", where, "a conjunct that is not a schema", kind=Kind.VERDICT)
         keys = {k for k in conjunct if k not in ANNOTATIONS and not k.startswith("x-")}
+        # **A name draft-07 does not DEFINE contributes nothing, and the walk says so.**
+        # Section 7's ``errorMessage`` row states it for the one name that occurs: "it
+        # has no Pydantic rendering, and a conjunct carrying one contributes nothing, so
+        # the drop is reported rather than silent".  ``media-buy/sync-catalogs-request``
+        # at ``/allOf/1`` states it beside a ``not``, and ``min(keys)`` reported the
+        # document on ``errorMessage`` with ``DEFERRED`` -- a deferral promising a row
+        # for a name no row can ever lower, which is exactly what :func:`_why` exists to
+        # stop saying about a non-keyword.
+        #
+        # Reported rather than silent, and reported on the MODULE rather than raised: a
+        # drop is not a refusal (the document still emits) and it is not nothing (a
+        # reader has to be able to see that the class does not carry the name).
+        # :attr:`Module.carries_nothing` is that channel and ``emit`` prints it.
+        foreign = {k for k in keys if k not in DRAFT07}
+        if foreign:
+            mod.carries_nothing.extend(
+                f"{where}: {k}: draft-07 defines no such keyword, so it constrains no "
+                "instance and the class carries nothing for it (section 2, 'a keyword "
+                "we cannot express': a name that cannot constrain an instance compiles "
+                "to nothing)"
+                for k in sorted(foreign)
+            )
+            keys -= foreign
         if keys == {"$ref"}:
             target = mod.bind(conjunct["$ref"], where)
             if target.shape is None:
@@ -1862,47 +1989,8 @@ def lower_composition(
             inherited_fields.update(target.shape.decided)
             inherited_from.update(dict.fromkeys(target.shape.properties, target))
             inherited_required |= target.shape.required
-            continue
-        if "properties" in keys and keys <= INLINE:
-            check_keywords(conjunct, where, set(INLINE))
-            if conjunct.get("type") not in (None, "object"):
-                raise Refusal(
-                    "type",
-                    where,
-                    f"a conjunct of type {conjunct['type']!r} is not one",
-                    kind=Kind.VERDICT,
-                )
-            if not isinstance(conjunct["properties"], dict) or not conjunct["properties"]:
-                raise Refusal(
-                    "properties",
-                    where,
-                    "a conjunct declaring no property",
-                    kind=Kind.VERDICT,
-                )
-            for key, sub in conjunct["properties"].items():
-                declare(key, sub, f"{where}/properties/{key}")
-            required |= set(_required(conjunct, where))
-            continue
-        if keys and keys <= rules_at(conjunct).screen:
-            # **A conjunct that states only a RULE is a rule of THIS node**, by the
-            # same draft-07 fact the arm above rests on: a conjunct applies to the
-            # same instance, so it is not a separate object and gets no class of its
-            # own.  The arm above reads a conjunct's ``properties`` as this node's
-            # fields; this reads its ``not``, ``if``/``then``/``else``,
-            # ``dependencies`` or ``min``/``maxProperties`` as this node's rule.
-            #
-            # Measured, and it is why this arm exists rather than the root arm alone:
-            # all 20 documents whose ROOT carries a rule keyword ALSO carry a
-            # rule-bearing conjunct, so admitting the root's keyword on its own moved
-            # every one of them from a refusal on ``not``/``dependencies`` to a
-            # refusal on ``not``/``if`` one pointer deeper and emitted none.  The two
-            # positions are one unit.
-            #
-            # Screened by the conjunct's OWN ``screen`` at its OWN pointer, so a
-            # conjunct carrying a combinator of SHAPES still refuses here (step 4's
-            # deferral, ``salesagent-j3k2l.18``) rather than being emitted with the
-            # combinator dropped.
-            conjunct_rules.append(conjunct)
+            if inherited_description is None:
+                inherited_description = target.shape.description
             continue
         if "$ref" in keys:
             # A conjunct that is a ``$ref`` AND something else: refused on the
@@ -1918,11 +2006,164 @@ def lower_composition(
                 "a sibling of $ref, which draft-07 ignores",
                 kind=Kind.VERDICT,
             )
+        # **EVERY PART OF THE CONJUNCT CONTRIBUTES, and each part lowers by the decision
+        # covering it** (section 2, "composition merges by intersection").  One arm
+        # rather than three, because three arms is what produced the gap: a conjunct
+        # whose parts fell under two of them matched neither, and 13 documents waited on
+        # a row the refusal promised and nobody had scheduled.  The parts, and the
+        # decision each is read by:
+        #
+        # * ``properties`` -- fields of THIS node, because a draft-07 conjunct applies to
+        #   the same instance; merged with the node's own by :func:`declare`, which is
+        #   section 2's intersection rule and is symmetric.
+        # * ``required`` -- this node's requiredness.  **On its own that is section 2's
+        #   requiredness overlay**, the ONLY redeclaration of an inherited field
+        #   section 2 permits: ``core/collection-selection.json`` at
+        #   ``/oneOf/0/properties/collections/items/allOf/1`` is
+        #   ``{"allOf": [{"$ref": ...}, {"required": [...]}]}``, and the subclass
+        #   redeclares the field with the base's type and no default (the ``verdict or
+        #   (key in required and key not in inherited_required)`` branch below).  The
+        #   arm was omitted on a measurement -- 0 ``required``-only conjuncts AT A ROOT
+        #   -- and every one of them is at a property or deeper, so the measurement was
+        #   true and answered a different question.
+        # * a rule keyword (section 2, "rules are after-validators") -- a rule of THIS
+        #   node, for the same draft-07 reason the fields are: a conjunct is not a
+        #   separate object and gets no class of its own.  Measured when this was its
+        #   own arm: all 20 documents whose ROOT carries a rule keyword ALSO carry a
+        #   rule-bearing conjunct, so admitting the root's on its own emitted none of
+        #   them.  The two positions are one unit.
+        #
+        # **And a conjunct carrying BOTH fields and a rule contributes both**, which no
+        # arm reached: ``core/media-buy-frequency-cap-requirement.json`` at ``/allOf/1``
+        # states ``properties`` beside a ``not``, and a reader matching ``properties``
+        # ALONE passed it by.
+        #
+        # Screened by the conjunct's OWN ``screen`` at its OWN pointer, so a conjunct
+        # carrying a combinator of SHAPES is not admitted here and refuses below --
+        # rather than being emitted with the combinator dropped.
+        screen = rules_at(conjunct).screen
+        if keys <= INLINE | screen | CONJ_COMPOSES:
+            # ``foreign`` is handed to the screen as HANDLED, because this arm has
+            # already decided what happens to it: it is dropped and reported.  Left
+            # out, ``check_keywords`` walks ``sorted(node)`` and refuses on the very
+            # name the drop above accounted for, which loses the document and leaves
+            # the drop record unwritten -- measured on
+            # ``media-buy/sync-catalogs-request.json``.
+            check_keywords(
+                conjunct, where, set(INLINE) | screen | set(CONJ_COMPOSES) | foreign
+            )
+            if conjunct.get("type") not in (None, "object"):
+                raise Refusal(
+                    "type",
+                    where,
+                    f"a conjunct of type {conjunct['type']!r} is not one",
+                    kind=Kind.VERDICT,
+                )
+            if "additionalProperties" in keys and conjunct["additionalProperties"] is not True:
+                # Not the identity, so it is one of the clause's other three readings
+                # and none of them is written: ``false`` closes the composed object,
+                # two typed conjuncts intersect their value schemas, and a typed one
+                # beside a ``true`` one is a widening.  All 5 conjuncts that state the
+                # keyword over the portable population state ``true``, so this is the
+                # arm with no population -- a DEFERRAL and not a verdict, because what
+                # obstructs it is unwritten code (:data:`CONJ_COMPOSES`).
+                raise Refusal(
+                    "additionalProperties",
+                    where,
+                    f"a conjunct states additionalProperties: "
+                    f"{conjunct['additionalProperties']!r}, which is not the identity; "
+                    "section 5's additionalProperties row decides it at CONJ -- false "
+                    "closes the composed object, two typed conjuncts intersect their "
+                    "value schemas, a typed one beside a true one is a widening -- and "
+                    "none of the three is written, because all 5 conjuncts stating the "
+                    "keyword over this bundle state true",
+                    kind=Kind.DEFERRED,
+                )
+            if "allOf" in keys:
+                # Section 5's ``allOf`` row, CONJ: the same rule applied to the
+                # conjunct's own conjuncts.  Pushed onto the worklist at their own
+                # pointers rather than lowered here, so a nested conjunct is screened by
+                # its OWN ``rules_at`` at its OWN pointer -- the property that keeps a
+                # nested conjunct carrying a combinator of shapes refused where it sits.
+                inner = conjunct["allOf"]
+                if not isinstance(inner, list) or not inner:
+                    raise Refusal(
+                        "allOf",
+                        where,
+                        f"a conjunct whose allOf is {inner!r}, not a non-empty list of "
+                        "schemas",
+                        kind=Kind.VERDICT,
+                    )
+                unread.extend((f"{where}/allOf/{j}", c) for j, c in enumerate(inner))
+            if "properties" in keys:
+                if not isinstance(conjunct["properties"], dict) or not conjunct["properties"]:
+                    raise Refusal(
+                        "properties",
+                        where,
+                        "a conjunct declaring no property",
+                        kind=Kind.VERDICT,
+                    )
+                for key, sub in conjunct["properties"].items():
+                    declare(key, sub, f"{where}/properties/{key}")
+            required |= set(_required(conjunct, where))
+            # Read by ``rules_at`` as one of THIS node's rule sources whenever the
+            # conjunct contributes anything at all, and not only when it states a rule
+            # keyword: ``rules._distinct`` reads a ``uniqueItems`` off the array a
+            # PROPERTY holds, so a conjunct whose properties are this node's fields has
+            # its ``uniqueItems`` claimed by the rule families exactly as the node's
+            # own properties do.
+            # Gated on the conjunct contributing, so an annotations-only conjunct adds
+            # no source and renders nothing.
+            if keys:
+                conjunct_rules.append(conjunct)
+            continue
+        combinator = next((k for k in ("oneOf", "anyOf") if k in keys), None)
+        if combinator is not None:
+            # **A conjunct carrying a combinator of SHAPES, reported on the combinator
+            # and against the rows that own what it needs.**  Section 5's
+            # ``oneOf``/``anyOf`` row says CONJ -> one class per branch over the
+            # composed bases, and writing the classes is not the half that blocks: a
+            # payload reaches its branch only through a dispatch section 4 DERIVES, and
+            # measured over every such conjunct in this bundle -- 7 documents, 28
+            # branches -- **0 branches pin a const**, so ``union.discriminator``
+            # intersects empty pin maps and answers "" for all 7.  Section 4's third
+            # source, branches no instance satisfies twice, is what decides 6 of them
+            # and it lives in ``codegen/lower/union.py``.
+            #
+            # 5 of the 7 have every branch constraining only key presence and reducible
+            # through ``rules._required_groups`` today, which is the same row's cheaper
+            # answer -- a ``RequiredGroups`` rule -- blocked only by
+            # ``rules._required_only`` admitting ``{"required"}`` ALONE.  Widening it
+            # moves ``bundle.states_an_object_rule``, a row's selector, which is why
+            # that is a change to a population rather than to this reader (the
+            # measurement is :func:`_refuse_a_combinator_of_shapes`' docstring, taken
+            # for this exact branch shape).
+            #
+            # Reported on the combinator rather than on ``min(keys)``: attribution is
+            # the point of a refusal report, and ``sorted`` put ``not`` and
+            # ``properties`` ahead of the keyword that is the reason.
+            raise Refusal(
+                combinator,
+                where,
+                f"a conjunct carrying a {combinator} of SHAPES rather than presence "
+                "groups.  Section 5 says CONJ -> one class per branch over the composed "
+                "bases, and section 4 says a payload reaches its branch only through a "
+                "derived dispatch: no branch of any such conjunct in this bundle pins a "
+                "const, so section 4's first source derives none and the third -- "
+                "branches no instance satisfies twice -- is the one that decides them, "
+                "in codegen/lower/union.py (salesagent-j3k2l.60, salesagent-j3k2l.67).  "
+                "Where every branch constrains only key presence the same row's "
+                "RequiredGroups rule is the cheaper answer, and it needs "
+                "rules._required_only to admit more than {'required'} alone, which moves "
+                "bundle.states_an_object_rule (salesagent-j3k2l.58)",
+                kind=Kind.DEFERRED,
+            )
         raise Refusal(
             min(keys) if keys else "allOf",
             where,
-            "this step lowers a $ref conjunct (a base) or an inline conjunct with "
-            "properties; a later D2 row lowers this one",
+            "this step lowers a $ref conjunct (a base) or an inline conjunct whose parts "
+            "are properties, required, rule keywords, an additionalProperties identity "
+            "and a nested allOf; a later row lowers this one",
             kind=Kind.DEFERRED,
         )
 
@@ -1931,11 +2172,25 @@ def lower_composition(
     own: dict[str, dict] = {}
     #: The keys whose field is the inherited one wearing this document's annotations.
     reuse: dict[str, Property] = {}
+    #: The keys whose INTERSECTION took its ``uniqueItems`` from the base, so the rule
+    #: families have already claimed the keyword on the class that decided the base's field and this
+    #: subclass inherits that rule.  ``fields`` strips the keyword and renders the fact
+    #: onto the field, exactly as it does for a REUSED key and for the reason its
+    #: docstring gives there: the array row carries no ``uniqueItems`` and refuses one by
+    #: name, which is what keeps an array NO class holds refused rather than widened.
+    #:
+    #: Measured on ``core/product-execution-requirement.json`` at
+    #: ``/oneOf/2/properties/connection/allOf/1/properties/required_for``, whose
+    #: restatement is a bare ``{"contains": {...}}``: the intersection merges the base's
+    #: ``type``, ``items`` and ``uniqueItems`` back in, and the merged declaration was
+    #: then decided FRESH -- so the keyword reached the array row and refused the
+    #: document on a fact its base already states as a rule.
+    inherited_distinct: set[str] = set()
     for key, node in local.items():
         if key not in inherited:
             own[key] = node
             continue
-        verdict = _restatement(node, inherited[key])
+        verdict = _restatement(node, inherited[key], mod.resolve_node)
         if verdict is None:
             raise Refusal(
                 _disagreeing(node, inherited[key]),
@@ -1958,7 +2213,17 @@ def lower_composition(
             # ``protocol/get-task-status-response.json``, whose ``task_id`` is optional
             # on ``core/protocol-envelope.json`` and required at their own root -- and
             # they were the last 2 ``added`` facts of the symmetric comparison.
-            own[key] = node
+            #
+            # The INTERSECTION where it NARROWS (section 2, :func:`_intersection`), and the node
+            # itself where only the requiredness moved: there the content is the base's
+            # already, so there is nothing of the base's to merge back in.
+            own[key] = (
+                _intersection(node, inherited[key], mod.resolve_node) if verdict else node
+            )
+            if _constraining(own[key]).get("uniqueItems") is True and not _constraining(
+                node
+            ).get("uniqueItems"):
+                inherited_distinct.add(key)
         elif _annotates_differently(node, inherited[key]):
             # **It states the same thing about the INSTANCE and a different thing to the
             # READER**, so the subclass states the field: a document's own declaration
@@ -2005,14 +2270,90 @@ def lower_composition(
             # ``slots`` restates a ``default`` and no ``description``, where reading the
             # restatement's silence as an answer left the base's description reported
             # ``missing`` instead of zero facts.
-            own[key] = node
+            # **The INTERSECTION here too, and the arm below is no longer "the node
+            # states nothing" but "the intersection is the base's".**  Once silence
+            # stopped being a loosening (:func:`_restatement`), a restatement can reach
+            # this arm stating LESS than the base -- ``{"type": "integer"}`` over
+            # ``{"type": "integer", "minimum": 3}`` says the same thing about every
+            # instance and differs only in its annotations -- and lowering THAT node
+            # alone drops the base's bound, which is the shadow this whole rule exists
+            # to make unspellable.  The intersection is the base's content wearing this
+            # document's annotations, and it is the same expression the EMPTY case used,
+            # so there is one answer for both.
+            own[key] = _intersection(node, inherited[key], mod.resolve_node)
             if not _constraining(node):
+                # The node has no type of ITS OWN, so the field is the base's DECIDED
+                # field: re-deciding declares the nested classes again, in this module,
+                # at a pointer this document does not have (:attr:`Shape.decided`).
+                #
+                # The condition is "the NODE constrains nothing" and deliberately not
+                # "the INTERSECTION is the base's", which is the same thing for this
+                # shape and NOT the same thing for an EQUAL restatement: an equal one
+                # intersects to the base's content too, and §6's clause 2 says its own
+                # node is what the field is decided from -- all 15 of them are a bare
+                # ``$ref`` whose resolved target carries its own annotations, and
+                # reusing there put the base's annotation back at a pointer the document
+                # declares itself.  Measured: 17 documents stopped emitting.
+                #
+                # KNOWN CEILING for the PARTIAL shape between the two -- a restatement
+                # stating less than the base and the same -- whose intersection is
+                # lowered as a node: a subschema-valued keyword it takes from the base
+                # (an ``items``, a nested ``properties``) is declared at a pointer this
+                # document does not have, and ``schema_at`` raises when the pair is
+                # graded.  0 such sites in the emitted population, and the failure is
+                # loud rather than silent, which is why this is named rather than coded.
                 reuse[key] = _reused(key, inherited_fields, inherited_from, at[key], mod)
-                own[key] = {
-                    **{k: v for k, v in inherited[key].items() if k in RENDERED},
-                    **node,
-                }
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
+
+    # **SECTION 2's REQUIREDNESS OVERLAY: the composition makes an inherited field
+    # required and nothing else, so the subclass redeclares that field with the base's
+    # type and no default.**  Section 2 calls this the only permitted redeclaration and
+    # the sentence is verbatim; the loop above reaches only a key some view DECLARES,
+    # and an overlay declares none -- ``core/collection-selection.json`` at
+    # ``/oneOf/0/properties/collections/items/allOf/1`` is ``{"required":
+    # ["collection_ids"]}`` and nothing more.
+    #
+    # Left out, the requiredness went into ``required`` where the inherited field
+    # SATISFIED it (``fields``' ``inherited`` argument) and no line was written, so the
+    # class kept the base's OPTIONAL field and rendered ``= None`` -- a default the
+    # document does not state, reported as an ``added`` fact at
+    # ``/properties/collection_ids/default``, and a class that ACCEPTS A PAYLOAD THE
+    # DOCUMENT REFUSES.  That is the same defect the ``key in required and key not in
+    # inherited_required`` branch above fixes for a key that IS declared locally; this
+    # is its other half.
+    #
+    # The TYPE is the base's decided field (``reuse``) rather than a second decision of
+    # the base's node: re-deciding declares the nested classes again, in this module, at
+    # a pointer this document does not have (:func:`fields`' ``reuse`` says why).
+    #
+    # **Section 2 also says "and no default", and that half is NOT written here**, because it
+    # has no population: measured over every node of every one of the 1,054 portable
+    # documents, 25 nodes carry a ``required``-only conjunct and **0 of them compose a
+    # base that declares a ``default`` for a name the conjunct requires**.  An arm for it
+    # would be a derivation matching nothing, which is green for free (the same ground
+    # this row's own docstring refuses a ``required``-only conjunct arm AT A ROOT on, and
+    # a stripped ``default`` was measured as unobservable: the perturbation that kept it
+    # left the suite green).  If such a base ever appears, ``fields`` refuses the
+    # document BY NAME -- "a default on a REQUIRED property has no rendering that does
+    # not also make the property optional" -- which is the accurate answer and already
+    # written.
+    for key in sorted(required - inherited_required - set(own)):
+        if key not in inherited:
+            continue  # ``fields`` refuses a required name no view declares, by name
+        # **The pointer names the PROPERTY and not the composing node.**  An overlay's
+        # key is not in ``at`` -- no view of this document declares it, which is what
+        # makes it an overlay -- so the pointer has to be built, and this passed
+        # ``pointer`` itself.  At a ROOT that is ``""``, which ``Refusal`` renders
+        # ``/``, so a refusal :func:`_reused` raises for one property was reported
+        # against the whole document: measured on
+        # ``core/product-signal-targeting-option.json``, whose ``signal_ref`` re-uses a
+        # field whose type the base module imports rather than declares, and which
+        # ``tests/test_emit_product.py`` caught as the one refusal left at ``/`` after
+        # every other one had moved inside its document.
+        reuse[key] = _reused(
+            key, inherited_fields, inherited_from, f"{pointer}/properties/{key}", mod
+        )
+        own[key] = dict(inherited[key])
 
     decided = fields(
         own,
@@ -2025,11 +2366,19 @@ def lower_composition(
         # D6 has claimed the ``uniqueItems`` of these keys, whether the node stating
         # it is this one or a rule-bearing conjunct: the rule tuple and the strip are
         # two halves of one claim, so the row that writes the tuple passes the keys.
-        distinct=stated.distinct,
+        distinct=(*stated.distinct, *sorted(inherited_distinct - set(stated.distinct))),
         reuse=reuse,
     )
     return declare_object(
-        doc,
+        # §6's description-authority rule, clause 3, at a CLASS: this node's own
+        # description where it states one, and the base's where it is silent.  The
+        # composed document states the base's at this pointer -- ``harness._composed``
+        # folds it in -- and pydantic will not supply it, because ``cls.__doc__`` is
+        # ``None`` for a subclass with no docstring.  Measured: 5 ``missing`` facts over
+        # 4 pairs, every one a bare ``/description`` at a composing node whose own
+        # declaration has none (``core/collection-selection.json``'s items and
+        # ``core/canonical-media-buy-action.json``'s three branches).
+        doc if doc.get("description") or inherited_description is None else {**doc, "description": inherited_description},
         name,
         pointer,
         mod,
@@ -2155,26 +2504,308 @@ def _annotates_differently(child: dict, base: dict) -> bool:
     return any(child.get(k) != base.get(k) for k in RENDERED)
 
 
-def _restatement(child: dict, base: dict) -> bool | None:
+#: The ordering keywords, and the direction a NARROWER value moves in.  ``+1`` means a
+#: narrower restatement states a LARGER number (a floor rises), ``-1`` a smaller one (a
+#: ceiling falls).  ``exclusiveMinimum``/``exclusiveMaximum`` are draft-07's numeric
+#: form and compare the same way as the inclusive pair; draft-04's boolean form does not
+#: appear in this bundle and would not compare, so a non-number refuses below.
+_BOUNDS = {
+    "minimum": 1,
+    "exclusiveMinimum": 1,
+    "minLength": 1,
+    "minItems": 1,
+    "minProperties": 1,
+    "maximum": -1,
+    "exclusiveMaximum": -1,
+    "maxLength": -1,
+    "maxItems": -1,
+    "maxProperties": -1,
+}
+
+
+def _at_least_as_tight(
+    keyword: str, c: Any, b: Any, resolve: Callable[[str], dict | None] | None = None
+) -> bool:
+    """Does ``c`` say at least what ``b`` says about the instance, at ``keyword``?
+
+    Section 2's intersection rule, per keyword and in the three spellings it names: "an enum
+    is the intersection of the members, a bound is the tighter one, a ``const`` must
+    agree", plus "this holds at ANY DEPTH, including an overlay under ``items``".  The
+    predicate is what :func:`_restatement` needs and all it needs: where the child's
+    statement subsumes the base's, the child IS the intersection and the field decided
+    from it carries it.
+
+    Equality first, because it is the dominant case and because every rung below is a
+    statement about two DIFFERENT values.  A keyword this cannot read is not tight
+    enough and the caller refuses -- never admitted on the ground that it is probably
+    fine, which would be a model wider than its document at a keyword nobody looked at.
+    """
+    if c == b:
+        return True
+    if keyword == "enum":
+        return (
+            isinstance(c, list) and isinstance(b, list) and all(member in b for member in c)
+        )
+    if keyword in _BOUNDS:
+        if isinstance(c, bool) or isinstance(b, bool):
+            return False  # draft-04's boolean exclusiveMinimum: a different keyword
+        if not isinstance(c, int | float) or not isinstance(b, int | float):
+            return False
+        return c >= b if _BOUNDS[keyword] > 0 else c <= b
+    if keyword == "items":
+        # An overlay under ``items``: the rule holds at any depth, and the
+        # recursion is the rule rather than a second one.  A LIST-valued ``items`` is
+        # draft-07's tuple form, where position matters and two different lists are not
+        # ordered by this predicate -- so it falls through to False.
+        return (
+            isinstance(c, dict) and isinstance(b, dict) and _restatement(c, b, resolve) is not None
+        )
+    return False
+
+
+def _intersection(
+    child: dict, base: dict, resolve: Callable[[str], dict | None] | None = None
+) -> dict:
+    """The declaration a NARROWING restatement's field is decided from.
+
+    Section 2 in its own words: "where composed schemas constrain the same property, the field
+    carries the INTERSECTION".  Under ``allOf`` both declarations apply to the same
+    instance, so every keyword either one states is the composed node's -- the child's
+    value where both state one (:func:`_restatement` has already decided it is at least
+    as tight), the base's where only the base does.
+
+    **The RENDERED annotations compose the same way, and §6's own rule says which wins:**
+    the child's where it states one (a document's own declaration carries the
+    description at its own pointer) and the base's where it is silent (clause 3, "silence
+    inherits").  That is the gap-fill ``harness._composed`` performs on the DOCUMENT side,
+    so reading it the other way here is the two halves disagreeing: measured on
+    ``core/forecast-rate-range.json``, whose ``low``/``mid``/``high`` narrow
+    ``core/forecast-range.json``'s bounds and state no description, where the child
+    alone reported the base's three descriptions ``missing``.
+
+    **"Silent" means silent AFTER RESOLUTION, and that is the whole of §6's clause 2.**
+    A child that is a bare ``$ref`` states no description in the document's TEXT and
+    states its target's at the pointer the comparison grades, because the resolver
+    inlines the target there -- so gap-filling the base's over it puts a description the
+    document does not carry at a pointer the document declares itself.  Measured at 17
+    ``differs``, every one ``/properties/context/description``: a response root composing
+    ``core/protocol-envelope.json``, whose envelope states the long "Relationship to
+    per-task body-level ``context`` declarations" text as a ``$ref`` sibling while the
+    document's own node resolves to ``core/context.json``'s own short text.
+    :func:`_dereferenced` is what makes the two readings one.
+
+    **This is a no-op at every site that narrowed before section 2's intersection rule landed**,
+    and that is why it is safe: the old predicate required the child to state every
+    keyword the base states, so ``{**base, **child}`` was ``child``.  What it changes is
+    the newly-admitted narrowings, where the two state DIFFERENT keywords and the child
+    alone would be wider than the document: measured on
+    ``core/product-execution-requirement.json`` at
+    ``/oneOf/2/properties/connection/allOf/1/properties/required_for``, whose
+    restatement is a bare ``{"contains": {"const": "create_media_buy"}}`` over a base's
+    ``{"type": "array", "items": {...}, "uniqueItems": true}`` -- decided alone it is a
+    TYPELESS node the array row cannot read, and decided as the intersection it is an
+    array that carries the ``contains`` (``lower.containers._ARRAY_HANDLED``).
+
+    **A keyword is dropped from the base where the child states the same AXIS and not
+    only the same KEY**, which is :data:`_AXES` and is what keeps the merge from writing
+    a node no row can read.  ``core/canonical-media-buy-action.json`` at
+    ``/oneOf/0/properties/task`` is the measured one: the base states
+    ``{"type": "string", "enum": [3 members]}`` and the branch restates
+    ``{"const": "control_media_buy"}``, and a key-wise merge keeps BOTH -- a wide
+    ``enum`` beside the ``const`` that narrows it, which is a shape no document states
+    and which refused on ``const`` with "a later row does".
+    """
+    c, b = _constraining(child), _constraining(base)
+    covered = set(c)
+    for axis in _AXES:
+        if covered & axis:
+            covered |= axis
+    merged = {**{k: v for k, v in b.items() if k not in covered}, **c}
+    # **At a keyword BOTH state, the TIGHTER value and not the child's**, which is what
+    # makes this function symmetric in its constraining content rather than only in the
+    # direction :func:`_restatement` admits.  ``declare`` asks the predicate in both
+    # directions and then merges in whichever one narrowed, so a merge that preferred the
+    # first argument would make the result a function of which view the walk read first
+    # -- the "last wins" this rule exists to have no reading of.
+    for kw in set(c) & set(b):
+        if not _at_least_as_tight(kw, c[kw], b[kw], resolve):
+            merged[kw] = b[kw]
+    resolved = _dereferenced(child, resolve)
+    annotated = {
+        **{k: v for k, v in base.items() if k in RENDERED and k not in resolved},
+        **{k: v for k, v in child.items() if k not in merged},
+    }
+    return {**annotated, **merged}
+
+
+#: Keywords that say the SAME KIND of thing about an instance, so a child stating one of
+#: them answers for every member of the set and the base's are not merged in beside it.
+#:
+#: One set, ``{"const", "enum"}``: a ``const`` is a one-member vocabulary (the rewrite
+#: :func:`_as_enum` makes for the tightness predicate), so a ``const`` that narrows a
+#: base's ``enum`` REPLACES it rather than joining it.  The bounds are deliberately NOT
+#: axes: ``minItems`` and ``maxItems`` constrain the same instance from opposite sides
+#: and a child stating one says nothing about the other, so merging the base's is
+#: correct and is what section 2's "a bound is the tighter one" means per keyword.
+_AXES: tuple[frozenset[str], ...] = (frozenset({"const", "enum"}),)
+
+
+def _restatement(
+    child: dict, base: dict, resolve: Callable[[str], dict | None] | None = None
+) -> bool | None:
     """The merge rule as one decision about one restated property.
 
-    ``True`` -- it NARROWS: it keeps every keyword ``base`` states, with the same
-    value, and adds at least one more.  The subclass states it.
+    ``True`` -- it NARROWS: everything ``base`` says about the instance it says at
+    least as tightly (:func:`_at_least_as_tight`), and it says something more.  The
+    subclass states it, and what it states IS the intersection.
 
     ``False`` -- it says nothing, or says exactly the same thing.  The field is
     inherited and the subclass declares no field at all.
 
-    ``None`` -- it is INCOMPATIBLE: it drops a keyword the base states, or gives
-    one a different value.  Under ``allOf`` BOTH declarations apply, so the
-    effective accepted set is their intersection and a Python annotation carrying
-    only the restatement would be WIDER than the document.  The caller refuses.
+    ``None`` -- it is INCOMPATIBLE: at a keyword BOTH state it says something that is
+    not at least as tight.  Under ``allOf`` both declarations apply, so the effective
+    accepted set is their intersection, and a declaration that LOOSENS one the base
+    already made is a statement the document does not make at that pointer.  The caller
+    refuses.
+
+    **The comparison was keyword-value EQUALITY and section 2's rule is not.**  "The field
+    carries the intersection -- an enum is the intersection of the members, a bound is
+    the tighter one, a ``const`` must agree" admits narrowings an equality test reads as
+    a conflict, and they go live the moment the conjunct cases land:
+    ``core/product-execution-requirement.json`` at
+    ``/oneOf/2/properties/connection/allOf/1/properties/status`` restates
+    ``{"const": "unknown"}`` over a base's ``{"enum": [...], "type": "string"}``, and
+    its ``required_for`` restates a bare ``{"contains": {...}}`` over a base's
+    ``{"type": "array", "items": {...}, "uniqueItems": true}``.  Both reported "neither
+    matches nor narrows".
+
+    **KNOWN CEILING: a shared keyword where the CHILD is LOOSER refuses, where section 2 would
+    have the field carry the base's.**  "A bound is the tighter one" says the
+    intersection of ``minimum: 1`` over a base's ``minimum: 3`` is 3, and the comparison
+    reads it that way too (``harness._tighter``), so such a pair is gradeable and could
+    be inherited.  It refuses because the arm has no site: re-measured after this rule
+    landed, **3 of the 1,054 portable documents are refused by this predicate** --
+    ``governance/check-governance-response.json``'s ``action_binding``,
+    ``media-buy/get-media-buys-response.json``'s ``indicators`` and
+    ``signals/get-signals-response.json``'s ``range`` -- and none of the three is a
+    looser bound.  An arm for one would be a derivation matching nothing.
+
+    **SILENCE IS NOT A LOOSENING, and that half had to wait for the output to be the
+    intersection.**  The old rule demanded the child keep every keyword the base states,
+    for a sound reason at the time: the field was decided from the CHILD ALONE, so a
+    keyword the child did not restate was a keyword the annotation dropped.  Now
+    :func:`_intersection` is what the field is decided from, every keyword either
+    declaration states reaches it, and the demand measures nothing -- under ``allOf``
+    the base's statement applies wherever the child is quiet.  The two halves are one
+    change and neither is correct without the other.
     """
-    c, b = _constraining(child), _constraining(base)
-    if not c or c == b:
+    # Both declarations read through :func:`_dereferenced`, and EVERY comparison below
+    # made on that same reading -- including the novelty test, which is the one that
+    # went wrong when it was not.  Comparing a RAW intersection against a DEREFERENCED
+    # base made two ``$ref``s to one target read as a narrowing, and the field then
+    # carried the base's annotation at a pointer the document declares itself: measured
+    # at 17 ``differs``, every one ``/properties/context/description``, which is §6's
+    # description-authority clause 2 and the 15 facts it was written for.
+    dc, db = _dereferenced(child, resolve), _dereferenced(base, resolve)
+    c, b = _as_enum(_constraining(dc)), _as_enum(_constraining(db))
+    # **A ``const`` is a one-member ``enum``, and that is a rewrite rather than a rung**
+    # (:func:`_as_enum`, applied before anything is compared).  section 2's "a ``const`` must
+    # agree" is the intersection of a pinned value with a vocabulary, and writing the
+    # two into one spelling is what lets ONE predicate answer ``const`` vs ``const``,
+    # ``const`` vs ``enum`` and ``enum`` vs ``enum``.  Toward ``enum`` and not toward
+    # ``const`` because a ``const`` is the degenerate case: folding the other way has
+    # nothing to say about a two-member vocabulary.
+    if not c:
         return False
-    if set(b) <= set(c) and all(b[k] == c[k] for k in b):
-        return True
-    return None
+    if not all(_at_least_as_tight(k, c[k], b[k], resolve) for k in set(c) & set(b)):
+        return None
+    # It narrows when the INTERSECTION says more than the base does.  Asked of the
+    # intersection and not of the child, because that is what the field carries: a
+    # child restating a strict SUBSET of the base's keywords with the same values
+    # intersects to the base itself, states no new fact, and is the inherited field
+    # (``_annotates_differently`` then decides whether the annotations differ).
+    return _as_enum(_constraining(_intersection(dc, db, resolve))) != b
+
+
+def _dereferenced(
+    declaration: dict, resolve: Callable[[str], dict | None] | None
+) -> dict:
+    """A declaration that is nothing but a ``$ref``, read as what it references.
+
+    For the PREDICATE and never for the field: :func:`Module.resolve_node` says why, and
+    the asymmetry is the point -- whether one declaration narrows another is a fact
+    about the two TARGETS, while the field is an IMPORT of the symbol the document
+    names (P2).
+
+    Only a declaration whose whole constraining content is the reference.  A ``$ref``
+    with a constraint beside it is draft-07 ignoring its sibling, which the whole
+    pipeline refuses by name rather than reading two ways (``emit.decide_type``,
+    :func:`lower_composition`'s sibling arm), so there is nothing here to resolve.
+    """
+    if resolve is None:
+        return declaration
+    content = _constraining(declaration)
+    if set(content) != {"$ref"}:
+        return declaration
+    target = resolve(content["$ref"])
+    return target if isinstance(target, dict) else declaration
+
+
+#: The draft-07 type word each JSON value has.  ``bool`` before ``int`` because
+#: ``isinstance(True, int)`` is true in Python and ``true`` is not an integer in JSON.
+_JSON_TYPES: tuple[tuple[type | tuple[type, ...], str], ...] = (
+    (bool, "boolean"),
+    (int, "integer"),
+    (float, "number"),
+    (str, "string"),
+    (list, "array"),
+    (dict, "object"),
+)
+
+
+def _entailed_type(members: list) -> str | None:
+    """The one ``type`` every member of a vocabulary has, or ``None``.
+
+    An enumerated value set ENTAILS a type: ``{"const": "unknown"}`` says the instance
+    is a string as surely as ``{"type": "string"}`` does.  Deriving it is what lets a
+    ``const`` restatement be read as keeping a base's ``type`` instead of dropping it --
+    without it, ``{"const": "unknown"}`` over ``{"enum": [...], "type": "string"}``
+    reads as incompatible for a fact it states by implication.  The same derivation the
+    comparison already makes on the document side (``harness._entails_type``'s ``const``
+    row, 832 typeless const nodes), made here because the two halves have to read one
+    declaration the same way.
+    """
+    found = {
+        word for member in members for cls, word in _JSON_TYPES if isinstance(member, cls)
+    }
+    # One word, and the FIRST match per member: ``_JSON_TYPES`` is ordered so a bool
+    # answers ``boolean`` and not ``integer``, and the set comprehension above would
+    # collect both -- so a bool present at all makes this ambiguous rather than wrong.
+    if not members or any(isinstance(m, bool) for m in members) and len(found) > 1:
+        return None
+    return next(iter(found)) if len(found) == 1 else None
+
+
+def _as_enum(constraining: dict) -> dict:
+    """``{"const": v}`` read as ``{"enum": [v]}`` plus the ``type`` it entails.
+
+    So ONE predicate answers ``const`` against ``const``, ``const`` against ``enum``
+    and ``enum`` against ``enum``, and a vocabulary is read as stating the type its
+    members have (:func:`_entailed_type`).
+
+    The ``const`` rewrite applies only where the declaration does not state both: a
+    node stating ``const`` AND ``enum`` says two things, and collapsing them would drop
+    one.  draft-07 permits it and this bundle has none, so such a node keeps both keys
+    and compares by equality.
+    """
+    out = constraining
+    if "const" in out and "enum" not in out:
+        out = {**{k: v for k, v in out.items() if k != "const"}, "enum": [out["const"]]}
+    if "type" not in out and isinstance(out.get("enum"), list):
+        word = _entailed_type(out["enum"])
+        if word is not None:
+            out = {**out, "type": word}
+    return out
 
 
 def _disagreeing(child: dict, base: dict) -> str:
