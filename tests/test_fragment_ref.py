@@ -1224,13 +1224,22 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     # into the section, where it meets ``pattern`` on
     # ``/definitions/catalogRequirement/properties/countries/propertyNames``.
     #
-    # THAT SURVIVING REFUSAL IS NOT THIS ROW'S.  Its detail is
+    # That surviving refusal was not that row's: its detail was
     # ``salesagent-j3k2l.64``'s ground verbatim -- a constrained-str key pydantic
-    # renders back as ``patternProperties``, so the symmetric comparison reports one
+    # renders back as ``patternProperties``, so the symmetric comparison reported one
     # added and two missing facts -- and section 5's ``propertyNames`` row decides
-    # that position: ``pattern`` -> an annotated ``str`` key.  So this count goes to
-    # 8 here and .64 takes it to 7 again when the typed key emits.  The pointer is
-    # recorded so that move is attributable rather than a number going back down.
+    # that position: ``pattern`` -> an annotated ``str`` key.
+    #
+    # **``.64`` emitted that key and the document stayed, which is the walk getting
+    # FURTHER a fourth time rather than the count holding still.**  It was predicted
+    # here that .64 would take the count 8 -> 7; it did not, and the measurement is
+    # why: with the key lowered, the walk descends ONE MORE HOP into the same
+    # property and meets ``uniqueItems`` on the array inside the mapping's VALUE --
+    # ``/definitions/catalogRequirement/properties/countries/additionalProperties``,
+    # a verdict on an array with no class above it (``lower.containers``'s
+    # ``_DISTINCT_HAS_NOWHERE_TO_LIVE``).  So the member is unchanged, the count is
+    # unchanged, and the POINTER is what moved -- which is exactly why this test pins
+    # pointers and not a total.
     #
     # NAMED, NOT COUNTED: the count went 7 -> 8 -> 9 -> 8 over four rows, each move a
     # document joining or leaving for a cause measured at the time, and a number going
@@ -1239,7 +1248,7 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     # the section being read, and they are what a count could never say.
     claimed("documents refusing inside a definitions section", inside)
     assert inside["core/geo-place-requirement.json"] == (
-        "/definitions/catalogRequirement/properties/countries/propertyNames"
+        "/definitions/catalogRequirement/properties/countries/additionalProperties"
     )
     # Pinned by name because a count alone cannot say the pointer went INTO a
     # section.  This was ``core/response-payload-jws-envelope.json`` at

@@ -53,8 +53,9 @@ from tests.nodeset import claimed, partitions, ratchet
 #: A FLOOR over the WHOLE portable set, which is not the count the committed tree holds
 #: (that is the ``population()`` run, and the two have been confused in three
 #: briefings).  Direction: an emitting row only adds documents.  The history, each move
-#: a row doing its work: 674, 686 (bcb0b8ca8), 691 (.40), 705 (.28), 716 (.21).
-EMITTED_FLOOR = 716
+#: a row doing its work: 674, 686 (bcb0b8ca8), 691 (.40), 705 (.28), 716 (.21),
+#: 719 (.64, a mapping's key is a type).
+EMITTED_FLOOR = 719
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

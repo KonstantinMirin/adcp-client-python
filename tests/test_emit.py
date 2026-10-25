@@ -741,8 +741,9 @@ def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() 
 #: ``__adcp_schema__``, or a document that stopped being emitted, takes the count DOWN.
 #: The history of the equality, kept because each move names a cause: 1055 -> 1085
 #: (.28, three refusals gone), 1085 -> 1079 (.38, D3's dedup collapses 6 class pairs),
-#: 1079 -> 1090 (.21, eleven more documents emit).
-PAIRS_FLOOR = 1090
+#: 1079 -> 1090 (.21, eleven more documents emit), 1090 -> 1095 (.64, the typed mapping
+#: key: two more documents emit and each brings its mapping's nested value classes).
+PAIRS_FLOOR = 1095
 #: **Every pair that is not ``pass``, BY NAME, and written once.**  Two tests read it:
 #: the totals test derives its ``pass`` figure as the complement, and
 #: ``test_the_non_pass_pairs_are_named_and_attributed`` asserts the membership and
@@ -3907,6 +3908,14 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     # at a ``oneOf`` branch -- each one a ``Kind.VERDICT`` on this keyword, which is
     # this row's own ground and not a deferral.  One LEFT:
     # ``media-buy/list-creative-formats-request.json`` emits now.
+    #
+    # A ninth JOINED at ``salesagent-j3k2l.64``, and for the same reason the three
+    # did: an earlier blocker of its own cleared and the walk reached this keyword.
+    # ``media-buy/acceptance-policy-profile.json`` refused at
+    # ``/properties/region_aliases/propertyNames`` on the key ``pattern``; the typed
+    # key emits now, so the walk descends into that mapping's VALUE and meets an
+    # array with no class above it -- a mapping value, which is one of the four
+    # positions this list is about.
     out = emit.emit(BUNDLE, population())
     blocked = {d: out.refusals[d]["pointer"] for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
     claimed("documents refused on uniqueItems", blocked)
@@ -3918,6 +3927,7 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
         "core/reporting-verification-profile-set.json": "/",
         "core/vast-tracker-constraints.json": "/definitions/vast_versions",
         "error-details/requote-required.json": "/properties/envelope_field/oneOf/1",
+        "media-buy/acceptance-policy-profile.json": "/properties/region_aliases/additionalProperties",
         "media-buy/product-fields.json": "/",
     }, blocked
 
@@ -3966,16 +3976,14 @@ def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrappe
 def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     """D5's key rule, and the honest denominator for it.
 
-    **ONE mapping site in the emitted population constrains its key, and D5's alias
-    module names it.**  This read "no mapping site ... constrains its key", with the
-    zero asserted so the key rule could not be read as covered by the bundle, and the
-    zero has inverted: ``core/product-change-map.json``'s ROOT states
-    ``propertyNames: {"minLength": 1}``, the document emits, and the emitted alias is
-    ``dict[StrMinLen1, ProductChangeMapValue]`` -- the key carries the document's own
-    bound rather than widening to ``str``.  Re-measured at 64131600f
-    (``salesagent-j3k2l.29``), and asserted as the named site plus its key TYPE, which
-    is strictly more than the zero said: the zero asserted that nothing was graded
-    here, and this grades the one thing that is.
+    **THREE mapping sites in the emitted population constrain their key, and D5's
+    alias module names every one.**  This read "no mapping site ... constrains its
+    key", with the zero asserted so the key rule could not be read as covered by the
+    bundle; the zero inverted to one at ``salesagent-j3k2l.29``
+    (``core/product-change-map.json``'s root ``propertyNames: {"minLength": 1}``),
+    and to three at ``salesagent-j3k2l.64``, which lowers a key's PATTERN as well --
+    so the sites are asserted BY NAME with the key type each one emits, which is what
+    a count could not say.
 
     Every OTHER mapping the committed tree carries is still ``dict[str, ...]``, which
     is the document's own reading rather than a default -- silence about keys means
@@ -3983,10 +3991,9 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
 
     The one key kind that needs no name is the one that is graded behaviourally: a
     ``propertyNames`` ``$ref`` NAMES the key type, so the key is that type, the module
-    IMPORTS it, and the model then refuses a key the key type refuses.  The kinds a
-    NESTED mapping cannot name refuse by name below, and so does a closed key set --
-    the root path and the nested path are different lowerings, which is why the one
-    emitted constrained key sits at a root.
+    IMPORTS it, and the model then refuses a key the key type refuses.  A closed key
+    set is a MODEL and not a mapping and still refuses by name, and so does a second
+    pattern -- that is two value schemas for one mapping value.
     """
     constrained: list[tuple[str, str]] = []
     mappings: set[tuple[str, str]] = set()
@@ -3998,21 +4005,31 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
                 if {"propertyNames", "patternProperties"} & set(node):
                     constrained.append((f"{row.ref.document}{row.ref.pointer}", pointer or "/"))
     # The mapping population is asserted NON-EMPTY rather than counted -- the claim is
-    # about the one constrained key among them, which is named, and the denominator's
+    # about the constrained keys among them, which are named, and the denominator's
     # job is to say that mappings were reached at all.  A count of them is a reading of
     # one emitted tree: it was 1,528 when every pair graded here was, and 1,750 once
     # eleven more documents brought their nodes with them.
     claimed("mapping nodes of a graded pair", mappings)
-    assert constrained == [("core/product-change-map.json#", "/")], constrained
+    assert constrained == [
+        ("core/geo-region-support.json#", "/properties/countries"),
+        ("core/product-change-map.json#", "/"),
+        ("trusted-match/identity-match-response.json#", "/properties/tmpx_providers"),
+    ], constrained
     assert set(constrained) <= mappings, constrained
-    # ... and the one that constrains its key is NAMED rather than widened.  The
-    # symbol is asked of the namer rather than written here, so a rename moves this
-    # with it (the precedent is ``tests/test_emit_product.py``'s narrowing case).
-    named = constraints_module.symbol("string", {"minLength": 1})
-    assert f"dict[{named}," in _source("core/product-change-map.json"), named
-    assert (
-        bundle.read(BUNDLE, "core/product-change-map.json")["propertyNames"]["minLength"] == 1
-    ), "the bound the key type carries is the document's own"
+    # ... and each of them is NAMED rather than widened.  The symbol is asked of the
+    # namer rather than written here, so a rename moves this with it (the precedent is
+    # ``tests/test_emit_product.py``'s narrowing case), and the CONSTRAINT each symbol
+    # is derived from is read off the document rather than restated -- so the key type
+    # carries the document's own bound and not a bound this test chose.
+    spelled = {kw for kw, _ in constraints_module.SPELLING}
+    for document, pointer in constrained:
+        path = document.removesuffix("#")
+        node = harness.at(bundle.read(BUNDLE, path), pointer if pointer != "/" else "")
+        key = node.get("propertyNames") or {"pattern": next(iter(node["patternProperties"]))}
+        facts = {k: v for k, v in key.items() if k in spelled}
+        named = constraints_module.symbol("string", facts)
+        assert named is not None, (document, facts)
+        assert f"dict[{named}," in _source(path), (document, named)
 
     # A $ref key: the key IS that type, imported, and it refuses what the type
     # refuses.  The bound symbol is an ``Annotated`` alias because that is what a
@@ -4040,39 +4057,127 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     with pytest.raises(ValidationError):
         model.model_validate({"m": {"ABC": 1}})  # and refuses what it refuses
 
-    # A constrained key would need D5's alias module, which this row does not build.
-    for key_node, keyword in (
-        ({"type": "string", "pattern": "^a"}, "pattern"),
-        ({"type": "string", "minLength": 2}, "minLength"),
-        ({"anyOf": [{"pattern": "^a"}, {"$ref": "https://x/core/tag.json"}]}, "anyOf"),
+    # **A CONSTRAINED KEY IS A TYPE, in both of the document's spellings, and the two
+    # spellings emit ONE type.**  Each is lowered by the real pipeline, the rendered
+    # annotation is asserted against the namer's own symbol, and the model is then
+    # offered a key the bound admits and a key it refuses -- so the key is a type and
+    # not a comment.  Both were VERDICTS before ``salesagent-j3k2l.64``.
+    for key_node, spelled, admits, refuses in (
+        ({"type": "string", "pattern": "^a"}, {"pattern": "^a"}, "abc", "zzz"),
+        ({"type": "string", "minLength": 2}, {"minLength": 2}, "ab", "a"),
+        (
+            {"type": "string", "minLength": 2, "pattern": "^a"},
+            {"minLength": 2, "pattern": "^a"},
+            "ab",
+            "a",
+        ),
     ):
-        with pytest.raises(Refusal) as caught:
-            emit.lower_document(
-                "k.json",
-                {
-                    "title": "K",
-                    "type": "object",
-                    "properties": {"m": {"type": "object", "propertyNames": key_node}},
-                },
-            )
-        assert caught.value.keyword == keyword, (key_node, caught.value.keyword)
-
-    # A ``patternProperties`` key carries the pattern that selected it, which is the
-    # same annotated ``str`` and so the same refusal -- one owner for the key rule, so
-    # a ``propertyNames`` pattern and a ``patternProperties`` pattern cannot come to be
-    # read two different ways.
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "pp.json",
+        model, text = _constructed(
             {
-                "title": "PP",
+                "title": "K",
                 "type": "object",
                 "properties": {
-                    "m": {"type": "object", "patternProperties": {"^x_": {"type": "integer"}}}
+                    "m": {
+                        "type": "object",
+                        "propertyNames": key_node,
+                        "additionalProperties": {"type": "integer"},
+                    }
+                },
+            }
+        )
+        named = constraints_module.symbol("string", spelled)
+        assert f"dict[{named}, int]" in text, (spelled, named, text)
+        model.model_validate({"m": {admits: 1}})
+        with pytest.raises(ValidationError):
+            model.model_validate({"m": {refuses: 1}})
+
+    # The ``patternProperties`` spelling says the same thing and emits the same type:
+    # ONE owner for the key rule, so a ``propertyNames`` pattern and a
+    # ``patternProperties`` pattern cannot come to be read two different ways.  The
+    # ``additionalProperties: false`` is what closes the keys to the ones the pattern
+    # matches, which is what a typed key already says -- without it the document
+    # admits every key the pattern does not match and refuses.
+    patterned = {
+        "title": "PP",
+        "type": "object",
+        "properties": {
+            "m": {
+                "type": "object",
+                "patternProperties": {"^x_": {"type": "integer"}},
+                "additionalProperties": False,
+            }
+        },
+    }
+    model, text = _constructed(patterned)
+    rendered = f'dict[{constraints_module.symbol("string", {"pattern": "^x_"})}, int]'
+    assert rendered in text, (rendered, text)
+    model.model_validate({"m": {"x_a": 1}})
+    with pytest.raises(ValidationError):
+        model.model_validate({"m": {"y_a": 1}})
+    # ... and the SAME rendered annotation as the other spelling of it, which is what
+    # "one owner for the key rule" comes to in the output.
+    _, other = _constructed(
+        {
+            "title": "PP",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "propertyNames": {"pattern": "^x_"},
+                    "additionalProperties": {"type": "integer"},
+                }
+            },
+        }
+    )
+    assert rendered in other, (rendered, other)
+    # An unclosed ``patternProperties`` admits every key the pattern does not match,
+    # and a typed key refuses it -- the model would be NARROWER than its document.
+    for ap, keyword in ((None, "additionalProperties"), ({"type": "string"}, "additionalProperties")):
+        node = {"type": "object", "patternProperties": {"^x_": {"type": "integer"}}}
+        if ap is not None:
+            node["additionalProperties"] = ap
+        with pytest.raises(Refusal) as caught:
+            emit.lower_document(
+                "pp0.json",
+                {"title": "PP0", "type": "object", "properties": {"m": node}},
+            )
+        assert caught.value.keyword == keyword, (ap, caught.value.keyword)
+    # Two statements about one key type is one too many for a dict[K, V].
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "pp1.json",
+            {
+                "title": "PP1",
+                "type": "object",
+                "properties": {
+                    "m": {
+                        "type": "object",
+                        "patternProperties": {"^x_": {"type": "integer"}},
+                        "propertyNames": {"minLength": 2},
+                        "additionalProperties": False,
+                    }
                 },
             },
         )
-    assert caught.value.keyword == "pattern", caught.value.keyword
+    assert caught.value.keyword == "propertyNames", caught.value.keyword
+    # An ``anyOf`` key is a UNION of key types, which is a row of its own and still
+    # refuses -- named here so the key rule's residue is asserted and not assumed.
+    with pytest.raises(Refusal):
+        emit.lower_document(
+            "ko.json",
+            {
+                "title": "KO",
+                "type": "object",
+                "properties": {
+                    "m": {
+                        "type": "object",
+                        "propertyNames": {
+                            "anyOf": [{"pattern": "^a"}, {"$ref": "https://x/core/tag.json"}]
+                        },
+                    }
+                },
+            },
+        )
     # Two patterns are two key types with two value types, which is not a dict[K, V].
     with pytest.raises(Refusal) as caught:
         emit.lower_document(
@@ -4111,6 +4216,87 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     # ``$ref`` whose target carries an ``enum``.  Which keyword fires first is not the
     # claim; that no document reaches the closed-key-set row is.
     assert "core/store-item.json" in emit.emit(BUNDLE, ["core/store-item.json"]).refusals
+
+
+def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() -> None:
+    """§5's one ``propertyNames`` position that has no key type to annotate.
+
+    A RULE position constrains which keys a conditional TESTS, so there is no key
+    type to carry a bound and no value to hang a validator on -- which makes it the
+    one position the carrier rule does not reach, and §5 says it states nothing.  It
+    is therefore ADMITTED rather than refused, and this grades both halves: the
+    document lowers, and what it lowers to carries no trace of the keyword.
+
+    **The second half is what the test is for.**  "Not refused" is free -- a keyword
+    nothing reads is not refused either -- so the claim is checked against the one
+    thing that distinguishes silence from a drop: the SAME key schema at a TYPE
+    position is read, and a closed key set there refuses by name (§5: a closed key
+    set is a MODEL whose keys are its fields).  One keyword, two positions, two
+    answers, and the position is what decides.
+
+    Measured over the 1,054 portable documents: 3 of the bundle's 4 ``enum`` key
+    schemas sit at a rule position, and 2 of their documents EMIT -- so the position
+    is reached by the run and not only by the probe below.  The third's document
+    refuses at its root on ``allOf``, which is another row's keyword.
+    """
+    at_a_rule = {
+        f"{document}#{pointer}"
+        for document in sorted(bundle.portable(BUNDLE))
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document))
+        if "propertyNames" in node
+        and set(pointer.strip("/").split("/")) & set(bundle.CONDITIONAL)
+    }
+    claimed("key schemas at a rule position", at_a_rule)
+    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    assert sorted(at_a_rule) == [
+        "core/catalog-item-availability-state.json#/allOf/0/else",
+        "core/catalog-item-availability-update-result.json#/allOf/0/then",
+        "media-buy/sync-catalogs-response.json#/oneOf/1/allOf/0/then",
+    ], sorted(at_a_rule)
+    for name in ("core/catalog-item-availability-state.json",
+                 "core/catalog-item-availability-update-result.json"):
+        assert name in out.emitted, (name, out.refusals.get(name))
+        # The keyword reaches the output in no spelling: it is not a key type, not a
+        # rule, and not a ``json_schema_extra`` fact.
+        assert "propertyNames" not in _source(name), name
+    # The third one's document refuses, and on another row's keyword at its root.
+    third = out.refusals["media-buy/sync-catalogs-response.json"]
+    assert (third["keyword"], third["pointer"]) == ("allOf", "/"), third
+
+    # And the probe, both positions, one key schema.  The rule position lowers and
+    # states only the conditional the ``if``/``then`` pair is about...
+    key = {"enum": ["s"]}
+    mod, symbol = emit.lower_document(
+        "r.json",
+        {
+            "title": "R",
+            "type": "object",
+            "properties": {"s": {"type": "string"}},
+            "allOf": [
+                {
+                    "if": {"properties": {"s": {"const": "x"}}, "required": ["s"]},
+                    "then": {"required": ["s"], "propertyNames": key},
+                }
+            ],
+        },
+    )
+    text = "\n".join(mod.blocks)
+    assert symbol == "R"
+    assert "ConditionalRequired" in text, text
+    assert "propertyNames" not in text and "s" in text, text
+    # ... while the same key schema at a TYPE position is READ, and a closed key set
+    # there refuses by name with the key set in the detail.
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "t.json",
+            {
+                "title": "T",
+                "type": "object",
+                "properties": {"m": {"type": "object", "propertyNames": key}},
+            },
+        )
+    assert caught.value.keyword == "enum", caught.value
+    assert "MODEL whose keys are its fields" in caught.value.detail, caught.value.detail
 
 
 def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
@@ -4175,12 +4361,20 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # ``properties``, so it is the MAPPING path and the store assertion below is
     # unchanged by it: the one emitted store site is still
     # ``core/canonical-media-buy-features.json``.
+    #
+    # 11 -> 13 at ``salesagent-j3k2l.64``, and both are NAMED for the same reason:
+    # ``core/geo-region-support.json`` and
+    # ``trusted-match/identity-match-response.json`` each refused on a patterned KEY
+    # and now emit.  Both are the MAPPING path again -- the typed
+    # ``additionalProperties`` is the value schema of the very mapping whose key
+    # carries the pattern -- so the store assertion below is unchanged by them too.
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
         "a2ui/component.json",
         "collection/get-collection-list-response.json",
         "core/canonical-media-buy-features.json",
         "core/geo-place-area.json",
+        "core/geo-region-support.json",
         "core/product-change-map.json",
         "core/reporting-file-entry.json",
         "core/tasks-list-response.json",
@@ -4188,6 +4382,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         "property/property-feature-result.json",
         "protocol/list-tasks-response.json",
         "sponsored-intelligence/si-ui-element.json",
+        "trusted-match/identity-match-response.json",
     ], emitted_typed
     store = [
         (d, pointer or "/")
@@ -4531,9 +4726,17 @@ def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -
     * the inner type IS named, at 10 container positions in 7 modules;
     * the two documents the previous revision of this test named BY NAME as refused
       on an inner ``^[A-Z]{2}$`` now emit;
-    * and what still refuses is a ``format`` no type is selected for, which would
-      be DROPPED rather than carried -- 3 documents, all three on
-      ``format: hostname`` inside an array's ``items``.
+    * and what still refuses is of two shapes, each one a thing D5's alias module
+      declines to name rather than a keyword nothing lowers.  A ``format`` no type is
+      selected for, which would be DROPPED rather than carried -- 3 documents, all
+      three on ``format: hostname`` inside an array's ``items``.  And a CONTAINER's
+      own bound at a container position -- 2 documents, both a mapping's
+      ``minProperties``/``maxProperties`` on a mapping that is itself another
+      mapping's value.  ``codegen/constraints.py``'s docstring excludes a constrained
+      container by the NAMING rule and not by omission: the symbol would have to carry
+      the value type, and a value type is a domain word.  Both joined at
+      ``salesagent-j3k2l.64``, which lowered the key those two documents refused on
+      first and let the walk reach their nested mapping.
 
     That the inner fact survives into the model's rendered schema is graded by
     ``test_an_arrays_bound_is_the_lists_and_not_its_elements``, which compares the
@@ -4546,21 +4749,37 @@ def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -
         for d, r in out.refusals.items()
         if "D5" in r["detail"] and "no constraint inside a container" in r["detail"]
     }
-    # Down from 15, and every survivor is a FORMAT rather than a constraint keyword:
-    # a format with no selected type has nowhere to go inside a container, and the
-    # comparison would not see it go (the accepts check draws through
-    # `hypothesis_jsonschema`, which honours a format it knows).  The residual is
-    # NAMED, so a document joining or leaving it is attributable; the count said only
-    # that the group had changed size.
+    # Down from 15, and the survivors are a FORMAT with no selected type, which has
+    # nowhere to go inside a container and which the comparison would not see go (the
+    # accepts check draws through `hypothesis_jsonschema`, which honours a format it
+    # knows), plus a CONTAINER's own bound at a container position, which D5's naming
+    # rule declines.  The residual is NAMED on both counts, so a document joining or
+    # leaving it is attributable; the count said only that the group had changed size.
     claimed("documents still refused on a constraint inside a container", inner)
-    assert {r["keyword"] for r in inner.values()} == {"format"}
+    assert {d: r["keyword"] for d, r in inner.items()} == {
+        "core/requirements/html-asset-requirements.json": "format",
+        "core/requirements/javascript-asset-requirements.json": "format",
+        "core/requirements/url-asset-requirements.json": "format",
+        "trusted-match/publisher-targeting-kv-config.json": "minProperties",
+        "trusted-match/publisher-tmpx-config.json": "maxProperties",
+    }, inner
     for document, row in inner.items():
         node = bundle.read(BUNDLE, document)
         for part in row["pointer"].strip("/").split("/"):
             node = node[part]
-        assert node["format"] == "hostname", (document, node)
-        assert node["format"] not in emit.FORMAT_TYPES, "a selected type would not refuse"
-        assert "hostname" in row["detail"], row
+        if row["keyword"] == "format":
+            assert node["format"] == "hostname", (document, node)
+            assert node["format"] not in emit.FORMAT_TYPES, "a selected type would not refuse"
+            assert "hostname" in row["detail"], row
+            continue
+        # The container arm: the refusing node is itself a MAPPING -- an object with
+        # no ``properties`` -- so the bound is the container's own and the type that
+        # would carry it is a ``dict[K, V]``, which is the shape D5 names no alias for.
+        assert node.get("type") == "object" and "properties" not in node, (document, node)
+        from codegen.lower import containers as lower_containers
+
+        assert row["keyword"] in lower_containers.KEY_BOUNDS, row
+        assert str(node[row["keyword"]]) in row["detail"], row
 
     # The two the previous revision asserted as REFUSED, now emitted -- read off the
     # run rather than off the tree, so this cannot pass on a stale file.
@@ -6084,9 +6303,11 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # target's verdict read off its own refusal:
     #
     #   core/targeting-overlay-requirements.json -> core/geo-region-requirement.json
-    #       /properties/countries/propertyNames on ``pattern`` (containers._PATTERN_KEY)
+    #       /properties/countries/propertyNames on ``pattern`` -- the key-pattern
+    #       verdict, whose constant ``salesagent-j3k2l.64`` deleted when the typed key
+    #       began to emit, so both targets emit today and the chain is gone
     #   core/targeting-overlay-support.json      -> core/geo-region-support.json
-    #       the same verdict at the same pointer
+    #       the same verdict at the same pointer, and gone the same way
     #   media-buy/package-control.json -> core/targeting-input.json ->
     #       core/targeting-unknown-age-eligibility-constraint.json at ``/`` on ``if``:
     #       a root is exactly one kind and this one's is read from ``if``
