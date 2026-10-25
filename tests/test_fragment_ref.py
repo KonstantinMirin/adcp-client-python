@@ -1194,7 +1194,29 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     # pointer went DEEPER, ``/definitions/bounded_value/anyOf/0`` ->
     # ``/definitions/bounded_value_level_3/anyOf/1``, for the same reason: the first
     # branch lowers now and the walk reaches the third level.  No member joined.
-    assert len(inside) == 7, inside
+    #
+    # 7 -> 8 at ``salesagent-j3k2l.21``, and the eighth is the walk getting FURTHER
+    # for the third time in this test's history rather than a document becoming
+    # unrepresentable.  ``core/geo-place-requirement.json`` joined, and the cause is
+    # MEASURED on trunk rather than inferred from the count: at 8c021bffa it refused
+    # at ``/properties/systems/propertyNames`` on ``$ref``, kind ``deferred``,
+    # CHAINED to ``core/geo-place-system.json``'s own refusal -- "a branch of type
+    # 'string' is step 6", which is this row's ground.  That target is a root
+    # ``anyOf`` of scalars and now lowers, so the chain clears and the walk descends
+    # into the section, where it meets ``pattern`` on
+    # ``/definitions/catalogRequirement/properties/countries/propertyNames``.
+    #
+    # THAT SURVIVING REFUSAL IS NOT THIS ROW'S.  Its detail is
+    # ``salesagent-j3k2l.64``'s ground verbatim -- a constrained-str key pydantic
+    # renders back as ``patternProperties``, so the symmetric comparison reports one
+    # added and two missing facts -- and section 5's ``propertyNames`` row decides
+    # that position: ``pattern`` -> an annotated ``str`` key.  So this count goes to
+    # 8 here and .64 takes it to 7 again when the typed key emits.  The pointer is
+    # recorded so that move is attributable rather than a number going back down.
+    assert len(inside) == 8, inside
+    assert inside["core/geo-place-requirement.json"] == (
+        "/definitions/catalogRequirement/properties/countries/propertyNames"
+    )
     # Pinned by name because a count alone cannot say the pointer went INTO a
     # section.  This was ``core/response-payload-jws-envelope.json`` at
     # ``/definitions/response_payload/properties/typ``; that document EMITS as of

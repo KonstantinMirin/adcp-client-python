@@ -3862,7 +3862,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     """D8's typed row, and the EXTRAS STORE now has exactly one live document.
 
     Measured: 727 documents mention ``additionalProperties`` and 51 carry a typed one.
-    10 of the 51 emit, and the extras store needs a node declaring ``properties`` AND
+    11 of the 51 emit, and the extras store needs a node declaring ``properties`` AND
     a typed ``additionalProperties`` -- the bundle has 14 such nodes, and ONE of their
     documents emits: ``core/canonical-media-buy-features.json``, which
     ``salesagent-j3k2l.28`` unblocked.  Until then the store was reached by 0
@@ -3892,24 +3892,36 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     ]
     assert len(mentions) == 727, len(mentions)
     out = emit.emit(BUNDLE, population())
-    # 7 of the 51 are emitted, and every one of them is the mapping path rather than
-    # the extras store: each typed ``additionalProperties`` in those 7 sits on a node
-    # with NO ``properties``, so it is a mapping and the row above lowers it.  The
-    # extras store needs a node with BOTH, the bundle has 14 such sites, and 0 of
-    # them is in a document this run emits -- so the store is graded by the probe
-    # below and by 0 documents.  Both halves are asserted, because "7 emitted" and
-    # "0 of them reach the store" are different facts and the second is the claim.
+    # The emitted list and the store sites are DIFFERENT facts, and both are asserted:
+    # a typed ``additionalProperties`` on a node with no ``properties`` is a MAPPING,
+    # which the row above lowers, while the extras store needs a node declaring BOTH.
+    # The bundle has 14 of the second kind and exactly one of them is in a document
+    # this run emits, so the store is graded by that document and by the constructed
+    # probe at the end -- a count of emitted documents says nothing about it.
     #
     # Re-measured at 64131600f (``salesagent-j3k2l.29``).  The 14 is unchanged and is
     # over the bundle; the emitted list is over ``population()`` and grew from 1.  The
     # previous revision said the 14 "all sit under ``definitions``", which is not
     # true of this bundle -- 4 of them are at a document's own root -- so the reason
     # recorded here is now the measured one: none of the 14 is in an emitted document.
+    #
+    # 10 -> 11 at ``salesagent-j3k2l.21``, and the eleventh is NAMED rather than
+    # counted because the cause has to be attributable: ``core/geo-place-area.json``
+    # joins because its two ``$ref`` targets now emit.  ``core/geo-place-system.json``
+    # and ``core/geo-place-type.json`` are each a root ``anyOf`` of SCALARS whose
+    # untitled first branch carries an ``enum`` -- this row's own population -- so
+    # both lower to a root alias and the document that references them is no longer
+    # chained to their refusals.  Its typed ``additionalProperties`` is at
+    # ``/properties/value_labels/additionalProperties``, a node with no
+    # ``properties``, so it is the MAPPING path and the store assertion below is
+    # unchanged by it: the one emitted store site is still
+    # ``core/canonical-media-buy-features.json``.
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
         "a2ui/component.json",
         "collection/get-collection-list-response.json",
         "core/canonical-media-buy-features.json",
+        "core/geo-place-area.json",
         "core/product-change-map.json",
         "core/reporting-file-entry.json",
         "core/tasks-list-response.json",
