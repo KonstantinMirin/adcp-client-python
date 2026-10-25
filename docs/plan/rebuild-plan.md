@@ -101,10 +101,13 @@ An `allOf` of `$ref`s makes those classes the bases. Where two composed schemas 
 same property, the field carries the **intersection**: an enum is the intersection of members, a
 bound is the tighter one.
 
-A composed class's `required` is the union of its own and every base's. Where composition makes
-an inherited field required, the subclass redeclares that field with the base's type and no
-default — and that is the only case in which an emitted class redeclares an inherited field. A
-redeclaration that changes the type or adds a default is a build failure.
+A composed class's `required` is the union of its own and every base's. An emitted class
+redeclares an inherited field in exactly two cases. Where composition makes an inherited field
+required, the subclass redeclares it with the base's type and no default. Where the subclass's own
+document **restates the property with a different `default`**, it redeclares it with that default:
+a default is a value and not a constraint, so it neither widens nor narrows what the class
+accepts, and the schema that states it is the one that decides. A redeclaration that changes the
+TYPE is a build failure.
 
 *Why intersection.* `allOf` means every conjunct holds. A union of their constraints would accept
 payloads a conjunct refuses, making the model looser than its document.
@@ -297,7 +300,7 @@ The draft-07 keywords the bundle uses. An answer is given per position where the
 
 | keyword | compiles to |
 | --- | --- |
-| `const` | `Literal[value]`; the type word is not restated, since Pydantic renders it. A `str`, `bool` or `int` value; an object, array, `null` or float refuses. On a branch's property → also the second of the branch-naming choices. AT a branch node, pinning the whole branch → the branch is a scalar: a `Literal` member of a nested union, refused at a root union. RULE: under `if` → a `Match` clause's value; under `then` / `else` / `not` → nothing. |
+| `const` | `Literal[value]`; the type word is not restated, since Pydantic renders it. A `str`, `bool` or `int` value; an object, array, `null` or float refuses. On a branch's property → also the second of the branch-naming choices. AT a branch node, pinning the whole branch → the branch is a scalar: a `Literal` member of the union. Where EVERY branch of a root union is a scalar there are no branch classes to declare, so the root emits as an alias over the union of their types — `Literal['asap'] | AwareDatetime` — and not as a base with branches. RULE: under `if` → a `Match` clause's value; under `then` / `else` / `not` → nothing. |
 | `enum` | A named node → `StrEnum` / `IntEnum`, base read off the members; `enumDescriptions` → member docstrings. ROOT → the enum with a module-level `strict_validate`. PROP → a nested enum. An untitled BRANCH of a root union → a `Literal` of the members. KEY → refused by name with the key set. RULE: under `if` → `Match` values; else nothing. Mixed member types, an empty list, or a duplicate member → refused. |
 | `default` | PROP → the field's default; `None` is a default, absence is not. On a REQUIRED property → dropped and reported, because no rendering makes a field both required and defaulted. On a node that becomes an alias → no slot. |
 
@@ -429,6 +432,17 @@ Three checks, run once per emitted class against the schema document it names.
   (*added*). The comparison is symmetric by construction, so neither direction can be silently
   unexamined.
 
+**The comparison is GENERIC, and its keyword set is DERIVED.** It ranges over every keyword §5 and
+§6 say is rendered, and it reads that set from those sections rather than from a list written
+beside it. A hand-written list is the one way this check can be complete with respect to itself
+and blind to everything beyond it: a keyword missing from it is unexamined in *both* directions, so the grader cannot tell
+whether we rendered it, dropped it, or invented it — and it reports a pass either way.
+
+So one check stands above the three: **the comparison's keyword set equals the set §5 and §6
+render.** A keyword those sections render and the comparison does not carry is a defect in the
+comparison. Nothing else in this section means anything until that holds, because every other
+check inherits its reach.
+
 Pydantic is deliberately less strict than JSON Schema, so a payload the *document* refuses tells
 us nothing about the generated class on either route. There is therefore no "refuses" check on
 the model; the equivalent check confirms the schema half is wired to the class at all.
@@ -439,3 +453,30 @@ comparison, and names the shape that blocked the draw.
 
 A check is exhaustive over the set of nodes it claims, or it does not exist. A check that
 enumerates a subset reports on that subset only, and says so.
+
+---
+
+## 9. Mistakes to avoid
+
+Each of these has happened. Each is one sentence and its reason.
+
+- **A refusal for code nobody has written is a DEFERRAL, never a verdict.** A verdict says the
+  obstruction belongs to the document, to Pydantic, or to the pointer space, and is therefore
+  permanent. Minting one for unwritten code reports clearable work as finished.
+- **Do not hand-write the set a generic check ranges over.** Derive it. A hand-written set is
+  complete with respect to itself, so what it omits passes in both directions and nothing says so.
+- **A keyword handled in code but named in none of §5, §6 or §7 is an invented rule.** Those
+  tables are exhaustive by intent, and a rendering no section decided departs from the design as
+  far as a decision nothing implements.
+- **An exemption names an upstream issue, or it is this SDK's own decision and belongs in this
+  document.** Attributing our own cost to upstream means waiting forever for someone else to fix
+  it.
+- **A pin with no denominator is not a ratchet.** A count that rises whenever the emitted set
+  grows obliges every later change to loosen it, which is the opposite of what a
+  ratchet is for. Pin what does not move with emission and derive the rest.
+- **Never refuse a keyword the walk itself inserted.** A refusal must name something the document
+  states, or the document is blamed for the compiler's own rewriting.
+- **A crash is not an outcome.** Every node reaches emission or a refusal that names its document,
+  pointer and keyword. An unhandled type error names nothing and stops the run.
+- **Do not name a type that occurs once.** §2 names an alias where the shape recurs, because a
+  name per site is a second vocabulary for the reader to learn with nothing to gain by it.
