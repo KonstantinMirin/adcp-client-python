@@ -1020,6 +1020,12 @@ class Emitted:
     #: whose two nodes are NOT identical is the failure that matters more than a missed
     #: collapse.
     adopted: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: document -> ``Module.drops``: what the document states at a pointer and the class
+    #: carries nothing for, because the name asserts nothing about any instance.  A
+    #: document with a drop still EMITS, so this is not part of the partition and is not
+    #: counted anywhere -- it is the report D7's third conjunct case asks for, and the
+    #: CLI prints it beside the refusals.
+    drops: dict[str, list[str]] = field(default_factory=dict)
 
 
 def _composed_nodes(bundle_dir: Path, known: set[str]) -> dict[str, frozenset[str]]:
@@ -1280,6 +1286,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         out.emitted[document] = f"{PACKAGE}.{rel.replace('/', '.')}"
         out.declared[document] = dict(mod.declared)
         out.adopted[document] = dict(mod.adopted)
+        if mod.drops:
+            out.drops[document] = list(mod.drops)
         # The document travels WITH the module, at its own bundle-relative path,
         # because ``__adcp_schema__`` names that path and ``strict_validate``
         # reads it to decide acceptance (D4).  The bundle is a build-time input
@@ -1425,6 +1433,11 @@ def main(argv: list[str] | None = None) -> int:
             f"refused {document} ({r['resolved']}) at {r['pointer']} "
             f"on {r['keyword']}: {r['detail']}"
         )
+    # A DROP is not a refusal and is printed as its own line: the document emitted, and
+    # what the reader needs to know is that one name at one pointer reached no class.
+    for document in sorted(out.drops):
+        for line in out.drops[document]:
+            print(f"dropped {document} at {line}")
     # **The report names the KINDS and not "refused" alone.**  "refused" admits "not
     # built yet", which is how `emitted + refused == 1054` stayed green over 385
     # documents waiting on rows nobody had written, so the one figure the exit

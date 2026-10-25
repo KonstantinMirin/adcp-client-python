@@ -1,0 +1,183 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Complete purchased placement set within a product. This is inventory targeting, not creative routing: creative_assignments[].placement_refs route a creative only within this purchased set. Requests use mode selected to name the complete required set or mode default to accept the product/seller default. Across discovery, create, and update, a selected set is satisfied inherently when it exactly equals a fixed product's complete included placement set; this exact restatement does not require overlay_support.placement_selection, while partial selection does. Included placements are never independently selectable. Products with any fixed mode:included placement cannot advertise selectable placement overlay support because the fixed placement would make a partial buyer-selected set incomplete; sellers expose separately selectable inventory when needed. Successful package readback MUST echo the committed selected set. Sellers reject unknown, duplicate, cross-publisher, incompatible, or partially applicable refs rather than silently changing the selection.",
+  "discriminator": {
+    "propertyName": "mode"
+  },
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "ext": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "title": "Extension Object",
+          "type": "object"
+        },
+        "mode": {
+          "const": "selected",
+          "type": "string"
+        },
+        "placement_refs": {
+          "description": "Complete required placement set. A reference normally identifies a mode targetable placement. It MAY identify a mode included placement only when the set exactly equals the product's complete fixed included set, which is an inherent match rather than independent selection. Legacy publisher refs use {publisher_domain, placement_id}; authority-discriminated 3.2 identities use placement-identity.json so seller-inline inventory is selected by {seller_agent, placement_id}. An item that exactly matches placement-identity uses that canonical identity; otherwise a released-compatible item with publisher_domain and placement_id uses legacy product-context matching, and tolerated product metadata such as kind, name, or mode has no selection effect.",
+          "items": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Legacy-compatible product-context reference to a placement. For publisher-catalog placements, publisher_domain plus placement_id resolves the declaration in that publisher's adagents.json. For seller-inline placements, the enclosing seller and product supply scope. When publisher_domain is omitted on legacy inputs, receivers MAY interpret the ID relative to the enclosing single-publisher product. Use placement-identity.json when a self-contained cross-document identity is required.",
+                    "properties": {
+                      "placement_id": {
+                        "description": "Placement ID from the publisher's adagents.json placement catalog, or an inline seller-defined placement ID interpreted within the enclosing seller and product context.",
+                        "type": "string",
+                        "x-entity": "placement"
+                      },
+                      "publisher_domain": {
+                        "description": "Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.",
+                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "placement_id"
+                    ],
+                    "title": "Placement Reference",
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "publisher_domain"
+                    ]
+                  }
+                ]
+              },
+              {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Self-contained identity for either a publisher-catalog placement or a sales-agent-defined inline placement. The discriminator names which authority owns placement_id.",
+                "oneOf": [
+                  {
+                    "additionalProperties": {
+                      "not": {}
+                    },
+                    "maxProperties": 3,
+                    "properties": {
+                      "kind": {
+                        "const": "publisher_ref"
+                      },
+                      "placement_id": {
+                        "minLength": 1,
+                        "type": "string",
+                        "x-entity": "placement"
+                      },
+                      "publisher_domain": {
+                        "description": "Domain whose adagents.json declares placement_id.",
+                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "placement_id",
+                      "publisher_domain"
+                    ],
+                    "title": "Publisher catalog placement identity",
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": {
+                      "not": {}
+                    },
+                    "maxProperties": 3,
+                    "properties": {
+                      "kind": {
+                        "const": "seller_inline"
+                      },
+                      "placement_id": {
+                        "description": "Stable placement ID within the defining sales agent's namespace. The agent MUST NOT reuse it for a different semantic placement.",
+                        "minLength": 1,
+                        "type": "string",
+                        "x-entity": "placement"
+                      },
+                      "seller_agent": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "additionalProperties": {
+                          "not": {}
+                        },
+                        "description": "Sales agent that defines and maintains the inline placement namespace.",
+                        "examples": [
+                          {
+                            "agent_url": "https://agent.acme.example"
+                          }
+                        ],
+                        "maxProperties": 2,
+                        "properties": {
+                          "agent_url": {
+                            "description": "The seller agent's API endpoint URL as declared in the property publisher's adagents.json `authorized_agents[].url`. MUST use the `https://` scheme. Receivers compare this URL against the `authorized_agents` list using the AdCP URL canonicalization rules \u2014 not byte-equality \u2014 and reject mismatches with `seller_not_authorized`. See docs/reference/url-canonicalization.",
+                            "format": "uri",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "Reserved for a future registry-assigned stable seller identifier. Not used today \u2014 senders MUST NOT populate this field until a registry is defined. When a future release populates both `agent_url` and `id`, `agent_url` remains authoritative and `id` is advisory.",
+                            "minLength": 1,
+                            "pattern": "^[a-zA-Z0-9_-]+$",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "agent_url"
+                        ],
+                        "title": "Seller Agent Reference",
+                        "type": "object",
+                        "x-status": "experimental"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "placement_id",
+                      "seller_agent"
+                    ],
+                    "title": "Seller inline placement identity",
+                    "type": "object"
+                  }
+                ],
+                "title": "Placement Identity"
+              }
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "mode",
+        "placement_refs"
+      ],
+      "title": "Selected placements",
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "ext": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "title": "Extension Object",
+          "type": "object"
+        },
+        "mode": {
+          "const": "default",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "Product default placements",
+      "type": "object"
+    }
+  ],
+  "title": "Placement Selection",
+  "type": "object"
+}
