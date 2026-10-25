@@ -821,16 +821,54 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
 #: sibling at this pointer and ``harness.compare_schema`` looks for it here, so a model
 #: whose node is a bare ``anyOf`` reports it ``missing`` -- a model wider than its
 #: document, by the keyword's own position.
+#:
+#: **The mechanism is a CONSTRAINING sibling's, and it is read as one** (§5's ``$ref``
+#: row draws the same line in the same table: "an annotation sibling -> the sibling's
+#: description wins; a constraining sibling -> refused").  A sibling §6 admits states
+#: nothing about an instance, so there is no fact for the union's type to carry and no
+#: fact for the comparison to miss.  :data:`NESTED_HANDLED` is the set of those, and
+#: ``compiler.ANNOTATIONS`` carries the rest.
 _NESTED_SIBLING = (
     "a sibling of a nested oneOf/anyOf is a CONJUNCTION with every branch (draft-07), "
     "and a nested union lowers to one type -- A | B -- which has no slot for a fact of "
     "its own: compiler.Type carries a container and its members and nothing else.  "
     "Conjoining it into each branch instead states it at a pointer the document does "
     "not, and dropping it is a model wider than its document, which "
-    "harness.compare_schema reports as a missing fact at this very pointer.  The "
-    "position needs a row that can NAME the conjunction, which is the same thing a "
-    "root union's ROOT_CONJUNCTS refuses for"
+    "harness.compare_schema reports as a missing fact at this very pointer"
 )
+
+#: What a NESTED union may carry beside its branch list, over and above
+#: ``compiler.ANNOTATIONS``.
+#:
+#: ``discriminator`` is §6's row -- "Nothing on the class.  It names a branch where that
+#: branch pins more than one ``const``, and separately it CONFIRMS a dispatch key the
+#: branches already state -- it does not establish one" -- and §6's own preamble says
+#: every keyword in that table is "admitted **by name**".  That answer carries no
+#: position split, where the ``title`` and ``description`` rows beside it both give one,
+#: so it is the answer at this position too.
+#:
+#: Three facts hold here and each was checked rather than assumed:
+#:
+#: * The keyword CONSTRAINS NOTHING, so :data:`_NESTED_SIBLING`'s mechanism does not
+#:   reach it.  :data:`ROOT_HANDLED` already admits it at a root on exactly that reason,
+#:   and the two positions differ in nothing the reason mentions.
+#: * The harness does not look for it.  ``harness.FACTS`` is the list
+#:   ``compare_schema`` iterates -- ``type``, ``enum``, ``const``, ``format``, the six
+#:   numeric bounds, the three string ones, the two array ones, ``uniqueItems``,
+#:   ``required``, ``additionalProperties``, ``default``, ``description`` -- and
+#:   ``discriminator`` is in neither direction of it.  So a model whose node is a bare
+#:   ``anyOf`` reports nothing ``missing`` at that pointer, which is the second half of
+#:   the sentence above and the half that does not hold for this keyword.
+#: * It is already READ at this position: :func:`nested` names each branch through
+#:   :func:`branch_identity`, which reads ``discriminator.propertyName`` off the union's
+#:   own node (:func:`_const_pin`).  The keyword was read here and refused here at once.
+#:
+#: ``compiler.BUNDLE_ANNOTATIONS`` is NOT where this belongs, and its own comment says
+#: why it refuses the keyword there: at an arbitrary node ``discriminator`` "COULD
+#: CONSTRAIN AN INSTANCE".  That is a statement about every position at once, and the
+#: set is read by every screen in the generator.  Here the position is named: a union,
+#: where §6 says what the keyword does and where this module already reads it.
+NESTED_HANDLED = frozenset({"discriminator"})
 
 
 def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> compiler.Decided:
@@ -891,11 +929,13 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
     """
     kw = keyword(node)
     assert kw is not None, "nested is dispatched on the keyword being present"
-    # The sibling screen, with its own ``why``: every other keyword at this node is a
+    # The sibling screen, with its own ``why``: a CONSTRAINING sibling of this node is a
     # conjunction with every branch, and the generic answer for a draft-07 keyword
     # promises a later row for something no row can carry here.  Same shape as the
-    # ``$ref`` arm's "a sibling of $ref, which draft-07 ignores".
-    compiler.check_keywords(node, pointer, {kw}, _NESTED_SIBLING)
+    # ``$ref`` arm's "a sibling of $ref, which draft-07 ignores" -- and the same line
+    # that arm draws between an annotation sibling and a constraining one, which is what
+    # :data:`NESTED_HANDLED` carries.
+    compiler.check_keywords(node, pointer, {kw} | NESTED_HANDLED, _NESTED_SIBLING)
     branches = node[kw]
     if len(branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
         raise Refusal(

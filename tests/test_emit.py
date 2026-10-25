@@ -3343,11 +3343,15 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # until ``salesagent-j3k2l.59`` made such a branch a class with two bases.  Its
     # three branches now name themselves off the ``kind`` pin (two of them through a
     # LOCAL ``$ref``) and the root's dispatch derives to ``kind``, so the document gets
-    # past this module and refuses one pointer deeper, on a ``discriminator`` sibling of
-    # the NESTED union at ``/oneOf/2/properties/per_item_bindings/items`` -- a different
-    # position with a different reason (``union.nested``'s sibling screen), filed as
-    # ``salesagent-j3k2l.67``.
-    "core/requirements/catalog-field-binding.json": "discriminator",
+    # past this module.  It then refused on a ``discriminator`` sibling of the NESTED
+    # union at ``/oneOf/2/properties/per_item_bindings/items`` until
+    # ``salesagent-j3k2l.67`` admitted that keyword there (§6's row: it constrains
+    # nothing and the comparison does not look for it), and it is back on ``$ref`` --
+    # ``#/definitions/ScalarBinding/properties/ext``, whose target
+    # ``core/ext.json`` ``bundle.resolved`` leaves untouched under a ``definitions``
+    # section.  That is ``salesagent-j3k2l.71``'s ground and the resolution is
+    # UNRESOLVED rather than a verdict.
+    "core/requirements/catalog-field-binding.json": "$ref",
     "core/tracker-execution-selector.json": "$ref",
     "core/wholesale-feed-event.json": "properties",
     "creative/get-creative-features-response.json": "allOf",
@@ -3996,7 +4000,11 @@ def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrappe
     # The two keywords they refuse on, and the PARTITION of the roots between them by
     # name: the one that refuses inside its own ``items`` is the odd one and is named
     # below, so a count of the other group says nothing the partition does not.
-    assert {out.refusals[d]["keyword"] for d in roots} == {"uniqueItems", "discriminator"}
+    #
+    # The odd one read ``discriminator`` until ``salesagent-j3k2l.67`` admitted that
+    # keyword beside a nested union (§6's row), and now reads ``type`` -- the same
+    # sibling screen at the same pointer, one keyword further along ``sorted(node)``.
+    assert {out.refusals[d]["keyword"] for d in roots} == {"uniqueItems", "type"}
     partitions(
         roots,
         at_the_root={d for d in roots if out.refusals[d]["keyword"] == "uniqueItems"},
