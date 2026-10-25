@@ -634,6 +634,46 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
     assert reached.outcome == "pass"
 
 
+def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() -> None:
+    """The admissibility rule, on reports built to have each answer.
+
+    ``no_instrument`` is the harness's one admitted non-pass outcome, and what it is
+    admitted FOR is a position whose ``format`` strategy cannot satisfy the ``pattern``
+    beside it -- ``salesagent-j3k2l.10``.  72 of the bundle's 73 format-beside-pattern
+    positions draw, so "this document states the two keywords somewhere" does not
+    identify the shape: it would speak for a generator failure from any cause at all.
+
+    Graded here on a report rather than on a pipeline, for ``test_a_zero_denominator_
+    verdict_is_never_pass``'s own reason -- the rule is a property of ``PairReport``
+    and no document in this population produces the refusing cell.  The population
+    side is ``test_no_instrument_is_the_designed_outcome_for_a_measured_shape``.
+    """
+    fine = ComparisonResult(compared=7)
+    refused = LivenessResult(how="replaces the instance with None", outcome="pass")
+    errored = AcceptsResult(examples=1, outcome="strategy_error", detail="Unsatisfiable: 9 of 9")
+
+    # A generator failure a measured position explains: the admitted exit, and the
+    # cause carries the position and hypothesis's own reason.
+    explained = PairReport(
+        name="e",
+        accepts=errored,
+        liveness=refused,
+        comparison=fine,
+        accepts_undrawable=("/p: format 'uri' beside pattern '^https://x/' [Unsatisfiable: 9]",),
+    )
+    assert explained.outcome == "no_instrument"
+    assert explained.no_instrument == (
+        "accepts: /p: format 'uri' beside pattern '^https://x/' [Unsatisfiable: 9];"
+        " Unsatisfiable: 9 of 9",
+    )
+
+    # ... and the same generator failure with NOTHING explaining it is a verdict on
+    # the pair.  Deleting either half of the rule fails here.
+    unexplained = PairReport(name="u", accepts=errored, liveness=refused, comparison=fine)
+    assert unexplained.no_instrument == ()
+    assert unexplained.outcome == "accepts:strategy_error"
+
+
 #: **The harness result over the whole population, as pins.**  Every one of these
 #: was MEASURED on this tree after the section-6 rebuild; none is carried from the
 #: per-keyword harness, because three of that one's figures no longer exist to
@@ -1760,6 +1800,28 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     assert dict(collections.Counter(r.liveness.how.split(" ")[0] for r in reports)) == LIVENESS_PINS
 
 
+#: **The format-beside-pattern census over the bundle, and the undrawable population
+#: inside it.**  Measured on the 1,054 portable documents of the 3.2 bundle by
+#: ``harness.format_pattern_positions`` (the co-occurrence census, over each document's
+#: own UNRESOLVED declarations) and by ``harness.undrawable_formats`` (the draw).
+#:
+#: The two figures are the whole of ``salesagent-j3k2l.10``'s decision and they are
+#: deliberately far apart: 73 positions state the two keywords together and 72 of them
+#: DRAW.  73 is section 6's own figure -- "the bundle states eight distinct patterns
+#: across 73 of its 300 ``uri`` uses" -- read here off the harness rather than carried.
+FORMAT_PATTERN_POSITIONS_PIN = 73
+FORMAT_PATTERN_DOCUMENTS_PIN = 47
+FORMAT_PATTERN_SHAPES_PIN = 8
+UNDRAWABLE_SHAPES_PIN = 1
+UNDRAWABLE_POSITIONS_PIN = 1
+#: The one position, by document and pointer, and the pattern that makes it undrawable.
+UNDRAWABLE_POSITION = (
+    "core/reference-renderer.json",
+    "/properties/provenance/properties/source_repository",
+)
+UNDRAWABLE_PATTERN = "^https://github\\.com/"
+
+
 def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     """Every pair that is not ``pass``, by name, with what it is.
 
@@ -1855,13 +1917,118 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     }, exempt
     # Each cause is read off the report rather than taken from the list above, so a
     # pair that landed in one of these groups for a DIFFERENT reason reddens here.
-    for g, r in reports:
-        if r.outcome == "no_instrument":
-            for cause in r.no_instrument:
-                _grades_a_cause(cause, r.name)
-            # The comparison needs no generator and still grades an undrawable pair,
-            # which is what keeps this exit from being a hole.
-            assert r.comparison.outcome == "pass" and r.comparison.compared > 0
+    admitted = [(g, r) for g, r in reports if r.outcome == "no_instrument"]
+    assert admitted, "nothing reports no_instrument: the clause below would grade nothing"
+    for g, r in admitted:
+        for cause in r.no_instrument:
+            _grades_a_cause(cause, r.name)
+        # The comparison needs no generator and still grades an undrawable pair,
+        # which is what keeps this exit from being a hole.
+        assert r.comparison.outcome == "pass" and r.comparison.compared > 0
+        # ATTRIBUTED to the one position the bundle census measures as undrawable
+        # (``test_no_instrument_is_the_designed_outcome_for_a_measured_shape``), and
+        # not merely coincident with a document that happens to state the two
+        # keywords: 72 of the 73 co-occurrences draw, so the position is the fact.
+        assert g.ref.document == UNDRAWABLE_POSITION[0], g.ref
+        assert r.accepts_undrawable, g.ref
+        for named in r.accepts_undrawable:
+            where, _, why = named.partition(": format ")
+            assert UNDRAWABLE_POSITION[1].endswith(where), (UNDRAWABLE_POSITION, where)
+            # ``repr``, because that is how the cause writes a pattern: a raw compare
+            # would pass on the shorter string and stop grading the escaping.
+            assert repr(UNDRAWABLE_PATTERN) in why and "Unsatisfiable" in why, named
+
+
+def test_no_instrument_is_the_designed_outcome_for_a_measured_shape() -> None:
+    """``salesagent-j3k2l.10``: the one admitted non-pass outcome, over its POPULATION.
+
+    **The decision.** ``no_instrument`` is the designed outcome for a position whose
+    ``format`` strategy cannot satisfy the ``pattern`` beside it, and section 6 is what
+    grounds it: *"The conformance claim is carried entirely by the comparison.
+    ``model_json_schema()`` equal to the document is the statement that every
+    constraint reaching the model is the document's own and no other -- which is the
+    only sense in which a generated class can be faithful, given that the model is not
+    the validator."*  The comparison needs no generator, so a pair the generator cannot
+    reach loses no conformance evidence -- and both of them are compared, asserted in
+    ``test_the_non_pass_pairs_are_named_and_attributed`` and again below.
+
+    **The alternative was excluded by measurement, not preference.**
+    ``hypothesis_jsonschema``'s ``string_schema`` takes the FORMAT's strategy and
+    applies the pattern as a ``.filter()``, and ``custom_formats`` is keyed on the
+    format alone and never sees the node -- so no supported hook can make a format
+    strategy pattern-aware.  What is left is an upstream change to ``string_schema``,
+    a reimplementation of the library's string generation here, or a ``uri`` strategy
+    whose output pool contains a ``github.com`` value, which is an instrument built
+    from the answer and which the next bundle pinning another host would undo.
+
+    **Four clauses, each over the whole population and each with its denominator.**
+
+    1. THE CENSUS.  73 positions in 47 of 1,054 documents, 8 distinct
+       ``(format, pattern)`` shapes, and the format is ``uri`` at every one.
+    2. THE DRAW.  7 of the 8 shapes draw -- the library's ``uri`` strategy emits
+       ``https://A.COM``, which matches every pattern pinning the scheme or the general
+       host shape -- so 72 of the 73 positions are reachable and ONE is not.  This is
+       the clause that makes the exit a shape and not a label: co-occurrence is
+       overwhelmingly drawable, so a cause naming co-occurrences would admit a
+       ``strategy_error`` from any cause at all.
+    3. THE OBSTRUCTION IS UNCONDITIONAL.  ``source_repository`` is required by
+       ``provenance`` and ``provenance`` by the root, so no instance of either document
+       can omit the position and no number of examples would have reached one.  Were it
+       optional this would be a sampling artifact and the answer would be more draws.
+    **The fourth clause is in ``test_the_non_pass_pairs_are_named_and_attributed``**,
+    because it is over the other population -- the graded REPORTS -- and that test
+    already holds it.  It attributes every admitted ``no_instrument`` pair to the one
+    position measured here, so the two halves of the decision meet at
+    ``UNDRAWABLE_POSITION`` and neither can move alone.
+    """
+    docs = {d: bundle.read(BUNDLE, d) for d in bundle.portable(BUNDLE)}
+    assert len(docs) == 1054, len(docs)
+
+    # 1. THE CENSUS.
+    positions = {
+        (document, pointer): node
+        for document, doc in sorted(docs.items())
+        for pointer, node in harness.format_pattern_positions(doc)
+    }
+    assert positions, "the population is empty: this test would grade nothing"
+    assert len(positions) == FORMAT_PATTERN_POSITIONS_PIN, sorted(positions)
+    assert len({d for d, _ in positions}) == FORMAT_PATTERN_DOCUMENTS_PIN
+    shapes = collections.Counter(
+        (node["format"], node["pattern"]) for node in positions.values()
+    )
+    assert len(shapes) == FORMAT_PATTERN_SHAPES_PIN, sorted(shapes)
+    assert {fmt for fmt, _ in shapes} == {"uri"}, sorted(shapes)
+    assert sum(shapes.values()) == FORMAT_PATTERN_POSITIONS_PIN
+
+    # 2. THE DRAW, over the 8 shapes rather than the 73 positions: what decides
+    #    drawability is the pair of keywords, so the shape is the unit and the
+    #    positions are its multiplicity.  Drawn through the production function.
+    cannot: dict[tuple[str, str], tuple[str, ...]] = {}
+    for fmt, pattern in shapes:
+        why = harness.undrawable_formats({"type": "string", "format": fmt, "pattern": pattern})
+        if why:
+            cannot[(fmt, pattern)] = why
+    assert len(cannot) == UNDRAWABLE_SHAPES_PIN, sorted(cannot)
+    assert sum(shapes[shape] for shape in cannot) == UNDRAWABLE_POSITIONS_PIN
+    assert sum(shapes[s] for s in shapes if s not in cannot) == (
+        FORMAT_PATTERN_POSITIONS_PIN - UNDRAWABLE_POSITIONS_PIN
+    )
+    assert list(cannot) == [("uri", UNDRAWABLE_PATTERN)], sorted(cannot)
+    assert "Unsatisfiable" in cannot[("uri", UNDRAWABLE_PATTERN)][0]
+    assert [k for k, n in positions.items() if n["pattern"] == UNDRAWABLE_PATTERN] == [
+        UNDRAWABLE_POSITION
+    ]
+
+    # 3. THE OBSTRUCTION IS UNCONDITIONAL: walk the pointer and require the key at
+    #    every step, so an instance that omits the node does not exist.
+    document, pointer = UNDRAWABLE_POSITION
+    node = docs[document]
+    steps = pointer.lstrip("/").split("/")
+    assert steps[::2] == ["properties"] * (len(steps) // 2), pointer
+    for key in steps[1::2]:
+        assert key in node.get("required", []), (pointer, key, node.get("required"))
+        node = node["properties"][key]
+    assert node["format"] == "uri" and node["pattern"] == UNDRAWABLE_PATTERN
 
 
 def test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for() -> None:
