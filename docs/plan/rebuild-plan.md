@@ -699,6 +699,17 @@ A step that wants to change one of these reports it and stops.
   **A check that matches a spelling is deleted rather than extended.** There are infinitely many
   ways to write the thing it bans and it tests one, so it buys nothing and costs a parse.
 
+  **A check that partitions a population enumerates the cases its DECISION names, not the cases
+  the population happens to hold, and asserts that an empty part is empty.** A part with no
+  member today is the one the next cleared document arrives in, and a partition built from what
+  exists greets it with a crash instead of a verdict. D8 names four readings of
+  `additionalProperties` — `false`, `true`, typed, absent — and `codegen/lower/containers.py`
+  measures that no document the emitter can emit carries a typed one, so the check for it was
+  written over three parts. `governance/reported-outcome-error.json` states
+  `additionalProperties: {"$ref": "#/definitions/bounded_value"}` at its root, and the first
+  document to emit it met a lookup with three keys. Four parts, the typed one asserted empty
+  while it is empty, would have named the arrival instead.
+
   **A check over a CLOSED set of forms is a population check and survives.** The distinction is
   whether the set of ways to do the banned thing can be enumerated. The import rule is the worked
   case, and the measurement settles it: reaching another module has exactly two forms in Python,
