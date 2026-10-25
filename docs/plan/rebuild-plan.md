@@ -238,10 +238,27 @@ A step that wants to change one of these reports it and stops.
   name produces the wrapper, not the constraint.
 - **D3 — names.** Root: `pascal_case(title)`, keeping acronyms. Nested: parent name +
   `pascal_case(property)`. Union branch: title, else the discriminator `const`, else the sorted
-  required set, else refuse the document by name and pointer. **A branch named by anything other
-  than its own title is qualified by its base's name**, because a discriminator `const` yields
-  `ById` and a required set yields `ExplicitPackagesWithFixedAllocation` — names that collide
-  across documents and carry nothing of the root they belong to. Nodes with identical content
+  required set, else **the branch's own root type word**, else refuse the document by name and
+  pointer. **A branch named by anything other than its own title is qualified by its base's
+  name**, because a discriminator `const` yields `ById` and a required set yields
+  `ExplicitPackagesWithFixedAllocation` — names that collide across documents and carry nothing
+  of the root they belong to.
+
+  **The type-word rung exists because one unnamed branch per node is not the population.**
+  Measured: `governance/reported-outcome-error.json#/definitions/bounded_value_level_3` is an
+  `anyOf` of three untitled branches — a `$ref` that needs no name, an array stating
+  `maxItems: 32`, and an object stating `maxProperties: 32`. Each of the two bounded branches
+  needs its own carrier under D5's third rung. Without this rung the first takes the node's hint
+  and the second derives the same symbol, so `Module.add` refuses it and the document refuses on
+  the second branch's keyword — which reads as a constraint row's gap and is a naming gap.
+  The word is the schema's own (`array`, `object`), so it is derived rather than invented, and
+  D3's qualification rule makes it `BoundedValueLevel3Array` beside `BoundedValueLevel3Object`.
+  **Two branches of the same root type still refuse**, which keeps the terminal rung doing work:
+  the rung discriminates where the types differ and declines where they do not.
+
+  This is not the wrapper D2 refuses. D2 rejects wrapping an unnameable branch because "a
+  wrapper changes what the class is called and leaves the naming problem untouched". A type word
+  changes nothing about what the class is and answers the naming problem directly. Nodes with identical content
   are one node; content equality is the only deduplication. A name is an input to a lowering and
   is never computed inside one.
 
