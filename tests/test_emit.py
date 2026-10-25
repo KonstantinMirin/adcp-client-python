@@ -659,7 +659,7 @@ PAIRS_PIN = 1079
 #: ``comparison:model_drops_a_fact`` group is GONE rather than smaller, which is
 #: ``salesagent-j3k2l.28``'s exit: ``added``, ``missing`` and ``differs`` are all 0.
 OUTCOME_PINS: dict[str, int] = {
-    "pass": 1083,
+    "pass": 1077,
     "no_instrument": 2,
 }
 #: One instance per pair, minus the 2 whose generator could not draw one and the 3
@@ -668,11 +668,12 @@ OUTCOME_PINS: dict[str, int] = {
 #: pair whose keywords are no longer compared.  ``URL_TYPED_PIN`` was RE-MEASURED on the
 #: same pass and was unchanged, so it is left where .28 put it rather than re-pointed.
 #: .45's exemption and this row's dedup both move the three figures below, in opposite
-#: directions, so they are at .45's values here and RE-MEASURED on the merged tree in
-#: the commit that follows -- neither side's number and not the difference.
-ROUND_TRIPPED_PIN = 1083
-COMPARED_PIN = 38224
-MODEL_FACTS_PIN = 13715
+#: directions -- the exemption turns 3 non-pass pairs into passes and the dedup removes
+#: 6 pairs -- so all three were RE-MEASURED on the merged tree rather than picked from
+#: either side or differenced: 1083 -> 1077, 38224 -> 38181, 13715 -> 13709.
+ROUND_TRIPPED_PIN = 1077
+COMPARED_PIN = 38181
+MODEL_FACTS_PIN = 13709
 #: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND BOTH ARE NOW GREEN.**  Zero is the
 #: specification's symmetric comparison -- a fact the model adds reddens and a fact it
 #: drops reddens -- and it was pinned here while ``MISSING_PIN`` was RED, because
