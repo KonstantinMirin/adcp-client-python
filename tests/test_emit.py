@@ -3302,8 +3302,8 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # LOCAL ``$ref``) and the root's dispatch derives to ``kind``, so the document gets
     # past this module and refuses one pointer deeper, on a ``discriminator`` sibling of
     # the NESTED union at ``/oneOf/2/properties/per_item_bindings/items`` -- a different
-    # position with a different reason (``union.nested``'s sibling screen), filed as its
-    # own row.
+    # position with a different reason (``union.nested``'s sibling screen), filed as
+    # ``salesagent-j3k2l.67``.
     "core/requirements/catalog-field-binding.json": "discriminator",
     "core/tracker-execution-selector.json": "$ref",
     "core/wholesale-feed-event.json": "properties",

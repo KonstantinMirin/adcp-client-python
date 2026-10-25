@@ -340,7 +340,7 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
 
     # Each of the seven still refuses but one, and every refusal is on something OTHER
     # than this row's ground: five through a target of their own, one on a nested
-    # union's ``discriminator`` sibling.  Asserted as "refused, by name and pointer"
+    # union's ``discriminator`` sibling (``salesagent-j3k2l.67``).  Asserted as "refused, by name and pointer"
     # rather than pinned to a keyword, because which gap each waits on is the other
     # rows' fact and moves when they land.
     # ``core/media-buy-available-action-id.json`` is the ONE of the seven that emits,
