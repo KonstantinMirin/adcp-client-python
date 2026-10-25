@@ -244,23 +244,32 @@ A step that wants to change one of these reports it and stops.
   `ExplicitPackagesWithFixedAllocation` — names that collide across documents and carry nothing
   of the root they belong to.
 
-  **The type-word rung exists because one unnamed branch per node is not the population.**
-  Measured: `governance/reported-outcome-error.json#/definitions/bounded_value_level_3` is an
-  `anyOf` of three untitled branches — a `$ref` that needs no name, an array stating
-  `maxItems: 32`, and an object stating `maxProperties: 32`. Each of the two bounded branches
-  needs its own carrier under D5's third rung. Without this rung the first takes the node's hint
-  and the second derives the same symbol, so `Module.add` refuses it and the document refuses on
-  the second branch's keyword — which reads as a constraint row's gap and is a naming gap.
-  The word is the schema's own (`array`, `object`), so it is derived rather than invented, and
-  D3's qualification rule makes it `BoundedValueLevel3Array` beside `BoundedValueLevel3Object`.
-  **Two branches of the same root type still refuse**, which keeps the terminal rung doing work:
-  the rung discriminates where the types differ and declines where they do not.
+  **A union node can hold more than one branch that needs a derived name.** The first three
+  rungs name a branch from its own content. A branch with no title, no discriminator `const` and
+  no required set has none, so it falls back to the node's hint, and a second such branch derives
+  the same symbol. `Module.add` refuses the duplicate, and the document refuses on that branch's
+  keyword.
 
-  This is not the wrapper D2 refuses. D2 rejects wrapping an unnameable branch because "a
-  wrapper changes what the class is called and leaves the naming problem untouched". A type word
-  changes nothing about what the class is and answers the naming problem directly. Nodes with identical content
-  are one node; content equality is the only deduplication. A name is an input to a lowering and
-  is never computed inside one.
+  Measured: `governance/reported-outcome-error.json#/definitions/bounded_value_level_3` is an
+  `anyOf` of three untitled branches — a `$ref`, an array stating `maxItems: 32`, and an object
+  stating `maxProperties: 32`. The `$ref` needs no name. The other two each need a carrier under
+  D5's third rung, so one of them refuses. Before this rung the document refuses on `maxItems`,
+  which names a constraint row while the obstruction is the name.
+
+  The type word is the schema's own, `array` or `object`, so it is derived rather than invented.
+  D3's qualification rule prefixes it: `BoundedValueLevel3Array` beside
+  `BoundedValueLevel3Object`.
+
+  **Two branches of the same root type still refuse.** The rung names a branch only where the
+  root types differ, and the terminal rung answers the rest. An index or an ordinal would name
+  every branch and name none of them after anything the schema states.
+
+  D2 refuses a WRAPPER around an unnameable branch, because "a wrapper changes what the class is
+  called and leaves the naming problem untouched". A type word leaves the class as it is and
+  supplies the name directly, so D2's reason does not reach it.
+
+  Nodes with identical content are one node; content equality is the only deduplication. A name
+  is an input to a lowering and is never computed inside one.
 
   **Two nodes are compared by content, never by title**, and the comparison must say where it
   cuts a reference cycle. Two instruments that cut differently disagree about whether two nodes
