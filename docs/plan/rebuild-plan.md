@@ -281,10 +281,29 @@ A step that wants to change one of these reports it and stops.
   branches over `entity_type`, `event_type` and a `payload` that differs at each one. D3 names
   those from the discriminator `const`, so each class is named for the value it carries rather
   than by position.
-- **D3 — names.** Root: `pascal_case(title)`, keeping acronyms. Nested: parent name +
-  `pascal_case(property)`. Union branch: title, else the discriminator `const`, else the sorted
+- **D3 — names.** Root: `pascal_case(title)`, keeping acronyms. Nested: `pascal_case(property)`,
+  qualified by the nearest enclosing property only where two nodes of ONE MODULE would take the
+  same name. Union branch: title, else the discriminator `const`, else the sorted
   required set, else **the branch's own root type word**, else refuse the document by name and
-  pointer. **A branch named by anything other than its own title is qualified by its base's
+  pointer.
+
+  **A name is unique within its module, not within the package, because the module path already
+  carries the document.** A class is reachable at `adcp.types.<domain>.<module>.<Name>` and the
+  generated tree re-exports nothing flat, so repeating the document in the name states it twice.
+  Measured over the emitted tree: 1,062 classes in 678 modules, of which 19 — 1%, in 9 modules —
+  would take a name another node of the same module already holds, and those are the only ones
+  the enclosing property qualifies. 808 are document roots and keep the document's own title.
+
+  Concatenating the whole pointer instead produces a name no consumer writes by choice:
+  `AccessibilityViolationDetailsViolationsItemFailureKind` for a node reachable as
+  `error_details.accessibility_violation.FailureKind`. Measured on the concatenated form: a
+  median of 25 characters, a maximum of 77, and 433 of 1,350 names over 30.
+
+  **The name depends on its document and its own property, and on nothing else.** A shortest
+  unique SUFFIX would be shorter still and is refused: it depends on every other name in the
+  package, so adding one unrelated document renames a public symbol. Only 203 of 1,350 names are
+  unique by their final segment alone, so such a rule would also lengthen most names the moment
+  the bundle grew. **A branch named by anything other than its own title is qualified by its base's
   name**, because a discriminator `const` yields `ById` and a required set yields
   `ExplicitPackagesWithFixedAllocation` — names that collide across documents and carry nothing
   of the root they belong to.
