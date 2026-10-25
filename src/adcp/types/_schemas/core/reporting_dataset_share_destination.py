@@ -18,6 +18,7 @@ class ReportingDatasetShareDestination(BranchDispatchMixin, AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-dataset-share-destination.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "mode"
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
