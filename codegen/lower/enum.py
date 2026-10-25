@@ -137,6 +137,74 @@ def member_name(value: Any) -> str:
     return name if name and not name[0].isdigit() else f"{PREFIX}{name}"
 
 
+#: The two combinator keywords, as a POSITION test.  A node under one of them shares
+#: its parent's instance and is a BRANCH, which is the one position where D3 resolves
+#: no name for an enum node -- see :func:`resolves_no_name`.
+_BRANCH_OF = ("oneOf", "anyOf")
+
+
+def resolves_no_name(node: dict, pointer: str) -> bool:
+    """Does D3 resolve NO name for this enum node?  Then D2 renders a ``Literal``.
+
+    **D2: "an ``enum`` node -> ``StrEnum``/``IntEnum`` where a name reaches it, and a
+    ``Literal`` of its members where none does."**  A ``const`` is a one-member value
+    set and D2 already renders it without naming it; an ``enum`` is the same construct
+    with more members, so a value set no name reaches states its members and claims no
+    symbol.  A lowering that can proceed without a name does, rather than inventing
+    one -- which is D3's own rule that a name is an input to a lowering.
+
+    **The question is answerable from the node and its POINTER alone, and that is a
+    fact about an enum node rather than a convenience.**  D3 resolves a branch name in
+    order: the branch's own title, the discriminator ``const``, the sorted required
+    set, the branch's own root type word.  For an ENUM node only the first can apply --
+    ``_const_pin`` reads the branch's ``properties`` and an enum node declares none, a
+    ``required`` list likewise, and the type-word step names a branch only where the
+    root types differ, which two string value sets never do.  So no parent has to be
+    consulted, and the union row does not have to pass anything down: an enum node has
+    a name where it declares a ``title``, or where its position supplies one.
+
+    Every position supplies one EXCEPT a combinator branch.  A root is
+    ``pascal_case(title)``, a property is parent + ``pascal_case(property)``, an
+    ``items`` or a mapping value derives from the property holding it -- each is a name
+    the walk already owns.  A branch is the one position whose name D3 derives from the
+    branch's own content, and an untitled enum node has none of that content.
+
+    Measured over the 1,054 portable documents of ``schemas/cache/3.2``: **4 untitled
+    enum branches in 4 documents**, 2 of them at a root
+    (``core/geo-place-system.json`` and ``core/geo-place-type.json``, each an ``anyOf``
+    of an untitled string value set beside a constrained string) and 2 nested. Of the
+    353 combinator-branch positions with no D3 identity of any shape, these 4 are the
+    only enum nodes, so this reads a position the measurement names rather than a
+    shape it might reach.
+    """
+    if node.get("title"):
+        return False
+    hops = pointer.split("/")
+    return len(hops) >= 3 and hops[-2] in _BRANCH_OF and hops[-1].isdigit()  # noqa: PLR2004
+
+
+def literal(node: dict, pointer: str) -> compiler.Decided:
+    """D2's rendering for a value set no name reaches: a ``Literal`` of its members.
+
+    **The value set is read by :func:`decide`, not by a second reading of it here.**
+    An empty ``enum``, a member type with no base, and a value appearing twice are
+    statements about the VALUE SET and hold whatever it is rendered as, so sharing
+    ``decide`` is what keeps one answer to "what does this node enumerate". The name
+    handed to it is unused -- this rendering claims no symbol -- and is passed as the
+    empty string so that nothing here invents one.
+
+    KNOWN CEILING: ``decide`` also refuses two values that spell ONE MEMBER NAME, and a
+    ``Literal`` has no member names, so that refusal does not belong to this rendering.
+    It is shared anyway rather than split, because splitting it is two readings of the
+    value set to keep in step for a case the bundle does not have: measured over the 4
+    nodes this reaches, 0 carry such a pair. The upgrade, at the first one, is to take
+    the values before ``member_name`` runs rather than to copy the other three refusals.
+    """
+    return compiler.Decided(
+        compiler.Type(literals=tuple(m.value for m in decide(node, "", pointer).members))
+    )
+
+
 def decide(node: dict, name: str, pointer: str) -> compiler.Enumeration:
     """What one ``enum`` node IS: a named enumeration over its own members.
 
