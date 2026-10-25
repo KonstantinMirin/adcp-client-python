@@ -81,6 +81,9 @@ class ReportingDeliveryOfferingMethodFormat(StrEnum):
     ORC = 'orc'
 
 
+ReportingDeliveryOfferingMethodProducerIdentityProvider = ReportingDeliveryOfferingMethodProvider
+
+
 class ReportingDeliveryOfferingMethodProducerIdentity(AdCPBaseModel):
     """
     Seller principal a buyer grants access to for this exact buyer-hosted destination offering.
@@ -93,7 +96,7 @@ class ReportingDeliveryOfferingMethodProducerIdentity(AdCPBaseModel):
         Dependencies('cloud', ('region',)),
         Dependencies('region', ('cloud',)),
     )
-    provider: ReportingDeliveryOfferingMethodProvider
+    provider: ReportingDeliveryOfferingMethodProducerIdentityProvider
     identity: StrMinLen1MaxLen512
     cloud: ReportingDatasetShareDestinationReportingCloud | None = None
     region: StrMinLen1MaxLen128 | None = None

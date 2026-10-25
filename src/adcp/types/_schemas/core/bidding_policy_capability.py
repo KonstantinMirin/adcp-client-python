@@ -28,6 +28,9 @@ class BiddingPolicyCapabilityPolicyProfileRoasStrengthsItem(StrEnum):
     TARGET = 'target'
 
 
+BiddingPolicyCapabilityMaxBidWithCostPerCostPerStrengthsItem = BiddingPolicyCapabilityPolicyProfileCostPerStrengthsItem
+
+
 class BiddingPolicyCapabilityMaxBidWithCostPer(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -37,7 +40,10 @@ class BiddingPolicyCapabilityMaxBidWithCostPer(AdCPBaseModel):
         UniqueItems('cost_per_strengths'),
     )
     kind: Literal['max_bid_with_cost_per']
-    cost_per_strengths: Annotated[list[BiddingPolicyCapabilityPolicyProfileCostPerStrengthsItem], Field(description='cost_per strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    cost_per_strengths: Annotated[list[BiddingPolicyCapabilityMaxBidWithCostPerCostPerStrengthsItem], Field(description='cost_per strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+
+
+BiddingPolicyCapabilityMaxBidWithRoasRoasStrengthsItem = BiddingPolicyCapabilityPolicyProfileRoasStrengthsItem
 
 
 class BiddingPolicyCapabilityMaxBidWithRoas(AdCPBaseModel):
@@ -49,7 +55,7 @@ class BiddingPolicyCapabilityMaxBidWithRoas(AdCPBaseModel):
         UniqueItems('roas_strengths'),
     )
     kind: Literal['max_bid_with_roas']
-    roas_strengths: Annotated[list[BiddingPolicyCapabilityPolicyProfileRoasStrengthsItem], Field(description='roas strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    roas_strengths: Annotated[list[BiddingPolicyCapabilityMaxBidWithRoasRoasStrengthsItem], Field(description='roas strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
 class BiddingPolicyCapabilityPolicyProfile(AdCPBaseModel):

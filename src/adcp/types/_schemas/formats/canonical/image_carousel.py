@@ -17,6 +17,9 @@ class CanonicalFormatImageCarouselAllowedCardMediaAssetTypesItem(StrEnum):
     VIDEO = 'video'
 
 
+CanonicalFormatImageCarouselAllowedCardAssetTypesItem = CanonicalFormatImageCarouselAllowedCardMediaAssetTypesItem
+
+
 class CanonicalFormatImageCarousel(CanonicalFormatBase):
     """
     Multi-card swipeable carousel. The buyer ships a `cards` slot whose value is an **array** of [card-asset](/schemas/core/assets/card-asset.json) objects (a single key with an array value — NOT one key per card, NOT dotted/bracketed paths). Each card-asset carries: `asset_type: "card"`, `media` (an image or video asset), optional `headline` (text), optional `landing_page_url` (url asset). Per-card structure is the same across all cards; mixed orientations not allowed within a single carousel. Tracking model: per-card impression and engagement pixels + carousel-level engagement (swipe, view-time). Allowed asset types for a card's `media` field: `image` and `video` (Meta-style mixed-media); platforms can narrow to image-only or video-only via `allowed_card_media_asset_types`.
@@ -33,7 +36,7 @@ class CanonicalFormatImageCarousel(CanonicalFormatBase):
     min_cards: Annotated[IntMin2 | None, Field(description='Minimum card count (typical: 2 or 3).')] = None
     max_cards: Annotated[int | None, Field(description='Maximum card count (typical: 6, 10, or 35 depending on platform).')] = None
     allowed_card_media_asset_types: Annotated[list[CanonicalFormatImageCarouselAllowedCardMediaAssetTypesItem] | None, Field(description='Asset types each card\'s `media` field may carry. Default: [\'image\']. Polymorphic carousels (Meta) allow [\'image\', \'video\']. Renamed from `allowed_card_asset_types` to disambiguate that this constrains the card\'s media payload, not the card-asset itself (which is always asset_type: "card").')] = None
-    allowed_card_asset_types: Annotated[list[CanonicalFormatImageCarouselAllowedCardMediaAssetTypesItem] | None, Field(description='DEPRECATED — alias for `allowed_card_media_asset_types`. Kept for back-compat; prefer the new field name. Removed in 5.0.')] = None
+    allowed_card_asset_types: Annotated[list[CanonicalFormatImageCarouselAllowedCardAssetTypesItem] | None, Field(description='DEPRECATED — alias for `allowed_card_media_asset_types`. Kept for back-compat; prefer the new field name. Removed in 5.0.')] = None
     card_image_max_file_size_kb: IntMin1 | None = None
     card_video_max_file_size_kb: IntMin1 | None = None
     card_video_max_duration_ms: IntMin1 | None = None

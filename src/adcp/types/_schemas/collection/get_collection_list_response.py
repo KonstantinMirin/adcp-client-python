@@ -44,6 +44,9 @@ class GetCollectionListResponseCollectionsItem(AdCPBaseModel):
     kind: CollectionKind | None = None
 
 
+GetCollectionListResponseCoverageGapsValueItem = GetCollectionListResponseCollectionsItemDistributionIdsItem
+
+
 class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     """
     Response payload for get_collection_list task. Returns resolved collection entries with identification and key metadata for matching. Consumers should cache the resolved collections and refresh based on cache_valid_until.
@@ -57,7 +60,7 @@ class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     pagination: PaginationResponse | None = None
     resolved_at: Annotated[AwareDatetime | None, Field(description='When the list was resolved')] = None
     cache_valid_until: Annotated[AwareDatetime | None, Field(description='Cache expiration timestamp. Re-fetch the list after this time to get updated collections.')] = None
-    coverage_gaps: Annotated[dict[str, list[GetCollectionListResponseCollectionsItemDistributionIdsItem]] | None, Field(description="Collections included in the list despite missing metadata for a filtered dimension. Maps dimension name (e.g., 'genre', 'content_rating') to arrays of distribution identifiers for collections not covered. Only present when filters are applied and some collections lack the filtered metadata.")] = None
+    coverage_gaps: Annotated[dict[str, list[GetCollectionListResponseCoverageGapsValueItem]] | None, Field(description="Collections included in the list despite missing metadata for a filtered dimension. Maps dimension name (e.g., 'genre', 'content_rating') to arrays of distribution identifiers for collections not covered. Only present when filters are applied and some collections lack the filtered metadata.")] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

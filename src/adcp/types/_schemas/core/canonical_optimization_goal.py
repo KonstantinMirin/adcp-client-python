@@ -118,6 +118,9 @@ class CanonicalOptimizationGoalEvent(CanonicalOptimizationGoal):
     priority: IntMin1 | None = None
 
 
+CanonicalOptimizationGoalVendorMetricTarget = CanonicalOptimizationGoalMetricTarget
+
+
 class CanonicalOptimizationGoalVendorMetric(CanonicalOptimizationGoal):
     model_config = ConfigDict(
         extra='forbid',
@@ -126,7 +129,7 @@ class CanonicalOptimizationGoalVendorMetric(CanonicalOptimizationGoal):
     kind: Literal['vendor_metric']
     vendor: BrandKey
     metric_id: VendorMetricID
-    target: CanonicalOptimizationGoalMetricTarget | None = None
+    target: CanonicalOptimizationGoalVendorMetricTarget | None = None
     priority: IntMin1 | None = None
 
 

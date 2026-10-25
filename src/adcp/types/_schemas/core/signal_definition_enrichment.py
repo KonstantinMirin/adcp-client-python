@@ -99,6 +99,9 @@ class SignalDefinitionEnrichmentRefreshCadence(StrEnum):
     ANNUALLY = 'annually'
 
 
+SignalDefinitionEnrichmentLookbackWindow = SignalDefinitionEnrichmentRefreshCadence
+
+
 class SignalDefinitionEnrichmentOnboarderMatchKeysItem(StrEnum):
     NAME = 'name'
     ADDRESS = 'address'
@@ -242,7 +245,7 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
     audience_expansion: bool | None = None
     device_expansion: bool | None = None
     refresh_cadence: SignalDefinitionEnrichmentRefreshCadence | None = None
-    lookback_window: SignalDefinitionEnrichmentRefreshCadence | None = None
+    lookback_window: SignalDefinitionEnrichmentLookbackWindow | None = None
     onboarder: SignalDefinitionEnrichmentOnboarder | None = None
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(min_length=1)] = None
     consent_basis: Annotated[list[ConsentBasis] | None, Field(description="Data provider's declared GDPR Article 6 lawful basis or consent basis for the underlying signal definition, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own processing basis for the provider-declared basis.", min_length=1)] = None
