@@ -64,10 +64,11 @@ not a `Field(ge=1)` sitting beside a bare `int` on one class. The constrained ty
 reusable: it nests into `list[...]`, into a mapping value, into a union branch, and into another
 document's field, carrying its bound with it.
 
-Three rungs, in order: a standard Pydantic type where one says exactly this (`NonNegativeInt`); a
-named alias in `adcp.types.constraints` where the shape recurs (`StrMinLen1`, `FloatGt0`,
-`NonEmptyList[T]`); the annotation inline otherwise. An alias in `constraints` names a
-*constraint*, never a concept — `NonEmptyList[T]`, not `MediaBuyStatusList`.
+Three choices, in order of preference: a standard Pydantic type where one says exactly this
+(`NonNegativeInt`); a named alias in `adcp.types.constraints` where the shape recurs
+(`StrMinLen1`, `FloatGt0`, `NonEmptyList[T]`); the annotation written inline otherwise. An alias
+in `constraints` names a *constraint*, never a concept — `NonEmptyList[T]`, not
+`MediaBuyStatusList`.
 
 *Why.* A bound written onto a field exists only at that field. The same bound reached through a
 list, a mapping or a branch then has nowhere to live, and the usual repair is to put it on the
@@ -128,6 +129,16 @@ no post-processing pass over generated files.
 
 *Why.* A rewriting pass is a second source of truth for the output's shape, and the two drift. It
 also hides which input produced which line.
+
+### The compiler is pinned, and a gap in it is fixed in it
+
+The pipeline is `f(schemas, pinned compiler)`, and both arguments are ours to change: a defect is
+fixed in the schema we hand it, or in the compiler itself. A fix we carry is offered upstream as a
+pull request, and a fork exists only once something needs one.
+
+*Why.* The alternative to fixing the compiler is working around it at the call site, which means
+the workaround has to be understood by everyone who later reads the output and cannot find the
+rule that produced it.
 
 ### An annotation is admitted by name
 
@@ -269,7 +280,7 @@ The draft-07 keywords the bundle uses. An answer is given per position where the
 | --- | --- |
 | `type` | A scalar word → `str` / `int` / `float` / `bool`, unless a constrained type or `format` selects one. `object` with `properties` → a class; without → `dict[K, V]`. `array` → `list[X]`. `null` → `None`. A LIST of words → `A \| B`, each sibling keyword going to the one type word that can carry it. Absent → `Any`; absent beside `properties` → an object, where an enclosing node applies `type: object` to the same instance, and refused otherwise. |
 | `properties` | A class with one field per key. PROP / ELEM / MAPV / DEF → a nested class. CONJ → fields of the composed class, merged by restatement: narrower wins, and neither narrowing refuses. ROOT beside a union → fields on the base, inherited by every branch. BRANCH → the branch class. RULE: under `if` → the values a `Match` clause tests, read only where `const` or `enum`; under `then` / `else` / `not` → nothing. |
-| `required` | The named fields are required: no `\| None`, no default. Naming a property no node declares → refused, a presence rule with no field. CONJ → unioned into the composed class's `required`; a `required`-only conjunct → the overlay. ROOT beside a union → `_ROOT_REQUIRED` on the base. BRANCH → the branch class's requiredness, and the branch's third naming rung. RULE → a presence rule: `RequiredGroups`, `ForbiddenGroups` under `not`, the keys a `Match` clause tests under `if`, `ConditionalRequired` / `NegatedConditional` under `then` / `else`. `required: []` → nothing. |
+| `required` | The named fields are required: no `\| None`, no default. Naming a property no node declares → refused, a presence rule with no field. CONJ → unioned into the composed class's `required`; a `required`-only conjunct → the overlay. ROOT beside a union → `_ROOT_REQUIRED` on the base. BRANCH → the branch class's requiredness, and the third of the branch-naming choices. RULE → a presence rule: `RequiredGroups`, `ForbiddenGroups` under `not`, the keys a `Match` clause tests under `if`, `ConditionalRequired` / `NegatedConditional` under `then` / `else`. `required: []` → nothing. |
 | `definitions`, `$defs` | Nothing by itself: a bag of named subschemas. Each entry is declared on demand when a `$ref` names it, as the node's own kind, under `<Root><Key>`. |
 | `$ref` | Another document's root → an IMPORT of that module's symbol; nothing of the target is copied. A fragment of another document → an import of a symbol the target declares. Local `#/…` → the entry decided on demand in this module; a cycle refuses. An annotation sibling → the sibling's description wins; a constraining sibling → refused. CONJ → a BASE. KEY → the key type. A BRANCH of a root union → a class with two bases; of a nested union → a member type. |
 
@@ -277,7 +288,7 @@ The draft-07 keywords the bundle uses. An answer is given per position where the
 
 | keyword | compiles to |
 | --- | --- |
-| `const` | `Literal[value]`; the type word is not restated, since Pydantic renders it. A `str`, `bool` or `int` value; an object, array, `null` or float refuses. On a branch's property → also the branch's second naming rung. AT a branch node, pinning the whole branch → the branch is a scalar: a `Literal` member of a nested union, refused at a root union. RULE: under `if` → a `Match` clause's value; under `then` / `else` / `not` → nothing. |
+| `const` | `Literal[value]`; the type word is not restated, since Pydantic renders it. A `str`, `bool` or `int` value; an object, array, `null` or float refuses. On a branch's property → also the second of the branch-naming choices. AT a branch node, pinning the whole branch → the branch is a scalar: a `Literal` member of a nested union, refused at a root union. RULE: under `if` → a `Match` clause's value; under `then` / `else` / `not` → nothing. |
 | `enum` | A named node → `StrEnum` / `IntEnum`, base read off the members; `enumDescriptions` → member docstrings. ROOT → the enum with a module-level `strict_validate`. PROP → a nested enum. An untitled BRANCH of a root union → a `Literal` of the members. KEY → refused by name with the key set. RULE: under `if` → `Match` values; else nothing. Mixed member types, an empty list, or a duplicate member → refused. |
 | `default` | PROP → the field's default; `None` is a default, absence is not. On a REQUIRED property → dropped and reported, because no rendering makes a field both required and defaulted. On a node that becomes an alias → no slot. |
 
