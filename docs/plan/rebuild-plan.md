@@ -249,6 +249,27 @@ A step that wants to change one of these reports it and stops.
 
   A `StrEnum` is still what a NAMED enum node becomes, and the name is what decides between
   them. An enum reached by a title or a property has a public symbol and keeps it.
+
+  **A union whose branches differ only in permitted VALUES is a rule, not a class per branch.**
+  Where every branch declares the same property set, and every one of those properties is
+  constrained only by a value keyword — `type`, `enum`, `const`, `pattern`, `format`, a bound,
+  or a `not` over those — the union says which value combinations are permitted and not which
+  shapes exist. It becomes one class carrying the shared properties, and one rule on that class.
+  15 nodes in the bundle are this shape, over 42 branches, so a class per branch would declare
+  27 symbols that carry no distinct content.
+
+  `core/postal-country-system.json` is the largest at ten branches: an object of `country` and
+  `system`, pairing each country with the postal systems it admits, the last branch reaching
+  every other country through a `not` over the ten it names. One class holds `country` and
+  `system` and the table is the rule. **A revision that adds a country changes the document and
+  the rule reads it; no symbol a consumer imports moves.** That is the property this reading buys
+  — an open vocabulary stated as a schema churns, and the churn stays out of the public surface.
+
+  **A union whose branches share a property set but differ in a property's SCHEMA is a shape
+  union and keeps a class per branch.** 12 nodes, 85 branches: `core/registry-event.json` is 20
+  branches over `entity_type`, `event_type` and a `payload` that differs at each one. D3 names
+  those from the discriminator `const`, so each class is named for the value it carries rather
+  than by position.
 - **D3 — names.** Root: `pascal_case(title)`, keeping acronyms. Nested: parent name +
   `pascal_case(property)`. Union branch: title, else the discriminator `const`, else the sorted
   required set, else **the branch's own root type word**, else refuse the document by name and
