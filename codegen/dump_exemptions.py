@@ -117,17 +117,34 @@ _D8 = (
     "stating a property count it does not let a reader satisfy"
 )
 
-#: **The whole exemption.**  Four positions, and the count is pinned.
+#: **The whole exemption.**  Five positions: four on :data:`ORIGIN_ONLY`, which are
+#: DERIVED, and one on ``minProperties``, which is pinned.
 #:
-#: Two of them are one authored node, ``core/attestation-issuer.json``'s
+#: Three of the four are one authored node, ``core/attestation-issuer.json``'s
 #: ``AttestationOriginIssuer.origin``, which the resolver inlines into
-#: ``core/attestation-capabilities.json`` as well.  The bundle SOURCE states
-#: :data:`ORIGIN_ONLY` at four positions and the packaged tree carries three of them;
-#: the two source positions missing here are in documents the emitter does not emit
-#: today (``core/product-audience-evidence-requirements.json#/properties/
-#: accepted_attestation_issuers/items/oneOf/2/properties/origin`` and
-#: ``error-details/governance-agent-not-accepted.json#/oneOf/0/properties/
-#: attempted_agent_origin``), so they reach no pair and are not exempted in advance.
+#: ``core/attestation-capabilities.json`` and into
+#: ``core/audience-evidence-requirements.json`` as well.
+#:
+#: **The ORIGIN_ONLY part is not a count any more**, and the reason is the failure that
+#: changed it.  It read "the bundle SOURCE states ORIGIN_ONLY at four positions and the
+#: packaged tree carries three of them", naming two missing SOURCE positions in documents
+#: the emitter does not emit -- ``core/product-audience-evidence-requirements.json`` and
+#: ``error-details/governance-agent-not-accepted.json``, both still unemitted.  That
+#: enumeration counted SOURCE positions, so an INLINED copy of an already-exempted node
+#: had nowhere to be counted: when ``salesagent-j3k2l.43`` made
+#: ``core/audience-evidence-requirements.json`` emit, its packaged form inlined the node a
+#: third time, the position reached a pair, and a shrink-only count was one short of the
+#: positions it exists to cover with no way to say so.
+#:
+#: So ``test_the_origin_only_part_is_the_packaged_positions`` asserts the equality
+#: instead: the ORIGIN_ONLY entries ARE the positions of the packaged tree whose
+#: ``pattern`` is that exact string.  Both sides derived, neither a literal count.  It
+#: reddens when a position is MISSED rather than when a number moves, it shrinks on its
+#: own when upstream repairs the pattern (the value stops matching and both sides fall
+#: together), and it grows only with emission -- growth explained by one upstream issue
+#: rather than by a judgement call.  It is still a literal SET of positions compared
+#: against one exact string, not a predicate over regexes, which is the constraint this
+#: module's first rule states.
 #:
 #: **One exposure is accepted and measured rather than papered over.**  Entry four's
 #: authored node is inlined at 90 positions of the packaged tree, and only the one
@@ -163,6 +180,27 @@ EXEMPT: tuple[Exemption, ...] = (
         latent=True,
     ),
     Exemption(
+        # A THIRD packaged copy of entry one's authored node, and the same mechanism as
+        # entry two: the resolver inlines ``core/attestation-issuer.json``'s origin
+        # branch here, so this is a position of audience-evidence-requirements' own
+        # packaged document and the pair graded against it is a different pair.  The
+        # bundle SOURCE does not state the pattern at this document at all.
+        #
+        # It reached a pair when ``salesagent-j3k2l.43`` made the document EMIT -- a
+        # composition merges by intersection, so the restatement its root composes is no
+        # longer refused.  The comment above anticipated the shape and mis-categorised
+        # it: the two positions it names as missing are SOURCE positions in documents
+        # still unemitted, and it was counting source positions, so an inlined copy of an
+        # already-exempted node had nowhere to be counted.
+        document="core/audience-evidence-requirements.json",
+        pointer=(
+            "/properties/accepted_attestation_issuers/items/oneOf/2/properties/origin"
+        ),
+        keyword="pattern",
+        value=ORIGIN_ONLY,
+        reason=_RFC,
+    ),
+    Exemption(
         document="core/provenance.json",
         pointer=(
             "/properties/disclosure/properties/jurisdictions/items/properties/render_guidance"
@@ -173,10 +211,18 @@ EXEMPT: tuple[Exemption, ...] = (
     ),
 )
 
-#: Shrink-only, asserted by ``test_the_exempt_set_only_shrinks``.  A pin and not a
-#: ``len()`` read back off the tuple, because a pin a test computes from the thing it
+#: Shrink-only, asserted by ``test_the_exempt_set_only_shrinks``, and over the entries
+#: that are NOT :data:`ORIGIN_ONLY` -- one, the ``minProperties`` position.  A pin and not
+#: a ``len()`` read back off the tuple, because a pin a test computes from the thing it
 #: grades cannot fail.
-PIN = 4
+#:
+#: It covered every entry and was 4.  An absolute count over the ORIGIN_ONLY part had no
+#: denominator: the number of positions one upstream pattern reaches is a property of how
+#: much of the bundle is PACKAGED, not of how permissive this SDK is, so every row that
+#: emits a document carrying that node has to raise it -- which is the one thing a
+#: shrink-only pin may not do.  That part is derived now (see :data:`EXEMPT`), and what
+#: is left here is the part that genuinely is not a function of emission.
+PIN = 1
 
 
 def applying_to(ref_document: str, ref_pointer: str) -> tuple[Exemption, ...]:
