@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "enum": [
+        "pause",
+        "cancel",
+        "resume",
+        "update_name",
+        "add_packages",
+        "update_dates",
+        "extend_flight",
+        "update_budget",
+        "update_pacing",
+        "shorten_flight",
+        "sync_creatives",
+        "update_bidding",
+        "decrease_budget",
+        "increase_budget",
+        "remove_creative",
+        "remove_packages",
+        "update_packages",
+        "replace_creative",
+        "update_targeting",
+        "reallocate_budget",
+        "update_flight_dates",
+        "update_frequency_caps",
+        "update_budget_allocation",
+        "update_creative_assignments"
+      ]
+    },
+    {
+      "const": "update_media_buy_frequency_cap",
+      "type": "string"
+    }
+  ],
+  "description": "An action identifier for the structured available_actions surface. It contains every legacy valid_actions value plus structured-only actions introduced after that deprecated flat surface.",
+  "enumMetadata": {
+    "update_media_buy_frequency_cap": {
+      "update_fields": [
+        "frequency_cap"
+      ]
+    }
+  },
+  "title": "Media Buy Available Action ID"
+}

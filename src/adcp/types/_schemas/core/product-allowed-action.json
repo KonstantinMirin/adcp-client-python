@@ -1,0 +1,496 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "An action a seller declares as allowed on buys created against this product, scoped to the buy statuses where the action is permitted and the modes available. Advisory template only \u2014 the authoritative per-buy resolution lives in `available_actions[]` on the buy response (which may diverge from the product template based on negotiated terms, account tier, or buy-level overrides). The containing `allowed_actions[]` array is uniquely keyed by `action`; sellers MUST NOT emit two entries with the same `action` value. JSON Schema `uniqueItems` only catches structurally identical objects, so validators MUST enforce action-uniqueness separately.",
+  "properties": {
+    "action": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "const": "update_media_buy_frequency_cap"
+        },
+        {
+          "enum": [
+            "pause",
+            "cancel",
+            "resume",
+            "update_name",
+            "add_packages",
+            "update_dates",
+            "extend_flight",
+            "update_budget",
+            "update_pacing",
+            "shorten_flight",
+            "sync_creatives",
+            "update_bidding",
+            "decrease_budget",
+            "increase_budget",
+            "remove_creative",
+            "remove_packages",
+            "update_packages",
+            "replace_creative",
+            "update_targeting",
+            "reallocate_budget",
+            "update_flight_dates",
+            "update_frequency_caps",
+            "update_budget_allocation",
+            "update_creative_assignments"
+          ]
+        }
+      ],
+      "description": "The action identifier. Accepts every legacy valid_actions value plus structured-only actions such as update_media_buy_frequency_cap.",
+      "enumMetadata": {
+        "update_media_buy_frequency_cap": {
+          "update_fields": [
+            "frequency_cap"
+          ]
+        }
+      },
+      "title": "Media Buy Available Action ID"
+    },
+    "allowed_statuses": {
+      "description": "Media buy statuses in which this action is permitted. When absent, the action is permitted in all non-terminal statuses (`pending_creatives`, `pending_start`, `active`, `paused`).",
+      "items": {
+        "enum": [
+          "active",
+          "paused",
+          "canceled",
+          "rejected",
+          "completed",
+          "pending_start",
+          "pending_creatives"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "constraints": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "definitions": {
+        "money": {
+          "additionalProperties": false,
+          "properties": {
+            "amount": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "currency": {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "amount",
+            "currency"
+          ],
+          "type": "object"
+        }
+      },
+      "description": "Optional advisory machine-readable bounds buyers can use during product selection. The proposal must restate any binding bounds in commercial_terms.change_terms[].constraints.",
+      "discriminator": {
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "additionalProperties": {
+            "not": {}
+          },
+          "anyOf": [
+            {
+              "required": [
+                "earliest_effective_at"
+              ]
+            },
+            {
+              "required": [
+                "latest_effective_at"
+              ]
+            },
+            {
+              "required": [
+                "minimum_notice"
+              ]
+            }
+          ],
+          "maxProperties": 4,
+          "properties": {
+            "earliest_effective_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "kind": {
+              "const": "effective_timing"
+            },
+            "latest_effective_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "minimum_notice": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.",
+              "maxProperties": 2,
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "enum": [
+                    "days",
+                    "hours",
+                    "minutes",
+                    "seconds",
+                    "campaign"
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "title": "Effective timing constraints",
+          "type": "object"
+        },
+        {
+          "additionalProperties": {
+            "not": {}
+          },
+          "anyOf": [
+            {
+              "required": [
+                "earliest_result"
+              ]
+            },
+            {
+              "required": [
+                "latest_result"
+              ]
+            },
+            {
+              "required": [
+                "max_change"
+              ]
+            },
+            {
+              "required": [
+                "minimum_notice"
+              ]
+            }
+          ],
+          "maxProperties": 5,
+          "properties": {
+            "earliest_result": {
+              "description": "Earliest resulting start or end timestamp accepted for this action.",
+              "format": "date-time",
+              "type": "string"
+            },
+            "kind": {
+              "const": "flight"
+            },
+            "latest_result": {
+              "description": "Latest resulting start or end timestamp accepted for this action.",
+              "format": "date-time",
+              "type": "string"
+            },
+            "max_change": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Maximum extension, shortening, or shift in the direction named by the action.",
+              "maxProperties": 2,
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "enum": [
+                    "days",
+                    "hours",
+                    "minutes",
+                    "seconds",
+                    "campaign"
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            },
+            "minimum_notice": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Minimum elapsed notice before the requested flight change may take effect.",
+              "maxProperties": 2,
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "enum": [
+                    "days",
+                    "hours",
+                    "minutes",
+                    "seconds",
+                    "campaign"
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "title": "Flight change constraints",
+          "type": "object"
+        },
+        {
+          "additionalProperties": {
+            "not": {}
+          },
+          "anyOf": [
+            {
+              "required": [
+                "max_additions"
+              ]
+            },
+            {
+              "required": [
+                "max_removals"
+              ]
+            },
+            {
+              "required": [
+                "max_result_count"
+              ]
+            }
+          ],
+          "maxProperties": 4,
+          "properties": {
+            "kind": {
+              "const": "package_count"
+            },
+            "max_additions": {
+              "description": "Maximum packages that may be added by one exercise of the right.",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "max_removals": {
+              "description": "Maximum packages that may be removed by one exercise of the right.",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "max_result_count": {
+              "description": "Maximum active package count after the change.",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "title": "Package count constraints",
+          "type": "object"
+        },
+        {
+          "additionalProperties": {
+            "not": {}
+          },
+          "anyOf": [
+            {
+              "required": [
+                "max_delta_amount"
+              ]
+            },
+            {
+              "required": [
+                "max_delta_percent"
+              ]
+            },
+            {
+              "required": [
+                "max_result_amount"
+              ]
+            },
+            {
+              "required": [
+                "min_result_amount"
+              ]
+            }
+          ],
+          "maxProperties": 5,
+          "properties": {
+            "kind": {
+              "const": "budget"
+            },
+            "max_delta_amount": {
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Maximum absolute amount by which the affected budget may change in the direction named by the action.",
+              "maxProperties": 2,
+              "properties": {
+                "amount": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "currency": {
+                  "pattern": "^[A-Z]{3}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "currency"
+              ],
+              "type": "object"
+            },
+            "max_delta_percent": {
+              "description": "Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.",
+              "minimum": 0,
+              "type": "number"
+            },
+            "max_result_amount": {
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Maximum resulting committed value after the change.",
+              "maxProperties": 2,
+              "properties": {
+                "amount": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "currency": {
+                  "pattern": "^[A-Z]{3}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "currency"
+              ],
+              "type": "object"
+            },
+            "min_result_amount": {
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Minimum resulting committed value after the change.",
+              "maxProperties": 2,
+              "properties": {
+                "amount": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "currency": {
+                  "pattern": "^[A-Z]{3}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "currency"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "title": "Budget change constraints",
+          "type": "object"
+        }
+      ],
+      "title": "Media Buy Change Term Constraints"
+    },
+    "modes": {
+      "description": "Modes available for this action on this product. A product may declare multiple modes (for example `self_serve` within tolerances, escalating to `requires_approval` outside) \u2014 the buy-side `available_actions[<action>].mode` resolves to the singular mode in effect at mutation time. SDKs that see multiple modes MUST NOT assume which one will fire; they must read the resolved `mode` on the buy.",
+      "items": {
+        "enum": [
+          "self_serve",
+          "seller_managed",
+          "requires_approval",
+          "conditional_self_serve"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "sla": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "description": "Optional SLA commitment for this action on this product. Absence means no commitment.",
+      "maxProperties": 2,
+      "properties": {
+        "completion_max": {
+          "description": "Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
+          "examples": [
+            "PT1H",
+            "PT24H",
+            "P2D"
+          ],
+          "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+          "type": "string"
+        },
+        "response_max": {
+          "description": "Maximum elapsed time from when the buyer issues the action to when the seller acknowledges receipt (mode-appropriate: synchronous response for self_serve, tolerance decision for conditional_self_serve, or queue acknowledgement for seller_managed and legacy requires_approval). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",
+          "examples": [
+            "PT5M",
+            "PT4H",
+            "P1D"
+          ],
+          "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+          "type": "string"
+        }
+      },
+      "title": "SLA Window",
+      "type": "object"
+    },
+    "terms_ref": {
+      "description": "Optional advisory pointer to published commercial terms governing this product action. It is not a proposal change-term identity and never grants a binding change right; a proposal materializes binding rights under commercial_terms.change_terms[].term_id.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "action",
+    "modes"
+  ],
+  "title": "Product Allowed Action",
+  "type": "object",
+  "x-adcp-validation": {
+    "verifier_constraints": {
+      "constraint_action_compatibility": "The constraints.kind is compatible with action under change-term-constraints.json. Product constraints are advisory upper bounds and cannot create a proposal-bound right."
+    }
+  }
+}

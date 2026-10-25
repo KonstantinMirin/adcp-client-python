@@ -66,6 +66,7 @@ from codegen import bundle, compiler, emit, harness
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.lower import const as lower_const
+from codegen.lower import enum as lower_enum
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.harness import (
@@ -693,13 +694,18 @@ def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() 
 #: the 6 of them that are CLASSES are 6 pairs that no longer exist.  The other 4 are
 #: enumerations, which carry no ``__adcp_schema__`` and were never pairs -- which is why
 #: this moves by 6 against that row's 10 and the two numbers are different senses.
-PAIRS_PIN = 1079
+#: 1079 -> 1090 at ``salesagent-j3k2l.21``: eleven more documents emit, each at
+#: least one pair, and the StrEnum that row removed from
+#: ``error-details/accessibility-violation.json`` took no pair with it -- an
+#: enumeration carries no ``__adcp_schema__`` and was never one.
+PAIRS_PIN = 1090
 #: Measured: 1,074 pass, and the five that do not are named in
 #: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.  The
 #: ``comparison:model_drops_a_fact`` group is GONE rather than smaller, which is
 #: ``salesagent-j3k2l.28``'s exit: ``added``, ``missing`` and ``differs`` are all 0.
 OUTCOME_PINS: dict[str, int] = {
-    "pass": 1077,
+    # 1077 -> 1088 at ``salesagent-j3k2l.21``, all eleven new pairs passing.
+    "pass": 1088,
     "no_instrument": 2,
 }
 #: One instance per pair, minus the 2 whose generator could not draw one and the 3
@@ -711,9 +717,14 @@ OUTCOME_PINS: dict[str, int] = {
 #: directions -- the exemption turns 3 non-pass pairs into passes and the dedup removes
 #: 6 pairs -- so all three were RE-MEASURED on the merged tree rather than picked from
 #: either side or differenced: 1083 -> 1077, 38224 -> 38181, 13715 -> 13709.
-ROUND_TRIPPED_PIN = 1077
-COMPARED_PIN = 38181
-MODEL_FACTS_PIN = 13709
+#: 1077 -> 1088 at ``salesagent-j3k2l.21``, one instance per new pair.
+ROUND_TRIPPED_PIN = 1088
+#: 38181 -> 38450 and 13709 -> 13776 at ``salesagent-j3k2l.21``: eleven more pairs
+#: have their keywords compared. ``URL_TYPED_PIN`` was RE-MEASURED on the same pass
+#: and is UNCHANGED at 1328, so it is left where it was rather than re-pointed --
+#: the new documents' URL types are all on arms the comparison already excused.
+COMPARED_PIN = 38450
+MODEL_FACTS_PIN = 13776
 #: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND BOTH ARE NOW GREEN.**  Zero is the
 #: specification's symmetric comparison -- a fact the model adds reddens and a fact it
 #: drops reddens -- and it was pinned here while ``MISSING_PIN`` was RED, because
@@ -732,7 +743,10 @@ NO_PAYLOAD_PIN = 2
 #: 610/473/2 -> 605/472/2 at ``salesagent-j3k2l.38``, and it is the partition moving with
 #: the pair count rather than the root shapes moving: 5 collapsed classes were reached by
 #: ``drops`` and 1 by ``replaces``, and the three still sum to ``PAIRS_PIN``.
-LIVENESS_PINS: dict[str, int] = {"drops": 605, "replaces": 472, "": 2}
+#: 605/472/2 -> 612/476/2 at ``salesagent-j3k2l.21``, and it is the partition moving
+#: with the pair count rather than the root shapes moving: the eleven new documents
+#: split 7 ``drops`` and 4 ``replaces``, and the three still sum to ``PAIRS_PIN``.
+LIVENESS_PINS: dict[str, int] = {"drops": 612, "replaces": 476, "": 2}
 
 
 @functools.cache
@@ -1354,7 +1368,14 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
 
     # Re-measured at ``salesagent-j3k2l.28``: ``date-time`` 190 -> 194 and ``uri``
     # 131 -> 133, over the 14 documents the three closed refusals let emit.
-    assert seen == {"date-time": 194, "uri": 133, "date": 5, "email": 5, "hostname": 3}, seen
+    # Re-measured at ``salesagent-j3k2l.21``: ``date-time`` 194 -> 196 and ``uri``
+    # 133 -> 135, over the eleven documents that row made emittable.
+    # ``core/start-timing.json``'s ``format: date-time`` branch is one of the two
+    # date-times, and the ``format: uri`` branch of each of
+    # ``core/geo-place-system.json`` and ``core/geo-place-type.json`` is one of the two
+    # uris -- each a position inside an ALIAS root rather than a class, which is the
+    # shape that row added and which this table reaches the same way.
+    assert seen == {"date-time": 196, "uri": 135, "date": 5, "email": 5, "hostname": 3}, seen
     # The excluded population, named and sized -- and it is SIX sites, not the one
     # that reddened.  **The other five were passing by accident**, which is the finding:
     # the import assertion is MODULE-wide, so a conditional-position ``uri`` in a module
@@ -1392,7 +1413,13 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _rendered(emitted, key, g.model)
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 333, stated  # 326 -> 333 at salesagent-j3k2l.28
+    # 326 -> 333 at salesagent-j3k2l.28, 333 -> 334 at salesagent-j3k2l.21: one more
+    # PROPERTY of a graded pair states a format, in the eleven documents that row made
+    # emittable. It moves by one where the format-TYPE table above moves by four,
+    # because this loop counts a document's own ``properties`` entries while that one
+    # counts every position a format selects a type at -- including the arms of an
+    # alias root, which have no property to be a property of.
+    assert stated == 334, stated
 
 
 def _model_schema(model: Any) -> dict:
@@ -2424,6 +2451,187 @@ def emitted_unions() -> list[str]:
     return sorted({g.ref.document for g in graded()} & set(union_roots()))
 
 
+def _alias_shaped(document: str) -> bool:
+    """Which of D2's two union shapes this root takes.
+
+    Asked of the PRODUCTION predicates (``lower_union.states_a_scalar_instance`` and
+    ``lower_union.declares_a_class``) and not of a reading of its own, because the
+    shape is what the tests below grade and a second reading of it is how a test comes
+    to expect the shape the lowering did not emit.  What is pinned instead is the SIZE
+    of each half, as a literal, in
+    :func:`test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which`.
+    """
+    doc = bundle.read(BUNDLE, document)
+    kw = lower_union.keyword(doc)
+    assert kw is not None, document
+    return lower_union.states_a_scalar_instance(doc, "", kw) and not any(
+        lower_union.declares_a_class(branch, doc, "", kw, i)
+        for i, branch in enumerate(doc[kw])
+    )
+
+
+def emitted_union_bases() -> list[str]:
+    """The emitted union roots D2 gives a base plus one subclass per branch (§4).
+
+    **The eight shape tests below run over THIS and not over
+    :func:`emitted_unions`.**  D2 gives a union root two shapes -- the base plus
+    subclasses, and, where the document says its instance is a scalar, the
+    module-level alias a root scalar gets -- and an assertion about
+    ``BranchDispatchMixin`` is a claim about the first only.  Over the whole
+    population it would fail on a correct alias, which is a test asserting the wrong
+    shape rather than a defect.
+    """
+    return [d for d in emitted_unions() if not _alias_shaped(d)]
+
+
+def emitted_union_aliases() -> list[str]:
+    """The emitted union roots D2 gives a module-level alias, because the document
+    says every instance it admits is a scalar (``salesagent-j3k2l.21``)."""
+    return [d for d in emitted_unions() if _alias_shaped(d)]
+
+
+def test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which() -> None:
+    """D2's TWO union shapes, over every union root the bundle has, with the shape
+    decided by the document and the emitted artifact graded against the one it chose.
+
+    D2 gives a ``oneOf``/``anyOf`` root a base plus one subclass per branch.  It also
+    says "a root scalar or mapping -> a module-level alias", and a union every branch of
+    which is a scalar IS a root scalar: every branch of a draft-07 combinator is applied
+    to the SAME instance, so a branch declaring a non-object type is the document saying
+    what the whole document's instance is, and there is no class for a string to be an
+    instance of.  ``{"type": ["string", "null"]}`` at a root would be the same document
+    at the other spelling, which is the spelling ``salesagent-j3k2l.21`` is named for.
+
+    Five clauses, one per way the partition can go wrong, each over a population whose
+    size is asserted as a LITERAL below (D14):
+
+    1. **the two shapes are DISJOINT.**  A root that both says its instance is a scalar
+       AND declares a branch with a shape is NEITHER -- no alias holds a class and no
+       base is a string -- and must take neither path.  It keeps the class path, where
+       the scalar branch's own ``type`` check refuses it by name.  Asserted at 0 rather
+       than exempted, so the first one that appears reddens here instead of silently
+       taking whichever path the predicate happens to answer first.
+    2. **the two shapes are EXHAUSTIVE over the emitted roots, and BOTH are non-empty.**
+       A partition one half of which is empty passes for free, which is the state this
+       row's own first cut was in before the alias path emitted anything.
+    3. **§8's invariant: no root LEAVES ``BranchDispatchMixin``.**  "A step adds roots to
+       it; no step removes one."  The alias path could only take a root off the mixin by
+       claiming one the class path was already emitting, so the base half is pinned at
+       the figure it had BEFORE this row -- 38 -- and the alias half is growth.  That is
+       a pin on a DIFFERENT axis from the total, which moved: a single total would
+       absorb a root swapping sides.
+    4. **an alias-shaped root binds an ALIAS, with §4's two halves.**  A root scalar has
+       no class to carry ``strict_validate``, so "its module binds the same two halves as
+       a module-level function over the same ``SchemaRef``" -- which is read off the AST
+       (the name is not a ``ClassDef``, and both halves are module-scope statements) and
+       then off the IMPORTED module, because whether a name is a class is a property of
+       the object and the text cannot say it.
+    **WHERE A THIRD SHAPE EXTENDS THIS, named so it is not a surprise.**
+    ``salesagent-j3k2l.52`` gives D2 a third reading of a union root -- branches that differ
+    only in permitted VALUES are a rule on one class rather than a class per branch -- and it
+    is sequenced after this row. It does not collide with the dispatch: every branch of that
+    shape declares the same property set, so ``declares_a_class`` answers True for each and
+    the alias is not reached. What it must extend is clause 2's equality below, which says the
+    two halves exhaust the emitted roots; a third half makes that equality fail by naming the
+    documents in neither, which is the legible failure rather than a silent one.
+
+    5. **where each spelling of a declared null actually lives**, so the lowering's claim
+       about it cannot go stale in silence: 0 union roots carry a ``null`` branch and 0
+       roots carry a ``type`` LIST, while 57 sites state ``null`` inside a ``type`` list
+       BELOW a root -- ``lower.containers.multi_type``'s position, whose fold is graded
+       by :func:`test_a_declared_null_is_never_read_as_absence` in both directions.  A
+       null branch of a union ROOT would land in the alias half as ``str | None``, and
+       this is the clause that says the bundle has none to grade.
+    """
+    portable = sorted(bundle.portable(BUNDLE))
+    roots = [d for d in portable if bundle.union_root(bundle.read(BUNDLE, d))]
+    assert roots, "no union root in the bundle: every clause below would pass vacuously"
+
+    scalar_instance, with_a_class_branch, mixed = [], [], []
+    for document in roots:
+        doc = bundle.read(BUNDLE, document)
+        kw = lower_union.keyword(doc)
+        assert kw is not None, document
+        scalar = lower_union.states_a_scalar_instance(doc, "", kw)
+        classed = [
+            i
+            for i, branch in enumerate(doc[kw])
+            if lower_union.declares_a_class(branch, doc, "", kw, i)
+        ]
+        (mixed if scalar and classed else scalar_instance if scalar else with_a_class_branch).append(
+            document
+        )
+
+    # Clause 1.
+    assert mixed == [], mixed
+    # Clause 2: exactly one half each, over the roots the tree actually carries.
+    assert sorted(emitted_union_bases() + emitted_union_aliases()) == emitted_unions()
+    assert not set(emitted_union_bases()) & set(emitted_union_aliases())
+    assert emitted_union_bases(), "no class-shaped union root emitted"
+    assert emitted_union_aliases(), "no alias-shaped union root emitted"
+    assert set(emitted_union_aliases()) <= set(scalar_instance), emitted_union_aliases()
+
+    # Clause 4, on both instruments.
+    for document in emitted_union_aliases():
+        symbol = _symbol(document)
+        tree = ast.parse(_source(document))
+        assert symbol not in {c.name for c in tree.body if isinstance(c, ast.ClassDef)}, document
+        assigned = {
+            t.id
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            for t in node.targets
+            if isinstance(t, ast.Name)
+        }
+        assert {symbol, "__adcp_schema__", "strict_validate"} <= assigned, (
+            document,
+            sorted(assigned),
+        )
+        module = importlib.import_module(_module_of(document))
+        bound = getattr(module, symbol)
+        assert not (isinstance(bound, type) and issubclass(bound, BaseModel)), (document, bound)
+        assert callable(module.strict_validate), document
+        assert module.__adcp_schema__.document == document, document
+
+    # Clause 5's two populations, measured over the whole portable set.
+    null_branch_roots = [
+        d
+        for d in roots
+        if any(
+            isinstance(b, dict) and b.get("type") == "null"
+            for b in bundle.read(BUNDLE, d)[lower_union.keyword(bundle.read(BUNDLE, d))]
+        )
+    ]
+    root_type_lists = [d for d in portable if isinstance(bundle.read(BUNDLE, d).get("type"), list)]
+    null_in_a_type_list = sum(
+        1
+        for d in portable
+        for _, node in bundle.nodes(bundle.read(BUNDLE, d))
+        if isinstance(node.get("type"), list) and "null" in node["type"]
+    )
+
+    # The denominators, every one a stated literal and none of them read back off the
+    # structure it grades.  Measured at ``877516f66`` over ``schemas/cache/3.2``.
+    assert len(portable) == 1054, len(portable)
+    assert len(roots) == 126, len(roots)
+    assert len(scalar_instance) == 5, scalar_instance
+    assert len(with_a_class_branch) == 121, len(with_a_class_branch)
+    # 40 -> 42 when D2's Literal amendment landed in this same row: the two
+    # geo-place documents stopped refusing on a name D3 resolves for nothing and
+    # emitted as aliases.
+    assert len(emitted_unions()) == 42, emitted_unions()
+    # Clause 3, and the pin that carries it: **38 before this row, 38 after the alias
+    # dispatch, and 38 after the Literal amendment.** The total moved twice and the
+    # base half has not moved at all, which is the whole of §8 -- the alias path has
+    # never taken a root off BranchDispatchMixin, and a single total would have
+    # absorbed it either time.
+    assert len(emitted_union_bases()) == 38, emitted_union_bases()
+    assert len(emitted_union_aliases()) == 4, emitted_union_aliases()
+    assert null_branch_roots == [], null_branch_roots
+    assert root_type_lists == [], root_type_lists
+    assert null_in_a_type_list == 57, null_in_a_type_list
+
+
 def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
     """§4's shape, on the AST of every emitted union module.
 
@@ -2443,8 +2651,8 @@ def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
     Everything compared is derived: the branch count from the document, the symbol from
     the module's own ``__all__``, the pointers from the classes themselves.
     """
-    assert emitted_unions(), "no union root was emitted; this test grades nothing"
-    for document in emitted_unions():
+    assert emitted_union_bases(), "no union root was emitted; this test grades nothing"
+    for document in emitted_union_bases():
         doc = bundle.read(BUNDLE, document)
         kw = lower_union.keyword(doc)
         symbol = _symbol(document)
@@ -2497,8 +2705,8 @@ def test_the_base_the_root_name_binds_is_the_class_every_branch_descends_from() 
     produces a non-empty one, and the field is graded by the mixin's unit test below
     rather than by the tree.
     """
-    assert emitted_unions()
-    for document in emitted_unions():
+    assert emitted_union_bases()
+    for document in emitted_union_bases():
         doc = bundle.read(BUNDLE, document)
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         branches = base._branch_models
@@ -2531,9 +2739,9 @@ def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
     fifth path and is graded by ``check_pair``; it is included here because it is the
     production entry point and it must agree with the other four about the class.
     """
-    assert emitted_unions()
+    assert emitted_union_bases()
     graded_arms = 0
-    for document in emitted_unions():
+    for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
 
         class Holder(BaseModel):
@@ -2550,7 +2758,7 @@ def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
             graded_arms += 1
     assert graded_arms == sum(
         len(bundle.read(BUNDLE, d)[lower_union.keyword(bundle.read(BUNDLE, d))])
-        for d in emitted_unions()
+        for d in emitted_union_bases()
     ), graded_arms
 
 
@@ -2590,8 +2798,8 @@ def test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema() -> None:
     Asserted on every emitted union root, with the refinement declared here -- outside the
     generated module, which is the position the rule is about.
     """
-    assert emitted_unions()
-    for document in emitted_unions():
+    assert emitted_union_bases()
+    for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         branch = base._branch_models[0]
 
@@ -2625,8 +2833,8 @@ def test_model_dump_json_on_a_union_base_instance_does_not_raise() -> None:
     base-typed field -- the second is what fails if the wrap serializer holds the base's
     model schema ALONE rather than the branches' union with the base last.
     """
-    assert emitted_unions()
-    for document in emitted_unions():
+    assert emitted_union_bases()
+    for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
 
         class Holder(BaseModel):
@@ -2662,9 +2870,9 @@ def test_a_payload_no_branch_admits_is_refused_in_the_documents_own_vocabulary()
     a second grader of the ``anyOf`` branch rather than the only one, and it is also
     what grades ``_ROOT_REQUIRED``.
     """
-    assert emitted_unions()
-    assert {lower_union.keyword(bundle.read(BUNDLE, d)) for d in emitted_unions()} == {"anyOf", "oneOf"}
-    for document in emitted_unions():
+    assert emitted_union_bases()
+    assert {lower_union.keyword(bundle.read(BUNDLE, d)) for d in emitted_union_bases()} == {"anyOf", "oneOf"}
+    for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         with pytest.raises(ValidationError) as caught:
             base.model_validate({"__adcp_harness__": "no branch admits this"})
@@ -2757,8 +2965,8 @@ def test_the_serializer_is_set_on_the_schema_the_wrapper_holds_and_not_on_a_defi
     assert plain["serialization"]["type"] == "function-wrap"
 
     # the measurement the docstring states, re-taken here so it cannot go stale silently
-    assert emitted_unions()
-    for document in emitted_unions():
+    assert emitted_union_bases()
+    for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         assert base.model_fields == {}, (document, sorted(base.model_fields))
 
@@ -2802,7 +3010,7 @@ def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointe
 
 
 def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_keyword() -> None:
-    """The step's own arithmetic: 126 union roots, 38 emitted and 88 refused, each named.
+    """The step's own arithmetic: 126 union roots, 40 emitted and 86 refused, each named.
 
     The by-keyword profile is asserted as a WHOLE rather than as a total, because the
     profile is the readable result of the step -- it says which later step unblocks what.
@@ -2843,8 +3051,22 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # ``core/publisher-property-selector.json``, ``core/targeting-modification.json``
     # and ``core/canonical-media-buy-action.json`` -- 3 of the 10 that waited on the
     # shared reader, plus one reached through them -- left the refused half.
-    assert len(emitted) == 38, emitted
-    assert len(refused) == 88
+    #
+    # **38 / 88 -> 40 / 86 at ``salesagent-j3k2l.21``**, and these two are this module's
+    # own doing as well: a union root whose instance the DOCUMENT says is a scalar is a
+    # root scalar, so it takes D2's alias instead of a base plus subclasses, and
+    # ``core/start-timing.json`` and ``core/media-buy-available-action-id.json`` left the
+    # refused half.  **Which half they emit into is pinned separately** --
+    # ``test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which`` holds the
+    # base half at 38 and the alias half at 2 -- because a single total here would absorb
+    # a root swapping sides, and §8 says no step takes a root off ``BranchDispatchMixin``.
+    #
+    # **40 / 86 -> 42 / 84, D2's Literal amendment, in this same row.** An untitled
+    # enum branch is a Literal of its members and claims no symbol, so
+    # core/geo-place-system.json and core/geo-place-type.json stop colliding with
+    # their own root's name and emit as aliases.
+    assert len(emitted) == 42, emitted
+    assert len(refused) == 84
     assert len(emitted) + len(refused) == len(roots)
     assert emitted == emitted_unions()
 
@@ -2862,14 +3084,30 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         # other six moved DEEPER, which is what a shared reader does to an
         # attribution -- ``$ref`` 13 -> 14, and ``anyOf`` and ``const`` are back at 1
         # each, each a branch whose own next blocker the reader could finally reach.
+        # RE-MEASURED at ``salesagent-j3k2l.21``, in one pass with the 40 / 86 above.
+        # **The ``type`` row is GONE and it was this row's whole population:** a union
+        # root whose instance is a scalar is an alias now, so each of those four
+        # documents either emits or reaches the keyword that is actually its reason --
+        # 2 emit, 2 go to ``title`` (D3 derives no name for an untitled ``enum`` branch,
+        # and naming one from its neighbourhood is what D3 refuses) and 1 to ``format``
+        # (``core/macro-bearing-url.json``, whose branches state a ``format``/``pattern``
+        # ``compiler.Type`` has no slot for -- D5's alias-module row, which is where the
+        # 3 ``format: hostname`` deferrals sit too).  ``$ref`` 14 -> 13 is
+        # ``core/media-buy-available-action-id.json`` emitting: its bare ``$ref`` branch
+        # is an IMPORT of the target's symbol on the alias path, where on the class path
+        # the arm would not have answered ``isinstance``.
         "allOf": 44,
         "properties": 19,  # a root conjunct; see lower/union.py's docstring
-        "$ref": 14,  # a bare-$ref branch, or a chain naming the target that refused
-        "type": 4,  # a root stating no type whose branch states none either
+        "$ref": 13,  # a bare-$ref branch, or a chain naming the target that refused
         "required": 2,  # step 7 (D6)
+        # The `title` row (2) is GONE, and it was the row this amendment removed: an
+        # untitled enum branch claims no symbol now, so neither geo-place document
+        # collides with its own root's name. Nothing was re-pointed to absorb it --
+        # both documents left the refused half entirely.
         "additionalProperties": 1,
         "anyOf": 1,  # a conjunct of SHAPES inside a branch the reader now reaches
         "const": 1,  # a branch pinning its whole value, reached past its conjuncts
+        "format": 1,  # D5's alias module: a bound on one arm of an alias root
         "maxLength": 1,  # D5: a string bound beside a format: uri
         "not": 1,  # step 7 (D6) at a position the rules row does not reach
         # WHICH ROWS LEFT THIS PROFILE, kept as the record of why it is shaped this
@@ -3624,7 +3862,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     """D8's typed row, and the EXTRAS STORE now has exactly one live document.
 
     Measured: 727 documents mention ``additionalProperties`` and 51 carry a typed one.
-    10 of the 51 emit, and the extras store needs a node declaring ``properties`` AND
+    11 of the 51 emit, and the extras store needs a node declaring ``properties`` AND
     a typed ``additionalProperties`` -- the bundle has 14 such nodes, and ONE of their
     documents emits: ``core/canonical-media-buy-features.json``, which
     ``salesagent-j3k2l.28`` unblocked.  Until then the store was reached by 0
@@ -3654,24 +3892,36 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     ]
     assert len(mentions) == 727, len(mentions)
     out = emit.emit(BUNDLE, population())
-    # 7 of the 51 are emitted, and every one of them is the mapping path rather than
-    # the extras store: each typed ``additionalProperties`` in those 7 sits on a node
-    # with NO ``properties``, so it is a mapping and the row above lowers it.  The
-    # extras store needs a node with BOTH, the bundle has 14 such sites, and 0 of
-    # them is in a document this run emits -- so the store is graded by the probe
-    # below and by 0 documents.  Both halves are asserted, because "7 emitted" and
-    # "0 of them reach the store" are different facts and the second is the claim.
+    # The emitted list and the store sites are DIFFERENT facts, and both are asserted:
+    # a typed ``additionalProperties`` on a node with no ``properties`` is a MAPPING,
+    # which the row above lowers, while the extras store needs a node declaring BOTH.
+    # The bundle has 14 of the second kind and exactly one of them is in a document
+    # this run emits, so the store is graded by that document and by the constructed
+    # probe at the end -- a count of emitted documents says nothing about it.
     #
     # Re-measured at 64131600f (``salesagent-j3k2l.29``).  The 14 is unchanged and is
     # over the bundle; the emitted list is over ``population()`` and grew from 1.  The
     # previous revision said the 14 "all sit under ``definitions``", which is not
     # true of this bundle -- 4 of them are at a document's own root -- so the reason
     # recorded here is now the measured one: none of the 14 is in an emitted document.
+    #
+    # 10 -> 11 at ``salesagent-j3k2l.21``, and the eleventh is NAMED rather than
+    # counted because the cause has to be attributable: ``core/geo-place-area.json``
+    # joins because its two ``$ref`` targets now emit.  ``core/geo-place-system.json``
+    # and ``core/geo-place-type.json`` are each a root ``anyOf`` of SCALARS whose
+    # untitled first branch carries an ``enum`` -- this row's own population -- so
+    # both lower to a root alias and the document that references them is no longer
+    # chained to their refusals.  Its typed ``additionalProperties`` is at
+    # ``/properties/value_labels/additionalProperties``, a node with no
+    # ``properties``, so it is the MAPPING path and the store assertion below is
+    # unchanged by it: the one emitted store site is still
+    # ``core/canonical-media-buy-features.json``.
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
         "a2ui/component.json",
         "collection/get-collection-list-response.json",
         "core/canonical-media-buy-features.json",
+        "core/geo-place-area.json",
         "core/product-change-map.json",
         "core/reporting-file-entry.json",
         "core/tasks-list-response.json",
@@ -5269,7 +5519,10 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     # is the number of NAMES clause 2 compared, so it is the one that says the identity
     # check ran at all, and ``unverifiable`` is the groups it could not reach.
     assert unverifiable == 0, unverifiable
-    assert declared == 1413, declared
+    # 1413 -> 1426 at ``salesagent-j3k2l.21``: the eleven new modules declare thirteen
+    # symbols between them -- eleven roots plus the two enum classes
+    # ``GeographicPlaceCatalogEntryStatus`` and ``MediaBuyAvailableActionTask``.
+    assert declared == 1426, declared
     assert groups == 9, groups
     assert adoptions == 10, adoptions
     assert identities == 19, identities
@@ -5434,10 +5687,17 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # refusals that row closed were deferrals that others chained to.  142 -> 146 on
     # the verdict side.
     chained = {d: r for d, r in out.refusals.items() if r["kind"] == refusal_module.Kind.CHAINED}
-    assert len(chained) >= 166, len(chained)
+    # **166 -> 158, 146 -> 144 and 20 -> 14 at ``salesagent-j3k2l.21``, and the
+    # DIRECTION is the point these floors exist for.** They fall as rows land: seven
+    # of this row's eleven emissions were chained refusals, and
+    # ``core/geo-place-requirement.json`` stopped being chained at all -- its target
+    # cleared, so it now refuses directly on its own ``pattern``. Eight chains left
+    # the refusal set. The deferred side fell hardest again (20 -> 14) because what
+    # this row cleared were deferrals that others chained to.
+    assert len(chained) >= 158, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 146, dict(split)
-    assert split[refusal_module.Kind.DEFERRED] >= 20, dict(split)
+    assert split[refusal_module.Kind.VERDICT] >= 144, dict(split)
+    assert split[refusal_module.Kind.DEFERRED] >= 14, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
         max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values())
@@ -5673,15 +5933,36 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
     assert "const" in lower_union.BRANCH_HANDLED
     builds = [
         name
-        for name, module in (("compiler", compiler), ("union", lower_union), ("const", lower_const))
+        for name, module in (
+            ("compiler", compiler),
+            ("union", lower_union),
+            ("const", lower_const),
+            # ADDED AT ``salesagent-j3k2l.21``, and adding it is the point rather than
+            # bookkeeping: ``lower.enum.literal`` builds a ``Literal`` too, and without
+            # this entry the walk below could not see it -- the assertion would have gone
+            # on reading ``["const"]`` while a second row built the same annotation.
+            ("enum", lower_enum),
+        )
         for node in ast.walk(ast.parse(inspect.getsource(module)))
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "Type"
         and any(k.arg == "literals" for k in node.keywords)
     ]
-    assert builds == ["const"], builds
-    # and the one document it attributes refuses on its own keyword, not on a deferral
-    r = emit.emit(BUNDLE, ["core/start-timing.json"]).refusals["core/start-timing.json"]
-    assert (r["keyword"], r["pointer"]) == ("type", "/oneOf/0"), r
-    assert "a branch of type 'string' is step 6" in r["detail"], r
+    # **THE INVARIANT IS ONE LOWERING PER KEYWORD, not one builder of ``Literal``**, and
+    # D2's amendment is what makes the distinction visible: a ``const`` is a one-member
+    # value set and an ``enum`` no name reaches is the same construct with more members,
+    # so both render a ``Literal`` and each keyword still has exactly one lowering. Two
+    # rows, two keywords; what this refuses is a THIRD builder, or either keyword
+    # acquiring a second.
+    assert builds == ["const", "enum"], builds
+    # The document this row attributes used to be ``core/start-timing.json``, refused on
+    # ``type`` at ``/oneOf/0`` for being a scalar branch. It EMITS now -- a union root of
+    # scalars is an alias (``salesagent-j3k2l.21``) and its ``const`` branch is the
+    # ``Literal`` arm of one -- so the attribution row has no refused document left to
+    # point at. Measured over all 1,054 portable documents: **0** are refused on a
+    # branch's own non-object type. The row stays, asserted above by resolving the name
+    # in ``BRANCH_HANDLED``; what is asserted here instead is the emitted shape, which is
+    # the same claim read off the artifact rather than off a refusal.
+    module = emit.lower_document("core/start-timing.json", bundle.read(BUNDLE, "core/start-timing.json"))[0]
+    assert "Literal['asap']" in "\n".join(b for b in module.blocks), module.blocks

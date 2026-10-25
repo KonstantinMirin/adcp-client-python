@@ -87,6 +87,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from adcp.types._base import applied_schema
+
 from codegen import compiler
 from codegen.refusal import Kind, Refusal
 
@@ -315,6 +317,121 @@ class Branch:
     node: dict
 
 
+def applied_type(doc: dict, pointer: str, kw: str, i: int) -> Any:
+    """The ``type`` the document applies to branch ``i``, which is not always its own.
+
+    ``_base.applied_schema`` is the one reading of that, and it is the reading the
+    SCHEMA half of every graded pair already uses: a root ``type`` asserts about the
+    same instance every branch sees, so a branch stating none of its own has the
+    root's.  Asked here through that same function, so the walk and the grader cannot
+    come to disagree about what a branch says -- which for ``core/macro-bearing-url.json``
+    is the difference between three typeless branches and three string branches.
+    """
+    return applied_schema(doc, f"{pointer}/{kw}/{i}").get("type")
+
+
+def states_a_scalar_instance(doc: dict, pointer: str, kw: str) -> bool:
+    """Does the document say its instance is a SCALAR?  That is what makes a union root
+    an alias rather than a base plus subclasses.
+
+    Every branch of a draft-07 combinator is applied to the SAME instance, so a branch
+    declaring a non-object type is the document stating what that instance is -- for the
+    whole document, and not for one branch.  A root that says so is a root SCALAR, and
+    D2's row for one is "a root scalar or mapping -> a module-level alias"
+    (:func:`_alias`), never a base plus subclasses: there is no class for a string to be
+    an instance of.
+
+    **Asked of a DECLARED type, and not of the absence of a property map.**  That
+    distinction is the one a first cut of this got wrong, and the measurement is what
+    caught it: a bare ``$ref`` branch declares no property map either, so "no branch can
+    be a class" also claimed ``core/assets/asset-union.json`` and
+    ``core/pricing-option.json`` -- two roots whose branches reference OBJECT documents,
+    which the class path refuses for a reason of its own (:func:`_plan`) and which this
+    row has no business re-deciding.  Measured over the portable population: the loose
+    reading moved both documents' refusal, and this one moves neither.
+    """
+    return any(
+        applied_type(doc, pointer, kw, i) not in (None, "object") for i in range(len(doc[kw]))
+    )
+
+
+def declares_a_class(doc_branch: Any, doc: dict, pointer: str, kw: str, i: int) -> bool:
+    """Can this branch be a CLASS?
+
+    Two clauses, and each is a clause of :func:`_plan`'s own reading rather than a
+    second one: a branch whose applied ``type`` is not an object cannot be a class
+    whatever else it states, and a branch declaring neither a property map nor a
+    conjunct list has no shape for a class to have.
+
+    It is asked BESIDE :func:`states_a_scalar_instance` rather than instead of it,
+    because a root MIXING a declared scalar branch with a property-map branch is
+    neither shape -- no alias holds a class, and no base is a string -- and it must not
+    silently take either.  Such a root keeps the class path, where the scalar branch's
+    own ``type`` check refuses it by name and pointer.  Measured over the 1,054 portable
+    documents: of the 126 ``bundle.union_root`` claims, **0 mix the two**, so this guard
+    moves no document today and is what makes the first one that appears loud.
+    """
+    if not isinstance(doc_branch, dict):
+        return False
+    if applied_type(doc, pointer, kw, i) not in (None, "object"):
+        return False
+    return "properties" in doc_branch or "allOf" in doc_branch
+
+
+def _alias(doc: dict, symbol: str, pointer: str, kw: str, mod: compiler.Module) -> str:
+    """D2's module-level alias for a union root whose branches are all annotations.
+
+    The root's name binds an ``Annotated`` alias over the branches' own union, and the
+    module carries the same two halves ``emit._scalar_root`` gives a plain scalar root
+    -- the ``SchemaRef`` and the bound ``strict_validate`` -- because §4 says a root
+    scalar has no class to carry the second and so binds a module-level function over
+    the first.  ``compiler.declare_alias`` is that shape and this adds nothing to it.
+
+    **The TYPE is :func:`nested`'s, unchanged.**  ``A | B`` over the branches is what a
+    union below a root already lowers to, and the branches of a root union are the same
+    list read the same way; a second reading here is how the two positions come to
+    disagree about one document.  What this passes is the branch list AS THE DOCUMENT
+    APPLIES IT, so the root's ``type`` reaches a branch that states none -- which is
+    the reading ``_base.applied_schema`` already serves the SCHEMA half, so the two
+    halves of every graded pair conjoin the same fact.  Read any other way the alias is
+    graded against a schema the document does not mean.
+
+    The node handed to :func:`nested` is the branch list alone, with the root's own
+    keywords left off.  A root's ``type`` is not a sibling of the union in the sense
+    ``nested``'s screen refuses -- that screen is about a fact with nowhere to go, and
+    this one has gone into every branch.
+
+    **A null branch lands here and the bundle has none.**  ``{"type": "null"}`` decides
+    to ``compiler.Type("None")`` through ``emit._decide``'s own arm, so such a root
+    aliases to ``str | None``.  At a root that ``| None`` can only be a fact about the
+    TYPE -- there is no key for an absence to be the absence of -- which is the half of
+    D4 this row is named for; the other half is the ``| None`` the compiler adds to an
+    OPTIONAL PROPERTY, which is a fact about presence and not a claim that the document
+    admits an explicit null.  Measured over the 1,054 portable documents: 0 union roots
+    carry a ``null`` branch and 57 sites state ``null`` in a ``type`` LIST, every one of
+    them below a root.
+
+    **KNOWN CEILING, and it is D3's naming gap arriving at a new position.**  The name
+    hint handed to :func:`nested` is the ROOT's own symbol, and at a root that symbol is
+    TAKEN -- ``declare_alias`` below declares it.  A branch that lowers to an annotation
+    needs no name and never reaches for the hint, but a branch that DECLARES something
+    does: an untitled ``enum`` branch has no D3 identity (:func:`branch_identity` --
+    title, else the discriminator ``const``, else the required set), takes the hint, and
+    then ``compiler.Module.declare`` refuses the document by name, reporting "two nodes
+    in this document derive the class name ..." at ``/``.  That refusal is a VERDICT and
+    it is the right ANSWER -- D3 gives such a branch no name, and naming it from its
+    neighbourhood is what D3 refuses -- but it reports the collision rather than the
+    gap.  Measured: 2 documents, ``core/geo-place-system.json`` and
+    ``core/geo-place-type.json``, each an untitled string ``enum`` branch beside a
+    ``format: uri`` branch.  Clearing them needs a D3 rule for naming an untitled enum
+    branch, which is a decision for the plan and not for this row; a predictive check
+    here would be a second reading of what the walk declares, which is what makes the
+    two disagree.
+    """
+    applied = {kw: [applied_schema(doc, f"{pointer}/{kw}/{i}") for i in range(len(doc[kw]))]}
+    return compiler.declare_alias(mod, symbol, doc, nested(applied, pointer, symbol, mod))
+
+
 def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> str:
     """Emit the base, the branches and the module trailer; return the base's symbol.
 
@@ -353,18 +470,31 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
                 "for it to name",
                 kind=Kind.VERDICT,
             )
-    if doc.get("type") not in (None, "object"):
-        raise Refusal(
-            "type",
-            pointer,
-            f"a union root of type {doc['type']!r} is step 6",
-            kind=Kind.DEFERRED,
-        )
     branches = doc[kw]
     if len(branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
         raise Refusal(
             kw, pointer, f"{len(branches)} branch: a union of one is the branch itself, not a union"
         , kind=Kind.VERDICT)
+    # D2's two union shapes, and the DOCUMENT decides which.  A root whose instance is
+    # a scalar is a root scalar (:func:`states_a_scalar_instance`), and a root scalar is
+    # an alias; a root whose branches are shapes is the base-plus-subclasses below.  The
+    # second clause is the guard against a root that is neither -- see
+    # :func:`declares_a_class`.
+    if states_a_scalar_instance(doc, pointer, kw) and not any(
+        declares_a_class(branch, doc, pointer, kw, i) for i, branch in enumerate(branches)
+    ):
+        return _alias(doc, symbol, pointer, kw, mod)
+    if doc.get("type") not in (None, "object"):
+        raise Refusal(
+            "type",
+            pointer,
+            f"a union root of type {doc['type']!r} states that every instance reaching a "
+            f"branch is a {doc['type']}, and a branch that declares a property map is a "
+            "CLASS, which no instance of that type can be: the document contradicts "
+            "itself at this pointer and the branch's own type check reports the other "
+            "half",
+            kind=Kind.VERDICT,
+        )
 
     planned = [
         _plan(branches[i], f"{pointer}/{kw}/{i}", symbol, doc) for i in range(len(branches))

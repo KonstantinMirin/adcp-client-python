@@ -1,0 +1,483 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "system": {
+            "enum": [
+              "geonames",
+              "google_ads",
+              "microsoft_ads"
+            ]
+          }
+        },
+        "required": [
+          "system"
+        ]
+      },
+      "then": {
+        "properties": {
+          "matches": {
+            "items": {
+              "properties": {
+                "replaced_by_values": {
+                  "items": {
+                    "pattern": "^[0-9]+$"
+                  }
+                },
+                "value": {
+                  "pattern": "^[0-9]+$"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "description": "Paginated read-only resolver response containing seller-accepted place identifiers from one exact system version and echoing the request used to produce them.",
+  "properties": {
+    "matches": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "One resolver result for a stable place identifier, including lifecycle state. Labels and parent_labels are diagnostic only; value is the authoritative targeting key.",
+        "maxProperties": 11,
+        "properties": {
+          "canonical_name": {
+            "description": "Required fully qualified display name suitable for distinguishing same-named results.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "country": {
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "ext": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            "title": "Extension Object",
+            "type": "object"
+          },
+          "label": {
+            "description": "Human-readable display label; never an authoritative targeting key.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "parent_labels": {
+            "description": "Ordered human-readable parent hierarchy for disambiguation only. Must include at least the containing country.",
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "place_type": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "anyOf": [
+              {
+                "enum": [
+                  "city",
+                  "ward",
+                  "state",
+                  "county",
+                  "airport",
+                  "borough",
+                  "commune",
+                  "quarter",
+                  "district",
+                  "province",
+                  "post_town",
+                  "territory",
+                  "prefecture",
+                  "city_region",
+                  "municipality",
+                  "neighborhood"
+                ]
+              },
+              {
+                "format": "uri",
+                "pattern": "^https://",
+                "type": "string"
+              }
+            ],
+            "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+            "examples": [
+              "city",
+              "municipality",
+              "borough",
+              "neighborhood",
+              "post_town",
+              "city_region",
+              "county",
+              "https://seller.example/geo/place-types/trade-area"
+            ],
+            "title": "Geographic Place Type"
+          },
+          "replaced_by_values": {
+            "description": "Replacement identifiers in the same system and response system_version.",
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "status": {
+            "enum": [
+              "active",
+              "deprecated",
+              "removal_planned"
+            ]
+          },
+          "subdivision": {
+            "description": "ISO 3166-2 subdivision containing the place when the catalog has a subdivision mapping. Required by resolver semantics when the request constrained subdivision.",
+            "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+            "type": "string"
+          },
+          "valid_until": {
+            "description": "Known time after which the identifier must no longer be accepted for new targeting.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "value": {
+            "description": "Stable identifier in the response system and system_version.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "canonical_name",
+          "country",
+          "label",
+          "parent_labels",
+          "place_type",
+          "status",
+          "value"
+        ],
+        "title": "Geographic Place Catalog Entry",
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "next_cursor": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "request": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "anyOf": [
+        {
+          "required": [
+            "q"
+          ]
+        },
+        {
+          "required": [
+            "value"
+          ]
+        }
+      ],
+      "description": "Exact normalized request represented by this page. Pagination responses repeat the original query fields and may carry the page cursor.",
+      "maxProperties": 9,
+      "not": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "anyOf": [
+          {
+            "required": [
+              "q"
+            ]
+          },
+          {
+            "required": [
+              "value"
+            ]
+          }
+        ],
+        "description": "Read-only query parameters for a geo-place resolver. Supply exactly one of q (unresolved human intent) or value (an existing identifier to refresh). Country is mandatory. Optional subdivision, place_type, system_version, and locale further constrain matching.",
+        "maxProperties": 9,
+        "properties": {
+          "country": {
+            "description": "ISO 3166-1 alpha-2 country code used to disambiguate the query.",
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "cursor": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "locale": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Optional BCP 47 language tag for returned labels.",
+            "examples": [
+              "en-US",
+              "es-ES",
+              "zh-Hant-TW",
+              "x-private"
+            ],
+            "maxLength": 63,
+            "minLength": 2,
+            "pattern": "^(?:[a-z]{2,8}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?|x(?:-[a-z0-9]{1,8})+)$",
+            "title": "Language Tag",
+            "type": "string",
+            "x-adcp-validation": {
+              "spec": "docs/protocol/language-and-localization.mdx#one-language-tag-primitive",
+              "verifier_constraints": {
+                "canonical_wire_profile": "adcp_bcp47_casing",
+                "non_profile": "reject",
+                "rfc5646_comparison": "case_insensitive",
+                "semantic_scope": "language_identity_only",
+                "well_formed": "rfc5646"
+              }
+            }
+          },
+          "place_type": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "anyOf": [
+              {
+                "enum": [
+                  "city",
+                  "ward",
+                  "state",
+                  "county",
+                  "airport",
+                  "borough",
+                  "commune",
+                  "quarter",
+                  "district",
+                  "province",
+                  "post_town",
+                  "territory",
+                  "prefecture",
+                  "city_region",
+                  "municipality",
+                  "neighborhood"
+                ]
+              },
+              {
+                "format": "uri",
+                "pattern": "^https://",
+                "type": "string"
+              }
+            ],
+            "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+            "examples": [
+              "city",
+              "municipality",
+              "borough",
+              "neighborhood",
+              "post_town",
+              "city_region",
+              "county",
+              "https://seller.example/geo/place-types/trade-area"
+            ],
+            "title": "Geographic Place Type"
+          },
+          "q": {
+            "description": "Unresolved place name or alias supplied by the user.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "subdivision": {
+            "description": "Optional ISO 3166-2 subdivision constraint.",
+            "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+            "type": "string"
+          },
+          "system_version": {
+            "description": "Optional exact supported catalog version to search.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {
+            "description": "Existing identifier to look up in the requested/current catalog version for lifecycle refresh or replacement discovery. Mutually exclusive with q.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "country",
+          "q",
+          "value"
+        ],
+        "title": "Get Geographic Place Resolution Request",
+        "type": "object"
+      },
+      "properties": {
+        "country": {
+          "description": "ISO 3166-1 alpha-2 country code used to disambiguate the query.",
+          "pattern": "^[A-Z]{2}$",
+          "type": "string"
+        },
+        "cursor": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "locale": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Optional BCP 47 language tag for returned labels.",
+          "examples": [
+            "en-US",
+            "es-ES",
+            "zh-Hant-TW",
+            "x-private"
+          ],
+          "maxLength": 63,
+          "minLength": 2,
+          "pattern": "^(?:[a-z]{2,8}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?|x(?:-[a-z0-9]{1,8})+)$",
+          "title": "Language Tag",
+          "type": "string",
+          "x-adcp-validation": {
+            "spec": "docs/protocol/language-and-localization.mdx#one-language-tag-primitive",
+            "verifier_constraints": {
+              "canonical_wire_profile": "adcp_bcp47_casing",
+              "non_profile": "reject",
+              "rfc5646_comparison": "case_insensitive",
+              "semantic_scope": "language_identity_only",
+              "well_formed": "rfc5646"
+            }
+          }
+        },
+        "place_type": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "anyOf": [
+            {
+              "enum": [
+                "city",
+                "ward",
+                "state",
+                "county",
+                "airport",
+                "borough",
+                "commune",
+                "quarter",
+                "district",
+                "province",
+                "post_town",
+                "territory",
+                "prefecture",
+                "city_region",
+                "municipality",
+                "neighborhood"
+              ]
+            },
+            {
+              "format": "uri",
+              "pattern": "^https://",
+              "type": "string"
+            }
+          ],
+          "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+          "examples": [
+            "city",
+            "municipality",
+            "borough",
+            "neighborhood",
+            "post_town",
+            "city_region",
+            "county",
+            "https://seller.example/geo/place-types/trade-area"
+          ],
+          "title": "Geographic Place Type"
+        },
+        "q": {
+          "description": "Unresolved place name or alias supplied by the user.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "subdivision": {
+          "description": "Optional ISO 3166-2 subdivision constraint.",
+          "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+          "type": "string"
+        },
+        "system_version": {
+          "description": "Optional exact supported catalog version to search.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "value": {
+          "description": "Existing identifier to look up in the requested/current catalog version for lifecycle refresh or replacement discovery. Mutually exclusive with q.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "country"
+      ],
+      "title": "Get Geographic Place Resolution Request",
+      "type": "object"
+    },
+    "system": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "enum": [
+            "geonames",
+            "google_ads",
+            "microsoft_ads"
+          ]
+        },
+        {
+          "format": "uri",
+          "pattern": "^https://",
+          "type": "string"
+        }
+      ],
+      "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
+      "examples": [
+        "geonames",
+        "google_ads",
+        "microsoft_ads",
+        "https://seller.example/geo/catalogs/places"
+      ],
+      "title": "Geographic Place Identifier System"
+    },
+    "system_version": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "request",
+    "system",
+    "system_version",
+    "matches"
+  ],
+  "title": "Get Geographic Place Resolution Response",
+  "type": "object",
+  "x-adcp-validation": {
+    "description": "The response system MUST equal the geo_places capability key for the resolver. system_version MUST equal the requested version, or catalog.current_version when omitted. Every match MUST equal request country and any requested subdivision/place_type. For a value lookup, the result MUST describe that value or its lifecycle replacement; for q search, the seller may apply documented text matching.",
+    "resolver_response_binding": {
+      "match_fields": [
+        "country",
+        "subdivision",
+        "place_type"
+      ],
+      "system": "capability_key",
+      "system_version": "request.system_version_or_catalog.current_version"
+    }
+  }
+}

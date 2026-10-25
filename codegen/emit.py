@@ -474,6 +474,15 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # bundle's 164 typeless enum nodes.  A root enum reaches the same row
         # through the dispatch table below.
         check_keywords(node, pointer, lower_enum.HANDLED)
+        # **D2 gives an enum node TWO renderings and the NAME decides between them:**
+        # a ``StrEnum``/``IntEnum`` where a name reaches it, and a ``Literal`` of its
+        # members where none does.  The second claims no symbol, which is the rendering
+        # a ``const`` -- a one-member value set -- already takes.  The question is
+        # ``lower.enum.resolves_no_name``'s and is answerable from the node and its
+        # pointer, so the union row passes nothing down and there is one reading of it
+        # for every position.
+        if lower_enum.resolves_no_name(node, pointer):
+            return lower_enum.literal(node, pointer)
         decided = lower_enum.decide(node, name_hint, pointer)
         mod.add(name_hint, pointer, compiler.render_enum(decided))
         return Decided(compiler.Type(name_hint, local=True))

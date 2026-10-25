@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "One resolver result for a stable place identifier, including lifecycle state. Labels and parent_labels are diagnostic only; value is the authoritative targeting key.",
+  "properties": {
+    "canonical_name": {
+      "description": "Required fully qualified display name suitable for distinguishing same-named results.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "country": {
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "label": {
+      "description": "Human-readable display label; never an authoritative targeting key.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "parent_labels": {
+      "description": "Ordered human-readable parent hierarchy for disambiguation only. Must include at least the containing country.",
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "place_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "enum": [
+            "city",
+            "ward",
+            "state",
+            "county",
+            "airport",
+            "borough",
+            "commune",
+            "quarter",
+            "district",
+            "province",
+            "post_town",
+            "territory",
+            "prefecture",
+            "city_region",
+            "municipality",
+            "neighborhood"
+          ]
+        },
+        {
+          "format": "uri",
+          "pattern": "^https://",
+          "type": "string"
+        }
+      ],
+      "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+      "examples": [
+        "city",
+        "municipality",
+        "borough",
+        "neighborhood",
+        "post_town",
+        "city_region",
+        "county",
+        "https://seller.example/geo/place-types/trade-area"
+      ],
+      "title": "Geographic Place Type"
+    },
+    "replaced_by_values": {
+      "description": "Replacement identifiers in the same system and response system_version.",
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "status": {
+      "enum": [
+        "active",
+        "removal_planned",
+        "deprecated"
+      ],
+      "type": "string"
+    },
+    "subdivision": {
+      "description": "ISO 3166-2 subdivision containing the place when the catalog has a subdivision mapping. Required by resolver semantics when the request constrained subdivision.",
+      "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+      "type": "string"
+    },
+    "valid_until": {
+      "description": "Known time after which the identifier must no longer be accepted for new targeting.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "value": {
+      "description": "Stable identifier in the response system and system_version.",
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "value",
+    "country",
+    "place_type",
+    "label",
+    "canonical_name",
+    "parent_labels",
+    "status"
+  ],
+  "title": "Geographic Place Catalog Entry",
+  "type": "object"
+}
