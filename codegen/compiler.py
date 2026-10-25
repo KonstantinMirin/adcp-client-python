@@ -1688,6 +1688,29 @@ def lower_object(
 #: refuses rather than choosing between them.
 INLINE = frozenset({"type", "properties", "required"})
 
+#: What a conjunct may carry BESIDE its fields and its rules, each part lowered by the
+#: decision covering it.  Section 5 decides both, per keyword and at CONJ:
+#:
+#: * ``additionalProperties`` -- "CONJ -> ``true`` is the identity and contributes
+#:   nothing, ``false`` on any conjunct closes the composed object, and two typed ones
+#:   intersect their value schemas; a typed conjunct beside a ``true`` one is a widening
+#:   and refuses."  Measured over the 1,054 portable documents: **5 conjuncts state the
+#:   keyword and all 5 state ``true``**, so the identity is the only reading with a
+#:   population and the other three are not written.  A conjunct stating anything else
+#:   refuses, as a DEFERRAL naming the clause -- the obstruction is unwritten code, not
+#:   the document.  (``INLINE`` left the keyword out on the ground that a conjunct
+#:   carrying one would be a second source for one class attribute, which is true of
+#:   ``false`` and of a typed value and is not true of the identity.)
+#: * ``allOf`` -- section 5's ``allOf`` row, "CONJ -> the same rule applied to the
+#:   conjunct's own conjuncts".  A conjunct IS a node, so one carrying its own conjunct
+#:   list contributes what those contribute, at their own pointers.  Measured: **3 sites
+#:   over 3 documents** -- ``adagents.json`` at
+#:   ``/oneOf/1/properties/formats/items/allOf/1``,
+#:   ``core/demographic-targeting-intent.json`` at ``/properties/age/allOf/1`` and
+#:   ``core/geo-delivery-metrics.json`` at ``/allOf/1`` -- and every nested conjunct of
+#:   all three states ``if``/``then`` and nothing else.
+CONJ_COMPOSES = frozenset({"additionalProperties", "allOf"})
+
 #: What the composing node itself may carry beside its conjunct list.
 #:
 #: D6's rule families are NOT listed here and are added per node by
@@ -1912,8 +1935,17 @@ def lower_composition(
     for key, sub in (doc.get("properties") or {}).items():
         declare(key, sub, f"{pointer}/properties/{key}")
 
-    for i, conjunct in enumerate(doc["allOf"]):
-        where = f"{pointer}/allOf/{i}"
+    #: The conjuncts still to read, each with the pointer it sits at.  A WORKLIST
+    #: rather than an ``enumerate`` because of :data:`CONJ_COMPOSES`' second entry: a
+    #: conjunct carrying its own ``allOf`` pushes those conjuncts here, so ONE loop
+    #: reads every depth, the keyword screen is asked once per node, and a refusal
+    #: points at the pointer that carried the keyword rather than at the outermost
+    #: conjunct.  Breadth-first, which is document order within each depth.
+    unread: list[tuple[str, Any]] = [
+        (f"{pointer}/allOf/{i}", c) for i, c in enumerate(doc["allOf"])
+    ]
+    while unread:
+        where, conjunct = unread.pop(0)
         if not isinstance(conjunct, dict):
             raise Refusal("allOf", where, "a conjunct that is not a schema", kind=Kind.VERDICT)
         keys = {k for k in conjunct if k not in ANNOTATIONS and not k.startswith("x-")}
@@ -2010,14 +2042,16 @@ def lower_composition(
         # carrying a combinator of SHAPES is not admitted here and refuses below --
         # rather than being emitted with the combinator dropped.
         screen = rules_at(conjunct).screen
-        if keys <= INLINE | screen:
+        if keys <= INLINE | screen | CONJ_COMPOSES:
             # ``foreign`` is handed to the screen as HANDLED, because this arm has
             # already decided what happens to it: it is dropped and reported.  Left
             # out, ``check_keywords`` walks ``sorted(node)`` and refuses on the very
             # name the drop above accounted for, which loses the document and leaves
             # the drop record unwritten -- measured on
             # ``media-buy/sync-catalogs-request.json``.
-            check_keywords(conjunct, where, set(INLINE) | screen | foreign)
+            check_keywords(
+                conjunct, where, set(INLINE) | screen | set(CONJ_COMPOSES) | foreign
+            )
             if conjunct.get("type") not in (None, "object"):
                 raise Refusal(
                     "type",
@@ -2025,6 +2059,42 @@ def lower_composition(
                     f"a conjunct of type {conjunct['type']!r} is not one",
                     kind=Kind.VERDICT,
                 )
+            if "additionalProperties" in keys and conjunct["additionalProperties"] is not True:
+                # Not the identity, so it is one of the clause's other three readings
+                # and none of them is written: ``false`` closes the composed object,
+                # two typed conjuncts intersect their value schemas, and a typed one
+                # beside a ``true`` one is a widening.  All 5 conjuncts that state the
+                # keyword over the portable population state ``true``, so this is the
+                # arm with no population -- a DEFERRAL and not a verdict, because what
+                # obstructs it is unwritten code (:data:`CONJ_COMPOSES`).
+                raise Refusal(
+                    "additionalProperties",
+                    where,
+                    f"a conjunct states additionalProperties: "
+                    f"{conjunct['additionalProperties']!r}, which is not the identity; "
+                    "section 5's additionalProperties row decides it at CONJ -- false "
+                    "closes the composed object, two typed conjuncts intersect their "
+                    "value schemas, a typed one beside a true one is a widening -- and "
+                    "none of the three is written, because all 5 conjuncts stating the "
+                    "keyword over this bundle state true",
+                    kind=Kind.DEFERRED,
+                )
+            if "allOf" in keys:
+                # Section 5's ``allOf`` row, CONJ: the same rule applied to the
+                # conjunct's own conjuncts.  Pushed onto the worklist at their own
+                # pointers rather than lowered here, so a nested conjunct is screened by
+                # its OWN ``rules_at`` at its OWN pointer -- the property that keeps a
+                # nested conjunct carrying a combinator of shapes refused where it sits.
+                inner = conjunct["allOf"]
+                if not isinstance(inner, list) or not inner:
+                    raise Refusal(
+                        "allOf",
+                        where,
+                        f"a conjunct whose allOf is {inner!r}, not a non-empty list of "
+                        "schemas",
+                        kind=Kind.VERDICT,
+                    )
+                unread.extend((f"{where}/allOf/{j}", c) for j, c in enumerate(inner))
             if "properties" in keys:
                 if not isinstance(conjunct["properties"], dict) or not conjunct["properties"]:
                     raise Refusal(
@@ -2047,11 +2117,53 @@ def lower_composition(
             if keys:
                 conjunct_rules.append(conjunct)
             continue
+        combinator = next((k for k in ("oneOf", "anyOf") if k in keys), None)
+        if combinator is not None:
+            # **A conjunct carrying a combinator of SHAPES, reported on the combinator
+            # and against the rows that own what it needs.**  Section 5's
+            # ``oneOf``/``anyOf`` row says CONJ -> one class per branch over the
+            # composed bases, and writing the classes is not the half that blocks: a
+            # payload reaches its branch only through a dispatch section 4 DERIVES, and
+            # measured over every such conjunct in this bundle -- 7 documents, 28
+            # branches -- **0 branches pin a const**, so ``union.discriminator``
+            # intersects empty pin maps and answers "" for all 7.  Section 4's third
+            # source, branches no instance satisfies twice, is what decides 6 of them
+            # and it lives in ``codegen/lower/union.py``.
+            #
+            # 5 of the 7 have every branch constraining only key presence and reducible
+            # through ``rules._required_groups`` today, which is the same row's cheaper
+            # answer -- a ``RequiredGroups`` rule -- blocked only by
+            # ``rules._required_only`` admitting ``{"required"}`` ALONE.  Widening it
+            # moves ``bundle.states_an_object_rule``, a row's selector, which is why
+            # that is a change to a population rather than to this reader (the
+            # measurement is :func:`_refuse_a_combinator_of_shapes`' docstring, taken
+            # for this exact branch shape).
+            #
+            # Reported on the combinator rather than on ``min(keys)``: attribution is
+            # the point of a refusal report, and ``sorted`` put ``not`` and
+            # ``properties`` ahead of the keyword that is the reason.
+            raise Refusal(
+                combinator,
+                where,
+                f"a conjunct carrying a {combinator} of SHAPES rather than presence "
+                "groups.  Section 5 says CONJ -> one class per branch over the composed "
+                "bases, and section 4 says a payload reaches its branch only through a "
+                "derived dispatch: no branch of any such conjunct in this bundle pins a "
+                "const, so section 4's first source derives none and the third -- "
+                "branches no instance satisfies twice -- is the one that decides them, "
+                "in codegen/lower/union.py (salesagent-j3k2l.60, salesagent-j3k2l.67).  "
+                "Where every branch constrains only key presence the same row's "
+                "RequiredGroups rule is the cheaper answer, and it needs "
+                "rules._required_only to admit more than {'required'} alone, which moves "
+                "bundle.states_an_object_rule (salesagent-j3k2l.58)",
+                kind=Kind.DEFERRED,
+            )
         raise Refusal(
             min(keys) if keys else "allOf",
             where,
-            "this step lowers a $ref conjunct (a base) or an inline conjunct whose "
-            "parts are properties, required and rule keywords; a later row lowers this one",
+            "this step lowers a $ref conjunct (a base) or an inline conjunct whose parts "
+            "are properties, required, rule keywords, an additionalProperties identity "
+            "and a nested allOf; a later row lowers this one",
             kind=Kind.DEFERRED,
         )
 

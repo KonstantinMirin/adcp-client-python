@@ -6423,7 +6423,21 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # Four producers, none of them that row's, and all four already firing at the base.
     # A re-point whose 4 could not be named and attributed would be the trade wearing
     # this pin's clothes; these can, so the pin moves and the names stay here.
-    emitted_pin, pending_pin = 705, 48
+    # **RE-POINTED 705, 48 -> 744, 12 BY ``salesagent-j3k2l.43``, AND IT CLEARED NONE BY
+    # REFUSING**, which is the cheapest form the re-point above says a re-point may take:
+    # the row names the four it did not emit because it had four; this row has none.
+    # Measured over the whole portable set at its own tip: pending 22 -> 12, and every
+    # one of the 10 turns up in the emitted count -- 6 on their own ground
+    # (``core/collection-selection``, ``core/placement-selection``,
+    # ``core/media-buy-frequency-cap-requirement``, ``core/product-execution-requirement``,
+    # ``media-buy/sync-catalogs-request``, ``core/demographic-targeting-intent``) and 4
+    # released through a ``$ref`` chain onto them.  Emitted rose by 13 rather than 10
+    # because 3 VERDICTS became classes: ``core/audience-evidence-requirements``,
+    # ``core/canonical-media-buy-action`` and ``core/forecast-rate-range``, each refused
+    # for a restatement the intersection rule now merges instead of refusing.  Verdicts
+    # therefore FELL, 301 -> 298, which is the one direction this pin does not measure
+    # and is reported beside it rather than folded in.
+    emitted_pin, pending_pin = 744, 12
     assert len(out.emitted) >= emitted_pin + max(0, pending_pin - pending), {
         "emitted, and its pin": (len(out.emitted), emitted_pin),
         "pending, and its pin": (pending, pending_pin),
@@ -6643,7 +6657,11 @@ CONJUNCT_REQUIRED_NAMES = 2
 #: them.  One each, and the same one: ``media-buy/sync-catalogs-request.json`` at
 #: ``/allOf/1`` states ``errorMessage`` (ajv-errors) beside its ``not``.
 CONJUNCT_FOREIGN_NAMES = 1
-DROPPED_NAMES = 1
+#: The whole of ``Out.carries_nothing`` -- the run's record of a name it admitted and
+#: rendered nothing for.  Equal to ``CONJUNCT_FOREIGN_NAMES`` because the conjunct
+#: reader is the only writer of that channel today; they are asserted separately so a
+#: second writer shows up as a disagreement rather than as one number moving.
+CARRIES_NOTHING_NAMES = 1
 
 
 def test_every_conjunct_contributes_every_part_of_itself() -> None:
@@ -6723,8 +6741,8 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                     foreign_names += 1
                     assert any(
                         line.startswith(f"{where}: {name}:")
-                        for line in out.drops.get(document, [])
-                    ), (document, where, name, out.drops.get(document))
+                        for line in out.carries_nothing.get(document, [])
+                    ), (document, where, name, out.carries_nothing.get(document))
                     assert compiler.field_name(name) not in cls.model_fields, (document, where)
                 keys &= compiler.DRAFT07
                 if keys == {"$ref"}:
@@ -6793,7 +6811,9 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
     assert field_keys == CONJUNCT_FIELD_KEYS, field_keys
     assert required_names == CONJUNCT_REQUIRED_NAMES, required_names
     assert foreign_names == CONJUNCT_FOREIGN_NAMES, foreign_names
-    assert sum(len(v) for v in out.drops.values()) == DROPPED_NAMES, out.drops
+    assert sum(len(v) for v in out.carries_nothing.values()) == CARRIES_NOTHING_NAMES, (
+        out.carries_nothing
+    )
 
 
 #: How often each of the three folds that read a COMPOSED document by intersection

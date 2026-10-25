@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Portable demographic targeting intent plus buyer constraints on how the seller may determine user eligibility. The age predicate retains its canonical interval meaning; accepted_bases narrows execution provenance without changing which ages are requested.",
+  "properties": {
+    "age": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "anyOf": [
+            {
+              "required": [
+                "max"
+              ]
+            },
+            {
+              "required": [
+                "min"
+              ]
+            }
+          ],
+          "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
+          "properties": {
+            "include_unknown": {
+              "enum": [
+                false,
+                true
+              ]
+            },
+            "max": {
+              "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
+              "maximum": 150,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "min": {
+              "description": "Inclusive minimum age in completed years. Omit for an open lower bound.",
+              "maximum": 150,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "include_unknown"
+          ],
+          "title": "Demographic Age Range",
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "accepted_verification_methods"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "accepted_bases": {
+                    "contains": {
+                      "const": "verified"
+                    }
+                  }
+                },
+                "required": [
+                  "accepted_bases"
+                ]
+              }
+            }
+          ],
+          "properties": {
+            "accepted_bases": {
+              "description": "User-level age determination bases the buyer permits for this predicate. Sellers MUST use only these bases or reject the request; they MUST NOT silently fall back to another basis. When omitted, the buyer imposes no determination-basis constraint beyond product capability and any age_restriction. population_estimate is structurally unavailable because aggregate evidence cannot identify an eligible user.",
+              "items": {
+                "enum": [
+                  "declared",
+                  "inferred",
+                  "verified"
+                ]
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "accepted_verification_methods": {
+              "description": "Verification methods acceptable when verified is an accepted basis. This field narrows verified demographic execution; age_restriction.accepted_methods independently governs legal eligibility and the two sets are intersected when both are present.",
+              "items": {
+                "enum": [
+                  "world_id",
+                  "digital_id",
+                  "credit_card",
+                  "id_document",
+                  "facial_age_estimation"
+                ]
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "required": [
+    "age"
+  ],
+  "title": "Demographic Targeting Intent",
+  "type": "object"
+}
