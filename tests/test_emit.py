@@ -6375,8 +6375,25 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # grade rather than to sit loose.  Probed as six separate runs and not as
     # arithmetic over one measurement: the assertions are ORDERED, so a tightened pin
     # that an earlier one pre-empts is never reached and the arithmetic cannot say so.
+    #
+    # **UNRESOLVED re-pointed 1 -> 2 at ``salesagent-j3k2l.67``, and the document is
+    # named because a ceiling going UP is the move this pin exists to make visible.**
+    # ``core/requirements/catalog-field-binding.json`` was a VERDICT on a nested union's
+    # ``discriminator`` sibling; that keyword is §6's and is admitted now, so the walk
+    # gets one pointer further and meets
+    # ``#/definitions/ScalarBinding/properties/ext``, whose target ``core/ext.json``
+    # ``bundle.resolved`` leaves untouched under a ``definitions`` section.  The document
+    # MOVED rather than cleared -- out of the verdict column and into the pending one,
+    # on ``salesagent-j3k2l.71``'s ground -- which is the honest classification: the
+    # obstruction is unwritten code and a verdict would count a clearable document as
+    # finally refused.  The other member is ``a2ui/si-catalog.json``, unchanged.
     assert resolved[refusal_module.Kind.DEFERRED] <= 65, resolved[refusal_module.Kind.DEFERRED]
-    assert resolved[refusal_module.Kind.UNRESOLVED] <= 1, resolved[refusal_module.Kind.UNRESOLVED]
+    assert resolved[refusal_module.Kind.UNRESOLVED] <= 2, resolved[refusal_module.Kind.UNRESOLVED]
+    assert {
+        d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
+    } == {"a2ui/si-catalog.json", "core/requirements/catalog-field-binding.json"}, sorted(
+        d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
+    )
 
     # Grow-only: what the exit condition actually counts.
     accounted = len(out.emitted) + len(verdicts)
