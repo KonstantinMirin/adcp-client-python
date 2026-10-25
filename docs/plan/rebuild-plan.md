@@ -710,6 +710,21 @@ A step that wants to change one of these reports it and stops.
   **A check that matches a spelling is deleted rather than extended.** There are infinitely many
   ways to write the thing it bans and it tests one, so it buys nothing and costs a parse.
 
+  **A clause detects a defect only in what its INPUT can change.** A check reading the committed
+  tree grades BEHAVIOUR — what a class accepts, refuses and states about itself — and cannot
+  redden when the emitter changes, because the modules on disk do not move. A check that must
+  detect an EMITTER defect reads a fresh run's output. Both are legitimate and the defect is a
+  clause that claims one while reading the other: perturbing the emitter leaves it green, so it
+  is graded by nothing.
+
+  Measured over the suite: 46 checks read the committed tree alone, 54 read a fresh run alone,
+  and 12 read both. The 46 are sound because ONE check ties the tree to the emitter —
+  `test_the_committed_tree_is_what_a_fresh_run_emits` runs `emit` into a temporary directory and
+  compares the whole file set and every byte of it, with the alias module beside it. That check
+  carries the other 46, so it is never narrowed and never compares against recorded output: an
+  earlier revision compared the tree against an earlier run of the same emitter and so graded the
+  change rather than the inputs.
+
   **A check that partitions a population enumerates the cases its DECISION names, not the cases
   the population happens to hold, and asserts that an empty part is empty.** A part with no
   member today is the one the next cleared document arrives in, and a partition built from what
