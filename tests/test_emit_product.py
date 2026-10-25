@@ -1250,11 +1250,21 @@ def _union_probe(tmp_path: Path, name: str) -> Path:
                         "properties": {"label": {"type": "string"}},
                         "required": ["label"],
                     },
+                    # CLOSED, and the composing arm beside it is not.  §4's third
+                    # dispatch source reached this fixture at ``salesagent-j3k2l.67``:
+                    # with both arms open and each requiring a name the other does not
+                    # declare, ``{"label": ..., "other": ...}`` satisfies BOTH, so the
+                    # branches overlap and the dispatch refuses at ``/`` before the
+                    # composing arm this probe is about is ever read.  Closing THIS arm
+                    # makes it forbid the ``label`` the other requires, which separates
+                    # the pair; the composing arm stays open, so no
+                    # ``additionalProperties: false`` sits beside an ``allOf``.
                     {
                         "title": "Plain Arm",
                         "type": "object",
                         "properties": {"other": {"type": "string"}},
                         "required": ["other"],
+                        "additionalProperties": False,
                     },
                 ],
             },

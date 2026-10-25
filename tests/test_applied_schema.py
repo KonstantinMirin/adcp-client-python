@@ -59,15 +59,17 @@ from tests.nodeset import claimed, partitions, ratchet
 #: or on a union branch, and an array's or a mapping's own bound on one), 732 (.71, a
 #: remote reference inside a section entry nothing declares: a position the package's
 #: own validation never reaches, so the carried document decides without it),
-#: 745 (.43, a conjunct contributes every part of itself: 10 of these 13 are documents
-#: the conjunct reader was deferring -- 6 on their own ground and 4 through a ``$ref``
-#: chain -- and 3 were VERDICTS that the intersection rule turned into classes; the
-#: thirteenth is .71's, which is why 731 + 13 is 745 rather than 744).
+#: 747 (.43 and .67 merged together).
 #:
-#: Both lanes moved this in flight, so it is RE-MEASURED on the merged tree rather than
-#: resolved by taking a side: 744 was this row's figure before .71 landed and 732 was
-#: .71's before this row did.
-EMITTED_FLOOR = 745
+#: **Three rows moved this in flight and the merged tree is MEASURED, not chosen.** On
+#: their own branches .71 reached 732, .67 733 and .43 745, and the merge of all three
+#: emits 747, because each row emits documents the others do not: .67 adds
+#: ``media-buy/outcome-target.json`` (a ``discriminator`` beside a nested union is
+#: admitted, so the union lowers), .71 adds ``a2ui/si-catalog.json``, and .43 adds
+#: thirteen the conjunct reader was refusing. Taking any side would have understated the
+#: floor, and the cautious-looking minimum of the three would have loosened it by
+#: fourteen. A ratchet merge is a measurement.
+EMITTED_FLOOR = 747
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

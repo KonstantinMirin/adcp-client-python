@@ -3265,12 +3265,25 @@ def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointe
     OTHER keyword satisfied: in the 3.2 bundle a nameless branch always sits beside a
     keyword that refuses first, so a test over the bundle would assert the wrong refusal.
     The control is the same document with a title added, which emits.
+
+    **The first branch is CLOSED, and that is one of the "other keywords satisfied".**
+    §4's third dispatch source reached this fixture at ``salesagent-j3k2l.67``: with both
+    branches open and the first requiring nothing, ``{"b": ...}`` satisfies BOTH, so the
+    branches overlap and the dispatch refuses at ``/`` before any branch is named.
+    ``additionalProperties: false`` on the first branch makes it forbid the ``b`` the
+    second requires, which separates the pair -- and it adds no identity, so the branch
+    still has no ``title``, no ``const`` pin and no ``required`` set, which is what this
+    test is about.
     """
     nameless = {
         "title": "Nameless",
         "type": "object",
         "oneOf": [
-            {"type": "object", "properties": {"a": {"type": "string"}}},
+            {
+                "type": "object",
+                "properties": {"a": {"type": "string"}},
+                "additionalProperties": False,
+            },
             {"type": "object", "properties": {"b": {"type": "string"}}, "required": ["b"]},
         ],
     }
@@ -3395,8 +3408,14 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "account/list-account-changes-response.json": "allOf",
     "account/sync-accounts-response.json": "allOf",
     "account/sync-governance-response.json": "allOf",
-    "adagents.json": "anyOf",
-    "brand.json": "allOf",
+    # Both read a keyword from inside a BRANCH until ``salesagent-j3k2l.67`` -- an
+    # ``anyOf`` conjunct at ``/oneOf/1/allOf/0`` and a scalar base at
+    # ``/definitions/default_language/allOf/0`` -- and both now read the root's own
+    # union keyword, because §4's third dispatch source decides the root's dispatch
+    # before its branches are declared and finds their branches OVERLAPPING.  The
+    # deeper obstructions are untouched and report again once the overlap is resolved.
+    "adagents.json": "oneOf",
+    "brand.json": "oneOf",
     "brand/acquire-rights-response.json": "allOf",
     "brand/creative-approval-response.json": "allOf",
     "brand/get-brand-identity-response.json": "allOf",
@@ -3445,11 +3464,15 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # until ``salesagent-j3k2l.59`` made such a branch a class with two bases.  Its
     # three branches now name themselves off the ``kind`` pin (two of them through a
     # LOCAL ``$ref``) and the root's dispatch derives to ``kind``, so the document gets
-    # past this module and refuses one pointer deeper, on a ``discriminator`` sibling of
-    # the NESTED union at ``/oneOf/2/properties/per_item_bindings/items`` -- a different
-    # position with a different reason (``union.nested``'s sibling screen), filed as
-    # ``salesagent-j3k2l.67``.
-    "core/requirements/catalog-field-binding.json": "discriminator",
+    # past this module.  It then refused on a ``discriminator`` sibling of the NESTED
+    # union at ``/oneOf/2/properties/per_item_bindings/items`` until
+    # ``salesagent-j3k2l.67`` admitted that keyword there (§6's row: it constrains
+    # nothing and the comparison does not look for it), and it is back on ``$ref`` --
+    # ``#/definitions/ScalarBinding/properties/ext``, whose target
+    # ``core/ext.json`` ``bundle.resolved`` leaves untouched under a ``definitions``
+    # section.  That is ``salesagent-j3k2l.71``'s ground and the resolution is
+    # UNRESOLVED rather than a verdict.
+    "core/requirements/catalog-field-binding.json": "$ref",
     "core/tracker-execution-selector.json": "$ref",
     "core/wholesale-feed-event.json": "properties",
     "creative/get-creative-features-response.json": "allOf",
@@ -4098,7 +4121,11 @@ def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrappe
     # The two keywords they refuse on, and the PARTITION of the roots between them by
     # name: the one that refuses inside its own ``items`` is the odd one and is named
     # below, so a count of the other group says nothing the partition does not.
-    assert {out.refusals[d]["keyword"] for d in roots} == {"uniqueItems", "discriminator"}
+    #
+    # The odd one read ``discriminator`` until ``salesagent-j3k2l.67`` admitted that
+    # keyword beside a nested union (§6's row), and now reads ``type`` -- the same
+    # sibling screen at the same pointer, one keyword further along ``sorted(node)``.
+    assert {out.refusals[d]["keyword"] for d in roots} == {"uniqueItems", "type"}
     partitions(
         roots,
         at_the_root={d for d in roots if out.refusals[d]["keyword"] == "uniqueItems"},
@@ -6538,8 +6565,26 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # where a remote reference inside a DECLARED entry refuses on it.  The kind is
     # kept, because the obligation it reports is real and a later bundle can carry
     # one; the ceiling is 0 so a document arriving at it is loud here.
+    #
+    # **IT WAS LOUD, AND THE DOCUMENT ARRIVED ONE ROW LATER -- 0 -> 1 at
+    # ``salesagent-j3k2l.67``, MEASURED ON THE MERGED TREE AND NOT ON EITHER BRANCH.**
+    # That row admits ``discriminator`` beside a nested union (§6's row: it constrains
+    # nothing, and ``harness.FACTS`` does not look for it), so
+    # ``core/requirements/catalog-field-binding.json`` gets one pointer further than its
+    # old ``discriminator`` VERDICT and reaches
+    # ``#/definitions/ScalarBinding/properties/ext``, whose target ``core/ext.json`` is
+    # remote and inside an entry the document DOES declare -- which is precisely the
+    # shape the paragraph above says still refuses.  So the kind has a live instance
+    # again and the document MOVED rather than cleared: out of the verdict column and
+    # into the pending one, on this row's own ground.  Named rather than counted, for
+    # the reason a ceiling going UP exists.
     assert resolved[refusal_module.Kind.DEFERRED] <= 65, resolved[refusal_module.Kind.DEFERRED]
-    assert resolved[refusal_module.Kind.UNRESOLVED] <= 0, resolved[refusal_module.Kind.UNRESOLVED]
+    assert resolved[refusal_module.Kind.UNRESOLVED] <= 1, resolved[refusal_module.Kind.UNRESOLVED]
+    assert {
+        d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
+    } == {"core/requirements/catalog-field-binding.json"}, sorted(
+        d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
+    )
 
     # Grow-only: what the exit condition actually counts.
     accounted = len(out.emitted) + len(verdicts)
