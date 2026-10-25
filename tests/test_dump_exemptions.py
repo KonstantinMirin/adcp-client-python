@@ -133,14 +133,68 @@ def _drawn_dump(pair: harness.Pair) -> Any:
 # the set itself
 # --------------------------------------------------------------------------- #
 def test_the_exempt_set_only_shrinks() -> None:
-    """An exemption may be removed and never added.
+    """An exemption may be removed and never added -- over the part that is PINNED.
 
     The pin is a literal in the module and not a ``len()`` read back off the tuple,
     because a pin computed from the thing it grades cannot fail.  Removing an entry
     leaves this green; adding one reddens it, and the only way to raise the pin is to
     raise it deliberately in a diff a reviewer sees.
+
+    **It covers the entries that are NOT ``ORIGIN_ONLY``**, and the split is the fix for
+    a failure this pin could not express.  The number of positions one upstream pattern
+    reaches is a property of how much of the bundle is PACKAGED: every row that emits a
+    document carrying that authored node adds a position, so an absolute count over that
+    part obliges each of them to raise a shrink-only pin.  That part is derived by
+    :func:`test_the_origin_only_part_is_the_packaged_positions` instead, and what is
+    pinned here is the part that genuinely is not a function of emission.
     """
-    assert len(EXEMPT) <= PIN, [f"{e.document}{e.pointer}" for e in EXEMPT]
+    pinned = [e for e in EXEMPT if e.value != ORIGIN_ONLY]
+    assert pinned, "the pinned part is empty: this assertion would hold vacuously"
+    assert len(pinned) <= PIN, [f"{e.document}{e.pointer}" for e in pinned]
+
+
+def test_the_origin_only_part_is_the_packaged_positions() -> None:
+    """The ``ORIGIN_ONLY`` entries ARE the packaged positions stating that pattern.
+
+    Both sides derived, neither a literal count.  The entries were pinned by size, and
+    a size has no denominator here: when ``salesagent-j3k2l.43`` made
+    ``core/audience-evidence-requirements.json`` emit, its packaged form inlined an
+    already-exempted authored node a third time, so the set was one short of the
+    positions it exists to cover and the only way to say so was to raise a shrink-only
+    pin.
+
+    What this buys, and each one is a thing the count could not do:
+
+    * it **reddens when a position is MISSED**, which is the real obligation, rather than
+      when a number moves;
+    * it **shrinks on its own** when upstream repairs the pattern -- the value stops
+      matching and both sides fall together, which is the mechanism this module already
+      relies on for every other entry;
+    * it **grows only with emission**, and the growth is explained by one upstream issue
+      rather than by a judgement call.
+
+    It compares one exact string against the packaged tree, so it is still the literal
+    set of positions this module's first rule requires and not a predicate over regexes.
+    """
+    import test_emit  # the tree reader, one reading for the whole suite
+
+    positions = claimed(
+        "packaged positions whose pattern is ORIGIN_ONLY",
+        {
+            f"{document}#{pointer}"
+            for document in sorted({g.ref.document for g in test_emit.graded()})
+            for pointer, node in bundle.nodes(schema_at(SchemaRef(document, "#")))
+            if isinstance(node, dict) and node.get("pattern") == ORIGIN_ONLY
+        },
+    )
+    exempted = claimed(
+        "ORIGIN_ONLY entries of EXEMPT",
+        {f"{e.document}#{e.pointer}" for e in EXEMPT if e.value == ORIGIN_ONLY},
+    )
+    assert exempted == positions, {
+        "reaches a pair and is not exempt": sorted(positions - exempted),
+        "exempt and reaches no pair": sorted(exempted - positions),
+    }
 
 
 def test_every_entry_names_its_upstream_issue() -> None:
