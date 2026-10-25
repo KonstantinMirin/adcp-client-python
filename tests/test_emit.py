@@ -2100,6 +2100,15 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
         "core/attestation-issuer.json#/oneOf/2": [
             "core/attestation-issuer.json#/oneOf/2/properties/origin/pattern"
         ],
+        # The fourth packaged copy of attestation-issuer's origin branch. It reaches a
+        # pair only on the MERGED compiler: neither the conjunct reader nor the
+        # nested-union sibling rule emits this document alone, so the first tree that
+        # carries it is the one their merge emits.
+        "core/product-audience-evidence-requirements.json#/properties"
+        "/accepted_attestation_issuers/items/oneOf/2": [
+            "core/product-audience-evidence-requirements.json#/properties"
+            "/accepted_attestation_issuers/items/oneOf/2/properties/origin/pattern"
+        ],
         "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
         "/properties/render_guidance": [
             "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
