@@ -144,43 +144,54 @@ _BRANCH_OF = ("oneOf", "anyOf")
 
 
 def resolves_no_name(node: dict, pointer: str) -> bool:
-    """Does D3 resolve NO name for this enum node?  Then D2 renders a ``Literal``.
+    """Does the POSITION supply no name for this enum node?  Then D2 renders a
+    ``Literal``.
 
     **D2: "an ``enum`` node -> ``StrEnum``/``IntEnum`` where a name reaches it, and a
-    ``Literal`` of its members where none does."**  A ``const`` is a one-member value
-    set and D2 already renders it without naming it; an ``enum`` is the same construct
-    with more members, so a value set no name reaches states its members and claims no
-    symbol.  A lowering that can proceed without a name does, rather than inventing
-    one -- which is D3's own rule that a name is an input to a lowering.
+    ``Literal`` of its members where none does", and an untitled ``enum`` branch whose
+    POSITION supplies no name is the second.**  A ``const`` is a one-member value set
+    and D2 already renders it without naming it; an ``enum`` is the same construct with
+    more members.  A lowering that can proceed without a name does, rather than
+    inventing one -- which is D3's own rule that a name is an input to a lowering.
 
-    **The question is answerable from the node and its POINTER alone, and that is a
-    fact about an enum node rather than a convenience.**  D3 resolves a branch name in
-    order: the branch's own title, the discriminator ``const``, the sorted required
-    set, the branch's own root type word.  For an ENUM node only the first can apply --
-    ``_const_pin`` reads the branch's ``properties`` and an enum node declares none, a
-    ``required`` list likewise, and the type-word step names a branch only where the
-    root types differ, which two string value sets never do.  So no parent has to be
-    consulted, and the union row does not have to pass anything down: an enum node has
-    a name where it declares a ``title``, or where its position supplies one.
+    **A position supplies a name or it does not, and that is a property of the POSITION
+    rather than an accident of collision.**  A branch under a ``properties`` segment
+    takes that property's own derived name (D3's nested rule, parent +
+    ``pascal_case(property)``), which nothing else wants -- so a name reaches it and it
+    keeps its ``StrEnum``.  A branch of a ROOT union takes none, because the root's own
+    class holds the only name that position derives.
 
-    Every position supplies one EXCEPT a combinator branch.  A root is
-    ``pascal_case(title)``, a property is parent + ``pascal_case(property)``, an
-    ``items`` or a mapping value derives from the property holding it -- each is a name
-    the walk already owns.  A branch is the one position whose name D3 derives from the
-    branch's own content, and an untitled enum node has none of that content.
+    So the test is whether the combinator is AT THE DOCUMENT ROOT: a root union's branch
+    is addressed ``/<kw>/<i>`` and nothing else is.  Written as the pointer's own shape
+    rather than as a search for a ``properties`` segment, because the two readings agree
+    on every position in this bundle and only this one says what it means -- a deeper
+    pointer has a parent, and the parent is what supplies the name.
+
+    **Why no parent node has to be consulted**, which is what lets the union row pass
+    nothing down: D3 resolves a branch name in order -- the branch's own title, the
+    discriminator ``const``, the sorted required set, the branch's own root type word.
+    For an ENUM node only the first can apply, because ``_const_pin`` reads the branch's
+    ``properties`` and an enum node declares none, a ``required`` list likewise, and the
+    type-word step names a branch only where the root types differ, which two string
+    value sets never do.
 
     Measured over the 1,054 portable documents of ``schemas/cache/3.2``: **4 untitled
-    enum branches in 4 documents**, 2 of them at a root
-    (``core/geo-place-system.json`` and ``core/geo-place-type.json``, each an ``anyOf``
-    of an untitled string value set beside a constrained string) and 2 nested. Of the
-    353 combinator-branch positions with no D3 identity of any shape, these 4 are the
-    only enum nodes, so this reads a position the measurement names rather than a
-    shape it might reach.
+    enum branches in 4 documents, 2 at a ROOT and 2 nested**, and the split is exactly
+    what this function returns.  The two at a root are
+    ``core/geo-place-system.json#/anyOf/0`` and ``core/geo-place-type.json#/anyOf/0``,
+    each an untitled string value set beside a constrained string.  The two nested keep
+    their ``StrEnum``: ``error-details/accessibility-violation.json`` at
+    ``/properties/violations/items/properties/failure_kind/oneOf/0``, whose eight
+    canonical values are a concept a consumer dispatches on and so needs an importable
+    symbol for, and ``media-buy/get-products-request.json``, which is refused elsewhere.
+    Of the 353 combinator-branch positions with no D3 identity of any shape, these 4 are
+    the only enum nodes.
     """
     if node.get("title"):
         return False
     hops = pointer.split("/")
-    return len(hops) >= 3 and hops[-2] in _BRANCH_OF and hops[-1].isdigit()  # noqa: PLR2004
+    # ``/<kw>/<i>`` and nothing deeper: ``["", kw, i]``.
+    return len(hops) == 3 and hops[-2] in _BRANCH_OF and hops[-1].isdigit()  # noqa: PLR2004
 
 
 def literal(node: dict, pointer: str) -> compiler.Decided:
