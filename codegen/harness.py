@@ -92,7 +92,7 @@ from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
 from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef
-from codegen import dump_exemptions
+from codegen import compiler, dump_exemptions
 
 # --------------------------------------------------------------------------- #
 # formats
@@ -424,8 +424,9 @@ _DESCEND_MAP = ("properties", "$defs", "definitions", "patternProperties", "depe
 _DESCEND_LIST = ("oneOf", "anyOf", "allOf", "prefixItems")
 
 
-def _esc(s: str) -> str:
-    return s.replace("~", "~0").replace("/", "~1")
+#: ``compiler.escape_key``, not a second copy: a pointer segment is spelled by four
+#: readers and the two halves have to agree about a key carrying a ``/``.
+_esc = compiler.escape_key
 
 
 def at(doc: Any, pointer: str) -> Any:
@@ -1521,6 +1522,108 @@ def _declares_null(doc: Any) -> bool:
     return "null" in kind if isinstance(kind, list) else kind == "null"
 
 
+def _constrains_a_key(key_schema: Mapping[str, Any]) -> bool:
+    """Does a ``propertyNames`` node say anything about a key that is GRADABLE?
+
+    A key schema one side states and the other does not is reported only where it
+    carries a fact: ``{"x-entity": "product"}`` beside a ``minLength`` is an
+    ``x-`` annotation §6 admits and no model renders, so a side stating the node
+    and no fact is not a side that dropped one.  A local ``$ref`` counts, because
+    the comparison resolves one and the facts behind it are the key type's.
+    """
+    return "$ref" in key_schema or any(kw in key_schema for kw in FACTS)
+
+
+def _patterned_key(node: Any, *, closed: bool) -> dict | None:
+    """A mapping whose KEY carries a pattern, written as a key schema and a value.
+
+    **One shape, three spellings, and the comparison has to read all three.**  §2
+    says a mapping's key is a TYPE, and a patterned key is
+    ``dict[Annotated[str, StringConstraints(pattern=P)], V]``.  The document spells
+    that two ways and pydantic renders it a third:
+
+    * ``propertyNames: {"pattern": P}`` beside ``additionalProperties: V`` -- every
+      key matches ``P``, every value matches ``V``;
+    * ``patternProperties: {P: V}`` beside ``additionalProperties: false`` -- a key
+      matching ``P`` has value ``V``, and no other key is admitted, which is the
+      same statement;
+    * pydantic 2.13.5 renders the annotation as ``{"type": "object",
+      "patternProperties": {P: V}}`` and states no ``additionalProperties`` at all,
+      although the validator does refuse a non-matching key (``{"AB": 1}`` accepted,
+      ``{"abc": 1}`` refused for ``^[A-Z]{2}$``).
+
+    So this writes all three as the FIRST spelling, which is the one whose two
+    keywords the rest of the comparison already reads: ``additionalProperties`` is
+    in :data:`FACTS` and recursed into, and ``propertyNames`` is descended into
+    beside it.  Without it the ``propertyNames`` document reported a faithful model
+    as dropping its ``additionalProperties`` (measured: ``model_drops_a_fact`` at
+    ``core/geo-region-support.json#/properties/countries/additionalProperties`` and
+    at ``trusted-match/identity-match-response.json#/properties/tmpx_providers``),
+    while the ``patternProperties`` document passed with the value schema and the
+    key expression both ungraded -- the two halves of the same hole.
+
+    ``closed`` is whether a bare ``patternProperties`` -- one with no
+    ``additionalProperties`` beside it -- closes this node's keys, and it is the one
+    thing the node cannot say for itself.  **It is a property of the SIDE and not a
+    guess**: pydantic only ever renders a patterned key for a dict whose key type
+    refuses a non-matching key, so on the model side a bare ``patternProperties``
+    IS closed; in a document, draft-07 admits every key the pattern does not match,
+    so it is not.  A document in that shape therefore gets no reading here and is
+    compared as it stands, which is the fail-safe direction -- and the emitter
+    refuses it outright (``lower.containers.mapping``), so no emitted pair reaches
+    it.
+
+    ``None`` where the node is not this shape, and the caller then leaves it alone.
+    A node with ``properties`` is a CLASS and not a mapping, and more than one
+    pattern is a value schema per key shape, which §5 refuses.
+    """
+    if not isinstance(node, dict):
+        return None
+    patterned = node.get("patternProperties")
+    if not isinstance(patterned, dict) or len(patterned) != 1 or "properties" in node:
+        return None
+    # A key schema BESIDE the pattern is pydantic's rendering of a key type carrying
+    # a length bound as well, and the two halves are one key: measured on 2.13.5,
+    # ``dict[Annotated[str, StringConstraints(min_length=1, max_length=64,
+    # pattern=P)], V]`` renders ``{"patternProperties": {P: V}, "propertyNames":
+    # {"minLength": 1, "maxLength": 64}}``, which is the shape 5 of the bundle's 13
+    # patterned key sites state.  So the model's two halves MERGE.  In a DOCUMENT the
+    # same pair is two statements about one key type, which §5 refuses, so it gets no
+    # reading here -- ``closed`` is again the side.
+    beside = node.get("propertyNames")
+    if beside is not None and not (closed and isinstance(beside, dict) and "pattern" not in beside):
+        return None
+    if "additionalProperties" in node:
+        if node["additionalProperties"] is not False:
+            return None  # two value schemas for one mapping value
+    elif not closed:
+        return None
+    ((expr, value),) = patterned.items()
+    out = {k: v for k, v in node.items() if k not in ("patternProperties", "additionalProperties")}
+    out["propertyNames"] = {**(beside or {}), "pattern": expr}
+    out["additionalProperties"] = value
+    return out
+
+
+def _key_schema(node: Mapping[str, Any]) -> dict:
+    """A ``propertyNames`` node with its implied ``type`` restored, on either side.
+
+    A JSON object's key is a string, so ``type: "string"`` on a key schema states
+    what the POSITION already says.  That is why the bundle writes it at 5 of its 13
+    patterned key sites and leaves it out at the other 8, and why pydantic renders
+    ``propertyNames: {"minLength": 1}`` for a key type that IS a ``str``.  Restored
+    on BOTH sides so neither spelling reads as a fact the other dropped;
+    ``lower.containers._key`` supplies the same word on the document side before
+    lowering, for the same reason.
+
+    Not supplied over a declared ``type``, nor over a ``$ref`` -- a reference NAMES
+    the key type and brings its own facts, which :func:`_normalize` resolves.
+    """
+    if "type" in node or "$ref" in node:
+        return dict(node)
+    return {"type": "string", **node}
+
+
 #: The two combinators a union of types is spelled with, and BOTH are read,
 #: because the two sides spell it differently.  ``anyOf`` is pydantic's only
 #: spelling of a union; ``oneOf`` is the DOCUMENT's at 2 of this bundle's 3
@@ -1965,6 +2068,14 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
         got = _normalize(
             got, emitted, declared_null=_declares_null(doc), null_is_absence=not required
         )
+        # §2's key rule: a mapping's key is a TYPE, and the one type has three
+        # spellings across the two sides.  Written as one shape here, on BOTH sides
+        # and by the same function, so the key expression and the value schema are
+        # each graded rather than excused (:func:`_patterned_key`).  ``closed`` is
+        # the one fact that differs by side and it is a property of the renderer,
+        # not of the node.
+        doc = _patterned_key(doc, closed=False) or doc
+        got = _patterned_key(got, closed=True) or got
         doc, rewritten = _uncanonicalized(doc)
         for kw in FACTS:
             if kw not in doc:
@@ -2080,6 +2191,26 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
             )
         if isinstance(doc.get("items"), dict):
             compare(doc["items"], got.get("items"), f"{pointer}/items")
+        # A mapping's KEY SCHEMA, descended into the way ``items`` is -- it is a
+        # schema at a pointer the document names, and §2 makes it a type, so the
+        # facts it states are the key type's and are graded as such.  Ungraded
+        # before this row: ``propertyNames`` is in neither ``FACTS`` nor any
+        # descent, so a model that widened a bounded key to ``str`` compared
+        # identically to one that carried the bound.
+        key_doc, key_got = doc.get("propertyNames"), got.get("propertyNames")
+        if isinstance(key_doc, dict) and isinstance(key_got, dict):
+            compare(_key_schema(key_doc), _key_schema(key_got), f"{pointer}/propertyNames")
+        elif isinstance(key_doc, dict) and _constrains_a_key(key_doc):
+            res.compared += 1
+            res.missing.append(
+                f"{pointer}/propertyNames: the document says {key_doc!r}, "
+                "the model states no key schema"
+            )
+        elif isinstance(key_got, dict) and _constrains_a_key(key_got):
+            res.model_facts += 1
+            res.added.append(
+                f"{pointer}/propertyNames: the model says {key_got!r}, the document nothing"
+            )
 
     compare(schema, emitted, "")
     return res

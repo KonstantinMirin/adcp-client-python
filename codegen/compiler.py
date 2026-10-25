@@ -785,6 +785,22 @@ def schema_ref(document: str, pointer: str) -> SchemaRef:
     return SchemaRef(document, f"#{pointer}")
 
 
+def escape_key(key: str) -> str:
+    """One JSON Pointer segment from a document KEY (RFC 6901's two escapes).
+
+    Named here, in the module every walk and both halves of the harness import,
+    because a pointer segment is spelled by FOUR readers -- ``bundle.nodes``,
+    ``harness._nodes``, ``harness.compare_schema``'s property descent, and the
+    mapping row's ``patternProperties`` pointer -- and the inverse is already
+    spelled once here (:func:`local_reference`'s caller).  A ``patternProperties``
+    expression is the first key in this bundle that actually NEEDS it: the
+    ``media-buy/get-products-response.json`` extension pattern is
+    ``^https?://[^@]+@sha256:[a-f0-9]{64}$``, whose two slashes would otherwise
+    read as two pointer hops and make the refusal's own pointer undereferenceable.
+    """
+    return key.replace("~", "~0").replace("/", "~1")
+
+
 # --------------------------------------------------------------------------- #
 # the carriers
 # --------------------------------------------------------------------------- #
