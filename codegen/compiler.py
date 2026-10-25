@@ -2340,7 +2340,19 @@ def lower_composition(
     for key in sorted(required - inherited_required - set(own)):
         if key not in inherited:
             continue  # ``fields`` refuses a required name no view declares, by name
-        reuse[key] = _reused(key, inherited_fields, inherited_from, pointer, mod)
+        # **The pointer names the PROPERTY and not the composing node.**  An overlay's
+        # key is not in ``at`` -- no view of this document declares it, which is what
+        # makes it an overlay -- so the pointer has to be built, and this passed
+        # ``pointer`` itself.  At a ROOT that is ``""``, which ``Refusal`` renders
+        # ``/``, so a refusal :func:`_reused` raises for one property was reported
+        # against the whole document: measured on
+        # ``core/product-signal-targeting-option.json``, whose ``signal_ref`` re-uses a
+        # field whose type the base module imports rather than declares, and which
+        # ``tests/test_emit_product.py`` caught as the one refusal left at ``/`` after
+        # every other one had moved inside its document.
+        reuse[key] = _reused(
+            key, inherited_fields, inherited_from, f"{pointer}/properties/{key}", mod
+        )
         own[key] = dict(inherited[key])
 
     decided = fields(

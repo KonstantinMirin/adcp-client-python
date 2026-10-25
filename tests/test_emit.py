@@ -5294,12 +5294,13 @@ def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
     assert "Traceback" not in done.stderr, done.stderr
     assert done.returncode == 1, (done.returncode, done.stdout, done.stderr)
     assert "refused no.json" in done.stdout, done.stdout
-    # ``on required:`` and not ``on allOf:``: step 4's row claims this root now, so
-    # the walk reaches the conjunct and names the keyword that actually stopped it --
-    # a ``required``-only conjunct, which has no base to subclass and no properties to
-    # declare.  The fixture still refuses, which is all this test needs; the keyword
-    # moves with whichever row claims the root, and the comment above says so.
-    assert "on required:" in done.stdout, done.stdout
+    # ``on type:`` and not ``on allOf:``: step 4's row claims this root, so the walk
+    # reaches the conjunct and names the keyword that actually stopped it -- here the
+    # conjunct's own ``type``, because a conjunction of ``object`` and ``string`` admits
+    # no instance.  It read ``on required:`` while ``_STOPS_EMITTING`` was a
+    # ``required``-only conjunct, and ``salesagent-j3k2l.43`` lowered that as section 2's
+    # requiredness overlay; the fixture moved with it, for the reason stated there.
+    assert "on type:" in done.stdout, done.stdout
     assert (into / "ok.py").exists()
     assert not (into / "no.py").exists()
 

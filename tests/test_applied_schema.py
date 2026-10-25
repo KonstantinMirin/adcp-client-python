@@ -282,6 +282,26 @@ def test_the_only_fact_conjoined_at_a_constrained_node_is_its_object_type() -> N
     assert added == {"type": {"'object'"}}, added
 
 
+#: Nodes the root constrains to an object that ALSO constrain themselves, so the
+#: enclosing ``type`` adds nothing and this test's bare-versus-applied contrast has no
+#: content at them.  Excluded by NAME rather than derived from the assertion that would
+#: fail, because deriving it from that assertion makes the loop grade its own filter.
+#:
+#: The three are ``core/canonical-media-buy-action.json``'s branches, which emit since
+#: ``salesagent-j3k2l.43``: each one is ``{"allOf": [{"$ref":
+#: core/canonical-media-buy-action-fields.json}], "properties", "required"}``, and that
+#: target's own root states ``type: object`` -- so the branch node refuses a string on
+#: its own, before anything enclosing it is applied.  Measured directly:
+#: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False``.
+ALREADY_AN_OBJECT_ITSELF = frozenset(
+    {
+        "core/canonical-media-buy-action.json#/oneOf/0",
+        "core/canonical-media-buy-action.json#/oneOf/1",
+        "core/canonical-media-buy-action.json#/oneOf/2",
+    }
+)
+
+
 def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_admits() -> None:
     """End to end on the committed tree: the classes this made possible.
 
@@ -296,13 +316,22 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
     """
     import test_emit  # the tree reader, one reading for the whole suite
 
-    rows = [
+    constrained = [
         g
         for g in test_emit.graded()
         if isinstance(g.model, type)
         and issubclass(g.model, AdCPBaseModel)
         and g.ref.pointer.lstrip("#")
         in bundle.constrained_to_object(bundle.read(BUNDLE, g.ref.document))
+    ]
+    # The exclusion is asserted to BITE and to be drawn from the set it narrows, so a
+    # stale entry is an allowlist nobody can shrink and reddens here instead.
+    reached = {f"{g.ref.document}{g.ref.pointer}" for g in constrained}
+    assert ALREADY_AN_OBJECT_ITSELF <= reached, sorted(ALREADY_AN_OBJECT_ITSELF - reached)
+    rows = [
+        g
+        for g in constrained
+        if f"{g.ref.document}{g.ref.pointer}" not in ALREADY_AN_OBJECT_ITSELF
     ]
     # The pairs at a constrained node, non-empty -- the per-row loop below is the
     # obligation and 35 was the number of rows one emitted tree gave it.  WHICH
@@ -334,14 +363,6 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
         "core/canonical-account-ref.json",
         "core/canonical-reporting-commitment.json",
         "media-buy/acceptance-policy-requirement.json",
-        # One more since `salesagent-j3k2l.43`: a composition merges by intersection
-        # (section 2), so the restatement of `task` at `/oneOf/0/properties/task` that
-        # the old merge rule refused -- it stated an `enum` where the base stated
-        # `enum` and `type` -- is now the intersection, and the document emits.  Its
-        # root constrains the instance to an object and its three BRANCH classes sit
-        # at nodes that root constrains, so it joins this population.  What the
-        # refusal means is unchanged and the per-row loop below grades every one.
-        "core/canonical-media-buy-action.json",
     }
     for g in rows:
         bare = _node(bundle.read(BUNDLE, g.ref.document), g.ref.pointer.lstrip("#"))
