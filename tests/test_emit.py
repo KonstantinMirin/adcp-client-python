@@ -56,6 +56,7 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter, Valid
 
 from adcp.types._base import (
     AdCPBaseModel,
+    applied_schema,
     BranchDispatchMixin,
     REGEX_ENGINE,
     SchemaRef,
@@ -66,6 +67,7 @@ from codegen import bundle, compiler, emit, harness
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.lower import const as lower_const
+from codegen.lower import enum as lower_enum
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.harness import (
@@ -85,6 +87,8 @@ from codegen.harness import (
     violated_keywords,
 )
 from codegen.lower import rules
+
+from nodeset import claimed, partitions, ratchet
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -285,61 +289,94 @@ def pagination() -> Graded:
 # the population and the arithmetic over it
 # --------------------------------------------------------------------------- #
 def test_the_population_is_the_one_the_step_is_stated_over() -> None:
-    """A verdict read off a population nobody counted is a verdict over however
-    many documents there turned out to be, including none.
+    """A verdict read off a set of nodes nobody named is a verdict over however many
+    documents there turned out to be, including none.
 
-    **The bundle's size is read from the bundle**, never written here: it is a
-    property of the bundle version and the directory is an argument (D11), so a
-    literal total would be an assertion about one checkout of one version.  What
-    IS pinned is this step's own population, because that is the denominator the
-    step's result is stated over -- a silent change to the selectors would
-    otherwise move the result without moving any number anyone reads.
+    **No selector's SIZE is asserted here, and that is the correction.**  A size is one
+    bundle version's reading of a set every emitting row moves: a row that takes a
+    document from one row's ground to another's moves two of these totals at once while
+    leaving untouched the thing the check exists for.  Section 8 asks for the set, so
+    the set is what is asserted:
+
+    * each selector names a NON-EMPTY set drawn from the bundle's own portable set, so
+      no assertion over one of them holds vacuously;
+    * ``population()`` is EXACTLY the union of the seven selectors, derived here rather
+      than restated, so a selector that stops contributing to the denominator reddens;
+    * the overlap is asserted as the FACT it is -- the union is strictly smaller than
+      the sum of the parts, so a reader cannot add the selectors up -- rather than as
+      one version's count of each intersection;
+    * the two small selectors are named member by member, because a set of names unions
+      with another row's addition where a total collides with it;
+    * every selector's anchor document, by name.
     """
-    whole = bundle.portable(BUNDLE)
-    assert len(leaves()) == 85
-    assert len(referencing()) == 249
-    assert len(enums()) == 535
-    # 301 and not 287: ``composes_at_the_root`` reads "a union beside the allOf"
-    # through ``union_root`` now, so a root carrying ``allOf`` beside a
-    # PRESENCE-ONLY ``anyOf`` is step 4's rather than nobody's -- 14 documents that
-    # both this row and step 5's used to refuse.
-    assert len(composing()) == 301
-    # Not the sum: the selectors OVERLAP, and the overlaps are counted below
-    # rather than assumed.  The union is the denominator; no selector here is a
-    # ROW for another's shape, so nothing is counted twice by the table.
-    assert len(population()) == 991
-    assert set(population()) < set(whole), "the step's population is not a part of the bundle"
-    assert PAGINATION in leaves()
-    assert "error-details/creative-revision-content-mismatch.json" in referencing()
-    assert "enums/match-type.json" in enums()
-    # The selectors overlap, and the overlap is counted rather than assumed: the
-    # union is smaller than the sum, so a reader cannot add 85 + 249 + 535.
-    assert len(set(leaves()) & set(enums())) == 26
-    assert len(set(referencing()) & set(enums())) == 94
-    # 126 and not 156: ``union_root`` now yields the 30 roots whose combinator holds
-    # ``required`` GROUPS to the object row, because those are rules and not unions
-    # (step 7, and ``test_step_sevens_population_reaches_the_object_row_and_no_other``).
-    assert len(union_roots()) == 126
-    assert "core/signal-id.json" in union_roots()
+    whole = claimed("bundle.portable", bundle.portable(BUNDLE))
+    selectors = {
+        "leaves": claimed("leaves", leaves(), inside=whole),
+        "referencing": claimed("referencing", referencing(), inside=whole),
+        "enums": claimed("enums", enums(), inside=whole),
+        # ``composes_at_the_root`` reads "a union beside the allOf" through
+        # ``union_root``, so a root carrying ``allOf`` beside a PRESENCE-ONLY ``anyOf``
+        # is step 4's ground rather than nobody's.
+        "composing": claimed("composing", composing(), inside=whole),
+        # ``union_root`` does NOT yield a root whose combinator holds ``required``
+        # GROUPS: those are rules and not unions, and they are step 7's (see
+        # ``test_step_sevens_population_reaches_the_object_row_and_no_other``).
+        "union_roots": claimed("union_roots", union_roots(), inside=whole),
+        "container_roots": claimed("container_roots", container_roots(), inside=whole),
+        "object_rules": claimed("object_rules", object_rules(), inside=whole),
+    }
+
+    # The denominator is the union of the seven and nothing else.  Asserted against the
+    # seven named sets rather than against a total, so dropping a selector from
+    # ``population`` reddens here with the dropped documents named.
+    assert claimed("population", population(), inside=whole) == set().union(*selectors.values())
+    assert set(population()) < whole, "the step's population is not a part of the bundle"
+    # The selectors OVERLAP by design -- a leaf object with an inline enum is step 1's
+    # and step 3's alike -- and that is the fact, not any one intersection's size: the
+    # union is strictly smaller than the sum, so the selectors cannot be added up.
+    assert len(population()) < sum(len(s) for s in selectors.values())
+    assert selectors["leaves"] & selectors["enums"]
+    assert selectors["referencing"] & selectors["enums"]
+
+    assert PAGINATION in selectors["leaves"]
+    assert "error-details/creative-revision-content-mismatch.json" in selectors["referencing"]
+    assert "enums/match-type.json" in selectors["enums"]
+    assert "core/signal-id.json" in selectors["union_roots"]
     # 0 union roots carry BOTH keywords, so the keyword the lowering reads is unambiguous
-    # for every document the selector claims.
+    # for every document the selector claims.  The set it ranges over is named
+    # non-empty above, so this empty part is empty over a real set of nodes.
     assert [
         d
         for d in union_roots()
         if {"oneOf", "anyOf"} <= set(bundle.read(BUNDLE, d))
         and all(isinstance(bundle.read(BUNDLE, d)[k], list) for k in ("oneOf", "anyOf"))
     ] == []
-    # 9 and not the 37 this lane measured alone: ``is_container_root`` now excludes a
-    # root that declares a union as well, because 28 of its 32 mapping roots do and
-    # the union row owns them.  5 arrays and 4 mappings are left.
-    assert len(container_roots()) == 9
-    assert "core/ext.json" in container_roots()
+    # ``is_container_root`` excludes a root that declares a union as well, because most
+    # of the bundle's mapping roots do and the union row owns them.  Named rather than
+    # counted: which documents the container row claims is the fact a later row moves,
+    # and a name says which one moved where a count says only that one did.
+    assert selectors["container_roots"] == {
+        "core/acceptance-policy-profile-ids.json",
+        "core/context.json",
+        "core/creative-assets.json",
+        "core/ext.json",
+        "core/forecast-point-dimensions.json",
+        "core/product-change-map.json",
+        "core/reporting-verification-profile-set.json",
+        "media-buy/product-fields.json",
+        "media-buy/product-refinement.json",
+    }
     # Step 6's population only GROWS the named set, which is what makes the earlier
-    # steps' floor structurally safe rather than re-measured: a container root is
-    # neither a leaf object nor a referencing one, so no document stops being named.
-    assert not set(container_roots()) & (set(leaves()) | set(referencing()))
-    assert len(object_rules()) == 5
-    assert "core/budget-range.json" in object_rules()
+    # steps structurally safe rather than re-measured: a container root is neither a
+    # leaf object nor a referencing one, so no document stops being named.
+    assert not selectors["container_roots"] & (selectors["leaves"] | selectors["referencing"])
+    assert selectors["object_rules"] == {
+        "core/budget-range.json",
+        "core/demographic-age-range.json",
+        "core/forecast-range.json",
+        "core/webhook-challenge-response.json",
+        "media-buy/proposal-budget-constraint.json",
+    }
 
 
 def test_step_sevens_population_reaches_the_object_row_and_no_other() -> None:
@@ -693,46 +730,63 @@ def test_no_instrument_is_admitted_only_where_a_measured_position_explains_it() 
 #: the 6 of them that are CLASSES are 6 pairs that no longer exist.  The other 4 are
 #: enumerations, which carry no ``__adcp_schema__`` and were never pairs -- which is why
 #: this moves by 6 against that row's 10 and the two numbers are different senses.
-PAIRS_PIN = 1079
-#: Measured: 1,074 pass, and the five that do not are named in
-#: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.  The
-#: ``comparison:model_drops_a_fact`` group is GONE rather than smaller, which is
-#: ``salesagent-j3k2l.28``'s exit: ``added``, ``missing`` and ``differs`` are all 0.
-OUTCOME_PINS: dict[str, int] = {
-    "pass": 1077,
-    "no_instrument": 2,
+#: 1079 -> 1090 at ``salesagent-j3k2l.21``: eleven more documents emit, each at
+#: least one pair, and the StrEnum that row removed from
+#: ``error-details/accessibility-violation.json`` took no pair with it -- an
+#: enumeration carries no ``__adcp_schema__`` and was never one.
+#: A FLOOR and not an equality, and the direction is the reason.  Every emitting row
+#: ADDS pairs -- a document that lowers brings its own nested ones -- so an equality
+#: here is red on two branches at once with two different correct values, which is
+#: exactly the collision ``salesagent-j3k2l.47`` converted.  What a floor still refuses
+#: is the failure this number exists for: a class that stopped carrying
+#: ``__adcp_schema__``, or a document that stopped being emitted, takes the count DOWN.
+#: The history of the equality, kept because each move names a cause: 1055 -> 1085
+#: (.28, three refusals gone), 1085 -> 1079 (.38, D3's dedup collapses 6 class pairs),
+#: 1079 -> 1090 (.21, eleven more documents emit), 1090 -> 1095 (.64, the typed mapping
+#: key: two more documents emit and each brings its mapping's nested value classes).
+PAIRS_FLOOR = 1095
+#: **Every pair that is not ``pass``, BY NAME, and written once.**  Two tests read it:
+#: the totals test derives its ``pass`` figure as the complement, and
+#: ``test_the_non_pass_pairs_are_named_and_attributed`` asserts the membership and
+#: attributes each one.  A count of five told the next reader nothing about which five
+#: or why; a name says which, and two readings of one named set cannot drift apart the
+#: way ``PAIRS_PIN`` and ``OUTCOME_PINS`` could.
+#:
+#: Two groups are GONE rather than smaller.  ``comparison:model_drops_a_fact`` was one
+#: ``description`` each at an ``additionalProperties`` node, closed in the EMITTER by
+#: ``salesagent-j3k2l.28``; ``accepts:model_dropped_a_fact``'s three pairs are EXEMPT
+#: and the exemption is reported (``codegen.dump_exemptions``, and the ``exempt`` census
+#: in the test named above).
+NON_PASS_PAIRS: dict[str, list[str]] = {
+    "no_instrument": [
+        "core/reference-renderer.json#",
+        "core/reference-renderer.json#/properties/provenance",
+    ],
 }
-#: One instance per pair, minus the 2 whose generator could not draw one and the 3
-#: whose DUMP the document refused -- a failing example is reported, not counted.
-#: 38224 -> 38181 and 13715 -> 13709 at ``salesagent-j3k2l.38``: a collapsed class is a
-#: pair whose keywords are no longer compared.  ``URL_TYPED_PIN`` was RE-MEASURED on the
-#: same pass and was unchanged, so it is left where .28 put it rather than re-pointed.
-#: .45's exemption and this row's dedup both move the three figures below, in opposite
-#: directions -- the exemption turns 3 non-pass pairs into passes and the dedup removes
-#: 6 pairs -- so all three were RE-MEASURED on the merged tree rather than picked from
-#: either side or differenced: 1083 -> 1077, 38224 -> 38181, 13715 -> 13709.
-ROUND_TRIPPED_PIN = 1077
-COMPARED_PIN = 38181
-MODEL_FACTS_PIN = 13709
-#: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND BOTH ARE NOW GREEN.**  Zero is the
-#: specification's symmetric comparison -- a fact the model adds reddens and a fact it
-#: drops reddens -- and it was pinned here while ``MISSING_PIN`` was RED, because
-#: re-pointing a pin at the measurement is what salesagent-j3k2l.28 said not to do.
-#: That row closed it: ``added``, ``missing`` and ``differs`` are 0 over all 1,079
-#: pairs, against 0 / 2 / 0 at ``760e898c6`` and 0 / 10 / 13 when .28 was filed.  The
-#: last 2 were one ``description`` each at an ``additionalProperties`` node, where an
-#: annotation on a container's CONTENTS had no carrier.
+#: **PINNED AT ZERO ON PURPOSE AND BOTH ARE GREEN.**  Zero is the specification's
+#: symmetric comparison -- a fact the model adds reddens and a fact it drops reddens --
+#: and a zero does not collide between rows the way a census does.  It was pinned here
+#: while ``MISSING_PIN`` was RED, because re-pointing a pin at the measurement is what
+#: salesagent-j3k2l.28 said not to do; that row closed it.  The zeros are only
+#: meaningful over a non-empty comparison, which the totals test asserts PER PAIR
+#: rather than as a sum of ``compared``.
 MISSING_PIN = 0
 DIFFERS_PIN = 0
-URL_TYPED_PIN = 1328
-NO_PAYLOAD_PIN = 2
-#: Which perturbation ``refusing_payload`` reached, counted by its first word.
-#: A partition and not a total: which one bites is a property of the DOCUMENT's own
-#: root shape, so a shift here says the population's roots moved.
-#: 610/473/2 -> 605/472/2 at ``salesagent-j3k2l.38``, and it is the partition moving with
-#: the pair count rather than the root shapes moving: 5 collapsed classes were reached by
-#: ``drops`` and 1 by ``replaces``, and the three still sum to ``PAIRS_PIN``.
-LIVENESS_PINS: dict[str, int] = {"drops": 605, "replaces": 472, "": 2}
+#: The pairs whose LIVENESS check has no payload, by name.  Written once and read by the
+#: two tests that need it, so ``pass`` is the complement of a named set rather than an
+#: arithmetic over two pins.  These are the same two pairs ``NON_PASS_PAIRS`` names and
+#: the coincidence is not asserted: "the accepts check drew no instance" and "the pair's
+#: verdict is ``no_instrument``" are two statements about one cause, and a row that
+#: separates them should redden in one place and not both.
+#: Section 8's one-way invariant, as a floor: "a step adds roots to
+#: ``BranchDispatchMixin``; no step removes one."  38 before the alias dispatch, 38
+#: after it, 38 after D2's Literal amendment -- and the reason it never moved is that
+#: no row had yet added a base, not that an addition would be wrong.
+UNION_BASE_FLOOR = 38
+NO_PAYLOAD_PAIRS: tuple[str, ...] = (
+    "core/reference-renderer.json#",
+    "core/reference-renderer.json#/properties/provenance",
+)
 
 
 @functools.cache
@@ -775,10 +829,7 @@ def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for()
     excused = sorted(
         f"{g.ref.document}{g.ref.pointer}" for g, r in reports if r.liveness.outcome == "no_payload"
     )
-    assert excused == [
-        "core/reference-renderer.json#",
-        "core/reference-renderer.json#/properties/provenance",
-    ], excused
+    assert excused == sorted(NO_PAYLOAD_PAIRS), excused
     # Read off the reports rather than off the list: each one is a pair whose accepts
     # check could not DRAW, and the liveness result says exactly that.
     for g, r in reports:
@@ -1257,8 +1308,12 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
       selects that type, asserted on the AST by the type's import being present
       and by no ``json_schema_extra`` carrying that format in the same module --
       so the fact lives in exactly one place;
-    * every other format rides as an annotation on the node's own scalar type,
-      so the first side cannot be satisfied by dropping the format.
+    * every other format rides on the node's own scalar type, so the first side
+      cannot be satisfied by dropping the format.  WHERE it rides is the POSITION's
+      answer and not the format's: ``json_schema_extra`` on the field, or -- at an
+      ELEM, a MAPV or a union BRANCH, which have no field -- a named alias in
+      ``adcp.types.constraints``.  Both are asserted, because either one dropped is
+      a model wider than its document and silently so.
 
     And in both cases the format reaches the model's OWN schema, asserted site by
     site against the document, which is where the schema comparison grades it.
@@ -1268,9 +1323,11 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     (334 sites: ``date-time`` 190, ``uri`` 131, ``date`` 5, ``email`` 5, ``hostname`` 3),
     because that is the denominator the rule is stated over.  Re-measured at
     64131600f (``salesagent-j3k2l.29``): every count here is over the documents
-    ``graded()`` names, so each one moved as the emitted population grew, and
-    ``hostname`` is a format the census did not use to see at all -- it has no
-    ``FORMAT_TYPES`` row, so its 3 sites ride the second arm below.
+    ``graded()`` names, so each one moved as the emitted population grew.  Two
+    formats have no ``FORMAT_TYPES`` row and so ride the second arm below:
+    ``hostname``, at 3 array ELEMENTS, and ``uri-template``, on one branch of
+    ``core/macro-bearing-url.json``'s root union -- and both of those are positions
+    with no field, so both are carried by a named alias (``salesagent-j3k2l.41``).
     """
     checked = emit.asserted_formats(bundle.read(BUNDLE, PAGINATION))
     # The two dependencies `pyproject` names are what put these in the draft's
@@ -1330,7 +1387,15 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             # ``format``), so the format selects the type of the arm that defines it
             # and the ``null`` arm takes none of it.  Asserted over the arms, which is
             # what the emitter actually reads.
-            kinds = node["type"] if isinstance(node["type"], list) else [node["type"]]
+            # **A node stating a format and NO type takes the type the document
+            # APPLIES to it**, which is what the emitter reads: a branch of a root
+            # union sees the root's ``type`` (``lower.union.applied_type``, over
+            # ``_base.applied_schema``).  Read any other way this raised ``KeyError``
+            # on ``core/macro-bearing-url.json``'s three branches, whose own nodes
+            # state a format and a pattern and nothing else -- latent until that
+            # document emitted.
+            applied = applied_schema(bundle.read(BUNDLE, document), pointer).get("type")
+            kinds = applied if isinstance(applied, list) else [applied]
             assert [k for k in kinds if k != "null"], (document, pointer, kinds)
             assert all(k in emit.SCALAR or k == "null" for k in kinds), (
                 document,
@@ -1344,7 +1409,26 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             # unimported.
             choose = emit.FORMAT_TYPES.get(fmt) if fmt in checked else None
             if choose is None:
-                assert fmt in annotated_formats, (document, pointer, fmt)
+                # **Where no type is selected, section 5's ``format`` row has TWO
+                # answers and the position decides which.**  On a FIELD the format
+                # rides as ``json_schema_extra``; at a position with no field of its
+                # own -- an ELEM, a MAPV, a union BRANCH -- a named alias in
+                # ``adcp.types.constraints`` carries it, because a
+                # ``json_schema_extra`` written on the field holding a union would
+                # state the branch's format for every other branch too.  The alias
+                # NAME is asked of the production function rather than spelled here,
+                # so the two cannot disagree about what the module declares; the
+                # constraints are read off the node for the same reason the name is a
+                # function of the whole shape.
+                stated_constraints = {k: node[k] for k in compiler.CONSTRAINTS if k in node}
+                word = next(k for k in kinds if k != "null")
+                alias = constraints_module.symbol(word, stated_constraints, format=fmt)
+                assert fmt in annotated_formats or (constraints_module.MODULE, alias) in imported, (
+                    document,
+                    pointer,
+                    fmt,
+                    alias,
+                )
             else:
                 selected = choose(node)
                 module, name = selected.rsplit(".", 1)
@@ -1352,9 +1436,15 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert fmt not in annotated_formats, (document, pointer, fmt)
                 arms.setdefault(fmt, set()).add(name)
 
-    # Re-measured at ``salesagent-j3k2l.28``: ``date-time`` 190 -> 194 and ``uri``
-    # 131 -> 133, over the 14 documents the three closed refusals let emit.
-    assert seen == {"date-time": 194, "uri": 133, "date": 5, "email": 5, "hostname": 3}, seen
+    # WHICH formats the population reaches, as the set of format names, with every one
+    # of them non-empty so no row of the table above is graded by a loop that met none
+    # of it.  The per-format COUNT is not asserted: it is the number of positions one
+    # emitted tree states a format at, and every row that makes a document emittable
+    # moves two or three of these at once -- ``date-time`` went 190 -> 194 -> 196 and
+    # ``uri`` 131 -> 133 -> 135 over two rows, each a correct move, neither predictable
+    # from the other.
+    assert set(seen) == {"date-time", "uri", "date", "email", "hostname", "uri-template"}, seen
+    assert all(seen.values()), seen
     # The excluded population, named and sized -- and it is SIX sites, not the one
     # that reddened.  **The other five were passing by accident**, which is the finding:
     # the import assertion is MODULE-wide, so a conditional-position ``uri`` in a module
@@ -1362,7 +1452,11 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     # ``si-ui-element.json``'s ``/allOf/1/then/properties/data/properties/url`` is the
     # one with no neighbour to carry it, so it is the one that showed when the document
     # emitted (``salesagent-j3k2l.28``).
-    assert conditional == {"uri": 5, "date-time": 1}, conditional
+    # The excluded set, named by its formats and asserted non-empty, for the same
+    # reason: the finding is that a conditional position is excluded AT ALL and which
+    # formats reach one, not how many sites there are in this tree.
+    assert set(conditional) == {"uri", "date-time"}, conditional
+    assert all(conditional.values()), conditional
     # **BOTH arms of D5's `uri` row are reached by this population**, so neither is
     # graded by an empty loop: of the 131 `uri` sites, 15 state a `^https://` pattern
     # and take `AdCPUrl` (across 12 documents, `core/platform-extension-ref.json`
@@ -1382,7 +1476,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     # roots it graded 14 of the 18 census sites above, and the 4 it missed are the ones
     # step 5 added: a union root has no properties of its own, so every format in one of
     # those documents is on a BRANCH class, whose pointer is not ``#``.
-    stated = 0
+    stated: set[tuple[SchemaRef, str]] = set()
     for g in graded():
         doc = schema_at(g.ref)
         emitted = _model_schema(g.model)
@@ -1391,8 +1485,13 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 continue
             mine = _rendered(emitted, key, g.model)
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
-            stated += 1
-    assert stated == 333, stated  # 326 -> 333 at salesagent-j3k2l.28
+            stated.add((g.ref, key))
+    # The set of (pair, property) positions the loop graded, named and non-empty rather
+    # than counted.  The count moved at every row that made a document emittable --
+    # 326 -> 333 -> 334 over three of them -- and each move was a correct one, so an
+    # equality here refuses the work it is supposed to be grading.  What it has to
+    # refuse instead is a loop that graded nothing, which is what this says.
+    claimed("graded properties that state a format", stated)
 
 
 def _model_schema(model: Any) -> dict:
@@ -1589,7 +1688,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (76, 397), distinct
+    claimed("patterns stated by a graded document", distinct)
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -1619,12 +1718,19 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
                 where = diverges
         where[pattern] = sites
 
-    # Re-measured at 64131600f (``salesagent-j3k2l.29``): the census is over the
-    # documents ``graded()`` names, so all four counts moved with the emitted
-    # population.  The SHAPE of the finding did not move at all -- see below.
-    assert (len(no_build), sum(no_build.values())) == (4, 17), no_build
-    assert (len(diverges), sum(diverges.values())) == (65, 353), diverges
-    assert (len(agrees), sum(agrees.values())) == (7, 27), agrees
+    # The three buckets PARTITION the patterns the graded documents state, which is
+    # what a census of each one was standing in for: the census moved with the emitted
+    # population at every row that added a document, while the shape of the finding did
+    # not move at all.  So the shape is what is asserted -- every pattern is in exactly
+    # one bucket, each bucket is non-empty, and no pattern's SITES are lost on the way
+    # into a bucket, which is the second denominator this check reports.
+    partitions(distinct, no_build=no_build, diverges=diverges, agrees=agrees)
+    claimed("patterns the default engine refuses to build", no_build)
+    claimed("patterns the two engines disagree on", diverges)
+    claimed("patterns the two engines agree on", agrees)
+    assert sum(no_build.values()) + sum(diverges.values()) + sum(agrees.values()) == sum(
+        distinct.values()
+    ), (no_build, diverges, agrees)
     # **Every pattern that diverges carries a `$`, and the 7 that agree do not
     # contradict that.**  The previous revision said "the one that agrees is the one
     # with no `$` to disagree about", which was a true statement about a population
@@ -1648,7 +1754,8 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
         sorted(agrees),
         {p: consumed[p] for p in agrees},
     )
-    assert len([p for p in agrees if "$" in p]) == 2, sorted(agrees)
+    # ... and that set is non-empty, so the equality above is not two empty lists.
+    assert [p for p in agrees if "$" in p], sorted(agrees)
 
 
 def test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class() -> None:
@@ -1667,23 +1774,26 @@ def test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class() -> No
     and with the document asked each time -- so this cannot pass by asserting
     what the model happens to do.
     """
-    aliases = [g for g in graded() if not isinstance(g.model, type)]
-    assert aliases, "no alias was graded"
-    with_pattern = 0
-    for g in aliases:
+    aliases = claimed("aliases the tree carries", [g.ref for g in graded() if not isinstance(g.model, type)])
+    with_pattern: set[SchemaRef] = set()
+    for g in graded():
+        if isinstance(g.model, type):
+            continue
         doc = schema_at(g.ref)
         pattern = doc.get("pattern")
         if not isinstance(pattern, str):
             continue
-        with_pattern += 1
+        with_pattern.add(g.ref)
         value = _matching(pattern)[0].rstrip("\n") + "\n"
         jsonschema.Draft7Validator(
             doc, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
         ).validate(value)  # the document admits it
         assert g.accept(value) == value, (g.ref, value)  # and so does the alias
-    # Re-measured at 64131600f (``salesagent-j3k2l.29``): 9 of the 17 aliases the tree
-    # carries state a pattern.  A count over ``graded()``, so it moves with the tree.
-    assert with_pattern == 9, with_pattern
+    # The set of aliases that state a pattern, named as a set and asserted non-empty
+    # rather than counted: how MANY of them there are is a property of the emitted tree
+    # that every row adding an alias moves, while "at least one alias was graded by the
+    # loop above" is the thing that keeps the loop from passing over nothing.
+    claimed("graded aliases that state a pattern", with_pattern, inside=aliases)
 
 
 @functools.lru_cache(maxsize=None)
@@ -1768,36 +1878,75 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     Read off :func:`graded_reports`, which grades the population ONCE for the three
     tests that need a total.
     """
-    reports = [r for _, r in graded_reports()]
-    assert len(reports) == PAIRS_PIN, len(reports)
-    by_outcome = collections.Counter(r.outcome for r in reports)
-    assert dict(by_outcome) == OUTCOME_PINS, dict(by_outcome)
-    # One instance per pair at the default depth.  Spelled as the arithmetic rather
-    # than as a bare number, so the pin and the outcome partition above are two
-    # readings of one fact and cannot drift apart: a pair whose generator could not
-    # draw and a pair whose dump the document refused both round-trip nothing.
-    assert ROUND_TRIPPED_PIN == PAIRS_PIN - OUTCOME_PINS["no_instrument"] - OUTCOME_PINS.get(
-        "accepts:model_dropped_a_fact", 0
+    pairs = {f"{g.ref.document}{g.ref.pointer}": r for g, r in graded_reports()}
+    assert len(pairs) == len(graded_reports()), "two reports under one pair name"
+    reports = list(pairs.values())
+    claimed("graded pairs", pairs)
+    ratchet(
+        "graded pairs",
+        len(reports),
+        at_least=PAIRS_FLOOR,
+        because="an emitting row only ADDS pairs; a drop means a class stopped carrying "
+        "__adcp_schema__ or stopped being emitted, which is never this suite's intent",
     )
-    assert sum(r.graded_instances for r in reports) == ROUND_TRIPPED_PIN
-    assert sum(r.comparison.compared for r in reports) == COMPARED_PIN
-    assert sum(r.comparison.model_facts for r in reports) == MODEL_FACTS_PIN
+
+    # THE OUTCOME PARTITION, derived from the NAMED non-pass set rather than from a
+    # second count of it: every pair is ``pass`` or is one of the pairs
+    # ``NON_PASS_PAIRS`` names, the ``pass`` figure is the complement, and a pair
+    # joining or leaving the group reddens with the DOCUMENT named instead of moving
+    # two integers nobody can attribute.
+    by_outcome = collections.Counter(r.outcome for r in reports)
+    assert set(by_outcome) == {"pass"} | set(NON_PASS_PAIRS), dict(by_outcome)
+    assert {k: n for k, n in by_outcome.items() if k != "pass"} == {
+        k: len(v) for k, v in NON_PASS_PAIRS.items()
+    }, dict(by_outcome)
+    assert by_outcome["pass"] == len(reports) - sum(len(v) for v in NON_PASS_PAIRS.values())
+    # One instance per pair at the default depth, so the round-tripped total is the
+    # complement of the named non-pass set and not a number of its own: a pair whose
+    # generator could not draw and a pair whose dump the document refused both
+    # round-trip nothing.
+    assert sum(r.graded_instances for r in reports) == len(reports) - sum(
+        len(v) for v in NON_PASS_PAIRS.values()
+    )
+
+    # THE COMPARISON, graded by its own denominator PER PAIR rather than by a total.
+    # The three zeros below are the specification's symmetric comparison and they are
+    # free for any pair that compared nothing, so what has to be asserted is that no
+    # pair compared nothing -- which is stronger than any sum of ``compared``, and does
+    # not move when a row adds a document.
+    assert [name for name, r in pairs.items() if r.comparison.compared == 0] == []
+    # ``added`` is the other direction and its denominator is the MODEL's own facts,
+    # which not every pair has -- an enumeration and an alias state none -- so this is
+    # the named set of the pairs that do, asserted non-empty rather than summed.
+    claimed(
+        "pairs whose model states a fact of its own",
+        {name for name, r in pairs.items() if r.comparison.model_facts},
+        inside=set(pairs),
+    )
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
     assert sum(len(r.comparison.missing) for r in reports) == MISSING_PIN
     assert sum(len(r.comparison.differs) for r in reports) == DIFFERS_PIN
-    # D5's URL-type rows, the one category that excuses a fact the model does not
-    # state: 37 `minLength: 1` (every URL type renders it), `maxLength: 2083`
-    # (`HttpUrl` renders it), and the ONE `pattern` the bundle states on a
-    # `format: uri` node -- `core/platform-extension-ref.json`, which is also the
-    # one position on the `AdCPUrl` arm and so the one with no `maxLength`.
-    # A position inside a nested class is graded twice, at its own pair and at its
-    # parent's, so it is larger than the annotation sites the tree has.
-    assert sum(len(r.comparison.url_typed) for r in reports) == URL_TYPED_PIN
-    # The one refused payload per pair, partitioned by the fact it broke.  A
-    # partition and not a total, because the three perturbations are tried in order
-    # and which one bites is a property of the DOCUMENT: a shift here means the
-    # population's root shapes moved, which is a fact worth reading.
-    assert dict(collections.Counter(r.liveness.how.split(" ")[0] for r in reports)) == LIVENESS_PINS
+    # D5's URL-type rows, the one category that excuses a fact the model does not state.
+    # The claim is WHICH facts it excuses, so that is what is asserted: a URL type
+    # renders ``minLength: 1`` and ``HttpUrl`` renders ``maxLength: 2083``, and the
+    # bundle states one ``pattern`` on a ``format: uri`` node.  A total of them says
+    # nothing about which keyword was excused, and it grows with every added document.
+    excused = claimed(
+        "facts excused as a URL type's own rendering",
+        {line.split(": ", 1)[0].rsplit("/", 1)[1] for r in reports for line in r.comparison.url_typed},
+    )
+    assert excused == {"minLength", "maxLength", "pattern"}, sorted(excused)
+    # The one refused payload per pair, partitioned BY NAME on the fact it broke.  A
+    # partition and not three totals, because which perturbation bites is a property of
+    # the DOCUMENT's own root shape: a pair moving between these groups is a fact worth
+    # reading and a count cannot say which pair moved.
+    how = collections.defaultdict(set)
+    for name, r in pairs.items():
+        how[r.liveness.how.split(" ")[0] or "no_payload"].add(name)
+    partitions(pairs, **how)
+    assert set(how) == {"drops", "replaces", "no_payload"}, sorted(how)
+    for group in how.values():
+        claimed("a liveness perturbation group", group, inside=set(pairs))
 
 
 #: **The format-beside-pattern census over the bundle, and the undrawable population
@@ -1809,11 +1958,12 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
 #: deliberately far apart: 73 positions state the two keywords together and 72 of them
 #: DRAW.  73 is section 6's own figure -- "the bundle states eight distinct patterns
 #: across 73 of its 300 ``uri`` uses" -- read here off the harness rather than carried.
-FORMAT_PATTERN_POSITIONS_PIN = 73
-FORMAT_PATTERN_DOCUMENTS_PIN = 47
-FORMAT_PATTERN_SHAPES_PIN = 8
-UNDRAWABLE_SHAPES_PIN = 1
-UNDRAWABLE_POSITIONS_PIN = 1
+#: The four censuses that used to be pinned here -- positions, documents, shapes and
+#: undrawable positions -- are REDUNDANT with the facts the test asserts as sets: the
+#: format is ``uri`` at every position, the undrawable shape is exactly one and is named
+#: with its pattern, and the one undrawable position is named with its document and
+#: pointer.  A count of each added nothing those names do not say and went stale against
+#: a bundle version instead.
 #: The one position, by document and pointer, and the pattern that makes it undrawable.
 UNDRAWABLE_POSITION = (
     "core/reference-renderer.json",
@@ -1882,12 +2032,7 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     # pair precedes its root in it.  The membership is the obligation; the order is an
     # artifact of the walk, and asserting it would grade the walk.
     by_outcome = {k: sorted(v) for k, v in by_outcome.items()}
-    assert by_outcome == {
-        "no_instrument": [
-            "core/reference-renderer.json#",
-            "core/reference-renderer.json#/properties/provenance",
-        ],
-    }, by_outcome
+    assert by_outcome == NON_PASS_PAIRS, by_outcome
     # The pairs that pass CONDITIONALLY, by name, with the keyword each one had struck.
     # An exemption is a position in a literal set, so a fourth pair acquiring one is a
     # change to that set and reddens here as well as at its own pin.
@@ -1981,39 +2126,40 @@ def test_no_instrument_is_the_designed_outcome_for_a_measured_shape() -> None:
     position measured here, so the two halves of the decision meet at
     ``UNDRAWABLE_POSITION`` and neither can move alone.
     """
-    docs = {d: bundle.read(BUNDLE, d) for d in bundle.portable(BUNDLE)}
-    assert len(docs) == 1054, len(docs)
+    docs = {d: bundle.read(BUNDLE, d) for d in claimed("bundle.portable", bundle.portable(BUNDLE))}
 
-    # 1. THE CENSUS.
+    # 1. THE CENSUS, as the set of positions rather than as its size: how many of them
+    #    the bundle states is a property of the bundle version, and the facts this
+    #    clause exists for are that the set is not empty and that the format is ``uri``
+    #    at every one of them.
     positions = {
         (document, pointer): node
         for document, doc in sorted(docs.items())
         for pointer, node in harness.format_pattern_positions(doc)
     }
-    assert positions, "the population is empty: this test would grade nothing"
-    assert len(positions) == FORMAT_PATTERN_POSITIONS_PIN, sorted(positions)
-    assert len({d for d, _ in positions}) == FORMAT_PATTERN_DOCUMENTS_PIN
-    shapes = collections.Counter(
-        (node["format"], node["pattern"]) for node in positions.values()
-    )
-    assert len(shapes) == FORMAT_PATTERN_SHAPES_PIN, sorted(shapes)
+    claimed("positions stating format beside pattern", positions)
+    shapes = collections.Counter((node["format"], node["pattern"]) for node in positions.values())
+    claimed("distinct (format, pattern) shapes", shapes)
     assert {fmt for fmt, _ in shapes} == {"uri"}, sorted(shapes)
-    assert sum(shapes.values()) == FORMAT_PATTERN_POSITIONS_PIN
+    # Every position lands in exactly one shape, so no position is lost between the two
+    # readings -- the identity the two censuses were a pair of numbers for.
+    assert sum(shapes.values()) == len(positions)
 
-    # 2. THE DRAW, over the 8 shapes rather than the 73 positions: what decides
-    #    drawability is the pair of keywords, so the shape is the unit and the
-    #    positions are its multiplicity.  Drawn through the production function.
+    # 2. THE DRAW, over the SHAPES rather than the positions: what decides drawability
+    #    is the pair of keywords, so the shape is the unit and the positions are its
+    #    multiplicity.  Drawn through the production function.  The undrawable shape is
+    #    NAMED with its pattern and the drawable ones are the complement, which is the
+    #    clause that makes the exit a shape and not a label: co-occurrence is
+    #    overwhelmingly drawable, so a cause naming co-occurrences would admit a
+    #    ``strategy_error`` from any cause at all.
     cannot: dict[tuple[str, str], tuple[str, ...]] = {}
     for fmt, pattern in shapes:
         why = harness.undrawable_formats({"type": "string", "format": fmt, "pattern": pattern})
         if why:
             cannot[(fmt, pattern)] = why
-    assert len(cannot) == UNDRAWABLE_SHAPES_PIN, sorted(cannot)
-    assert sum(shapes[shape] for shape in cannot) == UNDRAWABLE_POSITIONS_PIN
-    assert sum(shapes[s] for s in shapes if s not in cannot) == (
-        FORMAT_PATTERN_POSITIONS_PIN - UNDRAWABLE_POSITIONS_PIN
-    )
     assert list(cannot) == [("uri", UNDRAWABLE_PATTERN)], sorted(cannot)
+    draws = claimed("shapes that draw", set(shapes) - set(cannot), inside=set(shapes))
+    assert sum(shapes[s] for s in draws) == len(positions) - sum(shapes[s] for s in cannot)
     assert "Unsatisfiable" in cannot[("uri", UNDRAWABLE_PATTERN)][0]
     assert [k for k, n in positions.items() if n["pattern"] == UNDRAWABLE_PATTERN] == [
         UNDRAWABLE_POSITION
@@ -2045,12 +2191,19 @@ def test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for
     its ``__adcp_schema__`` does not resolve to the document it names.
     """
     reports = [r for _, r in graded_reports()]
-    assert sum(1 for r in reports if r.liveness.outcome == "schema_half_not_connected") == 0, [
+    by_outcome: dict[str, set[str]] = {}
+    for g, r in graded_reports():
+        by_outcome.setdefault(r.liveness.outcome, set()).add(f"{g.ref.document}{g.ref.pointer}")
+    assert by_outcome.get("schema_half_not_connected", set()) == set(), [
         (r.name, r.liveness.how, r.liveness.violated) for r in reports
         if r.liveness.outcome == "schema_half_not_connected"
     ]
-    assert sum(1 for r in reports if r.liveness.outcome == "pass") == PAIRS_PIN - NO_PAYLOAD_PIN
-    assert sum(1 for r in reports if r.liveness.outcome == "no_payload") == NO_PAYLOAD_PIN
+    # The live outcomes PARTITION the pairs -- no third one, nothing unaccounted -- and
+    # ``no_payload`` is the NAMED set it is enumerated as rather than a count of 2, so
+    # ``pass`` is the complement and neither has a number of its own to re-point.
+    assert set(by_outcome) == {"pass", "no_payload"}, sorted(by_outcome)
+    assert by_outcome["no_payload"] == set(NO_PAYLOAD_PAIRS), sorted(by_outcome["no_payload"])
+    partitions({f"{g.ref.document}{g.ref.pointer}" for g, _ in graded_reports()}, **by_outcome)
     # The document decided, at every pair: a perturbation nothing bit is never
     # offered to the class, so every payload that reached one violates a keyword the
     # document names.
@@ -2058,13 +2211,20 @@ def test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
-    """D8, over the three cases the population actually contains.
+    """D8, over the FOUR forms a document's ``additionalProperties`` can take here.
 
-    The population is partitioned by what each object node SAYS, derived from the
-    bundle, and each part is required non-empty so none is graded by an empty
-    loop.  The silent part has exactly one member (``core/version-envelope.json``),
-    which is the whole reason the base's own default is asserted here rather than
-    left to follow from 43 classes that state their own.
+    The set of classes is partitioned by what each node's document APPLIES, derived
+    from the bundle, and each part is required non-empty so none is graded by an empty
+    loop.  The silent part is the one the base's own default is asserted for, which is
+    why it is asserted here rather than left to follow from the classes that state it.
+
+    **A TYPED ``additionalProperties`` is the fourth form, and it was not a case here
+    until a document carrying one emitted.**  The check read the applied value through a
+    three-way table of ``false`` / ``true`` / absent, so the day
+    ``core/canonical-media-buy-features.json`` emitted it raised ``TypeError: cannot use
+    'dict' as a dict key`` -- a check that ranged over the forms it happened to have met
+    and had nothing to say about a fourth.  The forms are enumerated now, and an
+    unrecognised one is refused by name rather than used as a dict key.
 
     ``ignore`` and not ``allow`` for the silent case, because absent and ``true``
     are different statements: ``true`` says an additional property is part of the
@@ -2074,7 +2234,8 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
     """
     assert AdCPBaseModel.model_config["extra"] == "ignore"
 
-    counted = {"forbid": 0, "allow": 0, "silent": 0}
+    grouped: dict[str, set[str]] = {"forbid": set(), "allow": set(), "silent": set(), "typed": set()}
+    classes: set[str] = set()
     for row in graded():
         if not (isinstance(row.model, type) and issubclass(row.model, AdCPBaseModel)):
             continue  # an alias and an enumeration have no model config
@@ -2090,7 +2251,19 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
         # one conjunct declares ``additionalProperties: false``.  The class is
         # ``forbid`` and the folded document says ``false``, which agree; the bare node
         # said nothing and this read it as the document permitting what it forbids.
+        name = f"{row.ref.document}{row.ref.pointer}"
+        classes.add(name)
         declared = _closed(_composed(schema_at(row.ref)).get("additionalProperties", "silent"))
+        # The four forms, named: a schema here is the TYPED row, graded in full by
+        # ``test_a_typed_additional_properties_is_a_typed_pydantic_extra``.  What D8
+        # decides for it is the same as for ``true`` -- an additional property is part
+        # of the document and is retained -- so the retention is asserted here and the
+        # typing there.
+        if isinstance(declared, dict):
+            assert row.model.model_config["extra"] == "allow", (row.ref, declared)
+            grouped["typed"].add(name)
+            continue
+        assert declared in (False, True, "silent"), (row.ref, declared)
         want = {False: "forbid", True: "allow", "silent": "ignore"}[declared]
         if declared == "silent" and row.model.model_config["extra"] != "ignore":
             # A class that COMPOSES takes its base's value, and the resolver is why
@@ -2111,20 +2284,22 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
             assert row.model.model_config["extra"] == "allow", (row.ref, declared)
             base = row.model.__mro__[1]
             assert schema_at(base.__adcp_schema__)["additionalProperties"] is True, row.ref
-            counted["allow"] += 1
+            grouped["allow"].add(name)
             continue
         assert row.model.model_config["extra"] == want, (row.ref, declared)
-        counted["silent" if declared == "silent" else want] += 1
-    assert counted["forbid"] and counted["allow"], counted
-    # The silent set is the leaf objects whose documents say nothing plus the
-    # union BASES, which are silent by construction: ``lower/union.py`` refuses a
-    # root that states its own ``additionalProperties``, so a base never has one to
-    # carry and takes this default.  The other members are mapping and container
-    # roots whose own document is silent too.  Re-measured at 64131600f
-    # (``salesagent-j3k2l.29``): 64, and the partition over the same 803 classes is
-    # forbid 344 / allow 395 / silent 64 -- a count over ``graded()``, so all three
-    # moved with the emitted population.
-    assert counted["silent"] == 64, counted
+        grouped["silent" if declared == "silent" else want].add(name)
+
+    # The four forms partition the classes: total, disjoint, and every part non-empty,
+    # so no form is graded by a loop that met none of it.  The silent part is the leaf
+    # objects whose documents say nothing plus the union BASES, which are silent by
+    # construction -- ``lower/union.py`` refuses a root that states its own
+    # ``additionalProperties``, so a base never has one to carry and takes this default
+    # -- plus the mapping and container roots whose own document is silent too.  How
+    # MANY are in each part is a reading of the emitted population and every row moves
+    # all four, which is why none of them is asserted.
+    partitions(claimed("graded classes", classes), **grouped)
+    for form, members in grouped.items():
+        claimed(f"classes whose document applies {form}", members, inside=classes)
 
 
 # --------------------------------------------------------------------------- #
@@ -2231,30 +2406,46 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
     reading of the ``#`` this project has, rather than by looking for the key.
     """
     documents = {g.ref.document for g in graded()}
-    local: dict[str, int] = {}
+    local: dict[str, set[str]] = {}
     for document in sorted(documents):
-        remote, here = [], 0
+        remote: list[tuple[str, str]] = []
         for pointer, reference in bundle.references(schema_at(SchemaRef(document, "#"))):
             if bundle.split_ref(reference)[0]:
                 remote.append((pointer, reference))
             else:
-                here += 1
+                local.setdefault(document, set()).add(reference)
         assert remote == [], document
-        if here:
-            local[document] = here
     # And the control: the bundle DOES have references, so the assertion above is
     # over documents that had something to resolve rather than over nothing.
     assert [d for d in documents if bundle.references(bundle.read(BUNDLE, d))]
-    # The local population, named rather than tolerated, so a document joining it is
-    # visible and so the assertion above is not satisfied by an empty set.
-    # Counted ONCE PER DOCUMENT, at its root.  ``tests/test_applied_schema.py`` counts
-    # the same references once per (PAIR, reference) and gets 8 and 16, because a
-    # nested node's references are read again at its parent's pair -- two denominators
-    # for one fact, and each says which it is.
-    assert local == {
-        "core/bidding-policy-capability.json": 4,
-        "core/placement-presentation.json": 8,
-    }, local
+    # The local set, named rather than counted: the two documents that carry one, and
+    # the REFERENCES each one carries, by target.  A count per document said only how
+    # many there were, so a reference changing target was invisible to it and a
+    # document joining the set moved a number nobody could attribute.
+    # ``tests/test_applied_schema.py`` reads the same references once per
+    # (PAIR, reference) rather than once per document, which is a second denominator
+    # for one fact and is why that file's figures are larger.
+    assert {d: sorted(r) for d, r in local.items()} == {
+        "core/bidding-policy-capability.json": [
+            "#/definitions/max_bid_with_cost_per",
+            "#/definitions/max_bid_with_roas",
+            "#/definitions/policy_profile",
+        ],
+        "core/placement-presentation.json": [
+            "#/definitions/color",
+            "#/definitions/layer",
+            "#/definitions/rectangle",
+        ],
+        # The third joined at ``salesagent-j3k2l.41``: its bounded-value definitions
+        # are a union whose array and mapping branches carry their own bound, which
+        # now rides on a generic alias instead of refusing the document.
+        "governance/reported-outcome-error.json": [
+            "#/definitions/bounded_scalar",
+            "#/definitions/bounded_value",
+            "#/definitions/bounded_value_level_2",
+            "#/definitions/bounded_value_level_3",
+        ],
+    }, {d: sorted(r) for d, r in local.items()}
 
 
 # --------------------------------------------------------------------------- #
@@ -2326,8 +2517,9 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
     """
     known = set(bundle.portable(BUNDLE))
     documents = sorted({g.ref.document for g in graded()})
-    graded_properties = 0
-    fragment_refs: list[tuple[str, str, str]] = []
+    cross_document: set[tuple[str, str]] = set()
+    graded_properties: set[tuple[str, str]] = set()
+    fragment_refs: dict[tuple[str, str], str] = {}
     for document in documents:
         doc = bundle.read(BUNDLE, document)
         # CROSS-document only, which is what P2 is about here: a LOCAL reference
@@ -2364,6 +2556,7 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
             if isinstance(t, ast.AnnAssign) and isinstance(t.target, ast.Name)
         }
         for key, uri in sorted(refd.items()):
+            cross_document.add((document, key))
             resolved = bundle.document_for(uri, known)
             if resolved is None:
                 # **A cross-document reference to a FRAGMENT, which is a third case
@@ -2380,7 +2573,7 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
                 # must be unresolved BECAUSE it names a fragment, so a reference whose
                 # target is simply absent from the bundle still reddens here.
                 assert "#/" in uri, (document, key, uri)
-                fragment_refs.append((document, key, uri))
+                fragment_refs[(document, key)] = uri
                 continue
             target = str(resolved)
             symbol = _symbol(target)
@@ -2393,7 +2586,7 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
                 kw.arg for n in ast.walk(got) if isinstance(n, ast.Call) for kw in n.keywords
             }
             assert carried <= ANNOTATION_KWARGS, (document, key, ast.unparse(got))
-            graded_properties += 1
+            graded_properties.add((document, key))
         local = {
             k
             for _, node in bundle.nodes(doc)
@@ -2408,12 +2601,20 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
             for kw in n.keywords
         }
         assert used <= _pydantic_names(local) | ANNOTATION_KWARGS, (document, sorted(used))
-    # Both denominators, so neither the graded half nor the handed-off half can go
-    # quiet.  Re-measured at 64131600f (``salesagent-j3k2l.29``): 567 cross-document
-    # property references graded here, and 6 fragment references handed to
-    # ``tests/test_fragment_ref.py``.
-    assert graded_properties == 567, graded_properties
-    assert len(fragment_refs) == 6, fragment_refs
+    # The two halves PARTITION the cross-document property references, and both are
+    # NON-EMPTY, so neither the graded half nor the half handed to
+    # ``tests/test_fragment_ref.py`` can go quiet.
+    #
+    # Asserted as sets and not as two totals, and this pin is the row that made the
+    # case: it read ``graded_properties == 567`` while 586 was live on trunk and 606 on
+    # a branch in flight -- red on both trees and pinned at neither, for weeks, because
+    # every row that makes a document emittable moves it and no two rows move it to the
+    # same place.  Re-pointing it was a deferral with a date.  The partition moves with
+    # nobody: a reference joins one part or the other, and a reference that joins
+    # NEITHER, or both, is the defect this is for.
+    partitions(cross_document, graded_here=graded_properties, handed_on=set(fragment_refs))
+    claimed("cross-document property references graded here", graded_properties)
+    claimed("cross-document property references naming a fragment", fragment_refs)
 
 
 # --------------------------------------------------------------------------- #
@@ -2422,6 +2623,202 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
 def emitted_unions() -> list[str]:
     """The union roots the committed tree holds, read off the tree and the selector."""
     return sorted({g.ref.document for g in graded()} & set(union_roots()))
+
+
+def _alias_shaped(document: str) -> bool:
+    """Which of D2's two union shapes this root takes.
+
+    Asked of the PRODUCTION predicates (``lower_union.states_a_scalar_instance`` and
+    ``lower_union.declares_a_class``) and not of a reading of its own, because the
+    shape is what the tests below grade and a second reading of it is how a test comes
+    to expect the shape the lowering did not emit.  What is pinned instead is the SIZE
+    of each half, as a literal, in
+    :func:`test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which`.
+    """
+    doc = bundle.read(BUNDLE, document)
+    kw = lower_union.keyword(doc)
+    assert kw is not None, document
+    return lower_union.states_a_scalar_instance(doc, "", kw) and not any(
+        lower_union.declares_a_class(branch, doc, "", kw, i)
+        for i, branch in enumerate(doc[kw])
+    )
+
+
+def emitted_union_bases() -> list[str]:
+    """The emitted union roots D2 gives a base plus one subclass per branch (§4).
+
+    **The eight shape tests below run over THIS and not over
+    :func:`emitted_unions`.**  D2 gives a union root two shapes -- the base plus
+    subclasses, and, where the document says its instance is a scalar, the
+    module-level alias a root scalar gets -- and an assertion about
+    ``BranchDispatchMixin`` is a claim about the first only.  Over the whole
+    population it would fail on a correct alias, which is a test asserting the wrong
+    shape rather than a defect.
+    """
+    return [d for d in emitted_unions() if not _alias_shaped(d)]
+
+
+def emitted_union_aliases() -> list[str]:
+    """The emitted union roots D2 gives a module-level alias, because the document
+    says every instance it admits is a scalar (``salesagent-j3k2l.21``)."""
+    return [d for d in emitted_unions() if _alias_shaped(d)]
+
+
+def test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which() -> None:
+    """D2's TWO union shapes, over every union root the bundle has, with the shape
+    decided by the document and the emitted artifact graded against the one it chose.
+
+    D2 gives a ``oneOf``/``anyOf`` root a base plus one subclass per branch.  It also
+    says "a root scalar or mapping -> a module-level alias", and a union every branch of
+    which is a scalar IS a root scalar: every branch of a draft-07 combinator is applied
+    to the SAME instance, so a branch declaring a non-object type is the document saying
+    what the whole document's instance is, and there is no class for a string to be an
+    instance of.  ``{"type": ["string", "null"]}`` at a root would be the same document
+    at the other spelling, which is the spelling ``salesagent-j3k2l.21`` is named for.
+
+    Five clauses, one per way the partition can go wrong, each over a population whose
+    size is asserted as a LITERAL below (D14):
+
+    1. **the two shapes are DISJOINT.**  A root that both says its instance is a scalar
+       AND declares a branch with a shape is NEITHER -- no alias holds a class and no
+       base is a string -- and must take neither path.  It keeps the class path, where
+       the scalar branch's own ``type`` check refuses it by name.  Asserted at 0 rather
+       than exempted, so the first one that appears reddens here instead of silently
+       taking whichever path the predicate happens to answer first.
+    2. **the two shapes are EXHAUSTIVE over the emitted roots, and BOTH are non-empty.**
+       A partition one half of which is empty passes for free, which is the state this
+       row's own first cut was in before the alias path emitted anything.
+    3. **§8's invariant: no root LEAVES ``BranchDispatchMixin``.**  "A step adds roots to
+       it; no step removes one."  The alias path could only take a root off the mixin by
+       claiming one the class path was already emitting, so the base half is pinned at
+       the figure it had BEFORE this row -- 38 -- and the alias half is growth.  That is
+       a pin on a DIFFERENT axis from the total, which moved: a single total would
+       absorb a root swapping sides.
+    4. **an alias-shaped root binds an ALIAS, with §4's two halves.**  A root scalar has
+       no class to carry ``strict_validate``, so "its module binds the same two halves as
+       a module-level function over the same ``SchemaRef``" -- which is read off the AST
+       (the name is not a ``ClassDef``, and both halves are module-scope statements) and
+       then off the IMPORTED module, because whether a name is a class is a property of
+       the object and the text cannot say it.
+    **WHERE A THIRD SHAPE EXTENDS THIS, named so it is not a surprise.**
+    ``salesagent-j3k2l.52`` gives D2 a third reading of a union root -- branches that differ
+    only in permitted VALUES are a rule on one class rather than a class per branch -- and it
+    is sequenced after this row. It does not collide with the dispatch: every branch of that
+    shape declares the same property set, so ``declares_a_class`` answers True for each and
+    the alias is not reached. What it must extend is clause 2's equality below, which says the
+    two halves exhaust the emitted roots; a third half makes that equality fail by naming the
+    documents in neither, which is the legible failure rather than a silent one.
+
+    5. **where each spelling of a declared null actually lives**, so the lowering's claim
+       about it cannot go stale in silence: 0 union roots carry a ``null`` branch and 0
+       roots carry a ``type`` LIST, while 57 sites state ``null`` inside a ``type`` list
+       BELOW a root -- ``lower.containers.multi_type``'s position, whose fold is graded
+       by :func:`test_a_declared_null_is_never_read_as_absence` in both directions.  A
+       null branch of a union ROOT would land in the alias half as ``str | None``, and
+       this is the clause that says the bundle has none to grade.
+    """
+    portable = sorted(claimed("bundle.portable", bundle.portable(BUNDLE)))
+    roots = [d for d in portable if bundle.union_root(bundle.read(BUNDLE, d))]
+    claimed("union roots in the bundle", roots, inside=portable)
+
+    scalar_instance, with_a_class_branch, mixed = [], [], []
+    for document in roots:
+        doc = bundle.read(BUNDLE, document)
+        kw = lower_union.keyword(doc)
+        assert kw is not None, document
+        scalar = lower_union.states_a_scalar_instance(doc, "", kw)
+        classed = [
+            i
+            for i, branch in enumerate(doc[kw])
+            if lower_union.declares_a_class(branch, doc, "", kw, i)
+        ]
+        (mixed if scalar and classed else scalar_instance if scalar else with_a_class_branch).append(
+            document
+        )
+
+    # Clause 1, and the partition it belongs to: the three shapes are total and
+    # disjoint over the union roots, ``mixed`` is the part asserted EMPTY, and the
+    # other two are asserted non-empty so neither clause below grades nothing.  How
+    # many roots are in each is a reading of one bundle version and says nothing
+    # clause 1 does not already say by name.
+    assert mixed == [], mixed
+    partitions(
+        roots,
+        scalar_instance=scalar_instance,
+        with_a_class_branch=with_a_class_branch,
+        mixed=mixed,
+    )
+    claimed("union roots whose instance is a scalar", scalar_instance, inside=roots)
+    claimed("union roots with a class-shaped branch", with_a_class_branch, inside=roots)
+    # Clause 2: exactly one half each, over the roots the tree actually carries.
+    assert sorted(emitted_union_bases() + emitted_union_aliases()) == emitted_unions()
+    assert not set(emitted_union_bases()) & set(emitted_union_aliases())
+    assert emitted_union_bases(), "no class-shaped union root emitted"
+    assert emitted_union_aliases(), "no alias-shaped union root emitted"
+    assert set(emitted_union_aliases()) <= set(scalar_instance), emitted_union_aliases()
+
+    # Clause 4, on both instruments.
+    for document in emitted_union_aliases():
+        symbol = _symbol(document)
+        tree = ast.parse(_source(document))
+        assert symbol not in {c.name for c in tree.body if isinstance(c, ast.ClassDef)}, document
+        assigned = {
+            t.id
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            for t in node.targets
+            if isinstance(t, ast.Name)
+        }
+        assert {symbol, "__adcp_schema__", "strict_validate"} <= assigned, (
+            document,
+            sorted(assigned),
+        )
+        module = importlib.import_module(_module_of(document))
+        bound = getattr(module, symbol)
+        assert not (isinstance(bound, type) and issubclass(bound, BaseModel)), (document, bound)
+        assert callable(module.strict_validate), document
+        assert module.__adcp_schema__.document == document, document
+
+    # Clause 5's two populations, measured over the whole portable set.
+    null_branch_roots = [
+        d
+        for d in roots
+        if any(
+            isinstance(b, dict) and b.get("type") == "null"
+            for b in bundle.read(BUNDLE, d)[lower_union.keyword(bundle.read(BUNDLE, d))]
+        )
+    ]
+    root_type_lists = [d for d in portable if isinstance(bundle.read(BUNDLE, d).get("type"), list)]
+    null_in_a_type_list = {
+        (d, pointer)
+        for d in portable
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, d))
+        if isinstance(node.get("type"), list) and "null" in node["type"]
+    }
+
+    # Clause 5: the two places a declared ``null`` could be and the one it IS.  The
+    # empty parts are asserted empty by NAME, and the non-empty one is asserted
+    # non-empty rather than counted -- what the clause claims is that the bundle has
+    # sites below a root to grade and none at a root, which a census of 57 restates
+    # against one bundle version and nothing else.
+    assert null_branch_roots == [], null_branch_roots
+    assert root_type_lists == [], root_type_lists
+    claimed("sites stating null inside a type list below a root", null_in_a_type_list)
+
+    # Clause 3, AS A FLOOR, which is what §8 actually says: "a step adds roots to
+    # BranchDispatchMixin; no step removes one."  An equality also refuses the
+    # ADDITION the invariant permits, which is why it was a collision -- it was 38
+    # before the alias dispatch, 38 after it and 38 after D2's Literal amendment only
+    # because no row had yet added a base.  A floor refuses the removal, which is the
+    # invariant, and the alias half taking a root off the class path would still show
+    # up here because it would take the base count DOWN.
+    ratchet(
+        "union roots emitted as a base over BranchDispatchMixin",
+        len(emitted_union_bases()),
+        at_least=UNION_BASE_FLOOR,
+        because="section 8: a step adds roots to BranchDispatchMixin and no step "
+        "removes one, so the alias path can never claim a root the class path emits",
+    )
 
 
 def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
@@ -2443,8 +2840,8 @@ def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
     Everything compared is derived: the branch count from the document, the symbol from
     the module's own ``__all__``, the pointers from the classes themselves.
     """
-    assert emitted_unions(), "no union root was emitted; this test grades nothing"
-    for document in emitted_unions():
+    assert emitted_union_bases(), "no union root was emitted; this test grades nothing"
+    for document in emitted_union_bases():
         doc = bundle.read(BUNDLE, document)
         kw = lower_union.keyword(doc)
         symbol = _symbol(document)
@@ -2497,8 +2894,8 @@ def test_the_base_the_root_name_binds_is_the_class_every_branch_descends_from() 
     produces a non-empty one, and the field is graded by the mixin's unit test below
     rather than by the tree.
     """
-    assert emitted_unions()
-    for document in emitted_unions():
+    assert emitted_union_bases()
+    for document in emitted_union_bases():
         doc = bundle.read(BUNDLE, document)
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         branches = base._branch_models
@@ -2531,9 +2928,9 @@ def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
     fifth path and is graded by ``check_pair``; it is included here because it is the
     production entry point and it must agree with the other four about the class.
     """
-    assert emitted_unions()
+    assert emitted_union_bases()
     graded_arms = 0
-    for document in emitted_unions():
+    for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
 
         class Holder(BaseModel):
@@ -2550,7 +2947,7 @@ def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
             graded_arms += 1
     assert graded_arms == sum(
         len(bundle.read(BUNDLE, d)[lower_union.keyword(bundle.read(BUNDLE, d))])
-        for d in emitted_unions()
+        for d in emitted_union_bases()
     ), graded_arms
 
 
@@ -2590,8 +2987,8 @@ def test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema() -> None:
     Asserted on every emitted union root, with the refinement declared here -- outside the
     generated module, which is the position the rule is about.
     """
-    assert emitted_unions()
-    for document in emitted_unions():
+    assert emitted_union_bases()
+    for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         branch = base._branch_models[0]
 
@@ -2625,8 +3022,8 @@ def test_model_dump_json_on_a_union_base_instance_does_not_raise() -> None:
     base-typed field -- the second is what fails if the wrap serializer holds the base's
     model schema ALONE rather than the branches' union with the base last.
     """
-    assert emitted_unions()
-    for document in emitted_unions():
+    assert emitted_union_bases()
+    for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
 
         class Holder(BaseModel):
@@ -2662,9 +3059,9 @@ def test_a_payload_no_branch_admits_is_refused_in_the_documents_own_vocabulary()
     a second grader of the ``anyOf`` branch rather than the only one, and it is also
     what grades ``_ROOT_REQUIRED``.
     """
-    assert emitted_unions()
-    assert {lower_union.keyword(bundle.read(BUNDLE, d)) for d in emitted_unions()} == {"anyOf", "oneOf"}
-    for document in emitted_unions():
+    assert emitted_union_bases()
+    assert {lower_union.keyword(bundle.read(BUNDLE, d)) for d in emitted_union_bases()} == {"anyOf", "oneOf"}
+    for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         with pytest.raises(ValidationError) as caught:
             base.model_validate({"__adcp_harness__": "no branch admits this"})
@@ -2757,8 +3154,8 @@ def test_the_serializer_is_set_on_the_schema_the_wrapper_holds_and_not_on_a_defi
     assert plain["serialization"]["type"] == "function-wrap"
 
     # the measurement the docstring states, re-taken here so it cannot go stale silently
-    assert emitted_unions()
-    for document in emitted_unions():
+    assert emitted_union_bases()
+    for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         assert base.model_fields == {}, (document, sorted(base.model_fields))
 
@@ -2802,7 +3199,7 @@ def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointe
 
 
 def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_keyword() -> None:
-    """The step's own arithmetic: 126 union roots, 38 emitted and 88 refused, each named.
+    """The step's own arithmetic: 126 union roots, 40 emitted and 86 refused, each named.
 
     The by-keyword profile is asserted as a WHOLE rather than as a total, because the
     profile is the readable result of the step -- it says which later step unblocks what.
@@ -2824,7 +3221,7 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     roots = union_roots()
     emitted = [d for d in roots if d in out.emitted]
     refused = [d for d in roots if d in out.refusals]
-    assert len(roots) == 126
+    claimed("union roots the selector claims", roots)
     # Roots emit only once another step's row is beside this one -- a nested ``enum``
     # (step 3), a nested container (step 6) -- and the presence-only combinators are
     # left for step 7.  Joint unblocking, which no single lane reaches.
@@ -2843,63 +3240,143 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # ``core/publisher-property-selector.json``, ``core/targeting-modification.json``
     # and ``core/canonical-media-buy-action.json`` -- 3 of the 10 that waited on the
     # shared reader, plus one reached through them -- left the refused half.
-    assert len(emitted) == 38, emitted
-    assert len(refused) == 88
-    assert len(emitted) + len(refused) == len(roots)
+    #
+    # **38 / 88 -> 40 / 86 at ``salesagent-j3k2l.21``**, and these two are this module's
+    # own doing as well: a union root whose instance the DOCUMENT says is a scalar is a
+    # root scalar, so it takes D2's alias instead of a base plus subclasses, and
+    # ``core/start-timing.json`` and ``core/media-buy-available-action-id.json`` left the
+    # refused half.  **Which half they emit into is pinned separately** --
+    # ``test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which`` holds the
+    # base half at 38 and the alias half at 2 -- because a single total here would absorb
+    # a root swapping sides, and §8 says no step takes a root off ``BranchDispatchMixin``.
+    #
+    # **40 / 86 -> 42 / 84, D2's Literal amendment, in this same row.** An untitled
+    # enum branch is a Literal of its members and claims no symbol, so
+    # core/geo-place-system.json and core/geo-place-type.json stop colliding with
+    # their own root's name and emit as aliases.
+    # The two halves PARTITION the selector's roots, by name, and ``emitted`` is the
+    # set the tree carries.  Neither half has a count of its own any more: which of the
+    # roots emit is a function of the OTHER steps' rows, so the split moved at .29, .40
+    # and .21 and every move was correct work being done -- 28/98, 34/92, 38/88, 40/86,
+    # 42/84, each one a pair of numbers two lanes could not both be right about.  What
+    # is asserted is the property no row may break: every root is accounted for exactly
+    # once, both halves are non-empty, and the emitted half IS the emitted set.
+    partitions(roots, emitted=emitted, refused=refused)
+    claimed("union roots this step emits", emitted, inside=roots)
+    claimed("union roots this step refuses", refused, inside=roots)
     assert emitted == emitted_unions()
 
-    profile: dict[str, int] = {}
+    # **EVERY REFUSED ROOT, BY NAME, WITH THE KEYWORD IT REFUSES ON.**  This test's
+    # title claims an accounting by name, pointer and keyword; what it held was a
+    # keyword -> COUNT profile, which accounts for nothing by name -- a document moving
+    # from one keyword to another left it unchanged, and every row that cleared a
+    # refusal had to recompute between two and eleven integers that no other row could
+    # agree with.  The mapping below is the same information as a set of names per
+    # keyword, one line per document, so a row that clears a refusal DELETES ITS LINE
+    # and two rows clearing different refusals merge instead of colliding.
+    #
+    # The POINTER is asserted present per document rather than pinned: a chained
+    # refusal's pointer moves deeper as its chain resolves, which is a correct move and
+    # not this check's fact.  The keyword is the attribution, and ``allOf`` is the bulk
+    # of it because a root conjunct is still deferred ground.
+    refused_on: dict[str, str] = {}
     for document in refused:
         row = out.refusals[document]
         assert row["keyword"] and row["pointer"], document
-        profile[row["keyword"]] = profile.get(row["keyword"], 0) + 1
-    assert profile == {
-        # RE-MEASURED AT 64131600f (``salesagent-j3k2l.29``), in one pass with the
-        # 34 / 92 above, so the dict and the totals are one measurement: the rows sum
-        # to 92 by construction.
-        # RE-MEASURED at ``salesagent-j3k2l.40``, in one pass with the 38 / 88 above.
-        # ``allOf`` 51 -> 44 is the composing-branch half of that row leaving; the
-        # other six moved DEEPER, which is what a shared reader does to an
-        # attribution -- ``$ref`` 13 -> 14, and ``anyOf`` and ``const`` are back at 1
-        # each, each a branch whose own next blocker the reader could finally reach.
-        "allOf": 44,
-        "properties": 19,  # a root conjunct; see lower/union.py's docstring
-        "$ref": 14,  # a bare-$ref branch, or a chain naming the target that refused
-        "type": 4,  # a root stating no type whose branch states none either
-        "required": 2,  # step 7 (D6)
-        "additionalProperties": 1,
-        "anyOf": 1,  # a conjunct of SHAPES inside a branch the reader now reaches
-        "const": 1,  # a branch pinning its whole value, reached past its conjuncts
-        "maxLength": 1,  # D5: a string bound beside a format: uri
-        "not": 1,  # step 7 (D6) at a position the rules row does not reach
-        # WHICH ROWS LEFT THIS PROFILE, kept as the record of why it is shaped this
-        # way.  The per-row deltas each note quoted were true when its lane wrote it
-        # and several are not arithmetic about the dict above, so the counts have been
-        # removed where they would now read as assertions about it; what each lane DID
-        # is what matters here.
-        #
-        # The `uniqueItems` row is GONE: `salesagent-j3k2l.19` lowers the keyword on
-        # the class that holds the array, so a branch stating it reaches its NEXT
-        # blocker instead of stopping here, and some of its documents emit.
-        #
-        # The `pattern` row is GONE: it was "a constraint inside a container", and D5's
-        # alias module names that type now, so the document emits instead.
-        #
-        # The `definitions` and `$defs` rows are GONE: `salesagent-j3k2l.20` admits a
-        # section at every node and declares the entries a `$ref` names, so each of
-        # those documents now refuses on the keyword that actually stopped it -- in a
-        # branch, in a conjunct, or inside the section itself.
-        #
-        # The `const` and `enumMetadata` rows are GONE from this profile as well; both
-        # were present when the figures above were last written and neither appears in
-        # the measured dict now.
-        #
-        # And four more rows have gone since: `anyOf` (6), `enum` (2), `if` (2) and
-        # `oneOf` (1) are absent at this tree, while `not` fell from 10 to 1.  Those
-        # 20 documents are among the six that now emit and the redistribution onto
-        # `allOf` / `properties` / `$ref` / `type`; the attribution moved deeper, which
-        # is the direction this profile exists to show.
-    }, profile
+        refused_on[document] = row["keyword"]
+    assert refused_on == {
+    "account/get-account-financials-response.json": "allOf",
+    "account/list-account-changes-response.json": "allOf",
+    "account/sync-accounts-response.json": "allOf",
+    "account/sync-governance-response.json": "allOf",
+    "adagents.json": "anyOf",
+    "brand.json": "allOf",
+    "brand/acquire-rights-response.json": "allOf",
+    "brand/creative-approval-response.json": "allOf",
+    "brand/get-brand-identity-response.json": "allOf",
+    "brand/get-rights-response.json": "allOf",
+    "brand/search-brands-response.json": "allOf",
+    "brand/update-rights-response.json": "allOf",
+    "brand/verify-brand-claim-request.json": "allOf",
+    "brand/verify-brand-claim-response.json": "allOf",
+    "brand/verify-brand-claims-response.json": "allOf",
+    "compliance/comply-test-controller-response.json": "allOf",
+    "compliance/task-completion-data.json": "$ref",
+    "content-standards/calibrate-content-response.json": "allOf",
+    "content-standards/create-content-standards-response.json": "allOf",
+    "content-standards/get-content-standards-response.json": "allOf",
+    "content-standards/get-media-buy-artifacts-response.json": "allOf",
+    "content-standards/list-content-standards-response.json": "allOf",
+    "content-standards/update-content-standards-response.json": "allOf",
+    "content-standards/validate-content-delivery-response.json": "allOf",
+    "core/account-identity-change-preview.json": "$ref",
+    "core/agent-reporting-destination.json": "$ref",
+    "core/assets/asset-union.json": "$ref",
+    "core/assets/daast-asset.json": "properties",
+    "core/assets/display-tag-asset.json": "properties",
+    "core/assets/vast-asset.json": "properties",
+    "core/async-response-data.json": "$ref",
+    "core/audience-characteristic.json": "allOf",
+    "core/brand-response-authorization-result.json": "properties",
+    "core/budget-allocation.json": "$ref",
+    "core/canonical-media-buy-action.json": "const",
+    "core/canonical-placement.json": "properties",
+    "core/catchment.json": "properties",
+    "core/collection-selection.json": "required",
+    "core/creative-asset.json": "allOf",
+    "core/creative-manifest.json": "allOf",
+    "core/delivery-metric-aggregate.json": "allOf",
+    "core/evaluator-spec.json": "properties",
+    "core/format-option-ref.json": "additionalProperties",
+    "core/frequency-cap-impression-constraints.json": "properties",
+    "core/frequency-cap-interval-constraints.json": "properties",
+    "core/optimization-goal.json": "allOf",
+    "core/placement-selection.json": "required",
+    "core/postal-area.json": "$ref",
+    "core/postal-country-system.json": "properties",
+    "core/pricing-option.json": "$ref",
+    "core/product-execution-requirement.json": "not",
+    "core/product-format-declaration.json": "allOf",
+    "core/registry-event.json": "properties",
+    "core/requirements/asset-requirements.json": "$ref",
+    # Was ``$ref`` -- "a bare $ref branch has no node to declare a subclass from" --
+    # until ``salesagent-j3k2l.59`` made such a branch a class with two bases.  Its
+    # three branches now name themselves off the ``kind`` pin (two of them through a
+    # LOCAL ``$ref``) and the root's dispatch derives to ``kind``, so the document gets
+    # past this module and refuses one pointer deeper, on a ``discriminator`` sibling of
+    # the NESTED union at ``/oneOf/2/properties/per_item_bindings/items`` -- a different
+    # position with a different reason (``union.nested``'s sibling screen), filed as
+    # ``salesagent-j3k2l.67``.
+    "core/requirements/catalog-field-binding.json": "discriminator",
+    "core/tracker-execution-selector.json": "$ref",
+    "core/wholesale-feed-event.json": "properties",
+    "creative/get-creative-features-response.json": "allOf",
+    "creative/preview-creative-response.json": "allOf",
+    "creative/sync-creatives-response.json": "allOf",
+    "error-details/governance-agent-not-accepted.json": "maxLength",
+    "error-details/vast-version-mismatch.json": "properties",
+    "media-buy/build-creative-response.json": "allOf",
+    "media-buy/buy-products-request.json": "allOf",
+    "media-buy/control-media-buy-response.json": "$ref",
+    "media-buy/create-media-buy-request.json": "allOf",
+    "media-buy/create-media-buy-response.json": "allOf",
+    "media-buy/decline-proposals-response.json": "properties",
+    "media-buy/get-reporting-status-response.json": "allOf",
+    "media-buy/list-products-response.json": "properties",
+    "media-buy/log-event-response.json": "allOf",
+    "media-buy/media-buy-commitment-response.json": "$ref",
+    "media-buy/proposal-refinement.json": "properties",
+    "media-buy/provide-performance-feedback-response.json": "allOf",
+    "media-buy/refine-proposals-response.json": "properties",
+    "media-buy/request-proposals-request.json": "allOf",
+    "media-buy/request-proposals-response.json": "properties",
+    "media-buy/sync-audiences-response.json": "allOf",
+    "media-buy/sync-catalogs-response.json": "allOf",
+    "media-buy/sync-event-sources-response.json": "allOf",
+    "media-buy/update-media-buy-response.json": "allOf",
+    "signals/activate-signal-response.json": "allOf",
+    "trusted-match/provider-registration.json": "properties",
+    }, refused_on
 
 
 def test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_non_object() -> None:
@@ -2955,12 +3432,12 @@ def test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_
         for d in sorted({g.ref.document for g in graded()})
         if bundle.read(BUNDLE, d).get("type") is None and "properties" in bundle.read(BUNDLE, d)
     ]
-    # 7 -> 9 at ``salesagent-j3k2l.28``: two more ``formats/canonical`` documents
-    # (``audio_hosted``, ``video_hosted``) emit now that the union fold's refusal is
-    # gone, and each has the same shape -- a root stating ``properties`` whose
-    # ``type`` arrives through its ``allOf`` conjunct.  The claim asserted of each is
-    # unchanged, and it is now graded over 9.
-    assert len(bare) == 9, bare
+    # Non-empty rather than counted: the claim is asserted OF EACH MEMBER below, so
+    # what this needs is that there is a member -- an empty list asserted nothing about
+    # any document, which is the state this check was in before.  The count went 7 -> 9
+    # when two more ``formats/canonical`` documents emitted, which is a correct move,
+    # and every later row that makes such a document emittable moves it again.
+    claimed("graded documents stating properties with no root type", bare)
     for document in bare:
         doc = schema_at(SchemaRef(document, "#"))
         assert _composed(doc).get("type") == "object", (document, _composed(doc).get("type"))
@@ -3013,14 +3490,21 @@ def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> Non
                     )
     kinds = {k for _, _, k in excused}
     # One per union base whose root states no ``type`` of its own, plus the
-    # const-pinned branch properties whose node states only the ``const``.
-    # Re-measured at 64131600f (``salesagent-j3k2l.29``): 45 / 19 / 26, a count over
-    # ``graded()`` and so one that moves with the emitted population.  The two KINDS
-    # did not move, which is the half that says the rule's shape is unchanged.
-    assert len(excused) == 45, excused
+    # const-pinned branch properties whose node states only the ``const``.  THE TWO
+    # KINDS are the rule's shape and are asserted exactly; the two POSITIONS -- the
+    # root and a property -- partition the excused sites and both are non-empty, so
+    # neither position is graded by an empty loop.  The three counts this replaces
+    # (45 / 19 / 26) were a reading of one emitted tree and all three moved together
+    # at every row that added a document, while the shape moved at none of them.
     assert kinds == {"object", "string"}, kinds
-    assert sum(1 for _, where, _ in excused if where == "") == 19, excused
-    assert sum(1 for _, where, _ in excused if where != "") == 26, excused
+    sites = claimed("sites the model-only type rule excuses", excused)
+    partitions(
+        sites,
+        at_the_root={e for e in sites if e[1] == ""},
+        at_a_property={e for e in sites if e[1] != ""},
+    )
+    claimed("excused sites at a root", {e for e in sites if e[1] == ""}, inside=sites)
+    claimed("excused sites at a property", {e for e in sites if e[1] != ""}, inside=sites)
 
     # direction 2: nothing forcing a type is still reported
     assert _entails_type({"properties": {"a": {"type": "string"}}}, "object") is False
@@ -3103,6 +3587,23 @@ def test_a_union_lowering_is_reached_only_through_the_table_and_the_table_is_the
     assert union.keyword is not None
     rows = [low for selector, low in emit.ROWS if selector is bundle.union_root]
     assert rows == [emit._union_root], rows
+    # Both arms of the loop below range over a set of nodes, and each one is named
+    # non-empty: an empty bundle would run the loop zero times and say nothing about
+    # either arm -- "every union root carries a keyword" and "every non-root carrying
+    # one spells a presence rule" would both hold for free.
+    claimed(
+        "documents whose root carries oneOf or anyOf",
+        [d for d in bundle.portable(BUNDLE) if bundle.union_root(bundle.read(BUNDLE, d))],
+    )
+    claimed(
+        "documents carrying the keyword without being a union root",
+        [
+            d
+            for d in bundle.portable(BUNDLE)
+            if not bundle.union_root(bundle.read(BUNDLE, d))
+            and union.keyword(bundle.read(BUNDLE, d)) is not None
+        ],
+    )
     for document in bundle.portable(BUNDLE):
         doc = bundle.read(BUNDLE, document)
         # The row's selector is the lowering's own read NARROWED by step 7's: a
@@ -3276,20 +3777,24 @@ def test_the_dispatch_table_is_a_partition_and_a_collision_is_a_build_failure() 
     that collides -- which is the whole claim of the first half, so a fixture is the
     only way to reach the branch.
     """
-    documents = bundle.portable(BUNDLE)
-    by_count: dict[int, int] = {}
-    for document in documents:
+    documents = claimed("bundle.portable", bundle.portable(BUNDLE))
+    by_count: dict[int, set[str]] = {}
+    for document in sorted(documents):
         doc = bundle.read(BUNDLE, document)
         n = sum(1 for selector, _ in emit.ROWS if selector(doc))
-        by_count[n] = by_count.get(n, 0) + 1
-    assert sorted(by_count) == [0, 1], by_count  # never two
-    assert by_count[1] == 1047, by_count  # the six rows' own population
-    # 7 and not 21: closing ``composes_at_the_root``'s two-reading hole moved 14 of
-    # them onto step 4's row.  **The 7 that remain are not waiting for a row** -- four
-    # are DATA documents with no schema keyword at the root, two are conditional-only
-    # and one is a bare root ``$ref`` -- and ``emit.lower_document`` refuses each on
-    # the keyword its kind is read from rather than on the absence of a row.
-    assert by_count[0] == 7, by_count
+        by_count.setdefault(n, set()).add(document)
+    assert sorted(by_count) == [0, 1], {k: len(v) for k, v in by_count.items()}  # never two
+    # The two counts PARTITION the bundle by name, and the one-row half is asserted
+    # NON-EMPTY, which is what keeps the disjointness above from being satisfied by a
+    # table that selects nothing.  How many documents no row claims is a function of
+    # the rows -- it was 21 before ``composes_at_the_root``'s two-reading hole closed
+    # and 7 after -- so it is the membership that is asserted and not the size.
+    # **The documents no row claims are not waiting for a row**: they are DATA
+    # documents with no schema keyword at the root, conditional-only documents and a
+    # bare root ``$ref``, and ``emit.lower_document`` refuses each on the keyword its
+    # kind is read from rather than on the absence of a row.
+    partitions(documents, claimed_by_one_row=by_count[1], claimed_by_no_row=by_count[0])
+    claimed("documents exactly one row claims", by_count[1], inside=documents)
 
     both = {"title": "Both", "type": "object", "properties": {"a": {"type": "string"}}}
     assert bundle.is_object_root(both)
@@ -3316,8 +3821,8 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
 
     Both denominators are asserted, so neither half can pass by looking at nothing.
     """
-    arrays = 0
-    bounded = 0
+    arrays: set[tuple[SchemaRef, str]] = set()
+    bounded: set[tuple[SchemaRef, str, str]] = set()
     for row in graded():
         if row.ref.pointer != "#" or not isinstance(row.model, type):
             continue
@@ -3328,12 +3833,13 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
         for key, sub in (doc.get("properties") or {}).items():
             if sub.get("type") != "array":
                 continue
-            arrays += 1
+            arrays.add((row.ref, key))
             mine = _rendered(emitted, key, row.model)
             assert mine.get("type") == "array", (row.ref, key, mine)
             for keyword in ("minItems", "maxItems"):
                 assert mine.get(keyword) == sub.get(keyword), (row.ref, key, keyword, mine)
-                bounded += keyword in sub
+                if keyword in sub:
+                    bounded.add((row.ref, key, keyword))
             item = _unwrap(mine.get("items") or {}, emitted.get("$defs", {}))
             declared = sub.get("items") or {}
             # **THIS IS RED AT 64131600f AND IT IS RIGHT TO BE.**  Not a stale
@@ -3357,10 +3863,13 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
     # The denominator is TOP-LEVEL array properties of an emitted root, not every
     # array node: an array nested inside another array's ``items`` has no property
     # node of its own to compare at and is graded by the schema comparison instead.
-    # Stated so the number is not read as "every array".  Re-measured at 64131600f
-    # (``salesagent-j3k2l.29``): 348 arrays, 231 of them bounded.
-    assert arrays == 348, arrays
-    assert bounded == 231, bounded
+    # Stated so the set is not read as "every array".  Both halves non-empty rather
+    # than counted: the per-keyword assertion inside the loop is the obligation and it
+    # needs an array to have been reached, and the bounded half needs a bound to have
+    # been compared.  The two counts this replaces moved together at every row that
+    # added an emitted root.
+    claimed("top-level array properties of an emitted root", arrays)
+    claimed("array bounds compared", bounded)
 
 
 def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it() -> None:
@@ -3428,20 +3937,41 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     assert caught.value.pointer == "/properties/m/additionalProperties", caught.value
 
     # And on the bundle: the keyword is down to the positions no class holds, each
-    # named.  4 root arrays (D2's unimplemented `RootModel[list[X]]` row), one
-    # mapping value, and one composing root -- `product.lower_root` writes no rule of
-    # any D6 family, which is step 4's row and not this keyword's.
+    # named WITH ITS POINTER, which is the position the refusal is about -- D2's
+    # unimplemented ``RootModel[list[X]]`` row at a root, a mapping value, a
+    # ``definitions`` section's array and a union branch.  ``product.lower_root``
+    # writes no rule of any D6 family, which is step 4's row and not this keyword's.
+    #
+    # Re-pointed here, with each move's cause read off the refusal rather than
+    # inferred from the list's length.  Three documents JOINED, all three because an
+    # earlier blocker of theirs cleared and the walk reached this keyword:
+    # ``core/daast-tracker-constraints.json`` and ``core/vast-tracker-constraints.json``
+    # at a ``definitions`` section's array, and ``error-details/requote-required.json``
+    # at a ``oneOf`` branch -- each one a ``Kind.VERDICT`` on this keyword, which is
+    # this row's own ground and not a deferral.  One LEFT:
+    # ``media-buy/list-creative-formats-request.json`` emits now.
+    #
+    # A ninth JOINED at ``salesagent-j3k2l.64``, and for the same reason the three
+    # did: an earlier blocker of its own cleared and the walk reached this keyword.
+    # ``media-buy/acceptance-policy-profile.json`` refused at
+    # ``/properties/region_aliases/propertyNames`` on the key ``pattern``; the typed
+    # key emits now, so the walk descends into that mapping's VALUE and meets an
+    # array with no class above it -- a mapping value, which is one of the four
+    # positions this list is about.
     out = emit.emit(BUNDLE, population())
-    blocked = {d for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
-    assert sorted(blocked) == [
-        "core/acceptance-policy-profile-ids.json",
-        "core/account-authorization.json",
-        "core/forecast-point-dimensions.json",
-        "core/reporting-verification-profile-set.json",
-        "media-buy/list-creative-formats-request.json",
-        "media-buy/product-fields.json",
-    ], sorted(blocked)
-    assert {out.refusals[d]["pointer"] for d in blocked if d.endswith("-ids.json")} == {"/"}
+    blocked = {d: out.refusals[d]["pointer"] for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
+    claimed("documents refused on uniqueItems", blocked)
+    assert blocked == {
+        "core/acceptance-policy-profile-ids.json": "/",
+        "core/account-authorization.json": "/properties/field_scopes/additionalProperties",
+        "core/daast-tracker-constraints.json": "/definitions/daast_versions",
+        "core/forecast-point-dimensions.json": "/",
+        "core/reporting-verification-profile-set.json": "/",
+        "core/vast-tracker-constraints.json": "/definitions/vast_versions",
+        "error-details/requote-required.json": "/properties/envelope_field/oneOf/1",
+        "media-buy/acceptance-policy-profile.json": "/properties/region_aliases/additionalProperties",
+        "media-buy/product-fields.json": "/",
+    }, blocked
 
 
 def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrapped() -> None:
@@ -3457,12 +3987,21 @@ def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrappe
     have nothing else wrong with it, which is the second half.
     """
     out = emit.emit(BUNDLE, population())
-    roots = [d for d in bundle.portable(BUNDLE) if bundle.read(BUNDLE, d).get("type") == "array"]
-    assert len(roots) == 5, roots
+    roots = claimed(
+        "root arrays in the bundle",
+        [d for d in bundle.portable(BUNDLE) if bundle.read(BUNDLE, d).get("type") == "array"],
+        inside=bundle.portable(BUNDLE),
+    )
     assert all(d in out.refusals for d in roots), [d for d in roots if d not in out.refusals]
+    # The two keywords they refuse on, and the PARTITION of the roots between them by
+    # name: the one that refuses inside its own ``items`` is the odd one and is named
+    # below, so a count of the other group says nothing the partition does not.
     assert {out.refusals[d]["keyword"] for d in roots} == {"uniqueItems", "discriminator"}
-    # 4 of 5 on `uniqueItems` at the root; the fifth inside its own `items`.
-    assert sum(out.refusals[d]["keyword"] == "uniqueItems" for d in roots) == 4
+    partitions(
+        roots,
+        at_the_root={d for d in roots if out.refusals[d]["keyword"] == "uniqueItems"},
+        inside_its_items={d for d in roots if out.refusals[d]["keyword"] != "uniqueItems"},
+    )
     (odd,) = [d for d in roots if out.refusals[d]["keyword"] != "uniqueItems"]
     assert odd == "media-buy/product-refinement.json"
     assert out.refusals[odd]["pointer"].startswith("/items"), out.refusals[odd]
@@ -3479,16 +4018,14 @@ def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrappe
 def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     """D5's key rule, and the honest denominator for it.
 
-    **ONE mapping site in the emitted population constrains its key, and D5's alias
-    module names it.**  This read "no mapping site ... constrains its key", with the
-    zero asserted so the key rule could not be read as covered by the bundle, and the
-    zero has inverted: ``core/product-change-map.json``'s ROOT states
-    ``propertyNames: {"minLength": 1}``, the document emits, and the emitted alias is
-    ``dict[StrMinLen1, ProductChangeMapValue]`` -- the key carries the document's own
-    bound rather than widening to ``str``.  Re-measured at 64131600f
-    (``salesagent-j3k2l.29``), and asserted as the named site plus its key TYPE, which
-    is strictly more than the zero said: the zero asserted that nothing was graded
-    here, and this grades the one thing that is.
+    **THREE mapping sites in the emitted population constrain their key, and D5's
+    alias module names every one.**  This read "no mapping site ... constrains its
+    key", with the zero asserted so the key rule could not be read as covered by the
+    bundle; the zero inverted to one at ``salesagent-j3k2l.29``
+    (``core/product-change-map.json``'s root ``propertyNames: {"minLength": 1}``),
+    and to three at ``salesagent-j3k2l.64``, which lowers a key's PATTERN as well --
+    so the sites are asserted BY NAME with the key type each one emits, which is what
+    a count could not say.
 
     Every OTHER mapping the committed tree carries is still ``dict[str, ...]``, which
     is the document's own reading rather than a default -- silence about keys means
@@ -3496,30 +4033,65 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
 
     The one key kind that needs no name is the one that is graded behaviourally: a
     ``propertyNames`` ``$ref`` NAMES the key type, so the key is that type, the module
-    IMPORTS it, and the model then refuses a key the key type refuses.  The kinds a
-    NESTED mapping cannot name refuse by name below, and so does a closed key set --
-    the root path and the nested path are different lowerings, which is why the one
-    emitted constrained key sits at a root.
+    IMPORTS it, and the model then refuses a key the key type refuses.  A closed key
+    set is a MODEL and not a mapping and still refuses by name, and so does a second
+    pattern -- that is two value schemas for one mapping value.
     """
     constrained: list[tuple[str, str]] = []
-    mappings = 0
+    mappings: set[tuple[str, str]] = set()
     for row in graded():
         doc = schema_at(row.ref)
         for pointer, node in bundle.nodes(doc):
             if node.get("type") == "object" and "properties" not in node:
-                mappings += 1
+                mappings.add((f"{row.ref.document}{row.ref.pointer}", pointer or "/"))
                 if {"propertyNames", "patternProperties"} & set(node):
                     constrained.append((f"{row.ref.document}{row.ref.pointer}", pointer or "/"))
-    assert mappings == 1528, mappings
-    assert constrained == [("core/product-change-map.json#", "/")], constrained
-    # ... and the one that constrains its key is NAMED rather than widened.  The
-    # symbol is asked of the namer rather than written here, so a rename moves this
-    # with it (the precedent is ``tests/test_emit_product.py``'s narrowing case).
-    named = constraints_module.symbol("string", {"minLength": 1})
-    assert f"dict[{named}," in _source("core/product-change-map.json"), named
-    assert (
-        bundle.read(BUNDLE, "core/product-change-map.json")["propertyNames"]["minLength"] == 1
-    ), "the bound the key type carries is the document's own"
+    # The mapping population is asserted NON-EMPTY rather than counted -- the claim is
+    # about the constrained keys among them, which are named, and the denominator's
+    # job is to say that mappings were reached at all.  A count of them is a reading of
+    # one emitted tree: it was 1,528 when every pair graded here was, and 1,750 once
+    # eleven more documents brought their nodes with them.
+    claimed("mapping nodes of a graded pair", mappings)
+    # The six added at ``salesagent-j3k2l.41`` are the documents whose constrained-key
+    # mappings the walk could not reach before: three carry a mapping's own key COUNT,
+    # which now rides on a generic alias, and ``reported-outcome-error``'s three are
+    # inside the definitions its bounded-value union reaches.
+    assert constrained == [
+        ("core/geo-region-support.json#", "/properties/countries"),
+        ("core/product-change-map.json#", "/"),
+        ("governance/reported-outcome-error.json#", "/definitions/bounded_object"),
+        ("governance/reported-outcome-error.json#", "/properties/details"),
+        ("governance/reported-outcome-error.json#", "/properties/ext"),
+        ("trusted-match/identity-match-response.json#", "/properties/tmpx_providers"),
+        ("trusted-match/publisher-targeting-kv-config.json#", "/properties/targeting_kv_mapping"),
+        ("trusted-match/publisher-tmpx-config.json#", "/properties/tmpx_macro_mapping"),
+        (
+            "trusted-match/publisher-tmpx-config.json#",
+            "/properties/tmpx_macro_mapping/additionalProperties",
+        ),
+    ], constrained
+    assert set(constrained) <= mappings, constrained
+    # ... and each of them is NAMED rather than widened.  The symbol is asked of the
+    # namer rather than written here, so a rename moves this with it (the precedent is
+    # ``tests/test_emit_product.py``'s narrowing case), and the CONSTRAINT each symbol
+    # is derived from is read off the document rather than restated -- so the key type
+    # carries the document's own bound and not a bound this test chose.
+    spelled = {kw for kw, _ in constraints_module.SPELLING}
+    for document, pointer in constrained:
+        path = document.removesuffix("#")
+        # **The node is read off the RESOLVED schema, which is where the set above came
+        # from.**  Read off ``bundle.read`` instead -- the document as written -- a
+        # pointer whose node is a local ``$ref`` resolves to the reference itself and
+        # neither key keyword is there, so the site died with a ``KeyError`` rather than
+        # failing an assertion.  Latent until a document whose constrained mapping sits
+        # behind a ``#/definitions`` reference emitted
+        # (``governance/reported-outcome-error.json``, ``salesagent-j3k2l.41``).
+        node = harness.at(schema_at(SchemaRef(path, "#")), pointer if pointer != "/" else "")
+        key = node.get("propertyNames") or {"pattern": next(iter(node["patternProperties"]))}
+        facts = {k: v for k, v in key.items() if k in spelled}
+        named = constraints_module.symbol("string", facts)
+        assert named is not None, (document, facts)
+        assert f"dict[{named}," in _source(path), (document, named)
 
     # A $ref key: the key IS that type, imported, and it refuses what the type
     # refuses.  The bound symbol is an ``Annotated`` alias because that is what a
@@ -3547,39 +4119,127 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     with pytest.raises(ValidationError):
         model.model_validate({"m": {"ABC": 1}})  # and refuses what it refuses
 
-    # A constrained key would need D5's alias module, which this row does not build.
-    for key_node, keyword in (
-        ({"type": "string", "pattern": "^a"}, "pattern"),
-        ({"type": "string", "minLength": 2}, "minLength"),
-        ({"anyOf": [{"pattern": "^a"}, {"$ref": "https://x/core/tag.json"}]}, "anyOf"),
+    # **A CONSTRAINED KEY IS A TYPE, in both of the document's spellings, and the two
+    # spellings emit ONE type.**  Each is lowered by the real pipeline, the rendered
+    # annotation is asserted against the namer's own symbol, and the model is then
+    # offered a key the bound admits and a key it refuses -- so the key is a type and
+    # not a comment.  Both were VERDICTS before ``salesagent-j3k2l.64``.
+    for key_node, spelled, admits, refuses in (
+        ({"type": "string", "pattern": "^a"}, {"pattern": "^a"}, "abc", "zzz"),
+        ({"type": "string", "minLength": 2}, {"minLength": 2}, "ab", "a"),
+        (
+            {"type": "string", "minLength": 2, "pattern": "^a"},
+            {"minLength": 2, "pattern": "^a"},
+            "ab",
+            "a",
+        ),
     ):
-        with pytest.raises(Refusal) as caught:
-            emit.lower_document(
-                "k.json",
-                {
-                    "title": "K",
-                    "type": "object",
-                    "properties": {"m": {"type": "object", "propertyNames": key_node}},
-                },
-            )
-        assert caught.value.keyword == keyword, (key_node, caught.value.keyword)
-
-    # A ``patternProperties`` key carries the pattern that selected it, which is the
-    # same annotated ``str`` and so the same refusal -- one owner for the key rule, so
-    # a ``propertyNames`` pattern and a ``patternProperties`` pattern cannot come to be
-    # read two different ways.
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "pp.json",
+        model, text = _constructed(
             {
-                "title": "PP",
+                "title": "K",
                 "type": "object",
                 "properties": {
-                    "m": {"type": "object", "patternProperties": {"^x_": {"type": "integer"}}}
+                    "m": {
+                        "type": "object",
+                        "propertyNames": key_node,
+                        "additionalProperties": {"type": "integer"},
+                    }
+                },
+            }
+        )
+        named = constraints_module.symbol("string", spelled)
+        assert f"dict[{named}, int]" in text, (spelled, named, text)
+        model.model_validate({"m": {admits: 1}})
+        with pytest.raises(ValidationError):
+            model.model_validate({"m": {refuses: 1}})
+
+    # The ``patternProperties`` spelling says the same thing and emits the same type:
+    # ONE owner for the key rule, so a ``propertyNames`` pattern and a
+    # ``patternProperties`` pattern cannot come to be read two different ways.  The
+    # ``additionalProperties: false`` is what closes the keys to the ones the pattern
+    # matches, which is what a typed key already says -- without it the document
+    # admits every key the pattern does not match and refuses.
+    patterned = {
+        "title": "PP",
+        "type": "object",
+        "properties": {
+            "m": {
+                "type": "object",
+                "patternProperties": {"^x_": {"type": "integer"}},
+                "additionalProperties": False,
+            }
+        },
+    }
+    model, text = _constructed(patterned)
+    rendered = f'dict[{constraints_module.symbol("string", {"pattern": "^x_"})}, int]'
+    assert rendered in text, (rendered, text)
+    model.model_validate({"m": {"x_a": 1}})
+    with pytest.raises(ValidationError):
+        model.model_validate({"m": {"y_a": 1}})
+    # ... and the SAME rendered annotation as the other spelling of it, which is what
+    # "one owner for the key rule" comes to in the output.
+    _, other = _constructed(
+        {
+            "title": "PP",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "propertyNames": {"pattern": "^x_"},
+                    "additionalProperties": {"type": "integer"},
+                }
+            },
+        }
+    )
+    assert rendered in other, (rendered, other)
+    # An unclosed ``patternProperties`` admits every key the pattern does not match,
+    # and a typed key refuses it -- the model would be NARROWER than its document.
+    for ap, keyword in ((None, "additionalProperties"), ({"type": "string"}, "additionalProperties")):
+        node = {"type": "object", "patternProperties": {"^x_": {"type": "integer"}}}
+        if ap is not None:
+            node["additionalProperties"] = ap
+        with pytest.raises(Refusal) as caught:
+            emit.lower_document(
+                "pp0.json",
+                {"title": "PP0", "type": "object", "properties": {"m": node}},
+            )
+        assert caught.value.keyword == keyword, (ap, caught.value.keyword)
+    # Two statements about one key type is one too many for a dict[K, V].
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "pp1.json",
+            {
+                "title": "PP1",
+                "type": "object",
+                "properties": {
+                    "m": {
+                        "type": "object",
+                        "patternProperties": {"^x_": {"type": "integer"}},
+                        "propertyNames": {"minLength": 2},
+                        "additionalProperties": False,
+                    }
                 },
             },
         )
-    assert caught.value.keyword == "pattern", caught.value.keyword
+    assert caught.value.keyword == "propertyNames", caught.value.keyword
+    # An ``anyOf`` key is a UNION of key types, which is a row of its own and still
+    # refuses -- named here so the key rule's residue is asserted and not assumed.
+    with pytest.raises(Refusal):
+        emit.lower_document(
+            "ko.json",
+            {
+                "title": "KO",
+                "type": "object",
+                "properties": {
+                    "m": {
+                        "type": "object",
+                        "propertyNames": {
+                            "anyOf": [{"pattern": "^a"}, {"$ref": "https://x/core/tag.json"}]
+                        },
+                    }
+                },
+            },
+        )
     # Two patterns are two key types with two value types, which is not a dict[K, V].
     with pytest.raises(Refusal) as caught:
         emit.lower_document(
@@ -3620,11 +4280,92 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     assert "core/store-item.json" in emit.emit(BUNDLE, ["core/store-item.json"]).refusals
 
 
+def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() -> None:
+    """§5's one ``propertyNames`` position that has no key type to annotate.
+
+    A RULE position constrains which keys a conditional TESTS, so there is no key
+    type to carry a bound and no value to hang a validator on -- which makes it the
+    one position the carrier rule does not reach, and §5 says it states nothing.  It
+    is therefore ADMITTED rather than refused, and this grades both halves: the
+    document lowers, and what it lowers to carries no trace of the keyword.
+
+    **The second half is what the test is for.**  "Not refused" is free -- a keyword
+    nothing reads is not refused either -- so the claim is checked against the one
+    thing that distinguishes silence from a drop: the SAME key schema at a TYPE
+    position is read, and a closed key set there refuses by name (§5: a closed key
+    set is a MODEL whose keys are its fields).  One keyword, two positions, two
+    answers, and the position is what decides.
+
+    Measured over the 1,054 portable documents: 3 of the bundle's 4 ``enum`` key
+    schemas sit at a rule position, and 2 of their documents EMIT -- so the position
+    is reached by the run and not only by the probe below.  The third's document
+    refuses at its root on ``allOf``, which is another row's keyword.
+    """
+    at_a_rule = {
+        f"{document}#{pointer}"
+        for document in sorted(bundle.portable(BUNDLE))
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document))
+        if "propertyNames" in node
+        and set(pointer.strip("/").split("/")) & set(bundle.CONDITIONAL)
+    }
+    claimed("key schemas at a rule position", at_a_rule)
+    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    assert sorted(at_a_rule) == [
+        "core/catalog-item-availability-state.json#/allOf/0/else",
+        "core/catalog-item-availability-update-result.json#/allOf/0/then",
+        "media-buy/sync-catalogs-response.json#/oneOf/1/allOf/0/then",
+    ], sorted(at_a_rule)
+    for name in ("core/catalog-item-availability-state.json",
+                 "core/catalog-item-availability-update-result.json"):
+        assert name in out.emitted, (name, out.refusals.get(name))
+        # The keyword reaches the output in no spelling: it is not a key type, not a
+        # rule, and not a ``json_schema_extra`` fact.
+        assert "propertyNames" not in _source(name), name
+    # The third one's document refuses, and on another row's keyword at its root.
+    third = out.refusals["media-buy/sync-catalogs-response.json"]
+    assert (third["keyword"], third["pointer"]) == ("allOf", "/"), third
+
+    # And the probe, both positions, one key schema.  The rule position lowers and
+    # states only the conditional the ``if``/``then`` pair is about...
+    key = {"enum": ["s"]}
+    mod, symbol = emit.lower_document(
+        "r.json",
+        {
+            "title": "R",
+            "type": "object",
+            "properties": {"s": {"type": "string"}},
+            "allOf": [
+                {
+                    "if": {"properties": {"s": {"const": "x"}}, "required": ["s"]},
+                    "then": {"required": ["s"], "propertyNames": key},
+                }
+            ],
+        },
+    )
+    text = "\n".join(mod.blocks)
+    assert symbol == "R"
+    assert "ConditionalRequired" in text, text
+    assert "propertyNames" not in text and "s" in text, text
+    # ... while the same key schema at a TYPE position is READ, and a closed key set
+    # there refuses by name with the key set in the detail.
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "t.json",
+            {
+                "title": "T",
+                "type": "object",
+                "properties": {"m": {"type": "object", "propertyNames": key}},
+            },
+        )
+    assert caught.value.keyword == "enum", caught.value
+    assert "MODEL whose keys are its fields" in caught.value.detail, caught.value.detail
+
+
 def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     """D8's typed row, and the EXTRAS STORE now has exactly one live document.
 
     Measured: 727 documents mention ``additionalProperties`` and 51 carry a typed one.
-    10 of the 51 emit, and the extras store needs a node declaring ``properties`` AND
+    11 of the 51 emit, and the extras store needs a node declaring ``properties`` AND
     a typed ``additionalProperties`` -- the bundle has 14 such nodes, and ONE of their
     documents emits: ``core/canonical-media-buy-features.json``, which
     ``salesagent-j3k2l.28`` unblocked.  Until then the store was reached by 0
@@ -3646,39 +4387,74 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
             for _, n in bundle.nodes(bundle.read(BUNDLE, d))
         )
     ]
-    assert len(typed) == 51, len(typed)
+    # Non-empty, and inside the bundle: how many documents carry a typed
+    # ``additionalProperties`` is a property of the bundle version, and what this
+    # clause needs is a population for the emitted list below to be drawn from.
+    claimed("documents carrying a typed additionalProperties", typed, inside=bundle.portable(BUNDLE))
     mentions = [
         d
         for d in bundle.portable(BUNDLE)
         if "additionalProperties" in bundle.schema_keywords(bundle.read(BUNDLE, d))
     ]
-    assert len(mentions) == 727, len(mentions)
+    claimed("documents mentioning additionalProperties", mentions, inside=bundle.portable(BUNDLE))
+    assert set(typed) <= set(mentions), sorted(set(typed) - set(mentions))
     out = emit.emit(BUNDLE, population())
-    # 7 of the 51 are emitted, and every one of them is the mapping path rather than
-    # the extras store: each typed ``additionalProperties`` in those 7 sits on a node
-    # with NO ``properties``, so it is a mapping and the row above lowers it.  The
-    # extras store needs a node with BOTH, the bundle has 14 such sites, and 0 of
-    # them is in a document this run emits -- so the store is graded by the probe
-    # below and by 0 documents.  Both halves are asserted, because "7 emitted" and
-    # "0 of them reach the store" are different facts and the second is the claim.
+    # The emitted list and the store sites are DIFFERENT facts, and both are asserted:
+    # a typed ``additionalProperties`` on a node with no ``properties`` is a MAPPING,
+    # which the row above lowers, while the extras store needs a node declaring BOTH.
+    # The bundle has 14 of the second kind and exactly one of them is in a document
+    # this run emits, so the store is graded by that document and by the constructed
+    # probe at the end -- a count of emitted documents says nothing about it.
     #
     # Re-measured at 64131600f (``salesagent-j3k2l.29``).  The 14 is unchanged and is
     # over the bundle; the emitted list is over ``population()`` and grew from 1.  The
     # previous revision said the 14 "all sit under ``definitions``", which is not
     # true of this bundle -- 4 of them are at a document's own root -- so the reason
     # recorded here is now the measured one: none of the 14 is in an emitted document.
+    #
+    # 10 -> 11 at ``salesagent-j3k2l.21``, and the eleventh is NAMED rather than
+    # counted because the cause has to be attributable: ``core/geo-place-area.json``
+    # joins because its two ``$ref`` targets now emit.  ``core/geo-place-system.json``
+    # and ``core/geo-place-type.json`` are each a root ``anyOf`` of SCALARS whose
+    # untitled first branch carries an ``enum`` -- this row's own population -- so
+    # both lower to a root alias and the document that references them is no longer
+    # chained to their refusals.  Its typed ``additionalProperties`` is at
+    # ``/properties/value_labels/additionalProperties``, a node with no
+    # ``properties``, so it is the MAPPING path and the store assertion below is
+    # unchanged by it: the one emitted store site is still
+    # ``core/canonical-media-buy-features.json``.
+    #
+    # 11 -> 13 at ``salesagent-j3k2l.64``, and both are NAMED for the same reason:
+    # ``core/geo-region-support.json`` and
+    # ``trusted-match/identity-match-response.json`` each refused on a patterned KEY
+    # and now emit.  Both are the MAPPING path again -- the typed
+    # ``additionalProperties`` is the value schema of the very mapping whose key
+    # carries the pattern -- so the store assertion below is unchanged by them too.
+    #
+    # 13 -> 16 at ``salesagent-j3k2l.41``, all three NAMED for the same reason:
+    # ``governance/reported-outcome-error.json`` and the two ``trusted-match`` configs
+    # each refused on a fact at a position with no field -- an array bound on a union
+    # branch, and a mapping's own key count -- and each now emits with that fact on a
+    # named type.  All three are the MAPPING path, so the store assertion below is
+    # unchanged by them.
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
         "a2ui/component.json",
         "collection/get-collection-list-response.json",
         "core/canonical-media-buy-features.json",
+        "core/geo-place-area.json",
+        "core/geo-region-support.json",
         "core/product-change-map.json",
         "core/reporting-file-entry.json",
         "core/tasks-list-response.json",
         "error-details/vendor-error-codes.json",
+        "governance/reported-outcome-error.json",
         "property/property-feature-result.json",
         "protocol/list-tasks-response.json",
         "sponsored-intelligence/si-ui-element.json",
+        "trusted-match/identity-match-response.json",
+        "trusted-match/publisher-targeting-kv-config.json",
+        "trusted-match/publisher-tmpx-config.json",
     ], emitted_typed
     store = [
         (d, pointer or "/")
@@ -3688,13 +4464,17 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         and node["additionalProperties"]
         and "properties" in node
     ]
-    assert len(store) == 14, store
-    # ONE of the 14, named: the store stopped being a mechanism with no document the
-    # moment ``salesagent-j3k2l.28`` let this one emit, and the pointer is the root's
-    # own node.  Asserted as the row rather than as a count, so a second document
-    # joining it is read as a new site and not as a number going up.
+    claimed("nodes declaring properties beside a typed additionalProperties", store)
+    # TWO of the 14, named: the store stopped being a mechanism with no document the
+    # moment ``salesagent-j3k2l.28`` let the first one emit, and the pointer is the
+    # root's own node.  Asserted as the rows rather than as a count, so a third
+    # document joining them is read as a new site and not as a number going up.  The
+    # second arrived at ``salesagent-j3k2l.41``: ``reported-outcome-error``'s root
+    # declares ``properties`` beside a typed ``additionalProperties``, so it is the
+    # STORE path and not the mapping one.
     assert [row for row in store if row[0] in out.emitted] == [
-        ("core/canonical-media-buy-features.json", "/")
+        ("core/canonical-media-buy-features.json", "/"),
+        ("governance/reported-outcome-error.json", "/"),
     ], store
     # and it really does carry the store, read off the emitted module
     assert "__pydantic_extra__: dict[str, bool]" in _source(
@@ -3747,12 +4527,11 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         for key, sub in (schema_at(row.ref).get("properties") or {}).items()
         if isinstance(sub.get("type"), list)
     ]
-    # 11 and not 2: core/webhook-activity-record.json and core/registry-event.json
-    # carry a DECLARED null beside their type and emit now, so the live sites are no
-    # longer only error-details/conflict.json's two ['number', 'string'].
-    # Re-measured at 64131600f (``salesagent-j3k2l.29``): 11, a count over
-    # ``graded()`` and so one that moves with the emitted population.
-    assert len(live) == 11, live
+    # Non-empty, which is what the loop below needs: the per-site assertion is the
+    # obligation and an empty list would satisfy all of it.  The count went 2 -> 11 as
+    # documents carrying a DECLARED null beside their type emitted, and it moves again
+    # on every row that adds one, so the set is claimed and the size is not.
+    claimed("live multi-type property sites", live)
     for ref, key in live:
         doc = schema_at(ref)
         model = next(r.model for r in graded() if r.ref == ref)
@@ -3841,7 +4620,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # document's -- the integer arm takes no string bound. Built by hand from the
     # alias the emitter would have used, because the emitter refuses to reach it.
     arm_alias = {"StrMinLen4": None}
-    exec(constraints_module.declare({named: ("string", {"minLength": 4})}), arm_alias)  # noqa: S102
+    exec(constraints_module.declare({named: ("string", {"minLength": 4}, None)}), arm_alias)  # noqa: S102
 
     class Armed(AdCPBaseModel):
         v: arm_alias[named] | int  # type: ignore[name-defined,valid-type]
@@ -4006,7 +4785,33 @@ def test_a_declared_null_is_never_read_as_absence() -> None:
     assert [a.split(": ")[0] for a in res.added] == ["/properties/v/default"], res.added
 
 
-def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -> None:
+#: The documents this test asserted as REFUSED in an earlier revision and that now
+#: emit, each at the row that named the inner type its refusal asked for.  Read off
+#: the run rather than off the tree, so none of it can pass on a stale file.  A name
+#: moves INTO this map when a row clears it and never out, which is why it is a map and
+#: not a count: a count said only that the group had changed size.
+_WAS_REFUSED_INSIDE_A_CONTAINER: dict[str, tuple[str, ...]] = {
+    "an inner scalar constraint, named in the alias module": (
+        "brand/rights-terms.json",
+        "property/property-list-filters.json",
+    ),
+    # salesagent-j3k2l.41: a format with no type selected, at an array ELEMENT.
+    "an inner format, named in the alias module": (
+        "core/requirements/html-asset-requirements.json",
+        "core/requirements/javascript-asset-requirements.json",
+        "core/requirements/url-asset-requirements.json",
+    ),
+    # salesagent-j3k2l.41: a mapping's own key count, on a mapping that is itself
+    # another mapping's value.  The alias is GENERIC, which is what lets it be named
+    # without the value type in the symbol.
+    "a container's own bound, named by a generic alias": (
+        "trusted-match/publisher-targeting-kv-config.json",
+        "trusted-match/publisher-tmpx-config.json",
+    ),
+}
+
+
+def test_a_constraint_inside_a_container_is_named_and_nothing_is_left_refused() -> None:
     """D5's alias module, read from the side it was built for, and the residual.
 
     A constraint on what is INSIDE a container has no slot in the compiler's
@@ -4016,16 +4821,27 @@ def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -
     D5's alias module would have to name -- and the alias module is what retires it.
     Naming the inner type is the whole of the fix: once the constraint is on the
     type, ``dict[str, StrMinLen1]`` and ``list[StrMatchingEFC12812]`` are plain
-    references and ``_inner`` sees nothing to carry.
+    references and ``compiler.carried`` sees nothing to carry.
 
-    Three halves, because the row did not disappear:
+    Three halves, and the third is now EMPTY:
 
-    * the inner type IS named, at 10 container positions in 7 modules;
-    * the two documents the previous revision of this test named BY NAME as refused
-      on an inner ``^[A-Z]{2}$`` now emit;
-    * and what still refuses is a ``format`` no type is selected for, which would
-      be DROPPED rather than carried -- 3 documents, all three on
-      ``format: hostname`` inside an array's ``items``.
+    * the inner type IS named, at a set of container positions in a set of modules;
+    * every document an earlier revision of this test named BY NAME as refused now
+      emits -- the two on an inner ``^[A-Z]{2}$``, then the three on ``format:
+      hostname`` inside an array's ``items`` and the two on a mapping's own
+      ``minProperties``/``maxProperties`` (``salesagent-j3k2l.41``);
+    * and the residual is empty.  An empty part is asserted as empty and not
+      ``claimed``: the design asks for this one to be nothing, and the two directions
+      above are what keep that from being a derivation that matches nothing -- a
+      refusal still minted at this position would land in the map and redden here,
+      while a document that stopped emitting reddens in the loop above it.
+
+    ``codegen/constraints.py``'s docstring used to exclude a constrained container by
+    the NAMING rule rather than by omission -- the symbol would have to carry the value
+    type, and a value type is a domain word.  That holds for a NON-generic alias and
+    that is the premise that changed: a parameter is not a domain word, so
+    ``NonEmptyList[T]`` and ``DictMaxProperties32[K, V]`` name the bound for every
+    content type at once and the use site supplies the contents.
 
     That the inner fact survives into the model's rendered schema is graded by
     ``test_an_arrays_bound_is_the_lists_and_not_its_elements``, which compares the
@@ -4033,34 +4849,30 @@ def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -
     it is not restated here.
     """
     out = emit.emit(BUNDLE, population())
+
+    # Every document the earlier revisions named as refused HERE, now emitted.
+    released = claimed(
+        "documents once refused on a constraint inside a container",
+        {d for names in _WAS_REFUSED_INSIDE_A_CONTAINER.values() for d in names},
+        inside=population(),
+    )
+    assert released <= set(out.emitted), sorted(released - set(out.emitted))
+
+    # And the residual, read off the refusal DETAIL the one producer writes
+    # (``compiler.carried``), so a refusal minted at any of the three positions it
+    # serves lands here whichever lowering asked.
     inner = {
-        d: r
-        for d, r in out.refusals.items()
-        if "D5" in r["detail"] and "no constraint inside a container" in r["detail"]
+        d: r for d, r in out.refusals.items() if "compiler.Type carries no constraint" in r["detail"]
     }
-    # Down from 15, and every survivor is a FORMAT rather than a constraint keyword:
-    # a format with no selected type has nowhere to go inside a container, and the
-    # comparison would not see it go (the accepts check draws through
-    # `hypothesis_jsonschema`, which honours a format it knows).
-    assert len(inner) == 3, sorted(inner)
-    assert {r["keyword"] for r in inner.values()} == {"format"}
-    for document, row in inner.items():
-        node = bundle.read(BUNDLE, document)
-        for part in row["pointer"].strip("/").split("/"):
-            node = node[part]
-        assert node["format"] == "hostname", (document, node)
-        assert node["format"] not in emit.FORMAT_TYPES, "a selected type would not refuse"
-        assert "hostname" in row["detail"], row
+    assert inner == {}, inner
 
-    # The two the previous revision asserted as REFUSED, now emitted -- read off the
-    # run rather than off the tree, so this cannot pass on a stale file.
-    for was_refused in ("brand/rights-terms.json", "property/property-list-filters.json"):
-        assert was_refused in out.emitted, was_refused
-        assert was_refused not in out.refusals, out.refusals.get(was_refused)
-
-    # And the naming, counted: a container position whose INNER type is a symbol the
-    # module imports from `adcp.types.constraints`.
-    positions, modules = 0, set()
+    # And the naming, as the SET of container positions whose INNER type is a symbol
+    # the module imports from ``adcp.types.constraints``.  Both halves non-empty rather
+    # than a pair of counts: the claim is that the inner type IS named at a real
+    # position in a real module, and (23, 13) was a reading of one emitted tree that
+    # every row adding a constrained container moves.
+    positions: set[tuple[str, str]] = set()
+    modules: set[str] = set()
     for rel, text in sorted(out.files.items()):
         if not rel.endswith(".py"):
             continue
@@ -4080,9 +4892,11 @@ def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -
                 continue
             for name in ast.walk(n.slice):
                 if isinstance(name, ast.Name) and name.id in aliases:
-                    positions += 1
+                    positions.add((rel, name.id))
                     modules.add(rel)
-    assert (positions, len(modules)) == (23, 13), (positions, sorted(modules))
+    claimed("container positions whose inner type is a named constraint", positions)
+    claimed("modules naming an inner constraint type", modules)
+    assert {rel for rel, _ in positions} == modules, (sorted(positions), sorted(modules))
 
 
 # --------------------------------------------------------------------------- #
@@ -4270,6 +5084,20 @@ def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> 
     assert len(emit.emit(BUNDLE, population()).beside) == 1
 
 
+def _is_type_variable(node: ast.Assign) -> bool:
+    """Is this module-level assignment a type VARIABLE rather than an alias.
+
+    ``T = TypeVar("T")`` is machinery and not a name the module provides: a generic
+    container alias (``NonEmptyList = Annotated[list[T], Field(min_length=1)]``) is
+    subscripted at the use site, so the parameter is never imported anywhere and
+    counting it as a declared alias would make the reverse direction below red
+    forever.  Matched on the CALL being ``TypeVar``, so an alias whose value happens
+    to be any other call is still counted.
+    """
+    value = node.value
+    return isinstance(value, ast.Call) and getattr(value.func, "id", "") == "TypeVar"
+
+
 def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_named() -> None:
     """D5's alias module, in BOTH directions, with its denominators.
 
@@ -4311,7 +5139,9 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
     declared = {
         node.targets[0].id
         for node in module.body
-        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
+        if isinstance(node, ast.Assign)
+        and isinstance(node.targets[0], ast.Name)
+        and not _is_type_variable(node)
     }
     reexported = {
         alias.asname or alias.name
@@ -4321,24 +5151,26 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
     }
     assert constraints_module.HTTP_URL in reexported, reexported
     declared |= {constraints_module.HTTP_URL}
-    assert declared, "the alias module declares nothing"
+    claimed("aliases the module declares", declared)
+    claimed("aliases the tree imports", imported)
     assert set(imported) - declared == set(), "imported and not declared"
     assert declared - set(imported) == set(), "declared and never named"
 
-    # The denominators, so neither direction can pass over an empty set: every
-    # alias is reachable at this one path and nowhere else (no flat root, no
-    # second spelling), and the module is not a dumping ground.
-    # Re-measured at 64131600f (``salesagent-j3k2l.29``): every count here is over the
-    # committed TREE, which is the ``population()`` run (991 named documents, 677
-    # emitted), so each one moves as that run grows.  The two DIRECTIONS above are
-    # what the test is for and they are set equalities, not counts.
-    assert len(declared) == 133, len(declared)  # the derived shapes + AdCPUrl + HttpUrl
-    # (module, alias) pairs, which is NOT the site count: a module importing one
-    # alias for five of its fields contributes one pair.
-    assert sum(len(where) for where in imported.values()) == 684, imported
-    # And the one name that is a decision really is annotating fields.
-    assert len(imported[constraints_module.URL]) == 12, sorted(imported[constraints_module.URL])
-    assert len(imported[constraints_module.HTTP_URL]) == 75, sorted(imported[constraints_module.HTTP_URL])
+    # The denominators, so neither direction can pass over an empty set: every alias is
+    # reachable at this one path and nowhere else (no flat root, no second spelling),
+    # and the module is not a dumping ground.  Each one is the NON-EMPTINESS of a set
+    # and not its size: every count here was over the committed tree, so each one moved
+    # as the ``population()`` run grew -- ``declared`` was 133 and is 141 at this base,
+    # red on every tree that emitted one more constrained shape -- while the two
+    # DIRECTIONS above are what the test is for and they are set equalities already.
+    claimed(
+        "(module, alias) pairs",
+        {(where, alias) for alias, wheres in imported.items() for where in wheres},
+    )
+    # And the two names that are a DECISION really are annotating fields: ``AdCPUrl`` is
+    # ours and ``HttpUrl`` is pydantic's, and D5 points fields at both.
+    claimed("modules naming AdCPUrl", imported[constraints_module.URL])
+    claimed("modules naming HttpUrl", imported[constraints_module.HTTP_URL])
 
 
 def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
@@ -4549,7 +5381,8 @@ def test_only_the_model_validate_path_observes_a_rule() -> None:
     carriers = sorted({document for document, _payload, _keyword in RULE_VIOLATIONS})
     before = [check_pair(pair_of(g)) for g in graded()
               if g.ref.document in carriers and g.ref.pointer == "#"]
-    assert len(before) == len(carriers) == 3
+    claimed("documents carrying a rule violation fixture", carriers)
+    assert len(before) == len(carriers), (len(before), carriers)
     assert all(r.outcome == "pass" for r in before), [(r.name, r.outcome) for r in before]
 
     runtime = sys.modules[RuleBound.__module__]
@@ -4563,7 +5396,7 @@ def test_only_the_model_validate_path_observes_a_rule() -> None:
                 _root(document).strict_validate(payload)  # the schema half still refuses
             assert caught.value.errors()[0]["type"] == keyword, document
             accepted += 1
-        assert accepted == 3
+        assert accepted == len(RULE_VIOLATIONS), (accepted, len(RULE_VIOLATIONS))
         after = [check_pair(pair_of(g)) for g in graded()
                  if g.ref.document in carriers and g.ref.pointer == "#"]
         assert [r.outcome for r in after] == [r.outcome for r in before]
@@ -4580,23 +5413,30 @@ def test_only_the_model_validate_path_observes_a_rule() -> None:
 #: how many of those are a node ``lower_object`` can reach today (an object node
 #: with ``properties``).  The second number is why three kinds have no emitted
 #: carrier in this tree: a node inside an ``allOf`` conjunct is not a class here.
-RULE_KIND_POPULATION = {
-    #: The one kind whose keyword sits BELOW the node that carries the rule: an array
-    #: a property holds.  So its reachable count equals its site count by
-    #: construction -- a node with a ``properties`` map is the only node it is read
-    #: off at all -- and that identity is the assertion, not a coincidence.
-    "UniqueItems": (464, 188, 464),
-    "ForbiddenGroups": (398, 171, 167),
-    "RequiredGroups": (297, 161, 70),
-    "ConditionalRequired": (294, 128, 12),
-    #: 57 and not 61: ``_count`` writes the MINIMUM only where the document states
-    #: ``additionalProperties``, because under D8's ``ignore`` a dropped key makes
-    #: the rule refuse an instance the document ACCEPTS.  4 nodes state a
-    #: ``minProperties`` and nothing else countable, so they now write no rule.
-    "PropertyCount": (57, 40, 27),
-    "Dependencies": (60, 27, 58),
-    "NegatedConditional": (42, 37, 0),
-}
+#: **THE SEVEN RULE KINDS, BY NAME.**  The claim is that every kind the lowering can
+#: write IS written from a real bundle node -- a kind nothing writes is dead code -- and
+#: that is a statement about the NAMES.  The three counts each kind used to carry
+#: (sites, documents, reachable sites) were a reading of one bundle version, and two of
+#: them restated what the loop already asserts: the reachable count's own identity is
+#: asserted for ``UniqueItems`` below, where it is a property of the lowering and not a
+#: coincidence of this bundle.
+#:
+#: ``NegatedConditional`` is the one kind with NO reachable site: it is written only at
+#: nodes inside an ``allOf`` conjunct, which is not a class here at all, so it is named
+#: here as the part that is expected to be empty rather than read as a gap.
+RULE_KINDS = frozenset(
+    {
+        "UniqueItems",
+        "ForbiddenGroups",
+        "RequiredGroups",
+        "ConditionalRequired",
+        "PropertyCount",
+        "Dependencies",
+        "NegatedConditional",
+    }
+)
+#: The one kind the bundle gives no node a class can carry the rule at.
+UNREACHABLE_RULE_KINDS = frozenset({"NegatedConditional"})
 
 
 def test_every_rule_kind_is_written_from_a_real_bundle_node() -> None:
@@ -4632,12 +5472,20 @@ def test_every_rule_kind_is_written_from_a_real_bundle_node() -> None:
                 documents.setdefault(kind, set()).add(document)
                 if "properties" in node:
                     reachable[kind] = reachable.get(kind, 0) + 1
+    # Named before anything is asserted of the members: an empty walk would make the
+    # three clauses below hold over nothing, and "a rule kind nothing writes is dead
+    # code" is exactly the claim that cannot be read off an empty measurement.
+    claimed("rule kinds written from a bundle node", everywhere)
     measured = {
         kind: (everywhere[kind], len(documents[kind]), reachable.get(kind, 0))
         for kind in everywhere
     }
-    assert measured == RULE_KIND_POPULATION, measured
-    assert len(measured) == 7, "a rule kind nothing writes is dead code"
+    assert set(measured) == RULE_KINDS, sorted(measured)  # one nothing writes is dead code
+    for kind, (sites, docs, _reachable) in sorted(measured.items()):
+        assert sites and docs, (kind, measured[kind])
+    # And WHICH kinds have no node a class can carry them at, named rather than read
+    # off a zero in a table of counts.
+    assert {k for k, (_s, _d, r) in measured.items() if not r} == UNREACHABLE_RULE_KINDS, measured
     # ``uniqueItems``'s own identity, stated so a lowering that started reading the
     # keyword off a node with no ``properties`` map would redden here: the kind is
     # read off a property's declaration, so every site it is written at is reachable.
@@ -4711,7 +5559,7 @@ def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
         assert got == ([keyword] if keyword else []), (rule, values, got)
         seen.add(type(rule).__name__)
 
-    assert seen == set(RULE_KIND_POPULATION), seen
+    assert seen == set(RULE_KINDS), seen
 
 
 def test_a_conditional_that_narrows_a_value_is_the_schemas_and_not_a_rules() -> None:
@@ -4794,8 +5642,12 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
         for pointer, node in bundle.nodes(bundle.read(BUNDLE, document))
         if isinstance(node, dict) and "uniqueItems" in node
     ]
-    assert len(stating) == 485, len(stating)
-    assert len({document for document, _ in stating}) == 198
+    # Both denominators, as non-emptiness and not as two counts: the claim is that the
+    # keyword has sites in the bundle for direction 2 to find in the tree, and the two
+    # figures were a reading of one bundle version (the step census read 462 over these
+    # same documents because a step merged the positions stating ONE fact).
+    claimed("bundle nodes stating uniqueItems", stating)
+    claimed("documents stating uniqueItems", {document for document, _ in stating})
 
     carried = [
         f"{document}{pointer or '/'}"
@@ -4873,14 +5725,14 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
     assert "uniqueItems" in rules.KEYWORDS, "the keyword must not block an object lowering"
     # **This line used to assert the OPPOSITE and the design reversed under it.**  It
     # read ``not any("UniqueItems" in source for source in RULE_KIND_POPULATION)``,
-    # which iterates that dict's KEYS; it was written at ``438240878`` when the dict
-    # had six keys and no ``UniqueItems``, and ``d50d26481`` made ``UniqueItems`` the
-    # seventh rule kind and left the line standing -- so it has asserted a falsehood
-    # about its own module-level constant ever since, with no number to re-point.
+    # which iterated that constant's KEYS; it was written at ``438240878`` when it had
+    # six names and no ``UniqueItems``, and ``d50d26481`` made ``UniqueItems`` the
+    # seventh rule kind and left the line standing -- so it asserted a falsehood about
+    # its own module-level constant for months, with no number to re-point.
     # The fact that is true now is the one the kind was added for, and its arithmetic
     # (sites == reachable, over the bundle) is graded by
     # ``test_every_rule_kind_is_written_from_a_real_bundle_node``.
-    assert "UniqueItems" in RULE_KIND_POPULATION, sorted(RULE_KIND_POPULATION)
+    assert "UniqueItems" in RULE_KINDS, sorted(RULE_KINDS)
 
 
 # --------------------------------------------------------------------------- #
@@ -4960,7 +5812,12 @@ def test_a_pinned_value_carrying_a_dot_renders_whole() -> None:
     why nothing caught it.
     """
     dotted = [v for _, _, n in _const_nodes() if isinstance(v := n["const"], str) and "." in v]
-    assert len(dotted) == 103, len(dotted)
+    # The bundle's own dotted pins, non-empty: the sentence this denominator supports
+    # is "the bundle HAS dotted const values while the old spelling emitted none of
+    # them", and that is a statement about two sets being non-empty and empty -- the
+    # second is asserted on the next line but one.  103 was one bundle version's count
+    # of the first.
+    claimed("bundle const values carrying a dot", set(dotted))
     emitted_dotted = [
         node["const"]
         for g in graded()
@@ -5094,8 +5951,11 @@ def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
       row claims D2's keyword in full, so there is no deferral left.
     """
     nodes = _const_nodes()
-    assert len(nodes) == 1486, len(nodes)
-    assert len({d for d, _, _ in nodes}) == 347
+    # The row's reach, as the non-empty set of nodes and documents it covers rather
+    # than as a pair of counts over one bundle version.  The facts are the four in the
+    # docstring and every one of them is already a set equality or an empty part.
+    claimed("bundle nodes stating const", {(d, p) for d, p, _ in nodes})
+    claimed("documents stating const", {d for d, _, _ in nodes})
     assert [(d, p) for d, p, _ in nodes if p == ""] == []
 
     beside: set[str] = set()
@@ -5191,7 +6051,11 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     # has documents to run over.
     assert out.emitted, "nothing emitted: every assertion below would pass vacuously"
 
-    groups = adoptions = declared = identities = unverifiable = 0
+    groups: set[tuple[str, str]] = set()
+    adoptions: set[tuple[str, str]] = set()
+    declared: set[tuple[str, str]] = set()
+    identities: set[tuple[str, str]] = set()
+    unverifiable: set[str] = set()
     for document in sorted(out.emitted):
         doc = bundle.read(BUNDLE, document)
         # The per-pointer facts ``content_key`` reads, built the way ``lower_document``
@@ -5207,7 +6071,7 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
             by_content.setdefault(emit.content_key(node, pointer, mod), []).append(pointer)
 
         here = out.declared[document]
-        declared += len(here)
+        declared |= {(document, pointer) for pointer in here}
         assert set(here) <= set(at), (document, sorted(set(here) - set(at)))
         # Clause 1's other half, and the one that refuses the reading this row started
         # with: an adopted position DECLARES a name of its own.  Binding the field
@@ -5219,7 +6083,7 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
         )
 
         for pointer, symbol in out.adopted[document].items():
-            adoptions += 1
+            adoptions.add((document, pointer))
             declaring = [p for p, s in here.items() if s == symbol]
             assert len(declaring) == 1, (document, symbol, declaring)
             # Clause 3: the adopting node and the node whose CLASS it took are the same
@@ -5238,7 +6102,7 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
             reached = [p for p in pointers if p in here]
             if len(pointers) < 2 or not reached:
                 continue
-            groups += 1
+            groups.add((document, key))
             # Clause 1: one name per position, all distinct.
             symbols = [here[p] for p in reached]
             assert len(set(symbols)) == len(symbols), (document, key[:120], symbols)
@@ -5258,22 +6122,29 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
                 module = importlib.import_module(out.emitted[document])
                 bound = [getattr(module, s) for s in symbols]
                 assert all(b is bound[0] for b in bound), (document, symbols)
-                identities += len(bound)
+                identities |= {(document, s) for s in symbols}
             else:
-                unverifiable += 1
+                unverifiable.add(document)
 
-    # The denominators.  A dedup check whose population reaches one instance is the
-    # defect salesagent-j3k2l.38 is about -- the ceiling it replaced counted 36 bundle
-    # repeats and asserted that 0 were REACHED -- so every count is stated and a run that
-    # collapses nothing fails here rather than passing over an empty loop.  ``identities``
-    # is the number of NAMES clause 2 compared, so it is the one that says the identity
-    # check ran at all, and ``unverifiable`` is the groups it could not reach.
-    assert unverifiable == 0, unverifiable
-    assert declared == 1413, declared
-    assert groups == 9, groups
-    assert adoptions == 10, adoptions
-    assert identities == 19, identities
-    assert sum(1 for d in out.adopted if out.adopted[d]) == 7, out.adopted
+    # THE DENOMINATORS, each one a named NON-EMPTY set.  A dedup check whose population
+    # reaches one instance is the defect salesagent-j3k2l.38 is about -- the ceiling it
+    # replaced counted 36 bundle repeats and asserted that 0 were REACHED -- so every
+    # one of them is asserted to have members and a run that collapses nothing fails
+    # here rather than passing over an empty loop.  ``identities`` is the set of NAMES
+    # clause 2 compared, so it is the one that says the identity check ran at all, and
+    # ``unverifiable`` is the groups it could not reach, which is the part asserted
+    # EMPTY.
+    #
+    # The five counts this replaces (1426 / 9 / 10 / 19 / 7) all moved together at every
+    # row that emitted a module -- ``declared`` went 1413 -> 1426 at
+    # ``salesagent-j3k2l.21`` alone -- and none of them is a fact the four clauses do
+    # not already assert per member.
+    assert unverifiable == set(), sorted(unverifiable)
+    claimed("declared (document, pointer) names", declared)
+    claimed("content groups reached", groups)
+    claimed("adoptions", adoptions)
+    claimed("names whose identity clause 2 compared", identities)
+    claimed("documents with an adoption", {d for d in out.adopted if out.adopted[d]})
 
 
 def test_a_refusals_kind_is_declared_by_its_producer_and_a_chain_takes_its_targets() -> None:
@@ -5434,10 +6305,27 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # refusals that row closed were deferrals that others chained to.  142 -> 146 on
     # the verdict side.
     chained = {d: r for d, r in out.refusals.items() if r["kind"] == refusal_module.Kind.CHAINED}
-    assert len(chained) >= 166, len(chained)
+    # **166 -> 158, 146 -> 144 and 20 -> 14 at ``salesagent-j3k2l.21``, and the
+    # DIRECTION is the point these floors exist for.** They fall as rows land: seven
+    # of this row's eleven emissions were chained refusals, and
+    # ``core/geo-place-requirement.json`` stopped being chained at all -- its target
+    # cleared, so it now refuses directly on its own ``pattern``. Eight chains left
+    # the refusal set. The deferred side fell hardest again (20 -> 14) because what
+    # this row cleared were deferrals that others chained to.
+    # **The DEFERRED side fell 14 -> 5 at ``salesagent-j3k2l.41``, which is the floor
+    # doing its job and not a regression.**  That row cleared five deferrals other
+    # documents chained to -- a default on a required property, a format inside a
+    # container, a format on a union branch, and an array's and a mapping's own bound
+    # on one -- so 12 chains left the refusal set with them (158 is unchanged because
+    # 12 chains also arrived: a document whose first refusal cleared now chains to its
+    # NEXT target).  The VERDICT side rose 144 -> 153 for the same reason: three of
+    # those chains now resolve to ``uniqueItems`` with no class above the array, which
+    # its producer mints as a verdict.  Both floors are re-measured on this tree, which
+    # is what the paragraphs above do at every row.
+    assert len(chained) >= 158, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 146, dict(split)
-    assert split[refusal_module.Kind.DEFERRED] >= 20, dict(split)
+    assert split[refusal_module.Kind.VERDICT] >= 153, dict(split)
+    assert split[refusal_module.Kind.DEFERRED] >= 5, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
         max(r["detail"].count(refusal_module.CHAINED_TO_A_REFUSED_TARGET) for r in chained.values())
@@ -5520,9 +6408,11 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # target's verdict read off its own refusal:
     #
     #   core/targeting-overlay-requirements.json -> core/geo-region-requirement.json
-    #       /properties/countries/propertyNames on ``pattern`` (containers._PATTERN_KEY)
+    #       /properties/countries/propertyNames on ``pattern`` -- the key-pattern
+    #       verdict, whose constant ``salesagent-j3k2l.64`` deleted when the typed key
+    #       began to emit, so both targets emit today and the chain is gone
     #   core/targeting-overlay-support.json      -> core/geo-region-support.json
-    #       the same verdict at the same pointer
+    #       the same verdict at the same pointer, and gone the same way
     #   media-buy/package-control.json -> core/targeting-input.json ->
     #       core/targeting-unknown-age-eligibility-constraint.json at ``/`` on ``if``:
     #       a root is exactly one kind and this one's is read from ``if``
@@ -5553,7 +6443,7 @@ def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
     pydantic here rather than assumed, because which of the three it renders is a
     function of the version and the whole admission below rests on it.
 
-    The 832 TYPELESS const nodes are then the only place the model states a fact the
+    The TYPELESS const nodes are then the only place the model states a fact the
     document does not, and ``harness._entails_type`` already derives that one from the
     document's own ``const``.  Both halves are asserted: the derivation fires at every
     one of them, and it is gated on the VALUE rather than on the keyword -- a model
@@ -5566,7 +6456,10 @@ def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
     assert TypeAdapter(Literal[True]).json_schema() == {"const": True, "type": "boolean"}
 
     typeless = [(d, p, n) for d, p, n in _const_nodes() if "type" not in n]
-    assert len(typeless) == 832, len(typeless)
+    # Non-empty, which is what the loop below needs: the derivation is asserted at
+    # every member, so the denominator's job is to say there are members.  832 was one
+    # bundle version's count of them.
+    claimed("typeless const nodes", {(d, p) for d, p, _ in typeless})
 
     # the derivation fires for every one of them, read off the DOCUMENT
     for document, pointer, node in typeless:
@@ -5673,18 +6566,39 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
     assert "const" in lower_union.BRANCH_HANDLED
     builds = [
         name
-        for name, module in (("compiler", compiler), ("union", lower_union), ("const", lower_const))
+        for name, module in (
+            ("compiler", compiler),
+            ("union", lower_union),
+            ("const", lower_const),
+            # ADDED AT ``salesagent-j3k2l.21``, and adding it is the point rather than
+            # bookkeeping: ``lower.enum.literal`` builds a ``Literal`` too, and without
+            # this entry the walk below could not see it -- the assertion would have gone
+            # on reading ``["const"]`` while a second row built the same annotation.
+            ("enum", lower_enum),
+        )
         for node in ast.walk(ast.parse(inspect.getsource(module)))
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "Type"
         and any(k.arg == "literals" for k in node.keywords)
     ]
-    assert builds == ["const"], builds
-    # and the one document it attributes refuses on its own keyword, not on a deferral
-    r = emit.emit(BUNDLE, ["core/start-timing.json"]).refusals["core/start-timing.json"]
-    assert (r["keyword"], r["pointer"]) == ("type", "/oneOf/0"), r
-    assert "a branch of type 'string' is step 6" in r["detail"], r
+    # **THE INVARIANT IS ONE LOWERING PER KEYWORD, not one builder of ``Literal``**, and
+    # D2's amendment is what makes the distinction visible: a ``const`` is a one-member
+    # value set and an ``enum`` no name reaches is the same construct with more members,
+    # so both render a ``Literal`` and each keyword still has exactly one lowering. Two
+    # rows, two keywords; what this refuses is a THIRD builder, or either keyword
+    # acquiring a second.
+    assert builds == ["const", "enum"], builds
+    # The document this row attributes used to be ``core/start-timing.json``, refused on
+    # ``type`` at ``/oneOf/0`` for being a scalar branch. It EMITS now -- a union root of
+    # scalars is an alias (``salesagent-j3k2l.21``) and its ``const`` branch is the
+    # ``Literal`` arm of one -- so the attribution row has no refused document left to
+    # point at. Measured over all 1,054 portable documents: **0** are refused on a
+    # branch's own non-object type. The row stays, asserted above by resolving the name
+    # in ``BRANCH_HANDLED``; what is asserted here instead is the emitted shape, which is
+    # the same claim read off the artifact rather than off a refusal.
+    module = emit.lower_document("core/start-timing.json", bundle.read(BUNDLE, "core/start-timing.json"))[0]
+    assert "Literal['asap']" in "\n".join(b for b in module.blocks), module.blocks
 
 
 # --------------------------------------------------------------------------- #

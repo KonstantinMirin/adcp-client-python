@@ -19,6 +19,7 @@ class AttestationSubject(BranchDispatchMixin, AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-subject.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "type"
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"

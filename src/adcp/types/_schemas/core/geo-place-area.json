@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "system": {
+            "enum": [
+              "geonames",
+              "google_ads",
+              "microsoft_ads"
+            ]
+          }
+        },
+        "required": [
+          "system"
+        ]
+      },
+      "then": {
+        "properties": {
+          "values": {
+            "items": {
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "description": "A catalog-backed named place target. Values are stable identifiers in the declared system. Entries within geo_places form a union; different geographic inclusion dimensions intersect. value_labels are diagnostic only and MUST NOT be used to resolve targeting.",
+  "properties": {
+    "country": {
+      "description": "ISO 3166-1 alpha-2 country code containing the place.",
+      "pattern": "^[A-Z]{2}$",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "place_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "enum": [
+            "city",
+            "ward",
+            "state",
+            "county",
+            "airport",
+            "borough",
+            "commune",
+            "quarter",
+            "district",
+            "province",
+            "post_town",
+            "territory",
+            "prefecture",
+            "city_region",
+            "municipality",
+            "neighborhood"
+          ]
+        },
+        {
+          "format": "uri",
+          "pattern": "^https://",
+          "type": "string"
+        }
+      ],
+      "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+      "examples": [
+        "city",
+        "municipality",
+        "borough",
+        "neighborhood",
+        "post_town",
+        "city_region",
+        "county",
+        "https://seller.example/geo/place-types/trade-area"
+      ],
+      "title": "Geographic Place Type"
+    },
+    "system": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "anyOf": [
+        {
+          "enum": [
+            "geonames",
+            "google_ads",
+            "microsoft_ads"
+          ]
+        },
+        {
+          "format": "uri",
+          "pattern": "^https://",
+          "type": "string"
+        }
+      ],
+      "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
+      "examples": [
+        "geonames",
+        "google_ads",
+        "microsoft_ads",
+        "https://seller.example/geo/catalogs/places"
+      ],
+      "title": "Geographic Place Identifier System"
+    },
+    "system_version": {
+      "description": "Optional exact catalog version from the seller's declared supported_versions. When omitted, the seller applies catalog.current_version and MUST echo that version on persisted package state.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "value_labels": {
+      "additionalProperties": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "description": "Optional human-readable diagnostic labels keyed by identifiers present in values. Extra keys are a conformance error. Labels are non-authoritative and MUST NOT be used to resolve or apply targeting.",
+      "type": "object"
+    },
+    "values": {
+      "description": "Stable place identifiers in the declared system. Display names are not valid targeting values.",
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "country",
+    "system",
+    "place_type",
+    "values"
+  ],
+  "title": "Geographic Place Area",
+  "type": "object",
+  "x-adcp-validation": {
+    "description": "Every value_labels key MUST also appear in values. JSON Schema draft-07 cannot express this sibling-field key membership constraint, so conformance tooling must enforce it.",
+    "map_keys_subset_of_array": {
+      "array_field": "values",
+      "map_field": "value_labels"
+    }
+  }
+}

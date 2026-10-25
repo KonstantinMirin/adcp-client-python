@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Requirements for URL assets such as click-through URLs, tracking pixels, and landing pages.",
+  "properties": {
+    "allowed_domains": {
+      "description": "List of allowed domains for the URL",
+      "items": {
+        "format": "hostname",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "macro_support": {
+      "description": "Coarse slot gate for macro-bearing URLs. `false` is a hard prohibition on macro tokens. `true` permits tokens but does not prove any dialect semantic, resolver, context, or encoding capability; exact support comes from the selected format option's macro_resolution_capabilities.",
+      "type": "boolean"
+    },
+    "max_length": {
+      "description": "Maximum URL length in characters",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "protocols": {
+      "description": "Allowed URL protocols. HTTPS is recommended for all ad URLs.",
+      "items": {
+        "enum": [
+          "https",
+          "http"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "role": {
+      "description": "Purpose this URL slot serves in the format \u2014 distinct from `url_type` on the manifest-side asset (which declares the receiver's invocation mechanism). A slot can be `click_tracker` (purpose) and accept a `tracker_pixel` (mechanism) URL, or `clickthrough` (purpose) and accept a `clickthrough` (mechanism) URL. Complements `asset_role` (human-readable label) by providing a machine-readable enum and serves as the receiver's fallback signal when a manifest URL asset omits `url_type`.",
+      "enum": [
+        "clickthrough",
+        "landing_page",
+        "impression_tracker",
+        "click_tracker",
+        "viewability_tracker",
+        "third_party_tracker"
+      ],
+      "type": "string"
+    }
+  },
+  "title": "URL Asset Requirements",
+  "type": "object"
+}

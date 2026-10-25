@@ -204,8 +204,19 @@ class Type:
     a bound on the FIELD holding it (``Property.constraints``, rendered
     ``Field(min_length=...)``), and a bound on what is INSIDE a container has no
     slot in dmcg's ``DataType`` -- which is the gap D5 closes by naming the
-    inner type rather than the gap it looks like.  The container lowering refuses
-    an inner constraint it cannot name instead of dropping it.
+    inner type rather than the gap it looks like.  :func:`carried` is where a
+    position with no field asks for that name, and what still reaches it unnamed
+    refuses instead of being dropped.
+
+    ``container="alias"`` is the one shape dmcg cannot render itself and the one the
+    naming answer needs: a GENERIC alias applied to its arguments, ``path`` naming the
+    alias and ``of`` carrying them.  ``NonEmptyList[MediaBuyStatus]`` is what a bounded
+    array on a union BRANCH lowers to, and dmcg's ``DataType`` has no slot for it --
+    probed on the pinned version: a ``reference`` beside ``data_types`` renders the
+    ARGUMENT alone (``str``), and a ``reference`` alone renders the alias alone
+    (``NonEmptyList``), so either spelling silently loses half the type.  The
+    subscript is therefore composed HERE, which keeps section 1's seam: the walk
+    decides the alias and the arguments, and the compiler writes the text.
     """
 
     path: str = ""
@@ -245,6 +256,12 @@ class Type:
             )
         if self.container == "union":
             return _TYPES.data_type(data_types=[t.data_type() for t in self.of])
+        if self.container == "alias":
+            outer = _TYPES.get_data_type_from_full_path(self.path, is_custom_type=False)
+            args = ", ".join(t.data_type().type_hint for t in self.of)
+            return _TYPES.data_type(
+                type=f"{outer.type_hint}[{args}]", import_=outer.import_
+            )
         if self.path == "None":
             return _TYPES.data_type(type="None")
         if self.local:
@@ -785,6 +802,22 @@ def schema_ref(document: str, pointer: str) -> SchemaRef:
     return SchemaRef(document, f"#{pointer}")
 
 
+def escape_key(key: str) -> str:
+    """One JSON Pointer segment from a document KEY (RFC 6901's two escapes).
+
+    Named here, in the module every walk and both halves of the harness import,
+    because a pointer segment is spelled by FOUR readers -- ``bundle.nodes``,
+    ``harness._nodes``, ``harness.compare_schema``'s property descent, and the
+    mapping row's ``patternProperties`` pointer -- and the inverse is already
+    spelled once here (:func:`local_reference`'s caller).  A ``patternProperties``
+    expression is the first key in this bundle that actually NEEDS it: the
+    ``media-buy/get-products-response.json`` extension pattern is
+    ``^https?://[^@]+@sha256:[a-f0-9]{64}$``, whose two slashes would otherwise
+    read as two pointer hops and make the refusal's own pointer undereferenceable.
+    """
+    return key.replace("~", "~0").replace("/", "~1")
+
+
 # --------------------------------------------------------------------------- #
 # the carriers
 # --------------------------------------------------------------------------- #
@@ -858,7 +891,7 @@ class Target:
     symbol: str
     shape: Shape | None = None
     #: The target's own ROOT NODE, for the ONE reader that needs the schema rather than
-    #: the symbol: D7's intersection rule asked of two declarations that are each a bare
+    #: the symbol: section 2's intersection rule asked of two declarations that are each a bare
     #: ``$ref`` (:func:`Module.resolve_node`).  ``None`` for a reference carrying a
     #: FRAGMENT, which is the scope rather than an omission -- the binder has already
     #: looked the fragment's SYMBOL up and a node navigator here would be a second
@@ -896,6 +929,18 @@ def _no_binder(uri: str, pointer: str) -> Target:
     )
 
 
+def _no_namer(decided: Decided, mod: Module) -> Type | None:
+    """The default named carrier: nothing is named, so :func:`carried` refuses.
+
+    ``emit.name_the_constraint`` is the real one, and it is in ``emit`` because the
+    names are ``codegen.constraints``'s and that module imports this one.  Refusing is
+    the safe default and the only one: returning ``decided.type`` would DROP the facts
+    the caller came here with, which is the failure the whole arrangement exists to
+    make impossible.
+    """
+    return None
+
+
 def _no_decider(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     """The default node decider, and it refuses for ``_no_binder``'s reason.
 
@@ -929,6 +974,13 @@ class Module:
     bind: Callable[[str, str], Target] = _no_binder
     #: ``(node, pointer, name_hint, mod) -> Decided``; see ``emit.decide_type``.
     decide: Callable[[dict, str, str, "Module"], Decided] = _no_decider
+    #: ``(decided, mod) -> Type | None``; see ``emit.name_the_constraint``.  Section 2's
+    #: named carrier, for a position with no field to hold a decided node's facts.  It
+    #: is carried here, like :attr:`decide` and :attr:`bind`, for the same reason: the
+    #: names live in ``codegen.constraints``, which imports this module, so asking the
+    #: question from here directly would close a cycle.  The default names nothing,
+    #: which leaves :func:`carried` refusing -- never dropping.
+    name_constraint: Callable[[Decided, "Module"], "Type | None"] = _no_namer
     #: The formats this document's own draft asserts; see ``emit.asserted_formats``.
     #: Empty by default, so a node lowered outside ``lower_document`` selects no
     #: format-derived type rather than one nothing checks.
@@ -1006,21 +1058,37 @@ class Module:
     #: decider taking run-level state.  The IMPORT needs nothing from here: a
     #: dotted path on :class:`Type` produces it through the field, like
     #: ``pydantic.AwareDatetime``.
-    aliases: dict[str, tuple[str, dict[str, Any]]] = field(default_factory=dict)
+    aliases: dict[str, tuple[str, dict[str, Any], str | None]] = field(default_factory=dict)
+    #: Section 5's ``default`` row: ``pointer -> the value DROPPED`` at it, for a
+    #: default on a REQUIRED property.  The row is "dropped and REPORTED", and this is
+    #: the report: the drop happens inside the walk, where nothing is printed, so the
+    #: fact rides out on the module the way :attr:`aliases` and :attr:`adopted` do and
+    #: ``emit.emit`` collects it per document for the CLI and for the suite.  A list
+    #: and not a count, because the pointer is what makes it auditable: a reader can
+    #: go to the node and see the default the model does not carry.
+    drops: dict[str, Any] = field(default_factory=dict)
 
     #: What this document STATES and the class carries nothing for, one line each, as
-    #: ``"<pointer>: <name>: <why>"``.  The channel D7's third conjunct case needs: a
-    #: name draft-07 does not define asserts nothing about an instance, so dropping it
-    #: cannot widen the class and the document still emits -- which makes it neither a
-    #: refusal nor nothing.  A refusal would lose the document for a name that
+    #: ``"<pointer>: <name>: <why>"``.  The channel section 7's ``errorMessage`` row
+    #: needs: a name draft-07 does not define asserts nothing about an instance, so
+    #: dropping it cannot widen the class and the document still emits -- which makes it
+    #: neither a refusal nor nothing.  A refusal would lose the document for a name that
     #: constrains no instance; silence is how a reader comes to believe the class
     #: carries it.  ``emit`` collects these per document and the CLI prints them.
-    drops: list[str] = field(default_factory=list)
+    #:
+    #: **Separate from :attr:`drops`, which is one keyword's own rule.**  ``drops``
+    #: carries section 5's ``default``-on-a-required-property, keyed by pointer and
+    #: holding the value; this carries any name the walk admits and renders nothing for.
+    #: The two were one attribute for the length of one merge -- this row and the
+    #: ``default`` row each added a ``Module.drops``, with different types -- and a
+    #: dataclass takes the second declaration silently, so the earlier writer's
+    #: ``mod.drops[pointer] = value`` met a list.  One name per channel.
+    carries_nothing: list[str] = field(default_factory=list)
 
     def resolve_node(self, uri: str) -> dict | None:
         """The schema a cross-document reference names, or ``None``.
 
-        For D7's intersection rule and for nothing else: two declarations that are each
+        For section 2's intersection rule and for nothing else: two declarations that are each
         a bare ``$ref`` state the same KIND of thing about an instance and whether one
         narrows the other is a fact about the two TARGETS, which no amount of reading
         the two references can answer.  Measured on the one site:
@@ -1195,6 +1263,49 @@ def _why(key: str) -> tuple[str, Kind]:
     ), Kind.VERDICT
 
 
+def carried(decided: Decided, pointer: str, what: str, mod: Module) -> Type:
+    """The type of a node at a position with NO FIELD to carry its facts.
+
+    Three positions ask: an array's ELEM and a mapping's MAPV
+    (``lower.containers._contents``), and a union BRANCH (``lower.union.nested``).  One
+    function for the three, because it is one question -- *this node's ``format`` or
+    its bound has no slot in the annotation above it; what carries it?* -- and two
+    copies of the answer is how two positions come to drop a fact differently.  The two
+    refusals this replaced were already the same sentence twice, each naming the same
+    module as the row that would lower it.
+
+    Section 2 is the answer and it is the same at all three: **constraints bind to the
+    type, not the field.**  A named type nests into ``list[...]``, into a mapping value
+    and into a union branch, carrying its bound with it;
+    ``emit.name_the_constraint`` is where the name comes from.  On a BRANCH the
+    alternative is not merely unavailable but wrong: the field holds the other branches
+    too, so a bound written there refuses values the document accepts.
+
+    A shape with no name REFUSES, and the detail names the keyword that would have to
+    be named.  It is a DEFERRAL: the obstruction is a spelling ``codegen.constraints``
+    does not have yet, which is unwritten code and not a property of the document, of
+    pydantic or of the pointer space.
+    """
+    if not (decided.constraints or decided.format is not None):
+        return decided.type
+    named = mod.name_constraint(decided, mod)
+    if named is not None:
+        return named
+    stated = {
+        **decided.constraints,
+        **({"format": decided.format} if decided.format else {}),
+    }
+    raise Refusal(
+        sorted(stated)[0],
+        pointer,
+        f"{what} states {stated} and compiler.Type carries no constraint, so the "
+        "keyword would reach the field holding this node and bind every other node "
+        "under it; section 2 binds a constraint to the TYPE, and the alias module "
+        "codegen.constraints has no spelling for this shape",
+        kind=Kind.DEFERRED,
+    )
+
+
 def check_keywords(
     node: dict,
     pointer: str,
@@ -1326,22 +1437,30 @@ def fields(
         default = MISSING
         if "default" in sub:
             if is_required:
-                # No rendering carries it: a pydantic field with a default is not
-                # required, so transcribing one here would widen the model's
-                # accepted set to admit an instance omitting a key the document
-                # demands -- and the schema half of `strict_validate` would hide
-                # that in both acceptance directions.  5 of the bundle's 339
-                # property defaults sit on a required property; the step whose
-                # population reaches one decides between `json_schema_extra` and
-                # refusing.
-                raise Refusal(
-                    "default",
-                    at,
-                    "a default on a REQUIRED property has no rendering that does not also "
-                    "make the property optional",
-                    kind=Kind.DEFERRED,
-                )
-            default = sub["default"]
+                # Section 5's ``default`` row: **on a REQUIRED property, dropped and
+                # reported, because no rendering makes a field both required and
+                # defaulted.**  A pydantic field with a default is not required, so
+                # transcribing one here would widen the model's accepted set to admit
+                # an instance omitting a key the document demands -- and the schema
+                # half of ``strict_validate`` would hide that in both acceptance
+                # directions.
+                #
+                # Dropping it changes NO accepted set, which is why the row drops it
+                # rather than refusing the document: the key is present in every
+                # instance the document admits, so the default can never be applied
+                # and a model that omits it accepts and rejects exactly what the
+                # document does.  ``harness._constrains_nothing`` says the same thing
+                # on the grading side, gated on the same shape, so the fact is folded
+                # rather than reported as a drop the model got wrong.
+                #
+                # REPORTED, and that half is not optional: a fact the document states
+                # and the emitter silently discards is the one failure this pipeline
+                # has no other guard against.  :attr:`Module.drops` carries it out to
+                # ``emit.emit``, which prints it and hands it to the suite.  5 of the
+                # bundle's 339 property defaults sit on a required property.
+                mod.drops[at] = sub["default"]
+            else:
+                default = sub["default"]
         doc = sub.get("description")
         built.append(
             Property(
@@ -1777,7 +1896,7 @@ def lower_composition(
         # narrowing and refuses here -- the intersection needs step 3's enum
         # lowering and cannot be stated from this row.
         if _restatement(node, prior, mod.resolve_node):
-            # The INTERSECTION and not the narrower node alone (D7, :func:`_intersection`):
+            # The INTERSECTION and not the narrower node alone (section 2, :func:`_intersection`):
             # both declarations apply to the same instance, so a keyword only the wider
             # one states is still the composed node's.
             local[key], at[key] = _intersection(node, prior, mod.resolve_node), where
@@ -1799,25 +1918,25 @@ def lower_composition(
             raise Refusal("allOf", where, "a conjunct that is not a schema", kind=Kind.VERDICT)
         keys = {k for k in conjunct if k not in ANNOTATIONS and not k.startswith("x-")}
         # **A name draft-07 does not DEFINE contributes nothing, and the walk says so.**
-        # D7's own case: a conjunct contributes every part of itself, and a name that is
-        # not a schema keyword is not a part -- it asserts nothing about any instance, so
-        # dropping it cannot widen the class.  ``errorMessage`` is the measured one
-        # (ajv-errors, which customizes a VALIDATOR's message):
-        # ``media-buy/sync-catalogs-request.json`` at ``/allOf/1`` states it beside a
-        # ``not``, and ``min(keys)`` reported the document on ``errorMessage`` with
-        # ``DEFERRED`` -- a deferral promising a row for a name no row can ever lower,
-        # which is exactly what :func:`_why` exists to stop saying about a non-keyword.
+        # Section 7's ``errorMessage`` row states it for the one name that occurs: "it
+        # has no Pydantic rendering, and a conjunct carrying one contributes nothing, so
+        # the drop is reported rather than silent".  ``media-buy/sync-catalogs-request``
+        # at ``/allOf/1`` states it beside a ``not``, and ``min(keys)`` reported the
+        # document on ``errorMessage`` with ``DEFERRED`` -- a deferral promising a row
+        # for a name no row can ever lower, which is exactly what :func:`_why` exists to
+        # stop saying about a non-keyword.
         #
         # Reported rather than silent, and reported on the MODULE rather than raised: a
         # drop is not a refusal (the document still emits) and it is not nothing (a
         # reader has to be able to see that the class does not carry the name).
-        # :attr:`Module.drops` is that channel and ``emit`` prints it.
+        # :attr:`Module.carries_nothing` is that channel and ``emit`` prints it.
         foreign = {k for k in keys if k not in DRAFT07}
         if foreign:
-            mod.drops.extend(
+            mod.carries_nothing.extend(
                 f"{where}: {k}: draft-07 defines no such keyword, so it constrains no "
-                "instance and the class carries nothing for it (D7: a conjunct "
-                "contributes every part of ITSELF, and this is not a part)"
+                "instance and the class carries nothing for it (section 2, 'a keyword "
+                "we cannot express': a name that cannot constrain an instance compiles "
+                "to nothing)"
                 for k in sorted(foreign)
             )
             keys -= foreign
@@ -1856,17 +1975,18 @@ def lower_composition(
                 kind=Kind.VERDICT,
             )
         # **EVERY PART OF THE CONJUNCT CONTRIBUTES, and each part lowers by the decision
-        # covering it** (D7).  One arm rather than three, because three arms is what
-        # produced the gap: a conjunct whose parts fell under two of them matched
-        # neither, and 13 documents waited on a row the refusal promised and nobody had
-        # scheduled.  The parts, and the decision each is read by:
+        # covering it** (section 2, "composition merges by intersection").  One arm
+        # rather than three, because three arms is what produced the gap: a conjunct
+        # whose parts fell under two of them matched neither, and 13 documents waited on
+        # a row the refusal promised and nobody had scheduled.  The parts, and the
+        # decision each is read by:
         #
         # * ``properties`` -- fields of THIS node, because a draft-07 conjunct applies to
         #   the same instance; merged with the node's own by :func:`declare`, which is
-        #   D7's intersection rule and is symmetric.
-        # * ``required`` -- this node's requiredness.  **On its own that is D7's
-        #   requiredness overlay**, the instance D7 calls its clearest:
-        #   ``core/collection-selection.json`` at
+        #   section 2's intersection rule and is symmetric.
+        # * ``required`` -- this node's requiredness.  **On its own that is section 2's
+        #   requiredness overlay**, the ONLY redeclaration of an inherited field
+        #   section 2 permits: ``core/collection-selection.json`` at
         #   ``/oneOf/0/properties/collections/items/allOf/1`` is
         #   ``{"allOf": [{"$ref": ...}, {"required": [...]}]}``, and the subclass
         #   redeclares the field with the base's type and no default (the ``verdict or
@@ -1874,11 +1994,12 @@ def lower_composition(
         #   arm was omitted on a measurement -- 0 ``required``-only conjuncts AT A ROOT
         #   -- and every one of them is at a property or deeper, so the measurement was
         #   true and answered a different question.
-        # * a D6 rule keyword -- a rule of THIS node, for the same draft-07 reason the
-        #   fields are: a conjunct is not a separate object and gets no class of its own.
-        #   Measured when this was its own arm: all 20 documents whose ROOT carries a
-        #   rule keyword ALSO carry a rule-bearing conjunct, so admitting the root's on
-        #   its own emitted none of them.  The two positions are one unit.
+        # * a rule keyword (section 2, "rules are after-validators") -- a rule of THIS
+        #   node, for the same draft-07 reason the fields are: a conjunct is not a
+        #   separate object and gets no class of its own.  Measured when this was its
+        #   own arm: all 20 documents whose ROOT carries a rule keyword ALSO carry a
+        #   rule-bearing conjunct, so admitting the root's on its own emitted none of
+        #   them.  The two positions are one unit.
         #
         # **And a conjunct carrying BOTH fields and a rule contributes both**, which no
         # arm reached: ``core/media-buy-frequency-cap-requirement.json`` at ``/allOf/1``
@@ -1919,7 +2040,8 @@ def lower_composition(
             # conjunct contributes anything at all, and not only when it states a rule
             # keyword: ``rules._distinct`` reads a ``uniqueItems`` off the array a
             # PROPERTY holds, so a conjunct whose properties are this node's fields has
-            # its ``uniqueItems`` claimed by D6 exactly as the node's own properties do.
+            # its ``uniqueItems`` claimed by the rule families exactly as the node's
+            # own properties do.
             # Gated on the conjunct contributing, so an annotations-only conjunct adds
             # no source and renders nothing.
             if keys:
@@ -1929,7 +2051,7 @@ def lower_composition(
             min(keys) if keys else "allOf",
             where,
             "this step lowers a $ref conjunct (a base) or an inline conjunct whose "
-            "parts are properties, required and D6 rules; a later D2 row lowers this one",
+            "parts are properties, required and rule keywords; a later row lowers this one",
             kind=Kind.DEFERRED,
         )
 
@@ -1938,8 +2060,8 @@ def lower_composition(
     own: dict[str, dict] = {}
     #: The keys whose field is the inherited one wearing this document's annotations.
     reuse: dict[str, Property] = {}
-    #: The keys whose INTERSECTION took its ``uniqueItems`` from the base, so D6 has
-    #: already claimed the keyword on the class that decided the base's field and this
+    #: The keys whose INTERSECTION took its ``uniqueItems`` from the base, so the rule
+    #: families have already claimed the keyword on the class that decided the base's field and this
     #: subclass inherits that rule.  ``fields`` strips the keyword and renders the fact
     #: onto the field, exactly as it does for a REUSED key and for the reason its
     #: docstring gives there: the array row carries no ``uniqueItems`` and refuses one by
@@ -1980,7 +2102,7 @@ def lower_composition(
             # on ``core/protocol-envelope.json`` and required at their own root -- and
             # they were the last 2 ``added`` facts of the symmetric comparison.
             #
-            # The INTERSECTION where it NARROWS (D7, :func:`_intersection`), and the node
+            # The INTERSECTION where it NARROWS (section 2, :func:`_intersection`), and the node
             # itself where only the requiredness moved: there the content is the base's
             # already, so there is nothing of the base's to merge back in.
             own[key] = (
@@ -2071,11 +2193,11 @@ def lower_composition(
                 reuse[key] = _reused(key, inherited_fields, inherited_from, at[key], mod)
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
 
-    # **D7's REQUIREDNESS OVERLAY: the composition makes an inherited field required and
-    # nothing else, so the subclass redeclares that field with the base's type and no
-    # default.**  D7 calls this its clearest instance and the sentence is verbatim; the
-    # loop above reaches only a key some view DECLARES, and an overlay declares none --
-    # ``core/collection-selection.json`` at
+    # **SECTION 2's REQUIREDNESS OVERLAY: the composition makes an inherited field
+    # required and nothing else, so the subclass redeclares that field with the base's
+    # type and no default.**  Section 2 calls this the only permitted redeclaration and
+    # the sentence is verbatim; the loop above reaches only a key some view DECLARES,
+    # and an overlay declares none -- ``core/collection-selection.json`` at
     # ``/oneOf/0/properties/collections/items/allOf/1`` is ``{"required":
     # ["collection_ids"]}`` and nothing more.
     #
@@ -2092,7 +2214,7 @@ def lower_composition(
     # the base's node: re-deciding declares the nested classes again, in this module, at
     # a pointer this document does not have (:func:`fields`' ``reuse`` says why).
     #
-    # **D7 also says "and no default", and that half is NOT written here**, because it
+    # **Section 2 also says "and no default", and that half is NOT written here**, because it
     # has no population: measured over every node of every one of the 1,054 portable
     # documents, 25 nodes carry a ``required``-only conjunct and **0 of them compose a
     # base that declares a ``default`` for a name the conjunct requires**.  An arm for it
@@ -2282,7 +2404,7 @@ def _at_least_as_tight(
 ) -> bool:
     """Does ``c`` say at least what ``b`` says about the instance, at ``keyword``?
 
-    D7's intersection rule, per keyword and in the three spellings D7 names: "an enum
+    Section 2's intersection rule, per keyword and in the three spellings it names: "an enum
     is the intersection of the members, a bound is the tighter one, a ``const`` must
     agree", plus "this holds at ANY DEPTH, including an overlay under ``items``".  The
     predicate is what :func:`_restatement` needs and all it needs: where the child's
@@ -2307,7 +2429,7 @@ def _at_least_as_tight(
             return False
         return c >= b if _BOUNDS[keyword] > 0 else c <= b
     if keyword == "items":
-        # An overlay under ``items``: D7 says the rule holds at any depth, and the
+        # An overlay under ``items``: the rule holds at any depth, and the
         # recursion is the rule rather than a second one.  A LIST-valued ``items`` is
         # draft-07's tuple form, where position matters and two different lists are not
         # ordered by this predicate -- so it falls through to False.
@@ -2322,7 +2444,7 @@ def _intersection(
 ) -> dict:
     """The declaration a NARROWING restatement's field is decided from.
 
-    D7 in its own words: "where composed schemas constrain the same property, the field
+    Section 2 in its own words: "where composed schemas constrain the same property, the field
     carries the INTERSECTION".  Under ``allOf`` both declarations apply to the same
     instance, so every keyword either one states is the composed node's -- the child's
     value where both state one (:func:`_restatement` has already decided it is at least
@@ -2348,7 +2470,7 @@ def _intersection(
     document's own node resolves to ``core/context.json``'s own short text.
     :func:`_dereferenced` is what makes the two readings one.
 
-    **This is a no-op at every site that narrowed before D7's intersection rule landed**,
+    **This is a no-op at every site that narrowed before section 2's intersection rule landed**,
     and that is why it is safe: the old predicate required the child to state every
     keyword the base states, so ``{**base, **child}`` was ``child``.  What it changes is
     the newly-admitted narrowings, where the two state DIFFERENT keywords and the child
@@ -2367,7 +2489,7 @@ def _intersection(
     ``{"type": "string", "enum": [3 members]}`` and the branch restates
     ``{"const": "control_media_buy"}``, and a key-wise merge keeps BOTH -- a wide
     ``enum`` beside the ``const`` that narrows it, which is a shape no document states
-    and which refused on ``const`` with "a later D2 row does".
+    and which refused on ``const`` with "a later row does".
     """
     c, b = _constraining(child), _constraining(base)
     covered = set(c)
@@ -2381,9 +2503,9 @@ def _intersection(
     # directions and then merges in whichever one narrowed, so a merge that preferred the
     # first argument would make the result a function of which view the walk read first
     # -- the "last wins" this rule exists to have no reading of.
-    for keyword in set(c) & set(b):
-        if not _at_least_as_tight(keyword, c[keyword], b[keyword], resolve):
-            merged[keyword] = b[keyword]
+    for kw in set(c) & set(b):
+        if not _at_least_as_tight(kw, c[kw], b[kw], resolve):
+            merged[kw] = b[kw]
     resolved = _dereferenced(child, resolve)
     annotated = {
         **{k: v for k, v in base.items() if k in RENDERED and k not in resolved},
@@ -2400,7 +2522,7 @@ def _intersection(
 #: base's ``enum`` REPLACES it rather than joining it.  The bounds are deliberately NOT
 #: axes: ``minItems`` and ``maxItems`` constrain the same instance from opposite sides
 #: and a child stating one says nothing about the other, so merging the base's is
-#: correct and is what D7's "a bound is the tighter one" means per keyword.
+#: correct and is what section 2's "a bound is the tighter one" means per keyword.
 _AXES: tuple[frozenset[str], ...] = (frozenset({"const", "enum"}),)
 
 
@@ -2422,10 +2544,10 @@ def _restatement(
     already made is a statement the document does not make at that pointer.  The caller
     refuses.
 
-    **The comparison was keyword-value EQUALITY and D7's rule is not.**  "The field
+    **The comparison was keyword-value EQUALITY and section 2's rule is not.**  "The field
     carries the intersection -- an enum is the intersection of the members, a bound is
     the tighter one, a ``const`` must agree" admits narrowings an equality test reads as
-    a conflict, and they go live the moment D7's conjunct cases land:
+    a conflict, and they go live the moment the conjunct cases land:
     ``core/product-execution-requirement.json`` at
     ``/oneOf/2/properties/connection/allOf/1/properties/status`` restates
     ``{"const": "unknown"}`` over a base's ``{"enum": [...], "type": "string"}``, and
@@ -2433,7 +2555,7 @@ def _restatement(
     ``{"type": "array", "items": {...}, "uniqueItems": true}``.  Both reported "neither
     matches nor narrows".
 
-    **KNOWN CEILING: a shared keyword where the CHILD is LOOSER refuses, where D7 would
+    **KNOWN CEILING: a shared keyword where the CHILD is LOOSER refuses, where section 2 would
     have the field carry the base's.**  "A bound is the tighter one" says the
     intersection of ``minimum: 1`` over a base's ``minimum: 3`` is 3, and the comparison
     reads it that way too (``harness._tighter``), so such a pair is gradeable and could
@@ -2463,7 +2585,7 @@ def _restatement(
     dc, db = _dereferenced(child, resolve), _dereferenced(base, resolve)
     c, b = _as_enum(_constraining(dc)), _as_enum(_constraining(db))
     # **A ``const`` is a one-member ``enum``, and that is a rewrite rather than a rung**
-    # (:func:`_as_enum`, applied before anything is compared).  D7's "a ``const`` must
+    # (:func:`_as_enum`, applied before anything is compared).  section 2's "a ``const`` must
     # agree" is the intersection of a pinned value with a vocabulary, and writing the
     # two into one spelling is what lets ONE predicate answer ``const`` vs ``const``,
     # ``const`` vs ``enum`` and ``enum`` vs ``enum``.  Toward ``enum`` and not toward

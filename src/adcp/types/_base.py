@@ -76,10 +76,10 @@ import functools
 import json
 from collections.abc import Callable, Mapping
 from importlib import resources
-from typing import Any, ClassVar, Literal, NamedTuple, TypeVar, Union
+from typing import Annotated, Any, ClassVar, Literal, NamedTuple, TypeVar, Union
 
 import jsonschema
-from pydantic import BaseModel, ConfigDict, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError, core_schema
 
 from adcp.types._runtime import RuleBound, refuse
@@ -410,6 +410,13 @@ class AdCPBaseModel(RuleBound):
         return cls.model_validate(payload)
 
 
+#: The two errors a DISCRIMINATED union raises about the discriminating KEY rather than
+#: about a branch: the key is absent, and the key's value names no branch.  Neither is a
+#: draft-07 keyword and neither is a branch's own report, so
+#: ``BranchDispatchMixin._no_branch`` answers both with the combinator.
+_TAG_ERRORS = frozenset({"union_tag_not_found", "union_tag_invalid"})
+
+
 class BranchDispatchMixin:
     """A union root's base: receiving a payload resolves it to the branch it satisfies.
 
@@ -482,11 +489,16 @@ class BranchDispatchMixin:
     hook returns the base's own schema then, and the declaring module calls
     ``model_rebuild(force=True)`` after the branches are defined to install the union.
 
-    Two facts the emitter writes onto the base because they are not recoverable at runtime:
+    Three facts the emitter writes onto the base because they are not recoverable at
+    runtime:
 
     * :attr:`_ROOT_REQUIRED` -- the fields the ROOT requires, as opposed to the ones that
       select a branch.  A combinator refusal reports every absent field with the two kinds
       mixed together and no intersection over those errors separates them.
+    * :attr:`_BRANCH_DISCRIMINATOR` -- the property whose ``const`` selects the branch.
+      A class holds a ``Literal`` per branch and nothing at runtime says which of the
+      branches' shared ``Literal`` fields the DOCUMENT discriminates on; the emitter
+      derives it from the branches (§4) and writes the answer.
     * :meth:`_branch_combinator` -- ``anyOf`` or ``oneOf``.  A refusal has to name a JSON
       Schema keyword, and a document satisfying no branch fails each branch at FIELD
       validation, where pydantic reports ``missing`` -- which is not in that vocabulary.
@@ -500,6 +512,12 @@ class BranchDispatchMixin:
     _branch_models: ClassVar[tuple[type[BaseModel], ...]] = ()
     #: The root's own required fields, which a branch refusal must not be blamed on.
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    #: The property whose ``const`` selects the branch, where the branches pin one
+    #: (§4's first dispatch source).  DERIVED by the emitter from the branches
+    #: themselves -- ``codegen.lower.union.discriminator`` -- and never declared here,
+    #: so a branch added upstream moves it.  Empty where the branches pin none, and the
+    #: union is then undiscriminated: see :meth:`_branch_adapter`.
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
 
     @classmethod
     def _branch_combinator(cls) -> str:
@@ -520,10 +538,26 @@ class BranchDispatchMixin:
         held by the generator that is still running, so building a validator from it raises
         ``SchemaError: definition ... was never filled``.  A ``TypeAdapter`` generates a
         complete schema of its own, once per base.
+
+        **:attr:`_BRANCH_DISCRIMINATOR` is what makes the KEY select the branch.**  §4's
+        first dispatch source: where every branch pins one shared property to a distinct
+        ``const``, the union carries ``Field(discriminator=<property>)``, so pydantic reads
+        that one key and reports against the branch it names instead of reporting one
+        ``missing`` per field per branch.  Empty where the branches pin none, and the union
+        is then plain -- which is a statement about THIS bundle's unions and not a
+        fallback policy: a root whose branches overlap and pin nothing refuses in the
+        emitter (``codegen.lower.union.discriminator``) rather than reaching a plain union
+        here, because a branch chosen by trying each and keeping the first that validates
+        is decided by declaration order rather than by the payload.
         """
         got = cls.__dict__.get("_branch_adapter_cache")
         if got is None:
-            got = TypeAdapter(Union[cls._branch_models])  # noqa: UP007 -- a runtime subscript
+            union = Union[cls._branch_models]  # noqa: UP007 -- a runtime subscript
+            got = TypeAdapter(
+                Annotated[union, Field(discriminator=cls._BRANCH_DISCRIMINATOR)]
+                if cls._BRANCH_DISCRIMINATOR
+                else union
+            )
             cls._branch_adapter_cache = got  # type: ignore[attr-defined]
         return got
 
@@ -563,10 +597,28 @@ class BranchDispatchMixin:
         doing.  Anything else is the combinator: the payload reached the union and no
         member took it.  ``err`` is not re-raised -- it carries one ``missing`` per field
         per branch, which names a keyword the document does not use.
+
+        **Except where the union is DISCRIMINATED, and that exception is the whole point
+        of deriving the discriminator** (§4: "the key alone selects the branch, so Pydantic
+        reports against that branch rather than against all of them").  With
+        :attr:`_BRANCH_DISCRIMINATOR` set, a payload whose key names a branch is validated
+        against THAT branch and nothing else, so ``err`` is that branch's own report in the
+        document's own vocabulary -- ``required`` for a field the branch requires, a
+        ``const``'s ``literal_error`` for a value it pins -- and replacing it with
+        "is not valid under any of the N branches" throws away the one thing the
+        derivation bought.  The two errors pydantic raises about the KEY rather than about
+        a branch (``union_tag_not_found``, ``union_tag_invalid``) are NOT a branch's
+        report and are not a draft-07 keyword either, so they keep going through the
+        combinator below.  Decided by the error TYPE and never by its message, for
+        ``codegen.refusal.Kind``'s reason.
         """
         absent = (
             [k for k in cls._ROOT_REQUIRED if k not in value] if isinstance(value, Mapping) else []
         )
+        if not absent and cls._BRANCH_DISCRIMINATOR and not any(
+            e["type"] in _TAG_ERRORS for e in err.errors()
+        ):
+            return err
         details = [
             InitErrorDetails(
                 type=PydanticCustomError(

@@ -98,7 +98,7 @@ def nodes(node: object, pointer: str = "") -> Iterator[tuple[str, dict]]:
     for k, v in node.items():
         if k in _DESCEND_MAP and isinstance(v, dict):
             for kk, vv in v.items():
-                yield from nodes(vv, f"{pointer}/{k}/{kk.replace('~', '~0').replace('/', '~1')}")
+                yield from nodes(vv, f"{pointer}/{k}/{compiler.escape_key(kk)}")
         elif k in _DESCEND_ONE and isinstance(v, (dict, list)):
             yield from nodes(v, f"{pointer}/{k}")
         elif k in _DESCEND_LIST and isinstance(v, list):

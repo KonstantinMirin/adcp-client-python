@@ -1,0 +1,2501 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Release-precision AdCP protocol version negotiation fields. Composed via `allOf` into AdCP request schemas and shared response components so the version semantics live in one place. Strict (`additionalProperties: false`) request schemas also redeclare these two fields in their own `properties` via `$ref`, because draft-07 does not evaluate properties across `allOf`. The Trusted Match match requests are the exception: they inline both fields for their strict privacy boundary. Distinct from `core/protocol-envelope.json`, which wraps responses at the transport layer (context_id / task_id / status / payload). This envelope is part of the payload itself.",
+      "properties": {
+        "adcp_major_version": {
+          "deprecated": true,
+          "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+          "maximum": 99,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "adcp_version": {
+          "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
+          "examples": [
+            "3.0",
+            "3.1",
+            "3.1-beta",
+            "3.1-rc.1"
+          ],
+          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
+          "type": "string"
+        }
+      },
+      "title": "AdCP Version Envelope",
+      "type": "object"
+    },
+    {
+      "if": {
+        "required": [
+          "reporting_revision_id"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "media_buy_ids"
+              ]
+            },
+            {
+              "required": [
+                "start_date"
+              ]
+            },
+            {
+              "required": [
+                "end_date"
+              ]
+            },
+            {
+              "required": [
+                "status_filter"
+              ]
+            },
+            {
+              "required": [
+                "requested_metrics"
+              ]
+            },
+            {
+              "required": [
+                "reporting_dimensions"
+              ]
+            },
+            {
+              "required": [
+                "attribution_window"
+              ]
+            },
+            {
+              "required": [
+                "include_package_daily_breakdown"
+              ]
+            },
+            {
+              "required": [
+                "time_granularity"
+              ]
+            },
+            {
+              "required": [
+                "include_window_breakdown"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "pagination"
+        ]
+      },
+      "then": {
+        "required": [
+          "reporting_revision_id"
+        ]
+      }
+    }
+  ],
+  "description": "Request parameters for retrieving comprehensive delivery metrics",
+  "properties": {
+    "account": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Filter delivery data to a specific account. When omitted, returns data across all accessible accounts.",
+      "examples": [
+        {
+          "account_id": "acc_acme_001"
+        },
+        {
+          "brand": {
+            "domain": "acme-corp.com"
+          },
+          "operator": "acme-corp.com"
+        },
+        {
+          "brand": {
+            "brand_id": "spark",
+            "domain": "nova-brands.com"
+          },
+          "operator": "pinnacle-media.com"
+        },
+        {
+          "brand": {
+            "countries": [
+              "NL"
+            ],
+            "domain": "nova-athletics.example"
+          },
+          "currency": "EUR",
+          "operator": "nova-athletics.example",
+          "operator_unit": {
+            "id": "234284238",
+            "name": "Nova EMEA"
+          },
+          "timezone": "Europe/Amsterdam"
+        },
+        {
+          "brand": {
+            "domain": "acme-corp.com"
+          },
+          "operator": "acme-corp.com",
+          "sandbox": true
+        }
+      ],
+      "oneOf": [
+        {
+          "additionalProperties": {
+            "not": {}
+          },
+          "maxProperties": 1,
+          "properties": {
+            "account_id": {
+              "description": "Seller-assigned account identifier. For upstream-managed account namespaces, this value comes from list_accounts; for seller-defined namespaces without a list_accounts surface, it is supplied out-of-band. Buyer-declared account sellers MAY echo account_id from sync_accounts as an internal handle, but they MUST continue accepting the account's current natural-key AccountRef on subsequent calls. Buyers of buyer-declared accounts send the natural key; a seller MAY also accept its echoed account_id, and buyers MUST NOT assume it does. A former key tombstoned by identity reconciliation returns ACCOUNT_MOVED to authorized callers.",
+              "type": "string",
+              "x-entity": "account"
+            }
+          },
+          "required": [
+            "account_id"
+          ]
+        },
+        {
+          "additionalProperties": {
+            "not": {}
+          },
+          "maxProperties": 6,
+          "properties": {
+            "brand": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Brand reference identifying the advertiser",
+              "examples": [
+                {
+                  "brand_id": "spark",
+                  "domain": "nova-brands.com"
+                },
+                {
+                  "brand_id": "glow",
+                  "domain": "nova-brands.com"
+                },
+                {
+                  "domain": "acme-corp.com"
+                },
+                {
+                  "countries": [
+                    "NL"
+                  ],
+                  "domain": "nova-athletics.example"
+                }
+              ],
+              "maxProperties": 6,
+              "properties": {
+                "brand_id": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
+                  "examples": [
+                    "tide",
+                    "cheerios",
+                    "air_jordan",
+                    "nike",
+                    "pampers"
+                  ],
+                  "pattern": "^[a-z0-9_]+$",
+                  "title": "Brand ID",
+                  "type": "string",
+                  "x-entity": "advertiser_brand"
+                },
+                "brand_kit_override": {
+                  "description": "Inline override for brand-kit fields normally resolved from `/.well-known/brand.json` on `domain` (logo, colors, voice, tagline). Use when brand.json is missing, stale, or inappropriate for this specific call \u2014 e.g., a campaign-scoped tagline, a co-branded creative, a freshly-rebranded color palette the brand.json hasn't shipped yet. Same inline-override pattern as `industries` and `data_subject_contestation` above: brand.json is canonical, the override is per-call. Adopters needing to override fields outside this subset (`voice_attributes`, `prohibited_terms`, etc.) MUST publish a different brand.json and reference it via a different `domain` \u2014 the inline override is intentionally narrow to a small high-traffic subset.\n\n**Merge semantics (normative).** The merge is **field-level**, not whole-object replacement. Each field within `brand_kit_override` (`logo`, `colors`, `voice`, `tagline`) is evaluated independently \u2014 when a field is present on the override the override value applies; when a field is absent the brand.json value applies (or is absent if brand.json doesn't carry one either). For composite fields (`colors.primary`, `colors.secondary`, `colors.accent`), the merge is one level deeper: each color slot is evaluated independently \u2014 a producer can override `colors.primary` while still inheriting `colors.secondary` from brand.json. SDKs MUST NOT treat a present `brand_kit_override.colors` as wiping the brand.json `colors` block entirely; only the per-slot fields present in the override take precedence. Without this rule, a partial-override semantics would diverge across SDKs and produce inconsistent rendering for the same payload.",
+                  "properties": {
+                    "colors": {
+                      "description": "Override brand colors (hex strings).",
+                      "properties": {
+                        "accent": {
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "type": "string"
+                        },
+                        "primary": {
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "type": "string"
+                        },
+                        "secondary": {
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "logo": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Override logo asset.",
+                      "properties": {
+                        "alt_text": {
+                          "description": "Alternative text for accessibility",
+                          "type": "string",
+                          "x-accessibility": true
+                        },
+                        "asset_type": {
+                          "const": "image"
+                        },
+                        "breakpoint_id": {
+                          "description": "Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one breakpoint declared on the selected state (semantic validators resolve it). Omit for ordinary image slots.",
+                          "type": "string"
+                        },
+                        "file_size_bytes": {
+                          "description": "Image file size in bytes. Required by agents that advertise a max_file_size_kb constraint.",
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "focal_point": {
+                          "description": "Normalized `[x, y]` coordinates (0\u20131 from top-left) of the image's visual anchor. Seller-side renderers crop toward the focal point when deriving renditions across breakpoints and aspect ratios; absent, cropping falls back to center-weighted defaults.",
+                          "items": {
+                            "maximum": 1,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          "maxItems": 2,
+                          "minItems": 2,
+                          "type": "array"
+                        },
+                        "format": {
+                          "description": "Image file format (jpg, png, gif, webp, etc.)",
+                          "type": "string"
+                        },
+                        "height": {
+                          "description": "Height in pixels",
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "pixel_ratio": {
+                          "description": "Intrinsic pixels per logical render pixel (for example `2` for a 600\u00d7500 image intended to render at 300\u00d7250). Optional because a validator can infer the ratio when the target format declares logical dimensions. When supplied, it MUST agree with both `width / logical_width` and `height / logical_height`; it is never a substitute for the intrinsic `width` and `height` fields.",
+                          "exclusiveMinimum": 0,
+                          "type": "number"
+                        },
+                        "provenance": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "description": "Provenance metadata for this asset, overrides manifest-level provenance",
+                          "properties": {
+                            "ai_tool": {
+                              "description": "AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.",
+                              "properties": {
+                                "name": {
+                                  "description": "Name of the AI tool or model (e.g., 'DALL-E 3', 'Stable Diffusion XL', 'Gemini')",
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "description": "Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')",
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "description": "Version identifier for the AI tool or model (e.g., '25.1', '0125', '2.1'). For generative models, use the model version rather than the API version.",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "name"
+                              ],
+                              "type": "object"
+                            },
+                            "c2pa": {
+                              "description": "C2PA sidecar manifest reference. Links to a detached cryptographic provenance manifest for this content. Note: file-level C2PA bindings break when ad servers transcode, resize, or re-encode assets. For pipelines with intermediaries, consider embedded_provenance as the primary provenance mechanism.",
+                              "properties": {
+                                "manifest_url": {
+                                  "description": "URL to the C2PA manifest store for this content",
+                                  "format": "uri",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "manifest_url"
+                              ],
+                              "type": "object"
+                            },
+                            "created_time": {
+                              "description": "When this content was created or generated (ISO 8601)",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "declared_at": {
+                              "description": "When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance.",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "declared_by": {
+                              "description": "Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.",
+                              "properties": {
+                                "agent_url": {
+                                  "description": "URL of the agent or service that declared this provenance",
+                                  "format": "uri",
+                                  "type": "string"
+                                },
+                                "role": {
+                                  "enum": [
+                                    "tool",
+                                    "agency",
+                                    "creator",
+                                    "platform",
+                                    "advertiser"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "role"
+                              ],
+                              "type": "object"
+                            },
+                            "digital_source_type": {
+                              "enum": [
+                                "human_edits",
+                                "digital_capture",
+                                "digital_creation",
+                                "algorithmic_media",
+                                "composite_capture",
+                                "data_driven_media",
+                                "composite_synthetic",
+                                "trained_algorithmic_media",
+                                "composite_with_trained_algorithmic_media"
+                              ]
+                            },
+                            "disclosure": {
+                              "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
+                              "properties": {
+                                "jurisdictions": {
+                                  "description": "Jurisdictions where disclosure obligations apply",
+                                  "items": {
+                                    "properties": {
+                                      "country": {
+                                        "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')",
+                                        "type": "string"
+                                      },
+                                      "label_text": {
+                                        "description": "Required disclosure label text for this jurisdiction, in the local language",
+                                        "type": "string"
+                                      },
+                                      "region": {
+                                        "description": "Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)",
+                                        "type": "string"
+                                      },
+                                      "regulation": {
+                                        "description": "Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')",
+                                        "type": "string"
+                                      },
+                                      "render_guidance": {
+                                        "description": "How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.",
+                                        "minProperties": 1,
+                                        "properties": {
+                                          "ext": {
+                                            "$schema": "http://json-schema.org/draft-07/schema#",
+                                            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                                            "title": "Extension Object",
+                                            "type": "object"
+                                          },
+                                          "min_duration_ms": {
+                                            "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
+                                            "minimum": 1,
+                                            "type": "integer"
+                                          },
+                                          "persistence": {
+                                            "enum": [
+                                              "initial",
+                                              "flexible",
+                                              "continuous"
+                                            ]
+                                          },
+                                          "positions": {
+                                            "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
+                                            "items": {
+                                              "enum": [
+                                                "audio",
+                                                "footer",
+                                                "overlay",
+                                                "end_card",
+                                                "pre_roll",
+                                                "subtitle",
+                                                "companion",
+                                                "prominent"
+                                              ]
+                                            },
+                                            "maxItems": 8,
+                                            "minItems": 1,
+                                            "type": "array",
+                                            "uniqueItems": true
+                                          }
+                                        },
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "country",
+                                      "regulation"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "minItems": 1,
+                                  "type": "array"
+                                },
+                                "required": {
+                                  "enum": [
+                                    false,
+                                    true
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "required"
+                              ],
+                              "type": "object"
+                            },
+                            "embedded_provenance": {
+                              "description": "Provenance metadata embedded within the content stream. Each entry declares one embedding layer: structured provenance data carried inside the content itself, as distinct from sidecar references (c2pa.manifest_url). Embedded provenance survives operations that break sidecar and file-level bindings: ad-server transcoding, CMS ingestion, copy-paste, reformatting, and CDN re-encoding. For ad-tech pipelines where content passes through multiple intermediaries, embedded provenance is the reliable path for provenance that persists from declaration through delivery. This is a declaration by the embedding party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).",
+                              "items": {
+                                "properties": {
+                                  "embedded_at": {
+                                    "description": "When the provenance data was embedded (ISO 8601)",
+                                    "format": "date-time",
+                                    "type": "string"
+                                  },
+                                  "method": {
+                                    "enum": [
+                                      "manifest_wrapper",
+                                      "provenance_markers"
+                                    ]
+                                  },
+                                  "provider": {
+                                    "description": "Organization that performed the embedding (e.g., 'Encypher', 'Digimarc'). Display label and audit context \u2014 not a wire identifier.",
+                                    "type": "string"
+                                  },
+                                  "standard": {
+                                    "description": "Standard the embedding conforms to, if any (e.g., 'c2pa' for C2PA Section A.7 text manifest embedding)",
+                                    "type": "string"
+                                  },
+                                  "verify_agent": {
+                                    "additionalProperties": {
+                                      "not": {}
+                                    },
+                                    "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
+                                    "maxProperties": 2,
+                                    "properties": {
+                                      "agent_url": {
+                                        "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
+                                        "format": "uri",
+                                        "pattern": "^https://",
+                                        "type": "string"
+                                      },
+                                      "feature_id": {
+                                        "description": "Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `encypher.markers_present_v2`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "agent_url"
+                                    ],
+                                    "type": "object"
+                                  }
+                                },
+                                "required": [
+                                  "method",
+                                  "provider"
+                                ],
+                                "type": "object"
+                              },
+                              "minItems": 1,
+                              "type": "array"
+                            },
+                            "ext": {
+                              "$schema": "http://json-schema.org/draft-07/schema#",
+                              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                              "title": "Extension Object",
+                              "type": "object"
+                            },
+                            "human_oversight": {
+                              "enum": [
+                                "none",
+                                "edited",
+                                "directed",
+                                "selected",
+                                "prompt_only"
+                              ]
+                            },
+                            "synthetic_depiction": {
+                              "enum": [
+                                false,
+                                true
+                              ]
+                            },
+                            "verification": {
+                              "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                              "items": {
+                                "properties": {
+                                  "confidence": {
+                                    "description": "Confidence score of the verification result (0.0 to 1.0)",
+                                    "maximum": 1,
+                                    "minimum": 0,
+                                    "type": "number"
+                                  },
+                                  "details_url": {
+                                    "description": "URL to the full verification report",
+                                    "format": "uri",
+                                    "type": "string"
+                                  },
+                                  "result": {
+                                    "enum": [
+                                      "authentic",
+                                      "ai_modified",
+                                      "ai_generated",
+                                      "inconclusive"
+                                    ]
+                                  },
+                                  "verified_by": {
+                                    "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')",
+                                    "type": "string"
+                                  },
+                                  "verified_time": {
+                                    "description": "When the verification was performed (ISO 8601)",
+                                    "format": "date-time",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "result",
+                                  "verified_by"
+                                ],
+                                "type": "object"
+                              },
+                              "minItems": 1,
+                              "type": "array"
+                            },
+                            "watermarks": {
+                              "description": "Content watermarks applied to this asset. Each entry declares one watermarking layer: a content modification that encodes an identifier or fingerprint within the asset. Watermarks differ from embedded provenance: a watermark encodes an identifier (who generated it, who owns it), while embedded provenance carries or references a structured provenance record (the full chain of custody). A single asset may carry both. Aligns with C2PA action taxonomy: c2pa.watermarked.bound (watermark linked to a C2PA manifest) and c2pa.watermarked.unbound (watermark independent of any manifest). This is a declaration by the watermarking party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).",
+                              "items": {
+                                "properties": {
+                                  "c2pa_action": {
+                                    "enum": [
+                                      "c2pa.watermarked.bound",
+                                      "c2pa.watermarked.unbound"
+                                    ]
+                                  },
+                                  "embedded_at": {
+                                    "description": "When the watermark was applied (ISO 8601)",
+                                    "format": "date-time",
+                                    "type": "string"
+                                  },
+                                  "media_type": {
+                                    "enum": [
+                                      "text",
+                                      "audio",
+                                      "image",
+                                      "video"
+                                    ]
+                                  },
+                                  "provider": {
+                                    "description": "Organization that applied the watermark (e.g., 'Imatag', 'Steg.AI', 'Encypher'). Display label and audit context \u2014 not a wire identifier.",
+                                    "type": "string"
+                                  },
+                                  "verify_agent": {
+                                    "additionalProperties": {
+                                      "not": {}
+                                    },
+                                    "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
+                                    "maxProperties": 2,
+                                    "properties": {
+                                      "agent_url": {
+                                        "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
+                                        "format": "uri",
+                                        "pattern": "^https://",
+                                        "type": "string"
+                                      },
+                                      "feature_id": {
+                                        "description": "Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `imatag.watermark_detected`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "agent_url"
+                                    ],
+                                    "type": "object"
+                                  }
+                                },
+                                "required": [
+                                  "media_type",
+                                  "provider"
+                                ],
+                                "type": "object"
+                              },
+                              "minItems": 1,
+                              "type": "array"
+                            }
+                          },
+                          "title": "Provenance",
+                          "type": "object"
+                        },
+                        "state_id": {
+                          "description": "Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one declared `states[].state_id` (semantic validators resolve it). Omit for ordinary image slots.",
+                          "type": "string"
+                        },
+                        "url": {
+                          "description": "URL to the image asset",
+                          "format": "uri",
+                          "type": "string"
+                        },
+                        "width": {
+                          "description": "Width in pixels",
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "asset_type",
+                        "height",
+                        "url",
+                        "width"
+                      ],
+                      "title": "Image Asset",
+                      "type": "object"
+                    },
+                    "tagline": {
+                      "description": "Override tagline.",
+                      "type": "string"
+                    },
+                    "voice": {
+                      "description": "Override brand-voice description for surface-composed text/audio output.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "countries": {
+                  "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit for a global/default identity. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account identity and is not delivery targeting.",
+                  "items": {
+                    "pattern": "^[A-Z]{2}$",
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "data_subject_contestation": {
+                  "additionalProperties": {
+                    "not": {}
+                  },
+                  "anyOf": [
+                    {
+                      "required": [
+                        "email"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "url"
+                      ]
+                    }
+                  ],
+                  "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand \u2192 house \u2192 missing.",
+                  "maxProperties": 3,
+                  "properties": {
+                    "email": {
+                      "format": "email",
+                      "type": "string"
+                    },
+                    "languages": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "url": {
+                      "format": "uri",
+                      "pattern": "^https://",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "domain": {
+                  "description": "Domain where /.well-known/brand.json is hosted, or the brand's operating domain",
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                  "type": "string"
+                },
+                "industries": {
+                  "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "domain"
+              ],
+              "title": "Brand Reference",
+              "type": "object"
+            },
+            "currency": {
+              "description": "Immutable ISO 4217 transaction currency when the seller's advertiser object is currency-bound. When present, this is part of the natural account key and media buys on the account MUST use it. Omit when currency is selected independently per media buy.",
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            "operator": {
+              "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string",
+              "x-entity": "operator"
+            },
+            "operator_unit": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "Optional operator-owned business unit, agency seat, or platform account. Only id participates in the natural account key; name is mutable display metadata.",
+              "examples": [
+                {
+                  "id": "234284238",
+                  "name": "Nova EMEA"
+                },
+                {
+                  "id": "benelux-seat",
+                  "name": "Nova Benelux"
+                }
+              ],
+              "maxProperties": 2,
+              "properties": {
+                "id": {
+                  "description": "Stable identifier assigned by the operator. Numeric platform IDs and durable slugs are both valid. Scoped by the enclosing operator domain.",
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Human-readable seat or business-unit name, such as Nova EMEA. This label may change and is not part of the natural account key.",
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id"
+              ],
+              "title": "Operator Unit",
+              "type": "object",
+              "x-entity": "operator_unit"
+            },
+            "sandbox": {
+              "enum": [
+                false,
+                true
+              ]
+            },
+            "timezone": {
+              "description": "Immutable account timezone. Include it in the natural key when get_adcp_capabilities.account.timezone declares account_fixed with buyer_selected; omit it for seller_fixed or seller_assigned accounts.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "brand",
+            "operator"
+          ]
+        }
+      ],
+      "title": "Account Reference",
+      "type": "object"
+    },
+    "attribution_window": {
+      "additionalProperties": true,
+      "description": "Attribution window to apply for conversion metrics. When provided, the seller returns conversion data using the requested lookback windows instead of their platform default. The seller echoes the applied window in the response. Sellers that do not support configurable windows ignore this field and return their default. Check get_adcp_capabilities conversion_tracking.attribution_windows for available options.",
+      "properties": {
+        "model": {
+          "enum": [
+            "linear",
+            "last_touch",
+            "time_decay",
+            "data_driven",
+            "first_touch"
+          ]
+        },
+        "post_click": {
+          "allOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+              "maxProperties": 2,
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "enum": [
+                    "days",
+                    "hours",
+                    "minutes",
+                    "seconds",
+                    "campaign"
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            }
+          ],
+          "description": "Post-click attribution window to apply."
+        },
+        "post_view": {
+          "allOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+              "maxProperties": 2,
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "enum": [
+                    "days",
+                    "hours",
+                    "minutes",
+                    "seconds",
+                    "campaign"
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            }
+          ],
+          "description": "Post-view attribution window to apply."
+        }
+      },
+      "type": "object"
+    },
+    "context": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "title": "Context Object",
+      "type": "object"
+    },
+    "end_date": {
+      "description": "Exclusive end date for the reporting period (YYYY-MM-DD), as a calendar date in the same reporting timezone as start_date. Must be later than start_date. When omitted along with start_date, returns campaign lifetime data. Only accepted when the product's reporting_capabilities.date_range_support is 'date_range'.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "include_package_daily_breakdown": {
+      "default": false,
+      "description": "When true, include daily_breakdown arrays within each package in by_package. Useful for per-package pacing analysis and line-item monitoring. Omit or set false to reduce response size \u2014 package daily data can be large for multi-package buys over long flights.",
+      "type": "boolean"
+    },
+    "include_window_breakdown": {
+      "default": false,
+      "description": "When true, the response includes media_buy_deliveries[].windows[] \u2014 an array of per-window delivery slices over the date range at the requested time_granularity. Ignored when time_granularity is omitted. Each window's payload mirrors what reporting_webhook would have delivered for the same window, enabling lossless GET-path recovery for buyers who missed webhook fires. Omit or set false to reduce response size when only cumulative aggregates are needed.",
+      "type": "boolean"
+    },
+    "media_buy_ids": {
+      "description": "Array of media buy IDs to get delivery data for",
+      "items": {
+        "type": "string",
+        "x-entity": "media_buy"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "pagination": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "description": "Cursor pagination. With reporting_revision_id, pages immutable authoritative rows while all revision metadata repeats on every page.",
+      "maxProperties": 2,
+      "properties": {
+        "cursor": {
+          "description": "Opaque cursor from a previous response to fetch the next page",
+          "type": "string"
+        },
+        "max_results": {
+          "default": 50,
+          "description": "Maximum number of items to return per page",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "title": "Pagination Request",
+      "type": "object"
+    },
+    "reporting_dimensions": {
+      "additionalProperties": true,
+      "description": "Request dimensional breakdowns in delivery reporting. Each key enables a specific breakdown dimension within by_package \u2014 include as an empty object (e.g., \"device_type\": {}) to activate with defaults. Omit entirely for no breakdowns (backward compatible). Unsupported dimensions are silently omitted from the response. For every requested dimension that the product declares supported, the seller MUST return the corresponding array (possibly empty) and its truncated flag. Metric-sorted dimensions also return their applied-sort echoes; demographic and property-grain arrays also return their suppressed flag. Spot uses aired_at ordering and has no sort echoes. Note: keyword, catalog_item, and creative breakdowns are returned automatically when the seller supports them; including their keys here is optional and upgrades them to this negotiated contract without changing the automatic default.",
+      "properties": {
+        "audience": {
+          "additionalProperties": true,
+          "description": "Request audience segment breakdown.",
+          "properties": {
+            "cursor": {
+              "description": "Opaque cursor from a previous response's by_audience_pagination to fetch the next page of a truncated by_audience breakdown. Omit for the first page. limit, sort_by, and sort_direction MUST be repeated unchanged across paged requests for the same logical query.",
+              "type": "string"
+            },
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of entries to return. Defaults to 25.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "catalog_item": {
+          "additionalProperties": true,
+          "description": "Request a negotiated catalog_item breakdown. Omitting this key preserves the automatic behavior \u2014 sellers return catalog_item rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.",
+          "properties": {
+            "limit": {
+              "description": "Maximum number of catalog_item entries to return. When omitted, the seller returns its automatic default set.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "collection": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Request delivery by canonical content collection. Check reporting_capabilities.supports_collection_breakdown.",
+          "properties": {
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of rows to return. Defaults to 25.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "title": "Delivery Breakdown Controls",
+          "type": "object"
+        },
+        "collection_property": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Request delivery at the collection \u00d7 property intersection. This is the reporting grain that can prove a collection delivered on a particular host service; independent collection and property marginals cannot. Check reporting_capabilities.supports_collection_property_breakdown.",
+          "properties": {
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of rows to return. Defaults to 25.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "title": "Delivery Breakdown Controls",
+          "type": "object"
+        },
+        "creative": {
+          "additionalProperties": true,
+          "description": "Request a negotiated creative breakdown. Omitting this key preserves the automatic behavior \u2014 sellers return creative rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.",
+          "properties": {
+            "limit": {
+              "description": "Maximum number of creative entries to return. When omitted, the seller returns its automatic default set.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "demographic": {
+          "additionalProperties": false,
+          "description": "Request delivery broken down by demographic. Check the product's reporting_capabilities.supports_demographic_breakdown independently from demographic_targeting. When age_ranges is present, every requested range MUST be exactly supported by exact_predicates or equal one of the declared enumerated_intervals; sellers MUST reject unsupported ranges with UNSUPPORTED_FEATURE rather than silently widen or narrow them.",
+          "properties": {
+            "age_ranges": {
+              "description": "Optional canonical age ranges to return as distinct rows. Copying an applied targeting predicate here requests aligned reporting only when the reporting capability supports that exact predicate. Omit to request the product's declared native demographic breakdown.",
+              "items": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "anyOf": [
+                  {
+                    "required": [
+                      "max"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "min"
+                    ]
+                  }
+                ],
+                "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
+                "properties": {
+                  "include_unknown": {
+                    "enum": [
+                      false,
+                      true
+                    ]
+                  },
+                  "max": {
+                    "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
+                    "maximum": 150,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "min": {
+                    "description": "Inclusive minimum age in completed years. Omit for an open lower bound.",
+                    "maximum": 150,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "include_unknown"
+                ],
+                "title": "Demographic Age Range",
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of demographic entries to return. Defaults to 25.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "device_platform": {
+          "additionalProperties": true,
+          "description": "Request device platform breakdown.",
+          "properties": {
+            "cursor": {
+              "description": "Opaque cursor from a previous response's by_device_platform_pagination to fetch the next page of a truncated by_device_platform breakdown. Omit for the first page. limit, sort_by, and sort_direction MUST be repeated unchanged across paged requests for the same logical query.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Maximum number of entries to return. When omitted, all entries are returned (the enum is small and bounded).",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "device_type": {
+          "additionalProperties": true,
+          "description": "Request device type breakdown.",
+          "properties": {
+            "cursor": {
+              "description": "Opaque cursor from a previous response's by_device_type_pagination to fetch the next page of a truncated by_device_type breakdown. Omit for the first page. limit, sort_by, and sort_direction MUST be repeated unchanged across paged requests for the same logical query.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Maximum number of entries to return. When omitted, all entries are returned (the enum is small and bounded).",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "format": {
+          "additionalProperties": true,
+          "description": "Request delivery broken down by canonical creative format kind. This dimension is negotiated on the GET path. Reporting webhook configuration does not negotiate or guarantee dimensional breakdowns, although a webhook payload may carry the same fields as an extension.",
+          "properties": {
+            "limit": {
+              "description": "Maximum number of format rows to return. When omitted, all rows are returned because the canonical format-kind vocabulary is small and bounded.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "geo": {
+          "additionalProperties": true,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "geo_level": {
+                    "enum": [
+                      "country",
+                      "region"
+                    ]
+                  }
+                },
+                "required": [
+                  "geo_level"
+                ]
+              },
+              "then": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "country"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "system"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "geo_level": {
+                    "const": "metro"
+                  }
+                },
+                "required": [
+                  "geo_level"
+                ]
+              },
+              "then": {
+                "anyOf": [
+                  {
+                    "not": {
+                      "required": [
+                        "system"
+                      ]
+                    }
+                  },
+                  {
+                    "properties": {
+                      "system": {
+                        "enum": [
+                          "custom",
+                          "uk_itl1",
+                          "uk_itl2",
+                          "nielsen_dma",
+                          "eurostat_nuts2"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "system"
+                    ]
+                  }
+                ],
+                "not": {
+                  "required": [
+                    "country"
+                  ]
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "geo_level": {
+                    "const": "postal_area"
+                  }
+                },
+                "required": [
+                  "geo_level"
+                ]
+              },
+              "then": {
+                "anyOf": [
+                  {
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "country"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "system"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "AU"
+                          },
+                          "system": {
+                            "const": "postcode"
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "BR"
+                          },
+                          "system": {
+                            "const": "cep"
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "CA"
+                          },
+                          "system": {
+                            "enum": [
+                              "fsa",
+                              "full"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "FR"
+                          },
+                          "system": {
+                            "const": "code_postal"
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "GB"
+                          },
+                          "system": {
+                            "enum": [
+                              "full",
+                              "outward"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "IN"
+                          },
+                          "system": {
+                            "const": "pin"
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "US"
+                          },
+                          "system": {
+                            "enum": [
+                              "zip",
+                              "zip_plus_four"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "ZA"
+                          },
+                          "system": {
+                            "const": "postal_code"
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "enum": [
+                              "AT",
+                              "CH",
+                              "DE"
+                            ]
+                          },
+                          "system": {
+                            "const": "plz"
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "not": {
+                              "enum": [
+                                "AT",
+                                "AU",
+                                "BR",
+                                "CA",
+                                "CH",
+                                "DE",
+                                "FR",
+                                "GB",
+                                "IN",
+                                "US",
+                                "ZA"
+                              ]
+                            }
+                          },
+                          "system": {
+                            "enum": [
+                              "custom",
+                              "postal_code"
+                            ]
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Valid country-local postal system pairing. Registered countries only accept their registered local systems; countries without a registered local system use postal_code or custom.",
+                    "properties": {
+                      "country": {
+                        "description": "ISO 3166-1 alpha-2 country code.",
+                        "pattern": "^[A-Z]{2}$",
+                        "type": "string"
+                      },
+                      "system": {
+                        "enum": [
+                          "cep",
+                          "fsa",
+                          "pin",
+                          "plz",
+                          "zip",
+                          "full",
+                          "at_plz",
+                          "ca_fsa",
+                          "ch_plz",
+                          "custom",
+                          "de_plz",
+                          "us_zip",
+                          "ca_full",
+                          "gb_full",
+                          "outward",
+                          "postcode",
+                          "gb_outward",
+                          "au_postcode",
+                          "code_postal",
+                          "postal_code",
+                          "zip_plus_four",
+                          "fr_code_postal",
+                          "us_zip_plus_four"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "country",
+                      "system"
+                    ],
+                    "title": "Postal Country System",
+                    "type": "object"
+                  },
+                  {
+                    "not": {
+                      "required": [
+                        "country"
+                      ]
+                    },
+                    "properties": {
+                      "system": {
+                        "enum": [
+                          "at_plz",
+                          "ca_fsa",
+                          "ch_plz",
+                          "de_plz",
+                          "us_zip",
+                          "ca_full",
+                          "gb_full",
+                          "gb_outward",
+                          "au_postcode",
+                          "fr_code_postal",
+                          "us_zip_plus_four"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "system"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "description": "Request geographic breakdown. Check reporting_capabilities.supports_geo_breakdown for available levels and systems.",
+          "properties": {
+            "country": {
+              "description": "ISO 3166-1 alpha-2 country code. Required for native postal_area requests; omitted for legacy postal_area and non-postal geo requests.",
+              "pattern": "^[A-Z]{2}$",
+              "type": "string"
+            },
+            "geo_level": {
+              "enum": [
+                "metro",
+                "region",
+                "country",
+                "postal_area"
+              ]
+            },
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of geo entries to return. Defaults to 25. When truncated, by_geo_truncated is true in the response.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "system": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "custom",
+                    "uk_itl1",
+                    "uk_itl2",
+                    "nielsen_dma",
+                    "eurostat_nuts2"
+                  ]
+                },
+                {
+                  "enum": [
+                    "cep",
+                    "fsa",
+                    "pin",
+                    "plz",
+                    "zip",
+                    "full",
+                    "at_plz",
+                    "ca_fsa",
+                    "ch_plz",
+                    "custom",
+                    "de_plz",
+                    "us_zip",
+                    "ca_full",
+                    "gb_full",
+                    "outward",
+                    "postcode",
+                    "gb_outward",
+                    "au_postcode",
+                    "code_postal",
+                    "postal_code",
+                    "zip_plus_four",
+                    "fr_code_postal",
+                    "us_zip_plus_four"
+                  ]
+                },
+                {
+                  "enum": [
+                    "at_plz",
+                    "ca_fsa",
+                    "ch_plz",
+                    "de_plz",
+                    "us_zip",
+                    "ca_full",
+                    "gb_full",
+                    "gb_outward",
+                    "au_postcode",
+                    "fr_code_postal",
+                    "us_zip_plus_four"
+                  ]
+                }
+              ],
+              "description": "Optional classification system for metro or postal_area levels. Metro uses metro-system values (e.g., 'nielsen_dma'); native postal_area uses country-local postal-system values with country (e.g., country 'US', system 'zip'); deprecated legacy postal_area requests may use legacy-postal-system values such as 'us_zip'. Omit to request the level without selecting a specific system."
+            }
+          },
+          "required": [
+            "geo_level"
+          ],
+          "type": "object"
+        },
+        "installment": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Request delivery by canonical installment within a collection. Check reporting_capabilities.supports_installment_breakdown.",
+          "properties": {
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of rows to return. Defaults to 25.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "title": "Delivery Breakdown Controls",
+          "type": "object"
+        },
+        "installment_property": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Request delivery at the installment \u00d7 property intersection. This is the reporting grain that can prove a specific airing, episode, issue, or programming block delivered on a particular host service; independent installment and property marginals cannot. Check reporting_capabilities.supports_installment_property_breakdown.",
+          "properties": {
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of rows to return. Defaults to 25.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "title": "Delivery Breakdown Controls",
+          "type": "object"
+        },
+        "keyword": {
+          "additionalProperties": true,
+          "description": "Request a negotiated keyword breakdown. Omitting this key preserves the automatic behavior \u2014 sellers return keyword rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.",
+          "properties": {
+            "limit": {
+              "description": "Maximum number of keyword entries to return. When omitted, the seller returns its automatic default set.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "placement": {
+          "additionalProperties": true,
+          "description": "Request placement breakdown.",
+          "properties": {
+            "cursor": {
+              "description": "Opaque cursor from a previous response's by_placement_pagination to fetch the next page of a truncated by_placement breakdown. Omit for the first page. limit, sort_by, and sort_direction MUST be repeated unchanged across paged requests for the same logical query.",
+              "type": "string"
+            },
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of entries to return. Defaults to 25.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "placement_property": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Request delivery at the placement \u00d7 property intersection. Use when a placement may span multiple web, app, social, or assistant properties. Check reporting_capabilities.supports_placement_property_breakdown.",
+          "properties": {
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of rows to return. Defaults to 25.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "title": "Delivery Breakdown Controls",
+          "type": "object"
+        },
+        "property": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Request delivery by canonical publisher property. Check reporting_capabilities.supports_property_breakdown.",
+          "properties": {
+            "limit": {
+              "default": 25,
+              "description": "Maximum number of rows to return. Defaults to 25.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sort_by": {
+              "enum": [
+                "cpm",
+                "ctr",
+                "grps",
+                "roas",
+                "leads",
+                "plays",
+                "reach",
+                "saves",
+                "spend",
+                "views",
+                "clicks",
+                "follows",
+                "downloads",
+                "frequency",
+                "units_sold",
+                "conversions",
+                "engagements",
+                "impressions",
+                "quartile_25",
+                "quartile_50",
+                "quartile_75",
+                "quartile_100",
+                "viewable_rate",
+                "cost_per_click",
+                "profile_visits",
+                "viewed_seconds",
+                "completed_views",
+                "completion_rate",
+                "engagement_rate",
+                "conversion_value",
+                "new_to_brand_rate",
+                "new_to_brand_units",
+                "commissionable_value",
+                "cost_per_acquisition",
+                "viewable_impressions",
+                "measurable_impressions",
+                "cost_per_completed_view"
+              ]
+            },
+            "sort_direction": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "title": "Delivery Breakdown Controls",
+          "type": "object"
+        },
+        "spot": {
+          "additionalProperties": true,
+          "description": "Request a spot-level as-run airing log for broadcast TV, radio, or other scheduled inventory. Rows are ordered by aired_at ascending. When limit is omitted, sellers SHOULD return the complete log for the requested reporting period.",
+          "properties": {
+            "limit": {
+              "description": "Optional maximum number of spot rows to return. When the response is incomplete because of this limit or a seller-imposed maximum, by_spot_truncated is true.",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "reporting_revision_id": {
+      "description": "Exact immutable reporting revision to retrieve. This additive Reliable Reporting selector returns content bound to that revision, including its immutable row count, control totals, and content SHA-256. It is mutually exclusive with media-buy, date, metric, and breakdown selectors.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string",
+      "x-entity": "reporting_revision"
+    },
+    "requested_metrics": {
+      "description": "Optional list of metrics to include in the response. When omitted, all available metrics are included (unchanged behavior). Applies to every metrics-bearing object in the response: totals, by_package, daily and window slices, and breakdown rows. impressions and spend are always included regardless of this list, except that a legacy or externally created mixed-currency buy MUST omit monetary and money-derived values from media-buy and window totals, MUST omit daily_breakdown, and MUST report monetary values only on currency-qualified package rows (including window package rows). Requesting a leaf metric identity returns its canonical nested carrier \u2014 e.g. requesting viewable_rate returns the viewability object, requesting quartile_75 returns quartile_data \u2014 never a flat duplicate. Metrics requested but not available for this buy are omitted from the response without error; contract accountability is unchanged \u2014 missing_metrics still reconciles against committed_metrics, but sellers MUST NOT list a metric in missing_metrics when its absence is solely due to this narrowing. Must be a subset of the product's reporting_capabilities.available_metrics; values outside the declared set are ignored. Subset evaluation follows the container-subsumption rule in enums/available-metric.json. Sort is evaluated before narrowing: excluding a metric from this list never triggers the sort_by fallback, and breakdown rows may be ordered by a metric absent from the narrowed payload \u2014 the applied-sort echo still names it. Same narrowing semantics as reporting_webhook.requested_metrics, with one shape difference: this field requires at least one entry when present (omit it entirely for full payloads), while the webhook field permits an empty array with the same meaning as omission.",
+      "items": {
+        "enum": [
+          "cpm",
+          "ctr",
+          "grps",
+          "roas",
+          "leads",
+          "plays",
+          "reach",
+          "saves",
+          "spend",
+          "views",
+          "clicks",
+          "follows",
+          "downloads",
+          "frequency",
+          "brand_lift",
+          "units_sold",
+          "conversions",
+          "engagements",
+          "impressions",
+          "ooh_metrics",
+          "quartile_25",
+          "quartile_50",
+          "quartile_75",
+          "viewability",
+          "dooh_metrics",
+          "foot_traffic",
+          "quartile_100",
+          "quartile_data",
+          "viewable_rate",
+          "cost_per_click",
+          "profile_visits",
+          "viewed_seconds",
+          "completed_views",
+          "completion_rate",
+          "conversion_lift",
+          "engagement_rate",
+          "conversion_value",
+          "time_based_views",
+          "brand_search_lift",
+          "new_to_brand_rate",
+          "new_to_brand_units",
+          "commissionable_value",
+          "cost_per_acquisition",
+          "viewable_impressions",
+          "incremental_sales_lift",
+          "measurable_impressions",
+          "cost_per_completed_view",
+          "viewed_seconds_histogram",
+          "viewed_seconds_percentiles"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "start_date": {
+      "description": "Inclusive start date for the reporting period (YYYY-MM-DD), as a calendar date in the reporting timezone: the reporting_capabilities.timezone of the products behind the in-scope packages. It is a UTC day only when that timezone is UTC. When omitted along with end_date, returns campaign lifetime data. Only accepted when the product's reporting_capabilities.date_range_support is 'date_range'. A date-bounded request whose in-scope packages span more than one reporting timezone MUST be rejected with VALIDATION_ERROR. The buyer narrows media_buy_ids to buys that share one reporting timezone, or omits both dates when a single buy's packages span reporting timezones.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "type": "string"
+    },
+    "status_filter": {
+      "description": "Filter by status. Can be a single status or array of statuses",
+      "oneOf": [
+        {
+          "enum": [
+            "active",
+            "paused",
+            "canceled",
+            "rejected",
+            "completed",
+            "pending_start",
+            "pending_creatives"
+          ]
+        },
+        {
+          "items": {
+            "enum": [
+              "active",
+              "paused",
+              "canceled",
+              "rejected",
+              "completed",
+              "pending_start",
+              "pending_creatives"
+            ]
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      ]
+    },
+    "time_granularity": {
+      "enum": [
+        "daily",
+        "hourly",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "post_campaign"
+      ]
+    }
+  },
+  "title": "Get Media Buy Delivery Request",
+  "type": "object",
+  "x-tool-summary": "Retrieve media-buy delivery metrics with optional date, package, window, attribution, and dimension breakdowns."
+}

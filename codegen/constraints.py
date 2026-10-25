@@ -49,15 +49,25 @@ constraint has no such coupling.  Measured on the tree this lands on: 57
 distinct constrained-scalar shapes over 278 sites, of which 29 shapes over 250
 sites repeat at 2+ and 28 occur once.
 
-**A constrained CONTAINER is not here, and the reason is the naming rule rather
-than an omission.**  A bound on a list is a bound on the FIELD holding it
-(``codegen.lower.containers``, and ``compiler.Type`` carries no constraints for a
-container at all), so ``Annotated[list[str], Field(min_length=1)]`` is already
-D5's correct form.  Naming it would need the ELEMENT type in the symbol --
-``list[RightUse]`` and ``list[str]`` are different types -- and an element type is
-a domain word, which D5's naming rule forbids.  Measured on the tree this lands
-on: 21 such shapes over 30 sites, 2 of them repeating (``list[str]`` at 8 sites
-and ``list[RightUse]`` at 3), all of them already field-bound.
+**A constrained CONTAINER is here too, and it is GENERIC, which is what makes it
+nameable.**  A bound on a list is a bound on the FIELD holding it wherever there IS
+a field (``codegen.lower.containers``, and ``compiler.Type`` carries no constraints
+for a container), so ``Annotated[list[str], Field(min_length=1)]`` is already the
+correct form at a PROPERTY: measured on the tree this lands on, 21 such shapes over
+30 sites, 2 of them repeating (``list[str]`` at 8 sites and ``list[RightUse]`` at
+3), all of them field-bound and none of them reaching this module.
+
+An ELEM, a MAPV and a union BRANCH have no field, and section 5 puts the bound on
+the array's own type AT EVERY POSITION -- on a branch emphatically, because the
+field holds the other branches and a bound there refuses values the document
+accepts.  An earlier revision of this docstring declined to name such a type on the
+ground that the symbol would need the ELEMENT type -- ``list[RightUse]`` and
+``list[str]`` are different types -- and an element type is a domain word.  That
+holds for a NON-generic alias, and it is the premise that changed: a type PARAMETER
+is not a domain word, so ``NonEmptyList[T]`` is correct for every ``T`` at once and
+the use site supplies the element.  :data:`CONTAINER` is the parameters each
+container word is generic over, and :data:`NAMED_CONTAINERS` is the one shape
+section 5 spells itself.
 """
 
 from __future__ import annotations
@@ -75,6 +85,14 @@ from codegen.compiler import Rendered
 #: relative spelling ``emit.relative_module`` derives for a sibling (P8's reason
 #: for a relative import is that ``_schemas`` is private, and this is not).
 MODULE = "adcp.types.constraints"
+
+#: One resolved shape, as this module records and declares it: the document's own type
+#: word, its constraint keywords in the document's spelling, and its ``format`` where
+#: one is part of the shape.  The ``format`` is a THIRD member rather than a key in the
+#: constraints, because ``compiler.render_alias`` takes it in its own parameter -- it
+#: becomes ``json_schema_extra`` and not a ``Field`` bound -- and folding it in would
+#: make every reader of a shape unfold it again.
+Shape = tuple[str, dict[str, Any], str | None]
 
 #: **A ``format: uri`` field's type FOLLOWS THE DOCUMENT'S OWN PATTERN** (D5), so
 #: there are two of them and :func:`url_type` chooses.  Both are decisions rather
@@ -150,6 +168,43 @@ SPELLING: tuple[tuple[str, str], ...] = (
     ("pattern", "Matching"),
 )
 
+#: The bound keywords a CONTAINER can carry, in the order a symbol spells them, keyed
+#: by the container's own type word.  The order is fixed here for :data:`SPELLING`'s
+#: reason: the name is a function of the constraint SET and not of the order a schema
+#: author wrote it in.  The word is the document's own keyword, pascal-cased, because
+#: the alias names the constraint and the document is where a reader goes to check it
+#: -- ``ListMaxItems32`` against ``maxItems: 32``, with no abbreviation to decode.
+CONTAINER_SPELLING: dict[str, tuple[tuple[str, str], ...]] = {
+    "array": (("minItems", "MinItems"), ("maxItems", "MaxItems")),
+    "object": (("minProperties", "MinProperties"), ("maxProperties", "MaxProperties")),
+}
+
+#: The word a container ``type`` contributes, and the PARAMETERS its alias is generic
+#: over.  **A container alias is GENERIC and that is what makes it nameable at all.**
+#: The element type cannot go in the symbol -- ``list[RightUse]`` and ``list[str]`` are
+#: different types, and an element type is a domain word, which section 2's naming rule
+#: forbids -- so a non-generic container alias has no name this module may give it.  A
+#: parameter is not a domain word: ``NonEmptyList[T]`` is correct for every ``T`` at
+#: once, and the use site supplies the element (``NonEmptyList[MediaBuyStatus]``).
+CONTAINER: dict[str, tuple[str, tuple[str, ...]]] = {
+    "array": ("List", ("T",)),
+    "object": ("Dict", ("K", "V")),
+}
+
+#: The one container shape the plan NAMES instead of leaving to the derivation above.
+#: Section 5's ``minItems``/``maxItems`` row: "``constraints`` declares the recurring
+#: case once as ``type NonEmptyList[T] = Annotated[list[T], Field(min_length=1)]``".
+#:
+#: A hand-written row beside a derivation, which is the same arrangement :func:`standard`
+#: already is -- rung 2 is a named type for a shape where one says exactly this, and
+#: this is that one level up.  It is a DECISION and so is declared whatever the run met,
+#: for :data:`URL_LINE`'s reason: the plan names it, and a consumer annotating their own
+#: non-empty list imports it from here.  Keyed by the constraint, so the name is still a
+#: function of the constraint alone.
+NAMED_CONTAINERS: dict[tuple[str, tuple[tuple[str, Any], ...]], str] = {
+    ("array", (("minItems", 1),)): "NonEmptyList",
+}
+
 #: The word a scalar ``type`` contributes, in the document's own vocabulary.
 #: ``boolean`` is absent: a boolean carries no constraint keyword, so no shape
 #: reaches this module for one.
@@ -224,7 +279,31 @@ def _digest(pattern: str) -> str:
     return hashlib.sha256(pattern.encode()).hexdigest()[:8].upper()
 
 
-def symbol(kind: str, constraints: Mapping[str, Any]) -> str | None:
+def _container_symbol(kind: str, constraints: Mapping[str, Any]) -> str | None:
+    """The alias name for a bounded CONTAINER, derived from the bound.
+
+    :data:`NAMED_CONTAINERS` first, which is the one shape the plan spells itself, and
+    the derivation otherwise.  ``None`` for a keyword no container spelling names --
+    ``uniqueItems`` is the case, and it is a RULE rather than a bound (section 5), so
+    an alias claiming to carry it would drop it.
+    """
+    spelling = CONTAINER_SPELLING[kind]
+    if set(constraints) - {kw for kw, _ in spelling}:
+        return None
+    named = NAMED_CONTAINERS.get((kind, tuple(sorted(constraints.items()))))
+    if named is not None:
+        return named
+    parts = [word + _number(constraints[kw]) for kw, word in spelling if kw in constraints]
+    name = CONTAINER[kind][0] + "".join(parts)
+    return name if name.isidentifier() else None
+
+
+def symbol(
+    kind: str,
+    constraints: Mapping[str, Any],
+    *,
+    format: str | None = None,  # noqa: A002 -- the JSON Schema keyword's own name
+) -> str | None:
     """D5's rung 3: the alias name for this shape, derived from the constraint.
 
     ``None`` where the shape has no spelling here -- an unknown ``type``, no
@@ -232,9 +311,21 @@ def symbol(kind: str, constraints: Mapping[str, Any]) -> str | None:
     caller then leaves the site inline, which is what it did before this module
     existed.  Returning a name for a keyword this module cannot spell would be
     the one failure mode that matters: an alias whose annotation drops a fact.
+
+    ``format`` contributes a word of its own, and it is spelled FIRST so the common
+    case reads as what it is: ``StrFormatHostname``.  **It is here because a format
+    is a CONSTRAINT at the positions that ask for a name.**  Section 5's ``format``
+    row selects a TYPE where one is named for the format and the draft asserts it, and
+    rides on the FIELD as ``json_schema_extra`` otherwise -- and a field is exactly
+    what an ELEM, a MAPV and a BRANCH do not have.  Naming it is the row's own answer
+    for those three ("ELEM / MAPV with no type selected -> a named alias carries it"),
+    and the word is the format's, so the alias still names a constraint and not a
+    concept.
     """
+    if kind in CONTAINER:
+        return None if format is not None else _container_symbol(kind, constraints)
     base = BASE.get(kind)
-    if base is None or not constraints:
+    if base is None or not (constraints or format):
         return None
     if set(constraints) - {kw for kw, _ in SPELLING}:
         return None
@@ -243,24 +334,38 @@ def symbol(kind: str, constraints: Mapping[str, Any]) -> str | None:
         for kw, word in SPELLING
         if kw in constraints
     ]
+    if format is not None:
+        parts.insert(0, "Format" + compiler.class_name(format))
     name = base + "".join(parts)
     return name if name.isidentifier() else None
 
 
-def resolve(kind: str, constraints: Mapping[str, Any]) -> str | None:
+def resolve(
+    kind: str,
+    constraints: Mapping[str, Any],
+    *,
+    format: str | None = None,  # noqa: A002 -- the JSON Schema keyword's own name
+) -> str | None:
     """The dotted path this shape's named type is reachable at, or ``None``.
 
     Rung 2 before rung 3, which is D5's own order, and rung 1 is not here: it is
     reached through a ``$ref`` in ``emit.decide_type`` and never by matching an
     inline declaration against another document's content (see the module
     docstring).
+
+    Rung 2 is SKIPPED where a ``format`` is in the shape, and the reason is rung 2's
+    own admission test rather than caution: a standard type qualifies only where it
+    states the document's own facts, and no pydantic type states ``format: hostname``
+    beside ``minimum: 0``.  ``standard`` would be asked about a shape it does not see
+    and would answer for the constraints alone, which is an alias dropping a fact.
     """
-    if not constraints:
+    if not constraints and format is None:
         return None
-    found = standard(kind, constraints)
-    if found is not None:
-        return found
-    name = symbol(kind, constraints)
+    if format is None:
+        found = standard(kind, constraints)
+        if found is not None:
+            return found
+    name = symbol(kind, constraints, format=format)
     return None if name is None else f"{MODULE}.{name}"
 
 
@@ -276,10 +381,12 @@ class AliasCollision(Exception):
 
 
 def record(
-    into: dict[str, tuple[str, dict[str, Any]]],
+    into: dict[str, Shape],
     name: str,
     kind: str,
     constraints: Mapping[str, Any],
+    *,
+    format: str | None = None,  # noqa: A002 -- the JSON Schema keyword's own name
 ) -> None:
     """Record one resolved shape under its name, refusing a collision.
 
@@ -298,7 +405,7 @@ def record(
     the integer it is so the name does not depend on how the author wrote the
     zero.
     """
-    shape = (kind, dict(constraints))
+    shape = (kind, dict(constraints), format)
     found = into.get(name)
     if found is not None and found != shape:
         raise AliasCollision(
@@ -308,15 +415,40 @@ def record(
     into[name] = shape
 
 
-def declare(shapes: Mapping[str, tuple[str, Mapping[str, Any]]]) -> str:
+def _annotation(kind: str, constraints: Mapping[str, Any]) -> compiler.Type:
+    """The type an alias's annotation wraps: a scalar, or a container over its
+    PARAMETERS.
+
+    A container alias is generic (see :data:`CONTAINER`), so what goes inside
+    ``list[...]`` / ``dict[..., ...]`` is the type variable and not a decided type.  It
+    is a :class:`compiler.Type` like any other -- ``local`` because the variable is a
+    name this module declares, so the compiler adds no import for it -- which is what
+    keeps the annotation the compiler's on this path too.
+    """
+    if kind not in CONTAINER:
+        return compiler.Type(SCALAR_PATH[kind])
+    params = [compiler.Type(p, local=True) for p in CONTAINER[kind][1]]
+    if kind == "array":
+        return compiler.Type(container="list", of=tuple(params))
+    return compiler.Type(container="dict", of=(params[1],), key=params[0])
+
+
+def declare(shapes: Mapping[str, Shape]) -> str:
     """The text of ``adcp/types/constraints.py``, for the shapes a run met.
 
     :data:`URL` is declared whatever the run met, because it is a DECISION rather
     than a derivation -- D5 names it, ``emit.FORMAT_TYPES`` points every
     ``format: uri`` field at it, and a consumer who wants to parse a URL of their
-    own imports it from here.  The derived aliases are exactly the shapes the run
-    resolved, sorted, so the module is a function of the run and holds no alias
-    nothing names.
+    own imports it from here.  :data:`NAMED_CONTAINERS` is declared for the same
+    reason: section 5 names ``NonEmptyList[T]`` and a consumer annotating a non-empty
+    list of their own imports it from here.  The derived aliases are exactly the
+    shapes the run resolved, sorted, so the module is a function of the run and holds
+    no alias nothing names.
+
+    A generic alias needs its type VARIABLES declared, and exactly the ones the lines
+    use are: ``T`` is always one, because ``NonEmptyList`` is always declared, and
+    ``K``/``V`` arrive with the first bounded mapping.  Derived rather than always
+    written, so the module holds no name nothing in it reads.
 
     **The ANNOTATION is the compiler's**, read off the same ``DataModelField`` a
     class property gets (``compiler.render_alias``), so a ``minLength`` on an
@@ -326,13 +458,24 @@ def declare(shapes: Mapping[str, tuple[str, Mapping[str, Any]]]) -> str:
     needs; these aliases carry no schema reference -- an alias has no document --
     so that one import is dropped here by name.
     """
+    declared: dict[str, Shape] = {
+        **{name: (kind, dict(cons), None) for (kind, cons), name in NAMED_CONTAINERS.items()},
+        **shapes,
+    }
     imports: set[tuple[str, str]] = set(URL_IMPORTS)
     lines: list[str] = [URL_LINE]
-    for name in sorted(shapes):
-        kind, cons = shapes[name]
-        rendered: Rendered = compiler.render_alias(name, compiler.Type(SCALAR_PATH[kind]), cons)
+    variables: list[str] = []
+    for name in sorted(declared):
+        kind, cons, fmt = declared[name]
+        variables += [p for p in CONTAINER.get(kind, ("", ()))[1] if p not in variables]
+        rendered: Rendered = compiler.render_alias(
+            name, _annotation(kind, cons), cons, format=fmt
+        )
         lines.append(rendered.text)
         imports |= {i for i in rendered.imports if i != ("adcp.types._base", "SchemaRef")}
+    if variables:
+        imports.add(("typing", "TypeVar"))
+        lines = [f'{p} = TypeVar("{p}")' for p in sorted(variables)] + ["", *lines]
     by_module: dict[str, set[str]] = {}
     for module, item in imports:
         by_module.setdefault(module, set()).add(item)
@@ -379,6 +522,13 @@ property key and never from a domain word, because two fields sharing a bound
 are not thereby the same idea.  A ``pattern`` has no readable name that is not a
 concept, so it contributes eight hex digits of its own SHA-256.  Two distinct
 constraints deriving one name is a build failure rather than a shared alias.
+
+A bound on a CONTAINER is named here too, and such an alias is GENERIC: the bound is
+the alias and the contents are its parameter, so ``NonEmptyList[MediaBuyStatus]`` is a
+list of statuses with at least one member and ``NonEmptyList`` names the bound once for
+every content type.  ``NonEmptyList[T]`` is declared whatever a run met, because the
+design names it and a consumer annotating a non-empty list of their own imports it from
+here.
 
 Two names here are DECISIONS rather than derivations, and together they are this
 SDK's whole answer for ``format: uri``: a field's type FOLLOWS THE DOCUMENT'S OWN

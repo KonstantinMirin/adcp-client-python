@@ -92,7 +92,7 @@ from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
 from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef
-from codegen import dump_exemptions
+from codegen import compiler, dump_exemptions
 
 # --------------------------------------------------------------------------- #
 # formats
@@ -424,8 +424,9 @@ _DESCEND_MAP = ("properties", "$defs", "definitions", "patternProperties", "depe
 _DESCEND_LIST = ("oneOf", "anyOf", "allOf", "prefixItems")
 
 
-def _esc(s: str) -> str:
-    return s.replace("~", "~0").replace("/", "~1")
+#: ``compiler.escape_key``, not a second copy: a pointer segment is spelled by four
+#: readers and the two halves have to agree about a key carrying a ``/``.
+_esc = compiler.escape_key
 
 
 def at(doc: Any, pointer: str) -> Any:
@@ -987,6 +988,12 @@ class ComparisonResult:
     #: ``url_typed`` is: a fold that disappears into a green ``missing`` is
     #: invisible and permanent, and this one must stay auditable at its positions.
     constrains_nothing: list[str] = field(default_factory=list)
+    #: A ``propertyNames`` the model TYPES and pydantic does not render, at a
+    #: ``__pydantic_extra__`` store -- see :func:`_extra_key_typed`.  Counted apart
+    #: from ``missing`` for the reason the two lists above are: an admission that
+    #: disappears into a green ``missing`` is invisible and permanent, and this one
+    #: must stay auditable at its positions.
+    extra_key_typed: list[str] = field(default_factory=list)
     detail: str = ""
 
     @property
@@ -1088,7 +1095,7 @@ def _url_typed(got: Mapping[str, Any]) -> bool:
     )
 
 
-def _constrains_nothing(keyword: str, doc: Mapping[str, Any]) -> bool:
+def _constrains_nothing(keyword: str, doc: Mapping[str, Any], *, required: bool = False) -> bool:
     """Does a DOCUMENT fact constrain its accepted set, or not?
 
     The fifth resolver canonicalization, and the mirror of :func:`_narrows_nothing`:
@@ -1096,11 +1103,19 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any]) -> bool:
     whether a DOCUMENT-only fact constrains anything at all.  A fact that admits
     exactly what its absence admits is not dropped by a model that omits it, so
     reporting it as ``missing`` says the model is wider than its schema when it is
-    not.  Measured on the 1,054-document bundle: 5 facts in 1 of its 2 shapes, and
-    nothing else reaches this.
+    not.  Measured on the 1,054-document bundle: 5 facts in 1 of its 3 shapes, plus
+    the third shape's own sites, and nothing else reaches this.
 
     * **``required: []``** -- an empty list demands no key, which is what silence
-      demands.  5 sites, and all 5 of the facts this fold accounts for today.
+      demands.  5 sites, and all 5 of the facts the first two arms account for today.
+    * **``default`` on a property the enclosing node REQUIRES** -- a default is
+      applied to an instance that OMITS the key, and a required key is in every
+      instance the document admits, so the default can never be applied and its
+      absence from the model admits and refuses exactly what its presence would.
+      Section 5's ``default`` row drops it for that reason (``compiler.fields``,
+      which also REPORTS the drop), and this arm is the grading half of the same
+      decision, gated on the same shape.  5 of the bundle's 339 property defaults
+      sit on a required property.
     * **``enum: [false, true]`` at a node the document declares ``boolean``** --
       the two members are the whole of the boolean domain, so the enum admits
       exactly what ``boolean`` admits.  **0 sites in the bundle, and the arm is
@@ -1129,6 +1144,12 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any]) -> bool:
       ``"boolean"`` and a list spelling does not qualify.
     * ``required: ["x"]`` demands a key and must still compare, so the value is
       required to be empty rather than merely a list.
+    * A ``default`` on an OPTIONAL property is the one case where a default does
+      something -- the key may be omitted and the value then applies -- so it must
+      still compare, and the gate is ``required`` and not the keyword's name.  That
+      is also why ``required`` is a parameter here rather than something read off
+      ``doc``: requiredness is stated by the ENCLOSING node, which this function is
+      not handed, and reading it off the node itself would make every default fold.
 
     This is NOT the place to excuse a fact that is merely hard to render.  A
     document fact the model cannot express is ``missing``, and that is the report
@@ -1144,7 +1165,7 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any]) -> bool:
             and {type(m) for m in members} == {bool}
             and set(members) == {True, False}
         )
-    return False
+    return keyword == "default" and required
 
 
 def _schema_half_enforces(keyword: str, doc: Mapping[str, Any], got: Mapping[str, Any]) -> bool:
@@ -1521,6 +1542,154 @@ def _declares_null(doc: Any) -> bool:
     return "null" in kind if isinstance(kind, list) else kind == "null"
 
 
+def _constrains_a_key(key_schema: Mapping[str, Any]) -> bool:
+    """Does a ``propertyNames`` node say anything about a key that is GRADABLE?
+
+    A key schema one side states and the other does not is reported only where it
+    carries a fact: ``{"x-entity": "product"}`` beside a ``minLength`` is an
+    ``x-`` annotation §6 admits and no model renders, so a side stating the node
+    and no fact is not a side that dropped one.  A local ``$ref`` counts, because
+    the comparison resolves one and the facts behind it are the key type's.
+    """
+    return "$ref" in key_schema or any(kw in key_schema for kw in FACTS)
+
+
+def _extra_key_typed(doc: Mapping[str, Any], got: Mapping[str, Any]) -> bool:
+    """Is this node a STORE whose extra key the model types, which pydantic does not
+    render?
+
+    Section 5's ``additionalProperties`` row makes a typed one on a CLASS -- a node
+    declaring ``properties`` as well -- ``allow`` with a typed ``__pydantic_extra__``,
+    and section 5's ``propertyNames`` row makes the key a TYPE.  The emitter writes
+    both: ``__pydantic_extra__: dict[StrMaxLen128, V]``.  **pydantic 2.13.5 renders the
+    VALUE of that dict as ``additionalProperties`` and drops its KEY**, so the document's
+    ``propertyNames`` has nowhere to be read back from -- measured on
+    ``governance/reported-outcome-error.json``, the bundle's only graded store with a
+    constrained key, and the first document to reach it (``salesagent-j3k2l.41``).
+
+    **This is an admission of the STRONG kind: the fact is true of the model.**  The
+    model refuses a 129-character extra key and accepts a short one, which
+    ``tests/test_inner_facts.py`` asserts against the emitted class rather than leaving
+    to this sentence -- so the premise this row rests on is graded and not merely
+    written down.  It is counted in :attr:`ComparisonResult.extra_key_typed` and never
+    folded into ``missing``, for ``url_typed``'s reason: a fold that disappears into a
+    green ``missing`` is invisible and permanent.
+
+    Three gates, and the first is what makes it a store rather than a mapping:
+
+    * the DOCUMENT declares ``properties`` here.  A mapping has none, and a mapping's
+      key IS rendered -- as ``propertyNames`` or as ``patternProperties``, which
+      :func:`_patterned_key` reads on both sides -- so a mapping dropping its key
+      schema is still reported;
+    * the model renders a typed ``additionalProperties``, so a model that widened the
+      store's value to ``Any`` (``additionalProperties: true``) or closed it is not
+      admitted here;
+    * the model renders no ``propertyNames`` of its own, which is the caller's own
+      ``elif``: a model that DOES render one is compared against the document's.
+
+    KNOWN CEILING, named because it is a real narrowing and the bundle does not reach
+    it: the model types the key of an EXTRA, so a declared property whose name the
+    document's ``propertyNames`` would refuse is admitted by the model.  A declared key
+    is a fixed string the document itself writes, so such a document contradicts
+    itself; 0 of this bundle's store nodes do.
+    """
+    return (
+        isinstance(doc.get("properties"), dict)
+        and isinstance(got.get("additionalProperties"), dict)
+        and bool(got["additionalProperties"])
+    )
+
+
+def _patterned_key(node: Any, *, closed: bool) -> dict | None:
+    """A mapping whose KEY carries a pattern, written as a key schema and a value.
+
+    **One shape, three spellings, and the comparison has to read all three.**  §2
+    says a mapping's key is a TYPE, and a patterned key is
+    ``dict[Annotated[str, StringConstraints(pattern=P)], V]``.  The document spells
+    that two ways and pydantic renders it a third:
+
+    * ``propertyNames: {"pattern": P}`` beside ``additionalProperties: V`` -- every
+      key matches ``P``, every value matches ``V``;
+    * ``patternProperties: {P: V}`` beside ``additionalProperties: false`` -- a key
+      matching ``P`` has value ``V``, and no other key is admitted, which is the
+      same statement;
+    * pydantic 2.13.5 renders the annotation as ``{"type": "object",
+      "patternProperties": {P: V}}`` and states no ``additionalProperties`` at all,
+      although the validator does refuse a non-matching key (``{"AB": 1}`` accepted,
+      ``{"abc": 1}`` refused for ``^[A-Z]{2}$``).
+
+    So this writes all three as the FIRST spelling, which is the one whose two
+    keywords the rest of the comparison already reads: ``additionalProperties`` is
+    in :data:`FACTS` and recursed into, and ``propertyNames`` is descended into
+    beside it.  Without it the ``propertyNames`` document reported a faithful model
+    as dropping its ``additionalProperties`` (measured: ``model_drops_a_fact`` at
+    ``core/geo-region-support.json#/properties/countries/additionalProperties`` and
+    at ``trusted-match/identity-match-response.json#/properties/tmpx_providers``),
+    while the ``patternProperties`` document passed with the value schema and the
+    key expression both ungraded -- the two halves of the same hole.
+
+    ``closed`` is whether a bare ``patternProperties`` -- one with no
+    ``additionalProperties`` beside it -- closes this node's keys, and it is the one
+    thing the node cannot say for itself.  **It is a property of the SIDE and not a
+    guess**: pydantic only ever renders a patterned key for a dict whose key type
+    refuses a non-matching key, so on the model side a bare ``patternProperties``
+    IS closed; in a document, draft-07 admits every key the pattern does not match,
+    so it is not.  A document in that shape therefore gets no reading here and is
+    compared as it stands, which is the fail-safe direction -- and the emitter
+    refuses it outright (``lower.containers.mapping``), so no emitted pair reaches
+    it.
+
+    ``None`` where the node is not this shape, and the caller then leaves it alone.
+    A node with ``properties`` is a CLASS and not a mapping, and more than one
+    pattern is a value schema per key shape, which §5 refuses.
+    """
+    if not isinstance(node, dict):
+        return None
+    patterned = node.get("patternProperties")
+    if not isinstance(patterned, dict) or len(patterned) != 1 or "properties" in node:
+        return None
+    # A key schema BESIDE the pattern is pydantic's rendering of a key type carrying
+    # a length bound as well, and the two halves are one key: measured on 2.13.5,
+    # ``dict[Annotated[str, StringConstraints(min_length=1, max_length=64,
+    # pattern=P)], V]`` renders ``{"patternProperties": {P: V}, "propertyNames":
+    # {"minLength": 1, "maxLength": 64}}``, which is the shape 5 of the bundle's 13
+    # patterned key sites state.  So the model's two halves MERGE.  In a DOCUMENT the
+    # same pair is two statements about one key type, which §5 refuses, so it gets no
+    # reading here -- ``closed`` is again the side.
+    beside = node.get("propertyNames")
+    if beside is not None and not (closed and isinstance(beside, dict) and "pattern" not in beside):
+        return None
+    if "additionalProperties" in node:
+        if node["additionalProperties"] is not False:
+            return None  # two value schemas for one mapping value
+    elif not closed:
+        return None
+    ((expr, value),) = patterned.items()
+    out = {k: v for k, v in node.items() if k not in ("patternProperties", "additionalProperties")}
+    out["propertyNames"] = {**(beside or {}), "pattern": expr}
+    out["additionalProperties"] = value
+    return out
+
+
+def _key_schema(node: Mapping[str, Any]) -> dict:
+    """A ``propertyNames`` node with its implied ``type`` restored, on either side.
+
+    A JSON object's key is a string, so ``type: "string"`` on a key schema states
+    what the POSITION already says.  That is why the bundle writes it at 5 of its 13
+    patterned key sites and leaves it out at the other 8, and why pydantic renders
+    ``propertyNames: {"minLength": 1}`` for a key type that IS a ``str``.  Restored
+    on BOTH sides so neither spelling reads as a fact the other dropped;
+    ``lower.containers._key`` supplies the same word on the document side before
+    lowering, for the same reason.
+
+    Not supplied over a declared ``type``, nor over a ``$ref`` -- a reference NAMES
+    the key type and brings its own facts, which :func:`_normalize` resolves.
+    """
+    if "type" in node or "$ref" in node:
+        return dict(node)
+    return {"type": "string", **node}
+
+
 #: The two combinators a union of types is spelled with, and BOTH are read,
 #: because the two sides spell it differently.  ``anyOf`` is pydantic's only
 #: spelling of a union; ``oneOf`` is the DOCUMENT's at 2 of this bundle's 3
@@ -1563,6 +1732,55 @@ def _target(ref: Any, root: Any) -> Any:
     except (KeyError, IndexError, TypeError, ValueError):
         return None
     return target if isinstance(target, dict) else None
+
+
+def _conjoined_type(node: dict, kw: str, branches: list[dict]) -> tuple[dict, list[dict]]:
+    """A ``type`` word BESIDE a union is conjoined into every branch, which is what
+    draft-07 says it is.
+
+    The sixth canonicalization.  Every branch of a draft-07 combinator is applied to
+    the SAME instance, so a sibling ``type`` asserts about that instance too and a
+    branch stating none of its own has it: ``{"type": "string", "anyOf": [{"format":
+    "uri-template"}, ...]}`` and ``{"anyOf": [{"type": "string", "format":
+    "uri-template"}, ...]}`` are one document said two ways.  **They are the two ways
+    the two SIDES say it**: the document states the word once at the root, and the
+    emitter conjoins it into each branch -- ``_base.applied_schema``, which is the
+    schema half's own reading of what a branch says, and ``lower.union.applied_type``
+    is where the walk asks it -- so pydantic renders it per branch and the node itself
+    states no type at all.
+
+    Without this the word is in :data:`FACTS` on the document's side and absent from
+    the model's, and a faithful alias reports as dropping its own ``type``.  Measured on
+    ``core/macro-bearing-url.json``, the bundle's only graded node stating a ``type``
+    beside a union, and the first document to reach it (``salesagent-j3k2l.41``).
+
+    **Conjoining DOWN and not hoisting up, and the measurement is what decided it.**
+    Hoisting a word every branch states up to the node equalizes the same pair and
+    keeps the fact compared, which is better in principle -- and it is wrong, because
+    the two sides' branches are shaped differently and the hoist then fires on one side
+    only.  Measured by doing it: **11 pairs reported a drop and 4 an addition**, every
+    one of them faithful.  A document stating ``type: object`` inline in each branch
+    hoists while the model renders those branches as ``$ref`` -- that is
+    ``core/placement-presentation.json`` and six more -- and a model whose branches
+    state ``type: string`` hoists while the document's branches state no type at all,
+    which is ``core/geo-place-area.json`` and three more.  Conjoining down fires on the
+    SHAPE the keyword's own semantics name and so fires wherever that shape is, on
+    either side.
+
+    **KNOWN CEILING: the word stops being COMPARED at that node.**  Neither side
+    recurses into a branch, so a fact moved into the branches is a fact no comparison
+    reads -- green by disappearing, which is the thing this module's folds are meant
+    not to be.  What bounds it: the fold fires only where the node states a ``type``
+    BESIDE a union, 1 graded node in this bundle, and that node's accepted set is still
+    graded by the accepts and refuses checks against the document's own schema.
+    Closing it needs ``compare`` to recurse into a union's branches pairwise, which is
+    a reading of which branch answers which and is not this function's.
+    """
+    word = node.get("type")
+    if not isinstance(word, str):
+        return node, branches
+    conjoined = [b if "type" in b else {**b, "type": word} for b in branches]
+    return {k: v for k, v in node.items() if k != "type"} | {kw: conjoined}, conjoined
 
 
 def _normalize(
@@ -1725,6 +1943,7 @@ def _normalize(
         # the same defect it was built to close.  ``{"const": null}`` is the same
         # rewrite of a ``null`` branch and is restored by the same call.
         branches = [_uncanonicalized(b)[0] for b in stated]
+        node, branches = _conjoined_type(node, kw, branches)
         live = [b for b in branches if b.get("type") != "null"]
         nulls = [b for b in branches if b.get("type") == "null"]
         outer = {k: v for k, v in node.items() if k != kw}
@@ -1773,15 +1992,16 @@ def _normalize(
         # ``if``/``then``, and every fact the faithful model carried there read as
         # ``added`` -- 11 facts over 1 pair, in the one direction §6 cares most about.
         #
-        # **The gate is not a heuristic, it is this pipeline's own rule read backwards.**
-        # D3 names a union branch by its ``title``, and ``lower.union.lower_union``
-        # REFUSES a root whose branches derive one class name -- so two branches sharing
-        # a title cannot be a union this emitter emits, and a node that is one carries
-        # no agreed facts to lift.  Ungated, the lift reddened 300 ``missing`` facts at
-        # UNION ROOTS, whose base deliberately states none of its branches' fields (§4,
-        # ``union.ROOT_CONJUNCTS``) because each branch is graded as its own pair --
-        # which is exactly what ``_composed``'s docstring already says about leaving a
-        # root combinator alone, and why this is gated rather than general.
+        # **The gate is not a heuristic, it is this pipeline's own rule read
+        # backwards.** Section 4's names row names a union branch by its ``title``, and
+        # ``lower.union.lower_union`` REFUSES a root whose branches derive one class
+        # name -- so two branches sharing a title cannot be a union this emitter emits,
+        # and a node that is one carries no agreed facts to lift.  Ungated, the lift
+        # reddened 300 ``missing`` facts at UNION ROOTS, whose base deliberately states
+        # none of its branches' fields (§4, ``union.ROOT_CONJUNCTS``) because each
+        # branch is graded as its own pair -- which is exactly what ``_composed``'s
+        # docstring already says about leaving a root combinator alone, and why this is
+        # gated rather than general.
         titles = {b.get("title") for b in live}
         if len(live) > 1 and len(titles) == 1 and isinstance(live[0].get("title"), str):
             lifted = _agreed(live)
@@ -1939,7 +2159,7 @@ def _one_vocabulary(node: dict, conjunct: dict) -> tuple[dict, dict]:
 def _tighter(keyword: str, node: Any, conjunct: Any) -> Any:
     """The INTERSECTION of two views of one keyword, or :data:`_UNDECIDED`.
 
-    D7's rule, in the two spellings it names for a keyword both views state: "an enum is
+    Section 2's rule, in the two spellings it names for a keyword both views state: "an enum is
     the intersection of the members, a bound is the tighter one".  Anything else is
     ``_UNDECIDED`` and the caller keeps the node's own, which is the behaviour this
     replaced and the safe direction: a looser expectation is a FALSE FAILURE that is
@@ -2057,7 +2277,7 @@ def _composed(doc: Any, depth: int = 0) -> Any:
             if kw not in out:
                 out[kw] = c[kw]
                 continue
-            # **D7's intersection rule, where the KNOWN CEILING below used to gap-fill
+            # **Section 2's intersection rule, where the KNOWN CEILING below used to gap-fill
             # and keep the node's.**  "Where composed schemas constrain the same
             # property, the field carries the INTERSECTION, never the union: an enum is
             # the intersection of the members, a bound is the tighter one."  The ceiling
@@ -2101,7 +2321,7 @@ def _composed(doc: Any, depth: int = 0) -> Any:
         # ``core/media-buy-frequency-cap-requirement.json`` at
         # ``/properties/supported_control_modes``, whose conjunct narrows the element
         # from a three-member enumeration to one, reported as the model adding a
-        # ``const`` and dropping an ``enum``.  D7: the intersection holds at any depth,
+        # ``const`` and dropping an ``enum``.  Section 2: the intersection holds at any depth,
         # INCLUDING an overlay under ``items``.
         if isinstance(c.get("items"), dict):
             mine_items = out.get("items")
@@ -2202,6 +2422,14 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
         got = _normalize(
             got, emitted, declared_null=_declares_null(doc), null_is_absence=not required
         )
+        # §2's key rule: a mapping's key is a TYPE, and the one type has three
+        # spellings across the two sides.  Written as one shape here, on BOTH sides
+        # and by the same function, so the key expression and the value schema are
+        # each graded rather than excused (:func:`_patterned_key`).  ``closed`` is
+        # the one fact that differs by side and it is a property of the renderer,
+        # not of the node.
+        doc = _patterned_key(doc, closed=False) or doc
+        got = _patterned_key(got, closed=True) or got
         doc, rewritten = _uncanonicalized(doc)
         for kw in FACTS:
             if kw not in doc:
@@ -2221,7 +2449,7 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
                 # The fifth canonicalization: a document fact that constrains
                 # nothing is not dropped by a model that omits it.  Counted apart
                 # from ``missing`` so the fold stays auditable at its positions.
-                if _constrains_nothing(kw, doc):
+                if _constrains_nothing(kw, doc, required=required):
                     res.constrains_nothing.append(
                         f"{where}: the document says {doc[kw]!r}, which admits exactly "
                         "what its absence admits"
@@ -2317,6 +2545,33 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
             )
         if isinstance(doc.get("items"), dict):
             compare(doc["items"], got.get("items"), f"{pointer}/items")
+        # A mapping's KEY SCHEMA, descended into the way ``items`` is -- it is a
+        # schema at a pointer the document names, and §2 makes it a type, so the
+        # facts it states are the key type's and are graded as such.  Ungraded
+        # before this row: ``propertyNames`` is in neither ``FACTS`` nor any
+        # descent, so a model that widened a bounded key to ``str`` compared
+        # identically to one that carried the bound.
+        key_doc, key_got = doc.get("propertyNames"), got.get("propertyNames")
+        if isinstance(key_doc, dict) and isinstance(key_got, dict):
+            compare(_key_schema(key_doc), _key_schema(key_got), f"{pointer}/propertyNames")
+        elif isinstance(key_doc, dict) and _constrains_a_key(key_doc):
+            res.compared += 1
+            if _extra_key_typed(doc, got):
+                res.extra_key_typed.append(
+                    f"{pointer}/propertyNames: the document says {key_doc!r}; the model "
+                    "types the key of a __pydantic_extra__ store, which pydantic enforces "
+                    "and does not render"
+                )
+            else:
+                res.missing.append(
+                    f"{pointer}/propertyNames: the document says {key_doc!r}, "
+                    "the model states no key schema"
+                )
+        elif isinstance(key_got, dict) and _constrains_a_key(key_got):
+            res.model_facts += 1
+            res.added.append(
+                f"{pointer}/propertyNames: the model says {key_got!r}, the document nothing"
+            )
 
     compare(schema, emitted, "")
     return res

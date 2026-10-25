@@ -17,6 +17,7 @@ class SignalRef(BranchDispatchMixin, AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-ref.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "scope"
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"

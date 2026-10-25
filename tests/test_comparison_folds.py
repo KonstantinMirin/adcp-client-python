@@ -92,12 +92,39 @@ def test_a_fact_that_constrains_is_never_folded(keyword: str, doc: dict, why: st
     assert _constrains_nothing(keyword, doc) is False, why
 
 
-def test_the_two_shapes_are_the_only_ones_and_the_population_is_not_empty() -> None:
-    """The fold admits exactly two shapes, asserted by exhausting FACTS.
+# --------------------------------------------------------------------------- #
+# the third shape: a default the enclosing node makes unreachable
+# --------------------------------------------------------------------------- #
+#: Section 5's ``default`` row drops a default on a REQUIRED property, and this is the
+#: grading half of that decision.  Its gate is the one thing that can be wrong, and the
+#: gate is not the keyword: a default on an OPTIONAL property is the case where a
+#: default does something, so folding on the keyword alone would excuse every dropped
+#: default in the bundle.  Both directions are here, over one node, so the pair differs
+#: in the judged dimension and nothing else.
+DEFAULTED = {"type": "boolean", "default": True}
+
+
+def test_a_default_on_a_required_property_admits_what_its_absence_admits() -> None:
+    """A required key is in every admitted instance, so its default never applies."""
+    assert _constrains_nothing("default", DEFAULTED, required=True) is True
+
+
+def test_a_default_on_an_optional_property_constrains_and_is_never_folded() -> None:
+    """The same node, the other requiredness: here the key may be omitted and the
+    default is the value the document then means, so a model dropping it is reported."""
+    assert _constrains_nothing("default", DEFAULTED, required=False) is False
+    assert _constrains_nothing("default", DEFAULTED) is False, "the default is the safe one"
+
+
+def test_the_three_shapes_are_the_only_ones_and_the_population_is_not_empty() -> None:
+    """The fold admits exactly three shapes, asserted by exhausting FACTS.
 
     A fold whose population nobody enumerated can grow silently when a keyword is
     added to ``FACTS``.  This reads the real keyword list rather than a copy of it,
-    so a new keyword that this fold would swallow fails here.
+    so a new keyword that this fold would swallow fails here.  The third shape is
+    asked with ``required=True``, which is the only way to reach it, and the first
+    two are asked at the default -- so a rule that folded on requiredness alone
+    reddens in the third assertion.
     """
     from codegen.harness import FACTS
 
@@ -106,3 +133,5 @@ def test_the_two_shapes_are_the_only_ones_and_the_population_is_not_empty() -> N
     assert folding == {"enum"}, folding
     folding = {kw for kw in FACTS if _constrains_nothing(kw, {"type": "object", "required": []})}
     assert folding == {"required"}, folding
+    folding = {kw for kw in FACTS if _constrains_nothing(kw, DEFAULTED, required=True)}
+    assert folding == {"default"}, folding
