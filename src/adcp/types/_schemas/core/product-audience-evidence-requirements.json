@@ -1,0 +1,417 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "independent_attestation_required": {
+            "const": true
+          }
+        },
+        "required": [
+          "independent_attestation_required"
+        ]
+      },
+      "then": {
+        "required": [
+          "accepted_attestation_issuers"
+        ]
+      }
+    }
+  ],
+  "description": "Buyer-authored evidence policy for compact product discovery. Organization selectors are stable keys and never carry brand assets or content provenance.",
+  "properties": {
+    "accepted_attestation_claim_types": {
+      "items": {
+        "format": "uri",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "accepted_attestation_issuers": {
+      "items": {
+        "discriminator": {
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "brand": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": {
+                  "not": {}
+                },
+                "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+                "maxProperties": 3,
+                "properties": {
+                  "brand_id": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+                    "examples": [
+                      "tide",
+                      "cheerios",
+                      "air_jordan",
+                      "nike",
+                      "pampers"
+                    ],
+                    "pattern": "^[a-z0-9_]+$",
+                    "title": "Brand ID",
+                    "type": "string",
+                    "x-entity": "advertiser_brand"
+                  },
+                  "countries": {
+                    "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+                    "items": {
+                      "pattern": "^[A-Z]{2}$",
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "domain": {
+                    "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "domain"
+                ],
+                "title": "Brand Key",
+                "type": "object"
+              },
+              "ext": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                "title": "Extension Object",
+                "type": "object"
+              },
+              "type": {
+                "const": "brand",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "brand"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "agent_url": {
+                "format": "uri",
+                "pattern": "^https://[^/?#@]+(?:/[^?#]*)?(?:\\?[^#]*)?$",
+                "type": "string"
+              },
+              "ext": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                "title": "Extension Object",
+                "type": "object"
+              },
+              "type": {
+                "const": "agent",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "agent_url"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "ext": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                "title": "Extension Object",
+                "type": "object"
+              },
+              "origin": {
+                "format": "uri",
+                "pattern": "^https://[^/?#@]+$",
+                "type": "string"
+              },
+              "type": {
+                "const": "origin",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "origin"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "accepted_evidence_types": {
+      "items": {
+        "enum": [
+          "measured",
+          "forecast",
+          "seller_declared"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "accepted_methodologies": {
+      "items": {
+        "enum": [
+          "derived",
+          "modeled",
+          "declared",
+          "inferred",
+          "observed",
+          "projected"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "accepted_providers": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+        "maxProperties": 3,
+        "properties": {
+          "brand_id": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+            "examples": [
+              "tide",
+              "cheerios",
+              "air_jordan",
+              "nike",
+              "pampers"
+            ],
+            "pattern": "^[a-z0-9_]+$",
+            "title": "Brand ID",
+            "type": "string",
+            "x-entity": "advertiser_brand"
+          },
+          "countries": {
+            "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+            "items": {
+              "pattern": "^[A-Z]{2}$",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "domain": {
+            "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "title": "Brand Key",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "accepted_resolution_methods": {
+      "items": {
+        "enum": [
+          "mixed",
+          "browser",
+          "geographic",
+          "content_signal",
+          "deterministic_id",
+          "probabilistic_device"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "accepted_subject_types": {
+      "items": {
+        "enum": [
+          "none",
+          "business",
+          "household",
+          "contextual",
+          "individual"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "evidence_presence": {
+      "enum": [
+        "required",
+        "when_available"
+      ],
+      "type": "string"
+    },
+    "excluded_methodologies": {
+      "items": {
+        "enum": [
+          "derived",
+          "modeled",
+          "declared",
+          "inferred",
+          "observed",
+          "projected"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "excluded_providers": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+        "maxProperties": 3,
+        "properties": {
+          "brand_id": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+            "examples": [
+              "tide",
+              "cheerios",
+              "air_jordan",
+              "nike",
+              "pampers"
+            ],
+            "pattern": "^[a-z0-9_]+$",
+            "title": "Brand ID",
+            "type": "string",
+            "x-entity": "advertiser_brand"
+          },
+          "countries": {
+            "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+            "items": {
+              "pattern": "^[A-Z]{2}$",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "domain": {
+            "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "title": "Brand Key",
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "independent_attestation_required": {
+      "default": false,
+      "type": "boolean"
+    },
+    "maximum_age": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+          "maxProperties": 2,
+          "properties": {
+            "interval": {
+              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "unit": {
+              "enum": [
+                "days",
+                "hours",
+                "minutes",
+                "seconds",
+                "campaign"
+              ]
+            }
+          },
+          "required": [
+            "interval",
+            "unit"
+          ],
+          "title": "Duration",
+          "type": "object"
+        },
+        {
+          "properties": {
+            "unit": {
+              "enum": [
+                "seconds",
+                "minutes",
+                "hours",
+                "days"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "methodology_documentation_required": {
+      "default": false,
+      "type": "boolean"
+    },
+    "minimum_confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "requirement_mode": {
+      "enum": [
+        "required",
+        "preferred"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "requirement_mode",
+    "evidence_presence"
+  ],
+  "title": "Product Audience Evidence Requirements",
+  "type": "object"
+}
