@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types.constraints import StrMatching32F5291C
 
 from .ext import ExtensionObject
 from .placement_identity import PlacementIdentity
@@ -26,7 +27,11 @@ class PlacementSelection(BranchDispatchMixin, AdCPBaseModel):
 
 
 class SelectedPlacementsPlacementRefsItem(PlacementReference):
+    """
+    Legacy-compatible product-context reference to a placement. For publisher-catalog placements, publisher_domain plus placement_id resolves the declaration in that publisher's adagents.json. For seller-inline placements, the enclosing seller and product supply scope. When publisher_domain is omitted on legacy inputs, receivers MAY interpret the ID relative to the enclosing single-publisher product. Use placement-identity.json when a self-contained cross-document identity is required.
+    """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-selection.json', pointer='#/oneOf/0/properties/placement_refs/items/anyOf/0')
+    publisher_domain: Annotated[StrMatching32F5291C, Field(description='Domain where the adagents.json declaring a publisher-catalog placement is hosted, or the inventory publisher associated with an inline placement. Omitted only for legacy single-publisher product-context references.')]
 
 
 class SelectedPlacements(PlacementSelection):

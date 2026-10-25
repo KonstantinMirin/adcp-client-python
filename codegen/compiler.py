@@ -830,6 +830,17 @@ class Shape:
     decided: Mapping[str, "Property"] = field(default_factory=dict)
     #: The symbols the declaring module had declared; see above.
     declares: frozenset[str] = frozenset()
+    #: The class's own ``description``, which is the description its NODE states.
+    #: Written by :func:`declare_object` beside :attr:`decided`, for the reason that
+    #: one exists: a subclass cannot read it off the base's node, because it does not
+    #: have the base's node.  §6's description-authority rule clause 3 -- silence
+    #: inherits -- read at a CLASS rather than at a field: a composing class whose own
+    #: node states no description states the one its base does, because that is what
+    #: the COMPOSED document states at the composing node's pointer and
+    #: ``harness._composed`` folds it in there.  pydantic cannot be left to do it:
+    #: ``cls.__doc__`` is ``None`` for a subclass with no docstring of its own, so the
+    #: fact reaches ``model_json_schema()`` only if the emitter writes it.
+    description: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1402,6 +1413,7 @@ def declare_object(
         shape,
         decided={**shape.decided, **{p.wire: p for p in props}},
         declares=frozenset(mod.declared.values()) | {name},
+        description=description if isinstance(description, str) and description else None,
     )
     if imports:
         mod.imports |= imports
@@ -1709,6 +1721,12 @@ def lower_composition(
     required: set[str] = set(_required(doc, pointer))
     #: The conjuncts that state a RULE of this node rather than a base or fields.
     conjunct_rules: list[dict] = []
+    #: The description the FIRST base that states one states, for a composing node that
+    #: states none of its own (:attr:`Shape.description`).  First and not last, and not
+    #: a merge, because that is what ``harness._composed`` gap-fills on the document
+    #: side -- ``if kw not in out`` over the conjuncts in order -- and the two halves
+    #: have to read one composed document the same way.
+    inherited_description: str | None = None
 
     def declare(key: str, node: Any, where: str) -> None:
         prior = local.get(key)
@@ -1786,6 +1804,8 @@ def lower_composition(
             inherited_fields.update(target.shape.decided)
             inherited_from.update(dict.fromkeys(target.shape.properties, target))
             inherited_required |= target.shape.required
+            if inherited_description is None:
+                inherited_description = target.shape.description
             continue
         if "$ref" in keys:
             # A conjunct that is a ``$ref`` AND something else: refused on the
@@ -1971,6 +1991,34 @@ def lower_composition(
                 }
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
 
+    # **D7's REQUIREDNESS OVERLAY: the composition makes an inherited field required and
+    # nothing else, so the subclass redeclares that field with the base's type and no
+    # default.**  D7 calls this its clearest instance and the sentence is verbatim; the
+    # loop above reaches only a key some view DECLARES, and an overlay declares none --
+    # ``core/collection-selection.json`` at
+    # ``/oneOf/0/properties/collections/items/allOf/1`` is ``{"required":
+    # ["collection_ids"]}`` and nothing more.
+    #
+    # Left out, the requiredness went into ``required`` where the inherited field
+    # SATISFIED it (``fields``' ``inherited`` argument) and no line was written, so the
+    # class kept the base's OPTIONAL field and rendered ``= None`` -- a default the
+    # document does not state, reported as an ``added`` fact at
+    # ``/properties/collection_ids/default``, and a class that ACCEPTS A PAYLOAD THE
+    # DOCUMENT REFUSES.  That is the same defect the ``key in required and key not in
+    # inherited_required`` branch above fixes for a key that IS declared locally; this
+    # is its other half.
+    #
+    # The TYPE is the base's decided field (``reuse``) rather than a second decision of
+    # the base's node: re-deciding declares the nested classes again, in this module, at
+    # a pointer this document does not have (:func:`fields`' ``reuse`` says why).  The
+    # ``default`` is dropped because D7 says so and because ``fields`` refuses one on a
+    # required property by name -- two statements of one fact.
+    for key in sorted(required - inherited_required - set(own)):
+        if key not in inherited:
+            continue  # ``fields`` refuses a required name no view declares, by name
+        reuse[key] = _reused(key, inherited_fields, inherited_from, pointer, mod)
+        own[key] = {k: v for k, v in inherited[key].items() if k != "default"}
+
     decided = fields(
         own,
         required | (inherited_required & set(own)),
@@ -1986,7 +2034,15 @@ def lower_composition(
         reuse=reuse,
     )
     return declare_object(
-        doc,
+        # §6's description-authority rule, clause 3, at a CLASS: this node's own
+        # description where it states one, and the base's where it is silent.  The
+        # composed document states the base's at this pointer -- ``harness._composed``
+        # folds it in -- and pydantic will not supply it, because ``cls.__doc__`` is
+        # ``None`` for a subclass with no docstring.  Measured: 5 ``missing`` facts over
+        # 4 pairs, every one a bare ``/description`` at a composing node whose own
+        # declaration has none (``core/collection-selection.json``'s items and
+        # ``core/canonical-media-buy-action.json``'s three branches).
+        doc if doc.get("description") or inherited_description is None else {**doc, "description": inherited_description},
         name,
         pointer,
         mod,
@@ -2178,9 +2234,17 @@ def _intersection(child: dict, base: dict) -> dict:
     carries the INTERSECTION".  Under ``allOf`` both declarations apply to the same
     instance, so every keyword either one states is the composed node's -- the child's
     value where both state one (:func:`_restatement` has already decided it is at least
-    as tight), the base's where only the base does.  ANNOTATIONS are the child's alone,
-    because a document's own declaration carries the description at its own pointer
-    (§6's description-authority rule) and the child's silence there is an answer.
+    as tight), the base's where only the base does.
+
+    **The RENDERED annotations compose the same way, and §6's own rule says which wins:**
+    the child's where it states one (a document's own declaration carries the
+    description at its own pointer) and the base's where it is silent (clause 3, "silence
+    inherits").  That is the gap-fill ``harness._composed`` performs on the DOCUMENT side,
+    so reading it the other way here is the two halves disagreeing: measured on
+    ``core/forecast-rate-range.json``, whose ``low``/``mid``/``high`` narrow
+    ``core/forecast-range.json``'s bounds and state no description, where the child
+    alone reported the base's three descriptions ``missing``.  The same expression the
+    annotation-only arm of :func:`lower_composition` already uses, for the same reason.
 
     **This is a no-op at every site that narrowed before D7's intersection rule landed**,
     and that is why it is safe: the old predicate required the child to state every
@@ -2209,7 +2273,11 @@ def _intersection(child: dict, base: dict) -> dict:
         if covered & axis:
             covered |= axis
     merged = {**{k: v for k, v in b.items() if k not in covered}, **c}
-    return {**merged, **{k: v for k, v in child.items() if k not in merged}}
+    annotated = {
+        **{k: v for k, v in base.items() if k in RENDERED},
+        **{k: v for k, v in child.items() if k not in merged},
+    }
+    return {**annotated, **merged}
 
 
 #: Keywords that say the SAME KIND of thing about an instance, so a child stating one of

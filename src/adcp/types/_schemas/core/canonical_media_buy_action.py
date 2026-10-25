@@ -45,6 +45,9 @@ class CanonicalMediaBuyActionControlMediaBuyAction(StrEnum):
 
 
 class CanonicalMediaBuyActionControlMediaBuy(CanonicalMediaBuyAction, CanonicalMediaBuyActionFields):
+    """
+    Shared closed field set for task-discriminated canonical MediaBuy actions.
+    """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-action.json', pointer='#/oneOf/0')
     task: Literal['control_media_buy']
     action: CanonicalMediaBuyActionControlMediaBuyAction
@@ -69,6 +72,9 @@ class CanonicalMediaBuyActionRefineProposalsAction(StrEnum):
 
 
 class CanonicalMediaBuyActionRefineProposals(CanonicalMediaBuyAction, CanonicalMediaBuyActionFields):
+    """
+    Shared closed field set for task-discriminated canonical MediaBuy actions.
+    """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-action.json', pointer='#/oneOf/1')
     task: Literal['refine_proposals']
     action: CanonicalMediaBuyActionRefineProposalsAction
@@ -81,6 +87,9 @@ class CanonicalMediaBuyActionSyncCreativesAction(StrEnum):
 
 
 class CanonicalMediaBuyActionSyncCreatives(CanonicalMediaBuyAction, CanonicalMediaBuyActionFields):
+    """
+    Shared closed field set for task-discriminated canonical MediaBuy actions.
+    """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-action.json', pointer='#/oneOf/2')
     task: Literal['sync_creatives']
     action: CanonicalMediaBuyActionSyncCreativesAction

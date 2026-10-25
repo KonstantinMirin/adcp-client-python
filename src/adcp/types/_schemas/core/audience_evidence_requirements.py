@@ -42,6 +42,9 @@ class AudienceEvidenceRequirementsAcceptedEvidenceTypesItem(StrEnum):
 
 
 class AudienceEvidenceRequirementsMaximumAgeUnit(StrEnum):
+    """
+    Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.
+    """
     SECONDS = 'seconds'
     MINUTES = 'minutes'
     HOURS = 'hours'
@@ -53,7 +56,7 @@ class AudienceEvidenceRequirementsMaximumAge(Duration):
     Maximum age at evaluation time measured from last_updated. Campaign-relative duration is not valid for evidence age.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-evidence-requirements.json', pointer='#/properties/maximum_age')
-    unit: AudienceEvidenceRequirementsMaximumAgeUnit
+    unit: Annotated[AudienceEvidenceRequirementsMaximumAgeUnit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
 
 
 class AudienceEvidenceRequirements(AdCPBaseModel):

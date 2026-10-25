@@ -1703,7 +1703,118 @@ def _normalize(
                 # admits it.  Folding would state a fact the document does not.
                 return node
             return {"type": [*kinds, "null"] if keep_null and nulls else kinds, **outer}
+        # **The sixth canonicalization, GATED on the one thing that proves the resolver
+        # wrote it: every branch carries the SAME ``title``.**  ``harness.resolve``
+        # inlines a reference THROUGH ``canonicalish``, which rewrites a root
+        # ``if``/``then`` into an ``anyOf`` of the two cases and COPIES the node's own
+        # ``title`` into both -- so a referring document's copy of a target states its
+        # properties, its ``required``, its ``type`` and its ``description`` inside two
+        # identically-titled branches, while the target's OWN package copy (which has no
+        # reference to resolve, so the resolver never reads it) states them at the node.
+        # Measured on the pair that first reached it:
+        # ``media-buy/sync-catalogs-request.json`` at
+        # ``/properties/item_availability_updates/items`` references
+        # ``core/catalog-item-availability-update.json``, whose root carries
+        # ``if``/``then``, and every fact the faithful model carried there read as
+        # ``added`` -- 11 facts over 1 pair, in the one direction §6 cares most about.
+        #
+        # **The gate is not a heuristic, it is this pipeline's own rule read backwards.**
+        # D3 names a union branch by its ``title``, and ``lower.union.lower_union``
+        # REFUSES a root whose branches derive one class name -- so two branches sharing
+        # a title cannot be a union this emitter emits, and a node that is one carries
+        # no agreed facts to lift.  Ungated, the lift reddened 300 ``missing`` facts at
+        # UNION ROOTS, whose base deliberately states none of its branches' fields (§4,
+        # ``union.ROOT_CONJUNCTS``) because each branch is graded as its own pair --
+        # which is exactly what ``_composed``'s docstring already says about leaving a
+        # root combinator alone, and why this is gated rather than general.
+        titles = {b.get("title") for b in live}
+        if len(live) > 1 and len(titles) == 1 and isinstance(live[0].get("title"), str):
+            lifted = _agreed(live)
+            if lifted:
+                return {**lifted, **node}
     return node
+
+
+def _agreed(branches: list[dict]) -> dict:
+    """The facts EVERY branch of a combinator states, which are the node's own.
+
+    An instance satisfying a ``oneOf``/``anyOf`` satisfies SOME branch, so a fact every
+    branch states is a fact of the node -- the one direction a branch list entails
+    anything about the instance.  Nothing is subtracted and the combinator is kept: this
+    ADDS what the branches agree on, so a branch that disagrees leaves its fact out and
+    the pair still reports.  The caller says when it applies.
+
+    Two rules, which are the two rules :func:`_composed` makes for the same reason:
+
+    * **``required`` agrees by INTERSECTION.**  Every branch demanding a name means the
+      node demands it; one branch demanding it does not.
+    * **Every other fact agrees by EQUALITY, and a property's declaration agrees by
+      equality or by VOCABULARY UNION** (:func:`_widest`).  A keyword two branches state
+      differently is otherwise a fact the node does not state: the weakest statement the
+      two have in common is not derivable, so it is left out and whatever the model says
+      about it is still reported.
+    """
+    agreed: dict = {}
+    for kw in FACTS:
+        if kw == "required" or not all(kw in b for b in branches):
+            continue
+        first = branches[0][kw]
+        if all(b[kw] == first for b in branches):
+            agreed[kw] = first
+    names = [b.get("required") for b in branches]
+    if all(isinstance(n, list) for n in names):
+        shared = [n for n in names[0] if all(n in rest for rest in names[1:])]
+        if shared:
+            agreed["required"] = shared
+    maps = [b.get("properties") for b in branches]
+    if all(isinstance(m, dict) for m in maps):
+        common = {}
+        for key in maps[0]:
+            if not all(key in m and isinstance(m[key], dict) for m in maps):
+                continue
+            widest = _widest([m[key] for m in maps])
+            if widest is not None:
+                common[key] = widest
+        if common:
+            agreed["properties"] = common
+    return agreed
+
+
+def _widest(declarations: list[dict]) -> dict | None:
+    """The weakest statement every branch's declaration of one key entails, or ``None``.
+
+    Equality where the branches agree, and otherwise the VOCABULARY UNION -- the one
+    axis on which a union of two statements is computable at all: an instance satisfying
+    either declaration takes a value from one of the two member sets, so it takes a
+    value from their union and the document states that much.  Every declaration has to
+    be a vocabulary and NOTHING else, so the union carries no keyword one branch states
+    and another does not.
+
+    Measured on the pair this exists for: the resolver's conditional rewrite of
+    ``core/catalog-item-availability-update.json`` differs between its two branches in
+    exactly one property -- ``reason``, a ten-member ``enum`` in the ``else`` arm and
+    ``{"const": "other"}`` in the ``then`` arm -- and the union is the ten members the
+    faithful ``StrEnum`` carries.  Left out, that one property was the last ``added``
+    fact of the pair.
+
+    A model NARROWER than the union still reports, as a ``differs``, and that is the
+    safe direction: the branches' choice is coupled across properties, so a model
+    faithful to the coupling can be narrower than this, and a visible false failure is
+    what §6 asks for over a silent pass.
+    """
+    first = declarations[0]
+    if all(d == first for d in declarations):
+        return first
+    members: list = []
+    for d in declarations:
+        if set(d) == {"enum"} and isinstance(d["enum"], list):
+            vocabulary = d["enum"]
+        elif set(d) == {"const"}:
+            vocabulary = [d["const"]]
+        else:
+            return None
+        members += [m for m in vocabulary if not _in_vocabulary(m, members)]
+    return {"enum": members}
 
 
 #: How deep an ``allOf`` chain ``_composed`` folds before it stops folding.  Same
@@ -1711,6 +1822,64 @@ def _normalize(
 #: cut a traversal at different places disagree about node identity for no reason
 #: anyone can read off either of them (``docs/plan/rebuild-plan.md`` §9).
 _COMPOSE_DEPTH = 16
+
+#: The answer :func:`_tighter` gives for a keyword whose two values it cannot order.
+#: A sentinel rather than ``None``, because ``None`` is a legal JSON value and a
+#: keyword can hold it -- ``default: null`` is in the bundle.
+_UNDECIDED = object()
+
+#: The ordering keywords of :data:`FACTS`, and which direction is TIGHTER: ``max`` for a
+#: floor (the higher of two minima binds) and ``min`` for a ceiling.
+_TIGHTER_BOUND = {
+    "minimum": max,
+    "exclusiveMinimum": max,
+    "minLength": max,
+    "minItems": max,
+    "maximum": min,
+    "exclusiveMaximum": min,
+    "maxLength": min,
+    "maxItems": min,
+}
+
+
+def _in_vocabulary(value: Any, members: Any) -> bool:
+    """Is ``value`` one of ``members``, where ``members`` is a stated ``enum``?
+
+    ``False`` for anything that is not a list, which is what makes the vocabulary-axis
+    collapse in :func:`_composed` conditional on the two actually agreeing: a ``const``
+    OUTSIDE a composed ``enum`` is an EMPTY intersection, and dropping the vocabulary
+    there would hide a document that admits nothing behind a model that admits one
+    value.  The empty intersection is the emitter's refusal to make, so this leaves
+    both facts standing and the pair reports.
+    """
+    return isinstance(members, list) and any(value == member for member in members)
+
+
+def _tighter(keyword: str, node: Any, conjunct: Any) -> Any:
+    """The INTERSECTION of two views of one keyword, or :data:`_UNDECIDED`.
+
+    D7's rule, in the two spellings it names for a keyword both views state: "an enum is
+    the intersection of the members, a bound is the tighter one".  Anything else is
+    ``_UNDECIDED`` and the caller keeps the node's own, which is the behaviour this
+    replaced and the safe direction: a looser expectation is a FALSE FAILURE that is
+    visible, where a silently widened one is a pair that passes for nothing.
+    """
+    if node == conjunct:
+        return node
+    if keyword == "enum" and isinstance(node, list) and isinstance(conjunct, list):
+        both = [member for member in node if _in_vocabulary(member, conjunct)]
+        # An EMPTY intersection is a document that admits nothing at this node, which
+        # is the emitter's refusal to make and not a fact to hand the comparison: the
+        # node's own is kept so the pair reports rather than grading against a
+        # vocabulary no instance satisfies.
+        return both or _UNDECIDED
+    if keyword in _TIGHTER_BOUND:
+        if isinstance(node, bool) or isinstance(conjunct, bool):
+            return _UNDECIDED  # draft-04's boolean exclusiveMinimum, a different keyword
+        if not isinstance(node, int | float) or not isinstance(conjunct, int | float):
+            return _UNDECIDED
+        return _TIGHTER_BOUND[keyword](node, conjunct)
+    return _UNDECIDED
 
 
 def _composed(doc: Any, depth: int = 0) -> Any:
@@ -1798,9 +1967,47 @@ def _composed(doc: Any, depth: int = 0) -> Any:
         # DOCUMENT itself states is still compared, because this rewrites a
         # CONJUNCT the resolver wrote and nothing else.
         c = _uncanonicalized(_one_member_enum(_composed(conjunct, depth + 1)))[0]
+        # **A VALUE PIN ANSWERS FOR THE WHOLE VOCABULARY AXIS.**  ``const: v`` and
+        # ``enum: [...v...]`` state the same kind of fact, so the intersection of the
+        # two is the pin and the vocabulary is not a second fact beside it.  Both
+        # directions, because a conjunct can supply either half: measured on
+        # ``core/canonical-media-buy-action.json``, whose branch states
+        # ``{"const": "control_media_buy"}`` for ``task`` over a composed base's
+        # three-member ``enum`` -- the gap-fill kept BOTH, so the document read as
+        # stating an ``enum`` the model (a ``Literal``) does not, 3 ``missing`` facts
+        # over the 3 branches.
+        if "const" in c and _in_vocabulary(c["const"], out.get("enum")):
+            out.pop("enum", None)
+        elif "const" in out and _in_vocabulary(out["const"], c.get("enum")):
+            c = {k: v for k, v in c.items() if k != "enum"}
         for kw in FACTS:
-            if kw != "required" and kw in c and kw not in out:
+            if kw == "required" or kw not in c:
+                continue
+            if kw not in out:
                 out[kw] = c[kw]
+                continue
+            # **D7's intersection rule, where the KNOWN CEILING below used to gap-fill
+            # and keep the node's.**  "Where composed schemas constrain the same
+            # property, the field carries the INTERSECTION, never the union: an enum is
+            # the intersection of the members, a bound is the tighter one."  The ceiling
+            # was measured as a population of zero at a root and is no longer zero:
+            # ``core/audience-evidence-requirements.json`` at
+            # ``/properties/maximum_age`` composes ``core/duration.json`` (whose ``unit``
+            # is a five-member ``enum``) with a conjunct narrowing ``unit`` to four, and
+            # the node that KEPT the five read as the document stating a vocabulary the
+            # faithful model does not -- 1 ``differs`` at the node and 1 at its parent.
+            #
+            # Derived HERE and not imported from ``codegen.compiler``, which carries the
+            # same rule for the model side.  The shared alternative is tempting and is
+            # the hazard this comparison exists to avoid: one body of code deciding what
+            # the model states AND what the document states agrees with itself by
+            # construction, so a defect in it is green on both sides.  ``_normalize``'s
+            # both-sided sharing is not the same thing -- that is one reading of one
+            # DOCUMENT serving two inputs, where this would be one reading serving the
+            # product and its own grader.
+            narrower = _tighter(kw, out[kw], c[kw])
+            if narrower is not _UNDECIDED:
+                out[kw] = narrower
         req = c.get("required")
         if isinstance(req, list):
             have = out["required"] if isinstance(out.get("required"), list) else []
