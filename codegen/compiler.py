@@ -28,11 +28,12 @@ D2 makes an alias), and the carriers a lowering is handed (:class:`Module`,
 
 **What did NOT move is the per-node dispatch.**  ``emit.decide_type`` answers "what
 IS this node", and for an array, a mapping or a multi-type node the answer lives in
-``codegen.lower.containers``.  Putting it here would make this module import a
-lowering; leaving :func:`fields` to call it directly would make this module import
-``emit``.  So it arrives the way reference resolution already arrives --
-:class:`Module` carries it, ``emit`` supplies it, and the default refuses -- which
-is the same mechanism as ``Module.bind`` and for the same reason.
+``codegen.lower.containers``, so putting it here would make this module import a
+lowering.  It used to arrive the way reference resolution still arrives, as a
+callable on :class:`Module` with a refusing default, because reaching ``emit`` by
+name was forbidden while ``python -m codegen.emit`` bound that file twice under
+``runpy``.  ``codegen/__main__.py`` ended that, and :func:`decide` is the name:
+one function, one deferred import, and a :class:`Module` carrying data.
 
 **dmcg's parser never runs.**  The parser is the half that decides names and
 structure from a schema, and that is our half -- it is where every judgement
@@ -929,35 +930,29 @@ def _no_binder(uri: str, pointer: str) -> Target:
     )
 
 
-def _no_namer(decided: Decided, mod: Module) -> Type | None:
-    """The default named carrier: nothing is named, so :func:`carried` refuses.
+def decide(node: dict, pointer: str, name_hint: str, mod: "Module") -> Decided:
+    """What one schema node IS: ``emit.decide_type``, reached by NAME.
 
-    ``emit.name_the_constraint`` is the real one, and it is in ``emit`` because the
-    names are ``codegen.constraints``'s and that module imports this one.  Refusing is
-    the safe default and the only one: returning ``decided.type`` would DROP the facts
-    the caller came here with, which is the failure the whole arrangement exists to
-    make impossible.
+    This used to be a callable carried on :attr:`Module.decide`, because reaching
+    ``emit`` by name was forbidden: ``python -m codegen.emit`` executed that file as
+    ``__main__`` under ``runpy``, so an importer of ``codegen.emit`` held a SECOND
+    module object with a second :data:`emit.ROWS` and a second decider.
+    ``codegen/__main__.py`` is the fix -- no module of this compiler is ever bound as
+    ``__main__`` -- so the decision is a function with one name again and the
+    :class:`Module` carries data rather than functions.
+
+    **The import is function-scope, and that is forced rather than cosmetic.**
+    ``emit.ROWS`` reads ``bundle``'s root selectors at MODULE level and ``bundle``
+    imports the lowerings, so a module-level import of ``emit`` from anywhere the
+    lowerings reach makes ``import codegen.bundle`` an ``AttributeError`` on a
+    partially initialised ``bundle`` -- measured, not theorised.  ``docs/plan``'s §14
+    step 5 moves ``decide`` and the dispatch table into ``lower/`` together, which is
+    what retires this shim; until then the one deferred import is here rather than at
+    each of its call sites.
     """
-    return None
+    from codegen.emit import decide_type
 
-
-def _no_decider(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
-    """The default node decider, and it refuses for ``_no_binder``'s reason.
-
-    ``emit.decide_type`` is the real one.  It stays in ``emit`` because an array, a
-    mapping and a multi-type node are answered by ``codegen.lower.containers``, so
-    a decider living HERE would make this module import a lowering -- and a
-    :func:`fields` that called into ``emit`` directly would make this module import
-    the entry point, which is the cycle D13 removes.  Carried on the :class:`Module`
-    instead, exactly as ``bind`` is carried, so a lowering decides a nested node
-    without naming ``emit``.
-    """
-    raise Refusal(
-        "type",
-        pointer,
-        f"no node decider: {node.get('type')!r} cannot be decided",
-        kind=Kind.VERDICT,
-    )
+    return decide_type(node, pointer, name_hint, mod)
 
 
 @dataclass
@@ -970,17 +965,14 @@ class Module:
     #: outside it derives a bare, unqualified name rather than one naming a root that
     #: is not there -- the same shape as ``asserted`` and ``named`` being empty.
     root: str = ""
-    #: ``(uri, pointer) -> Target``; see ``emit.emit``.
+    #: ``(uri, pointer) -> Target``; see ``emit.emit``.  The last callable carried
+    #: here, and the one the entry-point module does not retire: it is a CLOSURE over
+    #: the run's lowered/refused/in-flight documents and over ``emit.lower``'s own
+    #: recursion, so there is no module-level function to reach by name in its place.
+    #: ``docs/plan/architecture.md`` §14 step 7 is where it goes, by computing the
+    #: reference closure and the dependency order up front and passing ``targets``
+    #: through this context as data.
     bind: Callable[[str, str], Target] = _no_binder
-    #: ``(node, pointer, name_hint, mod) -> Decided``; see ``emit.decide_type``.
-    decide: Callable[[dict, str, str, "Module"], Decided] = _no_decider
-    #: ``(decided, mod) -> Type | None``; see ``emit.name_the_constraint``.  Section 2's
-    #: named carrier, for a position with no field to hold a decided node's facts.  It
-    #: is carried here, like :attr:`decide` and :attr:`bind`, for the same reason: the
-    #: names live in ``codegen.constraints``, which imports this module, so asking the
-    #: question from here directly would close a cycle.  The default names nothing,
-    #: which leaves :func:`carried` refusing -- never dropping.
-    name_constraint: Callable[[Decided, "Module"], "Type | None"] = _no_namer
     #: The formats this document's own draft asserts; see ``emit.asserted_formats``.
     #: Empty by default, so a node lowered outside ``lower_document`` selects no
     #: format-derived type rather than one nothing checks.
@@ -1288,7 +1280,13 @@ def carried(decided: Decided, pointer: str, what: str, mod: Module) -> Type:
     """
     if not (decided.constraints or decided.format is not None):
         return decided.type
-    named = mod.name_constraint(decided, mod)
+    # Function-scope for :func:`decide`'s reason, and the name is reached at all for
+    # :func:`decide`'s reason: the spellings are ``codegen.constraints``'s, that module
+    # imports this one, and ``emit.name_the_constraint`` is the one function that pairs
+    # a resolved spelling with the record of the alias it resolved to.
+    from codegen.emit import name_the_constraint
+
+    named = name_the_constraint(decided, mod)
     if named is not None:
         return named
     stated = {
@@ -1432,7 +1430,7 @@ def fields(
             decided_type = Decided(held.type, dict(held.constraints), held.format)
             is_distinct = held.distinct
         else:
-            decided_type = mod.decide(sub, at, name + class_name(key), mod)
+            decided_type = decide(sub, at, name + class_name(key), mod)
         is_required = key in required
         default = MISSING
         if "default" in sub:
@@ -1521,16 +1519,16 @@ def declare_object(
     # D8's typed row: a property the class does not DECLARE is validated against
     # the document's own value schema, through pydantic's ``__pydantic_extra__``.
     # The TYPE is the same ``dict[K, V]`` a mapping node lowers to, decided by the
-    # same row -- the node is handed to ``mod.decide`` as the mapping it is, with
+    # same row -- the node is handed to :func:`decide` as the mapping it is, with
     # whatever the node says about its KEYS carried across (D5 types the key too),
     # so an extras store and a mapping cannot come to read ``additionalProperties``
-    # two different ways.  ``mod.decide`` rather than an import of the container
-    # row: D13's import rule runs the other way, and the default decider refuses,
-    # so a node lowered outside ``lower_document`` is not silently widened.
+    # two different ways.  :func:`decide` rather than an import of the container row,
+    # because the per-node dispatch is one function and a second entrance to the
+    # container row would be a second reading of which row a node belongs to.
     ap = node.get("additionalProperties")
     extra_type = None
     if isinstance(ap, dict) and ap:
-        extra_type = mod.decide(
+        extra_type = decide(
             {
                 "type": "object",
                 "additionalProperties": ap,
@@ -2933,7 +2931,7 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided:
       and nothing here has a spelling for one.
 
     **The NODE ITSELF decides what it becomes, and the decision is returned rather than
-    looked back up.**  ``mod.decide`` is the one per-node walk, so an object entry is a
+    looked back up.**  :func:`decide` is the one per-node walk, so an object entry is a
     class, an enumeration is an enumeration, and a scalar or an array is an annotation
     that :func:`name_the_node` gives this very symbol to -- the pointer is in
     ``mod.named``, which is what put it in ``mod.local`` in the first place.  Each one
@@ -2981,7 +2979,7 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided:
     symbol = mod.root + class_name(key)
     mod.resolving.append(pointer)
     try:
-        return mod.decide(node, pointer, symbol, mod)
+        return decide(node, pointer, symbol, mod)
     finally:
         mod.resolving.pop()
 

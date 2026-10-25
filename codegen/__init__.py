@@ -15,9 +15,11 @@ an installed module raising ``ModuleNotFoundError`` for every user of the SDK.
                 ``pydantic`` and nothing else — no sibling, no path, no
                 filesystem, and no name from the vocabulary it is pointed at.
   ``bundle``    which documents the bundle holds, and reading one.
+  ``__main__``  the one entry point, so ``python -m codegen`` is the command and
+                no module of this package is ever bound as ``__main__``. Owns the
+                argument parser and the refusal report, and nothing else.
   ``emit``      the WALK: it reads a document and decides what each node becomes.
-                Owns the CLI, the module around the classes, and the refusal
-                report.
+                Owns the module around the classes.
   ``compiler``  the seam. A class declaration in, Python out, rendered by
                 ``datamodel-code-generator``'s pydantic-v2 model layer.
   ``refusal``   the one refusal type, in a module no ``-m`` can name (D12).

@@ -3,7 +3,7 @@ are neither an object with properties nor a scalar.
 
 A container is a node whose SHAPE is one fact and whose CONTENTS are another node.
 So every row here is the same two halves -- the contents, lowered by recursing
-through ``mod.decide``, and the container's own bound, carried on the FIELD
+through ``compiler.decide``, and the container's own bound, carried on the FIELD
 holding the container and not on what is inside it.  **Which half a keyword belongs
 to is the whole of this module**, and getting it wrong is the defect class it exists
 to remove: the generator this pipeline replaces read ``minItems`` on a named property
@@ -261,7 +261,7 @@ def _contents(node: dict, pointer: str, symbol: str, what: str, mod: Module) -> 
     ``missing``, which is the safe direction and is visible.  0 inner nodes of the
     bundle state one.
     """
-    decided = mod.decide(node, pointer, symbol, mod)
+    decided = compiler.decide(node, pointer, symbol, mod)
     description = node.get("description")
     if not decided.type.local and isinstance(description, str) and description:
         # **The node's OWN name is asked for FIRST, and the order is the P2 rule rather
@@ -501,7 +501,7 @@ def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
     if "$ref" in node:
         # The one key kind that needs no alias: the bundle already names the type, so
         # P2 applies unchanged -- an import, and no constraint of the target copied.
-        return _inner(mod.decide(node, pointer, "", mod), pointer, "the key", mod)
+        return _inner(compiler.decide(node, pointer, "", mod), pointer, "the key", mod)
     if "enum" in node:
         raise Refusal(
             "enum",
@@ -520,7 +520,7 @@ def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
     # key is a string: without it the node is typeless and the walk reads it as
     # ``Any``, which would drop the bound.
     return _inner(
-        mod.decide({"type": "string", **node}, pointer, "", mod), pointer, "the key", mod
+        compiler.decide({"type": "string", **node}, pointer, "", mod), pointer, "the key", mod
     )
 
 
@@ -629,7 +629,7 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
         cut = {"type": kind, **{k: v for k, v in node.items() if k in ARM[kind]}}
         at = f"{pointer}/type/{kind}"  # not a real pointer; it names the ARM that refused
         arms.append(
-            _inner(mod.decide(cut, pointer, name_hint, mod), at, f"the {kind!r} arm", mod)
+            _inner(compiler.decide(cut, pointer, name_hint, mod), at, f"the {kind!r} arm", mod)
         )
     unique = tuple(dict.fromkeys(arms))  # document order, deduped
     if len(unique) == 1:
@@ -652,7 +652,7 @@ def root(doc: dict, symbol: str, pointer: str, mod: Module) -> str:
     element so the refusal reports the element type the row would have wrapped.  This
     module's docstring carries the measurement.
     """
-    decided = mod.decide(doc, pointer, symbol, mod)
+    decided = compiler.decide(doc, pointer, symbol, mod)
     if doc.get("type") == "array":
         raise Refusal(
             "type",

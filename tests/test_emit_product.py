@@ -1189,7 +1189,6 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
         mod = emit.Module(
             document="probe.json",
             bind=emit._no_binder,  # noqa: SLF001 -- the test is the caller
-            decide=emit.decide_type,  # the probe declares fields, so the walk must run
         )
         doc = {
             "title": "Probe",
@@ -1475,7 +1474,7 @@ def test_breaking_the_inner_annotation_carrier_reddens_the_comparison(
         containers,
         "_contents",
         lambda node, pointer, symbol, what, mod: containers._inner(
-            mod.decide(node, pointer, symbol, mod), pointer, what, mod
+            compiler.decide(node, pointer, symbol, mod), pointer, what, mod
         ),
     )
     cls, text, schema = _emit_probe(
