@@ -44,13 +44,7 @@ class GetCollectionListResponseCollectionsItem(AdCPBaseModel):
     kind: CollectionKind | None = None
 
 
-class GetCollectionListResponseCoverageGapsValueItem(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/get-collection-list-response.json', pointer='#/properties/coverage_gaps/additionalProperties/items')
-    type: Annotated[DistributionIdentifierType, Field(description='Type of distribution identifier')]
-    value: Annotated[str, Field(description='The identifier value')]
+GetCollectionListResponseCoverageGapsValueItem = GetCollectionListResponseCollectionsItemDistributionIdsItem
 
 
 class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope):

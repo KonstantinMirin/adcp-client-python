@@ -264,28 +264,164 @@ def relative_module(frm: str, to: str) -> str:
 # --------------------------------------------------------------------------- #
 # the walk: what each node IS
 # --------------------------------------------------------------------------- #
+def content_key(node: dict, pointer: str, mod: Module) -> str:
+    """D3's content equality, AND the statement of where it cuts a reference cycle.
+
+    Two nodes are the same node when this returns the same string for both.  It is
+    the node's own JSON with every mapping ordered -- so a key order no instance can
+    observe is not a difference -- plus the one fact about the node's POSITION that
+    the decision reads.
+
+    **A ``$ref`` is compared as a STRING and is never followed, and that is the cut.**
+    §9 records that two instruments once disagreed about whether two nodes were
+    identical entirely because each cut a reference cycle somewhere else, and D3 says
+    the comparison has to state its rule.  Here there is no recursion to cut: the node
+    is read as the document wrote it, so a cycle through a ``$ref`` is cut at the
+    reference, at depth 0, on every node and not only on a cyclic one.
+
+    **The cost of that cut is a measured population, not a hypothetical.**  Two nodes
+    that name ONE target through two spellings of the same reference are NOT equal
+    here, and the bundle has 17 such targets: 968 distinct reference strings over 4,200
+    sites, 0 of them relative, and 17 (document, pointer) pairs reached both by a local
+    ``#/definitions/x`` and by the document's own absolute URI carrying the same
+    fragment.  Those pairs are not collapsed, which is the conservative direction --
+    two classes where one would do, never one class where the document means two -- and
+    following the reference to compare the targets is the thing §9 says has to state
+    its cut before anything does it.
+
+    **The POSITION bit is ``mod.object_constrained``, and the key is wrong without
+    it.**  ``bundle.constrained_to_object`` is a set of POINTERS: a node stating no
+    ``type`` of its own is lowered as an object where an enclosing node applies
+    ``type: "object"`` to the same instance, and is refused where none does.  So two
+    nodes of byte-identical JSON at two such positions decide DIFFERENTLY, and a key
+    over the JSON alone would hand the refused position the class the admitted one
+    declared -- a model stating what that position's document does not.  1,390 of the
+    bundle's nodes declare ``properties`` with no ``type``, 556 of them in that set and
+    834 outside it, so both sides of the bit are populated.  Nothing else the decision
+    reads is per-pointer: ``mod.asserted`` and ``mod.root`` are per document, and
+    ``mod.named`` is handled by :func:`decide_type` itself.
+    """
+    return json.dumps(
+        [node, pointer in mod.object_constrained], sort_keys=True, separators=(",", ":")
+    )
+
+
+def bind_the_same_node(mod: Module, symbol: str, pointer: str, declared: str) -> Decided:
+    """D3's content dedup, at the SECOND and later positions of one node: the class the
+    first position declared, under the name this position's own rule derives.
+
+    **One class, as many names as the node has positions.**  D3's dedup is a statement
+    about CLASSES -- one node yields one class -- and D3's nested rule derives a name per
+    POSITION, so a node at three positions has one class and three derived names.  An
+    alias is a NAME BOUND TO THAT CLASS and not a second class, which is why the two
+    rules do not collide and why nothing here is hand-assigned: every name is the walk's
+    own ``name_hint``, computed at the call site by the same rule that names a class
+    there, and there is no table and no exception.
+
+    What this refuses to do is type a field by a SIBLING POSITION's name. Binding
+    ``PreviewRenderHtml.dimensions`` to ``PreviewRenderUrlDimensions`` would read as the
+    html branch carrying the url branch's type, and it would make the public symbol a
+    function of which key the walk happened to reach first. The upstream v9 SDK is the
+    worked case of the opposite failure -- 1,092 of its 4,360 classes are numbered
+    variants of content it declares over and over, ``WholesaleFeedEvent1`` through
+    ``WholesaleFeedEvent9`` among them -- and the answer to that is one class aliased,
+    not one class renamed.
+
+    **The RENDERING is ``compiler.render_alias``'s, the same statement D2's root-scalar
+    row emits**, so there is one alias spelling in the emitter and not a second one here.
+    It is called with no constraints, no description and no format on purpose: the node
+    is byte-identical to the one the class already lowered, so every fact about it is
+    already stated on the class, and a ``Field(description=...)`` wrapper here would both
+    restate it and make the alias an ``Annotated`` object rather than the class itself --
+    which is the one thing a consumer must be able to rely on. ``X = TheClass`` is the
+    class by IDENTITY: ``X is TheClass``, ``isinstance`` works, and a type checker follows
+    it.
+
+    Two positions take the class symbol directly rather than an alias, and both are the
+    absence of a name rather than a choice: a position the walk reaches with an EMPTY
+    ``name_hint`` (a mapping's key type, ``lower.containers``' two key calls) has no name
+    to derive, and a position whose derived name IS the declared symbol would be
+    ``X = X``. ``mod.declare`` would refuse the second by name anyway.
+
+    This lives beside :func:`decide_type`, its one caller, rather than in
+    ``codegen/compiler.py`` beside :func:`compiler.name_the_node` -- which it otherwise
+    mirrors -- because D13 puts a lowering only one row reads in the module that reads it,
+    and because the compiler's half of this is ``render_alias``, which is already there.
+    """
+    if not symbol or symbol == declared:
+        return Decided(compiler.Type(declared, local=True))
+    mod.add(symbol, pointer, compiler.render_alias(symbol, compiler.Type(declared, local=True), {}))
+    return Decided(compiler.Type(symbol, local=True))
+
+
 def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     """What one schema node IS, plus a SYMBOL where another document names the node.
 
-    The decision is :func:`_decide`'s, unchanged.  What is here is the one thing a
-    node reached by a fragment reference needs and a node reached only by its parent
-    does not: a name in this module, so the referring module imports a symbol rather
-    than copying a schema (section 2's rule).
+    The decision is :func:`_decide`'s, unchanged.  What is here is the two things a
+    node reached by a fragment reference or by a second parent needs and a node
+    reached once by its own parent does not: a name in this module, so the referring
+    module imports a symbol rather than copying a schema (section 2's rule), and D3's
+    content dedup.
 
-    It wraps rather than living inside ``_decide`` because it applies to every arm
+    It wraps rather than living inside ``_decide`` because both apply to every arm
     equally -- an array, a scalar, a mapping and a multi-type node are all annotations
-    with no name -- and ``_decide`` returns from ten places, so putting the test in
-    there would be ten tests or one more wrapper.  A class or an enumeration comes
+    with no name -- and ``_decide`` returns from ten places, so putting the tests in
+    there would be twenty tests or one more wrapper.  A class or an enumeration comes
     back ``local`` already, having declared itself under this very ``name_hint``, so
     nothing is named twice and no second symbol appears for one node.
 
     ``mod.named`` is a function of the BUNDLE (``bundle.named_nodes``), not of the
     run's document set, so whether a node gets a name does not depend on who else was
     emitted.
+
+    **D3: nodes with identical content are one node.**  The memo is consulted BEFORE
+    ``_decide`` and seeded after it, so the second occurrence of a node decides to the
+    symbol the first DECLARED and no second class is written for it.  Three things
+    make that the whole of the rule rather than an optimisation:
+
+    * The memo is seeded only where the walk declared a symbol AT THIS NODE'S OWN
+      POINTER (``mod.declared.get(pointer)``), which is exactly D2's class and
+      enumeration rows and :func:`compiler.name_the_node`'s alias.  An annotation
+      declares nothing, so an identical annotation is simply decided again -- to the
+      same annotation, since the inputs are the same string -- and a ``$ref`` whose
+      symbol this module IMPORTED is not seeded either, because the import is already
+      in ``mod.imports`` and section 2's rule is an import of a symbol the TARGET
+      declares.  A node that declares a symbol at its pointer and then decides to a
+      CONTAINER over it is therefore not seeded; a nested union is the shape that would
+      be, and it is covered anyway because its BRANCHES collapse through this very
+      wrapper and two identical branch lists then decide to one annotation.  0 such
+      pairs survive the run, and clause 1 of the check reddens by name if one appears.
+    * **The CLASS is declared at the node's first position in the document's own key
+      order, and every other position derives its own name and binds the same class**
+      (:func:`bind_the_same_node`).  D3 derives a name PER POSITION, so a node at two
+      positions has two derivations and no rule in the plan picks between them -- and it
+      does not have to, because the dedup is about classes and a name bound to a class is
+      not a second class.  Measured first, because the three readings that would need one
+      name are all unavailable: naming the node from its own content is what D5 bans for
+      an alias ("an alias names a constraint, never a concept") and for an enumeration the
+      content is a member list rather than a name; naming it from the bundle reaches
+      nothing, since 0 of the 1,271 identical-content groups have a bundle ROOT carrying
+      that content; and refusing the document loses a class the bundle can state.
+      ``tests/test_emit.py`` asserts that each position declares its OWN name and that
+      every name in a group binds ONE object, so a flip in walk order reddens instead of
+      renaming a public symbol.
+    * **The adopting pointer IS declared**, under its own name, so a cross-document
+      ``$ref`` naming the second position resolves to it -- ``emit.exported`` lists the
+      symbol at every bundle-named pointer, so the import side and the export side still
+      read one fact.  Before the alias this arm refused DEFERRED instead; 0 of the
+      collapsed pointers are among the bundle's 216 named nodes, so the change closes a
+      ceiling nothing reaches rather than moving a refusal.
     """
+    key = content_key(node, pointer, mod)
+    collapsed = mod.collapsed.get(key)
+    if collapsed is not None:
+        mod.adopted[pointer] = collapsed
+        return bind_the_same_node(mod, name_hint, pointer, collapsed)
     decided = _decide(node, pointer, name_hint, mod)
     if pointer in mod.named and not decided.type.local:
-        return compiler.name_the_node(mod, name_hint, pointer, node, decided)
+        decided = compiler.name_the_node(mod, name_hint, pointer, node, decided)
+    if mod.declared.get(pointer) == decided.type.path:
+        mod.collapsed[key] = decided.type.path
     return decided
 
 
@@ -868,6 +1004,22 @@ class Emitted:
     #: through its own ``__adcp_schema__``.
     emitted: dict[str, str] = field(default_factory=dict)
     refusals: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: document -> ``Module.declared``, which is pointer -> the symbol declared for the
+    #: node at it.  The run's own record of WHERE each symbol came from, and the only
+    #: thing D3's content dedup can be graded over: the question "do two declared
+    #: symbols name nodes of identical content" is asked of pointers, and the emitted
+    #: TEXT has none -- a reader of the module sees two class statements and cannot say
+    #: which node each one lowered.  Written from the one map every declaration passes
+    #: through (:meth:`Module.declare`), so the check and the collapse read one record
+    #: and cannot disagree about what was declared.
+    declared: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: document -> ``Module.adopted``: pointer -> the symbol the node at it adopted under
+    #: D3's content dedup, because an earlier node of identical content declared it.
+    #: With :attr:`declared` this is the whole of what the dedup did, and it is what
+    #: ``tests/test_emit.py`` grades it over -- in both directions, since an adoption
+    #: whose two nodes are NOT identical is the failure that matters more than a missed
+    #: collapse.
+    adopted: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 def _composed_nodes(bundle_dir: Path, known: set[str]) -> dict[str, frozenset[str]]:
@@ -1126,6 +1278,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         rel = module_path(document)
         out.files[f"{rel}.py"] = render(mod, symbol, composed.get(document, frozenset()))
         out.emitted[document] = f"{PACKAGE}.{rel.replace('/', '.')}"
+        out.declared[document] = dict(mod.declared)
+        out.adopted[document] = dict(mod.adopted)
         # The document travels WITH the module, at its own bundle-relative path,
         # because ``__adcp_schema__`` names that path and ``strict_validate``
         # reads it to decide acceptance (D4).  The bundle is a build-time input

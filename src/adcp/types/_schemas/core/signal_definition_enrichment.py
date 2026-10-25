@@ -99,15 +99,7 @@ class SignalDefinitionEnrichmentRefreshCadence(StrEnum):
     ANNUALLY = 'annually'
 
 
-class SignalDefinitionEnrichmentLookbackWindow(StrEnum):
-    INTRA_DAY = 'intra_day'
-    DAILY = 'daily'
-    WEEKLY = 'weekly'
-    MONTHLY = 'monthly'
-    BI_MONTHLY = 'bi_monthly'
-    QUARTERLY = 'quarterly'
-    BI_ANNUALLY = 'bi_annually'
-    ANNUALLY = 'annually'
+SignalDefinitionEnrichmentLookbackWindow = SignalDefinitionEnrichmentRefreshCadence
 
 
 class SignalDefinitionEnrichmentOnboarderMatchKeysItem(StrEnum):

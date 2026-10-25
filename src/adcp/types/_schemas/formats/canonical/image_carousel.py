@@ -17,9 +17,7 @@ class CanonicalFormatImageCarouselAllowedCardMediaAssetTypesItem(StrEnum):
     VIDEO = 'video'
 
 
-class CanonicalFormatImageCarouselAllowedCardAssetTypesItem(StrEnum):
-    IMAGE = 'image'
-    VIDEO = 'video'
+CanonicalFormatImageCarouselAllowedCardAssetTypesItem = CanonicalFormatImageCarouselAllowedCardMediaAssetTypesItem
 
 
 class CanonicalFormatImageCarousel(CanonicalFormatBase):

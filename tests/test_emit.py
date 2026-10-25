@@ -30,6 +30,7 @@ import ast
 import collections
 import functools
 import importlib
+import importlib.util
 import inspect
 import json
 import os
@@ -196,19 +197,42 @@ def graded() -> list[Graded]:
     the ``__adcp_schema__`` and the ``strict_validate``, and the model is the one
     name the module exports.  Both cases are asserted non-empty below, so neither
     is graded by an empty loop.
+
+    **A class is taken ONCE per defining module, however many names that module
+    binds it under, and the ``__module__`` filter does NOT cover this.**  That filter
+    answers "did this module define the class", which is a question about the
+    IMPORTING module; D3's content dedup gives one class a name at every position the
+    node occupies (``emit.bind_the_same_node``), and those names are in the DEFINING
+    module, so ``vars(module)`` yields the same class object two or three times.
+    Measured rather than reasoned: with the aliases emitted and this loop keyed on
+    names, the pair count went 1,079 -> 1,085 -- six extra, which is exactly the 6 of
+    the 10 collapsed nodes that are classes (the other 4 are enumerations, which carry
+    no ``__adcp_schema__`` and were never pairs) -- and 5 refs were graded twice or
+    three times, ``creative/preview-render.json#/oneOf/0/properties/dimensions`` among
+    them.  A pair is one class against one schema, so a second name for it is not a
+    second pair.
+
+    **And 1,085 was the stale pin, so the naive reading passed.**  ``PAIRS_PIN`` was
+    1085 before this row shrank the class count by 6, so grading 6 pairs twice landed
+    back on the number the suite expected and nothing reddened.  The dedup check below
+    is what catches it from the other side: it asserts that every name in a content
+    group binds ONE object.
     """
     import adcp.types._schemas as pkg
 
     out: list[Graded] = []
     for info in sorted(pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."), key=lambda i: i.name):
         module = importlib.import_module(info.name)
+        taken: set[int] = set()  # by IDENTITY: one class, one pair, whatever it is called
         for value in vars(module).values():
             if (
                 isinstance(value, type)
                 and issubclass(value, AdCPBaseModel)
                 and "__adcp_schema__" in value.__dict__
                 and value.__module__ == info.name
+                and id(value) not in taken
             ):
+                taken.add(id(value))
                 out.append(Graded(value.__adcp_schema__, value, value.strict_validate, info.name))
         ref = vars(module).get("__adcp_schema__")
         if isinstance(ref, SchemaRef) and callable(vars(module).get("strict_validate")):
@@ -625,25 +649,36 @@ def test_a_zero_denominator_verdict_is_never_pass() -> None:
 #: applies to both sides" names are gone, so 14 more documents emit and bring their own
 #: nested pairs.  Re-measured, not derived from the document count: a document carries
 #: between one and a dozen pairs.
-PAIRS_PIN = 1085
-#: Measured: 1,080 pass, and the five that do not are named in
+#: 1085 -> 1079 at ``salesagent-j3k2l.38``: D3's content dedup collapses 10 nodes, and
+#: the 6 of them that are CLASSES are 6 pairs that no longer exist.  The other 4 are
+#: enumerations, which carry no ``__adcp_schema__`` and were never pairs -- which is why
+#: this moves by 6 against that row's 10 and the two numbers are different senses.
+PAIRS_PIN = 1079
+#: Measured: 1,074 pass, and the five that do not are named in
 #: ``test_the_non_pass_pairs_are_named_and_attributed`` with what each one is.  The
 #: ``comparison:model_drops_a_fact`` group is GONE rather than smaller, which is
 #: ``salesagent-j3k2l.28``'s exit: ``added``, ``missing`` and ``differs`` are all 0.
 OUTCOME_PINS: dict[str, int] = {
-    "pass": 1083,
+    "pass": 1077,
     "no_instrument": 2,
 }
 #: One instance per pair, minus the 2 whose generator could not draw one and the 3
 #: whose DUMP the document refused -- a failing example is reported, not counted.
-ROUND_TRIPPED_PIN = 1083
-COMPARED_PIN = 38224
-MODEL_FACTS_PIN = 13715
+#: 38224 -> 38181 and 13715 -> 13709 at ``salesagent-j3k2l.38``: a collapsed class is a
+#: pair whose keywords are no longer compared.  ``URL_TYPED_PIN`` was RE-MEASURED on the
+#: same pass and was unchanged, so it is left where .28 put it rather than re-pointed.
+#: .45's exemption and this row's dedup both move the three figures below, in opposite
+#: directions -- the exemption turns 3 non-pass pairs into passes and the dedup removes
+#: 6 pairs -- so all three were RE-MEASURED on the merged tree rather than picked from
+#: either side or differenced: 1083 -> 1077, 38224 -> 38181, 13715 -> 13709.
+ROUND_TRIPPED_PIN = 1077
+COMPARED_PIN = 38181
+MODEL_FACTS_PIN = 13709
 #: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND BOTH ARE NOW GREEN.**  Zero is the
 #: specification's symmetric comparison -- a fact the model adds reddens and a fact it
 #: drops reddens -- and it was pinned here while ``MISSING_PIN`` was RED, because
 #: re-pointing a pin at the measurement is what salesagent-j3k2l.28 said not to do.
-#: That row closed it: ``added``, ``missing`` and ``differs`` are 0 over all 1,085
+#: That row closed it: ``added``, ``missing`` and ``differs`` are 0 over all 1,079
 #: pairs, against 0 / 2 / 0 at ``760e898c6`` and 0 / 10 / 13 when .28 was filed.  The
 #: last 2 were one ``description`` each at an ``additionalProperties`` node, where an
 #: annotation on a container's CONTENTS had no carrier.
@@ -654,7 +689,10 @@ NO_PAYLOAD_PIN = 2
 #: Which perturbation ``refusing_payload`` reached, counted by its first word.
 #: A partition and not a total: which one bites is a property of the DOCUMENT's own
 #: root shape, so a shift here says the population's roots moved.
-LIVENESS_PINS: dict[str, int] = {"drops": 610, "replaces": 473, "": 2}
+#: 610/473/2 -> 605/472/2 at ``salesagent-j3k2l.38``, and it is the partition moving with
+#: the pair count rather than the root shapes moving: 5 collapsed classes were reached by
+#: ``drops`` and 1 by ``replaces``, and the three still sum to ``PAIRS_PIN``.
+LIVENESS_PINS: dict[str, int] = {"drops": 605, "replaces": 472, "": 2}
 
 
 @functools.cache
@@ -4937,6 +4975,138 @@ def test_every_portable_document_is_emitted_or_refused_by_name() -> None:
         d: r for d, r in out.refusals.items() if not r.get("keyword") or r.get("pointer") is None
     }
     assert unnamed == {}, unnamed
+
+
+def test_identical_content_is_one_class_and_different_content_is_never_one() -> None:
+    """D3's content dedup, over every node of every document the whole bundle emits.
+
+    **One class, one name per position, and both halves graded.**  D3's dedup is a
+    statement about classes, and D3's naming rule derives a name per POSITION, so the
+    emitted shape is one class with an alias at every other position
+    (``emit.bind_the_same_node``).  That has two ways to go wrong -- a second CLASS, or a
+    name that does not reach the one class -- and the four clauses are one per way plus
+    the two directions of the equality.  Each is computed over a population this asserts
+    the size of (D14), and each was perturbed and recorded as reddening in
+    salesagent-j3k2l.38's notes:
+
+    1. a content group declares one name PER POSITION and they are all distinct, so a
+       field cannot be typed by a sibling position's name and a position cannot go
+       unnamed.
+    2. every one of those names binds ONE OBJECT, by IDENTITY in the imported module.
+       This is the clause that says an alias is an alias: if any of them were a second
+       class, or an ``Annotated`` wrapper rather than the class, ``is`` would fail here.
+       It is also what makes clause 1 safe -- distinct names over one object is the
+       intended shape, distinct names over two objects is the defect.
+    3. every ADOPTION's two nodes really are identical.  This is the direction that
+       matters more than the other three: they can all be satisfied by collapsing
+       everything, and this is what says the collapse never joined two nodes the
+       document separates.
+    4. exactly one position in a group declares the CLASS, and it is the FIRST in the
+       document's own key order.  That decides which name the class is spelled with,
+       which is public, so a flip in walk order reddens here instead of renaming an
+       export.
+
+    **The population is read off the walk's own two records**, ``Emitted.declared`` and
+    ``Emitted.adopted``, rather than off the emitted text: a module's text has two class
+    statements and no way to say which node each one lowered, which is why the defect
+    this grades survived a suite that reads the tree.  The content key is
+    ``emit.content_key``, the function the collapse itself is keyed on, so the check and
+    the collapse cannot come to disagree about what identical means -- and §9's open
+    question is about exactly that disagreement between two instruments.  The one thing
+    read off the TREE is the identity in clause 2, because identity is a property of the
+    imported module and of nothing else.
+    """
+    portable = sorted(bundle.portable(BUNDLE))
+    out = emit.emit(BUNDLE, portable)
+    # The document TOTAL is not restated here: it is another test's assertion and it
+    # moves whenever a row admits more of the bundle, which would make this check's
+    # failure read as a dedup defect.  What this one needs is only that the loop below
+    # has documents to run over.
+    assert out.emitted, "nothing emitted: every assertion below would pass vacuously"
+
+    groups = adoptions = declared = identities = unverifiable = 0
+    for document in sorted(out.emitted):
+        doc = bundle.read(BUNDLE, document)
+        # The per-pointer facts ``content_key`` reads, built the way ``lower_document``
+        # builds them, so the key here is the production key.
+        mod = compiler.Module(
+            document=document, object_constrained=bundle.constrained_to_object(doc)
+        )
+        walked = list(bundle.nodes(doc))  # ONE walk: document order, and the nodes
+        order = {pointer: i for i, (pointer, _) in enumerate(walked)}
+        at = dict(walked)
+        by_content: dict[str, list[str]] = {}
+        for pointer, node in walked:
+            by_content.setdefault(emit.content_key(node, pointer, mod), []).append(pointer)
+
+        here = out.declared[document]
+        declared += len(here)
+        assert set(here) <= set(at), (document, sorted(set(here) - set(at)))
+        # Clause 1's other half, and the one that refuses the reading this row started
+        # with: an adopted position DECLARES a name of its own.  Binding the field
+        # straight to the class symbol instead leaves the position undeclared, and then
+        # every clause below runs over a one-member group and passes.
+        assert set(out.adopted[document]) <= set(here), (
+            document,
+            sorted(set(out.adopted[document]) - set(here)),
+        )
+
+        for pointer, symbol in out.adopted[document].items():
+            adoptions += 1
+            declaring = [p for p, s in here.items() if s == symbol]
+            assert len(declaring) == 1, (document, symbol, declaring)
+            # Clause 3: the adopting node and the node whose CLASS it took are the same
+            # node, and asserted on the NODES rather than on ``content_key``.  The key is
+            # the production function, so a key weakened to collapse two different nodes
+            # would weaken this comparison in step and the clause would pass vacuously --
+            # which is this file's own rule about a fixture derived from the thing it
+            # grades.  Python's own equality over the two parsed nodes, plus the one
+            # position fact the decision reads, is what the key is supposed to encode.
+            assert at[pointer] == at[declaring[0]], (document, pointer, declaring[0])
+            assert (pointer in mod.object_constrained) == (
+                declaring[0] in mod.object_constrained
+            ), (document, pointer, declaring[0])
+
+        for key, pointers in by_content.items():
+            reached = [p for p in pointers if p in here]
+            if len(pointers) < 2 or not reached:
+                continue
+            groups += 1
+            # Clause 1: one name per position, all distinct.
+            symbols = [here[p] for p in reached]
+            assert len(set(symbols)) == len(symbols), (document, key[:120], symbols)
+            # Clause 4: exactly one of them declares the CLASS -- the rest adopted it --
+            # and it is the first of the group in the document's own key order.
+            owning = [p for p in reached if p not in out.adopted[document]]
+            assert len(owning) == 1, (document, key[:120], owning)
+            assert order[owning[0]] == min(order[p] for p in reached), (document, owning)
+            # Clause 2: every one of those names is the SAME OBJECT.  Read off the
+            # imported module, because identity is a property of the module and of
+            # nothing else -- the text cannot say whether ``X = Y`` produced an alias or
+            # a copy.  A module the committed tree does not carry would make this clause
+            # silent, so the skip is counted and asserted at 0 below rather than passed
+            # over: the tree is written from ``population()`` and this loop runs over the
+            # whole portable set, which is the wider of the two.
+            if importlib.util.find_spec(out.emitted[document]) is not None:
+                module = importlib.import_module(out.emitted[document])
+                bound = [getattr(module, s) for s in symbols]
+                assert all(b is bound[0] for b in bound), (document, symbols)
+                identities += len(bound)
+            else:
+                unverifiable += 1
+
+    # The denominators.  A dedup check whose population reaches one instance is the
+    # defect salesagent-j3k2l.38 is about -- the ceiling it replaced counted 36 bundle
+    # repeats and asserted that 0 were REACHED -- so every count is stated and a run that
+    # collapses nothing fails here rather than passing over an empty loop.  ``identities``
+    # is the number of NAMES clause 2 compared, so it is the one that says the identity
+    # check ran at all, and ``unverifiable`` is the groups it could not reach.
+    assert unverifiable == 0, unverifiable
+    assert declared == 1413, declared
+    assert groups == 9, groups
+    assert adoptions == 10, adoptions
+    assert identities == 19, identities
+    assert sum(1 for d in out.adopted if out.adopted[d]) == 7, out.adopted
 
 
 def test_a_refusals_kind_is_declared_by_its_producer_and_a_chain_takes_its_targets() -> None:

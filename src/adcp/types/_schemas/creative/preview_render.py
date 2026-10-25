@@ -60,13 +60,7 @@ class PreviewRenderUrl(PreviewRender):
     renderer: Annotated[PreviewRendererMetadata | None, Field(description='Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.')] = None
 
 
-class PreviewRenderHtmlDimensions(AdCPBaseModel):
-    """
-    Dimensions for this rendered piece
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/1/properties/dimensions')
-    width: NonNegativeFloat
-    height: NonNegativeFloat
+PreviewRenderHtmlDimensions = PreviewRenderUrlDimensions
 
 
 class PreviewRenderHtmlEmbedding(AdCPBaseModel):
@@ -97,24 +91,10 @@ class PreviewRenderHtml(PreviewRender):
     renderer: Annotated[PreviewRendererMetadata | None, Field(description='Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.')] = None
 
 
-class PreviewRenderBothDimensions(AdCPBaseModel):
-    """
-    Dimensions for this rendered piece
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/2/properties/dimensions')
-    width: NonNegativeFloat
-    height: NonNegativeFloat
+PreviewRenderBothDimensions = PreviewRenderUrlDimensions
 
 
-class PreviewRenderBothEmbedding(AdCPBaseModel):
-    """
-    Optional security and embedding metadata for safe iframe integration
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/2/properties/embedding')
-    recommended_sandbox: Annotated[Literal[''] | None, Field(description='Empty iframe sandbox token set. Provider metadata MUST NOT grant scripts, same-origin, navigation, popups, forms, downloads, or other capabilities.')] = None
-    requires_https: Annotated[bool | None, Field(description='Whether this output requires HTTPS for secure embedding')] = None
-    supports_fullscreen: Annotated[bool | None, Field(description='Whether this output supports fullscreen mode')] = None
-    csp_policy: Annotated[str | None, Field(description='Content Security Policy requirements for embedding')] = None
+PreviewRenderBothEmbedding = PreviewRenderUrlEmbedding
 
 
 class PreviewRenderBoth(PreviewRender):

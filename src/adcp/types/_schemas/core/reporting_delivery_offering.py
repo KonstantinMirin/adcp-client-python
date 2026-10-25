@@ -81,12 +81,7 @@ class ReportingDeliveryOfferingMethodFormat(StrEnum):
     ORC = 'orc'
 
 
-class ReportingDeliveryOfferingMethodProducerIdentityProvider(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-offering.json', pointer='#/properties/method/properties/producer_identity/properties/provider')
-    domain: StrMatching32F5291C
+ReportingDeliveryOfferingMethodProducerIdentityProvider = ReportingDeliveryOfferingMethodProvider
 
 
 class ReportingDeliveryOfferingMethodProducerIdentity(AdCPBaseModel):

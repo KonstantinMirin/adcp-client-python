@@ -223,7 +223,15 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     # file is 1 failed / 22 passed at ``c9bfb5133`` and these four were the 4 green
     # ones that moved.
     # 484 -> 506 at ``salesagent-j3k2l.28``, population growth again.
-    assert len(classes) == 506, len(classes)  # 214 roots, the rest inline
+    # 506 -> 502 at ``salesagent-j3k2l.38``, and this one is a SHRINK meeting that
+    # growth: D3's content dedup collapses identical nodes, so the two rows moved this
+    # count in opposite directions and the merged value is RE-MEASURED on the merged
+    # tree rather than either side's number or the difference between them.  4 of the 10
+    # collapsed nodes are enumerations -- ``signal-definition-enrichment``'s
+    # ``lookback_window``, ``image_carousel``'s ``allowed_card_asset_types`` and
+    # ``bidding-policy-capability``'s two ``definitions`` entries, the last two reachable
+    # only because .28's rows emit that document.
+    assert len(classes) == 502, len(classes)  # 214 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -279,7 +287,10 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
     # 2692 -> 2892 on fe0e185f9, population growth; 2892 -> 2917 at
     # ``salesagent-j3k2l.40``, the same 5 documents.
     # 2917 -> 2993 at ``salesagent-j3k2l.28``, population growth again.
-    assert names == 2993, names
+    # 2993 -> 2979 at ``salesagent-j3k2l.38``: the 4 enum classes the content dedup
+    # collapses take their members with them (8, 2, 2 and 2), so this shrinks against
+    # that growth and the merged value is re-measured rather than picked.
+    assert names == 2979, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -909,34 +920,29 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
         assert refusing.refusals[document]["pointer"] == "/"
 
 
-def test_identical_enum_nodes_under_one_document_are_unreached_by_this_step() -> None:
-    """D3's content dedup, as a ceiling with its denominator.
-
-    D3 says two nodes with identical content are one node.  This row emits two
-    classes for them, and that is a gap -- 36 such repeats over 21 documents.
-    Every one of them sits under ``oneOf``/``allOf``/``definitions``/``items``,
-    positions this step does not descend into, so the REACHED count is 0 and the
-    fix belongs to the step whose population reaches one.
-    """
-    emitted = set(emit.emit(BUNDLE, population()).emitted)
-    repeats = reached = 0
-    for document in bundle.portable(BUNDLE):
-        seen: dict[str, list[str]] = {}
-        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
-            if "enum" not in node:
-                continue
-            seen.setdefault(json.dumps(node, sort_keys=True), []).append(pointer)
-        for pointers in seen.values():
-            if len(pointers) < 2:
-                continue
-            repeats += len(pointers) - 1
-            parts = [[p for p in ptr.split("/") if p] for ptr in pointers]
-            if document in emitted and all(
-                all(hop[i] == "properties" for i in range(0, len(hop), 2)) for hop in parts
-            ):
-                reached += 1
-    assert repeats == 36, repeats
-    assert reached == 0, reached
+# ``test_identical_enum_nodes_under_one_document_are_unreached_by_this_step`` stood
+# here, and salesagent-j3k2l.38 CLOSED it rather than re-pointing it.  It was D3's
+# content dedup as a ceiling: 36 enum repeats over 21 documents, 0 of them REACHED, and
+# "the fix belongs to the step whose population reaches one".  That step arrived, the
+# reached count became 1, and the issue says explicitly that re-pointing 0 to 1 would
+# convert a defect into a baseline.
+#
+# It is gone because the check that replaced it SUBSUMES it in both directions.  The
+# ceiling was enum-only and its reach test was a pointer-spelling proxy -- all hops are
+# ``properties`` pairs -- and the defect was never enum-only: the walk declared two
+# classes for one node at 7 content groups over 6 documents, and 5 of the 7 are OBJECT
+# classes.  The proxy also undercounted its own population: of the 2 enum groups,
+# ``formats/canonical/image_carousel.json``'s two pointers reach the node through an
+# ``items`` hop, which the proxy rejected while the walk descends it.
+# ``tests/test_emit.py::test_identical_content_is_one_class_and_different_content_is_
+# never_one`` grades every node of every document the whole bundle emits, through the
+# very function the collapse is keyed on, and asserts its three denominators -- so a run
+# that collapses nothing fails there rather than passing over an empty loop.
+#
+# The ceiling's own census is not lost, it is explained: 36 bundle-side enum repeats and
+# 8 walk-side collapses are two different populations, and the difference is documents
+# the emitter refuses and positions no row descends.  The new check counts what the walk
+# DECLARED, which is the only population a dedup can be graded over.
 
 
 def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:

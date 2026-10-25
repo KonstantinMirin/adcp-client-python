@@ -118,13 +118,7 @@ class CanonicalOptimizationGoalEvent(CanonicalOptimizationGoal):
     priority: IntMin1 | None = None
 
 
-class CanonicalOptimizationGoalVendorMetricTarget(AdCPBaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-optimization-goal.json', pointer='#/oneOf/2/properties/target')
-    kind: Literal['threshold_rate']
-    value: FloatGt0
+CanonicalOptimizationGoalVendorMetricTarget = CanonicalOptimizationGoalMetricTarget
 
 
 class CanonicalOptimizationGoalVendorMetric(CanonicalOptimizationGoal):

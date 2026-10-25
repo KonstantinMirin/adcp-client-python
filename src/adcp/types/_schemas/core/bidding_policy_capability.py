@@ -28,9 +28,7 @@ class BiddingPolicyCapabilityPolicyProfileRoasStrengthsItem(StrEnum):
     TARGET = 'target'
 
 
-class BiddingPolicyCapabilityMaxBidWithCostPerCostPerStrengthsItem(StrEnum):
-    CAP = 'cap'
-    TARGET = 'target'
+BiddingPolicyCapabilityMaxBidWithCostPerCostPerStrengthsItem = BiddingPolicyCapabilityPolicyProfileCostPerStrengthsItem
 
 
 class BiddingPolicyCapabilityMaxBidWithCostPer(AdCPBaseModel):
@@ -45,9 +43,7 @@ class BiddingPolicyCapabilityMaxBidWithCostPer(AdCPBaseModel):
     cost_per_strengths: Annotated[list[BiddingPolicyCapabilityMaxBidWithCostPerCostPerStrengthsItem], Field(description='cost_per strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
-class BiddingPolicyCapabilityMaxBidWithRoasRoasStrengthsItem(StrEnum):
-    FLOOR = 'floor'
-    TARGET = 'target'
+BiddingPolicyCapabilityMaxBidWithRoasRoasStrengthsItem = BiddingPolicyCapabilityPolicyProfileRoasStrengthsItem
 
 
 class BiddingPolicyCapabilityMaxBidWithRoas(AdCPBaseModel):
