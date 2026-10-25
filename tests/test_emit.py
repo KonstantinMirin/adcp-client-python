@@ -3296,7 +3296,15 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "core/product-format-declaration.json": "allOf",
     "core/registry-event.json": "properties",
     "core/requirements/asset-requirements.json": "$ref",
-    "core/requirements/catalog-field-binding.json": "$ref",
+    # Was ``$ref`` -- "a bare $ref branch has no node to declare a subclass from" --
+    # until ``salesagent-j3k2l.59`` made such a branch a class with two bases.  Its
+    # three branches now name themselves off the ``kind`` pin (two of them through a
+    # LOCAL ``$ref``) and the root's dispatch derives to ``kind``, so the document gets
+    # past this module and refuses one pointer deeper, on a ``discriminator`` sibling of
+    # the NESTED union at ``/oneOf/2/properties/per_item_bindings/items`` -- a different
+    # position with a different reason (``union.nested``'s sibling screen), filed as its
+    # own row.
+    "core/requirements/catalog-field-binding.json": "discriminator",
     "core/tracker-execution-selector.json": "$ref",
     "core/wholesale-feed-event.json": "properties",
     "creative/get-creative-features-response.json": "allOf",

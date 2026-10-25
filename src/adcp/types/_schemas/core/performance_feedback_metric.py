@@ -24,6 +24,7 @@ class PerformanceFeedbackMetric(BranchDispatchMixin, AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/performance-feedback-metric.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()
+    _BRANCH_DISCRIMINATOR: ClassVar[str] = "scope"
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
