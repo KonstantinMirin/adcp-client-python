@@ -2375,6 +2375,15 @@ def _intersection(
         if covered & axis:
             covered |= axis
     merged = {**{k: v for k, v in b.items() if k not in covered}, **c}
+    # **At a keyword BOTH state, the TIGHTER value and not the child's**, which is what
+    # makes this function symmetric in its constraining content rather than only in the
+    # direction :func:`_restatement` admits.  ``declare`` asks the predicate in both
+    # directions and then merges in whichever one narrowed, so a merge that preferred the
+    # first argument would make the result a function of which view the walk read first
+    # -- the "last wins" this rule exists to have no reading of.
+    for keyword in set(c) & set(b):
+        if not _at_least_as_tight(keyword, c[keyword], b[keyword], resolve):
+            merged[keyword] = b[keyword]
     resolved = _dereferenced(child, resolve)
     annotated = {
         **{k: v for k, v in base.items() if k in RENDERED and k not in resolved},
@@ -2423,6 +2432,17 @@ def _restatement(
     its ``required_for`` restates a bare ``{"contains": {...}}`` over a base's
     ``{"type": "array", "items": {...}, "uniqueItems": true}``.  Both reported "neither
     matches nor narrows".
+
+    **KNOWN CEILING: a shared keyword where the CHILD is LOOSER refuses, where D7 would
+    have the field carry the base's.**  "A bound is the tighter one" says the
+    intersection of ``minimum: 1`` over a base's ``minimum: 3`` is 3, and the comparison
+    reads it that way too (``harness._tighter``), so such a pair is gradeable and could
+    be inherited.  It refuses because the arm has no site: re-measured after this rule
+    landed, **3 of the 1,054 portable documents are refused by this predicate** --
+    ``governance/check-governance-response.json``'s ``action_binding``,
+    ``media-buy/get-media-buys-response.json``'s ``indicators`` and
+    ``signals/get-signals-response.json``'s ``range`` -- and none of the three is a
+    looser bound.  An arm for one would be a derivation matching nothing.
 
     **SILENCE IS NOT A LOOSENING, and that half had to wait for the output to be the
     intersection.**  The old rule demanded the child keep every keyword the base states,

@@ -5703,12 +5703,25 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
 COMPOSING_DOCUMENTS = 174
 COMPOSING_NODES = 185
 CONJUNCTS = 376
+#: The cases D7's DECISION names, not the cases this population happens to hold (D14): a
+#: conjunct is a base, or it contributes any combination of fields, requiredness and a
+#: rule, or it contributes nothing.  The empty parts are asserted empty, because a part
+#: with no member today is the one the next cleared document arrives in.
+#:
+#: ``nothing`` is 0 HERE and 1 over the whole bundle: the one conjunct with no
+#: constraining key at all is ``creative/sync-creatives-response.json`` at
+#: ``/oneOf/0/properties/creatives/items/allOf/2``, an ``x-adcp-validation`` extension,
+#: and that node is not one the emitted tree declares a class at.
 CONJUNCTS_BY_PART = {
     "base": 134,
+    "nothing": 0,
     "fields": 2,
-    "fields+rule": 2,
     "required": 2,
     "rule": 236,
+    "fields+required": 0,
+    "fields+rule": 2,
+    "required+rule": 0,
+    "fields+required+rule": 0,
 }
 CONJUNCT_FIELD_KEYS = 7
 CONJUNCT_REQUIRED_NAMES = 2
@@ -5754,7 +5767,9 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
 
     documents: set[str] = set()
     nodes = conjuncts = field_keys = required_names = foreign_names = 0
-    parts: collections.Counter[str] = collections.Counter()
+    # Seeded with the decision's own cases, so an empty part is asserted empty rather
+    # than absent from the comparison (D14).
+    parts: collections.Counter[str] = collections.Counter(dict.fromkeys(CONJUNCTS_BY_PART, 0))
     for document in sorted(out.emitted):
         doc = bundle.read(BUNDLE, document)
         here = out.declared[document]
@@ -5764,14 +5779,15 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                 continue
             nodes += 1
             documents.add(document)
-            # **Clause 0: the class imported below IS this run's output.**  Every clause
-            # after it reads the COMMITTED module, so without this one a change to the
-            # lowering is graded against a tree written before it -- measured by
-            # perturbation: removing the line that binds a ``$ref`` conjunct as a base
-            # left clauses 1 to 3 green, because the committed class still had the base.
-            # ``test_the_committed_tree_is_what_a_fresh_run_emits`` catches such a
-            # change over the whole tree; this makes it caught HERE too, for the modules
-            # whose conjuncts this grades, so a clause cannot be satisfied by a stale file.
+            # **Clause 0: the class imported below IS this run's output** -- D14's "a
+            # clause detects a defect only in what its INPUT can change".  Every clause
+            # after it reads the COMMITTED module, and these clauses claim to grade the
+            # EMITTER, so without this one they are graded by nothing: measured by
+            # perturbation, removing the line that binds a ``$ref`` conjunct as a base
+            # left clauses 1 to 3 green, because the module on disk still had the base.
+            # ``test_the_committed_tree_is_what_a_fresh_run_emits`` is the tie D14 says
+            # carries every committed-tree reader; this states it for the modules whose
+            # conjuncts this grades, so the tie is part of THIS clause's input.
             written = out.files[f"{emit.module_path(document)}.py"]
             assert written == (TREE / f"{emit.module_path(document)}.py").read_text(), document
             cls = getattr(module, here[pointer])
