@@ -1192,7 +1192,17 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             # root-scalar alias, and a named node that is not one either -- which is
             # what lets a composing row refuse it as a base rather than writing a
             # module that cannot be imported.
-            return Target(relative_module(referencing, target), symbol, mod.shapes.get(symbol))
+            # The target's own root node travels with the symbol, and only for a
+            # reference with NO fragment: D7's intersection rule asks whether one bare
+            # ``$ref`` narrows another, which is a fact about the two targets
+            # (``compiler.Module.resolve_node``).  Read off the record ``lower`` already
+            # keeps, so nothing is re-read and the node is the one that was lowered.
+            return Target(
+                relative_module(referencing, target),
+                symbol,
+                mod.shapes.get(symbol),
+                node=None if into else lowered[target][2],
+            )
 
         return do
 

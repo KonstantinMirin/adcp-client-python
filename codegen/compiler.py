@@ -857,6 +857,13 @@ class Target:
     module: str
     symbol: str
     shape: Shape | None = None
+    #: The target's own ROOT NODE, for the ONE reader that needs the schema rather than
+    #: the symbol: D7's intersection rule asked of two declarations that are each a bare
+    #: ``$ref`` (:func:`Module.resolve_node`).  ``None`` for a reference carrying a
+    #: FRAGMENT, which is the scope rather than an omission -- the binder has already
+    #: looked the fragment's SYMBOL up and a node navigator here would be a second
+    #: pointer walk -- so such a pair stays undecidable and refuses.
+    node: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -1009,6 +1016,33 @@ class Module:
     #: constrains no instance; silence is how a reader comes to believe the class
     #: carries it.  ``emit`` collects these per document and the CLI prints them.
     drops: list[str] = field(default_factory=list)
+
+    def resolve_node(self, uri: str) -> dict | None:
+        """The schema a cross-document reference names, or ``None``.
+
+        For D7's intersection rule and for nothing else: two declarations that are each
+        a bare ``$ref`` state the same KIND of thing about an instance and whether one
+        narrows the other is a fact about the two TARGETS, which no amount of reading
+        the two references can answer.  Measured on the one site:
+        ``core/media-buy-frequency-cap-requirement.json`` at
+        ``/allOf/1/properties/supported_control_modes/items`` references a one-member
+        enumeration where the base it composes references a three-member one, and the
+        one member IS one of the three -- a narrowing the reference pair cannot show.
+
+        ``None`` for anything undecidable -- a local reference, a fragment, a target
+        that refuses -- and the caller then treats the pair as not ordered and refuses
+        the document.  That is the safe direction: a reference the merge rule cannot
+        read is a declaration it must not claim is narrower.
+
+        **A reference is never DEREFERENCED into the field**, only into the predicate
+        (:func:`_restatement`).  The field is decided from the document's own ``$ref``,
+        because a cross-document reference is an IMPORT and not a copy (P2) -- the thing
+        ``test_a_cross_document_reference_is_an_import_and_not_a_copy`` exists to catch.
+        """
+        try:
+            return self.bind(uri, "").node
+        except Refusal:
+            return None
 
     def declare(self, name: str, pointer: str, block: str) -> None:
         if name in self.names:
@@ -1742,12 +1776,12 @@ def lower_composition(
         # at the root and as an ``enum`` in a conjunct, which is the enum
         # narrowing and refuses here -- the intersection needs step 3's enum
         # lowering and cannot be stated from this row.
-        if _restatement(node, prior):
+        if _restatement(node, prior, mod.resolve_node):
             # The INTERSECTION and not the narrower node alone (D7, :func:`_intersection`):
             # both declarations apply to the same instance, so a keyword only the wider
             # one states is still the composed node's.
             local[key], at[key] = _intersection(node, prior), where
-        elif _restatement(prior, node) is None:
+        elif _restatement(prior, node, mod.resolve_node) is None:
             raise Refusal(
                 _disagreeing(node, prior),
                 where,
@@ -1904,11 +1938,25 @@ def lower_composition(
     own: dict[str, dict] = {}
     #: The keys whose field is the inherited one wearing this document's annotations.
     reuse: dict[str, Property] = {}
+    #: The keys whose INTERSECTION took its ``uniqueItems`` from the base, so D6 has
+    #: already claimed the keyword on the class that decided the base's field and this
+    #: subclass inherits that rule.  ``fields`` strips the keyword and renders the fact
+    #: onto the field, exactly as it does for a REUSED key and for the reason its
+    #: docstring gives there: the array row carries no ``uniqueItems`` and refuses one by
+    #: name, which is what keeps an array NO class holds refused rather than widened.
+    #:
+    #: Measured on ``core/product-execution-requirement.json`` at
+    #: ``/oneOf/2/properties/connection/allOf/1/properties/required_for``, whose
+    #: restatement is a bare ``{"contains": {...}}``: the intersection merges the base's
+    #: ``type``, ``items`` and ``uniqueItems`` back in, and the merged declaration was
+    #: then decided FRESH -- so the keyword reached the array row and refused the
+    #: document on a fact its base already states as a rule.
+    inherited_distinct: set[str] = set()
     for key, node in local.items():
         if key not in inherited:
             own[key] = node
             continue
-        verdict = _restatement(node, inherited[key])
+        verdict = _restatement(node, inherited[key], mod.resolve_node)
         if verdict is None:
             raise Refusal(
                 _disagreeing(node, inherited[key]),
@@ -1936,6 +1984,10 @@ def lower_composition(
             # itself where only the requiredness moved: there the content is the base's
             # already, so there is nothing of the base's to merge back in.
             own[key] = _intersection(node, inherited[key]) if verdict else node
+            if _constraining(own[key]).get("uniqueItems") is True and not _constraining(
+                node
+            ).get("uniqueItems"):
+                inherited_distinct.add(key)
         elif _annotates_differently(node, inherited[key]):
             # **It states the same thing about the INSTANCE and a different thing to the
             # READER**, so the subclass states the field: a document's own declaration
@@ -2030,7 +2082,7 @@ def lower_composition(
         # D6 has claimed the ``uniqueItems`` of these keys, whether the node stating
         # it is this one or a rule-bearing conjunct: the rule tuple and the strip are
         # two halves of one claim, so the row that writes the tuple passes the keys.
-        distinct=stated.distinct,
+        distinct=(*stated.distinct, *sorted(inherited_distinct - set(stated.distinct))),
         reuse=reuse,
     )
     return declare_object(
@@ -2187,7 +2239,9 @@ _BOUNDS = {
 }
 
 
-def _at_least_as_tight(keyword: str, c: Any, b: Any) -> bool:
+def _at_least_as_tight(
+    keyword: str, c: Any, b: Any, resolve: Callable[[str], dict | None] | None = None
+) -> bool:
     """Does ``c`` say at least what ``b`` says about the instance, at ``keyword``?
 
     D7's intersection rule, per keyword and in the three spellings D7 names: "an enum
@@ -2220,9 +2274,7 @@ def _at_least_as_tight(keyword: str, c: Any, b: Any) -> bool:
         # draft-07's tuple form, where position matters and two different lists are not
         # ordered by this predicate -- so it falls through to False.
         return (
-            isinstance(c, dict)
-            and isinstance(b, dict)
-            and _restatement(c, b) is not None
+            isinstance(c, dict) and isinstance(b, dict) and _restatement(c, b, resolve) is not None
         )
     return False
 
@@ -2292,7 +2344,9 @@ def _intersection(child: dict, base: dict) -> dict:
 _AXES: tuple[frozenset[str], ...] = (frozenset({"const", "enum"}),)
 
 
-def _restatement(child: dict, base: dict) -> bool | None:
+def _restatement(
+    child: dict, base: dict, resolve: Callable[[str], dict | None] | None = None
+) -> bool | None:
     """The merge rule as one decision about one restated property.
 
     ``True`` -- it NARROWS: everything ``base`` says about the instance it says at
@@ -2328,7 +2382,15 @@ def _restatement(child: dict, base: dict) -> bool | None:
     the base's statement applies wherever the child is quiet.  The two halves are one
     change and neither is correct without the other.
     """
-    c, b = _as_enum(_constraining(child)), _as_enum(_constraining(base))
+    # Both declarations read through :func:`_dereferenced`, and EVERY comparison below
+    # made on that same reading -- including the novelty test, which is the one that
+    # went wrong when it was not.  Comparing a RAW intersection against a DEREFERENCED
+    # base made two ``$ref``s to one target read as a narrowing, and the field then
+    # carried the base's annotation at a pointer the document declares itself: measured
+    # at 17 ``differs``, every one ``/properties/context/description``, which is §6's
+    # description-authority clause 2 and the 15 facts it was written for.
+    dc, db = _dereferenced(child, resolve), _dereferenced(base, resolve)
+    c, b = _as_enum(_constraining(dc)), _as_enum(_constraining(db))
     # **A ``const`` is a one-member ``enum``, and that is a rewrite rather than a rung**
     # (:func:`_as_enum`, applied before anything is compared).  D7's "a ``const`` must
     # agree" is the intersection of a pinned value with a vocabulary, and writing the
@@ -2338,14 +2400,38 @@ def _restatement(child: dict, base: dict) -> bool | None:
     # nothing to say about a two-member vocabulary.
     if not c:
         return False
-    if not all(_at_least_as_tight(k, c[k], b[k]) for k in set(c) & set(b)):
+    if not all(_at_least_as_tight(k, c[k], b[k], resolve) for k in set(c) & set(b)):
         return None
     # It narrows when the INTERSECTION says more than the base does.  Asked of the
     # intersection and not of the child, because that is what the field carries: a
     # child restating a strict SUBSET of the base's keywords with the same values
     # intersects to the base itself, states no new fact, and is the inherited field
     # (``_annotates_differently`` then decides whether the annotations differ).
-    return _as_enum(_constraining(_intersection(child, base))) != b
+    return _as_enum(_constraining(_intersection(dc, db))) != b
+
+
+def _dereferenced(
+    declaration: dict, resolve: Callable[[str], dict | None] | None
+) -> dict:
+    """A declaration that is nothing but a ``$ref``, read as what it references.
+
+    For the PREDICATE and never for the field: :func:`Module.resolve_node` says why, and
+    the asymmetry is the point -- whether one declaration narrows another is a fact
+    about the two TARGETS, while the field is an IMPORT of the symbol the document
+    names (P2).
+
+    Only a declaration whose whole constraining content is the reference.  A ``$ref``
+    with a constraint beside it is draft-07 ignoring its sibling, which the whole
+    pipeline refuses by name rather than reading two ways (``emit.decide_type``,
+    :func:`lower_composition`'s sibling arm), so there is nothing here to resolve.
+    """
+    if resolve is None:
+        return declaration
+    content = _constraining(declaration)
+    if set(content) != {"$ref"}:
+        return declaration
+    target = resolve(content["$ref"])
+    return target if isinstance(target, dict) else declaration
 
 
 #: The draft-07 type word each JSON value has.  ``bool`` before ``int`` because

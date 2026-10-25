@@ -1855,6 +1855,32 @@ def _in_vocabulary(value: Any, members: Any) -> bool:
     return isinstance(members, list) and any(value == member for member in members)
 
 
+def _one_vocabulary(node: dict, conjunct: dict) -> tuple[dict, dict]:
+    """``node`` and ``conjunct`` with ONE statement left on the vocabulary axis.
+
+    ``const: v`` and ``enum: [...v...]`` state the same kind of fact about an instance,
+    so the intersection of the two is the PIN and the vocabulary is not a second fact
+    beside it.  Whichever view supplies the pin, the other's vocabulary goes -- so the
+    gap-fill below cannot leave a merged node carrying both, which is a shape no
+    document states.
+
+    Measured on ``core/canonical-media-buy-action.json``, whose branch states
+    ``{"const": "control_media_buy"}`` for ``task`` over a composed base's three-member
+    ``enum``: keeping both made the document read as stating an ``enum`` the faithful
+    model (a ``Literal``) does not, 3 ``missing`` facts over the 3 branches.
+
+    Gated on the pin being IN the vocabulary.  A ``const`` outside it is an EMPTY
+    intersection -- the emitter's refusal to make -- and dropping the vocabulary there
+    would hide a document that admits nothing behind a model that admits one value, so
+    both facts are left standing and the pair reports.
+    """
+    if "const" in conjunct and _in_vocabulary(conjunct["const"], node.get("enum")):
+        return {k: v for k, v in node.items() if k != "enum"}, conjunct
+    if "const" in node and _in_vocabulary(node["const"], conjunct.get("enum")):
+        return node, {k: v for k, v in conjunct.items() if k != "enum"}
+    return node, conjunct
+
+
 def _tighter(keyword: str, node: Any, conjunct: Any) -> Any:
     """The INTERSECTION of two views of one keyword, or :data:`_UNDECIDED`.
 
@@ -1967,19 +1993,9 @@ def _composed(doc: Any, depth: int = 0) -> Any:
         # DOCUMENT itself states is still compared, because this rewrites a
         # CONJUNCT the resolver wrote and nothing else.
         c = _uncanonicalized(_one_member_enum(_composed(conjunct, depth + 1)))[0]
-        # **A VALUE PIN ANSWERS FOR THE WHOLE VOCABULARY AXIS.**  ``const: v`` and
-        # ``enum: [...v...]`` state the same kind of fact, so the intersection of the
-        # two is the pin and the vocabulary is not a second fact beside it.  Both
-        # directions, because a conjunct can supply either half: measured on
-        # ``core/canonical-media-buy-action.json``, whose branch states
-        # ``{"const": "control_media_buy"}`` for ``task`` over a composed base's
-        # three-member ``enum`` -- the gap-fill kept BOTH, so the document read as
-        # stating an ``enum`` the model (a ``Literal``) does not, 3 ``missing`` facts
-        # over the 3 branches.
-        if "const" in c and _in_vocabulary(c["const"], out.get("enum")):
-            out.pop("enum", None)
-        elif "const" in out and _in_vocabulary(out["const"], c.get("enum")):
-            c = {k: v for k, v in c.items() if k != "enum"}
+        # One statement on the vocabulary axis before anything is gap-filled, so the
+        # merged node cannot carry a ``const`` beside the ``enum`` it pins.
+        out, c = _one_vocabulary(out, c)
         for kw in FACTS:
             if kw == "required" or kw not in c:
                 continue
@@ -2023,8 +2039,22 @@ def _composed(doc: Any, depth: int = 0) -> Any:
                 else:
                     mine[name] = sub
             out["properties"] = mine
-        if isinstance(c.get("items"), dict) and "items" not in out:
-            out["items"] = c["items"]
+        # ``items`` composes the way ``properties`` does, by the SAME mechanism: the
+        # conjunct's declaration is stashed as an ``allOf`` on the merged node and this
+        # function folds it when the comparison descends.  It gap-filled instead, so an
+        # overlay narrowing an array's element kept the WIDER element -- measured on
+        # ``core/media-buy-frequency-cap-requirement.json`` at
+        # ``/properties/supported_control_modes``, whose conjunct narrows the element
+        # from a three-member enumeration to one, reported as the model adding a
+        # ``const`` and dropping an ``enum``.  D7: the intersection holds at any depth,
+        # INCLUDING an overlay under ``items``.
+        if isinstance(c.get("items"), dict):
+            mine_items = out.get("items")
+            if isinstance(mine_items, dict):
+                pending = mine_items["allOf"] if isinstance(mine_items.get("allOf"), list) else []
+                out["items"] = {**mine_items, "allOf": [*pending, c["items"]]}
+            else:
+                out["items"] = c["items"]
     return out
 
 

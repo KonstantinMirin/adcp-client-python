@@ -1,0 +1,191 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "dependencies": {
+    "frequency_cap_constraints": [
+      "frequency_cap"
+    ]
+  },
+  "description": "Buyer minimums for product participation in shared MediaBuy-level execution. Missing or unknown required capabilities exclude the product.",
+  "minProperties": 1,
+  "properties": {
+    "frequency_cap": {
+      "const": true,
+      "description": "Require product participation in one shared MediaBuy frequency-cap counter.",
+      "type": "boolean"
+    },
+    "frequency_cap_constraints": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": {
+        "not": {}
+      },
+      "description": "Buyer minimum product-support detail for an aggregate MediaBuy frequency cap. Aggregate support in 3.2 is max-impressions only.",
+      "maxProperties": 5,
+      "not": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": {
+          "not": {}
+        },
+        "description": "Buyer minimum product-support detail for an aggregate MediaBuy frequency cap. Aggregate support in 3.2 is max-impressions only.",
+        "maxProperties": 5,
+        "properties": {
+          "mutable_fields": {
+            "description": "Require each listed logical field to be mutable after creation. Matches a product whose mutable_fields contains every listed value, or a product that omits mutable_fields, or legacy frequency_cap: true. A product declaring mutable_fields: [] is create-only and never matches a non-empty list.",
+            "items": {
+              "enum": [
+                "per",
+                "window",
+                "suppress",
+                "max_impressions"
+              ]
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "supported_control_modes": {
+            "items": {
+              "const": "max_impressions"
+            },
+            "maxItems": 1,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "supported_per_units": {
+            "items": {
+              "enum": [
+                "custom",
+                "cookies",
+                "devices",
+                "accounts",
+                "households",
+                "individuals"
+              ]
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "supported_suppression_units": {
+            "description": "Require each listed unit to be a supported suppress unit after seller-wide inheritance.",
+            "items": {
+              "enum": [
+                "days",
+                "hours",
+                "minutes",
+                "seconds",
+                "campaign"
+              ]
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "supported_window_units": {
+            "description": "Require each listed unit to be a supported max_impressions.window unit after seller-wide inheritance.",
+            "items": {
+              "enum": [
+                "days",
+                "hours",
+                "minutes",
+                "seconds",
+                "campaign"
+              ]
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "supported_suppression_units"
+        ],
+        "title": "Media Buy Frequency Cap Requirement",
+        "type": "object"
+      },
+      "properties": {
+        "mutable_fields": {
+          "description": "Require each listed logical field to be mutable after creation. Matches a product whose mutable_fields contains every listed value, or a product that omits mutable_fields, or legacy frequency_cap: true. A product declaring mutable_fields: [] is create-only and never matches a non-empty list.",
+          "items": {
+            "enum": [
+              "per",
+              "window",
+              "suppress",
+              "max_impressions"
+            ]
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "supported_control_modes": {
+          "items": {
+            "const": "max_impressions"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "supported_per_units": {
+          "items": {
+            "enum": [
+              "custom",
+              "cookies",
+              "devices",
+              "accounts",
+              "households",
+              "individuals"
+            ]
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "supported_suppression_units": {
+          "description": "Require each listed unit to be a supported suppress unit after seller-wide inheritance.",
+          "items": {
+            "enum": [
+              "days",
+              "hours",
+              "minutes",
+              "seconds",
+              "campaign"
+            ]
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "supported_window_units": {
+          "description": "Require each listed unit to be a supported max_impressions.window unit after seller-wide inheritance.",
+          "items": {
+            "enum": [
+              "days",
+              "hours",
+              "minutes",
+              "seconds",
+              "campaign"
+            ]
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "title": "Media Buy Frequency Cap Requirement",
+      "type": "object"
+    }
+  },
+  "title": "Product Media Buy Support Requirements",
+  "type": "object"
+}
