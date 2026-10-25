@@ -231,13 +231,15 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     # ``lookback_window``, ``image_carousel``'s ``allowed_card_asset_types`` and
     # ``bidding-policy-capability``'s two ``definitions`` entries, the last two reachable
     # only because .28's rows emit that document.
-    # 502 -> 503 at ``salesagent-j3k2l.21``, and the net hides two moves in opposite
-    # directions: the eleven new modules declare 2 enum classes
-    # (``GeographicPlaceCatalogEntryStatus``, ``MediaBuyAvailableActionTask``) and D2's
-    # Literal amendment removes 1 --
-    # ``AccessibilityViolationDetailsViolationsItemFailureKind``, whose branch no name
-    # reaches. Enumerated per module, not differenced.
-    assert len(classes) == 503, len(classes)  # 214 roots, the rest inline
+    # 502 -> 504 at ``salesagent-j3k2l.21``: the eleven new modules declare 2 enum
+    # classes, ``GeographicPlaceCatalogEntryStatus`` and ``MediaBuyAvailableActionTask``.
+    # Enumerated per module rather than differenced, which is how the figure was checked
+    # in BOTH directions -- D2's Literal reading was briefly wider and removed
+    # ``AccessibilityViolationDetailsViolationsItemFailureKind`` as well, giving 503, and
+    # narrowing it to a root union's branch put that class back and the count returned to
+    # 504 exactly. A decomposition that predicts a reversion is one that was read rather
+    # than fitted.
+    assert len(classes) == 504, len(classes)  # 214 roots, the rest inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
     assert len(roots) == 214, len(roots)
 
@@ -296,12 +298,13 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
     # 2993 -> 2979 at ``salesagent-j3k2l.38``: the 4 enum classes the content dedup
     # collapses take their members with them (8, 2, 2 and 2), so this shrinks against
     # that growth and the merged value is re-measured rather than picked.
-    # **2979 -> 2977 at ``salesagent-j3k2l.21``, and this pin FELL while the tree
-    # grew**, which is why the decomposition is stated rather than the delta: the
-    # eleven new modules add 6 members across 2 enum classes, and the StrEnum D2's
-    # Literal amendment removed from
-    # ``error-details/accessibility-violation.json`` had 8. +6 - 8 = -2.
-    assert names == 2977, names
+    # 2979 -> 2985 at ``salesagent-j3k2l.21``: the eleven new modules add 6 members
+    # across 2 enum classes. The wider reading of D2's Literal rendering also took the
+    # 8-member StrEnum out of ``error-details/accessibility-violation.json``, which made
+    # this pin FALL to 2977 while the tree grew; narrowing the rendering to a root
+    # union's branch put those 8 back. Both readings were measured per module, which is
+    # what made the -2 explicable at the time and the return to +6 predictable.
+    assert names == 2985, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):

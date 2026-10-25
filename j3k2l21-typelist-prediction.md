@@ -314,6 +314,71 @@ unchanged from Part One. The two new ones:
 | P-G | `resolves_no_name` answers False, so an untitled enum branch claims a name again | RED |
 | P-H | `lower_enum` dropped from the DRY walk's module list | RED: `['const'] == ['const', 'enum']` |
 
+## Three findings about pins, in general form
+
+These came out of re-pointing twelve pins this row moved, and each one is a statement about
+pins rather than about this row.
+
+### 1. A comment that PRICES AN ALTERNATIVE is a measurement, and goes stale like one
+
+`test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named` exists to price a
+road not taken: refusing `enumMetadata` instead of annotating it. Its docstring says the
+alternative "costs exactly the 3 enum roots with no cascade, which is measured here so the
+alternative is priced rather than argued."
+
+That price was true, and it was true for a reason the comment does not state: the fourth
+carrier of `enumMetadata`, `core/media-buy-available-action-id.json`, is **not** an enum root,
+so the row's own set could not reach it — and it did not emit, so unannotating the keyword cost
+nothing there. This row makes it emit. The keyword now has a cost at that document too, and
+the cost CASCADES to every document that `$ref`s it, so the price is neither 3 nor the 4 I
+first guessed.
+
+**The assertion was green the whole time.** `assert len(enum_rooted) == 3` still passes —
+there are still three enum roots. What went stale is the sentence that uses that 3 to argue a
+design decision is cheap. A reader deciding whether to revisit `enumMetadata` would have read a
+price measured against a tree that no longer exists.
+
+This is a sibling of the rule another row established — a refusal's REASON is a measurement and
+goes stale like one — and the pair generalizes further than either alone: **any sentence in the
+suite that carries a number to justify a choice is an instrument reading, and nothing re-runs
+it.** An assertion is re-run on every suite; the argument beside it is not. So a comment that
+prices an alternative needs the same treatment a pin gets — re-measured when the population
+moves, with the new figure and the reason it moved — and the test should assert the priced set
+rather than only its size, because a set reddens when a member arrives and a count of 3 does
+not.
+
+### 2. A pin can move the WRONG WAY, and only a decomposition says why
+
+`test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses` counts enum members
+across the emitted tree. This row added eleven modules to that tree and the count **fell**,
+2979 → 2977. A re-point to 2977 would have been correct and would have explained nothing.
+
+Decomposed per module rather than differenced: +6 members across 2 new enum classes, −8 from
+the `StrEnum` that D2's `Literal` rendering removed from
+`error-details/accessibility-violation.json`.
+
+**And then the decomposition was tested, because D2 was corrected.** The narrowed reading —
+a `Literal` only where the POSITION supplies no name — puts that class back, so the −8 should
+vanish and the pin should read 2985. Re-measured: **2985**. Classes likewise 503 → 504,
+declared 1425 → 1426. A decomposition that predicts a reversion is one that was read off the
+artifact rather than fitted to a delta, and the reversion is the only cheap way to tell those
+two apart after the fact.
+
+### 3. A count is evidence for its own population, and two populations disagree honestly
+
+`test_the_rows_delta_is_reported_with_its_denominator` measures emission over 599 documents and
+moved **+15** while the whole-bundle count moved **+11**. The difference is not an error in
+either: `emit` emits the `$ref` CLOSURE of the population it is given, so a newly-emitting
+document brings its reference targets with it. The 15 are this row's 11 plus four enum
+documents reached only through them — `enums/action-not-allowed-reason.json`,
+`enums/media-buy-action-mode.json`, `enums/media-buy-valid-action.json`,
+`enums/seller-policy-decline-reason.json`. Over the whole portable set those four were
+**already emitting**, so they are not a status change there.
+
+Enumerated, not reasoned. The arithmetic +15 ≠ +11 looks like a defect and is two correct
+counts of two different things; the only way to tell that from a real discrepancy is to print
+the set difference and read it.
+
 ### What moved in the suite besides the new check
 
 `test_a_union_root_emits_a_base_plus_one_subclass_per_branch` and the seven shape tests beside

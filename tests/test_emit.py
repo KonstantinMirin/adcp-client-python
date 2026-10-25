@@ -5507,10 +5507,10 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     # is the number of NAMES clause 2 compared, so it is the one that says the identity
     # check ran at all, and ``unverifiable`` is the groups it could not reach.
     assert unverifiable == 0, unverifiable
-    # 1413 -> 1425 at ``salesagent-j3k2l.21``: eleven new modules declare twelve
-    # symbols between them, and the StrEnum removed from
-    # ``error-details/accessibility-violation.json`` gives one back.
-    assert declared == 1425, declared
+    # 1413 -> 1426 at ``salesagent-j3k2l.21``: the eleven new modules declare thirteen
+    # symbols between them -- eleven roots plus the two enum classes
+    # ``GeographicPlaceCatalogEntryStatus`` and ``MediaBuyAvailableActionTask``.
+    assert declared == 1426, declared
     assert groups == 9, groups
     assert adoptions == 10, adoptions
     assert identities == 19, identities
