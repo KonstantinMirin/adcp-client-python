@@ -179,6 +179,7 @@ StrMinLen1MaxLen64Matching0E0E048E = Annotated[str, Field(max_length=64, min_len
 StrMinLen1MaxLen64Matching4C202885 = Annotated[str, Field(max_length=64, min_length=1, pattern='^[A-Za-z][A-Za-z0-9._:-]{0,63}$')]
 StrMinLen1MaxLen64Matching4D6E1599 = Annotated[str, Field(max_length=64, min_length=1, pattern='^[a-z][a-z0-9_]*$')]
 StrMinLen1MaxLen64Matching5CDAE669 = Annotated[str, Field(max_length=64, min_length=1, pattern='^[a-z][a-z0-9_.-]*$')]
+StrMinLen1MaxLen64MatchingBC7F3822 = Annotated[str, Field(max_length=64, min_length=1, pattern='^[A-Za-z0-9_]+$')]
 StrMinLen1MaxLen64MatchingD373B860 = Annotated[str, Field(max_length=64, min_length=1, pattern='^[A-Za-z0-9_.:-]{1,64}$')]
 StrMinLen2MaxLen63MatchingD5112E5A = Annotated[str, Field(max_length=63, min_length=2, pattern='^(?:[a-z]{2,8}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?|x(?:-[a-z0-9]{1,8})+)$')]
 StrMinLen32 = Annotated[str, Field(min_length=32)]
