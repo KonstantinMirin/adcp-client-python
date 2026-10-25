@@ -1506,4 +1506,5 @@ def test_a_property_named_definitions_is_a_property_and_not_a_section(tmp_path: 
     carried = json.loads(out.files["a2ui/odd.json"])
     assert bundle.references(carried) == [], bundle.references(carried)
     body = carried["properties"]["definitions"]["properties"]["body"]
-    assert body["title"] == TARGET["title"], body
+    assert "$ref" not in body, body
+    assert set(body["properties"]) == set(TARGET["properties"]), body

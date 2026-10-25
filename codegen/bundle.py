@@ -392,6 +392,29 @@ def section_entries(node: object) -> frozenset[str]:
     )
 
 
+def reaches(pointer: str, *, entries: Collection[str], declared: Collection[str]) -> bool:
+    """Is this position reached at all, from a class or from the document root.
+
+    **VALIDATION AND THE LOWERING BOTH START AT A DECLARED POINTER AND DESCEND BY
+    ASSERTION KEYWORDS, WHICH NEVER CROSS A SECTION BOUNDARY.**  ``reach`` is the
+    DEEPEST declared pointer above this one -- the innermost class that grades or
+    lowers through it -- or the document root when nothing declares one, since the root
+    is always both.  The position is reached unless a ``definitions`` / ``$defs`` entry
+    lies between ``reach`` and it, because crossing into one is the step no assertion
+    takes.  An entry AT ``reach`` is not between them: there the declaration IS the
+    entry, which is what section 5 means by declaring it on demand.
+
+    ``entries`` is :func:`section_entries` for the document and ``declared`` is
+    :func:`named_nodes` for it.  ONE implementation, because the two questions it
+    answers are the same question: :func:`undecidable_references` asks whether a
+    reference can be validated through, and ``tests/test_emit.lowered_nodes`` asks
+    whether a node is lowered at all.  Two readings of one boundary is how a check and
+    the emitter come to disagree about which positions exist.
+    """
+    reach = max(pointers_above(pointer, declared), key=len, default="")
+    return not any(len(e) > len(reach) for e in pointers_above(pointer, entries))
+
+
 def undecidable_references(
     resolved_doc: dict, named: Collection[str]
 ) -> list[tuple[str, str]]:
@@ -437,15 +460,10 @@ def undecidable_references(
     are what keeps the rule from needing a second reading when they arrive.
     """
     entries = section_entries(resolved_doc)
-
-    def reached(pointer: str) -> bool:
-        reach = max(pointers_above(pointer, named), key=len, default="")
-        return not any(len(e) > len(reach) for e in pointers_above(pointer, entries))
-
     return [
         (pointer, uri)
         for pointer, uri in references(resolved_doc)
-        if split_ref(uri)[0] and reached(pointer)
+        if split_ref(uri)[0] and reaches(pointer, entries=entries, declared=named)
     ]
 
 

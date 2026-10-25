@@ -139,6 +139,37 @@ def union_roots() -> list[str]:
 
 
 @functools.cache
+def _named() -> dict[str, frozenset[str]]:
+    """``bundle.named_nodes`` for the whole bundle, cached like every other
+    derivation here: it reads all 1,054 documents."""
+    return bundle.named_nodes(BUNDLE)
+
+
+def lowered_nodes(document: str) -> list[tuple[str, dict]]:
+    """Every node of a document the emitter LOWERS, as ``bundle.nodes`` pairs.
+
+    ``bundle.nodes`` walks every schema position, INCLUDING the inside of a
+    ``definitions`` / ``$defs`` entry nothing declares -- and section 3 says such an
+    entry "is not declared", so the emitter writes no type, no annotation and no import
+    for anything inside it.  A check that asserts a node produced something in the
+    module therefore ranges over this, not over every position: asking the whole walk
+    grades the emitter against a node it is correct not to have visited.
+
+    First reached when ``a2ui/si-catalog.json`` emitted (``salesagent-j3k2l.71``): its
+    dead section states a ``format: uri`` and a typed ``additionalProperties``, and two
+    checks here read both as positions the module had failed to carry.
+    """
+    doc = bundle.read(BUNDLE, document)
+    entries = bundle.section_entries(doc)
+    named = _named().get(document, frozenset())
+    return [
+        (pointer, node)
+        for pointer, node in bundle.nodes(doc)
+        if bundle.reaches(pointer, entries=entries, declared=named)
+    ]
+
+
+@functools.cache
 def population() -> list[str]:
     """What the committed tree is emitted from.  A reference TARGET is not here and
     does not need to be: ``emit`` walks ``$ref`` and emits the closure.
@@ -1358,7 +1389,10 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             if isinstance(key, ast.Constant) and key.value == "format"
             if isinstance(value, ast.Constant)
         }
-        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
+        # ``lowered_nodes`` and not the whole walk: a node inside a section entry
+        # nothing declares is not lowered, so no type is selected and no import is
+        # written for it, and the assertions below are about what the MODULE carries.
+        for pointer, node in lowered_nodes(document):
             fmt = node.get("format")
             if not isinstance(fmt, str):
                 continue
@@ -4414,12 +4448,18 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     rendered annotation's own names call for.  A mechanism with a population of 0 is
     green for free; this one has 1, and that is what found it.
     """
+    # ``lowered_nodes`` and not the whole walk, for the reason that helper states: a
+    # typed ``additionalProperties`` inside a section entry nothing declares reaches no
+    # class, so there is no extras store and no mapping for this check to find.
+    # ``a2ui/si-catalog.json`` is the document that showed it -- its dead section
+    # states one at ``/definitions/AppHandoff/properties/apps/additionalProperties`` --
+    # and it is excluded by the rule rather than by name (``salesagent-j3k2l.71``).
     typed = [
         d
         for d in bundle.portable(BUNDLE)
         if any(
             isinstance(n.get("additionalProperties"), dict) and n["additionalProperties"]
-            for _, n in bundle.nodes(bundle.read(BUNDLE, d))
+            for _, n in lowered_nodes(d)
         )
     ]
     # Non-empty, and inside the bundle: how many documents carry a typed
