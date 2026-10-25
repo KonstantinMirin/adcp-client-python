@@ -244,29 +244,20 @@ A step that wants to change one of these reports it and stops.
   `ExplicitPackagesWithFixedAllocation` — names that collide across documents and carry nothing
   of the root they belong to.
 
-  **A union node can hold more than one branch that needs a derived name.** The first three
-  rungs name a branch from its own content. A branch with no title, no discriminator `const` and
-  no required set has none, so it falls back to the node's hint, and a second such branch derives
-  the same symbol. `Module.add` refuses the duplicate, and the document refuses on that branch's
-  keyword.
+  **The type-word rung carries a second unnamed branch at one node.** The first three rungs read
+  a name off the branch's own content, and a node may hold two branches that state none of them.
+  Such a branch takes its own root type word, qualified by the base's name.
+  `governance/reported-outcome-error.json#/definitions/bounded_value_level_3` is an `anyOf` of
+  three untitled branches: a `$ref`, an array stating `maxItems: 32`, and an object stating
+  `maxProperties: 32`. The `$ref` needs no name; the other two each need a carrier under D5's
+  third rung, and they are `BoundedValueLevel3Array` and `BoundedValueLevel3Object`.
 
-  Measured: `governance/reported-outcome-error.json#/definitions/bounded_value_level_3` is an
-  `anyOf` of three untitled branches — a `$ref`, an array stating `maxItems: 32`, and an object
-  stating `maxProperties: 32`. The `$ref` needs no name. The other two each need a carrier under
-  D5's third rung, so one of them refuses. Before this rung the document refuses on `maxItems`,
-  which names a constraint row while the obstruction is the name.
+  The word is the schema's own, so it is derived rather than invented. **Two branches of the same
+  root type refuse**: the rung names a branch only where the root types differ. An index or an
+  ordinal would name every branch after nothing the schema states.
 
-  The type word is the schema's own, `array` or `object`, so it is derived rather than invented.
-  D3's qualification rule prefixes it: `BoundedValueLevel3Array` beside
-  `BoundedValueLevel3Object`.
-
-  **Two branches of the same root type still refuse.** The rung names a branch only where the
-  root types differ, and the terminal rung answers the rest. An index or an ordinal would name
-  every branch and name none of them after anything the schema states.
-
-  D2 refuses a WRAPPER around an unnameable branch, because "a wrapper changes what the class is
-  called and leaves the naming problem untouched". A type word leaves the class as it is and
-  supplies the name directly, so D2's reason does not reach it.
+  **A branch that cannot be named is refused, never wrapped**, because a wrapper changes what the
+  class is called and leaves the naming problem untouched.
 
   Nodes with identical content are one node; content equality is the only deduplication. A name
   is an input to a lowering and is never computed inside one.
