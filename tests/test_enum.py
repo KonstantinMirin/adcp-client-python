@@ -43,6 +43,7 @@ from codegen.harness import (
     FACTS,
 )
 from codegen.lower import enum as lower_enum
+from codegen import refusal as refusal_module
 from codegen.refusal import Refusal
 from tests.test_emit import BUNDLE, graded, population, TREE
 
@@ -940,12 +941,40 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
     # unannotating the keyword cost nothing there. It emits now (a union root of scalars
     # is an alias), so refusing ``enumMetadata`` would refuse it too. The price is read
     # off the measurement rather than held at the figure the comment argued.
-    priced = sorted([*enum_rooted, "core/media-buy-available-action-id.json"])
+    # **THE PRICE IS SEVEN DOCUMENTS, NOT THREE, AND IT CASCADES.** The docstring
+    # above priced it at "exactly the 3 enum roots with no cascade", and that was true
+    # for a reason it does not state: the fourth carrier,
+    # ``core/media-buy-available-action-id.json``, is NOT an enum root -- so this row's
+    # own set could not reach it -- and it did not EMIT, so unannotating the keyword
+    # cost nothing there. ``salesagent-j3k2l.21`` makes it emit (a union root of scalars
+    # is an alias), so the keyword has a cost at that document, and three more documents
+    # ``$ref`` it and go with it. "With no cascade" is the half that stopped being true.
+    #
+    # **Asserted as the SET and not as its size**, which is the general lesson rather
+    # than a style choice: ``assert len(enum_rooted) == 3`` passed throughout, because
+    # there really are still three enum roots. What went stale was the sentence using
+    # that 3 to argue the alternative is cheap -- a comment that prices an alternative
+    # is a measurement and goes stale like one, while the assertion beside it stays
+    # green. A set reddens when a member arrives; a count of three does not.
+    #
+    # Split by HOW each one refuses, because the two halves are different facts: four
+    # carry the keyword at their own root, and three carry a ``$ref`` to one that does.
+    direct = sorted([*enum_rooted, "core/media-buy-available-action-id.json"])
+    cascaded = [
+        "core/media-buy-available-action.json",
+        "core/product-allowed-action.json",
+        "error-details/action-not-allowed.json",
+    ]
+    priced = sorted([*direct, *cascaded])
     assert sorted(set(refusing.refusals) - set(out.refusals)) == priced, priced
-    assert len(refusing.emitted) == len(out.emitted) - 4, len(refusing.emitted)
-    for document in priced:
-        assert refusing.refusals[document]["keyword"] == "enumMetadata"
-        assert refusing.refusals[document]["pointer"] == "/"
+    assert len(refusing.emitted) == len(out.emitted) - 7, len(refusing.emitted)
+    for document in direct:
+        assert refusing.refusals[document]["keyword"] == "enumMetadata", document
+        assert refusing.refusals[document]["pointer"] == "/", document
+    for document in cascaded:
+        row = refusing.refusals[document]
+        assert row["keyword"] == "$ref", (document, row)
+        assert row["kind"] == refusal_module.Kind.CHAINED, (document, row)
 
 
 # ``test_identical_enum_nodes_under_one_document_are_unreached_by_this_step`` stood

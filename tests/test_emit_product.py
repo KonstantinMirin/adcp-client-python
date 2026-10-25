@@ -244,8 +244,18 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # 228 -> 233 at ``salesagent-j3k2l.28``: with the row, 592 emit; without it, 359.
     # The delta grew because 5 of the 11 documents that row unblocked only emit
     # when this row claims their composing root as well.
-    assert len(with_row.emitted) - len(without.emitted) == 233
-    assert len(set(composing()) & set(with_row.emitted)) == 152  # 147 at .40
+    #
+    # 233 -> 237 at ``salesagent-j3k2l.21`` (with 607, without 370), and the +4 is
+    # ENUMERATED rather than read off the arithmetic: of that row's eleven documents,
+    # exactly four emit here only when this row claims their composing root as well --
+    # ``core/geo-place-area.json``, ``core/geo-place-system.json``,
+    # ``core/get-geo-place-resolution-response.json`` and ``core/start-timing.json``.
+    # The other seven emit either way, which is why ``without`` moved +11 and the delta
+    # only +4.
+    assert len(with_row.emitted) - len(without.emitted) == 237
+    # 152 -> 154 at ``salesagent-j3k2l.21``: two of its eleven compose at their own
+    # root (``core/geo-place-area.json`` and ``core/geo-place-catalog-entry.json``).
+    assert len(set(composing()) & set(with_row.emitted)) == 154  # 147 at .40
     # **Every document the row rescues from a refusal is EMITTED with it**, and the
     # composing ones are 147 of the 151.  This was an equality against
     # ``composing() & emitted`` and the equality is no longer true, which is a
@@ -268,7 +278,12 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # 151 -> 156 at ``salesagent-j3k2l.28``, and 156 - 152 = 4 again: the four names
     # below are still exactly the non-composing members, so the +5 is the composing
     # half growing and not a new kind of document arriving.
-    assert len(cleared) == 156, len(cleared)
+    #
+    # 156 -> 158 at ``salesagent-j3k2l.21``, and **158 - 154 = 4 a third time**. The
+    # four names below are re-measured and are STILL exactly those four, which is the
+    # assertion that says this row's +2 is the composing half growing rather than a new
+    # kind of document arriving -- the same reading that held at .28 and at .29.
+    assert len(cleared) == 158, len(cleared)
     assert sorted(cleared - set(composing())) == [
         "core/catalog.json",
         "core/reporting-delivery-ready-webhook.json",
@@ -316,7 +331,15 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # ``salesagent-j3k2l.28``, and 152 + 149 = 301 either way: the five documents that
     # left this half are the five the row now emits.  Asserted as the partition as
     # well, so the two halves cannot drift apart silently.
-    assert len(refused) == 149, len(refused)
+    #
+    # 149 -> 147 at ``salesagent-j3k2l.21``, and **154 + 147 = 301**, so the partition
+    # holds across this row too. The two that left this half are the two of its eleven
+    # that compose at their own root: ``core/geo-place-area.json`` and
+    # ``core/geo-place-catalog-entry.json``. The partition is what makes the pair of
+    # figures one measurement rather than two -- a document leaving the refused half
+    # without arriving in the emitted one would redden here even though both counts
+    # moved in the direction a landing row moves them.
+    assert len(refused) == 147, len(refused)
     assert len(refused) + len(set(composing()) & set(with_row.emitted)) == len(composing())
     # **AND THE ONE AT ``/`` IS GONE, which is the attribution reaching 100%.**  It was
     # ``sponsored-intelligence/si-ui-element.json`` on ``if``, refused at the ROOT
