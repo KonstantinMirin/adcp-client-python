@@ -115,6 +115,7 @@ class Cell(NamedTuple):
     effect: Effect          # TYPE | FIELD | RULE | NAME | ANNOTATION | NOTHING | REFUSE
     rendered: bool          # does a faithful model state this keyword in model_json_schema()
     descends: Position | None   # the position of the subschema(s) this keyword holds, if any
+    compiles: str           # the sentence the grid states for this keyword here
 
 class Row(NamedTuple):
     default: Cell
@@ -126,7 +127,31 @@ def cell(keyword: str, position: Position) -> Cell | None   # None: no row, whic
 
 A row is written per keyword with a default cell and an override per position that differs,
 because that is the shape of the semantics document's own tables: most rows give one answer
-and name the positions that depart from it. The table also carries the `x-` namespace rule
+and name the positions that depart from it.
+
+**`compiles` is why generation is possible at all.** The grid's "compiles to" column is
+English, and `effect`, `rendered` and `descends` do not determine it: no triple of them writes
+"`ge` / `le` on the type: a standard Pydantic type where one says exactly this, a named alias
+otherwise." Without the sentence in the cell, generation can only produce a matrix of effects
+beside the prose grid, which leaves the second copy of the what standing — the thing §3 says
+generation removes. So the sentence IS the cell's, the grid is its rendering, and the prose a
+reader keeps honest against the cells is the reasoning around the grid rather than the grid.
+
+**How a row renders to a grid line.** The line is the default cell's `compiles`, followed by
+one clause per position override, in `Position` declaration order; overrides whose `compiles`
+is identical are one clause and their positions are joined with ` / `. That is already the
+shape the semantics document's rows are written in — "`min_length` / `max_length` on the type,
+as a named alias. KEY → the key type … ELEM / MAPV → the alias inside the container. ROOT → the
+root alias. RULE → nothing." — so the rule is read off the existing grids rather than imposed on
+them. A co-occurrence that is not a position (`pattern` beside `format: uri`, an `enum` beside
+`type`) belongs to the sentence of the cell it qualifies, because the table is keyed by position
+and a co-occurrence is not one.
+
+§6 and §7's grids are membership projections and need no join: a row NOTHING or ANNOTATION at
+every position renders its `compiles` as §6's "what it does, or why nothing", and a REFUSE row
+renders it as §7's "why".
+
+The table also carries the `x-` namespace rule
 (§6 of the semantics document): a key with the prefix is admitted, and every such key the
 bundle carries is also a row, so a prefixed key with no row is admitted and REPORTED.
 
@@ -151,6 +176,38 @@ second list.
 The reasoning paragraphs in those sections are written by hand and are what generation cannot
 produce. A cell decides WHAT; the sentence beside it says WHY, and a reader still has to keep
 those two honest. What is removed is the second copy of the what.
+
+**Where a generated grid begins and ends, and who writes it.** Each grid sits between two
+markers, and the generator owns the lines between them and nothing else:
+
+```markdown
+<!-- generated from codegen/keywords.py -->
+| keyword | compiles to |
+...
+<!-- end generated -->
+```
+
+The markers are necessary rather than decorative. Without them a generator either rewrites a
+whole section — and the reasoning paragraphs, which it cannot produce, are what it would
+destroy — or it cannot locate its own output at all. With them the region is addressable, the
+prose around it is outside the generator's reach, and a reader can see which half of the
+section is derived.
+
+**The generator is a reader of the table and lives in `tests/test_keywords.py`.** It is not in
+`keywords.py`: §11 gives the declaration layer positions, keywords, cells and descent, and
+denies it text, so a module that renders markdown is not that layer. It is not an entry point
+either — §10's rule is that no module of the compiler is ever bound as `__main__`, so there is
+no `python -m codegen.keywords`, and the compiler does not write its own documentation.
+The test holds both directions: it renders each grid from the cells and asserts the committed
+document's marked region equals it, and `--write-grids` on the test writes the region when a
+cell has deliberately changed. So the generated half of the semantics document is a test
+artifact, which is what makes a cell change that was not written through to the document a
+failing test rather than a silent divergence.
+
+This is the one place a row may write `docs/plan/rebuild-plan.md`, and it may write only
+between the markers. Editing a cell's MEANING — a grid line outside what the table generates,
+or a reasoning paragraph — is a change to a decision, which §13's rule covers: the row reports
+it and stops.
 
 **Where the kind of a refusal comes from.** A refusal's kind is derived from the cell and never
 chosen at a raise site:
@@ -617,6 +674,19 @@ decides instead. The owner of the semantics document decides each.
    referring node carries a `description`. This document keeps the referring node's annotation
    keys beside the copy, with the referring node's value winning; the alternative — dropping
    them — drops a key, which §3 forbids. The owner confirms the reading.
+
+   **Settled 2026-10-25, and it extends only to ANNOTATION siblings.** A CONSTRAINING sibling
+   is a different case and the owner has decided it in §5's `$ref` row: draft-07 ignores every
+   sibling of `$ref`, so letting the referring node's value win would have the inliner decide
+   an acceptance fact the bundle's own draft does not hold — which is the canonicalisation §3
+   exists to forbid, and §9's "do not decide a position the bundle does not hold from a view of
+   it". So the copy is placed, the sibling's key is KEPT in the record (§3 drops none), the
+   sibling compiles to nothing, and the run reports it. An annotation sibling has no such
+   conflict, because an annotation states nothing about acceptance and so cannot disagree with
+   the draft. What makes this expressible without a second copy of the rule is the cell: the
+   keyword's row says NOTHING and `rendered=False` at a `$ref` co-occurrence, so the record
+   carries the key, the comparison does not grade it, and no handler holds a set of
+   "keywords that are inert beside a `$ref`".
 
 3. **§8, "a branch class is paired with its branch node read under the root's siblings", and
    §9, "do not decide a position the bundle does not hold from a view of it".** The pairing
