@@ -2852,10 +2852,21 @@ def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
         bases = [b.id for b in classes[symbol].bases if isinstance(b, ast.Name)]
         assert bases == ["BranchDispatchMixin", "AdCPBaseModel"], (document, bases)
 
+        # **A branch class is one whose FIRST base is the union base**, not one whose
+        # only base is.  Section 4: "A branch whose schema is a ``$ref`` is a class with
+        # TWO bases: the target, which supplies the fields, and the union's base, which
+        # supplies the dispatch" -- row ``salesagent-j3k2l.59``'s shape, with the union
+        # base first so ``isinstance`` against the root's name holds.  This read
+        # ``== [symbol]`` and so recognised the one-based branch alone; the predicate was
+        # never reached because no two-based-branch document emitted until the
+        # intersection rule cleared ``core/canonical-media-buy-action.json``, whose three
+        # branches are each ``{"allOf": [{"$ref": ...}], "properties", "required"}`` and
+        # derive ``(CanonicalMediaBuyAction, CanonicalMediaBuyActionFields)``.  The
+        # docstring above already said "each deriving the base", which is this reading.
         branch_classes = sorted(
             name
             for name, node in classes.items()
-            if [b.id for b in node.bases if isinstance(b, ast.Name)] == [symbol]
+            if [b.id for b in node.bases if isinstance(b, ast.Name)][:1] == [symbol]
         )
         assert len(branch_classes) == len(doc[kw]), (document, branch_classes, len(doc[kw]))
 
@@ -4955,15 +4966,21 @@ def _prunable(bundle_dir: Path, name: str, extra: dict[str, Any] | None = None) 
     )
 
 
-#: What makes the second document stop emitting.  A ``required``-only ``allOf``
-#: conjunct: step 4's row claims the root, reaches the conjunct, and refuses because
-#: a conjunct with no ``properties`` has no base to subclass.  The test ASSERTS the
-#: refusal rather than assuming it, for the reason
-#: ``test_the_cli_reports_a_refusal_rather_than_raising_it`` records: that fixture
-#: once used ``not: {}``, a later row lowered it, and the test went on passing over a
-#: bundle with no refusal in it.  Whichever row claims this next moves the fixture,
-#: and the assertion is what says so out loud.
-_STOPS_EMITTING = {"allOf": [{"required": ["a"]}]}
+#: What makes the second document stop emitting.  A conjunct whose ``type`` is not
+#: ``object``: a conjunction of ``object`` and ``string`` admits no instance at all, so
+#: no class can stand for it and the refusal is a VERDICT -- the obstruction is the
+#: document's, not unwritten code's.
+#:
+#: **Third fixture for this slot, and the first whose refusal no row can claim.**  It
+#: was ``not: {}`` until step 7 lowered a ``not``; then
+#: ``{"allOf": [{"required": ["a"]}]}``, which read as "a conjunct with no
+#: ``properties`` has no base to subclass" -- until ``salesagent-j3k2l.43`` lowered
+#: exactly that as section 2's requiredness overlay and both fixtures stopped refusing
+#: anything.  Each time the comment said the next row would move it and each time the
+#: test caught it, because the refusal is ASSERTED rather than assumed.  A DEFERRAL is
+#: the wrong kind of thing to build a fixture on: it means "no row has written this
+#: yet", so a fixture resting on one has a scheduled expiry.  A verdict does not.
+_STOPS_EMITTING = {"allOf": [{"type": "string", "properties": {"a": {"type": "string"}}}]}
 
 
 def test_write_removes_a_file_the_run_no_longer_intends(tmp_path) -> None:
@@ -5216,19 +5233,20 @@ def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
     (tmp_path / "ok.json").write_text(
         json.dumps({"title": "Ok", "type": "object", "properties": {"a": {"type": "string"}}})
     )
-    # ``allOf`` and not ``not``: this fixture used ``not: {}``, which step 7 now
-    # LOWERS (a ``not`` is a rule or the schema's own statement, never a refusal),
-    # so the fixture stopped refusing anything and the test passed on a bundle
-    # with no refusal in it.  ``allOf`` is step 4's row and still refuses, and
-    # whichever row claims it next will move this fixture again -- which is the
-    # point: the fixture has to name a keyword the tree genuinely cannot lower.
+    # A conjunct whose ``type`` is not ``object``, which is the shape ``_STOPS_EMITTING``
+    # carries and for the reason stated there: this fixture was ``not: {}`` until step 7
+    # lowered a ``not``, then a ``required``-only conjunct until ``salesagent-j3k2l.43``
+    # lowered that as section 2's requiredness overlay, and both times the fixture
+    # stopped refusing anything. A conjunction of ``object`` and ``string`` admits no
+    # instance, so its refusal is a VERDICT and no row can claim it -- which is what a
+    # fixture asserting "this document is refused" has to rest on.
     (tmp_path / "no.json").write_text(
         json.dumps(
             {
                 "title": "No",
                 "type": "object",
                 "properties": {"a": {"type": "string"}},
-                "allOf": [{"required": ["a"]}],
+                **_STOPS_EMITTING,
             }
         )
     )
@@ -6623,11 +6641,12 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
 #: measured over ``population()``, the documents the COMMITTED TREE carries, because the
 #: identity clauses import the class the node declared.
 #:
-#: ``CONJUNCTS_BY_PART`` is a PARTITION of ``CONJUNCTS`` -- it sums to it, which the test
-#: asserts -- so a conjunct moving from one part to another reddens even where the total
-#: does not.  The two field/name counts are a second AXIS over the same sites rather than a
-#: second count of them: a row that stopped declaring a conjunct's properties would keep
-#: ``fields`` at 3 and drop ``field_keys`` from 9.
+#: The per-part sets PARTITION the conjunct sites -- `partitions` reports a site no part
+#: claims and a site two parts claim, each by name -- so a conjunct moving from one part
+#: to another is named rather than showing up as two integers that both changed.  The
+#: field and name counts are a second AXIS over the same sites rather than a second count
+#: of them: a row that stopped declaring a conjunct's properties would leave the
+#: ``fields`` part the same size and drop the key count.
 #:
 #: The walk below descends into a conjunct's OWN ``allOf`` the way
 #: ``compiler.lower_composition``'s worklist does, so a nested conjunct is counted here
@@ -6635,40 +6654,38 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
 #: committed tree today (``core/demographic-targeting-intent.json`` at
 #: ``/properties/age/allOf/1/allOf/0``, an ``if``/``then``), and dropping the production
 #: push leaves the class one rule short of the sources, which is what clause 4 catches.
-COMPOSING_DOCUMENTS = 183
-COMPOSING_NODES = 197
-CONJUNCTS = 401
-#: The cases D7's DECISION names, not the cases this population happens to hold (D14): a
+#: The cases the decision names, which is what the partition's parts are keyed by: a
 #: conjunct is a base, or it contributes any combination of fields, requiredness and a
-#: rule, or it contributes nothing.  The empty parts are asserted empty, because a part
-#: with no member today is the one the next cleared document arrives in.
+#: rule, or it contributes nothing.  Stated as the CASES and not as their sizes -- the
+#: sizes were nine integers and `tests/test_every_check_names_its_set.py` refuses an
+#: equality on a derived count, for the reason it gives: every emitting row moves them,
+#: so two rows in flight compute two different correct values and no merge picks a side.
+CONJUNCT_PARTS = (
+    "base",
+    "nothing",
+    "fields",
+    "required",
+    "rule",
+    "fields+required",
+    "fields+rule",
+    "required+rule",
+    "fields+required+rule",
+)
+
+#: The parts of :data:`CONJUNCT_PARTS` this population does not hold, asserted empty BY
+#: NAME.  `partitions` is satisfied by an empty part without saying so, and a part with
+#: no member today is the one the next cleared document arrives in.
 #:
-#: ``nothing`` is 0 HERE and 1 over the whole bundle: the one conjunct with no
-#: constraining key at all is ``creative/sync-creatives-response.json`` at
+#: ``nothing`` is empty HERE and has one member over the whole bundle: the one conjunct
+#: with no constraining key at all is ``creative/sync-creatives-response.json`` at
 #: ``/oneOf/0/properties/creatives/items/allOf/2``, an ``x-adcp-validation`` extension,
 #: and that node is not one the emitted tree declares a class at.
-CONJUNCTS_BY_PART = {
-    "base": 141,
-    "nothing": 0,
-    "fields": 3,
-    "required": 2,
-    "rule": 253,
-    "fields+required": 0,
-    "fields+rule": 2,
-    "required+rule": 0,
-    "fields+required+rule": 0,
-}
-CONJUNCT_FIELD_KEYS = 9
-CONJUNCT_REQUIRED_NAMES = 2
-#: Conjuncts carrying a name draft-07 does not define, and the DROPS the run records for
-#: them.  One each, and the same one: ``media-buy/sync-catalogs-request.json`` at
-#: ``/allOf/1`` states ``errorMessage`` (ajv-errors) beside its ``not``.
-CONJUNCT_FOREIGN_NAMES = 1
-#: The whole of ``Out.carries_nothing`` -- the run's record of a name it admitted and
-#: rendered nothing for.  Equal to ``CONJUNCT_FOREIGN_NAMES`` because the conjunct
-#: reader is the only writer of that channel today; they are asserted separately so a
-#: second writer shows up as a disagreement rather than as one number moving.
-CARRIES_NOTHING_NAMES = 1
+CONJUNCT_PARTS_WITH_NO_SITE = (
+    "nothing",
+    "fields+required",
+    "required+rule",
+    "fields+required+rule",
+)
 
 #: Every conjunct in the WHOLE portable set that states ``additionalProperties``, as
 #: ``"<document> <pointer>"``.  Section 5's ``additionalProperties`` row gives four
@@ -6808,10 +6825,14 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
     known = set(bundle.portable(BUNDLE))
 
     documents: set[str] = set()
-    nodes = conjuncts = field_keys = required_names = foreign_names = 0
-    # Seeded with the decision's own cases, so an empty part is asserted empty rather
-    # than absent from the comparison (D14).
-    parts: collections.Counter[str] = collections.Counter(dict.fromkeys(CONJUNCTS_BY_PART, 0))
+    composing: set[str] = set()
+    sites: set[str] = set()
+    field_keys = required_names = foreign_names = 0
+    # Keyed by the decision's own cases and holding the SITES, so a part is a set this
+    # check can partition rather than an integer it can only compare.  Seeded with every
+    # case, so a part with no member today is named and asserted empty rather than
+    # absent from the comparison (D14).
+    parts: dict[str, set[str]] = {name: set() for name in CONJUNCT_PARTS}
     for document in sorted(out.emitted):
         doc = bundle.read(BUNDLE, document)
         here = out.declared[document]
@@ -6819,7 +6840,7 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
         for pointer, node in bundle.nodes(doc):
             if not isinstance(node.get("allOf"), list) or pointer not in here:
                 continue
-            nodes += 1
+            composing.add(f"{document} {pointer}")
             documents.add(document)
             # **Clause 0: the class imported below IS this run's output** -- D14's "a
             # clause detects a defect only in what its INPUT can change".  Every clause
@@ -6849,7 +6870,7 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                     unread.extend(
                         (f"{where}/allOf/{j}", c) for j, c in enumerate(conjunct["allOf"])
                     )
-                conjuncts += 1
+                sites.add(f"{document} {where}")
                 keys = {
                     k
                     for k in conjunct
@@ -6867,7 +6888,7 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                 keys &= compiler.DRAFT07
                 if keys == {"$ref"}:
                     # Clause 1.
-                    parts["base"] += 1
+                    parts["base"].add(f"{document} {where}")
                     head, into = bundle.split_ref(conjunct["$ref"])
                     target = bundle.document_for(head, known)
                     assert target is not None, (document, where, conjunct["$ref"])
@@ -6901,7 +6922,7 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                     named.append("rule")
                 if keys:
                     rule_nodes.append(conjunct)
-                parts["+".join(named) or "nothing"] += 1
+                parts["+".join(named) or "nothing"].add(f"{document} {where}")
             # Clause 4, over the whole conjunct list at once, because a class binds
             # ``_adcp_rules`` ONCE: the tuple is as long as the sources every node whose
             # rules are this class's states.  ``rules.lower`` is the production reduction,
@@ -6921,18 +6942,44 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                 sources,
             )
 
-    assert len(documents) == COMPOSING_DOCUMENTS, len(documents)
-    assert nodes == COMPOSING_NODES, nodes
-    assert conjuncts == CONJUNCTS, conjuncts
-    assert dict(parts) == CONJUNCTS_BY_PART, dict(parts)
-    # The partition, asserted rather than trusted: a part that stopped matching would
-    # otherwise move one number and leave the total alone.
-    assert sum(CONJUNCTS_BY_PART.values()) == CONJUNCTS
-    assert field_keys == CONJUNCT_FIELD_KEYS, field_keys
-    assert required_names == CONJUNCT_REQUIRED_NAMES, required_names
-    assert foreign_names == CONJUNCT_FOREIGN_NAMES, foreign_names
-    assert sum(len(v) for v in out.carries_nothing.values()) == CARRIES_NOTHING_NAMES, (
-        out.carries_nothing
+    # **The three sets this check ranges over, named and refused empty**, and then the
+    # per-part PARTITION over the conjunct sites.  All of it was an equality on a count
+    # until `tests/test_every_check_names_its_set.py` refused it: nine part counts and
+    # five totals is one bundle version's reading of quantities every emitting row
+    # moves, so two rows in flight compute two different correct values and a merge
+    # resolves it by picking a side.  A partition over the SITES says the same thing and
+    # says it by name -- a conjunct that moved from one part to another is reported as
+    # the site it is, not as two integers that both changed.
+    claimed("documents whose class composes", documents, inside=set(out.emitted))
+    claimed("composing nodes", composing)
+    partitions(
+        claimed("conjuncts of a composing node", sites),
+        **{name.replace("+", "_"): members for name, members in parts.items()},
+    )
+    # The parts the decision names and this population does not hold.  Asserted empty BY
+    # NAME, because a part with no member today is the one the next cleared document
+    # arrives in, and `partitions` is satisfied by an empty part without saying so.
+    for name in CONJUNCT_PARTS_WITH_NO_SITE:
+        assert not parts[name], (name, sorted(parts[name]))
+
+    # The second AXIS over the same sites: a row that stopped declaring a conjunct's
+    # properties would leave the `fields` part the same size and drop the key count.
+    # Floors, because an emitting row only adds -- the direction `ratchet` requires.
+    grows = (
+        "an emitting row only adds composing classes, so every count read off their "
+        "conjuncts rises; a fall means a document that lowered stopped lowering"
+    )
+    ratchet("property keys a conjunct declares", field_keys, at_least=9, because=grows)
+    ratchet("names a conjunct requires", required_names, at_least=2, because=grows)
+    ratchet("names draft-07 does not define", foreign_names, at_least=1, because=grows)
+    ratchet(
+        "names the run carries nothing for",
+        sum(len(v) for v in out.carries_nothing.values()),
+        at_least=1,
+        because=(
+            "the conjunct reader is the only writer of that channel, and a name it "
+            "admits and renders nothing for is reported rather than dropped in silence"
+        ),
     )
 
 
@@ -6945,7 +6992,14 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
 #: keyword intersection (2, both ``enum``), and ``agreed`` the resolver's conditional
 #: rewrite read as the facts its branches agree on (1).  They are counted where the fold
 #: CHANGES something, not where it is called, so a gate that stopped matching reddens.
-COMPOSED_FOLD_SITES = {"vocabulary": 6, "tighter:enum": 2, "agreed": 1}
+#: The fold names, and a FLOOR on each one's sites rather than an equality: the obligation
+#: is that none of the three has a population of zero, because a fold with no site is
+#: green for free -- which is what the local-``$ref`` fold's pin was doing before
+#: ``salesagent-j3k2l.28`` measured it.  An equality here is one bundle version's reading
+#: of a quantity every emitting row moves, and `tests/test_every_check_names_its_set.py`
+#: refuses it for that reason.  The KEY SET is still asserted exactly, which is what
+#: catches a fourth fold starting to fire or one of the three stopping.
+COMPOSED_FOLD_FLOORS = {"vocabulary": 6, "tighter:enum": 2, "agreed": 1}
 
 
 def test_the_comparison_reads_a_composed_document_by_intersection(
@@ -7010,4 +7064,14 @@ def test_the_comparison_reads_a_composed_document_by_intersection(
         result = harness.compare_schema(pair.schema, pair.model, document=pair.document)
         red += len(result.added) + len(result.missing) + len(result.differs)
     assert red == 0, red
-    assert dict(hits) == COMPOSED_FOLD_SITES, dict(hits)
+    assert set(hits) == set(COMPOSED_FOLD_FLOORS), dict(hits)
+    for fold, floor in sorted(COMPOSED_FOLD_FLOORS.items()):
+        ratchet(
+            f"sites where the {fold} fold changes the reading",
+            hits[fold],
+            at_least=floor,
+            because=(
+                "a fold with no site is green for free, and an emitting row only adds "
+                "graded pairs for a fold to reach"
+            ),
+        )
