@@ -251,6 +251,12 @@ def pair_of(g: Graded) -> Pair:
     a sibling in the root's own ``definitions`` section.  Read through the same
     ``schema_at`` as the node, so one function answers "what does this document
     say" for both.
+
+    ``ref`` is the same ``SchemaRef`` ``name`` is spelled from, and it is what
+    ``codegen.dump_exemptions`` matches a position against.  Supplied here rather
+    than parsed back out of ``name``, and not read off ``model`` -- D2's
+    root-scalar row is graded as an alias, whose ``__adcp_schema__`` is on its
+    module and not on the model.
     """
     return Pair(
         name=f"{g.ref.document}{g.ref.pointer}",
@@ -258,6 +264,7 @@ def pair_of(g: Graded) -> Pair:
         model=g.model,
         accept=g.accept,
         document=schema_at(SchemaRef(g.ref.document, "#")),
+        ref=g.ref,
     )
 
 
@@ -652,19 +659,20 @@ PAIRS_PIN = 1079
 #: ``comparison:model_drops_a_fact`` group is GONE rather than smaller, which is
 #: ``salesagent-j3k2l.28``'s exit: ``added``, ``missing`` and ``differs`` are all 0.
 OUTCOME_PINS: dict[str, int] = {
-    "pass": 1074,
-    "accepts:model_dropped_a_fact": 3,
+    "pass": 1083,
     "no_instrument": 2,
 }
 #: One instance per pair, minus the 2 whose generator could not draw one and the 3
 #: whose DUMP the document refused -- a failing example is reported, not counted.
-ROUND_TRIPPED_PIN = 1074
 #: 38224 -> 38181 and 13715 -> 13709 at ``salesagent-j3k2l.38``: a collapsed class is a
 #: pair whose keywords are no longer compared.  ``URL_TYPED_PIN`` was RE-MEASURED on the
-#: same pass and is unchanged at 1328, so it is left where .28 put it rather than
-#: re-pointed.
-COMPARED_PIN = 38181
-MODEL_FACTS_PIN = 13709
+#: same pass and was unchanged, so it is left where .28 put it rather than re-pointed.
+#: .45's exemption and this row's dedup both move the three figures below, in opposite
+#: directions, so they are at .45's values here and RE-MEASURED on the merged tree in
+#: the commit that follows -- neither side's number and not the difference.
+ROUND_TRIPPED_PIN = 1083
+COMPARED_PIN = 38224
+MODEL_FACTS_PIN = 13715
 #: **THESE TWO ARE PINNED AT ZERO ON PURPOSE AND BOTH ARE NOW GREEN.**  Zero is the
 #: specification's symmetric comparison -- a fact the model adds reddens and a fact it
 #: drops reddens -- and it was pinned here while ``MISSING_PIN`` was RED, because
@@ -1727,9 +1735,9 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     # than as a bare number, so the pin and the outcome partition above are two
     # readings of one fact and cannot drift apart: a pair whose generator could not
     # draw and a pair whose dump the document refused both round-trip nothing.
-    assert ROUND_TRIPPED_PIN == PAIRS_PIN - OUTCOME_PINS["no_instrument"] - OUTCOME_PINS[
-        "accepts:model_dropped_a_fact"
-    ]
+    assert ROUND_TRIPPED_PIN == PAIRS_PIN - OUTCOME_PINS["no_instrument"] - OUTCOME_PINS.get(
+        "accepts:model_dropped_a_fact", 0
+    )
     assert sum(r.graded_instances for r in reports) == ROUND_TRIPPED_PIN
     assert sum(r.comparison.compared for r in reports) == COMPARED_PIN
     assert sum(r.comparison.model_facts for r in reports) == MODEL_FACTS_PIN
@@ -1769,18 +1777,34 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     on a container's CONTENTS had no carrier, and ``containers._contents`` now names
     such a node.  The group is gone rather than smaller.
 
-    * ``accepts:model_dropped_a_fact`` -- NEW with the dump half of the accepts
-      check, which is the one thing in this harness that reads what a class DID with
-      a value.  Two of them are pydantic URL normalisation against a document's own
-      ``pattern``: ``core/attestation-issuer.json``'s origin states
-      ``^https://[^/?#@]+$``, the class carries a URL type (which cannot carry the
-      pattern -- D5, ``_schema_half_enforces``), and the type re-emits
-      ``https://a.com/`` with a path separator the pattern forbids.  The third is
-      D8's retention rule meeting a ``minProperties``: the class is ``extra="ignore"``
-      so an undeclared key is accepted and dropped, and an instance whose ONLY key is
-      an undeclared one dumps to ``{}``, which the document refuses.  Neither is an
-      artifact of the dump's own keywords -- measured, the same node dumped WITHOUT
-      ``exclude_unset`` is refused too, on ``type`` instead of ``minProperties``.
+    ``accepts:model_dropped_a_fact`` is gone too, and NOT because the dump half stopped
+    reading what a class did with a value.  Its three pairs are EXEMPT and the
+    exemption is reported: ``codegen.dump_exemptions`` strikes four named keyword
+    positions for the dump validation alone, because the positions state a keyword no
+    correct class can satisfy and both decisions involved stay as written.  Two
+    mechanisms, one of them reached by two pairs:
+
+    * ``^https://[^/?#@]+$`` on ``core/attestation-issuer.json``'s origin, inlined into
+      ``core/attestation-capabilities.json`` as well.  Every pydantic URL type
+      normalizes, and RFC 3986 S6.2.3 makes ``https://h/`` the normalized form of
+      ``https://h`` -- so the pattern refuses the canonical spelling of a value it
+      accepts.  Measured over all eight ``uri`` patterns the bundle states, 500 draws
+      each: this one refuses 139 of 139 round-tripped values, so it is UNSATISFIABLE
+      rather than violated at a rate, and no conforming URL library could satisfy it.
+      D5 keeps the URL type; ``adcontextprotocol/adcp#8398`` repairs the pattern.
+    * ``minProperties: 1`` at ``core/provenance.json``'s ``render_guidance``.  D8 maps a
+      silent ``additionalProperties`` to ``extra="ignore"``, so an undeclared key is
+      accepted and DROPPED and an instance whose only key is undeclared dumps to
+      ``{}``.  Not an artifact of the dump's own keywords -- measured, the same node
+      dumped WITHOUT ``exclude_unset`` is refused too, on ``type`` instead.  D8 stays.
+
+    **Which is why the census below is now over ``dump_exempt`` as well as over
+    ``outcome``.**  A group that leaves this list because it was exempted has to arrive
+    somewhere else, or the census would have nothing to say about three pairs that pass
+    conditionally -- and "passes with a keyword struck" is exactly the fact a reader of
+    a green pair needs. ``tests/test_dump_exemptions.py`` grades the set and the
+    strike; what this adds is the POPULATION: no fourth pair acquired one.
+
     * ``no_instrument`` -- the ``format``-beside-``pattern`` shape
       ``hypothesis_jsonschema``'s ``string_schema`` filters and cannot satisfy, which
       is an admitted exit rather than a failure (salesagent-j3k2l.10), and the
@@ -1796,26 +1820,42 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     # artifact of the walk, and asserting it would grade the walk.
     by_outcome = {k: sorted(v) for k, v in by_outcome.items()}
     assert by_outcome == {
-        "accepts:model_dropped_a_fact": [
-            "core/attestation-capabilities.json#",
-            "core/attestation-issuer.json#/oneOf/2",
-            "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
-            "/properties/render_guidance",
-        ],
         "no_instrument": [
             "core/reference-renderer.json#",
             "core/reference-renderer.json#/properties/provenance",
         ],
     }, by_outcome
+    # The pairs that pass CONDITIONALLY, by name, with the keyword each one had struck.
+    # An exemption is a position in a literal set, so a fourth pair acquiring one is a
+    # change to that set and reddens here as well as at its own pin.
+    exempt = {
+        f"{g.ref.document}{g.ref.pointer}": sorted(r.accepts.dump_exempt)
+        for g, r in reports
+        if r.accepts.dump_exempt
+    }
+    # THREE, not the eight that an exempt position lies inside: ``dump_exempt`` records
+    # what a pair's dump NEEDED, so the five ancestor pairs whose drawn instance never
+    # reached the node report nothing and a conditional pass stays readable among them.
+    assert exempt == {
+        "core/attestation-capabilities.json#": [
+            "core/attestation-capabilities.json#/properties/accepted_issuers/items"
+            "/properties/credential_origins/items/pattern",
+            "core/attestation-capabilities.json#/properties/accepted_issuers/items"
+            "/properties/issuer/oneOf/2/properties/origin/pattern",
+        ],
+        "core/attestation-issuer.json#/oneOf/2": [
+            "core/attestation-issuer.json#/oneOf/2/properties/origin/pattern"
+        ],
+        "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
+        "/properties/render_guidance": [
+            "core/provenance.json#/properties/disclosure/properties/jurisdictions/items"
+            "/properties/render_guidance/minProperties"
+        ],
+    }, exempt
     # Each cause is read off the report rather than taken from the list above, so a
     # pair that landed in one of these groups for a DIFFERENT reason reddens here.
     for g, r in reports:
-        if r.outcome == "accepts:model_dropped_a_fact":
-            assert r.accepts.detail.startswith("the document refuses the dump on "), (
-                g.ref,
-                r.accepts.detail,
-            )
-        elif r.outcome == "no_instrument":
+        if r.outcome == "no_instrument":
             for cause in r.no_instrument:
                 _grades_a_cause(cause, r.name)
             # The comparison needs no generator and still grades an undrawable pair,

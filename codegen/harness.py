@@ -91,6 +91,9 @@ from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
 from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
 from pydantic import TypeAdapter, ValidationError
 
+from adcp.types._base import SchemaRef
+from codegen import dump_exemptions
+
 # --------------------------------------------------------------------------- #
 # formats
 # --------------------------------------------------------------------------- #
@@ -473,6 +476,29 @@ class AcceptsResult:
     #: round-tripped every instance from one the generator never reached.
     round_tripped: int = 0
 
+    #: The exempt positions this pair's dump actually NEEDED,
+    #: ``"<document>#<pointer>/<keyword>"`` each, from ``codegen.dump_exemptions``.
+    #:
+    #: **REPORTED and not silent, which is the precedent every other excused fact in
+    #: this module follows** -- ``_schema_half_enforces``, ``_narrows_nothing`` and
+    #: ``url_typed`` all put the excuse on the result where a reader of the pair meets
+    #: it.  An exemption the harness does not report is one nobody reading a green
+    #: pair can see, and this is the only check that reads what a class DID with a
+    #: value.  So a non-empty list beside ``outcome == "pass"`` is a CONDITIONAL pass.
+    #:
+    #: **"Needed" and not "in force", and the difference was measured.**  An entry
+    #: applies to every pair whose node CONTAINS the position, which it must -- an
+    #: ancestor pair's dump carries the nested node, which is exactly why
+    #: ``core/attestation-capabilities.json#`` is refused for a position inside
+    #: ``core/attestation-issuer.json``.  But 8 pairs contain one of the four
+    #: positions and only 3 are refused without it: the other 5 are ancestors whose
+    #: drawn instance never reached the node.  Reporting all 8 would make this field
+    #: mean "an exemption lies somewhere inside me", which is not a fact about the
+    #: pair's verdict, and would make a conditional pass unreadable among pairs that
+    #: pass on their own merits.  So the dump is re-validated against the UNSTRUCK
+    #: node and the label is recorded only where that refuses it.
+    dump_exempt: list[str] = field(default_factory=list)
+
 
 @dataclass
 class LivenessResult:
@@ -713,6 +739,7 @@ def check_accepts(
     custom_formats: Mapping[str, Any] = (),
     dump: Callable[[Any], Any] | None = None,
     seen: list[Any] | None = None,
+    ref: SchemaRef | None = None,
 ) -> AcceptsResult:
     """The accepts check: every instance the schema admits, ``accept`` admits --
     and what it constructed, DUMPED back out, is an instance the schema admits too.
@@ -736,6 +763,20 @@ def check_accepts(
     failure; a dump the document refuses is ``model_dropped_a_fact``, named for what
     it is rather than for the check that caught it.
 
+    **``ref`` names the node, and it buys exactly one thing: the dump is validated
+    against the document with ``codegen.dump_exemptions``' struck keywords removed.**
+    Four positions state a keyword no correct class can satisfy -- a ``pattern`` that
+    forbids what RFC 3986 normalization produces, and a ``minProperties`` over keys
+    D8 drops -- and D5 and D8 both stay as written, so the positions are exempt and
+    the defect is upstream (``adcontextprotocol/adcp#8398``).
+
+    **THE STRIKE TOUCHES THIS VALIDATION AND NOTHING ELSE, and that is what keeps it
+    from being a relaxation of the accepts half.** The instance is DRAWN from
+    ``schema`` and the constructor still runs on it, so a model narrower than its
+    document still fails here exactly as before; a keyword struck for the dump is
+    still in force for every instance going IN. Without a ``ref`` nothing is struck,
+    which loses an exemption and cannot invent one.
+
     **``Phase.shrink`` is NOT in the phase list, and that is a measured decision
     rather than an omission.**  Hypothesis caps a shrink at its own
     ``MAX_SHRINKING_SECONDS``, 300 s, so each FAILING pair could cost five minutes
@@ -755,18 +796,34 @@ def check_accepts(
     #: draw -- the one saving in this module that is a reuse rather than a deletion.
     seen = [] if seen is None else seen
     validator_cls = validator_for(schema)
+    #: The schema the DUMP answers to: the node with the exempt keywords struck, or
+    #: the node itself.  Computed once per call rather than per instance, and by
+    #: IDENTITY when nothing is exempt, so the pairs with no entry are untouched.
+    dump_schema = (
+        schema if ref is None else dump_exemptions.struck(schema, ref.document, ref.pointer)
+    )
+    dump_validator_cls = validator_cls if dump_schema is schema else validator_for(dump_schema)
 
     def body(instance: Any) -> None:
         res.examples += 1
         seen.append(instance)
         built = accept(instance)
         back = dump(built) if dump is not None else _wire_dump(built)
-        if conforms(schema, back, validator_cls=validator_cls) is False:
+        if dump_schema is not schema and conforms(schema, back, validator_cls=validator_cls) is (
+            False
+        ):
+            # The strike MATTERED for this instance: the unstruck node refuses this
+            # dump and the struck one is about to be asked.  Recorded here rather than
+            # once per call, so the field says what this pair needed and not what lies
+            # inside it -- see ``AcceptsResult.dump_exempt``.
+            assert ref is not None  # dump_schema differs only when a ref was supplied
+            res.dump_exempt = dump_exemptions.labels(ref.document, ref.pointer)
+        if conforms(dump_schema, back, validator_cls=dump_validator_cls) is False:
             # The CAUSE goes first, because ``detail`` is truncated and a reason at
             # the end of a megabyte of dumped instance is a reason nothing can read.
+            broke = violated_keywords(dump_schema, back, validator_cls=dump_validator_cls)
             raise _DumpRefused(
-                "the document refuses the dump on "
-                f"{', '.join(violated_keywords(schema, back, validator_cls=validator_cls))}"
+                f"the document refuses the dump on {', '.join(broke)}"
                 f"; dumped {_dump(back)} from {_dump(instance)}"
             )
         res.round_tripped += 1
@@ -2002,6 +2059,22 @@ class Pair:
     #: FAIL-SAFE for a nested one -- see :func:`compare_schema`.
     document: dict | None = None
 
+    #: WHICH document and pointer this node is, for ``codegen.dump_exemptions``.
+    #:
+    #: **A stated field and not a read off ``model``, because the two are not the
+    #: same fact for every pair.**  D2's root-scalar row is graded as an ALIAS: the
+    #: model is an ``Annotated`` and the ``__adcp_schema__`` is on its MODULE, so
+    #: ``pair.model.__adcp_schema__`` answers for a class and raises for an alias.
+    #: ``pair.accept.__self__`` reaches it for a class too and is worse -- it makes
+    #: the dependency invisible in the signature, which is the thing a signature is
+    #: for.
+    #:
+    #: ``None`` is FAIL-SAFE in the direction that matters: a caller grading a bare
+    #: node supplies none, ``dump_exemptions.applying_to`` then matches nothing, and
+    #: the dump is validated against the node as it stands.  An absent ref loses an
+    #: exemption; it can never invent one.
+    ref: SchemaRef | None = None
+
 @dataclass
 class PairReport:
     name: str
@@ -2164,6 +2237,7 @@ def check_pair(
         examples=accepts_examples,
         custom_formats=custom_formats,
         seen=accepted,
+        ref=pair.ref,
     )
     rep.liveness = (
         check_liveness(drawn_from, pair.accept, accepted[0])
