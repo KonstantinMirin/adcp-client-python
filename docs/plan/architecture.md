@@ -139,14 +139,18 @@ bundle carries is also a row, so a prefixed key with no row is admitted and REPO
 | lowering | `lower/*` | a handler asks the table which of the keywords on its node are TYPE facts, which are RULE sources, which are annotations it carries, so no handler holds a set of keyword names |
 | grading | `verify/compare.py` | the compared set is `{k for k in TABLE if cell(k, p).rendered}`; a keyword whose effect is RULE is graded against the class's rule tuple, as §8 of the semantics document says |
 
-**The test that binds the table to the semantics document.** `tests/test_keywords.py` parses
-the keyword column of the §5, §6 and §7 tables in `rebuild-plan.md` and asserts, in both
-directions: every keyword there has a row; every §6 keyword is NOTHING or ANNOTATION at every
-position; every §7 keyword is REFUSE at every position; every row's keyword appears in one of
-the three sections. The test diffs membership, not meaning — the meaning of a cell is read by a
-person against the row's sentence in the semantics document, and the test cannot do that. It
-is still the check §8 asks for: a keyword handled in code and named in no section, or named in
-a section and absent from the table, is loud.
+**The table is the source of §5, §6 and §7's grids.** Those grids are GENERATED from
+`keywords.py`; `tests/test_keywords.py` asserts the committed document matches what the table
+generates, so a change to a cell that is not written through to the document fails. Generation
+rather than a diff, because a diff can only compare what it can parse back out of a table: a
+cell deciding one thing where the sentence beside it says another passes a membership diff and
+cannot pass generation, which writes the cell. §6 is the table's rows that are NOTHING or
+ANNOTATION at every position and §7 its REFUSE rows, so each section is a projection and not a
+second list.
+
+The reasoning paragraphs in those sections are written by hand and are what generation cannot
+produce. A cell decides WHAT; the sentence beside it says WHY, and a reader still has to keep
+those two honest. What is removed is the second copy of the what.
 
 **Where the kind of a refusal comes from.** A refusal's kind is derived from the cell and never
 chosen at a raise site:
@@ -634,12 +638,11 @@ decides instead. The owner of the semantics document decides each.
    state. UNRESOLVED, which the code carries today, is not in the document and is retired by
    the resolver in §4.
 
-6. **§8, "a test diffs the tables against it so neither can drift".** Markdown is not a machine
-   source for a cell's meaning. The test this document specifies (§3) diffs membership —
-   which keywords appear in which section and which effect class the table gives them — and
-   leaves a cell's sentence to a reader. The owner may want the §5–§7 tables to carry a
-   machine-readable effect column so the diff can reach the effect as well; this document does
-   not require it.
+6. **§8's diff test is replaced by generation, and §8 now says so.** Markdown is not a machine
+   source for a cell's meaning, and a membership diff admits a cell that decides one thing beside
+   a sentence saying another. The grids of §5, §6 and §7 are generated from the table instead, so
+   the second copy of the what does not exist to drift. The reasoning paragraphs stay hand-written
+   and are the part a reader must keep honest against the cells.
 
 7. **§4 "Names", a branch with no identity.** The present code refuses it as a VERDICT, and
    this document keeps that, since §4 gives no fourth rule. The untitled `enum` branch of a root

@@ -464,8 +464,17 @@ refuses by name, so a new keyword is loud rather than ignored.
 
 Three checks, run once per emitted class against the schema document it names.
 
-- **Accepts.** Draw a payload the document accepts and construct the class from it. A refusal here
-  means the model is tighter than its document, which is the defect that matters.
+- **Accepts.** Draw payloads the document accepts and construct the class from each. A refusal
+  here means the model is tighter than its document, which is the defect that matters.
+
+  **The draw COVERS the node's admissible space by constraint class; it does not sample it.**
+  "Never tighter" is a claim about every value the document admits, and a sampling draw reports
+  only the values it drew — so it can run green forever against a type that refuses a whole class
+  of admissible value. For each keyword the node states, the draw takes the classes that keyword
+  distinguishes: every member of an `enum`, both sides of each bound and the bound itself, and for
+  a `format` every shape the format's own checker admits rather than the shape a generator finds
+  most likely. A Python type chosen for a node admits everything the node admits, or the choice is
+  a narrowing and this check names it with the value.
 - **Dump.** Serialize the instance and validate the dump against the document. A failure means we
   emit something our own schema refuses.
 - **Compare.** Compare the class's `model_json_schema()` against the document of record (§3),
@@ -479,8 +488,11 @@ Three checks, run once per emitted class against the schema document it names.
 **The comparison is GENERIC, and its keyword set is DERIVED from one declaration.** One
 declaration in the compiler holds every keyword's decision — what it compiles to, and whether the
 model renders it as a fact, descends it as structure, enforces it as a rule, or carries nothing.
-§5, §6 and §7 are that declaration written out, and a test diffs the tables against it so
-neither can drift from the other. The comparison derives its compared set from the same
+§5, §6 and §7's tables are GENERATED from that declaration. A test that merely diffs them
+against it can compare only what it can parse back out of a table, so a cell deciding one thing
+where the text beside it says another passes: generation removes the second copy instead of
+checking it. The reasoning in those sections is written by hand and is the part that cannot be
+generated; the grids are output. The comparison derives its compared set from the same
 declaration: every keyword it renders as a fact. A hand-written list beside the comparison is
 the one way this check can be complete with respect to itself and blind to everything beyond
 it: a keyword missing from it is unexamined in *both* directions, so the grader cannot tell
