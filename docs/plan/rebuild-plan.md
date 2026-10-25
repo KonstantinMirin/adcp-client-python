@@ -281,6 +281,47 @@ A step that wants to change one of these reports it and stops.
   branches over `entity_type`, `event_type` and a `payload` that differs at each one. D3 names
   those from the discriminator `const`, so each class is named for the value it carries rather
   than by position.
+
+  **An object's own facets beside a union AT ONE NODE compose, and the object rule applies
+  first.** A node may declare `properties`, `required` or `additionalProperties` and a
+  `oneOf`/`anyOf` together, and draft-07 applies both to the same instance: it satisfies the
+  node's own object statement AND exactly one branch. So the base carries the node's own
+  properties as fields and its `additionalProperties` reading by D8, `_ROOT_REQUIRED` records
+  the node's own required set as §4 already states, and each branch subclass inherits them —
+  D2's union rule applied after the node's own object rule, in that order, which is the
+  ordering D7 already states for a conjunct whose content is a union.
+
+  Measured over all 1,054 portable documents, at every schema position: **19 distinct keyword
+  signatures, 88 nodes.** The two largest are `{additionalProperties, anyOf, properties,
+  required, type}` at 31 nodes (`core/attestation-evaluation.json#/properties/action_binding`)
+  and `{additionalProperties, anyOf, properties, type}` at 18
+  (`core/canonical-forecast-point.json#/properties/viewability`); `core/registry-event.json`
+  and `core/postal-country-system.json` are both in the set, at their roots. This was the
+  largest single gap the signature survey found (`salesagent-j3k2l.53`), and two places in
+  this build already name it from one side without deciding it: §4's `_ROOT_REQUIRED` names
+  the fact the reading needs, and `applied_schema`'s KNOWN CEILING names the same shape from
+  the harness side — "a row whose root asserts more than a type about the same instance needs
+  this extended". One decision closes both.
+
+  **This reading hands D3's new nested rule a collision its stated qualifier does not
+  separate, and the question is D3's rather than this decision's.** Each branch subclass
+  declares the node's properties, so sibling branches declare nested classes for the SAME
+  property name in one module — and D3 names a nested class `pascal_case(property)`, qualified
+  by *the nearest enclosing property* where two nodes of one module would collide, which is
+  the same for every sibling. Measured over all 1,054 portable documents at TYPE positions
+  only (a node under `not`, `if`, `then` or `else` is a rule and lowers no class, §6's third
+  counting rule): **1,063 nested model nodes take a name in 303 modules, 84 names are taken by
+  two or more nodes in 62 modules over 299 nodes, the enclosing property separates 9 of the
+  84, and 55 of the 75 it does not separate have members differing ONLY by a combinator
+  index.** The largest are 44 nodes taking `AssetsItem` in `core/format.json`, 14
+  `ComponentsItem` in `formats/canonical/coordinated_placements.json`, 10 `Payload` in
+  `core/registry-event.json` and 9 `Payload` in `core/wholesale-feed-event.json`. D3's own
+  figure of 19 collisions in 9 modules is over the EMITTED tree, which is ~705 of the 1,054
+  and excludes the shape unions, so the two numbers measure different populations and both
+  are right; the direction is that the population the rule will meet is larger and is
+  dominated by a shape the qualifier does not address. The minimum reading is that a collision
+  between branch siblings is qualified by the BRANCH's name, which D3 already derives — but
+  that is a sentence in D3 and this decision does not write it.
 - **D3 — names.** Root: `pascal_case(title)`, keeping acronyms. Nested: `pascal_case(property)`,
   qualified by the nearest enclosing property only where two nodes of ONE MODULE would take the
   same name. Union branch: title, else the discriminator `const`, else the sorted
@@ -364,6 +405,49 @@ A step that wants to change one of these reports it and stops.
   `dict[str, ...]`, can be aliased and reused, and works under `TypeAdapter` on its own; a
   field-bound constraint does none of those. It also keeps `= 50` meaning a default rather than
   conflating the default with metadata.
+
+  **Each value keyword binds as the document's own fact, and the mapping is a table rather
+  than two worked instances.** This decision was written with a rendering for a numeric bound
+  (`ge`/`le`) and one for `{"minItems": 1}` (`min_length`), and the keyword-to-constraint
+  mapping was never stated — so eleven keywords had a binding rule and no rendering. Sites are
+  TYPE and rule positions together, over all 1,054 portable documents:
+
+  | the document states | the annotation carries | sites | documents |
+  |---|---|---|---|
+  | `minimum` | `ge` | 1,083 | 288 |
+  | `maximum` | `le` | 197 | 115 |
+  | `exclusiveMinimum` | `gt` | 58 | 30 |
+  | `exclusiveMaximum` | `lt` | 4 | 4 |
+  | `minLength` | `min_length` | 771 | 287 |
+  | `maxLength` | `max_length` | 607 | 243 |
+  | `pattern` | `pattern` | 830 | 345 |
+  | `minItems` | `min_length` | 1,075 | 347 |
+  | `maxItems` | `max_length` | 147 | 88 |
+  | `format` | selects a TYPE, never a constraint | 806 | 300 |
+
+  `multipleOf` has **0 sites**, so it has no rendering here and the first document to carry
+  one refuses by name. That is a row asserted empty while it is empty, which is D14's rule.
+
+  **`gt` is not `ge`, and the bundle chose between them 730 times.** 672 sites state
+  `minimum: 0` and 58 state `exclusiveMinimum: 0` — all 58 of them, 57 on a `number` and 1 on
+  an `integer`. The two readings differ on exactly one instance, so rendering either keyword
+  as the other makes 58 fields accept a zero their document refuses or 672 refuse a zero their
+  document accepts. This decision already says the same thing from the other side:
+  `PositiveInt` for `{integer, minimum: 1}` renders `exclusiveMinimum: 0` and is refused for
+  stating a different fact about the same integers.
+
+  **Measured, not reasoned.** At every site the keyword's own value supplies the boundary
+  witness — the array one shorter than `minItems`, the value `exclusiveMinimum` and
+  `exclusiveMaximum` name — and the witness goes to the document through `jsonschema` twice,
+  once at the node and once at the node with the keyword deleted. A keyword CONSTRAINS where
+  the witness is refused with it and accepted without, which is what rules out a sibling
+  keyword having done the refusing. `exclusiveMinimum` constrains at **58 of 58** sites,
+  `exclusiveMaximum` at **4 of 4**, `minItems` at **1,044 of 1,075**. The other 31 are witness
+  artifacts with the cause named rather than sites where the keyword does nothing: 15 where a
+  sibling `contains` refuses the same short array, 14 where the element type refuses the
+  filler the witness is built from, 1 where an unresolved `$ref` at the node stops the
+  validator, and `core/creative-localization.json#/properties/target_variants`, which states
+  `minItems: 0` and forbids nothing at all.
 
   **A constrained type is named once and referenced.** The walk resolves every constrained
   scalar and container it meets to one type, in this order: a type the bundle itself names — a
@@ -547,6 +631,23 @@ A step that wants to change one of these reports it and stops.
   subschema that must not match). Those six are the whole population. Everything else is an
   annotation, which pydantic enforces on the constructor without a rule. A rule narrows the
   constructor; acceptance stays with the schema (D4).
+
+  **Those six are seven. `contains` is a rule, and the closure claim above was measured
+  false.** An array holding at least one item that matches a subschema spans a collection and
+  has no field-level annotation in pydantic, which is this decision's own membership test, and
+  it occurs at **120 sites in 46 documents**. The plan named the keyword only as a position the
+  census walk descends (§6) and as a deferral count (§7.1), never as a family, while this
+  decision said its six were the whole population. Seven families, and `contains` is one.
+
+  **`propertyNames` at a RULE position is decided by neither side, and is named rather than
+  decided.** D5 types a mapping's KEY from `propertyNames`, and §6's own census rule says that
+  under `not`, `if`, `then` or `else` a keyword is a rule and no type is lowered from it — so a
+  `propertyNames` below a conditional falls between the two. Two nodes carry it, both at
+  `core/catalog-item-availability-state.json#/allOf/0/else`, in the signature
+  `{not, propertyNames, required}`; it is the whole of the residue the signature survey could
+  not place in a family (`salesagent-j3k2l.53`). The minimum reading is that it joins this
+  list as an eighth family. Nothing forces the question until a document reaching those two
+  nodes emits, and a row that decides it decides it with a document in hand.
 - **D7 — bases are derived, and composition merges by intersection.** An `allOf` of `$ref`s
   makes those referenced classes the bases, so every base an emitted class has is a schema its
   document composes.
@@ -609,6 +710,23 @@ A step that wants to change one of these reports it and stops.
   the pattern named above as the clearest instance, where the subclass redeclares the field
   with the base's type and no default. Four documents sit there, refused by a reader that has
   no case for a conjunct holding neither a `$ref` nor `properties`.
+
+  **The overlay is not only about requiredness: four nodes overlay a VALUE keyword on a
+  referenced array.** `core/catalog-selection.json` at `/properties/ids`, `/properties/gtins`
+  and `/properties/tags` each state
+  `{"allOf": [{"$ref": ".../catalog.json#/properties/<x>"}], "uniqueItems": true}`, and
+  `trusted-match/context-match-response.json` at
+  `/properties/signals_by_provider/additionalProperties/properties/targeting_kvs` is the same
+  shape with `minItems: 1`. The reading is this decision's own rule rather than a new one: the
+  conjunct supplies the referenced type and the node's own keyword tightens it, so the field
+  is that type carrying the extra bound — a constrained type under D5, named once and
+  referenced, which is also what keeps the bound from being lost at a mapping value.
+
+  An `allOf` of RULE-only conjuncts beside a node's own array keywords needs nothing here,
+  because the conjunct rule below already covers it: three nodes are that shape, including
+  `media-buy/legacy-purchase-continuation-input.json#/properties/accepted_losses`, each an
+  `allOf` of `contains` conjuncts over an array that states its own `minItems` and
+  `uniqueItems`.
 
   A response composing the two envelopes inherits them:
 
@@ -782,6 +900,191 @@ A step that wants to change one of these reports it and stops.
   This bounds the suite permanently: nobody adds a check because something went wrong once. A
   defect either shows up in the harness's own verdict over the population, or the thing that
   prevents it is structural, or it is accepted and named in §9.
+- **D15 — an annotation is admitted BY NAME, and the names are measured.** A keyword that
+  constrains no instance contributes nothing to the emitted class, and the drop is reported.
+  D7 says this already for a keyword draft-07 does not define INSIDE A CONJUNCT; the keywords
+  below sit at arbitrary positions, so this decision states the rule where the conjunct rule
+  cannot reach. Three populations carry the property and each is admitted on its own
+  measurement, over all 1,054 portable documents — **18,203 nodes declaring something at a
+  schema position, 97 distinct keywords**:
+
+  - **Draft-07's own annotation keywords**, which the draft defines and which assert nothing
+    about an instance: `$schema` (1,054 sites), `$comment` (48), `title` (1,460),
+    `description` (9,591), `examples` (166), `default` (342), `readOnly` (4), `writeOnly`
+    (1), and `$id`/`example` at none — and `deprecated` (179 sites in 95 documents), which
+    draft 2019-09's meta-data vocabulary defines and draft-07 does not, admitted on the same
+    measurement. `description`, `default` and `deprecated` are RENDERED, by §6's
+    description-authority rule, by D4 and by § 5.1.3; the other eight have nowhere to go and
+    are never a reason to refuse.
+  - **The bundle's own `x-` namespace**: **30 names over 1,090 sites**, the largest being
+    `x-entity` (515 sites in 260 documents), `x-adcp-validation` (179 in 135) and `x-status`
+    (170). Twenty-nine contribute nothing; `x-enum-descriptions` (1 site) is a second spelling
+    of `enumDescriptions` and is carried (§ 5.1.3).
+  - **`notes` (2) and `enumMetadata` (4)**, the two names draft-07 does not define that
+    annotate a document for a reader.
+
+  **Every one was measured and none was assumed.** For all **63 non-vocabulary keywords** this
+  decision touches, at every site, the keyword's own value AT THAT SITE was taken as a
+  one-keyword schema and asked to judge a thirteen-instance corpus: **0 refusals over 184,418
+  validations.** None of them can refuse any instance, whatever its value, and the mechanism
+  is that `jsonschema`'s draft-07 vocabulary has 32 keywords and not one of these is among
+  them. A keyword the validator cannot consult cannot narrow the document, so dropping it
+  cannot make the model wider than the schema it names.
+
+  **Membership is by name and never by prefix.** A prefix rule admits every future `x-`
+  keyword unexamined, including one that constrains, and this plan excludes that twice on its
+  own ground: D5 takes the https arm as "the 47 patterns that are EXACTLY `^https://`, as a
+  literal set and not as a rule about regexes", because a literal set can be audited where a
+  predicate cannot, and §6 says a derived rule admitting a widening is invisible and
+  permanent. So the 30 names are enumerated, a thirty-first refuses by name, and that refusal
+  is the designed outcome rather than a failure.
+
+  **A registry document's own INSTANCE DATA at a schema root is not an annotation.** Nineteen
+  names over 25 sites — `version` (4), `lastUpdated` (3), `last_updated`, `mappings`,
+  `vocabulary`, `governance`, `extensions`, `_generated`, `_generatedAt`, `adcp_version`,
+  `architecture`, `asset_types`, `baseUrl`, `prerelease`, `protocol_layers`,
+  `published_version`, `stability`, `usage_notes`, `versioning` — are the payload of five
+  registry, vocabulary and index documents carried beside their schema. They refuse nothing
+  either, measured in the same run, but admitting them would call a registry's `mappings`
+  payload an annotation and grow the set by a data field name per registry. They stay refused.
+
+  **`title` constrains nothing and is NOT an annotation, because D2 reads another keyword
+  through it.** It refuses nothing — it is one of the 63 above — and it decides what a node
+  becomes anyway: D2 says a value set no name reaches is a `Literal` and a NAMED enum node is
+  a `StrEnum`, so the presence of a title is the input that selects between two renderings.
+  Measured: **226 enum nodes carry a title and 843 do not**, and the projection
+  `{enum, type}` alone holds 226 titled and 679 untitled nodes — 905 nodes that a rule
+  projecting `title` out would merge into one signature with two different answers.
+
+  **The test that draws is the one to apply to the whole set: a keyword is an annotation for
+  this purpose only where projecting it does not change the answer.** `title` fails it because
+  it selects another keyword's reading, and the nineteen payload keys above fail it because
+  their decision IS the refusal that projecting them would hide. Everything else in the three
+  populations passes, and the figures each reading produces are in `salesagent-j3k2l.53`'s
+  report rather than here, because a signature count is an instrument's output and not a fact
+  about the bundle.
+
+  **What this decision cannot buy, and the direction in which it does not fail.**
+  `x-adcp-validation` carries instance obligations at **179 sites in 135 documents**, and no
+  draft-07 keyword expresses any of them. Dropping them cannot make the model wider than its
+  DOCUMENT, because the document does not enforce them either — the keyword is one of the 63
+  measured above. The gap is between the document and the written spec, so it is upstream.
+
+  **Its content was measured, because "enforce the machine-readable part and report the rest"
+  is the obvious second reading and the measurement does not support it.** Classifying every
+  value by what it IS rather than by the key holding it: **164 bespoke keys holding an English
+  sentence, 137 `verifier_constraints` entries holding one, 74 `spec` values naming a docs
+  path, 60 holding a single token, 47 an object of names, 10 a boolean, 9 a list of sentences,
+  7 a list of names.** Reading by key name misleads twice over: `ordered_bounds` sounds
+  structured and both its values are the sentence "minimum MUST be less than or equal to
+  maximum", while `unique_config_generation`, `immutable_generation`, `secret_rejection`,
+  `account_isolation` and ten more bespoke keys hold sentences too. **Exactly 16 entries
+  across 14 documents are machine-readable**: six `unique_item_properties`
+  (`["representation_id"]`, `["kind"]`, `["format_option_id"]`, `["creative_id"]`,
+  `["capability_id"]`), two `member_of`, and one each of `map_keys_subset_of_array`,
+  `resolver_response_binding`, `disjoint_place_fields`, `allowed_slot_asset_types`,
+  `required_when`, `schema_required_when`, and two description-only objects.
+
+  **Enforcing those 16 is refused on this plan's own ground rather than on effort.** Each
+  states something draft-07 cannot — uniqueness BY A KEY is not expressible at all — so the
+  document accepts every instance they forbid. Measured with a control, on
+  `core/forecast-point-dimensions.json`, whose root states
+  `unique_item_properties: ["kind"]`: a one-item list is ACCEPTED (so the witness conforms)
+  and `[{"kind": "device_type", "device_type": "ctv"},
+  {"kind": "device_type", "device_type": "mobile"}]` is ACCEPTED too, while the keyword
+  forbids it — the two items differ, so the node's own `uniqueItems: true` is satisfied, and
+  they share `kind`. **That document assigns the job itself, and not to a type SDK**: its own
+  text reads "JSON Schema draft-07 cannot express unique-by-property for this array shape, so
+  conformance tooling should reject repeated `kind` values." A D6 rule enforcing one therefore
+  makes the class refuse a
+  payload `strict_validate`'s schema half accepts: `check_accepts` draws from the document and
+  reports `model_refused_valid`, while the schema comparison sees nothing at all, a rule
+  having no rendering in `model_json_schema()`. That is the model-narrower-than-its-document
+  direction, which §6 names as the only one that makes a correct SDK refuse valid traffic.
+  D6's "a rule narrows the constructor; acceptance stays with the schema" holds for its seven
+  families because every one of them is a keyword the DOCUMENT states, so rule and schema
+  agree; these sixteen would be the first rules where they disagree.
+
+  So there is ONE decision and not two: the whole keyword contributes nothing, the drop is
+  reported, and the 16 machine-readable entries are reported as a named subset so the bundle
+  has a list to work from. **No SDK enforces it today** — measured across the TypeScript
+  client (3 hits, all generated doc comments carrying the schema's own prose), Python v9 (4
+  files) and this tree (0 `.py` hits, 58 packaged `.json` copies) — so the decision changes no
+  behaviour and records why.
+
+  **The sharpest instance is an open vocabulary written in the namespace the validator
+  ignores.** `enums/advertiser-industry.json` states an `enum`, `x-extensible: true` and
+  `x-pattern: "^[a-z][a-z0-9_]+(\\.[a-z][a-z0-9_]+)?$"` at its root — the known members
+  beside anything matching the pattern, which is exactly the construct D2 decides for
+  `core/geo-place-system.json` and `core/geo-place-type.json` where the bundle spelled it as
+  an `anyOf`. Spelled this way the document's accepted set is the CLOSED enum, because
+  `jsonschema` enforces `enum` and ignores the other two, so a closed `StrEnum` is faithful to
+  the document and the document is narrower than its author's own statement. `x-extensible` is
+  at 2 sites and `x-pattern` at 1.
+
+  **`x-canonicalization` was the other candidate to constrain and it is already covered.** All
+  16 sites read `"set"`, and all 16 carry `uniqueItems: true` and a `minItems` beside it — so
+  the duplicate half IS the document's own `uniqueItems` (D6) and the order half is not an
+  acceptance statement at all, both orders being accepted. It adds nothing at any of its
+  sites. `x-adcp-open-payload` measures the same way: 3 of its 4 sites sit beside
+  `additionalProperties: true`, which D8 already reads as `allow` with retention, and the
+  fourth is a typeless node that D2 reads as `Any`.
+
+  **Two things this decision leaves UNDECIDED, each with what would decide it, and one it
+  leaves to § 5.1.3.**
+
+  - **`deprecated` RENDERS, and § 5.1.3 says how.** 179 sites in 95 documents, 178 `true` and
+    1 `false`, 16 of them at a root. The premise that the schema comparison's `missing` is 0
+    only because no graded document carries one yet was measured false at `07c84c14a`: **40
+    emitted documents carry 56 sites** and `missing` is 0 because `harness.FACTS` does not
+    list the keyword, so the comparison never looks for it. Admitting the name here settles
+    that it constrains nothing; the rendering is `Field(deprecated=True)` on a property and the
+    class's `json_schema_extra` at a root or a branch, and `FACTS` gains the keyword so the
+    comparison grades it.
+  - **Whether any `x-` fact belongs ON the class** as a `ClassVar` — `x-status`,
+    `x-mutates-state`, `x-entity`, `x-operation-family`. This decision says they contribute
+    nothing to what the class accepts or states about itself, which is the honest reading of
+    the measurement, and carrying them is a different question about what the SDK offers
+    BEYOND types. What would decide it is a consumer that needs one, and nothing in this plan
+    asks for it; until then a `ClassVar` would be a fact no check grades.
+  - **Whether the bundle should state `x-adcp-validation`'s obligations in a form a validator
+    can read.** Upstream, not here. What decides it is the bundle, and the 16
+    machine-readable entries above are the list to start from.
+
+  **One of these is a fact the SDK renders under another name, and it is dropped today.** The
+  enum row reads `enumDescriptions` (137 sites in 135 documents) into member docstrings;
+  `enums/signal-value-type.json` carries **`x-enum-descriptions` and no `enumDescriptions`**,
+  so that one document's three members emit with no documentation. It is CARRIED, as the
+  second spelling the enum row reads (§ 5.1.3) — the one `x-` name this decision admits as
+  something rather than nothing.
+- **D16 — `discriminator` constrains no instance, and names a branch only where D3's second
+  rung needs it.** 81 sites
+  in 73 documents, 28 distinct values, 51 of them at a document root; the value is always
+  `{"propertyName": "<key>"}`. It is OpenAPI's keyword and not draft-07's, so `jsonschema` has
+  no validator for it: measured at every site over the same thirteen-instance corpus, **0
+  refusals over 1,053 validations**. D3's second rung reads a branch's name from the `const`
+  the branch pins on the DISCRIMINATING property — "the discriminator `const`", in D3's words.
+  At **75 of the 81 sites every branch `const`- or `enum`-tags the property the keyword
+  names**, and at 71 of them each branch pins exactly one const, so the keyword restates what
+  the branches already say. At the other **10 a branch pins two or more**
+  (`core/registry-event.json` pins `entity_type` and `event_type` on all 20 branches) and the
+  keyword is what says which one names the branch: measured by calling `union._const_pin` with
+  and without it, **32 branch classes in 5 documents take a different name without it**,
+  falling through to the required-set rung. So it is a naming input exactly there, and D3
+  already says so (§ 5.1.3). At the other 6 the
+  tag sits behind a `$ref` and D3's first rung — the branch's own title — answers instead;
+  `core/assets/asset-union.json` with 21 `$ref` branches and `core/pricing-option.json` with
+  10 are the two largest, and `core/requirements/catalog-field-binding.json` is the one node
+  where some branches tag it inline and some do not.
+
+  So it contributes nothing to the emitted class and the drop is reported. **The emitter reads
+  it two ways today and this decision settles which.** `codegen/lower/union.py` calls it an
+  annotation in draft-07 and reads it as D3's naming property; `codegen/compiler.py`'s
+  `BUNDLE_ANNOTATIONS` note says it "COULD CONSTRAIN AN INSTANCE" and keeps refusing on it.
+  The measurement says it cannot, and it is the refusing reading that costs documents: at
+  `07c84c14a` a root admits it (`union.ROOT_HANDLED`) and a nested union's sibling screen
+  refuses it as a verdict, **11 documents** (§ 5.1.3). The population it can reach is the 73
+  documents that carry the keyword, 51 of them at a root.
 
 **Layout.** `codegen/emit.py` holds the CLI, the module writer and the refusal report;
 `codegen/compiler.py` drives the compiler AND holds the lowerings two rows read -- the object
@@ -790,6 +1093,380 @@ per D2 row that only one row reads. A
 dispatch table of `(selector, lowering)` pairs connects them, and a document selected by two
 rows is a build failure rather than a question of precedence. A selector is its step's
 population test, so a row cannot claim a document its step does not count.
+
+### 5.1 The translation, keyword by keyword
+
+The decisions above say what a CONSTRUCT becomes. This section says what each KEYWORD
+compiles to, position by position, so a row implementing one reads the answer here instead
+of re-deriving it from D2 and D5. Every keyword the bundle uses has a row; a keyword that
+compiles to nothing says so and says why, with its measurement. **The WHERE column records
+where the code reads the keyword today and is not the decision**: where it disagrees with
+the "compiles to" column, the plan decides and the code follows, and the disagreement is
+listed in § 5.1.4.
+
+**The population, reproduced at `07c84c14a`.** Every count is over `schemas/cache/3.2`
+excluding `bundled/`, `mcp/` and the three registry files: **1,054 portable documents**. The
+walk counts a node's OWN keys and recurses only into schema positions; `properties`,
+`definitions`, `$defs`, `patternProperties` and `dependencies` map a NAME to a schema, so
+their values are walked and their keys are never counted. (A blanket walk reports 5,328
+"keywords", most of them property names, and 2,323 signatures containing no schema keyword at
+all.) That walk gives **21,257 schema-position nodes, 18,203 declaring something, 3,027 pure
+`$ref` nodes, 97 distinct keywords, 632 distinct keyword signatures of which 270 occur once.**
+
+The 97 split three ways, and each split is a different instrument:
+
+- **41 are draft-07's**, read off the draft's meta-schema plus `writeOnly`, which §10.3 of the
+  validation spec defines and `jsonschema`'s bundled copy of the meta-schema (45 properties)
+  omits — `compiler.DRAFT07` reads that copy and so classifies `writeOnly` as a non-keyword,
+  with no effect because `_DRAFT_ANNOTATIONS` admits it by name. **56 are not draft-07's**: 30
+  `x-` names, 19 registry payload keys, and `deprecated`, `enumDescriptions`,
+  `discriminator`, `$defs`, `enumMetadata`, `notes`, `errorMessage`. `deprecated` and `$defs`
+  are draft 2019-09's (its meta-data and core vocabularies); every document declares draft-07.
+- **30 of the 97 are keywords `jsonschema`'s `Draft7Validator` can refuse on** (its 32
+  validators, less `additionalItems` and `multipleOf`, which have 0 sites). **4 act through a
+  sibling** — `then` and `else` through `if`, `definitions` and `$defs` through `$ref`.
+- **The other 63 can refuse nothing.** Instrument: at every site the keyword's own value
+  becomes a one-keyword schema and judges a 13-instance corpus — **184,418 validations, 0
+  refusals**, reproduced exactly. Dropping any of them cannot widen a model past its document.
+  `description` (9,591 sites), `default` (342), `title` (1,460), `$schema` (1,054),
+  `enumDescriptions` (137) and `examples` (166) are in that 63, so "can refuse nothing" is not
+  "compiles to nothing": the rows say which.
+
+**The emitter names all 41 draft-07 keywords as a literal somewhere in `codegen/`. The plan
+named 35 of them anywhere before this section and never named six: `$schema`, `$comment`,
+`exclusiveMinimum`, `exclusiveMaximum`, `readOnly`, `writeOnly`.** `minItems` appeared once,
+as a worked instance of D5's third rung and not as a decided keyword, which is why it is the
+seventh keyword § 5.1.2 decides.
+
+**Positions.** A keyword's answer can differ by where its node sits, and every gap this build
+has met was positional, so a row gives one answer per position where they differ. The
+positions, read off the last schema hop of the node's pointer:
+
+| label | the node is | reached by |
+|---|---|---|
+| ROOT | the document root | `emit.ROWS` |
+| PROP | a value of `properties` | `compiler.fields` → `mod.decide` |
+| ELEM | an `items` schema | `containers.array` → `_contents` |
+| MAPV | an `additionalProperties` / `patternProperties` value | `containers.mapping` → `_value` |
+| KEY | a `propertyNames` schema | `containers._key` |
+| BRANCH | a member of `oneOf` / `anyOf` | `union.lower_union` (root) or `union.nested` |
+| CONJ | a member of `allOf` | `compiler.lower_composition` |
+| RULE | anything beneath `not`, `if`, `then`, `else` or `contains` | `rules.lower`; no type is lowered (§6's third counting rule) |
+| DEF | an entry of `definitions` / `$defs` | `compiler.local_reference`, on demand |
+
+A node reached through a DEF entry is decided as its own kind under the name `<Root><Key>`,
+so a DEF answer is the entry's own kind's answer and is stated only where the entry differs.
+A site count beside a position is the census's count of nodes AT that position carrying the
+keyword.
+
+#### 5.1.1 Draft-07's 41
+
+Columns: sites / documents; what the keyword compiles to, by position where the positions
+differ; where the code reads it today (module.function); the decision it follows from.
+
+| keyword | sites / docs | compiles to, by position | where today | from |
+|---|---|---|---|---|
+| `type` | 11,217 / 1,001 | A scalar word → `str` / `int` / `float` / `bool` (`compiler.SCALAR`), unless D5 names a constrained type or `format` selects one. `object` with `properties` → a class. `object` without → `dict[K, V]`. `array` → `list[X]`. `null` → `None`. A LIST of words → `A \| B`, each sibling keyword on the one type word that can carry it (`containers.ARM`; 62 sites). ABSENT (a bare node) → `Any`. ABSENT beside `properties` (1,391 nodes) → an object where an enclosing node applies `type: object` to the same instance (§4; `bundle.constrained_to_object`, 556 of the 1,391), refused where none does.<br>ROOT → selects the D2 row. BRANCH → inherits the root's word (§4). CONJ → `object` or absent; any other word composes no object and refuses. RULE (125) → nothing is lowered. | `emit._decide`; `bundle.is_*_root`; `containers.multi_type`; `compiler.lower_object`; `compiler.lower_composition`; `union._plan` | D2, D5, §4 |
+| `description` | 9,591 / 1,054 | PROP → `Field(description=…)`. ROOT class → the docstring; ROOT alias → `Field(description=…)` on the alias; ROOT enum → the enum's docstring. ELEM / MAPV → the node is NAMED and the alias carries it (§6's carrier rule). BRANCH that is a class → the class's docstring (165 root-union, 94 nested-union sites); a non-object BRANCH of a nested union (25 sites) → no carrier today, see § 5.1.4. CONJ (28) → nothing; the class carries the composed node's own. RULE (40) → nothing. A `$ref` sibling (1,166 sites) wins over the target's; a composed base's loses to the document's own (§6's description-authority rule). Never folded by the comparison. | `compiler.fields` → `_field`; `compiler.render`; `compiler._alias_for`; `lower.enum.decide`; `containers._contents` → `compiler.name_the_node`; `compiler.declare_object` | D2, §6 |
+| `required` | 4,198 / 677 | On an object node → the named fields are required: no `\| None`, no default (D4). Naming a property no node declares → refused (a presence rule with no field; `compiler.fields`). CONJ (59) → unioned into the composed class's `required` (D7); a `required`-only conjunct → the overlay: the field redeclared with the base's type and no default (D7). ROOT (501) → the root class's requiredness; a ROOT beside a union → `_ROOT_REQUIRED` on the base, inherited by every branch (§4; D2's object-facets clause). BRANCH (815) → the branch class's requiredness, and D3's third rung reads the sorted set as the branch's name. RULE (2,174): in a presence-only `oneOf` / `anyOf` branch → `RequiredGroups`; under `not` → `ForbiddenGroups`; in `if` → the keys a `Match` clause tests (434 of 591 `if` sites are readable); in `then` / `else` → `ConditionalRequired` / `NegatedConditional` (388 + 46 reduce; 200 + 12 reduce to nothing). `required: []` → nothing (`harness._constrains_nothing`). | `compiler.fields`; `compiler.lower_composition`; `union.ROOT_CONJUNCTS` (refuses today); `union.branch_identity`; `rules._combinator`, `_negated`, `_clauses`, `_branch` | D2, D4, D6, D7, §4 |
+| `properties` | 3,291 / 764 | A class with one field per key (D2). PROP / ELEM / MAPV / DEF → a nested class named by D3 (`<Property>`, `<Property>Item`, `<Property>Value`, `<Root><Key>`). CONJ (78) → fields of the composed class, merged by D7's restatement rule (narrower wins; neither narrowing refuses). ROOT beside a union (`{properties, oneOf}` and kin, 88 nodes) → fields on the base, inherited by every branch (D2's object-facets clause). BRANCH (572) → the branch class. RULE (1,060): under `if` → the values a `Match` clause tests, read only where const / enum; under `then` / `else` (310 sites) → nothing, the schema half narrows the value (D4); under `not` → nothing. | `compiler.lower_object`; `compiler.lower_composition.declare`; `union.ROOT_CONJUNCTS` (refuses today); `rules._clauses`, `_values`, `_branch` | D2, D3, D6, D7 |
+| `additionalProperties` | 1,891 / 727 | On a class: `false` → `extra="forbid"`; `true` → `allow`; typed → `allow` with a typed `__pydantic_extra__`, the same `dict[K, V]` a mapping lowers to; absent → `ignore` (D8). On a mapping (no `properties`) → the VALUE type; `true` / `{}` → `Any`; `false` → refused (admits only the empty object; a rule on a value). Beside `patternProperties` → refused (two value schemas). ROOT beside a union → the base's D8 reading (D2's object-facets clause). CONJ (5 sites) → undecided, § 5.1.4. RULE (3) → nothing. Its PRESENCE gates the `minProperties` rule (`rules._count`). | `compiler.declare_object`; `containers.mapping`, `_value`; `union.ROOT_CONJUNCTS` (refuses today); `compiler.INLINE` (refuses the conjunct) | D8, D2 |
+| `items` | 1,830 / 484 | `list[X]`, X decided by the same walk and named `<Property>Item` where it needs a symbol (D3, §6's carrier rule). A list-valued `items` → refused (tuple validation; 0 sites, all 1,830 are schemas). ROOT array (5) → `RootModel[list[X]]` (D2). RULE (44) → nothing. | `containers.array` → `_contents`; `containers.root` (refuses the root row today) | D2, D3 |
+| `const` | 1,486 / 347 | `Literal[value]`; the type word is not restated (pydantic renders it). Values are `str` 1,310, `bool` 161, `int` 15; an object, array, `null` or float → refused. A const on a BRANCH's property → also D3's second rung's naming input. A const AT a branch node (pins the whole branch) → the branch is a scalar: refused at a root union (`core/start-timing.json`), a `Literal` member of a nested one. RULE (678): under `if` → a `Match` clause's value; under `then` / `else` / `not` → nothing (schema half). The comparison folds `enum: [v]` to `const` (§6). | `lower.const.decide`; `union._const_pin`; `rules._values` | D2, D3, §6 |
+| `title` | 1,460 / 1,054 | ROOT → the symbol: `pascal_case(title)`; missing or not an identifier → refused. BRANCH (356) → D3's first rung, the branch class's name. PROP (22) / DEF (23) / CONJ (3) / ELEM (2) → nothing: a nested node is named by its property or its entry key, so a nested title is not read. Never rendered (pydantic's own `title` is not a compared fact). D15: its presence selects `StrEnum` over `Literal` for an enum node. | `emit.lower_document` → `compiler.class_name`; `union.branch_identity` | D3, D15 |
+| `$ref` | 1,173 / 354 declaring (+ 3,027 pure; 4,200 sites) | Another document's root (3,682 sites) → an IMPORT of that module's symbol; nothing of the target is copied. A fragment of another document (113) → an import of a symbol the target DECLARES (`emit.exported`). Local `#/…` (405) → the entry decided on demand in this module, named `<Root><Key>`; a cycle refuses. An annotation sibling → the sibling's description wins (§6 rule 1); a constraining sibling → refused (draft-07 ignores it, the resolver merges it; 0 sites). CONJ → a BASE (D7); a `$ref` with a sibling in a conjunct → refused on the sibling. KEY → the key type. A bare-`$ref` BRANCH of a ROOT union (5 all-`$ref` sites, 58 branch sites) → undecided, § 5.1.4; of a nested union → a member type. | `emit._decide`; `compiler.local_reference`; `emit.emit.bind`; `compiler.lower_composition`; `containers._key`; `union._plan` (refuses the root case) | D1, D2, D3, D7, §6 |
+| `minimum` | 1,083 / 288 | `ge` on the TYPE (D5): rung 2 `NonNegativeInt` / `NonNegativeFloat` for `minimum: 0` (672 sites), rung 3 alias (`IntMin1`, `FloatMin0Max1`, …) otherwise. ELEM (19) / MAPV (7) → the alias inside `list[…]` / `dict[str, …]`. BRANCH (4) → the alias as the member type. RULE (18) → nothing. Rendered through `Constraints(minimum=…)` → `Field(ge=…)`. | `emit._decide` → `constraints.resolve`, `standard`, `symbol`; `compiler.CONSTRAINTS` → `_field` | D5 |
+| `minItems` | 1,075 / 347 | **Decided here (§ 5.1.2): `min_length` on the annotation of the ARRAY'S OWN TYPE, at every position.** Constrains at 1,044 of 1,075 sites. PROP (1,023) → `Annotated[list[X], Field(min_length=n)]` on the field. BRANCH (21) → on the branch's own type and never on the field holding the union (D5's worked instance). MAPV (6) / ELEM → the container's type must be NAMED to carry it (D5). DEF (6) → the entry's alias carries it when referenced. ROOT (5) → the root-array row. RULE (14) → nothing. `minItems: 0` (1 site) states nothing. Where the named carrier LIVES for an array of a document type is contradiction C2, § 5.1.4. | `containers.array` → `compiler._field` (PROP); `union.nested` (refuses BRANCH); `containers._inner` (refuses MAPV / ELEM); `compiler.name_the_node` (DEF) | D5, § 5.1.2 |
+| `enum` | 1,069 / 535 | A named node → `StrEnum` / `IntEnum`, the base read off the members (`str` 1,066, `int` 3; 164 typeless admitted); `enumDescriptions` → member docstrings. ROOT (214) → the enum with a module-level `strict_validate`. PROP (575) → a nested enum named `<Property>`. An UNTITLED BRANCH of a root union (`core/geo-place-system.json`, `-type.json`) → a `Literal` of the members (D2). KEY (1) → refused by name with the key set (D5). RULE (138): under `if` → `Match` values; else nothing. Mixed member types, an empty list or a duplicate member → refused. The comparison folds a one-member enum to `const` and `[false, true]` on a boolean to `type`. | `lower.enum.decide`; `emit._enum_root`; `union._plan` (refuses the Literal branch today); `containers._key`; `rules._values` | D2, D3, D5, §6 |
+| `$schema` | 1,054 / 1,054 | Nothing on the class. It SELECTS THE VALIDATOR the schema half runs — `strict_validate` and the harness ask `validator_for(doc)`, draft-07 for every document — and through it the format checkers the walk may select a type for (`emit.asserted_formats`). So it is the one annotation that decides a behaviour, and it decides it on the schema half. All ROOT; 1 distinct value; 0 refusals / 13,702. Admitted by name. | `harness.validator_for`; `emit.asserted_formats`; `compiler._DRAFT_ANNOTATIONS`; `emit._ANNOTATIONS` (left out of refusal reports) | D4, D15 |
+| `pattern` | 830 / 345 | `pattern` on the type: rung 3 alias `StrMatching<8 hex of SHA-256>`. On `format: uri` → SELECTS the type — `AdCPUrl` for exactly `^https://` (47), `HttpUrl` otherwise (253) — and the pattern stays with the schema half (D5). ELEM (123) / BRANCH (14) → the alias as element / member type. ROOT (9) → the root alias over the rung-3 alias. KEY (13) → an annotated `str` key (D5) — refused today as a verdict, § 5.1.4. RULE (10) → nothing. Engine: §4 derives `python-re` per class for look-around (4 of 111 patterns); today every class takes `python-re` (§ 5.1.4). | `constraints.symbol`, `_digest`, `url_type`; `containers._key` (refuses KEY); `_base.REGEX_ENGINE` | D5, §4 |
+| `format` | 806 / 300 | Selects a TYPE where the document's draft asserts the format and a type is named: `date-time` (437) → `AwareDatetime`, `date` (29) → `datetime.date`, `uri` (300) → `AdCPUrl` / `HttpUrl` by `pattern`. Otherwise rides as `json_schema_extra={"format": …}` on the field (`uuid` 18, `email` 11, `hostname` 10, `uri-template` 1). ELEM (21) / MAPV with no type selected → D5's third rung names it (`Hostname`, the worked instance). BRANCH (6) → the selected type as the member. A `uri` beside another string constraint (4 `maxLength` sites) → refused: a URL type carries none. RULE (7) → nothing. A format with no installed checker selects no type (D5). | `emit.FORMAT_TYPES`, `emit._decide`; `constraints.url_type`; `compiler.Property.format` → `_field`; `containers._inner` (refuses ELEM today) | D5 |
+| `minLength` | 771 / 287 | `min_length` on the type via the rung-3 alias (`StrMinLen1`). KEY (6) → the key type, which pydantic renders back as `propertyNames.minLength`. ELEM (51) / MAPV (5) → the alias inside. ROOT (9) → the root alias. RULE (3) → nothing. On a URL type → refused (not representable). | `constraints.symbol`; `containers._key`; `emit._decide` | D5 |
+| `allOf` | 668 / 401 | ROOT with no union beside (301) → `$ref` conjuncts are BASES, inline conjuncts are fields and rules of this class (D7). PROP (141) / ELEM (74) / DEF (6) → the same reader at the node's own pointer. BRANCH (77) → the branch class composes, with the union base first. ROOT beside a union (41) → the bases reach every branch (D7's envelope example; D2's object-facets clause). CONJ (3, an `allOf` inside an `allOf`) → D7's rule applied to the conjunct's own conjuncts. RULE (25): under `not` → single-group conjuncts merge into one group; else nothing. | `compiler.lower_composition`; `emit._decide`; `union.lower_union`; `union.ROOT_CONJUNCTS` (refuses the union case today); `rules._required_groups` | D7, D2 |
+| `maxLength` | 607 / 243 | `max_length` on the type (alias `StrMaxLen256`, …), the same positions as `minLength`; KEY (7) → the key type. On a URL type → refused (4 sites, all `maxLength: 2048`). | `constraints.symbol`; `containers._key`; `emit._decide` | D5 |
+| `if` | 591 / 186 | A `Match` clause list where it states `required` plus `properties` with `const` / `enum` values (434 of 591); otherwise nothing, and the schema half answers (157). With `then` / `else` → a rule on the nearest class. CONJ (542 — the `{if, then}` conjuncts) → the COMPOSED class's rule. ROOT (14) → the root class's rule. BRANCH (3) → the branch class's rule. RULE (30, nested) → nothing. | `rules._conditional`, `_clauses`; `compiler.lower_composition` (conjunct rules) → `declare_object` → `rules_at` | D6, D7 |
+| `then` | 588 / 186 | `ConditionalRequired(Match…, require=, forbid=)` from its `required` and a `not: {required: [one]}` (388 reduce; 200 reduce to nothing). Its `properties` (305 sites) → nothing on the model; the schema half narrows the value (D4). Positions as `if`. | `rules._conditional`, `_branch` | D6, D4 |
+| `uniqueItems` | 485 / 198 | PROP (467) → `UniqueItems(key)` rule on the class holding the array, plus `json_schema_extra={"uniqueItems": true}` on the field so the comparison grades it; the keyword is stripped off the array's own declaration. CONJ overlay on a `$ref` (`core/catalog-selection.json`, 3 sites) → a constrained type under D5 (D7). No class above (18: ROOT 4, MAPV 6, DEF 4, BRANCH 3, RULE 1) → the plan does not decide, § 5.1.4. All 485 state `true`. The comparison's fourth fold derives a `maxItems` from it over a countable set. | `rules._distinct`; `compiler.fields`, `Property.distinct` → `_field`; `containers.array` (refuses the 18) | D2, D6, D7 |
+| `not` | 471 / 192 | `not: {required: …}` and `anyOf` / `allOf` of those → `ForbiddenGroups` (398 sites). `not: {const}` / `{enum}` (18) → nothing on the model; the schema half refuses the value (D4). Any other shape (53) → nothing; the schema half. `not: {}` (2) → admits nothing; the typeless row's `Any` carries it. BRANCH (167) / CONJ (72) / ROOT (42) → that class's rule. RULE (167, nested) → nothing. PROP (11, a scalar's) → the schema half. D6 lists `not` as a family without this split, § 5.1.4. | `rules._negated`, `_required_groups`; `rules.ON_A_VALUE`; `emit._decide` | D6, D4 |
+| `anyOf` | 450 / 200 | Presence-only (every branch `required`-only; 296 sites, 30 ROOT) → `RequiredGroups(groups, "anyOf")`. Shapes at ROOT (19) → a base with `BranchDispatchMixin`, one subclass per branch, `_branch_combinator()` returning `"anyOf"` (§4). Shapes nested (135: PROP 74, ELEM 20, DEF 17, MAPV 5, KEY 1) → one type `A \| B`; a sibling beside it → refused. CONJ (8) → one subclass per branch over the composed bases (D7). RULE (257): under `not` → the union of the branches' groups; else nothing. KEY (1) → a union of key types (D5). A union whose branches differ only in VALUES (15 nodes, 42 branches) → one class and a rule (D2). | `rules._combinator`; `union.lower_union`; `union.nested`; `compiler.lower_composition` (refuses the CONJ case today); `rules._required_groups` | D2, D6, D7, §4 |
+| `default` | 342 / 143 | PROP (337) → the field's default (`= value`, `has_default`); `None` is a default (`MISSING` is absence). On a REQUIRED property (5 sites) → dropped and reported (D4). DEF (3) / RULE (2) → the same: 18 of the 19 sit on a property of a nested object, the other (`brand.json#/definitions/default_language`) on an `allOf` node. On a node that becomes an alias → no slot (0 inner nodes state one). `default: null` on an optional property is not an added fact (§6). Compared by the comparison. | `compiler.fields` → `_field`; `compiler._alias_for` | D4, §6 |
+| `oneOf` | 212 / 165 | Shapes at ROOT (107) → the base plus subclasses, `_branch_combinator()` returning `"oneOf"`. Shapes nested (104: PROP 42, ELEM 40, DEF 11, MAPV 3) → `A \| B`, which admits an instance satisfying two branches; the schema half enforces exclusivity (D4). Presence-only (1) → `RequiredGroups(…, "oneOf")`. CONJ (3) → subclasses over the composed bases (D7). RULE (2) → nothing ("not exactly one" has no group form). ROOT with `properties` / `required` / `additionalProperties` / `allOf` beside → D2's object-facets clause and D7's envelope rule. | `union.lower_union`; `union.nested`; `rules._combinator`; `union.ROOT_CONJUNCTS` (refuses the facets today) | D2, D4, D6, D7, §4 |
+| `maximum` | 197 / 115 | `le` on the type (alias `…Max100`); positions as `minimum`. | `constraints.symbol`; `compiler.CONSTRAINTS` | D5 |
+| `examples` | 166 / 140 | Nothing on the model. The accepts check replays every one through `strict_validate` (§6): a payload the DOCUMENT refuses is a spec defect reported by document and pointer; one the document accepts and the class refuses is ours. ROOT 112, PROP 53, ELEM 1. 0 refusals / 2,158. | `harness` (the accepts check); `compiler._DRAFT_ANNOTATIONS` | §6, D15 |
+| `maxItems` | 147 / 88 | `max_length` on the array's own type — the `minItems` rule with the other bound. PROP (136) → the field. BRANCH (3) → the branch's own type (`governance/reported-outcome-error.json#/definitions/bounded_value_level_3/anyOf/1`). DEF 2. RULE 6 → nothing. | `containers.array`; `union.nested` (refuses BRANCH today) | D5, § 5.1.2 |
+| `contains` | 120 / 46 | On a typed array (18: PROP 13, CONJ 4, DEF 1) → nothing on the model; the schema half enforces it (D4), the constructor does not, and the ceiling is named (`containers._ARRAY_HANDLED`). RULE (102, nested) → nothing. In an `allOf` of `contains`-only conjuncts beside an array's own bounds (3 nodes) → the conjunct rule (D7). D6's seventh family; its mechanism is contradiction C8, § 5.1.4. | `containers._ARRAY_HANDLED` (admits); `harness.FACTS` (does not grade it) | D4, D6, D7 |
+| `else` | 58 / 44 | `NegatedConditional(…)` from its `required` and single-name `not` (46 reduce; 12 nothing). Its `properties` (5) → nothing. CONJ 43, RULE 12, ROOT 3. | `rules._conditional`, `_branch` | D6 |
+| `exclusiveMinimum` | 58 / 30 | **Decided here (§ 5.1.2): `gt` on the type.** Rung 3 alias `FloatGt0` (57 sites) / `IntGt0` (1). Constrains at 58 of 58. PROP (53) → the field's type. ELEM (5) → the alias inside `list[…]`. Never rendered as `ge`: 672 sites say `minimum: 0` and 58 say `exclusiveMinimum: 0`, and the two differ on exactly one instance. | `constraints.SPELLING` ("Gt"); `compiler.CONSTRAINTS` → `_field` (dmcg spells it `gt`) | D5, § 5.1.2 |
+| `$comment` | 48 / 28 | Nothing. A note to a reader, admitted by name. CONJ 33 (on `{if, then}` conjuncts), PROP 8, ROOT 6, RULE 1. 0 refusals / 624. | `compiler._DRAFT_ANNOTATIONS` | D15 |
+| `minProperties` | 48 / 40 | On a class → `PropertyCount(minimum=…)`, written only where `additionalProperties` is STATED (a dropped key would make the rule refuse what the document accepts). On a mapping → `Field(min_length=…)` on the dict's type, which pydantic renders back as `minProperties` — a position D2 and D6 do not state, § 5.1.4. CONJ (1) → the composed class's rule. BRANCH (1) → the branch class's rule. PROP 23, ROOT 13, DEF 4, ELEM 3, MAPV 2, RULE 1. | `rules._count`; `containers.KEY_BOUNDS` → `compiler.KEY_COUNT` | D6, D2 |
+| `definitions` | 41 / 41 | Nothing by itself: a bag of named subschemas, admitted at every node. Each entry is declared ON DEMAND when a `$ref` names it, as the node's own kind, under `<Root><Key>` (D3 with the document as the parent); an entry nothing references is not declared (11 of 157). ROOT 40, PROP 1. | `compiler.DEFINITION_SECTIONS`; `compiler.local_reference` | D2, D3 |
+| `dependencies` | 32 / 27 | The list form → `Dependencies(trigger, names)` (60 entries, all 60 list-form). The schema form (0 entries) is skipped silently today; D14 says a part asserted empty refuses by name, § 5.1.4. ROOT 19, ELEM 8, PROP 4, RULE 1. | `rules._depends` | D6, D14 |
+| `propertyNames` | 26 / 21 | The mapping's KEY type (D5): a `$ref` → that type; `minLength` / `maxLength` → `StrMinLen1` (renders as `propertyNames.minLength`); `pattern` (13) → an annotated `str` — refused today as a verdict, § 5.1.4; `enum` (1) → refused by name with the key set; `anyOf` → a union of key types. RULE (3; the two `core/catalog-item-availability-state.json` nodes) → undecided (D6). PROP 18, ROOT 3, DEF 1, MAPV 1. | `containers._key` | D5, D6 |
+| `maxProperties` | 19 / 10 | `PropertyCount(maximum=…)` on a class, no gate (a dropped key only lowers the count); `Field(max_length=…)` on a mapping's type. PROP 8, DEF 4, BRANCH 3, ELEM 1, RULE 1, ROOT 1, MAPV 1. | `rules._count`; `compiler.KEY_COUNT` | D6 |
+| `patternProperties` | 14 / 9 | A mapping whose KEY carries the pattern (D5): `dict[Annotated[str, StringConstraints(pattern=…)], V]`, which pydantic renders as `patternProperties` — the document's own keyword. More than one pattern → a union of key types with a value per branch, which is a rule, refused. Beside a non-`false` `additionalProperties` → refused. Walked as a name→schema map. Today refused as a verdict on a reason written for the other spelling, § 5.1.4. PROP 10, RULE 2, ROOT 1, DEF 1. | `containers.mapping`; `bundle._DESCEND_MAP` | D5 |
+| `exclusiveMaximum` | 4 / 4 | **Decided here (§ 5.1.2): `lt` on the type**, alias `Float…Lt…`. Constrains at 4 of 4. All PROP. | `constraints.SPELLING` ("Lt"); `compiler.CONSTRAINTS` | D5, § 5.1.2 |
+| `readOnly` | 4 / 4 | Nothing, § 5.1.2. All PROP, all `true`. 0 refusals / 52. pydantic can render it (`json_schema_extra`); the SDK has one model per document and no read / write split for it to state, so it is admitted by name and not carried. | `compiler._DRAFT_ANNOTATIONS` | D15, § 5.1.2 |
+| `writeOnly` | 1 / 1 | Nothing, as `readOnly` (`core/business-entity.json#/properties/bank`). Not in `jsonschema`'s meta-schema copy, so `compiler.DRAFT07` omits it; admitted by name anyway. | `compiler._DRAFT_ANNOTATIONS` | D15, § 5.1.2 |
+
+**The 56 the draft does not define.** None can constrain (0 refusals over the 63's 184,418
+validations, every one of these among the 63), so none compiles to a type, a rule or a base.
+Four compile to something anyway — a docstring, a name's selector, a section's entries — and
+the rows say which. Admission is BY NAME (D15); what admits each today is the WHERE column, and
+for the 30 `x-` names it is the predicate § 5.1.3 diagnoses.
+
+| keyword | sites / docs | compiles to, by position | where today | from |
+|---|---|---|---|---|
+| `deprecated` | 179 / 95 | **Decided in § 5.1.3:** PROP (152) → `Field(deprecated=True)`; ROOT (16) and BRANCH (11) → the class's `json_schema_extra={"deprecated": True}` through the config channel; the one `false` → nothing. Rendered, so graded: `harness.FACTS` gains it. Draft 2019-09's keyword. Today: admitted, rendered nowhere, ungraded — 40 emitted documents carry 56 sites and `missing` is 0. | `compiler._DRAFT_ANNOTATIONS` (admits); nothing renders it | D15, § 5.1.3 |
+| `enumDescriptions` | 137 / 135 | Member docstrings on the enumeration, keyed by the member's value (ROOT 131, PROP 6). Not an annotation for D15's purpose: it is carried. | `lower.enum.decide` → `compiler.Member.description` → `_member` | D2 (step 3) |
+| `discriminator` | 81 / 73 | **Diagnosed in § 5.1.3:** nothing on the class at every position (ROOT 51, ELEM 19, PROP 7, DEF 3, BRANCH 1); admitted by name; read by D3's second rung where a branch pins more than one const (10 sites, 32 branch classes). Today: admitted at a root, refused as a verdict below one (11 documents). | `union.ROOT_HANDLED` (admits); `union._const_pin` (names); `union.nested` → `_NESTED_SIBLING` (refuses) | D3, D15, D16 |
+| `$defs` | 5 / 5 | As `definitions`: a bag of named subschemas, each entry declared on demand under `<Root><Key>`. Draft 2019-09's spelling. All ROOT (`core/format.json`, `core/registry-event.json`, `core/wholesale-feed-event.json`, `content-standards/artifact.json`, `governance/policy-entry.json`). | `compiler.DEFINITION_SECTIONS`; `compiler.local_reference` | D2, D3 |
+| `enumMetadata` | 4 / 4 | Nothing: structured recovery and action metadata for a reader; the `enum` beside it has closed the value set. All ROOT; 3 enum roots and 1 union root (`core/media-buy-available-action-id.json`). | `compiler.BUNDLE_ANNOTATIONS` | D15 |
+| `notes` | 2 / 2 | Nothing: English sentences for a reader. ROOT of `core/protocol-envelope.json` and `enums/task-type.json`. | `compiler.BUNDLE_ANNOTATIONS` | D15 |
+| `errorMessage` | 2 / 1 | Nothing: ajv-errors customizes a validator's message. CONJ (1) → the conjunct contributes nothing and the drop is reported (D7); RULE (1, under `then`) → nothing. Both in `media-buy/sync-catalogs-request.json`; refused as a verdict today. | `compiler.check_keywords` → `_why` (refuses) | D7, D15 |
+| `x-entity` | 515 / 260 | Nothing. PROP 467, ELEM 34, ROOT 11, DEF 2, KEY 1. 76 distinct values. | the `x-` predicate (5 sites) | D15 |
+| `x-adcp-validation` | 179 / 135 | Nothing; 166 distinct values. Constrains in intent and not in the document (upstream, adcontextprotocol/adcp#8472); a model enforcing it would be narrower than its document. ROOT 109, PROP 53, ELEM 6, BRANCH 4, DEF 4, CONJ 2, RULE 1. | the `x-` predicate | D15 |
+| `x-status` | 170 / 129 | Nothing. ROOT 117, PROP 53. 1 distinct value. | the `x-` predicate | D15 |
+| `x-mutates-state` | 44 / 44 | Nothing. All ROOT. | the `x-` predicate | D15 |
+| `x-tool-summary` | 37 / 37 | Nothing. All ROOT. | the `x-` predicate | D15 |
+| `x-added-in` | 22 / 15 | Nothing. PROP 12, ROOT 10. | the `x-` predicate | D15 |
+| `x-adcp-schema-uri` | 18 / 9 | Nothing. PROP 14, BRANCH 2, ELEM 2. | the `x-` predicate | D15 |
+| `x-canonicalization` | 16 / 2 | Nothing: all 16 read `"set"` and sit beside `uniqueItems: true` and a `minItems`, so the duplicate half is the document's own `uniqueItems` and the order half is not an acceptance statement. All PROP. | the `x-` predicate | D15 |
+| `x-adcp-model-context-inline` | 14 / 12 | Nothing. All DEF. | the `x-` predicate | D15 |
+| `x-accessibility` | 11 / 8 | Nothing. All PROP. | the `x-` predicate | D15 |
+| `x-governed-commitment` | 9 / 9 | Nothing. All ROOT. | the `x-` predicate | D15 |
+| `x-deprecated-in` | 8 / 8 | Nothing. ROOT 6, PROP 2. | the `x-` predicate | D15 |
+| `x-operation-family` | 8 / 8 | Nothing. All ROOT. | the `x-` predicate | D15 |
+| `x-legacy-fallback` | 7 / 7 | Nothing. All ROOT. | the `x-` predicate | D15 |
+| `x-adcp-hoist` | 6 / 6 | Nothing. All ROOT. | the `x-` predicate | D15 |
+| `x-adcp-open-payload` | 4 / 4 | Nothing: 3 sites sit beside `additionalProperties: true` (D8's `allow`), the fourth on a typeless node (`Any`). All PROP. | the `x-` predicate | D15 |
+| `x-removed-in` | 3 / 3 | Nothing. PROP 2, ROOT 1. | the `x-` predicate | D15 |
+| `x-superseded-by` | 3 / 3 | Nothing. All ROOT. | the `x-` predicate | D15 |
+| `x-deprecated-enum-values` | 2 / 2 | Nothing. All ROOT. | the `x-` predicate | D15 |
+| `x-deprecated-enum-values-doc` | 2 / 2 | Nothing. All ROOT. | the `x-` predicate | D15 |
+| `x-extensible` | 2 / 2 | Nothing: `enums/advertiser-industry.json`'s open vocabulary is written in the namespace the validator ignores, so the document's accepted set is the closed `enum` and a closed `StrEnum` is faithful to it (D15). All ROOT. | the `x-` predicate | D15 |
+| `x-idempotency-key-required` | 2 / 2 | Nothing. All ROOT. | the `x-` predicate | D15 |
+| `x-adcp-file-size-units` | 1 / 1 | Nothing. ROOT. | the `x-` predicate | D15 |
+| `x-adcp-sdk-local` | 1 / 1 | Nothing. ROOT. | the `x-` predicate | D15 |
+| `x-canonical-policy-required-params-not-enforced` | 1 / 1 | Nothing. ROOT. | the `x-` predicate | D15 |
+| `x-compatibility-projection-only` | 1 / 1 | Nothing. PROP. | the `x-` predicate | D15 |
+| `x-entity-definitions` | 1 / 1 | Nothing. ROOT. | the `x-` predicate | D15 |
+| `x-enum-descriptions` | 1 / 1 | **Diagnosed in § 5.1.3:** member docstrings, as the second spelling of `enumDescriptions`. ROOT of `enums/signal-value-type.json`. Today dropped by the predicate. | the `x-` predicate (drops it) | D2, § 5.1.3 |
+| `x-pattern` | 1 / 1 | Nothing: the extension half of `enums/advertiser-industry.json`'s vocabulary, see `x-extensible`. ROOT. | the `x-` predicate | D15 |
+| `x-task-result-schema-overrides` | 1 / 1 | Nothing. ROOT. | the `x-` predicate | D15 |
+| `version` | 4 / 4 | Refused by name: a registry's own instance data at a schema root, not an annotation (D15). ROOT. | `compiler.check_keywords` → `_why` | D15 |
+| `lastUpdated` | 3 / 3 | Refused by name, as `version`. ROOT. | `compiler.check_keywords` → `_why` | D15 |
+| `vocabulary` | 2 / 2 | Refused by name, as `version`. ROOT. | `compiler.check_keywords` → `_why` | D15 |
+| `_generated`, `_generatedAt`, `adcp_version`, `architecture`, `asset_types`, `baseUrl`, `extensions`, `governance`, `last_updated`, `mappings`, `prerelease`, `protocol_layers`, `published_version`, `stability`, `usage_notes`, `versioning` | 1 / 1 each (16 keywords) | Refused by name, as `version`: the payload of five registry, vocabulary and index documents. Each ROOT. Four of the five documents refuse on `type` first (no kind keyword at the root); `registries/v1-canonical-mapping.json` refuses on `last_updated`. | `compiler.check_keywords` → `_why`; `emit.lower_document` (the `type` refusal) | D15 |
+
+Sixteen of the nineteen registry keys share one row because their answer is one sentence with
+a different key; the census lists each with its one site.
+
+#### 5.1.2 The seven decided
+
+**`minItems`, `maxItems` → `min_length` / `max_length` on the annotation of the array's OWN
+type, at every position.** `Annotated[list[X], Field(min_length=n)]` is the type-bound form D5
+requires, it nests into a mapping value and a union branch once the type has a name, and it
+renders back as `minItems` / `maxItems`, so the comparison needs no row. The positional
+consequence is the one D5's third rung already worked for `get-media-buy*-request.json`: on a
+BRANCH the bound binds the branch's own type and never the field holding the union, because
+the field also holds the other branch and would refuse a single status the document accepts.
+Measured: `minItems` constrains at **1,044 of 1,075** sites by the boundary witness (the array
+one shorter than the bound, refused with the keyword and accepted without); the other 31 are
+witness artifacts with their cause named — 29 refused both ways (16 beside a `contains` that
+refuses the same short array, 13 where the element type refuses the `null` filler), 1 whose
+node holds an unresolved `$ref`, and `core/creative-localization.json#/properties/target_variants`,
+which states `minItems: 0` and forbids nothing. The decision is the compilation; WHERE the
+named carrier lives for an array of a document type is contradiction C2 below and is not
+decided here.
+
+**`exclusiveMinimum`, `exclusiveMaximum` → `gt` / `lt` on the type, never `ge` / `le`.** Both
+constrain at every site (58 of 58, 4 of 4, by the same witness: the bound's own value). `gt`
+is not `ge`, and the bundle chose between them 730 times — 672 sites state `minimum: 0` and 58
+state `exclusiveMinimum: 0`, 57 on a `number` and 1 on an `integer`, so rendering either as the
+other makes 58 fields accept a zero their document refuses or 672 refuse a zero their document
+accepts. D5 already says the same from the other side when it refuses `PositiveInt` for
+`{integer, minimum: 1}` because it renders `exclusiveMinimum: 0`. Measured on the shapes that
+carry money: of the 7 titled roots whose title names a price, amount, budget or cost and that
+bound a property below, 5 state `minimum: 0` (`core/price.json`, `core/budget-range.json`,
+`media-buy/proposal-budget-constraint.json`, `pricing-options/price-guidance.json`,
+`trusted-match/offer-price.json`) and 2 state `exclusiveMinimum: 0`
+(`core/outcome-target-cost-per.json#/properties/amount`,
+`pricing-options/price-breakdown.json#/properties/list_price`), so zero is a valid amount in
+five of them and invalid in two, and the type says which: `NonNegativeFloat` against
+`FloatGt0`.
+
+**`$schema`, `$comment`, `readOnly`, `writeOnly` → nothing on the class, admitted by name.**
+Each refuses no instance (0 refusals over 13,702 / 624 / 52 / 13 validations) and is in the
+63. What admits them is `compiler._DRAFT_ANNOTATIONS`, read by `check_keywords` at every node;
+D15 is the decision. `$schema` is the one of the four that does something: it selects the
+validator the schema half runs and the format checkers it asserts, and it does so on the
+schema half (`harness.validator_for`), so the class carries nothing of it. `readOnly` and
+`writeOnly` have a rendering pydantic would accept (`json_schema_extra`) and are not carried:
+they state nothing about an instance, and the SDK emits one model per document with no
+request / response split for the keyword to inform. `writeOnly` is draft-07's by §10.3 of the
+validation spec and absent from `jsonschema`'s copy of the meta-schema; `compiler.DRAFT07`
+reads that copy, so a document carrying it would refuse as a non-keyword were it not admitted
+by name — it is, and the omission has no effect.
+
+#### 5.1.3 The five diagnosed
+
+**`discriminator` (81 sites, 73 documents) — two readings, both measured.** It constrains
+nothing: 0 refusals over 1,053 validations (D16). At a ROOT (51 sites) `union.ROOT_HANDLED`
+admits it and `union._const_pin` reads its `propertyName`. Below a root (ELEM 19, PROP 7, DEF 3,
+BRANCH 1) `union.nested`'s sibling screen refuses it as "a sibling of a nested oneOf/anyOf is a
+CONJUNCTION with every branch" — **11 documents refused as verdicts in this tree** on a keyword
+that cannot constrain (`core/assets/card-asset.json#/properties/media`,
+`media-buy/get-products-request.json#/properties/refine/items`,
+`media-buy/outcome-target.json#/properties/goal` among them). `compiler.BUNDLE_ANNOTATIONS`'
+note, that it "COULD CONSTRAIN AN INSTANCE", is the false reading and the one that costs
+documents. **And it IS a naming input, which D16's draft denied.** D3's second rung reads "the
+discriminator `const`": the const a branch pins on the discriminating property. At 71 of 81
+sites each branch pins exactly one const and the keyword restates it; at **10 sites a branch
+pins two or more** (`core/registry-event.json` pins `entity_type` and `event_type` on all 20
+branches) and `discriminator.propertyName` is what says which one names the branch. Measured
+by calling `_const_pin` with and without the keyword: **32 branch classes in 5 documents take a
+different name without it** — 20 in `core/registry-event.json`, 9 in
+`core/wholesale-feed-event.json`, 1 each in `core/requirements/catalog-field-binding.json`,
+`core/signal-targeting-expression.json` and `core/tracker-execution-selector.json` — because
+rung 2 then finds two pins, answers nothing, and rung 3 names them by their required set. The
+correct compilation: nothing on the class at every position; admitted by name (D15) at every
+position, so the nested screen stops refusing it; and read by D3's second rung exactly where a
+branch pins more than one const, which is what the rung's own words say. The change is one
+line in `union.nested`'s screen and the deletion of the `BUNDLE_ANNOTATIONS` note; `_const_pin`
+is already right. D16 is amended below to say so.
+
+**`contains` (120 sites, 46 documents) — the seventh family, and its mechanism is open.** D6's
+membership test — a keyword with no field-level annotation, spanning a collection — admits it,
+so D6's "those six are the whole population" was false and D6 is amended (the survey's
+decision). What `contains` compiles to is nothing on the model at every position: on the 18
+typed-array nodes `containers._ARRAY_HANDLED` admits it and the schema half enforces it; on the
+102 nested nodes no type is lowered. Whether that is "a rule carried by the schema half" (the
+reading the code gives `not` over a value, `rules.ON_A_VALUE`) or a rule D6 still owes an
+after-validator for is contradiction C8 below: `_runtime.RuleBound` reads which KEYS are
+present and `contains` is about elements, so no rule in D6's present shape can carry it.
+
+**`x-enum-descriptions` (1 site) — a second spelling the enum row does not read.**
+`enums/signal-value-type.json` carries it and no `enumDescriptions`; the document emits today
+(`src/adcp/types/_schemas/enums/signal_value_type.py`) with `BINARY`, `CATEGORICAL`, `NUMERIC`
+and no docstrings, which is the measured consequence. The correct compilation is
+`enumDescriptions`'s: member docstrings (`compiler.Member.description`). The change is one
+line in `lower.enum.decide` reading the second spelling where the first is absent, and D15's
+`x-` list carries 29 names that contribute nothing and this one that is carried.
+
+**`deprecated` (179 sites, 95 documents) — dropped by the emitter AND invisible to the
+comparison.** It is draft 2019-09's meta-data keyword, not draft-07's; `_DRAFT_ANNOTATIONS`
+admits it by name and nothing renders it. The claim that `comparison.missing` is 0 only
+because no graded document carries one is false: **40 emitted documents carry 56 sites** (47
+on a property, 9 at a root, all `true`) and `missing` is 0 because `harness.FACTS` does not
+list the keyword, so the comparison never looks for it. The correct compilation: PROP (152
+sites) → `Field(deprecated=True)`, which pydantic 2.13.5 renders as `"deprecated": true` on the
+property (probed); ROOT (16) and BRANCH (11) → the class's config, `json_schema_extra={"deprecated": True}`,
+through the compiler's config channel that `extra` already uses; the one `false` site → nothing,
+the keyword's own default. The change is in two places and lands together: `compiler.fields`
+reads it off the declaration beside `description`, and `harness.FACTS` gains it so the
+comparison grades it in both directions — added first alone, `missing` goes 0 → 56 and names
+every site.
+
+**The `x-` namespace (30 names, 1,090 sites) — admitted by a predicate at five sites.**
+`key.startswith("x-")` at `compiler.check_keywords`, `compiler.lower_composition`,
+`compiler._constraining`, `lower.union._plan` and `lower.rules._keys` admits every future
+extension unexamined, including one that constrains; D5's https arm is the precedent — a
+literal set can be audited where a predicate cannot — and D15 decides membership by name. All
+30 compile to nothing (0 refusals over the 63's 184,418 validations), with the one exception
+diagnosed above. `x-canonicalization` adds nothing at any of its 16 sites: all 16 read `"set"`
+and carry `uniqueItems: true` and a `minItems` beside it. `x-adcp-validation` (179 sites, 135
+documents, **166 distinct values** as exact JSON — 158 and 160 are the same population under
+two truncations) constrains in intent and not in the document, so a model enforcing it would
+be NARROWER than its document; filed upstream as adcontextprotocol/adcp#8472 and not proposed
+here. The change is one literal set in `compiler.py` replacing the five predicate reads,
+exactly as D15 states.
+
+#### 5.1.4 Where the code and the plan disagree, and what this section did not decide
+
+**Contradictions this section reports and stops on.** Each would need a sentence in a decision
+this section does not own; a row in § 5.1.1 that meets one says so.
+
+- **C2 — where a bound over an array of a document type is named.** D5's third rung puts an
+  alias we emit in `adcp.types.constraints`, a module with no document and no domain, and says
+  an alias names a constraint and never a concept. Its worked instance for `minItems` on a
+  branch is `Annotated[list[MediaBuyStatus], Field(min_length=1)]`, whose annotation names a
+  document type: it cannot live in `constraints` without naming a concept and importing from
+  the private tree. §6's other carrier, `compiler.name_the_node`, declares such an alias in
+  the document's own module under D3's nested name, and §6 limits it to "an array's element
+  and a mapping's value and nowhere else" — not a branch. What decides it: a D5 sentence
+  placing a constrained container whose element is a document type in the referring
+  document's module under D3's nested name, leaving `constraints` to shapes over scalars and
+  `Any`. Population: 21 `minItems` and 3 `maxItems` sites on a branch, 6 `minItems` on a
+  mapping value. (`salesagent-j3k2l.41`.)
+- **C8 — what kind of rule `contains` is.** D6 defines a rule as a hand-written after-validator
+  in `_runtime.py` reading a class-level tuple, and the survey makes `contains` the seventh
+  family. `RuleBound` reads key presence; `contains` is about elements, so no after-validator
+  of D6's shape carries it, and the code admits it as the schema half's statement instead,
+  exactly as it carries `not` over a value. What decides it: a D6 sentence admitting a family
+  whose only enforcement is the schema half (D4) and naming the constructor's ceiling, or a
+  `Contains` after-validator validating elements against the subschema at construction. The
+  `not`-over-a-value split (18 + 53 sites) needs the same sentence.
+- **C9 — a root union whose branches are all bare `$ref`s.** §4 emits a base plus one SUBCLASS
+  per branch; a `$ref` branch's class is the target's own and descends from no base, so
+  `union._plan` refuses it. D16 says D3's first rung names those branches; what the CLASS is
+  for `core/assets/asset-union.json` (21 branches) and `core/pricing-option.json` (10) is not
+  stated anywhere. 5 sites. What decides it: a §4 sentence on whether an all-`$ref` union is a
+  type alias `A | B | …` (no base, no `isinstance`) or a base whose branches are generated
+  subclasses of the targets.
+- **C10 — `additionalProperties` on an `allOf` conjunct.** D8 derives `extra` from the root's
+  and `compiler.INLINE` refuses a conjunct carrying one on the claim that there are 0 such
+  conjuncts; measured, **5 sites** carry `properties` and `additionalProperties` together
+  (`core/demographic-targeting-intent.json#/properties/age/allOf/1`,
+  `creative/sync-creatives-request.json#/properties/creatives/items/allOf/1`, and three under
+  `media-buy/`). What decides it: a D8 sentence on how two `additionalProperties` readings of
+  one instance combine — `false` wins over anything, typed over `true`, two typed intersect
+  their value schemas by D7's rule. (`salesagent-j3k2l.43` holds the first of the five.)
+
+**Positions the plan does not state, where the code has a reading.** Each is a finding and not
+a decision; the reading is named so a decision can be written against it.
+
+- `minProperties` / `maxProperties` on a MAPPING: the code carries them as `Field(min_length
+  / max_length)` on the dict's type (`compiler.KEY_COUNT`), since a `PropertyCount` rule
+  counts fields and a `dict` has none; D2 and D6 name only the class position. Consistent with
+  D6's own membership test (an annotation exists), so the sentence it needs is one.
+- `uniqueItems` on an array NO class holds (18 sites: 4 roots, 6 mapping values, 4 definitions
+  entries, 3 branches, 1 under a rule): D2 puts the rule on the nearest class and there is
+  none; the code refuses as a verdict. The position is `salesagent-j3k2l.26`'s.
+- `not` over a value, and `not` of any shape but a required group (18 + 53 sites): the code
+  writes no rule and leaves it to the schema half; D6 lists `not` whole.
+- `description` on a non-object branch of a NESTED union (25 sites): a nested union is one
+  type, a scalar member has no class and no alias, so the description has no carrier; §6's
+  carrier rule covers an element and a mapping value only.
+- `propertyNames` at a RULE position (2 nodes): named undecided by the survey's D6 amendment.
+- `dependencies` in the schema form: 0 entries, skipped by `rules._depends` with a `continue`;
+  D14 says a part asserted empty refuses by name.
+
+**Where the code lags a decision the plan already holds.** The plan decides; these are rows
+to implement, not questions.
+
+- D2's object facets beside a union (88 nodes) and D7's envelopes reaching every branch (41
+  roots): `union.ROOT_CONJUNCTS` refuses `allOf`, `properties`, `required` and
+  `additionalProperties` at a union root as verdicts.
+- D2's `Literal` for an untitled enum branch of a root union: `union._plan` refuses
+  `core/geo-place-system.json#/anyOf/0` and `core/geo-place-type.json#/anyOf/0` with "a branch
+  of type 'string' is step 6".
+- D5's typed key for `propertyNames` with a `pattern` (13 sites, 7 documents refused) and a
+  `patternProperties` mapping (14 sites, 1 document refused): `containers._key` and
+  `containers.mapping` refuse as VERDICTS on the ground that pydantic renders the key as
+  `patternProperties` and the comparison cannot grade it. §6 says a class the comparison
+  cannot grade stays PENDING on the harness, so the kind is wrong; and for `patternProperties`
+  the premise is wrong too — that document does state `patternProperties`, so pydantic's
+  rendering is the document's own spelling.
+- D7's conjunct rule: a `required`-only overlay, a conjunct whose content is a union, a
+  conjunct carrying `errorMessage` — refused as deferrals (`salesagent-j3k2l.43`).
+- §4's regex engine derived per class: `_base.REGEX_ENGINE` is `python-re` for every class.
+- D4's dropped-and-reported default on a required property: refused as a deferral
+  (`salesagent-j3k2l.41`).
+- D5's third rung for `format: hostname` inside `items` (3 documents) and for an array bound
+  on a branch (3 documents): refused as deferrals (`salesagent-j3k2l.41`).
+- `compiler.CONSTRAINTS`, `constraints.SPELLING` and `containers._NUMERIC` carry a rendering for
+  `multipleOf`, which has 0 sites; D5's table (the survey's amendment) says the first document to
+  carry one refuses by name.
 
 ## 6. The metric
 
