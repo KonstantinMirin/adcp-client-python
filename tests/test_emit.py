@@ -3173,12 +3173,25 @@ def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointe
     OTHER keyword satisfied: in the 3.2 bundle a nameless branch always sits beside a
     keyword that refuses first, so a test over the bundle would assert the wrong refusal.
     The control is the same document with a title added, which emits.
+
+    **The first branch is CLOSED, and that is one of the "other keywords satisfied".**
+    §4's third dispatch source reached this fixture at ``salesagent-j3k2l.67``: with both
+    branches open and the first requiring nothing, ``{"b": ...}`` satisfies BOTH, so the
+    branches overlap and the dispatch refuses at ``/`` before any branch is named.
+    ``additionalProperties: false`` on the first branch makes it forbid the ``b`` the
+    second requires, which separates the pair -- and it adds no identity, so the branch
+    still has no ``title``, no ``const`` pin and no ``required`` set, which is what this
+    test is about.
     """
     nameless = {
         "title": "Nameless",
         "type": "object",
         "oneOf": [
-            {"type": "object", "properties": {"a": {"type": "string"}}},
+            {
+                "type": "object",
+                "properties": {"a": {"type": "string"}},
+                "additionalProperties": False,
+            },
             {"type": "object", "properties": {"b": {"type": "string"}}, "required": ["b"]},
         ],
     }
