@@ -847,8 +847,8 @@ re-canonicalises the same subtrees. Nothing upstream of the library can remove t
 | sharing within the call | 43.58 s | 504 | 142 MB |
 | no sharing at all | >600 s, stopped while still building | — | — |
 
-One pair without sharing costs more than the whole population costs with it, so deleting the
-sharing is not an option and an earlier revision of this section was wrong to require it.
+One pair without sharing costs more than the whole population costs with it, so the
+canonicalisation is shared and the sharing is not optional.
 
 **What is banned is the process-global form, not sharing.** `_CANON_MEMO` was a module-global
 dict with no eviction, keyed on a serialized schema and holding a canonicalised copy per key: it
