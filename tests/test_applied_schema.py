@@ -56,11 +56,18 @@ from tests.nodeset import claimed, partitions, ratchet
 #: a row doing its work: 674, 686 (bcb0b8ca8), 691 (.40), 705 (.28), 716 (.21),
 #: 719 (.64, a mapping's key is a type), 731 (.41, a fact at a position with no field
 #: to carry it: a dropped default on a required property, a format inside a container
-#: or on a union branch, and an array's or a mapping's own bound on one),
-#: 744 (.43, a conjunct contributes every part of itself: 10 of these 13 are documents
+#: or on a union branch, and an array's or a mapping's own bound on one), 732 (.71, a
+#: remote reference inside a section entry nothing declares: a position the package's
+#: own validation never reaches, so the carried document decides without it),
+#: 745 (.43, a conjunct contributes every part of itself: 10 of these 13 are documents
 #: the conjunct reader was deferring -- 6 on their own ground and 4 through a ``$ref``
-#: chain -- and 3 were VERDICTS that the intersection rule turned into classes).
-EMITTED_FLOOR = 744
+#: chain -- and 3 were VERDICTS that the intersection rule turned into classes; the
+#: thirteenth is .71's, which is why 731 + 13 is 745 rather than 744).
+#:
+#: Both lanes moved this in flight, so it is RE-MEASURED on the merged tree rather than
+#: resolved by taking a side: 744 was this row's figure before .71 landed and 732 was
+#: .71's before this row did.
+EMITTED_FLOOR = 745
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"

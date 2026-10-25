@@ -1325,52 +1325,56 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             )
             # **The document the package will carry has to be DECIDABLE, and that is
             # checked here because a refusal belongs where every other one is.**  A
-            # ``$ref`` left in it is a schema nothing local can decide, so
-            # ``jsonschema`` fetches the target over the network; the write loop below
-            # says what that costs.  ``bundle.resolved`` is the one resolution, and it
-            # does not reach every position: ``resolve_all_refs`` descends
-            # ``SCHEMA_KEYS`` and ``SCHEMA_OBJECT_KEYS`` only, and ``definitions`` and
-            # ``$defs`` are in NEITHER -- by its own design, since a section asserts
-            # nothing about an instance and a generator has no reason to look inside
-            # one.  So a reference under a section survives resolution.
+            # ``$ref`` at a position the package's own validation reaches is a schema
+            # nothing local can decide, so ``jsonschema`` fetches the target over the
+            # network; the write loop below says what that costs.  ``bundle.resolved``
+            # is the one resolution, and it does not reach every position:
+            # ``resolve_all_refs`` descends ``SCHEMA_KEYS`` and ``SCHEMA_OBJECT_KEYS``
+            # only, and ``definitions`` and ``$defs`` are in NEITHER -- by its own
+            # design, since a section asserts nothing about an instance.  So a
+            # reference under a section survives resolution.
             #
-            # Refused rather than shipped, and refused rather than excused: the
-            # emitter cannot certify that a position nothing validates through TODAY
-            # stays inert, and the alternative readings all weaken something -- a
-            # second resolver (forbidden, D10 and ``bundle.resolved``'s own reason), a
-            # post-generation strip of the section (forbidden, D9), or narrowing the
-            # invariant to reachable positions, which is a check relaxed to fit.
+            # **WHICH OF THOSE SURVIVORS IS A DEFECT IS DECIDED BY DECLARATION, AND
+            # ``bundle.undecidable_references`` IS THE PREDICATE.**  Section 5 makes a
+            # section "nothing by itself", each entry "declared on demand when a
+            # ``$ref`` names it", and section 3 adds "an entry nothing references is
+            # not declared" -- which ``compiler.local_reference`` already reads: an entry is
+            # declared only where a reference names it, so a dead one is not.  So a reference inside an entry
+            # nothing names is at a position no class grades and no enclosing node's
+            # assertions descend into, while a reference inside an entry a ``$ref``
+            # DOES name is owed resolution, because a class is declared at that
+            # pointer and validates through it.
             #
-            # Measured over the whole bundle: 1 of 1,054 documents has every reference
-            # under a section (``a2ui/si-catalog.json``, 24 of them), nothing in the
-            # bundle references it, and no ``$ref`` names any of its nodes -- so this
-            # refuses exactly one document and cascades to none.  It is reachable at
-            # all only because salesagent-j3k2l.20 declares section entries and D2's
-            # ``const`` row lowers the keyword that used to stop this document first.
+            # This check read "the document holds an absolute ``$ref``" and refused
+            # both alike, with the note that narrowing it would be "a check relaxed to
+            # fit".  The narrowing is not to reachability-as-observed-today, which is
+            # what that note refuses and rightly: it is to the on-demand DECLARATION
+            # set the emitter is already handed, so what is admitted is exactly what
+            # section 3 says is never declared.  Measured: ``a2ui/si-catalog.json``'s
+            # carried document decides with the network removed -- with
+            # ``socket.socket`` replaced by a constructor that raises, ``jsonschema``
+            # accepts ``{"catalogId": "si-standard", "components": ["Text"]}`` and
+            # refuses ``{"catalogId": "other"}``, ``{"components": "Text"}`` and
+            # ``{"catalogId": 1}`` on ``const`` and ``type`` -- so refusing it was
+            # refusing a document that IS locally decidable.  Of the bundle's 101
+            # remote references under a section, 77 in 18 documents sit in a named
+            # entry and are still counted; those 24 are the whole of what this admits.
             #
-            # **CROSS-DOCUMENT only, and that is what makes the reason above true.**  A
-            # LOCAL reference names a node of the very document the package carries, so
-            # ``jsonschema`` resolves it against the referrer and fetches nothing --
-            # ``bundle.resolved`` skips adding one to the store for exactly that reason.
-            # It survives resolution under a section just as a cross-document one does,
-            # and refusing it would be refusing a document that IS locally decidable.
-            # Probed: without this clause the check refused ``core/chain.json``, the
-            # fixture salesagent-j3k2l.20 wrote for a forward local reference, on
-            # ``#/definitions/second``.
-            unresolved = [
-                (p, u)
-                for p, u in bundle.references(bundle.resolved(bundle_dir, document))
-                if bundle.split_ref(u)[0]
-            ]
+            # A LOCAL reference is decidable at every position and is counted at none:
+            # it names a node of the very document the package carries, so
+            # ``jsonschema`` resolves it against the referrer and fetches nothing.
+            unresolved = bundle.undecidable_references(
+                bundle.resolved(bundle_dir, document), named.get(document, frozenset())
+            )
             if unresolved:
                 pointer, uri = unresolved[0]
                 raise Refusal(
                     "$ref",
                     pointer,
-                    f"{uri} {refusal.UNRESOLVED_TARGET}, which leaves a "
-                    f"reference under a definitions/$defs section untouched ({len(unresolved)} "
-                    "here): the document the package would carry is not locally "
-                    "decidable, and jsonschema would fetch the target over the network",
+                    f"{uri} {refusal.UNRESOLVED_TARGET}, at a position the package's own "
+                    f"validation decides through ({len(unresolved)} here): the document the "
+                    "package would carry is not locally decidable, and jsonschema would "
+                    "fetch the target over the network",
                     kind=Kind.UNRESOLVED,
                 )
         except Refusal as r:
