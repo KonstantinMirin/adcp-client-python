@@ -352,6 +352,103 @@ def resolved(bundle_dir: Path, document: str) -> dict:
     return resolve(doc, store=store) if references(doc) else doc
 
 
+def pointers_above(pointer: str, candidates: Collection[str]) -> list[str]:
+    """Those of ``candidates`` that are ``pointer`` itself or an ancestor of it.
+
+    THE ONE PREFIX READING OF A JSON POINTER here, and both callers need it over a
+    different collection: :func:`undecidable_references` asks it of the named pointers
+    and of the section entries in the same breath.  A pointer is an ancestor when the
+    next character is the separator, so ``/definitions/Text`` is not an ancestor of
+    ``/definitions/TextArea`` -- which a bare ``startswith`` would call one.
+    """
+    return [c for c in candidates if pointer == c or pointer.startswith(f"{c}/")]
+
+
+def section_entries(node: object) -> frozenset[str]:
+    """Every pointer that names an ENTRY of a ``definitions`` / ``$defs`` section.
+
+    Read off :func:`nodes` -- the one schema-position walk -- and not off the spelling
+    of a pointer, because a segment reading ``definitions`` is a section only at a
+    KEYWORD position.  ``/properties/definitions/properties/x`` is a property named
+    ``definitions`` and the text cannot tell the two apart; the walk can, because it
+    arrives at a property's value through ``properties`` and at a section's entry
+    through the section.  The 3.2 bundle holds 0 such properties, and after resolution
+    the two readings cannot disagree at all -- a reference under a property IS reached
+    by the resolver and inlined, so only a keyword-position section leaves one behind.
+    The difference is readable on a RAW document, which is what the censuses in
+    ``tests/`` ask this of.
+
+    A section NESTED inside another node counts, which is why this is not limited to
+    the root: resolution inlines a target's whole body, sections and all, so a carried
+    document can hold an entry at ``/properties/x/definitions/y`` that no document on
+    disk spells.
+    """
+    return frozenset(
+        f"{pointer}/{kw}/{compiler.escape_key(key)}"
+        for pointer, n in nodes(node)
+        for kw in DEFINITIONS
+        if isinstance(n.get(kw), dict)
+        for key in n[kw]
+    )
+
+
+def undecidable_references(
+    resolved_doc: dict, named: Collection[str]
+) -> list[tuple[str, str]]:
+    """The references in a carried document that the package's own validation reaches.
+
+    ``strict_validate`` decides acceptance against the document the emitter writes
+    beside the module, so a reference AT A POSITION THAT VALIDATION REACHES is a schema
+    nothing local can decide: ``jsonschema`` finds no store for an absolute URI and
+    fetches the target over the network.  That is the obligation, and this is the
+    predicate for it -- which is NARROWER than "the document holds a ``$ref``", in two
+    ways that are each a rule stated elsewhere and not a relaxation:
+
+    * A LOCAL reference is decidable.  It names a node of this very document, so the
+      resolver resolves it against the referrer with no store at all, which is why
+      :func:`resolved` leaves one in.
+    * A reference inside a section entry NOTHING declares is never reached.  Section 5
+      says a ``definitions`` / ``$defs`` section is "nothing by itself: a bag of named
+      subschemas", each entry "declared on demand when a ``$ref`` names it"; section 3
+      says "an entry nothing references is not declared".  So no class names a pointer
+      inside such an entry and no enclosing node's assertions descend into one --
+      draft-07 gives a section no assertion behaviour, which is the same fact
+      ``compiler.local_reference`` reads when it declares an entry only where a
+      reference names it, and that ``harness.compare_schema`` reads when it descends
+      ``properties``, ``items``, ``propertyNames`` and a typed
+      ``additionalProperties`` and not a section.
+
+    **VALIDATION STARTS AT A DECLARED POINTER AND DESCENDS BY ASSERTION KEYWORDS, WHICH
+    NEVER CROSS A SECTION BOUNDARY.**  That one sentence is the predicate.  For a
+    reference, ``reach`` is the DEEPEST named pointer above it -- the innermost class
+    that grades through it -- or the document root when nothing names one, since the
+    root always grades.  The reference is reached unless a section entry lies between
+    ``reach`` and the reference, because crossing into one is the step no assertion
+    takes.  An entry AT ``reach`` is not between them: there the declaration is the
+    entry, which is what section 5 means by declaring it on demand.
+
+    ``named`` is :func:`named_nodes` for this document -- the on-demand set, the same
+    one ``emit.lower_document`` is handed.  Measured over the 3.2 bundle's 101 remote
+    references under a section: 77 in 18 documents sit in an entry some ``$ref`` names
+    and are counted; 24 in ``a2ui/si-catalog.json``'s one dead section are not.  Of the
+    bundle's 216 named pointers, 157 name a section entry exactly, 59 name a node under
+    no section at all, and 0 name a node BELOW an entry -- so ``reach`` is today always
+    either the entry itself or the root, and the deeper cases the sentence above decides
+    are what keeps the rule from needing a second reading when they arrive.
+    """
+    entries = section_entries(resolved_doc)
+
+    def reached(pointer: str) -> bool:
+        reach = max(pointers_above(pointer, named), key=len, default="")
+        return not any(len(e) > len(reach) for e in pointers_above(pointer, entries))
+
+    return [
+        (pointer, uri)
+        for pointer, uri in references(resolved_doc)
+        if split_ref(uri)[0] and reached(pointer)
+    ]
+
+
 # --------------------------------------------------------------------------- #
 # the dispatch table's selectors: which ROW lowers a document's root
 # --------------------------------------------------------------------------- #
