@@ -45,6 +45,14 @@ from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, compare_schema
 from codegen.refusal import Refusal
 
+from tests.nodeset import claimed, partitions, ratchet
+
+#: A FLOOR over THIS step's 599-document population, which is NOT the whole-bundle
+#: figure: a count is evidence for its own population and the two have been confused.
+#: Direction: an emitting row only adds.  History, each move a row landing: 425, 566,
+#: 592 (.28), 607 (.21).
+EMITTED_OVER_THIS_POPULATION_FLOOR = 607
+
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
 #: Every reference in this bundle is spelled against this base; ``document_for``
@@ -64,31 +72,34 @@ def composing() -> list[str]:
 # the population, and the arithmetic over it
 # --------------------------------------------------------------------------- #
 def test_the_population_is_the_one_this_step_is_stated_over() -> None:
-    """**287**, and the definition is what lands on that number.
+    """The step's set of nodes, and the three competing readings beside it.
 
-    A verdict read off a population nobody counted is a verdict over however many
-    documents there turned out to be, including none.  The three competing
-    readings are asserted beside it, because each one is a number somebody could
-    have meant and each gives a different answer.
+    A verdict read off a set nobody named is a verdict over however many documents
+    there turned out to be, including none.  Each of the three readings is a set
+    somebody could have meant, and the point is that they are DIFFERENT sets -- which
+    is asserted as the containments between them, not as four sizes nobody can compare.
     """
-    docs = bundle.portable(BUNDLE)
-    read = [bundle.read(BUNDLE, d) for d in docs]
-    assert len(composing()) == 301  # allOf at the root, NO union beside it
+    docs = claimed("bundle.portable", bundle.portable(BUNDLE))
+    read = lambda d: bundle.read(BUNDLE, d)  # noqa: E731
+    claimed("composing", composing(), inside=docs)  # allOf at the root, NO union beside it
 
-    root_allof = [d for d in read if isinstance(d.get("allOf"), list)]
-    anywhere = [d for d in read if "allOf" in bundle.schema_keywords(d)]
-    only_root = [
-        d
-        for d in root_allof
-        if not any("allOf" in n for p, n in bundle.nodes(d) if p)
-    ]
-    assert len(root_allof) == 342, "any root allOf, union or not"
-    assert len(anywhere) == 401, "allOf anywhere in the document"
-    assert len(only_root) == 257, "allOf at the root and nowhere else"
-    # The union clause is what makes the two rows disjoint, and this is its cost.
-    # 41 and not 55: 14 of the 55 carry a PRESENCE-ONLY anyOf, which step 5's row does
-    # not take either -- they are step 4's, and used to be nobody's.
-    assert len(root_allof) - len(composing()) == 41, "documents step 5's row takes"
+    root_allof = {d for d in docs if isinstance(read(d).get("allOf"), list)}
+    anywhere = {d for d in docs if "allOf" in bundle.schema_keywords(read(d))}
+    only_root = {
+        d for d in root_allof if not any("allOf" in n for p, n in bundle.nodes(read(d)) if p)
+    }
+    claimed("any root allOf, union or not", root_allof, inside=docs)
+    claimed("allOf anywhere in the document", anywhere, inside=docs)
+    claimed("allOf at the root and nowhere else", only_root, inside=root_allof)
+    # The three readings are STRICTLY ordered, which is the fact that makes them three
+    # different answers rather than three spellings of one: a root ``allOf`` is an
+    # ``allOf`` somewhere, and "at the root and nowhere else" is narrower again.  A set
+    # of sizes said the same thing only for one bundle version.
+    assert only_root < root_allof < anywhere, (len(only_root), len(root_allof), len(anywhere))
+    # The union clause is what makes the two rows disjoint, and this is its cost: the
+    # documents a root ``allOf`` has but this step does not take, because step 5's row
+    # takes them.  Named as the SET rather than as the difference of two counts.
+    claimed("documents step 5's row takes", root_allof - set(composing()), inside=root_allof)
 
 
 def test_the_union_clause_is_what_keeps_the_rows_disjoint() -> None:
@@ -118,11 +129,15 @@ def test_the_union_clause_is_what_keeps_the_rows_disjoint() -> None:
         and any(k in doc for k in ("oneOf", "anyOf"))
     ]
     both = [d for d in key_test if bundle.union_root(bundle.read(BUNDLE, d))]
-    assert len(key_test) == 55, "a root allOf beside the oneOf/anyOf KEY"
-    assert len(both) == 41, "a root allOf beside a UNION, which is what decides it"
-    # The 14 the two readings disagree about are step 4's, and nobody else's.
+    claimed("a root allOf beside the oneOf/anyOf KEY", key_test, inside=bundle.portable(BUNDLE))
+    claimed("a root allOf beside a UNION, which is what decides it", both, inside=key_test)
+    # The documents the two readings DISAGREE about are step 4's and nobody else's, and
+    # the set is non-empty -- which is the whole finding, since a key test that agreed
+    # with ``union_root`` would leave the loop below grading nothing.  Named as the set,
+    # because which documents fall in the hole is the fact and 14 was its size on one
+    # bundle version.
     rule_shaped = sorted(set(key_test) - set(both))
-    assert len(rule_shaped) == 14, rule_shaped
+    claimed("documents the KEY test and union_root disagree about", rule_shaped, inside=key_test)
     assert set(rule_shaped) <= set(composing()), rule_shaped
     for d in rule_shaped:
         doc = bundle.read(BUNDLE, d)
@@ -142,12 +157,18 @@ def test_a_required_only_conjunct_has_no_population_so_the_arm_is_not_built() ->
     bundle rather than over this step's population.
     """
     found = []
+    conjuncts: set[str] = set()
     for d in bundle.portable(BUNDLE):
         for i, c in enumerate(bundle.read(BUNDLE, d).get("allOf") or []):
+            conjuncts.add(f"{d}#/allOf/{i}")
             if isinstance(c, dict) and {
                 k for k in c if k not in compiler.ANNOTATIONS and not k.startswith("x-")
             } == {"required"}:
                 found.append(f"{d}#/allOf/{i}")
+    # The set this ranges over is named NON-EMPTY first: "no conjunct states only
+    # ``required``" is free over a walk that reached no conjunct at all, which is the
+    # one way a check asserting an empty part can be worthless.
+    claimed("root allOf conjuncts in the bundle", conjuncts)
     assert found == []
 
 
@@ -174,7 +195,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
             or bundle.composes_at_the_root(read(d))
         }
     )
-    assert len(pop) == 599
+    claimed("this step's population", pop, inside=docs)
 
     with_row = emit.emit(BUNDLE, pop)
     # Removing THIS row from the merged table, rather than emptying it: the other
@@ -187,7 +208,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     finally:
         emit.ROWS = saved
 
-    assert len(docs) == 1054
+    claimed("bundle.portable", docs)
     # N over this population on the merged table (43 when this lane measured it
     # alone, before the other four steps' rows were beside it).
     #
@@ -225,7 +246,18 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # ``enums/seller-policy-decline-reason.json``. Over the WHOLE portable set those
     # four were already emitting, so they are not a status change there: a count is
     # evidence for its own population and these are two populations. Nothing was lost.
-    assert len(with_row.emitted) == 607, "N, over a bundle of 1,054"
+    # A FLOOR over THIS population, not an equality: every emitting row takes it up
+    # (425, 566, 592, 607 over four of them) and no row may take it down.  The number
+    # is also not comparable with the whole-bundle figure -- a count is evidence for
+    # its own population and these are two populations, which is the reading that was
+    # got wrong once here.
+    ratchet(
+        "documents emitted over this step's population",
+        len(with_row.emitted),
+        at_least=EMITTED_OVER_THIS_POPULATION_FLOOR,
+        because="an emitting row only adds documents to this run; a drop means a "
+        "document that lowered stopped lowering",
+    )
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
@@ -252,10 +284,23 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # ``core/get-geo-place-resolution-response.json`` and ``core/start-timing.json``.
     # The other seven emit either way, which is why ``without`` moved +11 and the delta
     # only +4.
-    assert len(with_row.emitted) - len(without.emitted) == 237
+    # The DELTA is the set of documents the row is responsible for, named by taking the
+    # difference of the two runs -- and it is non-empty, which is the claim this half
+    # exists for: on this lane's own branch the delta was 0 and the row's value was the
+    # attribution alone.  Its size moved at every row that unblocked a conjunct's
+    # target (228, 233, 237), each move enumerated at the time and each one correct.
+    delta = claimed(
+        "documents that emit only with this row",
+        set(with_row.emitted) - set(without.emitted),
+        inside=set(with_row.emitted),
+    )
     # 152 -> 154 at ``salesagent-j3k2l.21``: two of its eleven compose at their own
     # root (``core/geo-place-area.json`` and ``core/geo-place-catalog-entry.json``).
-    assert len(set(composing()) & set(with_row.emitted)) == 154  # 147 at .40
+    claimed(
+        "composing documents this run emits",
+        set(composing()) & set(with_row.emitted),
+        inside=set(with_row.emitted),
+    )
     # **Every document the row rescues from a refusal is EMITTED with it**, and the
     # composing ones are 147 of the 151.  This was an equality against
     # ``composing() & emitted`` and the equality is no longer true, which is a
@@ -283,7 +328,11 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # four names below are re-measured and are STILL exactly those four, which is the
     # assertion that says this row's +2 is the composing half growing rather than a new
     # kind of document arriving -- the same reading that held at .28 and at .29.
-    assert len(cleared) == 158, len(cleared)
+    claimed("documents the row rescues from a refusal", cleared)
+    # **AND THE NON-COMPOSING MEMBERS ARE EXACTLY THESE FOUR**, which is the assertion
+    # that says each row's growth is the composing half growing rather than a new KIND
+    # of document arriving.  It held at .28, at .29 and at .21, every time as the four
+    # names and not as the difference of two counts.
     assert sorted(cleared - set(composing())) == [
         "core/catalog.json",
         "core/reporting-delivery-ready-webhook.json",
@@ -322,8 +371,14 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         row = out.refusals.get(document)
         return (row["keyword"], row["pointer"]) if row else None
 
+    # EVERY composing document reads differently with the row than without it, which
+    # is a set IDENTITY against ``composing()`` and not a count: a document reading the
+    # same either way would mean a root keyword the row screens but does not lower, and
+    # the empty part below says there is none.
     moved = [d for d in composing() if where(with_row, d) != where(without, d)]
-    assert len(moved) == 301, len(moved)
+    assert claimed("composing documents the row moves", moved) == set(composing()), sorted(
+        set(composing()) - set(moved)
+    )
     assert all(where(without, d)[1] == "/" for d in composing()), "without the row: all at /"
     assert sum(1 for d in composing() if where(with_row, d) == where(without, d)) == 0
     refused = {d: where(with_row, d) for d in composing() if d not in with_row.emitted}
@@ -339,8 +394,16 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # figures one measurement rather than two -- a document leaving the refused half
     # without arriving in the emitted one would redden here even though both counts
     # moved in the direction a landing row moves them.
-    assert len(refused) == 147, len(refused)
-    assert len(refused) + len(set(composing()) & set(with_row.emitted)) == len(composing())
+    # The PARTITION is what makes the pair of figures one measurement rather than two:
+    # a document leaving the refused half without arriving in the emitted one would
+    # redden here even though both counts moved the way a landing row moves them.  The
+    # halves themselves are not counted -- they were 160/141, 154/147, 149/152 and
+    # 147/154 over four rows, and every move was a row landing.
+    partitions(
+        composing(),
+        refused=set(refused),
+        emitted=set(composing()) & set(with_row.emitted),
+    )
     # **AND THE ONE AT ``/`` IS GONE, which is the attribution reaching 100%.**  It was
     # ``sponsored-intelligence/si-ui-element.json`` on ``if``, refused at the ROOT
     # because the class this row would declare there named a conditional-only key --

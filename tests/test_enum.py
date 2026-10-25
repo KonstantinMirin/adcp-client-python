@@ -46,6 +46,7 @@ from codegen.lower import enum as lower_enum
 from codegen import refusal as refusal_module
 from codegen.refusal import Refusal
 from tests.test_emit import BUNDLE, graded, population, TREE
+from tests.nodeset import claimed, partitions
 
 
 def root_enums() -> list[str]:
@@ -97,16 +98,20 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     and not a count, so a root enum this row stops emitting lands here by name
     instead of lowering the figure above with nothing to read.
     """
-    roots = root_enums()
-    assert len(roots) == 214, len(roots)
-    assert set(roots) <= set(population()), "a root enum outside the step's population"
+    roots = claimed("root enums", root_enums(), inside=population())
 
     out = emit.emit(BUNDLE, population())
     emitted = [d for d in roots if d in out.emitted]
     refused = {d: out.refusals[d] for d in roots if d in out.refusals}
-    assert len(emitted) == 214, len(emitted)
+    # EVERY root enum emits and the refusal branch is EMPTY -- asserted as the
+    # partition and the empty part, which is what "214 of 214" was two readings of.
+    # The number itself is the selector's population and no row of this step may move
+    # it, but a row that ADDS a root enum to the bundle moves it correctly, so what is
+    # asserted is that the two halves exhaust the roots and that the refused half is
+    # empty.
     assert refused == {}, refused
-    assert set(emitted) | set(refused) == set(roots)
+    partitions(roots, emitted=emitted, refused=set(refused))
+    claimed("root enums emitted", emitted, inside=roots)
 
     # And the document that was refused is emitted BY THIS ROW, which the count
     # above does not say on its own: its class is a ``StrEnum`` in the module the
@@ -129,20 +134,21 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
             if bundle.document_for(uri, known) == "enums/task-type.json"
         }
     )
-    assert len(referrers) == 7, referrers
-    in_population = [d for d in referrers if d in population()]
-    # 7, not the 6 this read before step 4's population landed: ``composes_at_the_root``
-    # names one more of the referrers, and the cascade claim is the same either way.
-    assert len(in_population) == 7, in_population
+    claimed("documents referring to enums/task-type.json", referrers, inside=known)
+    in_population = claimed(
+        "those referrers inside the step's population", 
+        [d for d in referrers if d in population()],
+        inside=referrers,
+    )
     emitted_referrers = sorted(d for d in in_population if d in out.emitted)
     refused_referrers = sorted(d for d in in_population if d in out.refusals)
-    # 6 and 1 at 0130e5fc9; 4 and 3 at 16052ffb0, before step 4's row landed.
-    # A partition and not two counts: a referrer in NEITHER half would be a
-    # document the emitter neither built nor refused, and the equality below is
-    # what reports that rather than letting the two numbers absorb it.
-    assert len(emitted_referrers) == 6, emitted_referrers
-    assert len(refused_referrers) == 1, refused_referrers
-    assert sorted(emitted_referrers + refused_referrers) == sorted(in_population)
+    # A PARTITION and not two counts: a referrer in NEITHER half would be a document
+    # the emitter neither built nor refused, which is what this reports rather than
+    # letting two numbers absorb it.  The split itself keeps moving as other rows land
+    # -- all 7 refused when this was written, then 4/3, then 6/1 -- and every move was
+    # another row doing its work, which is why neither half is counted here.
+    partitions(in_population, emitted=emitted_referrers, refused=refused_referrers)
+    claimed("referrers emitted", emitted_referrers, inside=in_population)
     # The claim is that none of them was blocked BY this document, which is read off
     # the refusal's own detail, and that is the only reading that still works: the
     # one referrer still refusing refuses on a ``$ref`` at ``/properties/result``,
@@ -165,18 +171,33 @@ def test_the_dispatch_table_is_unordered_because_no_document_is_claimed_twice() 
     # Every row's selector comes from ``codegen.bundle`` (D13), which is what a
     # count of rows cannot say and what keeps this from going stale as rows land.
     assert [s for s, _ in emit.ROWS if getattr(bundle, s.__name__, None) is not s] == []
-    claimed = [sum(1 for selects, _ in emit.ROWS if selects(doc)) for doc in documents]
-    assert [n for n in claimed if n > 1] == []
-    assert sum(1 for n in claimed if n == 1) == 1047, sum(1 for n in claimed if n == 1)
-    assert sum(1 for n in claimed if n == 0) == 7  # the roots no row describes at all
+    claims = [sum(1 for selects, _ in emit.ROWS if selects(doc)) for doc in documents]
+    assert [n for n in claims if n > 1] == []
+    # The two parts partition the bundle, and the one-row part is NON-EMPTY -- which is
+    # what keeps the disjointness above from being satisfied by a table that selects
+    # nothing.  Which documents no row describes at all is the other part, and how many
+    # there are is a function of the rows rather than a fact about this step.
+    partitions(
+        range(len(claims)),
+        claimed_by_one_row=[i for i, n in enumerate(claims) if n == 1],
+        claimed_by_no_row=[i for i, n in enumerate(claims) if n == 0],
+    )
+    assert [i for i, n in enumerate(claims) if n == 1], "no document is claimed by any row"
 
     def scalar_without_the_exclusion(doc: dict) -> bool:
         return isinstance(doc.get("type"), str) and doc["type"] in emit.SCALAR
 
     overlap = [
-        doc for doc in documents if scalar_without_the_exclusion(doc) and bundle.is_enum_root(doc)
+        d
+        for d in bundle.portable(BUNDLE)
+        if scalar_without_the_exclusion(bundle.read(BUNDLE, d))
+        and bundle.is_enum_root(bundle.read(BUNDLE, d))
     ]
-    assert len(overlap) == 214, len(overlap)
+    # Every root enum would be claimed twice the moment the scalar row stops excluding
+    # an enumeration, so the exclusion is load-bearing.  Asserted as the SET IDENTITY
+    # against the root enums rather than as a count of them, because that is the claim:
+    # not "214 documents" but "exactly the root enums, each by name".
+    assert claimed("documents the scalar row would also claim", overlap) == set(root_enums())
 
     # A row cannot claim a document its step does not count.
     assert [d for d in documents if bundle.is_enum_root(d) and not bundle.carries_an_enum(d)] == []
@@ -216,33 +237,21 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     are the document's ``enum`` array, in order, exactly.
     """
     classes = emitted_enum_classes()
-    # 447 -> 482 on fe0e185f9: every count in this file is over the documents
-    # ``population()`` names, so each moved as the emitted population grew.
-    # 482 -> 484 at ``salesagent-j3k2l.40``, which emits 5 more of those documents.
-    # Re-measured in one pass with the other three counts of this file; the ROOT half
-    # (214) did not move, so the 2 are both INLINE and the baseline says so -- this
-    # file is 1 failed / 22 passed at ``c9bfb5133`` and these four were the 4 green
-    # ones that moved.
-    # 484 -> 506 at ``salesagent-j3k2l.28``, population growth again.
-    # 506 -> 502 at ``salesagent-j3k2l.38``, and this one is a SHRINK meeting that
-    # growth: D3's content dedup collapses identical nodes, so the two rows moved this
-    # count in opposite directions and the merged value is RE-MEASURED on the merged
-    # tree rather than either side's number or the difference between them.  4 of the 10
-    # collapsed nodes are enumerations -- ``signal-definition-enrichment``'s
-    # ``lookback_window``, ``image_carousel``'s ``allowed_card_asset_types`` and
-    # ``bidding-policy-capability``'s two ``definitions`` entries, the last two reachable
-    # only because .28's rows emit that document.
-    # 502 -> 504 at ``salesagent-j3k2l.21``: the eleven new modules declare 2 enum
-    # classes, ``GeographicPlaceCatalogEntryStatus`` and ``MediaBuyAvailableActionTask``.
-    # Enumerated per module rather than differenced, which is how the figure was checked
-    # in BOTH directions -- D2's Literal reading was briefly wider and removed
-    # ``AccessibilityViolationDetailsViolationsItemFailureKind`` as well, giving 503, and
-    # narrowing it to a root union's branch put that class back and the count returned to
-    # 504 exactly. A decomposition that predicts a reversion is one that was read rather
-    # than fitted.
-    assert len(classes) == 504, len(classes)  # 214 roots, the rest inline
+    # **NO COUNT OF THE CLASSES IS ASSERTED, and the comment that stood here is why.**
+    # It recorded eight re-pointings of this one number -- 447, 482, 484, 506, 502, 504,
+    # and a 503 that came and went inside a single row -- each one correct, each one a
+    # population growing or D3's dedup collapsing a node, and not one of them a defect
+    # this check exists to catch.  Two rows in flight compute two different right
+    # answers for it.  What IS asserted is the set: the classes the tree carries are
+    # non-empty, and the root half of them is exactly the root enums.
+    claimed("enum classes the tree carries", {(d, c.name) for d, _, c in classes})
+    # The ROOT half is exactly the root enums, by name: every root enum the tree
+    # carries a class for IS a root enum, and none is missing.  A set identity rather
+    # than a count of 214, so a root enum that stops getting a class is named here.
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
-    assert len(roots) == 214, len(roots)
+    assert claimed("root enums with a class", roots) == set(root_enums()), sorted(
+        set(root_enums()) - set(roots)
+    )
 
     for document in roots:
         doc = bundle.read(BUNDLE, document)
@@ -284,28 +293,21 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
     """
     classes = emitted_enum_classes()
     assert classes, "no enum class was graded"
-    names = 0
+    names: set[tuple[str, str]] = set()
     keywords_seen: set[str] = set()
     for document, _, cls in classes:
         for name, value in _members(cls):
             assert name == name.upper(), (document, cls.name, name)
             assert name == lower_enum.member_name(value), (document, cls.name, name, value)
-            names += 1
+            names.add((cls.name, name))
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
-    # 2692 -> 2892 on fe0e185f9, population growth; 2892 -> 2917 at
-    # ``salesagent-j3k2l.40``, the same 5 documents.
-    # 2917 -> 2993 at ``salesagent-j3k2l.28``, population growth again.
-    # 2993 -> 2979 at ``salesagent-j3k2l.38``: the 4 enum classes the content dedup
-    # collapses take their members with them (8, 2, 2 and 2), so this shrinks against
-    # that growth and the merged value is re-measured rather than picked.
-    # 2979 -> 2985 at ``salesagent-j3k2l.21``: the eleven new modules add 6 members
-    # across 2 enum classes. The wider reading of D2's Literal rendering also took the
-    # 8-member StrEnum out of ``error-details/accessibility-violation.json``, which made
-    # this pin FALL to 2977 while the tree grew; narrowing the rendering to a root
-    # union's branch put those 8 back. Both readings were measured per module, which is
-    # what made the -2 explicable at the time and the return to +6 predictable.
-    assert names == 2985, names
+    # The member names, as the non-empty set of (class, member) pairs the loop graded.
+    # Every member is asserted upper-case and round-tripped through ``member_name``
+    # above, so what this denominator has to say is that members were reached -- the
+    # count moved at six rows (2692, 2892, 2917, 2993, 2979, 2985, and a 2977 inside
+    # one of them), every move a population change rather than a defect.
+    claimed("enum members graded", names)
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -351,7 +353,7 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
 
     # So the check is over `member_name`, and it is injective over the bundle at
     # every node the walk reaches -- which is the claim, with its denominator.
-    nodes = 0
+    nodes: set[tuple[str, str]] = set()
     for document in sorted({g.ref.document for g in graded()}):
         for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
             values = node.get("enum")
@@ -359,22 +361,16 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
                 continue
             spelled = [lower_enum.member_name(v) for v in values]
             if len(set(spelled)) == len(spelled):
-                nodes += 1
+                nodes.add((document, pointer))
             else:  # the one colliding node's document refuses before this is read
                 assert document not in emit.emit(BUNDLE, population()).emitted, (document, pointer)
-    # 501 enum NODES the walk reaches, against the 447 enum CLASSES
-    # ``test_an_enum_node_is_a_class_over_an_enum_base...`` counts.  The two were
-    # equal at 277 and again at 333 and that was a coincidence of the populations,
-    # not a rule -- a node under a position that reuses an already-declared class
-    # is reached without adding one.  Neither number is derived from the other.
-    # 501 -> 541 on fe0e185f9, population growth; 541 -> 545 at
-    # ``salesagent-j3k2l.40``.  Still not derived from the CLASS count above, which
-    # moved by 2 against this 4 -- the two were equal at 277 and again at 333 by
-    # coincidence of the populations, and this is the third pair that is not.
-    # 545 -> 568 at ``salesagent-j3k2l.28``, population growth again.
-    # 568 -> 574 at ``salesagent-j3k2l.21``: six more enum nodes are reached, in the
-    # eleven documents that row made emittable.
-    assert nodes == 574, nodes
+    # The enum NODES the walk reaches, as a non-empty set.  It is deliberately NOT
+    # derived from the enum CLASS count above -- a node under a position that reuses an
+    # already-declared class is reached without adding one, and the two figures were
+    # equal at 277 and again at 333 by coincidence of the populations.  Neither is
+    # asserted now: both moved at every row that grew the population (501, 541, 545,
+    # 568, 574), and the obligation is the per-node injectivity asserted in the loop.
+    claimed("enum nodes whose member names are injective", nodes)
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -386,7 +382,9 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
     entry of every node the walk REACHES is in the emitted text -- counted, so it
     cannot pass by looking at nothing.
     """
-    nodes = entries = multiline = 0
+    nodes: set[tuple[str, str]] = set()
+    entries: set[tuple[str, str, str]] = set()
+    multiline: set[tuple[str, str, str]] = set()
     for document in sorted({g.ref.document for g in graded()}):
         tree = ast.parse((TREE / f"{emit.module_path(document)}.py").read_text())
         rendered = {
@@ -403,11 +401,11 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
             got = rendered.get(frozenset(want))
             if got is None:
                 continue  # a node under a composition the walk does not descend into
-            nodes += 1
+            nodes.add((document, pointer))
             for member, text in sorted(want.items()):
                 if not isinstance(text, str) or not text:
                     continue
-                entries += 1
+                entries.add((document, pointer, member))
                 # Verbatim where the description is one line, and compared by its
                 # WORDS where it is not: the compiler indents a multi-line
                 # docstring into the class body, so the literal differs by exactly
@@ -415,11 +413,17 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
                 # comparison already uses for a description, rather than a second
                 # one that could be looser.
                 if "\n" in text:
-                    multiline += 1
+                    multiline.add((document, pointer, member))
                     assert _text(got.get(member)) == _text(text), (document, pointer, member)
                 else:
                     assert got.get(member) == text, (document, pointer, member)
-    assert (nodes, entries, multiline) == (137, 1151, 10), (nodes, entries, multiline)
+    # Three non-empty sets rather than three counts: the per-member assertion in the
+    # loop is the obligation, and each of these says one ARM of it was reached -- a node
+    # at all, an entry with text, and the multi-line arm whose normalizer is the half a
+    # one-line-only population would leave ungraded.
+    claimed("nodes carrying enumDescriptions", nodes)
+    claimed("described members compared", entries)
+    claimed("multi-line descriptions compared", multiline)
 
     # The whole block is an annotation, so NO check in the harness grades it:
     # `enumDescriptions` is not a fact the comparison compares.  P2 in
@@ -470,8 +474,8 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
         tree = ast.parse((TREE / f"{relative}.py").read_text())
         return {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
 
-    sites = 0
-    inherited = 0
+    sites: set[tuple[str, str]] = set()
+    inherited: set[tuple[str, str]] = set()
     documents: set[str] = set()
     for g in graded():
         if g.ref.pointer != "#" or not hasattr(g.model, "model_fields"):
@@ -504,13 +508,14 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
             owner = next(
                 k for k in g.model.__mro__ if name in getattr(k, "__annotations__", {})
             )
-            inherited += owner is not g.model
+            if owner is not g.model:
+                inherited.add((g.ref.document, key))
             assert bound[0].__name__ in names_spelled(owner.__module__), (
                 g.ref.document,
                 key,
                 owner.__module__,
             )
-            sites += 1
+            sites.add((g.ref.document, key))
             documents.add(g.ref.document)
     # ``inherited`` is pinned so the branch above is not graded by an empty set:
     # if the composition row stopped inheriting, the AST half would silently go
@@ -529,16 +534,14 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
     # salesagent-j3k2l.28 gave the fifth fold's `enum` arm when its population went to
     # zero: label the dormancy, do not delete a legitimate shape or let a dead arm read
     # as live.
-    # (128, 78, 0) -> (131, 81, 0) at ``salesagent-j3k2l.28``: 3 more documents
-    # reference a root enum, and ``inherited`` stays 0, which is the claim.
-    # (131, 81, 0) -> (134, 83, 0) at ``salesagent-j3k2l.21``: three more reference
-    # sites in two more documents, and ``inherited`` stays 0 -- which is the half that
-    # matters, because a new site binding a COPY rather than the class would show here.
-    assert (sites, len(documents), inherited) == (134, 83, 0), (
-        sites,
-        len(documents),
-        inherited,
-    )
+    # The two live denominators are non-empty sets and the dormant arm is EMPTY, which
+    # is the half that matters: a new site binding a COPY rather than the class shows up
+    # in the per-site assertion above, while the site and document counts moved at every
+    # row that referenced one more root enum -- (124, 76, 2), (128, 78, 0), (131, 81, 0),
+    # (134, 83, 0) -- and each move was another row's work.
+    assert inherited == set(), sorted(inherited)
+    claimed("reference sites binding a root enum class", sites)
+    claimed("documents holding such a site", documents)
 
 
 # --------------------------------------------------------------------------- #
@@ -739,6 +742,14 @@ def test_the_colliding_node_is_in_the_bundle_and_its_document_refuses_earlier() 
     # document rather than named: the collision is still there, the document does
     # not emit, so no class was built from the colliding node -- and the refusal
     # fires OUTSIDE that node, so the walk never read it.
+    walked = claimed(
+        "enum nodes of this document",
+        [
+            p
+            for p, n in bundle.nodes(bundle.read(BUNDLE, document))
+            if isinstance(n.get("enum"), list) and n["enum"]
+        ],
+    )
     colliding = [
         p
         for p, n in bundle.nodes(bundle.read(BUNDLE, document))
@@ -747,6 +758,7 @@ def test_the_colliding_node_is_in_the_bundle_and_its_document_refuses_earlier() 
         and len({lower_enum.member_name(v) for v in n["enum"]}) != len(n["enum"])
     ]
     assert colliding == ["/properties/clicktag_macro"], colliding
+    assert set(colliding) <= set(walked), colliding
     assert document not in out.emitted
     assert not any(
         out.refusals[document]["pointer"].startswith(p) for p in colliding
@@ -785,7 +797,7 @@ def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one()
         ]
 
     in_bundle = integer_enum_nodes(list(bundle.portable(BUNDLE)))
-    assert len(in_bundle) == 3, in_bundle
+    claimed("integer enum nodes in the bundle", in_bundle)
     reached = integer_enum_nodes(sorted(emit.emit(BUNDLE, population()).emitted))
     # Every one of them, which is what makes the tree half below non-vacuous.
     assert reached == in_bundle, (reached, in_bundle)
@@ -846,7 +858,11 @@ def test_the_base_comes_from_the_members_which_is_what_admits_a_typeless_node() 
                 counted["typed"] += 1
                 if implied is not None and implied != declared:
                     counted["disagreeing"] += 1
-    assert counted == {"typed": 905, "typeless": 164, "disagreeing": 0}, counted
+    # The two live parts non-empty and the third EMPTY, which is the claim: an enum's
+    # implied base never disagrees with a declared type.  The two live counts were a
+    # reading of one bundle version and said nothing the non-emptiness does not.
+    assert counted["disagreeing"] == 0, counted
+    assert counted["typed"] and counted["typeless"], counted
     assert lower_enum.decide({"enum": ["a"]}, "P", "").kind == "string"
     assert "boolean" not in lower_enum.BASES.values()
 
@@ -868,7 +884,10 @@ def test_a_member_name_that_cannot_begin_an_identifier_takes_the_prefix() -> Non
             if lower_enum.member_name(v).startswith(lower_enum.PREFIX)
         }
     )
-    assert len(needs) == 23, needs
+    # Non-empty: every member of the set is asserted to be a valid upper-case
+    # identifier below, so the denominator's job is to say the prefix has values to be
+    # derived over.
+    claimed("bundle enum values needing the prefix", needs)
     for raw in needs:
         value = json.loads(raw)
         name = lower_enum.member_name(value)
@@ -916,8 +935,18 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
     assert "enumMetadata" in compiler.BUNDLE_ANNOTATIONS
     assert "enumMetadata" not in lower_enum.HANDLED
     out = emit.emit(BUNDLE, population())
+    # **THE PRICED SET, NOT ITS SIZE.**  The comment below prices unannotating the
+    # keyword, and a count of three went stale as an ARGUMENT while staying green as an
+    # assertion: ``core/media-buy-available-action-id.json`` carries ``enumMetadata``,
+    # is not an enum root and did not emit, and once it emitted the price grew without
+    # this number moving.  So the set is named, and ``direct`` below adds that document
+    # to it explicitly.
     enum_rooted = [d for d in carriers if bundle.is_enum_root(bundle.read(BUNDLE, d))]
-    assert len(enum_rooted) == 3, enum_rooted
+    assert claimed("enum-rooted carriers of enumMetadata", enum_rooted) == {
+        "enums/error-code.json",
+        "enums/media-buy-valid-action.json",
+        "enums/request-signing-error-code.json",
+    }, sorted(enum_rooted)
     assert all(d in out.emitted for d in enum_rooted)
 
     # The price. ``compiler.ANNOTATIONS`` is the set ``check_keywords`` reads; the
@@ -967,7 +996,10 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
     ]
     priced = sorted([*direct, *cascaded])
     assert sorted(set(refusing.refusals) - set(out.refusals)) == priced, priced
-    assert len(refusing.emitted) == len(out.emitted) - 7, len(refusing.emitted)
+    # The price is the PRICED SET and the arithmetic is derived from it: every document
+    # in it stops emitting, and nothing else does.
+    assert sorted(set(out.emitted) - set(refusing.emitted)) == priced, priced
+    assert len(refusing.emitted) == len(out.emitted) - len(priced), len(refusing.emitted)
     for document in direct:
         assert refusing.refusals[document]["keyword"] == "enumMetadata", document
         assert refusing.refusals[document]["pointer"] == "/", document
@@ -1033,7 +1065,7 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
         root = compiler.class_name(bundle.read(BUNDLE, document)["title"])
         assert listed[:1] == [root], (module, listed[:1], root)
         exported[module] = set(listed)
-    checked = 0
+    checked: set[tuple[str, str, str]] = set()
     for document in sorted({g.ref.document for g in graded()}):
         module = emit.module_path(document)
         tree = ast.parse((TREE / f"{module}.py").read_text())
@@ -1047,7 +1079,7 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
             assert target in exported, (module, n.module, n.level)
             for alias in n.names:
                 assert alias.name in exported[target], (module, target, alias.name)
-                checked += 1
+                checked.add((str(module), target, alias.name))
     # LEFT RED ON PURPOSE at 0130e5fc9, and the assertion above is what found it: the
     # tree held imports of a symbol the target module DECLARED and did not list in its
     # ``__all__`` -- e.g. ``core/reporting_delivery_offering`` importing
@@ -1074,15 +1106,12 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     # again the same way.  A symbol crosses in exactly those two ways, so
     # ``emit.exported`` is now the union of both and still not every declared symbol.
     #
-    # 977 is the alias POPULATION over the ``graded()`` documents of the committed
-    # 682-module tree -- the ``population()`` run, not the 691-of-1054 metric run --
-    # re-measured on this tree at every step rather than carried: 910 at 0130e5fc9,
-    # 957 at ac9175209, 964 at d9989750c, 977 at ``salesagent-j3k2l.40``, because the
-    # population grows under the rows. 0 are unexported. The assertion is NOT weakened to ``defined in the target module``:
-    # that would grade importability, which the whole-tree import in
-    # ``tests/test_emit.py`` already grades, and would retire the only check on what a
-    # module DECLARES -- the check that has now caught two separate defects.
-    # 977 -> 1013 at ``salesagent-j3k2l.28``, population growth again.
-    # 1013 -> 1039 at ``salesagent-j3k2l.21``: the eleven new modules import 26 names
-    # between them, every one of which this closure check resolves.
-    assert checked == 1039, checked
+    # THE DENOMINATOR IS THE SET OF RESOLVED IMPORTS, non-empty, and not a count of
+    # them: the count was the alias population over the committed tree and it moved at
+    # every row -- 910, 957, 964, 977, 1013, 1039 -- each move a population growing
+    # under the rows and none of them a defect.  The assertion is NOT weakened to
+    # ``defined in the target module``: that would grade importability, which the
+    # whole-tree import in ``tests/test_emit.py`` already grades, and would retire the
+    # only check on what a module DECLARES -- the check that has now caught two
+    # separate defects.
+    claimed("relative imports resolved against the target's __all__", checked)

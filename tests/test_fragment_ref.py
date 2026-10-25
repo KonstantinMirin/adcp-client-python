@@ -42,6 +42,8 @@ from pydantic import ValidationError
 from codegen import bundle, emit
 from codegen.refusal import Refusal
 
+from tests.nodeset import claimed, partitions
+
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
 TREE = REPO / emit.TREE
@@ -170,14 +172,14 @@ def test_split_ref_is_the_one_reading_of_the_hash() -> None:
 def test_every_fragment_reference_in_the_bundle_names_a_node_that_exists() -> None:
     """The gate this step removes was never about a missing file.
 
-    Both halves of all 113 sites: the document half resolves to a document of this
-    bundle, and the pointer half names a node that is actually in it.  Pinned at 113
-    sites / 76 distinct targets / 19 target documents, because a selector that
-    silently stopped matching would turn this into a pass over an empty loop -- and
-    this test's whole job is to say the references are sound.
+    Both halves of every site: the document half resolves to a document of this
+    bundle, and the pointer half names a node that is actually in it.  The three sets
+    -- sites, distinct targets, target documents -- are asserted NON-EMPTY rather than
+    sized, because what the sizes were standing in for is that a selector which
+    silently stopped matching would turn this into a pass over an empty loop, and this
+    test's whole job is to say the references are sound.
     """
-    sites = fragment_refs()
-    assert len(sites) == 113, len(sites)
+    sites = claimed("fragment reference sites", fragment_refs())
     known = set(bundle.portable(BUNDLE))
     targets = set()
     for document, pointer, uri in sites:
@@ -186,8 +188,8 @@ def test_every_fragment_reference_in_the_bundle_names_a_node_that_exists() -> No
         assert target is not None, (document, pointer, uri)
         assert node_at(bundle.read(BUNDLE, target), into) is not NOTHING, (document, uri)
         targets.add((target, into))
-    assert len(targets) == 76, len(targets)
-    assert len({t for t, _ in targets}) == 19, sorted({t for t, _ in targets})
+    claimed("distinct (document, pointer) targets", targets)
+    claimed("target documents", {t for t, _ in targets})
     assert ("core/catalog.json", "/properties/category") in targets
 
 
@@ -226,7 +228,7 @@ def test_no_portable_documents_reference_closure_names_a_document_this_bundle_la
                 store[head] = read[target]
                 queue.append(store[head])
     assert unresolvable == [], unresolvable[:10]
-    assert len(known) == 1054, len(known)
+    claimed("bundle.portable", known)
 
 
 def test_resolved_inlines_the_node_a_fragment_names_and_not_the_whole_document() -> None:
@@ -294,7 +296,7 @@ def test_a_local_reference_resolves_against_the_referrer_with_no_store_entry() -
         if (rs := bundle.references(bundle.read(BUNDLE, d)))
         and all(not bundle.split_ref(u)[0] for _, u in rs)
     ]
-    assert len(local) == 13, local
+    claimed("documents whose every reference is local", local, inside=bundle.portable(BUNDLE))
     recursive = {}
     for document in local:
         left = bundle.references(bundle.resolved(BUNDLE, document))  # raises if the gate is back
@@ -305,8 +307,11 @@ def test_a_local_reference_resolves_against_the_referrer_with_no_store_entry() -
         "core/placement-presentation.json",
         "governance/reported-outcome-error.json",
     ], recursive
-    # The other 10 are fully inlined from the document's own body, with no store.
-    assert len(local) - len(recursive) == 10
+    # The rest are fully inlined from the document's own body, with no store -- named
+    # as the complement of the recursive set rather than as the difference of two
+    # counts, which is what says the two halves exhaust the local documents.
+    claimed("locally-referencing documents fully inlined", set(local) - set(recursive))
+    assert set(recursive) <= set(local), sorted(set(recursive) - set(local))
 
 
 # --------------------------------------------------------------------------- #
@@ -326,12 +331,16 @@ def test_the_named_node_population_is_read_off_the_bundle_and_not_off_a_run() ->
     file, so no other document of the bundle can affect the answer at all.
     """
     named = bundle.named_nodes(BUNDLE)
-    # 54 documents and 216 pointers, in three parts that are asserted separately
-    # below: 19 / 76 from the ABSOLUTE fragment references, 45 / 157 from the LOCAL
-    # ones, and 10 / 17 counted in both because the same document -- in 17 cases the
-    # same pointer -- is named by each kind.
-    assert len(named) == 54, sorted(named)
-    assert sum(len(p) for p in named.values()) == 216, sum(len(p) for p in named.values())
+    # The named nodes, in three parts that are asserted separately below: the ABSOLUTE
+    # fragment references, the LOCAL ones, and the documents named by BOTH kinds.  Each
+    # part is asserted non-empty, which is what the six counts were standing in for --
+    # a regression that dropped either arm reddens with the arm NAMED rather than
+    # moving one total.
+    claimed("documents with a named node", named)
+    claimed(
+        "named (document, pointer) nodes",
+        {(d, p) for d, ps in named.items() for p in ps},
+    )
     assert named["core/version-envelope.json"] == frozenset(
         {"/properties/adcp_version", "/properties/adcp_major_version"}
     )
@@ -350,11 +359,19 @@ def test_the_named_node_population_is_read_off_the_bundle_and_not_off_a_run() ->
             if target is not None:
                 halves[bool(head)].setdefault(target, set()).add(pointer)
     absolute, local_refs = halves[True], halves[False]
-    assert (len(absolute), sum(len(p) for p in absolute.values())) == (19, 76)
-    assert (len(local_refs), sum(len(p) for p in local_refs.values())) == (45, 157)
-    both = set(absolute) & set(local_refs)
-    assert len(both) == 10, sorted(both)
-    assert sum(len(absolute[d] & local_refs[d]) for d in both) == 17
+    claimed("documents named by an ABSOLUTE fragment reference", absolute)
+    claimed("documents named by a LOCAL reference", local_refs)
+    claimed("(document, pointer) named absolutely", {(d, p) for d, ps in absolute.items() for p in ps})
+    claimed("(document, pointer) named locally", {(d, p) for d, ps in local_refs.items() for p in ps})
+    # The overlap is the fact, and it is asserted at both granularities: some documents
+    # are named by each kind, and some of those are named at the SAME pointer by each.
+    # Both sets non-empty, because an empty overlap would make the two arms independent
+    # and the union below would say nothing about either.
+    both = claimed("documents named by both kinds", set(absolute) & set(local_refs))
+    claimed(
+        "pointers named by both kinds",
+        {(d, p) for d in both for p in absolute[d] & local_refs[d]},
+    )
 
     # ``core/bidding-policy-capability.json`` references only itself, 4 times.  It is
     # here now, under its OWN name and its own four pointers -- which is the whole of
@@ -1130,8 +1147,9 @@ def test_no_document_of_the_bundle_refuses_on_a_definition_section_any_more() ->
     The POPULATION is derived here rather than listed, because a keyword census alone
     cannot tell a document that moved from one the selectors stopped claiming.
     """
-    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
-    assert len(out.emitted) + len(out.refusals) == 1054
+    portable = claimed("bundle.portable", bundle.portable(BUNDLE))
+    out = emit.emit(BUNDLE, sorted(portable))
+    partitions(portable, emitted=set(out.emitted), refused=set(out.refusals))
     on_sections = {
         d: r for d, r in out.refusals.items() if r["keyword"] in ("definitions", "$defs")
     }
@@ -1142,7 +1160,7 @@ def test_no_document_of_the_bundle_refuses_on_a_definition_section_any_more() ->
         for d in bundle.portable(BUNDLE)
         if any(isinstance(bundle.read(BUNDLE, d).get(k), dict) for k in bundle.DEFINITIONS)
     ]
-    assert len(roots) == 45, roots
+    claimed("documents carrying a definitions section", roots, inside=portable)
     for document in roots:
         r = out.refusals.get(document)
         if r is None:
@@ -1213,7 +1231,13 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     # that position: ``pattern`` -> an annotated ``str`` key.  So this count goes to
     # 8 here and .64 takes it to 7 again when the typed key emits.  The pointer is
     # recorded so that move is attributable rather than a number going back down.
-    assert len(inside) == 8, inside
+    #
+    # NAMED, NOT COUNTED: the count went 7 -> 8 -> 9 -> 8 over four rows, each move a
+    # document joining or leaving for a cause measured at the time, and a number going
+    # back down says nothing about which document moved.  The two pointers asserted
+    # below are what make this evidence of a DESCENT into the section rather than of
+    # the section being read, and they are what a count could never say.
+    claimed("documents refusing inside a definitions section", inside)
     assert inside["core/geo-place-requirement.json"] == (
         "/definitions/catalogRequirement/properties/countries/propertyNames"
     )
