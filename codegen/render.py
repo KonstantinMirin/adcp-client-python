@@ -264,7 +264,7 @@ def _rule(rule: Rule) -> str:
     values.
     """
     args: list[str] = []
-    for spec in dataclasses.fields(rule):  # type: ignore[arg-type]
+    for spec in dataclasses.fields(rule):
         value = getattr(rule, spec.name)
         if isinstance(value, tuple) and value and all(isinstance(v, Match) for v in value):
             args.append("(" + "".join(f"{_clause(clause)}," for clause in value) + ")")
@@ -618,9 +618,19 @@ class Written(Protocol):
     a closure over the run, and the ``Shape``/``Target`` carriers a lowering is handed.
     """
 
-    document: str
-    declarations: Sequence[ir.Declaration]
-    imports: Collection[tuple[str, str]]
+    # READ-ONLY members, which is what makes ``compiler.Module`` satisfy it: a mutable
+    # Protocol attribute is INVARIANT, so ``declarations: Sequence[...]`` would refuse a
+    # ``list[...]`` and ``imports: Collection[...]`` a ``set[...]`` -- and what this
+    # module does with all three is read them.  Properties say that, and the structural
+    # match then holds for any module value whose fields are at least as narrow.
+    @property
+    def document(self) -> str: ...
+
+    @property
+    def declarations(self) -> Sequence[ir.Declaration]: ...
+
+    @property
+    def imports(self) -> Collection[tuple[str, str]]: ...
 
 
 def module(mod: Written, exports: Sequence[str]) -> str:

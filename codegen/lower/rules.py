@@ -149,9 +149,14 @@ def lower_declaration(declaration: Mapping[str, Any], position: Position) -> Low
     same keys, so a conjunct's screen and its rule tuple cannot disagree about which
     keywords are rules at CONJ.
     """
+    # Read ONCE into a local, so the ``isinstance`` narrows the value that is passed and
+    # not a second ``get`` of the same key: two reads of one mapping are two values as
+    # far as a type checker is concerned, and the second was typed ``Any | dict | None``
+    # where this takes a ``Mapping``.  Same answer, one reading.
+    declared = declaration.get("properties")
     return lower(
         compiler.declaration_rule_sources(declaration, position),
-        declaration.get("properties") if isinstance(declaration.get("properties"), dict) else {},
+        declared if isinstance(declared, dict) else {},
         "additionalProperties" in declaration,
     )
 

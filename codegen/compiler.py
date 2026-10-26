@@ -62,7 +62,7 @@ from adcp.types._runtime import Rule
 from codegen import ir, keywords, refusal
 from codegen.ir import MISSING
 from codegen.keywords import Position
-from codegen.refusal import Kind, Refusal
+from codegen.refusal import Kind, Refusal, first_refusal
 from codegen.schema import nodes, parse as schema
 
 SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool"}
@@ -315,14 +315,14 @@ class Decided:
     format: str | None = None
 
 
-def _no_binder(uri: str, pointer: str) -> Target:
+def _no_binder(uri: str, pointer: str) -> Target | Refusal:
     """The default binder: a document lowered on its own resolves no reference.
 
     ``emit`` supplies the real one, which owns the walk.  Lowering a document
     without it refuses its references by name rather than inventing an import, so
     there is no path on which a reference is silently dropped.
     """
-    raise Refusal(
+    return Refusal(
         "$ref",
         pointer,
         f"no reference binder: {uri} cannot be resolved to a module",
@@ -339,7 +339,7 @@ def decide(
     *,
     objectish: bool = False,
     of_a_root_union: bool = False,
-) -> Decided:
+) -> Decided | Refusal:
     """PARSE one raw subschema at a position, then dispatch on the kind the parser decided.
 
     **ONE caller is left and it is the one re-entry §5 names**: :func:`local_reference`,
@@ -373,8 +373,8 @@ def decide(
 
 
 def lower_node(
-    node: nodes.Base, name_hint: str, mod: "Module", *, of_a_root_union: bool = False
-) -> Decided:
+    node: nodes.Node, name_hint: str, mod: "Module", *, of_a_root_union: bool = False
+) -> Decided | Refusal:
     """What one PARSED node is: ``emit.decide_type``, reached by name.
 
     ``of_a_root_union`` is the one fact §6 names as travelling DOWN the tree: "where a
@@ -406,7 +406,7 @@ class Module:
     #: ``docs/plan/architecture.md`` §14 step 7 is where it goes, by computing the
     #: reference closure and the dependency order up front and passing ``targets``
     #: through this context as data.
-    bind: Callable[[str, str], Target] = _no_binder
+    bind: Callable[[str, str], Target | Refusal] = _no_binder
     #: The formats this document's own draft asserts; see ``emit.asserted_formats``.
     #: Empty by default, so a node lowered outside ``lower_document`` selects no
     #: format-derived type rather than one nothing checks.
@@ -576,14 +576,25 @@ class Module:
         (:func:`_restatement`).  The field is decided from the document's own ``$ref``,
         because a cross-document reference is an IMPORT and not a copy (P2) -- the thing
         ``test_a_cross_document_reference_is_an_import_and_not_a_copy`` exists to catch.
-        """
-        try:
-            return self.bind(uri, "").node
-        except Refusal:
-            return None
 
-    def declare(self, name: str, pointer: str, declaration: ir.Declaration) -> None:
-        """Record one declaration under its symbol and its pointer.
+        **The ``try``/``except Refusal`` that stood here is the one §2 retires**, and
+        what replaced it is the same two answers read off a value: the binder RETURNS a
+        refusal now, so "undecidable" is an ``isinstance`` arm rather than a caught
+        exception.  Nothing about the reading changed -- a refused target was ``None``
+        before and is ``None`` here -- which is what makes it a relocation.
+        """
+        bound = self.bind(uri, "")
+        if isinstance(bound, Refusal):
+            return None
+        return bound.node
+
+    def declare(self, name: str, pointer: str, declaration: ir.Declaration) -> Refusal | None:
+        """Record one declaration under its symbol and its pointer, or say why not.
+
+        ``None`` is the success answer and a :class:`Refusal` is the other, which is the
+        shape §2 gives every total function of this walk: a caller that ignores the
+        result is declaring a collision cannot happen, and a caller that returns it is
+        refusing the document the collision belongs to.
 
         The two names a module can collide on are checked here, and nowhere else: a
         SYMBOL already declared, and a POINTER already declared.  Taking the declaration
@@ -593,7 +604,7 @@ class Module:
         because there is no block to declare.
         """
         if name in self.names:
-            raise Refusal(
+            return Refusal(
                 "title",
                 pointer,
                 f"two nodes in this document derive the class name {name!r}",
@@ -607,7 +618,7 @@ class Module:
             # -- the root's pointer is written once, by the row, and every nested
             # declaration sits at its own node -- so this refuses rather than
             # ordering them.
-            raise Refusal(
+            return Refusal(
                 "$ref",
                 pointer,
                 f"two nodes are declared at this pointer: {self.declared[pointer]!r} "
@@ -617,6 +628,7 @@ class Module:
         self.names.add(name)
         self.declared[pointer] = name
         self.declarations.append(declaration)
+        return None
 
 
 @dataclass(frozen=True)
@@ -759,7 +771,7 @@ NO_SUCH_KEYWORD = (
     "refuses by name rather than being emitted with it ignored"
 )
 
-def carried(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef:
+def carried(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef | Refusal:
     """The type of a node at a position with NO FIELD to carry its facts.
 
     Three positions ask: an array's ELEM and a mapping's MAPV
@@ -797,7 +809,7 @@ def carried(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRe
         **decided.constraints,
         **({"format": decided.format} if decided.format else {}),
     }
-    raise Refusal(
+    return Refusal(
         sorted(stated)[0],
         pointer,
         f"{what} states {stated} and ir.TypeRef carries no constraint, so the "
@@ -813,8 +825,9 @@ def check_keywords(
     handled: Collection[str] = (),
     why: str | None = None,
     mod: "Module | None" = None,
-) -> None:
-    """Refuse the first keyword this NODE states that the TABLE does not admit here.
+) -> Refusal | None:
+    """The first keyword this NODE states that the TABLE does not admit here, as a
+    refusal -- or ``None`` where every key is admitted.
 
     **Converted to node fields.**  :attr:`nodes.Base.declares` is the set §3's admission
     reader can refuse on -- ``keywords.declares`` at the node's own position, computed
@@ -852,10 +865,15 @@ def check_keywords(
 
     **The KIND is never chosen here.**  A caller may pass its own ``why``, which is
     prose for a reader, and the classification still comes from :func:`kind_for`: a
-    sentence and a kind decided together at one raise site is how a cell the semantics
-    document decides came to be written up as a verdict against the document.
+    sentence and a kind decided together at one production site is how a cell the
+    semantics document decides came to be written up as a verdict against the document.
+
+    **The screen RETURNS its refusal** (§2), so a handler's first line is
+    ``if (refused := check_keywords(...)) is not None: return refused`` and the type
+    checker is what says a handler cannot forget it: a handler that drops the result
+    goes on to read node fields it has not admitted.
     """
-    _screen(
+    return _screen(
         sorted((*node.declares, *node.extensions)),
         node.pointer,
         node.position,
@@ -872,7 +890,7 @@ def check_declaration(
     handled: Collection[str] = (),
     why: str | None = None,
     mod: "Module | None" = None,
-) -> None:
+) -> Refusal | None:
     """:func:`check_keywords`, asked of a raw DECLARATION rather than of a node.
 
     The one reader at that level is §2's intersection rule, which merges two declarations
@@ -881,7 +899,7 @@ def check_declaration(
     screened at its own pointer and at CONJ.  Nothing else calls this, and
     ``tests/test_import_rule.py`` is where that is held.
     """
-    _screen(sorted(declaration), pointer, position, handled, why, mod)
+    return _screen(sorted(declaration), pointer, position, handled, why, mod)
 
 
 def _screen(
@@ -891,7 +909,7 @@ def _screen(
     handled: Collection[str],
     why: str | None,
     mod: "Module | None",
-) -> None:
+) -> Refusal | None:
     """The admission reader itself, over keys already in the order the report wants."""
     for key in keys:
         # **``handled`` is asked FIRST**, before the cell, because a caller that claims
@@ -913,24 +931,25 @@ def _screen(
                         "nothing has read it"
                     )
                 continue
-            raise Refusal(key, pointer, NO_SUCH_KEYWORD, kind=kind_for(key, position))
+            return Refusal(key, pointer, NO_SUCH_KEYWORD, kind=kind_for(key, position))
         if answer.effect is keywords.Effect.REFUSE:
-            raise Refusal(key, pointer, why or answer.compiles, kind=kind_for(key, position))
+            return Refusal(key, pointer, why or answer.compiles, kind=kind_for(key, position))
         if not keywords.lowers(answer):
             continue
-        raise Refusal(
+        return Refusal(
             key,
             pointer,
             why or refusal.DEFERRED_TO_A_LATER_ROW,
             kind=kind_for(key, position),
         )
+    return None
 
 
 # --------------------------------------------------------------------------- #
 # the field builder and the class declarer
 # --------------------------------------------------------------------------- #
 def fields(
-    props: Mapping[str, nodes.Base],
+    props: Mapping[str, nodes.Node],
     required: Collection[str],
     pointer: str,
     name: str,
@@ -940,7 +959,7 @@ def fields(
     declared_at: Mapping[str, str] | None = None,
     distinct: Collection[str] = (),
     reuse: Mapping[str, ir.Field] | None = None,
-) -> list[ir.Field]:
+) -> list[ir.Field] | Refusal:
     """The decided properties for one property map, children declared first.
 
     Shared with a composing row, which builds ONE property map out of a root's
@@ -994,7 +1013,7 @@ def fields(
     """
     undeclared = [r for r in required if r not in props and r not in inherited]
     if undeclared:
-        raise Refusal(
+        return Refusal(
             "required",
             pointer,
             f"required names no property declares: {undeclared} (step 7's rule, not a field)",
@@ -1005,11 +1024,19 @@ def fields(
     spelled: dict[str, str] = {}
     where = declared_at or {}
     reuse = reuse or {}
+    # **The loop returns on the FIRST refusal, in the property map's own order**, which
+    # is the document's own key order because the parser built the map by walking it
+    # (``schema.parse``).  That is :func:`codegen.refusal.first_refusal` fused with the
+    # map that would have produced the sequence, and §6's "earliest refusal in document
+    # order" is what the fusion preserves: the loop cannot reach a later property's
+    # refusal before an earlier property's.  Fused rather than separate because the body
+    # is SEQUENCED -- a dropped default is recorded on the module as the field is built --
+    # so a batch of results would record drops for properties after the refusing one.
     for key, child in props.items():
         at = where.get(key, f"{pointer}/properties/{key}")
         fname = field_name(key)
         if fname in spelled:
-            raise Refusal(
+            return Refusal(
                 "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
             , kind=Kind.VERDICT)
         spelled[fname] = key
@@ -1024,6 +1051,8 @@ def fields(
             is_distinct = held.distinct
         else:
             decided_type = lower_node(child, name + class_name(key), mod)
+            if isinstance(decided_type, Refusal):
+                return decided_type
             # §2: **constraints bind to the TYPE, not the field.**  A :class:`Decided`
             # carries the three apart because a format is either IN the type or beside
             # it and never in both; the field carries one type that states all of them,
@@ -1085,14 +1114,14 @@ def declare_object(
     shape: Shape,
     position: Position = Position.ROOT,
     *,
-    extras: nodes.Base | None = None,
+    extras: nodes.Node | None = None,
     bases: tuple[str, ...] = (),
     rule_nodes: Sequence[Mapping[str, Any]] = (),
     description: str | None = None,
     root_required: tuple[str, ...] | None = None,
     discriminator: str | None = None,
     combinator: str | None = None,
-) -> str:
+) -> str | Refusal:
     """Assemble one class out of decided properties, and record what it declares.
 
     The other half shared with a composing row: D8's ``extra``, the description,
@@ -1153,7 +1182,12 @@ def declare_object(
     # MAPV and its key at KEY (``schema.parse.extras_store``), so the extras store and a
     # mapping cannot come to read ``additionalProperties`` two different ways because
     # there is one reading of it and the parser makes it.
-    extra_type = None if extras is None else lower_node(extras, name, mod).type
+    extra_type = None
+    if extras is not None:
+        store = lower_node(extras, name, mod)
+        if isinstance(store, Refusal):
+            return store
+        extra_type = store.type
     described = node.description if node.description is not None else description
     declaration = ir.ClassDecl(
         name=name,
@@ -1183,11 +1217,13 @@ def declare_object(
         declares=frozenset(mod.declared.values()) | {name},
         description=described,
     )
-    mod.declare(name, pointer, declaration)
+    collision = mod.declare(name, pointer, declaration)
+    if collision is not None:
+        return collision
     return name
 
 
-def _parsed_property(declaration: Any, at: str, mod: Module) -> nodes.Base:
+def _parsed_property(declaration: Any, at: str, mod: Module) -> nodes.Node | Refusal:
     """One property DECLARATION as the node it states, at the pointer it was declared at.
 
     The shape guard that stood inside :func:`fields` -- "property is not a schema" -- is
@@ -1196,7 +1232,7 @@ def _parsed_property(declaration: Any, at: str, mod: Module) -> nodes.Base:
     malformed document, which is a property of the document (§4).
     """
     if not isinstance(declaration, Mapping):
-        raise Refusal("properties", at, "property is not a schema", kind=Kind.VERDICT)
+        return Refusal("properties", at, "property is not a schema", kind=Kind.VERDICT)
     return schema.parse(declaration, pointer=at, position=Position.PROP, source=mod.source)
 
 
@@ -1206,7 +1242,7 @@ def lower_object(
     mod: Module,
     *,
     bases: tuple[str, ...] = (),
-) -> str:
+) -> str | Refusal:
     """Append the class for an object NODE, children first, and return its name.
 
     **Converted to node fields** for everything structural: the properties are the child
@@ -1234,7 +1270,7 @@ def lower_object(
     # all admit the same keywords and all write the same rule.
     pointer, position = node.pointer, node.position
     stated = rules_at(node, position=position)
-    check_keywords(
+    refused = check_keywords(
         node,
         # The cells an OBJECT node consumes, which is what is left of a ``handled``
         # set once the table admits everything it used to carry for admission alone.
@@ -1248,6 +1284,8 @@ def lower_object(
         },
         mod=mod,
     )
+    if refused is not None:
+        return refused
     declared = node.word
     if declared != "object" and not (declared is None and node.applied == "object"):
         # A node carrying ``properties`` and no ``type`` ADMITS A NON-OBJECT: JSON
@@ -1279,7 +1317,7 @@ def lower_object(
         # A node declaring a type that is NOT ``object`` is still refused whatever
         # encloses it: a conjunction of ``object`` and ``string`` admits nothing, and
         # a class for it would accept what the document refuses.
-        raise Refusal(
+        return Refusal(
             "type",
             pointer,
             f"an object node must declare type: object; this one declares "
@@ -1288,16 +1326,18 @@ def lower_object(
             kind=Kind.VERDICT,
         )
     if not node.properties:
-        raise Refusal(
+        return Refusal(
             "properties",
             pointer,
             "an object node with no property declared",
             kind=Kind.VERDICT,
         )
     if "required" in node.faults:
-        raise Refusal("required", pointer, node.faults["required"], kind=Kind.VERDICT)
+        return Refusal("required", pointer, node.faults["required"], kind=Kind.VERDICT)
     required = node.required
     built = fields(node.properties, required, pointer, name, mod, distinct=stated.distinct)
+    if isinstance(built, Refusal):
+        return built
     return declare_object(
         node,
         name,
@@ -1360,7 +1400,9 @@ COMPOSING = frozenset({"type", "allOf", "properties", "required", "additionalPro
 _COMBINATORS = ("oneOf", "anyOf")
 
 
-def _refuse_a_combinator_of_shapes(node: "nodes.Base", screen: frozenset[str]) -> None:
+def _refuse_a_combinator_of_shapes(
+    node: "nodes.Base", screen: frozenset[str]
+) -> Refusal | None:
     """A node that COMPOSES and also carries a combinator of SHAPES.
 
     Both halves are conjunctions with the same instance in draft-07 -- that is D7's own
@@ -1391,7 +1433,7 @@ def _refuse_a_combinator_of_shapes(node: "nodes.Base", screen: frozenset[str]) -
     """
     for keyword in _COMBINATORS:
         if keyword in node.declares and keyword not in screen:
-            raise Refusal(
+            return Refusal(
                 keyword,
                 node.pointer,
                 f"this node composes AND carries a {keyword} whose branches are shapes "
@@ -1403,6 +1445,7 @@ def _refuse_a_combinator_of_shapes(node: "nodes.Base", screen: frozenset[str]) -
                 "union.ROOT_CONJUNCTS refuses a root union's own conjuncts for",
                 kind=Kind.VERDICT,
             )
+    return None
 
 
 def lower_composition(
@@ -1411,7 +1454,7 @@ def lower_composition(
     mod: Module,
     *,
     bases: tuple[str, ...] = (),
-) -> str:
+) -> str | Refusal:
     """Append the class for an ``allOf`` node and return its name.
 
     **CONVERTED to node fields, and ``schema/nodes.py`` says which half of this row stays
@@ -1533,15 +1576,19 @@ def lower_composition(
     # order moves no document and changes the reported keyword for one.
     word = getattr(node, "word", None)
     if word not in (None, "object"):
-        raise Refusal(
+        return Refusal(
             "type",
             pointer,
             f"an allOf of type {word!r} composes no object",
             kind=Kind.VERDICT,
         )
     stated = rules_at(node, position=position)
-    _refuse_a_combinator_of_shapes(node, stated.screen)
-    check_keywords(node, COMPOSING | stated.screen, mod=mod)
+    combinator_of_shapes = _refuse_a_combinator_of_shapes(node, stated.screen)
+    if combinator_of_shapes is not None:
+        return combinator_of_shapes
+    screened = check_keywords(node, COMPOSING | stated.screen, mod=mod)
+    if screened is not None:
+        return screened
 
     conjunct_bases: list[str] = []
     inherited: dict[str, dict] = {}
@@ -1557,7 +1604,7 @@ def lower_composition(
     local: dict[str, dict] = {}
     at: dict[str, str] = {}
     if "required" in node.faults:
-        raise Refusal("required", pointer, node.faults["required"], kind=Kind.VERDICT)
+        return Refusal("required", pointer, node.faults["required"], kind=Kind.VERDICT)
     required: set[str] = set(getattr(node, "required", ()))
     #: The conjuncts that state a RULE of this node rather than a base or fields.
     conjunct_rules: list[dict] = []
@@ -1568,11 +1615,11 @@ def lower_composition(
     #: have to read one composed document the same way.
     inherited_description: str | None = None
 
-    def declare(key: str, node: Any, where: str) -> None:
+    def declare(key: str, node: Any, where: str) -> Refusal | None:
         prior = local.get(key)
         if prior is None:
             local[key], at[key] = node, where
-            return
+            return None
         # Two local declarations of one key: the root's own and a conjunct's, or
         # two conjuncts'.  Decided by the SAME rule as a restatement of an
         # inherited field, and that rule is symmetric, so which was read first
@@ -1588,16 +1635,19 @@ def lower_composition(
             # one states is still the composed node's.
             local[key], at[key] = _intersection(node, prior, mod.resolve_node), where
         elif _restatement(prior, node, mod.resolve_node) is None:
-            raise Refusal(
+            return Refusal(
                 _disagreeing(node, prior),
                 where,
                 f"{key!r} is declared at {at[key]} and again here, and neither "
                 "declaration narrows the other",
                 kind=Kind.VERDICT,
             )
+        return None
 
     for key, sub in node.declared.items():
-        declare(key, sub, f"{pointer}/properties/{key}")
+        conflict = declare(key, sub, f"{pointer}/properties/{key}")
+        if conflict is not None:
+            return conflict
 
     #: The conjuncts still to read, each with the pointer it sits at.  A WORKLIST
     #: rather than an ``enumerate`` because of :data:`CONJ_COMPOSES`' second entry: a
@@ -1609,7 +1659,7 @@ def lower_composition(
     while unread:
         where, conjunct = unread.pop(0)
         if not isinstance(conjunct, dict):
-            raise Refusal("allOf", where, "a conjunct that is not a schema", kind=Kind.VERDICT)
+            return Refusal("allOf", where, "a conjunct that is not a schema", kind=Kind.VERDICT)
         keys = set(declaring(conjunct, Position.CONJ))
         # **A key whose CELL refuses contributes nothing to a conjunct, and the walk
         # says so.**  Section 7's ``errorMessage`` row states it for the one name that
@@ -1660,7 +1710,7 @@ def lower_composition(
             inert = inert_beside_a_reference(conjunct, where, Position.CONJ, mod)
             remaining = keys - {"$ref"} - inert
             if remaining:
-                raise Refusal(
+                return Refusal(
                     min(remaining),
                     where,
                     "a sibling of $ref, which draft-07 ignores, and which the table "
@@ -1672,6 +1722,11 @@ def lower_composition(
             keys = {"$ref"}
         if keys == {"$ref"}:
             target = mod.bind(conjunct["$ref"], where)
+            if isinstance(target, Refusal):
+                # The binder's own answer, returned upward unchanged (§6): a target that
+                # refuses makes this conjunct's base undecidable, and the CHAIN is the
+                # binder's to mint because it is the one that knows the target's refusal.
+                return target
             if target.shape is None:
                 # **The KIND is read off the cell and is a DEFERRAL, not a verdict.**
                 # §5's ``$ref`` row at CONJ decides this very case -- "a BASE where the
@@ -1686,7 +1741,7 @@ def lower_composition(
                 # document, to pydantic or to the pointer space, and it belongs to none
                 # of the three here.  ``kind_for`` is the derivation and the only place
                 # the two are told apart.
-                raise Refusal(
+                return Refusal(
                     "allOf",
                     where,
                     f"{target.symbol} is not a class, so it cannot be a base "
@@ -1747,15 +1802,17 @@ def lower_composition(
             # name the drop above accounted for, which loses the document and leaves
             # the drop record unwritten -- measured on
             # ``media-buy/sync-catalogs-request.json``.
-            check_declaration(
+            unadmitted = check_declaration(
                 conjunct,
                 where,
                 Position.CONJ,
                 set(INLINE) | screen | set(CONJ_COMPOSES) | foreign,
                 mod=mod,
             )
+            if unadmitted is not None:
+                return unadmitted
             if conjunct.get("type") not in (None, "object"):
-                raise Refusal(
+                return Refusal(
                     "type",
                     where,
                     f"a conjunct of type {conjunct['type']!r} is not one",
@@ -1769,7 +1826,7 @@ def lower_composition(
                 # keyword over the portable population state ``true``, so this is the
                 # arm with no population -- a DEFERRAL and not a verdict, because what
                 # obstructs it is unwritten code (:data:`CONJ_COMPOSES`).
-                raise Refusal(
+                return Refusal(
                     "additionalProperties",
                     where,
                     f"a conjunct states additionalProperties: "
@@ -1789,7 +1846,7 @@ def lower_composition(
                 # nested conjunct carrying a combinator of shapes refused where it sits.
                 inner = conjunct["allOf"]
                 if not isinstance(inner, list) or not inner:
-                    raise Refusal(
+                    return Refusal(
                         "allOf",
                         where,
                         f"a conjunct whose allOf is {inner!r}, not a non-empty list of "
@@ -1799,15 +1856,20 @@ def lower_composition(
                 unread.extend((f"{where}/allOf/{j}", c) for j, c in enumerate(inner))
             if "properties" in keys:
                 if not isinstance(conjunct["properties"], dict) or not conjunct["properties"]:
-                    raise Refusal(
+                    return Refusal(
                         "properties",
                         where,
                         "a conjunct declaring no property",
                         kind=Kind.VERDICT,
                     )
                 for key, sub in conjunct["properties"].items():
-                    declare(key, sub, f"{where}/properties/{key}")
-            required |= set(_required(conjunct, where))
+                    conflict = declare(key, sub, f"{where}/properties/{key}")
+                    if conflict is not None:
+                        return conflict
+            names = _required(conjunct, where)
+            if isinstance(names, Refusal):
+                return names
+            required |= set(names)
             # Read by ``rules_at`` as one of THIS node's rule sources whenever the
             # conjunct contributes anything at all, and not only when it states a rule
             # keyword: ``rules._distinct`` reads a ``uniqueItems`` off the array a
@@ -1844,7 +1906,7 @@ def lower_composition(
             # Reported on the combinator rather than on ``min(keys)``: attribution is
             # the point of a refusal report, and ``sorted`` put ``not`` and
             # ``properties`` ahead of the keyword that is the reason.
-            raise Refusal(
+            return Refusal(
                 combinator,
                 where,
                 f"a conjunct carrying a {combinator} of SHAPES rather than presence "
@@ -1860,7 +1922,7 @@ def lower_composition(
                 "bundle.states_an_object_rule (salesagent-j3k2l.58)",
                 kind=Kind.DEFERRED,
             )
-        raise Refusal(
+        return Refusal(
             min(keys) if keys else "allOf",
             where,
             "this step lowers a $ref conjunct (a base) or an inline conjunct whose parts "
@@ -1894,7 +1956,7 @@ def lower_composition(
             continue
         verdict = _restatement(stating, inherited[key], mod.resolve_node)
         if verdict is None:
-            raise Refusal(
+            return Refusal(
                 _disagreeing(stating, inherited[key]),
                 at[key],
                 f"the restatement of {key!r} neither matches nor narrows the "
@@ -2004,7 +2066,10 @@ def lower_composition(
                 # document does not have, and ``schema_at`` raises when the pair is
                 # graded.  0 such sites in the emitted population, and the failure is
                 # loud rather than silent, which is why this is named rather than coded.
-                reuse[key] = _reused(key, inherited_fields, inherited_from, at[key], mod)
+                held = _reused(key, inherited_fields, inherited_from, at[key], mod)
+                if isinstance(held, Refusal):
+                    return held
+                reuse[key] = held
         # Otherwise it adds nothing and the field is INHERITED: no line, no shadow.
 
     # **SECTION 2's REQUIREDNESS OVERLAY: the composition makes an inherited field
@@ -2052,9 +2117,12 @@ def lower_composition(
         # field whose type the base module imports rather than declares, and which
         # ``tests/test_emit_product.py`` caught as the one refusal left at ``/`` after
         # every other one had moved inside its document.
-        reuse[key] = _reused(
+        overlaid = _reused(
             key, inherited_fields, inherited_from, f"{pointer}/properties/{key}", mod
         )
+        if isinstance(overlaid, Refusal):
+            return overlaid
+        reuse[key] = overlaid
         own[key] = dict(inherited[key])
 
     # **The merged declarations go through the PARSER**, which is ``schema/nodes.py``'s
@@ -2063,10 +2131,21 @@ def lower_composition(
     # :func:`codegen.schema.parse.parse`", because the result has to be parsed as ONE node
     # rather than composed out of two decided ones.  So the one reader of a raw mapping
     # reads these too, at the pointer the key was declared at.
-    own_nodes = {
+    parsed_own = {
         key: _parsed_property(declaration, at.get(key, f"{pointer}/properties/{key}"), mod)
         for key, declaration in own.items()
     }
+    # **:func:`codegen.refusal.first_refusal` over the whole batch**, which is §2's one
+    # combinator in the shape it was written for: the parses are independent, so the
+    # sequence exists before any of them is consumed and the earliest refusal in it is
+    # the earliest in DOCUMENT order -- ``own`` is keyed in the order the declarations
+    # were read, the node's own properties first and each conjunct's in its own order
+    # after them.  The surviving nodes are then narrowed by ``isinstance``, which is
+    # what a signature promising to strip the refusals out would have needed a cast for.
+    malformed = first_refusal(parsed_own.values())
+    if malformed is not None:
+        return malformed
+    own_nodes = {key: n for key, n in parsed_own.items() if not isinstance(n, Refusal)}
     decided = fields(
         own_nodes,
         required | (inherited_required & set(own)),
@@ -2081,6 +2160,8 @@ def lower_composition(
         distinct=(*stated.distinct, *sorted(inherited_distinct - set(stated.distinct))),
         reuse=reuse,
     )
+    if isinstance(decided, Refusal):
+        return decided
     return declare_object(
         node,
         name,
@@ -2134,10 +2215,10 @@ def declaration_rule_sources(
     return {k: v for k, v in declaration.items() if k in sources}
 
 
-def _required(node: Mapping[str, Any], pointer: str) -> list[str]:
+def _required(node: Mapping[str, Any], pointer: str) -> list[str] | Refusal:
     req = node.get("required", [])
     if not isinstance(req, list) or not all(isinstance(r, str) for r in req):
-        raise Refusal(
+        return Refusal(
             "required",
             pointer,
             f"required is {req!r}, not a list of names",
@@ -2152,7 +2233,7 @@ def _reused(
     inherited_from: Mapping[str, Target],
     pointer: str,
     mod: Module,
-) -> ir.Field:
+) -> ir.Field | Refusal:
     """The inherited field an annotation-only restatement re-states, importable here.
 
     A re-used type names symbols, and each one has to be IMPORTABLE from this module
@@ -2172,7 +2253,7 @@ def _reused(
     """
     held, source = inherited_fields.get(key), inherited_from.get(key)
     if held is None or source is None:
-        raise Refusal(
+        return Refusal(
             "properties",
             pointer,
             f"{key!r} restates an inherited declaration with nothing but annotations, "
@@ -2183,7 +2264,7 @@ def _reused(
     wanted = ir.symbols(held.type)
     unplaceable = sorted(wanted - source.shape.declares) if source.shape else sorted(wanted)
     if unplaceable:
-        raise Refusal(
+        return Refusal(
             "properties",
             pointer,
             f"{key!r} re-uses the field of {source.symbol}, whose type names "
@@ -2603,7 +2684,7 @@ def _disagreeing(child: dict, base: dict) -> str:
 
 def bind_without_a_model(
     mod: Module, symbol: str, declaration: ir.AliasDecl | ir.EnumDecl
-) -> str:
+) -> str | Refusal:
     """The module-level half of a root that is not an ``AdCPBaseModel``.
 
     D2 gives two root kinds no class to hang ``strict_validate`` on: a scalar root
@@ -2620,11 +2701,13 @@ def bind_without_a_model(
     the statements, which is why :class:`codegen.ir.RootBinding` carries it rather than
     sitting beside it.  ``tests/test_emit.py`` reads the pairing off the module for both.
     """
-    mod.declare(
+    collision = mod.declare(
         symbol,
         "",
         ir.RootBinding(schema_ref(mod.document, ""), symbol, declaration),
     )
+    if collision is not None:
+        return collision
     return symbol
 
 
@@ -2651,7 +2734,7 @@ def _alias_for(symbol: str, node: nodes.Base, decided: Decided) -> ir.AliasDecl:
 
 def name_the_node(
     mod: Module, symbol: str, pointer: str, node: nodes.Base, decided: Decided
-) -> Decided:
+) -> Decided | Refusal:
     """Give a node a SYMBOL in its own module, because a ``$ref`` elsewhere names it.
 
     A fragment reference resolves to an import of a symbol the target module
@@ -2680,11 +2763,13 @@ def name_the_node(
     ``pascal_case(property)``) already computed at the call site.  D3 says a name is an
     input to a lowering and is never computed inside one, so none is computed here.
     """
-    mod.declare(symbol, pointer, _alias_for(symbol, node, decided))
+    collision = mod.declare(symbol, pointer, _alias_for(symbol, node, decided))
+    if collision is not None:
+        return collision
     return Decided(ir.TypeRef(symbol, local=True))
 
 
-def local_reference(mod: Module, pointer: str, at: str) -> Decided:
+def local_reference(mod: Module, pointer: str, at: str) -> Decided | Refusal:
     """What a LOCAL ``$ref`` decides to: the node of THIS document that it names.
 
     :func:`name_the_node`'s sibling, and the division is which document the reference
@@ -2752,7 +2837,7 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided:
     if pointer in mod.declared:
         return Decided(ir.TypeRef(mod.declared[pointer], local=True))
     if pointer in mod.resolving:
-        raise Refusal(
+        return Refusal(
             "$ref",
             at,
             f"a local reference cycle: #{' -> #'.join([*mod.resolving, pointer])}",
@@ -2760,17 +2845,26 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided:
         )
     node = mod.local.get(pointer)
     if node is None:
-        raise Refusal("$ref", at, f"#{pointer} names no node of this document", kind=Kind.VERDICT)
+        return Refusal(
+            "$ref", at, f"#{pointer} names no node of this document", kind=Kind.VERDICT
+        )
     key = pointer.rsplit("/", 1)[-1].replace("~1", "/").replace("~0", "~")
     symbol = mod.root + class_name(key)
+    # **The ``try``/``finally`` is gone with the raise**, and that is the second half of
+    # §2's "the one ``try`` left in the compiler is around nothing": the stack had to be
+    # unwound on an exception as well as on a return, and now there is no exception to
+    # unwind for -- a refusal RETURNS through this line like any other decision, and a
+    # :class:`codegen.refusal.BuildFailure` stops the run rather than being recovered
+    # from, so nothing observes the stack after one.
     mod.resolving.append(pointer)
-    try:
-        return decide(node, pointer, symbol, mod, Position.DEF)
-    finally:
-        mod.resolving.pop()
+    decided = decide(node, pointer, symbol, mod, Position.DEF)
+    mod.resolving.pop()
+    return decided
 
 
-def declare_alias(mod: Module, symbol: str, doc: nodes.Base, decided: Decided) -> str:
+def declare_alias(
+    mod: Module, symbol: str, doc: nodes.Base, decided: Decided
+) -> str | Refusal:
     """Declare the module for a root D2 makes an ALIAS rather than a class.
 
     A scalar root takes this shape, and so does every other root with no field to

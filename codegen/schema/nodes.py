@@ -255,7 +255,7 @@ class Union(Base):
     #: schema, which parses to :class:`Typeless` and whose own declaration below is what
     #: the ``oneOf``/``anyOf`` row refuses it by.  Aligned 1:1 with :attr:`branch_raw`,
     #: because §4's dispatch derivation and §4 "Names" index the two together.
-    branches: tuple[Base, ...] = ()
+    branches: tuple[Node, ...] = ()
     #: The branch declarations, in document order, for the readings §4 "Names" and
     #: §4's dispatch derivation make over a branch's own property map -- a branch's
     #: ``const`` pin, its ``required`` set, its title.  §6 keeps those readings at the
@@ -286,14 +286,14 @@ class Object(Base):
     ``propertyNames`` at KEY, read once here for the same reason.
     """
 
-    properties: Mapping[str, Base]
+    properties: Mapping[str, Node]
     required: tuple[str, ...] = ()
     #: The VALUE schema of a typed ``additionalProperties``, parsed at MAPV.  ``None``
     #: for ``false``, ``true``, the empty schema and silence.
-    extras: Base | None = None
+    extras: Node | None = None
     #: ``propertyNames``, parsed at KEY.  A class with declared ``properties``
     #: carries it nowhere (§5), so this is what the check reads.
-    key: Base | None = None
+    key: Node | None = None
     word: Any = None
 
 
@@ -314,10 +314,10 @@ class Mapping_(Base):
 
     #: The value schema, parsed at MAPV.  ``None`` for ``true`` and the empty schema,
     #: which §5 says IS ``true``: the value is ``Any``.
-    value: Base | None = None
+    value: Node | None = None
     #: The key schema, parsed at KEY.  ``None`` where the document says nothing about
     #: keys, which is a reading and not a default: the key is every string.
-    key: Base | None = None
+    key: Node | None = None
     #: The ``patternProperties`` expression, where the mapping is spelled that way.
     pattern: str | None = None
     #: How many ``patternProperties`` entries the node states: ``None`` where it states
@@ -343,7 +343,7 @@ class Array(Base):
 
     #: The element schema, parsed at ELEM.  ``None`` for ``{"type": "array"}``, which
     #: admits a list of anything.
-    element: Base | None = None
+    element: Node | None = None
     #: ``minItems``/``maxItems``: the LIST's own bound, never its elements'.
     bounds: Mapping[str, Any] = field(default_factory=dict)
     #: ``uniqueItems: true``.  §5 puts the rule on the class holding the array.
@@ -390,7 +390,7 @@ class MultiType(Base):
     #: One member per entry that IS a type name, in document order; equal in length to
     #: :attr:`words` exactly when every entry is one, which is the only case the row
     #: reaches the members at all.
-    members: tuple[Base, ...]
+    members: tuple[Node, ...]
     #: The keywords the node states that SOME arm carries, for the one refusal §5's
     #: own rows do not decide (a constrained arm beside another live arm).
     stated: tuple[str, ...] = ()
