@@ -290,7 +290,7 @@ def parse(raw: Mapping, *, document: str, pointer: str, position: Position,
           applied: str | None) -> Node | Refusal
 ```
 
-It does four things at every node, in this order. It screens every key against the table at
+It does four things at every node. It screens every key against the table at
 `position` (§3's admission reader). It classifies the node: the kind-determining keywords
 present select the kind, and the co-occurrences the semantics document decides are decided
 here and nowhere else — a `$ref` beside a constraining key refuses on the sibling; an `enum`
@@ -302,6 +302,19 @@ descends by the table's descent column, assigning each child its position and th
 word for a same-instance hop. And it validates shape: `required` is a list of names,
 `properties` is a mapping of schemas, `items` is one schema and not a list, and so on, each
 failure a VERDICT refusal because a malformed document is a property of the document.
+
+*The screen and the classification INTERLEAVE, and this said "in this order" (2026-10-26).*
+They cannot be strictly sequenced, because the admission arms do not all answer from the cell
+alone. Three of them do — a key with no row, a REFUSE cell, and a NOTHING cell are decided by
+`cell(keyword, position)` and nothing else, so they run before anything is classified. The
+fourth does not: §3's reader ends "any other effect is a fact the node's kind consumes", and
+whether a lowering effect is CLAIMED or is a DEFERRAL is a question about which kind owns the
+node. So that arm runs after the classification it depends on.
+
+The four jobs and their contents stand; what is wrong is the claim that they are four sequential
+passes. A node is classified once and screened once, and the dependency runs one way: admission
+that reads only a cell, then classification, then admission that reads the kind. Nothing is
+screened twice and no mapping is traversed twice, which is what §4 is actually protecting.
 
 A node at RULE is parsed like any other, kept on the enclosing node as a rule source, and is
 never handed to `decide`: under a conditional a keyword describes what a rule tests, so no type
