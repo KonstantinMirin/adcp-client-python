@@ -29,13 +29,20 @@ from typing import assert_never
 
 from codegen.compiler import Decided, Module
 from codegen.lower import composition, const, containers, enum, objects, references, scalars, union
+from codegen.refusal import Refusal
 from codegen.schema import nodes
 
 
 def decide(
     node: nodes.Node, name_hint: str, mod: Module, *, of_a_root_union: bool = False
-) -> Decided:
-    """What one parsed node IS, routed by its kind.
+) -> Decided | Refusal:
+    """What one parsed node IS, routed by its kind -- or the refusal that says it is not.
+
+    ``Decided | Refusal`` is §2's "total functions from node to decision", and it is
+    where §14 step 6's claim that the TYPE CHECKER IS THE TEST bites hardest: this is
+    the signature every handler has and every caller reads, so a caller that takes
+    ``.type`` off the result without handling the other branch does not type-check.  The
+    union has two branches and the checker makes a reader of it answer both.
 
     ``of_a_root_union`` is §6's one fact that travels DOWN: the enclosing UNION knows its
     own position and tells its branches, because "a branch of a ROOT union" is a statement

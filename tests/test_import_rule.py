@@ -853,3 +853,171 @@ def test_the_declaration_rule_is_not_vacuous() -> None:
     assert set(found) == set(MAY_READ_A_DECLARATION), sorted(found)
     for rel in sorted(MAY_READ_A_DECLARATION):
         assert found[rel], rel
+
+
+# --------------------------------------------------------------------------- #
+# section 2's refusal rule: a refusal is a VALUE, and one exception stays an exception
+# --------------------------------------------------------------------------- #
+#: The one exception class the compiler still raises, and the module it lives in.
+#: ``docs/plan/architecture.md`` section 2: "a defect in the compiler itself -- two
+#: selectors claiming one node, two constraints deriving one alias name -- stays an
+#: exception (``BuildFailure``) that no layer catches, because it is not an outcome of any
+#: document and the run must stop on it."
+BUILD_FAILURE = "BuildFailure"
+
+#: The exceptions a module of ``codegen/`` may still raise, by class name, each with what
+#: makes it NOT an outcome of a document.  A refusal is a property of a DOCUMENT and is
+#: returned; everything here is a property of the COMPILER, of its CALLER, or of the
+#: filesystem, and stops the run.  This set may SHRINK and may not grow.
+#:
+#: * ``BuildFailure`` and ``AliasCollision`` -- section 2's own two, the second a subclass
+#:   of the first.
+#: * ``TypeError`` -- ``Refusal.__init__`` on a kind/``through=`` mismatch, and
+#:   ``render.declaration`` on a declaration kind it has no rendering for.  Both are a
+#:   caller of this compiler getting the call wrong, which no document can cause.
+#: * ``ValueError`` -- ``refusal.is_a_verdict`` handed a delegating kind (the caller read
+#:   ``kind`` where it meant ``resolved``) and ``bundle.read`` handed a document whose root
+#:   is not an object, which is the FILE and not a node the walk reached.
+MAY_RAISE = frozenset({BUILD_FAILURE, "AliasCollision", "TypeError", "ValueError"})
+
+#: The population the :data:`MAY_RAISE` clause ranges over: every module of ``codegen/``
+#: that is NOT the verifier.  Section 9 keeps the verifier separate from the walk and it
+#: has an exception of its own -- ``harness._DumpRefused``, raised inside the accepts
+#: check's hypothesis body and caught BY NAME one frame out so the verdict is
+#: ``model_dropped_a_fact`` rather than the generic ``model_error`` -- which is a
+#: GRADING verdict about one drawn instance and not a refusal of any document.  The
+#: ``Refusal`` clauses below range over the whole package, because "nothing raises one
+#: and nothing catches one" holds of the verifier too.
+
+
+
+def test_a_refusal_is_a_value_and_no_module_raises_or_catches_one() -> None:
+    """Section 2's refusal rule, and section 14 step 6's exit condition, by AST.
+
+    "``decide(node, ctx)`` returns ``Lowering | Refusal``.  Every handler has that
+    signature.  A refusal is a VALUE a parent returns upward unchanged; **nothing raises
+    one and nothing catches one**."  Three clauses, each asserted on the tree rather than
+    reviewed:
+
+    * :class:`codegen.refusal.Refusal` is not a subclass of ``Exception``, so ``raise
+      Refusal(...)`` is a ``TypeError`` at the raise site and the rule cannot be broken
+      by forgetting it.  That is the clause that makes the other two unnecessary in
+      principle and worth asserting anyway: a later row that gave the class a base to get
+      one raise done quickly would turn the two below green again.
+    * no ``raise`` names ``Refusal``, and no module raises any class outside
+      :data:`MAY_RAISE` -- so a NEW exception standing in for a refusal is caught here
+      too, which a search for the one class name would miss.
+    * no ``except`` names ``Refusal``, which is the half section 2 states twice: the
+      ``try``/``except Refusal`` in ``compiler.Module.resolve_node`` and the two in
+      ``emit.emit`` are what it retires, and "the one ``try`` left in the compiler is
+      around nothing".
+
+    AST and not grep, for this file's own reason: ``raise Refusal(...)`` inside a string or
+    a docstring is prose, and both documents and several of these modules quote the rule.
+    """
+    from codegen import refusal as refusal_module
+
+    assert not issubclass(refusal_module.Refusal, Exception), (
+        "Refusal subclasses Exception, so it can be raised: §14 step 6 is 'Refusal stops "
+        "subclassing Exception', and §2's 'nothing raises one' is held by the type and "
+        "not by a convention"
+    )
+    assert issubclass(refusal_module.BuildFailure, Exception), (
+        "BuildFailure is §2's one exception and has to BE one, or the clause above is "
+        "green because the compiler has nothing left that stops a run"
+    )
+
+    raised: dict[str, set[str]] = {}
+    caught: dict[str, set[str]] = {}
+    for path in _modules():
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Raise) and node.exc is not None:
+                call = node.exc.func if isinstance(node.exc, ast.Call) else node.exc
+                name = call.attr if isinstance(call, ast.Attribute) else getattr(call, "id", "")
+                if name:
+                    raised.setdefault(_rel(path), set()).add(name)
+            if isinstance(node, ast.ExceptHandler) and node.type is not None:
+                for named in ast.walk(node.type):
+                    if isinstance(named, ast.Name):
+                        caught.setdefault(_rel(path), set()).add(named.id)
+                    elif isinstance(named, ast.Attribute):
+                        caught.setdefault(_rel(path), set()).add(named.attr)
+
+    refusing = {rel: names for rel, names in raised.items() if "Refusal" in names}
+    assert refusing == {}, (
+        f"{sorted(refusing)} raise a Refusal; §2 makes it a value a handler RETURNS and "
+        "a parent returns upward unchanged"
+    )
+    unexpected = {
+        rel: sorted(names - MAY_RAISE)
+        for rel, names in raised.items()
+        if rel not in VERIFIER and names - MAY_RAISE
+    }
+    assert unexpected == {}, (
+        f"{unexpected} raise an exception the design does not name.  A refusal is a "
+        f"property of a DOCUMENT and is returned; the classes a module may raise are "
+        f"{sorted(MAY_RAISE)}, each a property of the COMPILER or of its caller, and that "
+        "set may shrink and may not grow"
+    )
+    catching = {rel: sorted(names) for rel, names in caught.items() if "Refusal" in names}
+    assert catching == {}, (
+        f"{sorted(catching)} catch a Refusal; §2: 'nothing raises one and nothing catches "
+        "one', and the one try left in this compiler is around nothing"
+    )
+
+
+def test_the_refusal_rule_is_not_vacuous(tmp_path: Path) -> None:
+    """The control: the detector finds each spelling it is meant to.
+
+    A structural guard whose detector sees nothing is green for free.  So a probe module
+    is written with the three shapes the clauses above forbid -- a bare ``raise``, an
+    attribute-spelled one, and an ``except`` naming the class through its module -- and
+    each is asserted found.  ``codegen/`` is also asserted to still raise SOMETHING, so
+    the ``MAY_RAISE`` clause cannot be green because every raise was deleted.
+    """
+    probe = tmp_path / "probe.py"
+    probe.write_text(
+        "from codegen.refusal import Refusal\n"
+        "import codegen.refusal as r\n"
+        "def a():\n"
+        "    raise Refusal('x', '/', 'd', kind=None)\n"
+        "def b():\n"
+        "    raise r.Refusal('x', '/', 'd', kind=None)\n"
+        "def c():\n"
+        "    try:\n"
+        "        a()\n"
+        "    except r.Refusal:\n"
+        "        pass\n"
+    )
+    tree = ast.parse(probe.read_text())
+    raised = {
+        (node.exc.func.attr if isinstance(node.exc.func, ast.Attribute) else node.exc.func.id)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Raise) and isinstance(node.exc, ast.Call)
+    }
+    caught = {
+        named.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ExceptHandler) and node.type is not None
+        for named in ast.walk(node.type)
+        if isinstance(named, ast.Attribute)
+    }
+    assert raised == {"Refusal"}, sorted(raised)
+    assert caught == {"Refusal"}, sorted(caught)
+
+    live = {
+        node.exc.func.id
+        for path in _modules()
+        if _rel(path) not in VERIFIER
+        for node in ast.walk(ast.parse(path.read_text()))
+        if isinstance(node, ast.Raise)
+        and isinstance(node.exc, ast.Call)
+        and isinstance(node.exc.func, ast.Name)
+    }
+    assert live, "codegen/ raises nothing at all, so the MAY_RAISE clause says nothing"
+    assert BUILD_FAILURE in live, (
+        f"no module raises {BUILD_FAILURE}: §2's one exception has to be reached by "
+        "something, or the division between a document's property and the compiler's is "
+        "a claim with no site"
+    )

@@ -90,6 +90,7 @@ from codegen.harness import (
 )
 from codegen.lower import rules
 import populations
+from conftest import refusal_from
 
 from nodeset import claimed, partitions, ratchet
 
@@ -4299,26 +4300,25 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     # The array row's own screen is UNTOUCHED, which is what keeps an array with no
     # class above it refused rather than widened.  A mapping value is the shape that
     # still costs a document (`core/account-authorization.json`).
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "v.json",
-            {
-                "title": "V",
-                "type": "object",
-                "properties": {
-                    "m": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "uniqueItems": True,
-                        },
-                    }
-                },
+    caught = refusal_from(emit.lower_document(
+        "v.json",
+        {
+            "title": "V",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "uniqueItems": True,
+                    },
+                }
             },
-        )
-    assert caught.value.keyword == "uniqueItems", caught.value
-    assert caught.value.pointer == "/properties/m/additionalProperties", caught.value
+        },
+    ))
+    assert caught.keyword == "uniqueItems", caught
+    assert caught.pointer == "/properties/m/additionalProperties", caught
 
     # And on the bundle: the keyword is down to the positions no class holds, each
     # named WITH ITS POINTER, which is the position the refusal is about -- D2's
@@ -4394,13 +4394,12 @@ def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrappe
     assert odd == "media-buy/product-refinement.json"
     assert out.refusals[odd]["pointer"].startswith("/items"), out.refusals[odd]
 
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "r.json", {"title": "R", "type": "array", "items": {"type": "string"}}
-        )
-    assert (caught.value.keyword, caught.value.pointer) == ("type", "/")
-    assert "RootModel[list[X]]" in caught.value.detail
-    assert "str is the element type" in caught.value.detail
+    caught = refusal_from(emit.lower_document(
+        "r.json", {"title": "R", "type": "array", "items": {"type": "string"}}
+    ))
+    assert (caught.keyword, caught.pointer) == ("type", "/")
+    assert "RootModel[list[X]]" in caught.detail
+    assert "str is the element type" in caught.detail
 
 
 def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
@@ -4596,80 +4595,75 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         node = {"type": "object", "patternProperties": {"^x_": {"type": "integer"}}}
         if ap is not None:
             node["additionalProperties"] = ap
-        with pytest.raises(Refusal) as caught:
-            emit.lower_document(
-                "pp0.json",
-                {"title": "PP0", "type": "object", "properties": {"m": node}},
-            )
-        assert caught.value.keyword == keyword, (ap, caught.value.keyword)
+        caught = refusal_from(emit.lower_document(
+            "pp0.json",
+            {"title": "PP0", "type": "object", "properties": {"m": node}},
+        ))
+        assert caught.keyword == keyword, (ap, caught.keyword)
     # Two statements about one key type is one too many for a dict[K, V].
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "pp1.json",
-            {
-                "title": "PP1",
-                "type": "object",
-                "properties": {
-                    "m": {
-                        "type": "object",
-                        "patternProperties": {"^x_": {"type": "integer"}},
-                        "propertyNames": {"minLength": 2},
-                        "additionalProperties": False,
-                    }
-                },
+    caught = refusal_from(emit.lower_document(
+        "pp1.json",
+        {
+            "title": "PP1",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "patternProperties": {"^x_": {"type": "integer"}},
+                    "propertyNames": {"minLength": 2},
+                    "additionalProperties": False,
+                }
             },
-        )
-    assert caught.value.keyword == "propertyNames", caught.value.keyword
+        },
+    ))
+    assert caught.keyword == "propertyNames", caught.keyword
     # An ``anyOf`` key is a UNION of key types, which is a row of its own and still
     # refuses -- named here so the key rule's residue is asserted and not assumed.
-    with pytest.raises(Refusal):
-        emit.lower_document(
-            "ko.json",
-            {
-                "title": "KO",
-                "type": "object",
-                "properties": {
-                    "m": {
-                        "type": "object",
-                        "propertyNames": {
-                            "anyOf": [{"pattern": "^a"}, {"$ref": "https://x/core/tag.json"}]
-                        },
-                    }
-                },
+    _refused = refusal_from(emit.lower_document(
+        "ko.json",
+        {
+            "title": "KO",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "propertyNames": {
+                        "anyOf": [{"pattern": "^a"}, {"$ref": "https://x/core/tag.json"}]
+                    },
+                }
             },
-        )
+        },
+    ))
     # Two patterns are two key types with two value types, which is not a dict[K, V].
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "pp2.json",
-            {
-                "title": "PP2",
-                "type": "object",
-                "properties": {
-                    "m": {
-                        "type": "object",
-                        "patternProperties": {"^x_": {"type": "integer"}, "^y_": {"type": "string"}},
-                    }
-                },
+    caught = refusal_from(emit.lower_document(
+        "pp2.json",
+        {
+            "title": "PP2",
+            "type": "object",
+            "properties": {
+                "m": {
+                    "type": "object",
+                    "patternProperties": {"^x_": {"type": "integer"}, "^y_": {"type": "string"}},
+                }
             },
-        )
-    assert caught.value.keyword == "patternProperties", caught.value.keyword
+        },
+    ))
+    assert caught.keyword == "patternProperties", caught.keyword
 
     # A closed key set is a MODEL and not a mapping (D5), and its one type-position
     # site in this bundle sits in a document that refuses on `enum` first.
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "e.json",
-            {
-                "title": "E",
-                "type": "object",
-                "properties": {
-                    "m": {"type": "object", "propertyNames": {"enum": ["mon", "tue"]}}
-                },
+    caught = refusal_from(emit.lower_document(
+        "e.json",
+        {
+            "title": "E",
+            "type": "object",
+            "properties": {
+                "m": {"type": "object", "propertyNames": {"enum": ["mon", "tue"]}}
             },
-        )
-    assert caught.value.keyword == "enum"
-    assert "MODEL whose keys are its fields" in caught.value.detail
+        },
+    ))
+    assert caught.keyword == "enum"
+    assert "MODEL whose keys are its fields" in caught.detail
     hours = bundle.read(BUNDLE, "core/store-item.json")
     assert "enum" in hours["properties"]["hours"]["propertyNames"]
     # The document is refused, and on an even earlier blocker than its key set -- a
@@ -4746,17 +4740,16 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
     assert "propertyNames" not in text and "s" in text, text
     # ... while the same key schema at a TYPE position is READ, and a closed key set
     # there refuses by name with the key set in the detail.
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "t.json",
-            {
-                "title": "T",
-                "type": "object",
-                "properties": {"m": {"type": "object", "propertyNames": key}},
-            },
-        )
-    assert caught.value.keyword == "enum", caught.value
-    assert "MODEL whose keys are its fields" in caught.value.detail, caught.value.detail
+    caught = refusal_from(emit.lower_document(
+        "t.json",
+        {
+            "title": "T",
+            "type": "object",
+            "properties": {"m": {"type": "object", "propertyNames": key}},
+        },
+    ))
+    assert caught.keyword == "enum", caught
+    assert "MODEL whose keys are its fields" in caught.detail, caught.detail
 
 
 def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
@@ -5050,10 +5043,9 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         "/properties/v/minLength",
     }, blind.missing
 
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document("ms.json", armed)
-    assert caught.value.keyword == "minLength", caught.value.keyword
-    assert "every branch is a bare type" in caught.value.detail, caught.value.detail
+    caught = refusal_from(emit.lower_document("ms.json", armed))
+    assert caught.keyword == "minLength", caught.keyword
+    assert "every branch is a bare type" in caught.detail, caught.detail
     # And it costs no document: 0 multi-type node in an EMITTED document states a
     # constraint WITH TWO OR MORE LIVE ARMS, which is why this is graded on a
     # constructed one. The live count is the whole of the condition -- with one live
@@ -5087,16 +5079,15 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     ), mod.declarations
 
     # A keyword no arm can carry constrains nothing, so it refuses by name.
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "m.json",
-            {
-                "title": "M",
-                "type": "object",
-                "properties": {"v": {"type": ["boolean", "null"], "minLength": 1}},
-            },
-        )
-    assert caught.value.keyword in ("minLength", "type"), caught.value.keyword
+    caught = refusal_from(emit.lower_document(
+        "m.json",
+        {
+            "title": "M",
+            "type": "object",
+            "properties": {"v": {"type": ["boolean", "null"], "minLength": 1}},
+        },
+    ))
+    assert caught.keyword in ("minLength", "type"), caught.keyword
 
 
 def test_a_declared_null_is_never_read_as_absence() -> None:
@@ -6317,9 +6308,8 @@ def test_a_pinned_value_carrying_a_dot_renders_whole() -> None:
 def _const_refusal(node: dict) -> Refusal:
     """The refusal a document whose one property is ``node`` lowers to."""
     doc = {"title": "Bad", "type": "object", "properties": {"k": node}, "required": ["k"]}
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document("bad.json", doc)
-    return caught.value
+    caught = refusal_from(emit.lower_document("bad.json", doc))
+    return caught
 
 
 def test_a_const_that_cannot_be_a_literal_is_refused_by_name() -> None:
@@ -6710,6 +6700,68 @@ def test_a_refusals_kind_is_declared_by_its_producer_and_a_chain_takes_its_targe
         refusal_module.is_a_verdict(Kind.CHAINED)
 
 
+def test_the_first_refusal_is_the_earliest_in_the_document_and_not_in_the_sort() -> None:
+    """Section 6's rule for which refusal a document is refused on.
+
+    "A document refused by a child's refusal is refused once, on the earliest refusal in
+    DOCUMENT ORDER, which keeps the report a function of the document and not of the
+    walk's iteration."  ``codegen.refusal.first_refusal`` is section 2's one combinator
+    for it, and the whole of its contract is that the order it answers in is the order of
+    the SEQUENCE it is handed -- so this grades the two halves separately:
+
+    * the combinator returns the earliest ELEMENT, and in particular does not sort.  A
+      pointer string cannot be ordered: ``/properties/zz`` sorts after ``/properties/aa``
+      and ``/items/10`` before ``/items/2``, while document order is neither.  The probe
+      is a pair whose sequence order and sorted order disagree, which is what a sort
+      snuck in later would get wrong.
+    * the WALK hands it the children in the document's own order, so a document with two
+      refusing properties is refused on the one the document declares FIRST -- and
+      swapping the two keys in the document swaps the refusal.  That second clause is
+      the one that makes the first mean something: a combinator reading its argument's
+      order says nothing unless the argument is in document order.
+
+    Two properties and not one, because a single refusing property is reported the same
+    way under every ordering rule there is.
+    """
+    from codegen.refusal import Kind, Refusal, first_refusal
+
+    later = Refusal("additionalProperties", "/properties/zz", "d", kind=Kind.VERDICT)
+    earlier = Refusal("additionalProperties", "/properties/aa", "d", kind=Kind.VERDICT)
+    assert first_refusal([later, earlier]) is later, "it sorted, or it reversed"
+    assert first_refusal([earlier, later]) is earlier
+    assert first_refusal([]) is None
+    assert first_refusal(["not a refusal", later]) is later, (
+        "it reads the sequence for the FIRST refusal and passes over what is not one"
+    )
+
+    # The walk's own order.  An object declaring no property and refusing every
+    # additional one admits only the empty object, which ``containers.mapping`` refuses
+    # as a VERDICT at the node's own pointer -- so each property refuses on its own
+    # keyword at its own pointer and the two differ in nothing but which key the document
+    # states first.
+    closed = {"type": "object", "additionalProperties": False}
+
+    def refusing(first: str, second: str) -> Refusal:
+        return refusal_from(
+            emit.lower_document(
+                "order.json",
+                {
+                    "title": "Order",
+                    "type": "object",
+                    "properties": {first: dict(closed), second: dict(closed)},
+                },
+            )
+        )
+
+    assert refusing("zz", "aa").pointer == "/properties/zz"
+    assert refusing("aa", "zz").pointer == "/properties/aa"
+    # And the document that refused produced NOTHING, which is section 6's other half:
+    # a ``Refusal`` is not a module, so there is no partially-populated module for the
+    # run to write -- the partial model section 2 of the semantics document forbids is
+    # unrepresentable rather than merely avoided.
+    assert not isinstance(refusing("zz", "aa"), tuple)
+
+
 def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending() -> None:
     """The exit condition is ``emitted + VERDICTS``, and it is not ``emitted + refused``.
 
@@ -7006,12 +7058,31 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # The ceiling rises to the measurement and the direction is named: this pin ADMITS
     # that one more document is clearable where before it recorded it as decided.
     assert resolved[refusal_module.Kind.DEFERRED] <= 109, resolved[refusal_module.Kind.DEFERRED]
-    assert resolved[refusal_module.Kind.UNRESOLVED] <= 0, resolved[refusal_module.Kind.UNRESOLVED]
-    assert {
-        d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
-    } == set(), sorted(
-        d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
-    )
+    # **THE ``unresolved`` PIN IS GONE WITH THE KIND, AT ``adcp-client-python-10l.6``,
+    # AND WHAT REPLACES IT IS THE RETIREMENT ITSELF.**  Architecture §3: "UNRESOLVED
+    # disappears.  It named a reference the delegated resolver did not reach, and the
+    # resolver in §4 reaches every position", and §13 item 5 records that the kind "is
+    # not in the document" at all.  The ceiling read ``<= 0`` and the paragraphs above
+    # are the history of it going 0 -> 1 -> 0; the measurement at this row's base is 0
+    # again, with the kind carried by no refusal of the 285.
+    #
+    # A ceiling at 0 over a kind that cannot be constructed is a pin on nothing, so the
+    # assertion becomes the SET OF KINDS: a resolved refusal carries a verdict or a
+    # deferral and there is no third.  That reddens if a row reintroduces the kind, which
+    # is what the ceiling was for, and it cannot be satisfied by a kind nothing mints.
+    #
+    # What the check it fed became: a reference surviving ``bundle.record`` at a position
+    # the package's own validation decides through is the INLINER disagreeing with
+    # ``bundle.undecidable_references``, which is a property of the COMPILER and not of
+    # any document -- so ``emit`` raises ``refusal.BuildFailure`` there (§2's one
+    # exception, which no layer catches) and mints no kind.  The obligation is unchanged
+    # and reported one layer up.
+    assert refusal_module.RESOLVED_KINDS == {
+        refusal_module.Kind.VERDICT,
+        refusal_module.Kind.DEFERRED,
+    }, sorted(refusal_module.RESOLVED_KINDS)
+    assert not hasattr(refusal_module.Kind, "UNRESOLVED"), "§3 retires the kind"
+    assert set(resolved) <= refusal_module.RESOLVED_KINDS, sorted(resolved)
 
     # Grow-only: what the exit condition actually counts.
     #

@@ -209,7 +209,7 @@ _SCALAR_WORD = {path: word for word, path in SCALAR.items()}
 # --------------------------------------------------------------------------- #
 # the three rows
 # --------------------------------------------------------------------------- #
-def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided:
+def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided | Refusal:
     """One scalar type word: the constraint facts on the TYPE, and the format.
 
     §2: **constraints bind to the type, not the field.**  A constrained scalar is
@@ -225,14 +225,18 @@ def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided:
     """
     word = node.word
     if word not in SCALAR:
-        raise Refusal("type", node.pointer, f"unknown type {word!r}", kind=Kind.VERDICT)
+        return Refusal("type", node.pointer, f"unknown type {word!r}", kind=Kind.VERDICT)
     # ``rules.ON_A_VALUE`` is the step-7 keyword that can land on a node with no object to
     # carry a rule tuple: a ``not`` over a ``const`` or an ``enum`` is an excluded VALUE,
     # which D4 leaves to the schema half exactly as it leaves a conditional that narrows
     # one.  Carrying it is not refusing it.
     from codegen.lower import rules as lower_rules
 
-    check_keywords(node, {"type", "format", *node.facts, *lower_rules.ON_A_VALUE}, mod=mod)
+    refused = check_keywords(
+        node, {"type", "format", *node.facts, *lower_rules.ON_A_VALUE}, mod=mod
+    )
+    if refused is not None:
+        return refused
     constraints = dict(node.facts)
     fmt = node.format
     # A format SELECTS a type where one is named for it and the document's own draft can
@@ -246,7 +250,7 @@ def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided:
         if fmt in URL_FORMATS and constraints:
             unowned = sorted(set(constraints) - {"pattern"})
             if unowned:
-                raise Refusal(
+                return Refusal(
                     unowned[0],
                     node.pointer,
                     f"a format: uri node states {unowned}, and a URL type carries no "
@@ -264,13 +268,15 @@ def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided:
     return Decided(ir.TypeRef(SCALAR[word]), constraints, format=fmt)
 
 
-def null(node: nodes.Null, name_hint: str, mod: Module) -> Decided:
+def null(node: nodes.Null, name_hint: str, mod: Module) -> Decided | Refusal:
     """``type: null``: nothing, which is ``None``."""
-    check_keywords(node, {"type"}, mod=mod)
+    refused = check_keywords(node, {"type"}, mod=mod)
+    if refused is not None:
+        return refused
     return Decided(ir.TypeRef("None"))
 
 
-def typeless(node: nodes.Typeless, name_hint: str, mod: Module) -> Decided:
+def typeless(node: nodes.Typeless, name_hint: str, mod: Module) -> Decided | Refusal:
     """No type and no kind keyword: a ``not`` over a value, or nothing.
 
     At ROOT there are two shapes and §4's table has a row for neither, so the keyword a
@@ -285,7 +291,7 @@ def typeless(node: nodes.Typeless, name_hint: str, mod: Module) -> Decided:
         kw = next((k for k in bundle.CONDITIONAL if k in node.rules), None)
         declared = list(node.declares)
         if kw is None:
-            raise Refusal(
+            return Refusal(
                 "type",
                 node.pointer,
                 f"the root declares no kind keyword at all: {declared} are data keys, "
@@ -294,7 +300,7 @@ def typeless(node: nodes.Typeless, name_hint: str, mod: Module) -> Decided:
                 "part of this document declares",
                 kind=Kind.VERDICT,
             )
-        raise Refusal(
+        return Refusal(
             kw,
             node.pointer,
             f"a root is exactly one kind and this one states {kw!r} (the root "
@@ -316,5 +322,7 @@ def typeless(node: nodes.Typeless, name_hint: str, mod: Module) -> Decided:
     # cell.  The one position whose cells carry nothing for seven of them is RULE, and a
     # node at RULE is never handed to the dispatch (§4).  Measured over the table at every
     # position, so the deletion moves no document and loses no refusal.
-    check_keywords(node, {*lower_rules.ON_A_VALUE}, mod=mod)
+    refused = check_keywords(node, {*lower_rules.ON_A_VALUE}, mod=mod)
+    if refused is not None:
+        return refused
     return Decided(ir.TypeRef("typing.Any"))  # §4's typeless row

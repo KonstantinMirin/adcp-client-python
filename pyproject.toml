@@ -90,3 +90,62 @@ testpaths = ["tests"]
 # which is the normal case during an epic. Override upward on an idle machine
 # with ``-n 14``; a single test still runs alone under ``-n 0``.
 addopts = "-n auto --maxprocesses=10"
+
+# --------------------------------------------------------------------------- #
+# the type checker, which section 14 step 6 makes the TEST for the decision layer
+# --------------------------------------------------------------------------- #
+# ``docs/plan/architecture.md`` section 14 step 6: "``Refusal`` stops subclassing
+# ``Exception``; every handler returns ``Lowering | Refusal`` ... The type checker is the
+# test."  Section 2 says what it tests: "The type checker therefore refuses a caller
+# that reads a ``Lowering`` field off a result without handling the ``Refusal`` branch,
+# which is the mechanical form of the semantics document's section 9 rule that a crash
+# is not an outcome."  So the gate is a checker running CLEAN over the decision layer,
+# and this section is what makes "clean" reproducible -- the files it ranges over and
+# the two things it is allowed not to know.
+#
+# ``files`` is the DECISION LAYER and the two ends section 2 puts the effects at, and it
+# is listed rather than left to default to ``codegen/`` for one reason: ``harness.py``
+# is the VERIFIER, which section 9 keeps separate from the walk, and it carries 29
+# pre-existing errors against ``hypothesis.settings`` and ``jsonschema``'s untyped
+# surface that are not this layer's and would make the gate unreadable.  A row that
+# brings the verifier under the checker adds it here; the list may GROW and may not
+# shrink.
+#
+# ``mypy`` is not a dependency of this project and is not pinned: a checker is an
+# instrument and the artifact does not depend on it, so ``tests/test_type_checker.py``
+# skips where it is absent and GRADES where it is present.  Run it directly with
+#
+#     PYTHONPATH=.:src uv run --no-sync python -m mypy
+#
+# which reads this section and needs no arguments.
+[tool.mypy]
+files = [
+    "codegen/refusal.py",
+    "codegen/keywords.py",
+    "codegen/ir.py",
+    "codegen/bundle.py",
+    "codegen/schema",
+    "codegen/lower",
+    "codegen/compiler.py",
+    "codegen/emit.py",
+    "codegen/constraints.py",
+    "codegen/render.py",
+    "codegen/dump_exemptions.py",
+    "codegen/__main__.py",
+]
+
+# The two things the checker is allowed not to know, both of them a MISSING TYPE
+# SURFACE and neither a silenced error of ours.  Per module and never blanket, so a
+# genuine unresolved import inside ``codegen`` is still an error: an inline
+# ``type: ignore`` is what step 6 forbids, and a scoped statement about a third party's
+# stubs is not one.
+#
+# * ``adcp.*`` is this project's own runtime package and ships no ``py.typed``.  Adding
+#   one is a change to the WHEEL's public surface -- it promises every annotation in
+#   ``src/adcp`` to every consumer's checker -- so it is a decision for the row that
+#   owns the shipped package and not a side effect of this one.
+# * ``jsonschema`` ships no stubs (``types-jsonschema`` is a separate distribution).
+[[tool.mypy.overrides]]
+module = ["adcp.*", "jsonschema.*"]
+ignore_missing_imports = true
+follow_untyped_imports = false

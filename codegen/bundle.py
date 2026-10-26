@@ -74,7 +74,23 @@ def node_at(root: object, pointer: str) -> object:
         if part == "":
             continue
         part = part.replace("~1", "/").replace("~0", "~")
-        cur = cur[int(part)] if isinstance(cur, list) else cur[part]  # type: ignore[index]
+        # The two containers a JSON Pointer hop can land in, each matched before it is
+        # indexed.  The hop used to be one expression with an ``isinstance(cur, list)``
+        # guard and a ``# type: ignore[index]`` for the other half, which says "this is
+        # not indexable and index it anyway" -- the suppression §14 step 6 admits none
+        # of.  A ``match`` states both arms and the ELSE is what the docstring already
+        # promises: a pointer naming no node raises, and ``record`` is what turns one
+        # into a refusal naming the reference.
+        match cur:
+            case list():
+                cur = cur[int(part)]
+            case dict():
+                cur = cur[part]
+            case _:
+                raise TypeError(
+                    f"{pointer!r}: the hop {part!r} is taken on a "
+                    f"{type(cur).__name__}, which names no node"
+                )
     return cur
 
 

@@ -142,7 +142,9 @@ def member_name(value: Any) -> str:
 _BRANCH_OF = ("oneOf", "anyOf")
 
 
-def lower(node: nodes.Enumeration, name_hint: str, mod: Module, *, of_a_root_union: bool = False) -> Decided:
+def lower(
+    node: nodes.Enumeration, name_hint: str, mod: Module, *, of_a_root_union: bool = False
+) -> Decided | Refusal:
     """§4's enumeration row: a ``StrEnum``/``IntEnum`` where a name reaches the node, and
     a ``Literal`` of its members where none does.
 
@@ -172,11 +174,17 @@ def lower(node: nodes.Enumeration, name_hint: str, mod: Module, *, of_a_root_uni
     # emitting a keyword no section names, which is §9's "a keyword handled in code but
     # named in none of §5, §6 or §7 is an invented rule" arriving through a screen that
     # was not there.
-    compiler.check_keywords(node, CLAIMS, mod=mod)
+    refused = compiler.check_keywords(node, CLAIMS, mod=mod)
+    if refused is not None:
+        return refused
     if resolves_no_name(node, of_a_root_union=of_a_root_union):
         return literal(node)
     declared = decide(node, name_hint)
-    mod.declare(name_hint, node.pointer, declared)
+    if isinstance(declared, Refusal):
+        return declared
+    collision = mod.declare(name_hint, node.pointer, declared)
+    if collision is not None:
+        return collision
     return Decided(ir.TypeRef(name_hint, local=True))
 
 
@@ -227,7 +235,7 @@ def resolves_no_name(node: nodes.Enumeration, *, of_a_root_union: bool = False) 
     return not node.title and of_a_root_union
 
 
-def literal(node: nodes.Enumeration) -> compiler.Decided:
+def literal(node: nodes.Enumeration) -> compiler.Decided | Refusal:
     """D2's rendering for a value set no name reaches: a ``Literal`` of its members.
 
     **The value set is read by :func:`decide`, not by a second reading of it here.**
@@ -244,10 +252,13 @@ def literal(node: nodes.Enumeration) -> compiler.Decided:
     nodes this reaches, 0 carry such a pair. The upgrade, at the first one, is to take
     the values before ``member_name`` runs rather than to copy the other three refusals.
     """
-    return compiler.Decided(ir.TypeRef(literals=tuple(m.value for m in decide(node, "").members)))
+    enumerated = decide(node, "")
+    if isinstance(enumerated, Refusal):
+        return enumerated
+    return compiler.Decided(ir.TypeRef(literals=tuple(m.value for m in enumerated.members)))
 
 
-def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl:
+def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl | Refusal:
     """What one ``enum`` node IS: a named enumeration over its own members.
 
     ``name`` is an input (D3).  The base comes from the members' own type and not
@@ -263,7 +274,7 @@ def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl:
     # ``enum`` that is not a list at all, and one that is the empty list -- because
     # neither enumerates a value.
     if not values:
-        raise Refusal(
+        return Refusal(
             "enum",
             pointer,
             "an empty enum admits no instance, so it enumerates nothing",
@@ -272,7 +283,7 @@ def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl:
 
     kinds = sorted({type(v).__name__ for v in values})
     if len(kinds) > 1:
-        raise Refusal(
+        return Refusal(
             "enum",
             pointer,
             f"members of mixed type {kinds} have no one base",
@@ -280,7 +291,7 @@ def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl:
         )
     kind = BASES.get(kinds[0])
     if kind is None:
-        raise Refusal(
+        return Refusal(
             "enum",
             pointer,
             f"a {kinds[0]} member has no enumeration base"
@@ -302,7 +313,7 @@ def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl:
     members: list[ir.Member] = []
     for value in values:
         if value in seen:
-            raise Refusal(
+            return Refusal(
                 "enum",
                 pointer,
                 f"{value!r} appears twice; Python aliases the second member onto the first "
@@ -312,7 +323,7 @@ def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl:
         seen.add(value)
         member = member_name(value)
         if member in spelled:
-            raise Refusal(
+            return Refusal(
                 "enum",
                 pointer,
                 f"{value!r} and {spelled[member]!r} both spell the member {member!r}",
