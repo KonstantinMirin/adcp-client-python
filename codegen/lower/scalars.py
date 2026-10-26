@@ -1,0 +1,326 @@
+"""§5's scalar rows: one ``type`` word, ``null``, and a node with no kind at all.
+
+Three of ``docs/plan/architecture.md`` §5's twelve arms, and the three that were the
+tail of ``emit._decide`` rather than a lowering of their own: a SCALAR carries its
+constraint facts in the document's spelling and its ``format``, a ``null`` node carries
+nothing, and a TYPELESS node is "a ``not`` over a value, or nothing".
+
+**``format`` selects a type and the alias module names a constrained one, so this module
+owns both tables.**  They were ``emit``'s because the scalar tail was, and §14 step 5
+moves a handler to ``lower/<kind>.py``; nothing about either changed in the move, and the
+reasoning each carries is the measurement that put it there.
+
+:func:`name_the_constraint` is read by ``compiler.carried`` for the three positions with
+no field of their own -- an array's ELEM, a mapping's MAPV and a union BRANCH -- which is
+why it is here beside the resolution it shares rather than in the module that asks.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
+from typing import Any
+
+from codegen import compiler, ir
+from codegen import constraints as constraints_module
+from codegen.keywords import Position
+from codegen.compiler import SCALAR, Decided, Module, check_keywords
+from codegen.refusal import Kind, Refusal
+from codegen.schema import nodes
+
+#: **``format`` SELECTS A TYPE, and the schema half asserts it** (D5).
+#:
+#: ``format: date-time`` references RFC 3339, where the time offset is MANDATORY,
+#: so the document itself requires a timezone and ``AwareDatetime`` states the
+#: document's own rule rather than a stricter one.  That reading only holds
+#: because the schema half now PASSES A FORMAT CHECKER (``_base._refuse``,
+#: ``harness._validating``): a draft-07 ``format`` that nothing checks asserts
+#: nothing, and a type derived from one would be narrower than its document as
+#: graded -- which is the state a previous lane correctly backed these types out
+#: of, and the apparent disagreement was the grader rather than the types.
+#: Measured both ways on the same checker: of six RFC 3339 edge values --
+#: offsetless, lowercase ``t``/``z``, a leap second, a ``+05:30`` offset,
+#: nanosecond precision -- ``AwareDatetime`` and ``rfc3339-validator`` agree on
+#: all six, including refusing the leap second.
+#:
+#: A row exists only where the draft's own checker can DECIDE the format, which
+#: :func:`asserted_formats` reads off the document's declared draft.  So removing
+#: ``rfc3339-validator`` from the dependencies does not leave an unasserted
+#: narrowing behind: the row stops selecting and the node falls back to its own
+#: scalar type with the format as an annotation.
+#:
+#: **``uri`` SELECTS ITS TYPE FROM THE NODE, which is why this table holds
+#: choosers rather than paths.**  D5 makes a ``format: uri`` field's type follow the
+#: DOCUMENT'S OWN PATTERN -- ``AdCPUrl`` where the document restricts the scheme to
+#: https, ``HttpUrl`` everywhere else -- so the answer is a function of the node and
+#: not of the format alone.  ``date-time`` and ``date`` ignore their node, and they
+#: are expressed as choosers too rather than as a second shape beside one: a table
+#: with two kinds of value is a table every reader has to case-split.
+#:
+#: The former entry read ``uri`` -> ``AdCPUrl`` and it was WRONG, measured. D5 now
+#: records the whole of it; the short form is below.
+#:
+#: **``AdCPUrl`` everywhere narrowed the SDK below the pinned spec.**  ``format: uri``
+#: references RFC 3986, which admits every scheme, so a bare
+#: ``{"type": "string", "format": "uri"}`` admits ``https://``, ``http://``, ``urn:``
+#: and ``file:///`` alike -- and ``AdCPUrl`` refuses three of the four. Measured at
+#: **228 of the bundle's 300 ``uri`` positions, in 128 of 160 documents**, and at
+#: **26 of 27** positions in documents the emitter emits. End to end on a shipped
+#: class: ``core/placement-evidence.json#/properties/url`` states only the bare pair,
+#: the document admits ``{"url": "http://x.example/p"}``, and
+#: ``PlacementEvidence.strict_validate`` raised ``URL scheme should be 'https'``.
+#:
+#: **No check saw it**, which is why it stood: ``allowed_schemes`` has no rendering in
+#: pydantic's schema output, so the comparison has no keyword to compare; ``format``
+#: is not a step keyword, so ``steps()`` returns ``[]``; and
+#: ``hypothesis_jsonschema``'s ``uri`` strategy drew ``https`` in 200 of 200
+#: derandomized examples. That instrument gap is ``salesagent-j3k2l.10``'s, not this
+#: module's.
+#:
+#: **``HttpUrl``'s two ceilings are accepted deliberately and named at D5**: it still
+#: refuses ``urn:`` and ``file:``, so 227 of 300 positions stay narrower than their
+#: document, and it renders ``maxLength: 2083`` and ``minLength: 1`` that no document
+#: states -- which ``harness.compare_schema`` admits with one hand-written row per
+#: fact, each naming itself.
+#:
+#: What follows is the reasoning for the type being ours rather than pydantic's at
+#: the https branch, which the amendment did not change.  D5 admits
+#: a STANDARD type only when it states the document's own facts AND accepts the
+#: document's own set, and no pydantic URL type passes: ``AnyUrl`` and
+#: ``AnyHttpUrl`` both render a ``minLength: 1`` no ``format: uri`` document
+#: states, ``HttpUrl`` adds a ``maxLength: 2083`` as well, and all three admit
+#: ``http://``.  So the type is one we emit --
+#: ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``, declared once
+#: in ``codegen.constraints`` -- and the ``minLength: 1`` it renders is admitted
+#: by a comparison row of its own kind (``harness.compare_schema``) rather than
+#: hidden with a ``WithJsonSchema``, which would make the model's rendered schema
+#: a claim nobody graded.
+#:
+#: The document's own ``pattern`` stays with the SCHEMA half: the bundle states
+#: eight distinct patterns across 73 of its 300 ``uri`` uses and
+#: ``UrlConstraints`` expresses only the first (``^https://``, at 47 sites), so
+#: letting the field type vary by how strict a schema author happened to be is
+#: what this avoids.  ``strict_validate`` applies the document before the
+#: constructor runs, so nothing widens.
+#:
+#: Each value is ``(node) -> dotted path``.  ``date-time`` and ``date`` ignore the
+#: node; ``uri`` is ``constraints.url_type``, which reads the document's own
+#: ``pattern``.
+FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
+    "date-time": lambda node: "pydantic.AwareDatetime",
+    "date": lambda node: "datetime.date",
+    "uri": constraints_module.url_type,
+}
+
+#: The formats whose selected type is a URL type, which is what the one refusal
+#: below is gated on.  DERIVED by asking each chooser rather than listed: a format
+#: whose chooser answers inside the alias module's namespace is a URL format, and a
+#: second list to keep in step would be a second place for this to drift.
+URL_FORMATS = frozenset(
+    fmt
+    for fmt, choose in FORMAT_TYPES.items()
+    if choose({}).startswith(f"{constraints_module.MODULE}.")
+)
+
+
+
+def _named_alias(
+    path: str,
+    kind: str,
+    constraints: Mapping[str, Any],
+    mod: compiler.Module,
+    fmt: str | None = None,
+) -> ir.TypeRef:
+    """One resolved shape's :class:`ir.TypeRef`, with the alias recorded.
+
+    The record and the type go together or they do not go: an alias referenced and not
+    recorded is an ``ImportError`` in the written tree, and one recorded and not
+    referenced is a line in a public module nothing reads.  Shared by the two callers
+    that resolve a shape -- the scalar tail of :func:`decide_type` and
+    :func:`name_the_constraint` -- so there is one place that pairs them.
+
+    Only an alias in ``adcp.types.constraints`` is recorded: rung 2 resolves to a
+    pydantic name, which that module does not declare and ``Type``'s dotted path
+    imports directly.
+
+    A CONTAINER alias is generic, so its arguments come with it
+    (``NonEmptyList[MediaBuyStatus]``): ``of`` carries the decided types and
+    ``ir.TypeRef``'s ``alias`` container writes the subscript.
+    """
+    if path.startswith(f"{constraints_module.MODULE}."):
+        constraints_module.record(mod.aliases, path.rsplit(".", 1)[1], kind, constraints, format=fmt)
+    return ir.TypeRef(path)
+
+
+def name_the_constraint(decided: Decided, mod: compiler.Module) -> ir.TypeRef | None:
+    """Section 2's NAMED carrier for a decided node whose position has no field.
+
+    ``compiler.carried`` asks this at the three positions that cannot hold a fact on a
+    field of their own -- an array's ELEM, a mapping's MAPV and a union BRANCH -- and
+    refuses when it answers ``None``.  It is HERE, and ``compiler.carried`` defers the
+    import of it to call time, because the names are ``codegen.constraints``'s and
+    that module imports ``compiler``: a module-level import from ``compiler`` would
+    close that cycle.  It used to be carried on :class:`compiler.Module` as a callable
+    for a second reason as well -- ``codegen.emit`` was unnameable while ``runpy``
+    bound it twice -- and ``codegen/__main__.py`` retired that half.
+
+    **It does not re-read the node, and that is deliberate.**  Everything it needs is
+    on the :class:`Decided` the walk already produced -- the scalar's own type word is
+    recoverable from :data:`SCALAR`, a container names itself in ``Type.container`` --
+    so there is no second reading of a node's constraints to disagree with
+    :func:`decide_type`'s.
+
+    Two shapes reach it, and they are the two that can arrive with a fact still on
+    them:
+
+    * a bare SCALAR carrying a ``format`` no type was selected for.  Constraints
+      alone never arrive here, because :func:`decide_type` has already resolved a
+      spellable scalar shape to an alias -- what arrives with constraints on it is a
+      shape the alias module declined, and the answer is the same ``None``.
+    * a CONTAINER carrying its own bound: ``minItems``/``maxItems`` on a list,
+      ``minProperties``/``maxProperties`` on a mapping.  The alias is GENERIC and the
+      container's own contents are its arguments, which is what lets it be named at
+      all (``constraints.CONTAINER``).
+    """
+    kind = _CONTAINER_WORD.get(decided.type.container) or _SCALAR_WORD.get(decided.type.path)
+    if kind is None:
+        return None
+    path = constraints_module.resolve(kind, decided.constraints, format=decided.format)
+    if path is None:
+        return None
+    inner = _named_alias(path, kind, decided.constraints, mod, fmt=decided.format)
+    if kind not in constraints_module.CONTAINER:
+        return inner
+    args = decided.type.of if decided.type.key is None else (decided.type.key, *decided.type.of)
+    return ir.TypeRef(path=inner.path, container="alias", of=args)
+
+
+#: The document's own type word for each container ``Type.container`` names, and for
+#: each scalar path :data:`SCALAR` maps to.  Both are inversions and both are written
+#: here rather than at the call site, so the two spellings of a type have ONE mapping
+#: between them (``constraints.SCALAR_PATH`` is the same arrangement one module over).
+#: ``union`` is absent: a union is not a node's own type word, so a union carrying a
+#: constraint has no shape for this module to name and refuses.
+_CONTAINER_WORD = {"list": "array", "dict": "object"}
+_SCALAR_WORD = {path: word for word, path in SCALAR.items()}
+
+
+
+
+# --------------------------------------------------------------------------- #
+# the three rows
+# --------------------------------------------------------------------------- #
+def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided:
+    """One scalar type word: the constraint facts on the TYPE, and the format.
+
+    §2: **constraints bind to the type, not the field.**  A constrained scalar is
+    resolved to a NAME -- a standard pydantic type where one says exactly this, an alias
+    in ``adcp.types.constraints`` otherwise -- so the same shape in two documents is the
+    same symbol with no census over the run, and a bound reached through a list, a mapping
+    value or a union branch has somewhere to live.
+
+    ``node.facts`` is the classification ``ir.FACTS`` was: a key whose cell LOWERS at this
+    node's position, that holds no subschema, and that this node's own TYPE WORD can carry
+    (``schema.parse.ARM``).  The parser states it once, from the table, at the position --
+    which is what §11 asks for and what no column of §3 could answer on its own.
+    """
+    word = node.raw.get("type")
+    if word not in SCALAR:
+        raise Refusal("type", node.pointer, f"unknown type {word!r}", kind=Kind.VERDICT)
+    # ``rules.ON_A_VALUE`` is the step-7 keyword that can land on a node with no object to
+    # carry a rule tuple: a ``not`` over a ``const`` or an ``enum`` is an excluded VALUE,
+    # which D4 leaves to the schema half exactly as it leaves a conditional that narrows
+    # one.  Carrying it is not refusing it.
+    from codegen.lower import rules as lower_rules
+
+    check_keywords(
+        node.raw,
+        node.pointer,
+        node.position,
+        {"type", "format", *node.facts, *lower_rules.ON_A_VALUE},
+        mod=mod,
+    )
+    constraints = dict(node.facts)
+    fmt = node.format
+    # A format SELECTS a type where one is named for it and the document's own draft can
+    # decide it (D5, and the comment above FORMAT_TYPES).  The type then states the format
+    # in its own rendered schema, so ``format`` is left unset here and the compiler adds no
+    # annotation -- which is what keeps the fact in exactly one place.  Where no type is
+    # selected the format rides as an annotation on the node's own scalar type, and the
+    # schema comparison grades it there.
+    if fmt is not None and fmt in mod.asserted and fmt in FORMAT_TYPES:
+        selected = FORMAT_TYPES[fmt](node.raw)
+        if fmt in URL_FORMATS and constraints:
+            unowned = sorted(set(constraints) - {"pattern"})
+            if unowned:
+                raise Refusal(
+                    unowned[0],
+                    node.pointer,
+                    f"a format: uri node states {unowned}, and a URL type carries no "
+                    "string constraint at all -- pydantic refuses to apply one -- while "
+                    "the comparison's URL-type rows admit only a dropped pattern and "
+                    "the two bounds a URL type renders of its own, so this keyword "
+                    "would go missing or differ ungraded",
+                    kind=Kind.VERDICT,
+                )
+            return Decided(ir.TypeRef(selected))
+        return Decided(ir.TypeRef(selected), constraints)
+    path = constraints_module.resolve(word, constraints)
+    if path is not None:
+        return Decided(_named_alias(path, word, constraints, mod), format=fmt)
+    return Decided(ir.TypeRef(SCALAR[word]), constraints, format=fmt)
+
+
+def null(node: nodes.Null, name_hint: str, mod: Module) -> Decided:
+    """``type: null``: nothing, which is ``None``."""
+    check_keywords(node.raw, node.pointer, node.position, {"type"}, mod=mod)
+    return Decided(ir.TypeRef("None"))
+
+
+def typeless(node: nodes.Typeless, name_hint: str, mod: Module) -> Decided:
+    """No type and no kind keyword: a ``not`` over a value, or nothing.
+
+    At ROOT there are two shapes and §4's table has a row for neither, so the keyword a
+    reader needs is the one that WOULD have decided a kind: a CONDITIONAL -- read off the
+    descent column rather than named -- and otherwise nothing, reported on ``type``.  Both
+    are properties of the document and so both are VERDICTS.
+    """
+    from codegen import bundle
+    from codegen.lower import rules as lower_rules
+
+    if node.position is Position.ROOT:
+        kw = next((k for k in bundle.CONDITIONAL if k in node.raw), None)
+        declared = sorted(compiler.declaring(node.raw, node.position))
+        if kw is None:
+            raise Refusal(
+                "type",
+                node.pointer,
+                f"the root declares no kind keyword at all: {declared} are data keys, "
+                "not schema keywords, so there is no type, no properties and no "
+                "composition to read -- and a class over them would state what no "
+                "part of this document declares",
+                kind=Kind.VERDICT,
+            )
+        raise Refusal(
+            kw,
+            node.pointer,
+            f"a root is exactly one kind and this one states {kw!r} (the root "
+            f"declares {declared}): a conditional describes what a rule TESTS, so "
+            "section 5 hangs it on the nearest class and this root declares no "
+            "properties for one -- there is no class, and no type, for the rule to "
+            "attach to",
+            kind=Kind.VERDICT,
+        )
+    # ``rules.ON_A_VALUE`` for :func:`lower`'s reason, which does not depend on the type
+    # word being present: a ``not`` is a statement about which VALUES the node admits, so
+    # D4 leaves it to the schema half, and a node with no ``type`` has no less of a value
+    # than a node with one.
+    # **The refusal that stood here is DELETED, and it was dead code.**  It read
+    # ``set(node) & set(ir.FACTS)`` and answered "a typeless node carrying a constraint
+    # has nothing to apply it to", as a VERDICT -- but every one of those eleven keywords
+    # has a cell that LOWERS at all eight positions the walk decides a node at, so the
+    # screen above refuses it first, by name, as the DEFERRAL ``kind_for`` reads off the
+    # cell.  The one position whose cells carry nothing for seven of them is RULE, and a
+    # node at RULE is never handed to the dispatch (§4).  Measured over the table at every
+    # position, so the deletion moves no document and loses no refusal.
+    check_keywords(node.raw, node.pointer, node.position, {*lower_rules.ON_A_VALUE}, mod=mod)
+    return Decided(ir.TypeRef("typing.Any"))  # §4's typeless row
