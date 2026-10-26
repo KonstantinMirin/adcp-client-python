@@ -441,16 +441,34 @@ def test_every_named_document_is_either_emitted_or_refused_by_name_and_keyword()
 
 
 def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
-    """Transitive emission, and that the walk terminates: the whole closure of a
-    document's references is emitted, or the document is refused with the target
+    """Transitive emission, and that the walk terminates: the whole closure of the
+    references THE WALK LOWERS is emitted, or the document is refused with the target
     that stopped it.  An import of a symbol from a module no run wrote is an
-    ImportError, so there is no third outcome."""
+    ImportError, so there is no third outcome.
+
+    **The claim ranges over ``bundle.lowered_references`` and not over every ``$ref``
+    in the document, and that is two of the design's own sentences rather than a
+    narrowing.**  §3: no type is lowered from a node under a conditional, so a ``$ref``
+    at a RULE position emits no import and its target is legitimately absent from the
+    run.  §5's ``definitions`` row plus §3's "an entry nothing references is not
+    declared": a reference inside a dead section entry is at a position no class names.
+    Both are predicates over the document's own structure -- the descent column's
+    position and ``bundle.reaches`` -- and neither is a hand-written document set,
+    which is the defect §9 names.
+
+    The live case this test was red on: ``core/forecast-dimension-geo.json`` emits and
+    references ``core/postal-country-system.json`` at ``/allOf/3/then/anyOf/0``, a RULE
+    position.  Verified at the module: ``forecast_dimension_geo.py`` imports
+    ``..enums.geo_level`` and ``constraints`` and nothing of the target, so there is no
+    ImportError and the closure is not broken.  Both skipped populations are asserted
+    non-empty below, so neither is a silent hole.
+    """
     out = emit.emit(BUNDLE, population())
     pulled_in = set(out.emitted) - set(population())
     assert pulled_in, "no document was reached through a reference; the walk graded nothing"
     assert "core/creative-revision-id.json" in pulled_in
-    # every CROSS-DOCUMENT reference of every emitted document resolves to a document
-    # also emitted.  A LOCAL reference names a node of the document being written and
+    # every CROSS-DOCUMENT reference the walk LOWERS resolves to a document also
+    # emitted.  A LOCAL reference names a node of the document being written and
     # so has no target to emit -- ``compiler.local_reference`` resolves it against the
     # module's own declarations -- and the document half is how ``bundle.split_ref``
     # tells the two apart, which is the same one reading the walk and the binder use.
@@ -459,10 +477,15 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
     # an EMITTED document (``core/reporting-coverage.json#/definitions/...``).
     known = set(bundle.portable(BUNDLE))
     local_seen = 0
+    unlowered = 0
     for document in out.emitted:
         doc = bundle.read(BUNDLE, document)
         nodes = dict(bundle.nodes(doc))
-        for _, uri in bundle.references(doc):
+        lowered = set(bundle.lowered_references(doc, _named().get(document, frozenset())))
+        for pointer_, uri, _ in bundle.references(doc):
+            if (pointer_, uri) not in lowered:
+                unlowered += 1
+                continue
             named, pointer = bundle.split_ref(uri)
             if not named:
                 # A LOCAL reference names a node in the REFERRING document, which is
@@ -478,9 +501,18 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
                 assert pointer in nodes, (document, uri)
                 local_seen += 1
                 continue
-            target = bundle.document_for(uri, known)
+            # The DOCUMENT HALF, which ``split_ref`` took off the URI above.
+            # ``document_for`` reads no ``#`` at all -- its docstring says every caller
+            # arrives pre-split -- so handing it the whole URI answers ``None`` for
+            # every reference carrying a fragment, which is 76 of the bundle's 968.
+            target = bundle.document_for(named, known)
             assert target in out.emitted, (document, uri)
     assert local_seen, "no local reference was reached; the local branch graded nothing"
+    assert unlowered, (
+        "no reference was skipped as unlowered; the RULE-position and dead-section "
+        "clauses graded nothing, so either the walk now lowers every reference or the "
+        "predicate reads the whole document"
+    )
 
 
 def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
@@ -2570,7 +2602,7 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
         carried = schema_at(SchemaRef(document, "#"))
         owed = bundle.undecidable_references(carried, named.get(document, frozenset()))
         assert owed == [], (document, owed)
-        for pointer, reference in bundle.references(carried):
+        for pointer, reference, _ in bundle.references(carried):
             if bundle.split_ref(reference)[0]:
                 remote.setdefault(document, set()).add(pointer)
             else:
@@ -2599,7 +2631,7 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
     # (PAIR, reference) rather than once per document, which is a second denominator
     # for one fact and is why that file's figures are larger.
     for document in sorted(local):
-        raw = [u for _, u in bundle.references(bundle.read(BUNDLE, document))]
+        raw = [u for _, u, _ in bundle.references(bundle.read(BUNDLE, document))]
         assert sorted(local[document]) == sorted({u for u in raw if not bundle.split_ref(u)[0]}), (
             document,
             sorted(local[document]),
@@ -3508,12 +3540,22 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # requiredness overlay and the fields-and-a-rule conjunct, which is this row's work,
     # plus the restatement the intersection rule now reads instead of refusing.
     #
-    # The one re-attributed is ``media-buy/control-media-buy-response.json``, ``$ref`` ->
-    # ``const``: its refusal was CHAINED through
-    # ``core/canonical-media-buy-action.json``, which now emits, so the walk gets further
-    # and names its own verdict at
+    # The one re-attributed was ``media-buy/control-media-buy-response.json``, ``$ref``
+    # -> ``const``: its refusal was CHAINED through
+    # ``core/canonical-media-buy-action.json``, which emits, so the walk got further and
+    # named its own verdict at
     # ``/oneOf/0/properties/warnings/items/allOf/1/properties/code``.  That is the
     # attribution moving in the honest direction, which is what this profile is for.
+    #
+    # **AND IT LEFT AT ``adcp-client-python-10l.5``, because that verdict was the one
+    # §5's ``$ref`` row retires.**  The pointer it named is a conjunct restating
+    # ``{"const": "inventory_shortfall_forecast"}`` over ``core/warning.json``'s
+    # ``code``, which is a bare ``$ref``: the intersection merged the two into
+    # ``{"$ref": T, "const": v}`` -- a node the document does not state and draft-07
+    # reads as ``T`` alone -- and the walk then refused the document on the ``const``
+    # the merge itself had put beside the reference, which is §9's "never refuse a
+    # keyword the walk itself inserted".  The document emits, and its two branch pairs
+    # pass all three checks.
     assert refused_on == {
     "account/get-account-financials-response.json": "allOf",
     "account/list-account-changes-response.json": "allOf",
@@ -3587,7 +3629,6 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "error-details/vast-version-mismatch.json": "properties",
     "media-buy/build-creative-response.json": "allOf",
     "media-buy/buy-products-request.json": "allOf",
-    "media-buy/control-media-buy-response.json": "const",
     "media-buy/create-media-buy-request.json": "allOf",
     "media-buy/create-media-buy-response.json": "allOf",
     "media-buy/decline-proposals-response.json": "properties",
@@ -6676,9 +6717,18 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # beside it: emitted is 747 on both trees and the refusal set is the same 307
     # documents at the same pointers on the same keywords.  Nothing cleared; what moved
     # is what the report CLAIMS about 51 documents, which is the row's whole purpose.
-    assert len(chained) >= 152, len(chained)
+    # **152 -> 144 AND 126 -> 50 AT ``adcp-client-python-10l.5``, AND BOTH MOVES ARE
+    # EMISSION.**  21 documents left the refusal set (748 -> 769 over the portable
+    # population), and 8 of them were the TARGET of a chain, so 8 chains left with
+    # them: §5's ``$ref`` row now compiles a CONSTRAINING sibling to nothing and
+    # reports it, where it refused the document as a verdict.  The verdict half of the
+    # split fell further because one raise site stopped MINTING its kind -- a ``$ref``
+    # conjunct whose target is not a class is §5's own CONJ case and §14 step 8's
+    # unwritten cell, so ``kind_for`` answers DEFERRED where the site passed VERDICT,
+    # and the 1 direct refusal that re-minted carried its chains with it.
+    assert len(chained) >= 144, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 126, dict(split)
+    assert split[refusal_module.Kind.VERDICT] >= 50, dict(split)
     assert split[refusal_module.Kind.DEFERRED] >= 1, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
@@ -6763,7 +6813,22 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # on the same keywords.  Architecture §13 item 5 says this kind is retired by §4's
     # resolver; the kind itself is row .6's to remove, and until then the ceiling at 0 is
     # what makes a document arriving at it loud.
-    assert resolved[refusal_module.Kind.DEFERRED] <= 67, resolved[refusal_module.Kind.DEFERRED]
+    # **67 -> 108 AT ``adcp-client-python-10l.5``, A CEILING GOING UP AGAIN, AND IT IS
+    # THE SAME EVENT THE ROW BEFORE IT RECORDED: a kind that was MINTED AT A RAISE SITE
+    # read off the cell instead.**  Measured on the whole portable set at this row's
+    # tip: emitted 748 -> 769, refused 306 -> 285, deferred 67 -> 108, verdict 239 ->
+    # 177.  One raise site changed -- a ``$ref`` conjunct whose target is not a class --
+    # and §5's ``$ref`` row at CONJ DECIDES that case ("the target is this node's own
+    # TYPE, and the other conjuncts and the ``allOf``'s siblings constrain it"), with
+    # §14 step 8 naming the step that writes it.  So the compilation is decided and
+    # merely unwritten, which §9's first rule makes a deferral: a verdict claims the
+    # obstruction belongs to the document, to pydantic or to the pointer space, and it
+    # belongs to none of the three.  62 documents moved out of the verdict column, 1
+    # directly and the rest through a chain.
+    #
+    # The ceiling rises to the measurement and the direction is named: this pin ADMITS
+    # that 62 more documents are clearable where before it recorded them as decided.
+    assert resolved[refusal_module.Kind.DEFERRED] <= 108, resolved[refusal_module.Kind.DEFERRED]
     assert resolved[refusal_module.Kind.UNRESOLVED] <= 0, resolved[refusal_module.Kind.UNRESOLVED]
     assert {
         d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
@@ -6793,8 +6858,21 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # emission: ``core/requirements/catalog-field-binding.json``, whose unresolved
     # reference the record inlines.  Verdicts are unchanged at 239, so the whole of the
     # rise is the emitted term.
+    # **987 -> 946 at ``adcp-client-python-10l.5``, and the fall is the same correction
+    # the fall before it was, measured the same way.**  ``accounted`` is
+    # ``emitted + VERDICTS``, so the two terms moved in opposite directions: emitted
+    # 748 -> 769 (+21, every one of them named in the row's delivery note, and 0
+    # documents stopped emitting) and verdicts 239 -> 177 (-62).  Net -41.
+    #
+    # The 62 were counted as FINISHED and are not.  One raise site was passing VERDICT
+    # for a cell §5 decides -- a ``$ref`` conjunct whose target is not a class, which
+    # §5's ``$ref`` row at CONJ makes "this node's own TYPE" and §14 step 8 writes --
+    # and 61 chains carried the new answer.  §9's first rule is that a refusal for code
+    # nobody has written is a DEFERRAL, so re-pointing this floor DOWN is the pin
+    # reporting the correction rather than absorbing it.  The emitted term is what rose
+    # and nothing it counts moved the other way.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 987, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 946, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
     pending = sum(resolved[k] for k in refusal_module.PENDING_KINDS)

@@ -125,6 +125,61 @@ def declaring(node: Mapping[str, Any], position: Position) -> dict[str, Any]:
     return {k: v for k, v in node.items() if declares(k, position)}
 
 
+def inert_beside_a_reference(
+    node: Mapping[str, Any], pointer: str, position: Position, mod: "Module | None" = None
+) -> frozenset[str]:
+    """§5's ``$ref`` row: the CONSTRAINING siblings, which compile to NOTHING and are
+    REPORTED.
+
+    **Settled by the design owner on 2026-10-25, in both documents.**  §5's ``$ref``
+    row now reads: "A CONSTRAINING sibling → nothing, and REPORTED: draft-07 ignores
+    every sibling of ``$ref``, so the keyword constrains no instance and the document's
+    accepted set is the target's alone.  The record keeps the key, because §3 drops
+    none; the declaration's cell says it compiles to nothing at this co-occurrence, so
+    §8 does not grade it; and the report names it, because a key that reads as a
+    constraint and is inert is worth reading once.  Refusing it instead would refuse a
+    document whose accepted set its own draft decides, and letting the referring value
+    win would make the record state an acceptance fact the bundle does not."
+    ``docs/plan/architecture.md`` §13 item 2 carries the reasoning and limits §13.2's
+    "referring node wins" to ANNOTATION siblings.
+
+    So this is the co-occurrence, decided in ONE place and read by the two arms that
+    meet it -- ``emit._decide``'s reference arm and
+    :func:`lower_composition`'s ``$ref``-conjunct arm.  Both refused as VERDICTS on
+    the sibling before, which is the self-undermining reason the epic recorded: if
+    draft-07 ignores the keyword it constrains no instance, so the obstruction belongs
+    to neither the document, nor pydantic, nor the pointer space -- and a verdict
+    claims it belongs to one of the three.
+
+    **A key with NO ROW still refuses, and a REFUSE cell still refuses.**  Neither is a
+    constraining sibling in the sense the row decides: §9 says a keyword in none of §5,
+    §6 or §7 is one the bundle did not use and the first document to carry one is loud
+    rather than ignored, and §7's own keywords are refused wherever they appear.  What
+    this names is exactly the keys whose CELL LOWERS at this position -- the ones that
+    read as a constraint -- and the caller hands them to the screen as claimed.
+
+    An ANNOTATION sibling is not here: §5 gives it the other answer (the sibling's
+    description wins), the table admits it at every position, and
+    ``bundle.record._beside`` is what keeps it beside the inlined copy.
+    """
+    inert = frozenset(
+        k
+        for k in node
+        if k != "$ref"
+        and (answer := keywords.cell(k, position)) is not None
+        and keywords.lowers(answer)
+    )
+    if mod is not None:
+        mod.carries_nothing.extend(
+            f"{pointer or '/'}: {k}: a constraining sibling of $ref, which draft-07 "
+            "ignores, so the keyword constrains no instance and the document's accepted "
+            "set is the target's alone (section 5's $ref row); the record keeps the key "
+            "and section 8 does not grade it"
+            for k in sorted(inert)
+        )
+    return inert
+
+
 
 # --------------------------------------------------------------------------- #
 # names (D3)
@@ -1479,16 +1534,56 @@ def lower_composition(
                 for k in sorted(foreign)
             )
             keys -= foreign
+        if "$ref" in keys and keys != {"$ref"}:
+            # A conjunct that is a ``$ref`` AND something else.  **The CONSTRAINING
+            # siblings compile to nothing and are REPORTED** -- §5's ``$ref`` row as
+            # the design owner settled it on 2026-10-25, read through
+            # :func:`inert_beside_a_reference` so that this arm and
+            # ``emit._decide``'s reference arm decide one co-occurrence once.  The
+            # conjunct is then the bare ``$ref`` it effectively is, and the base arm
+            # below binds it.
+            #
+            # What is left refuses by name: a key with NO ROW is a keyword the bundle
+            # did not use before and could constrain anything (§9).  A REFUSE cell is
+            # §7's own answer and ``foreign`` above has already dropped and reported
+            # it, so it never reaches here.
+            inert = inert_beside_a_reference(conjunct, where, Position.CONJ, mod)
+            remaining = keys - {"$ref"} - inert
+            if remaining:
+                raise Refusal(
+                    min(remaining),
+                    where,
+                    "a sibling of $ref, which draft-07 ignores, and which the table "
+                    "gives no row -- so it is not a keyword section 5's $ref row "
+                    "decides compiles to nothing, and the first document to carry a "
+                    "keyword the bundle did not use before is loud rather than ignored",
+                    kind=kind_for(min(remaining), Position.CONJ),
+                )
+            keys = {"$ref"}
         if keys == {"$ref"}:
             target = mod.bind(conjunct["$ref"], where)
             if target.shape is None:
+                # **The KIND is read off the cell and is a DEFERRAL, not a verdict.**
+                # §5's ``$ref`` row at CONJ decides this very case -- "a BASE where the
+                # target is a class declaring fields.  Where it is not -- a scalar, an
+                # enum, a container, or a union root, whose instance is one of its
+                # branches -- it is not a class a model can extend: the target is this
+                # node's own TYPE, and the other conjuncts and the ``allOf``'s siblings
+                # constrain it" -- and §14 step 8 is the step that writes it ("a scalar
+                # or alias target as the type of a composing node").  So the
+                # compilation is DECIDED and merely unwritten, which §9's first rule
+                # makes a deferral: a verdict claims the obstruction belongs to the
+                # document, to pydantic or to the pointer space, and it belongs to none
+                # of the three here.  ``kind_for`` is the derivation and the only place
+                # the two are told apart.
                 raise Refusal(
                     "allOf",
                     where,
                     f"{target.symbol} is not a class, so it cannot be a base "
                     "(D2 makes a scalar root an Annotated alias, and subclassing "
-                    "one is a TypeError at import)",
-                    kind=Kind.VERDICT,
+                    "one is a TypeError at import); section 5's $ref row at CONJ makes "
+                    "the target this node's own TYPE, which section 14 step 8 writes",
+                    kind=kind_for("allOf", Position.CONJ),
                 )
             mod.imports.add((target.module, target.symbol))
             conjunct_bases.append(target.symbol)
@@ -1499,22 +1594,6 @@ def lower_composition(
             if inherited_description is None:
                 inherited_description = target.shape.description
             continue
-        if "$ref" in keys:
-            # A conjunct that is a ``$ref`` AND something else: refused on the
-            # SIBLING, which is the cause, and never on ``$ref``, which is only
-            # the position.  The same reading ``emit.decide_type`` applies to a
-            # reference used as an annotation -- draft-07 says a ``$ref`` IGNORES
-            # its siblings, and letting the referring value win would make the
-            # record state an acceptance fact the bundle's draft does not hold
-            # (architecture §13 item 2, semantics §9's last rule).  So the refusal
-            # names the sibling until the cell decides it compiles to nothing and
-            # the run reports it, which is rows .2 and .5's work.
-            raise Refusal(
-                min(keys - {"$ref"}),
-                where,
-                "a sibling of $ref, which draft-07 ignores",
-                kind=Kind.VERDICT,
-            )
         # **EVERY PART OF THE CONJUNCT CONTRIBUTES, and each part lowers by the decision
         # covering it** (section 2, "composition merges by intersection").  One arm
         # rather than three, because three arms is what produced the gap: a conjunct
@@ -2125,6 +2204,32 @@ def _intersection(
     for axis in _AXES:
         if covered & axis:
             covered |= axis
+    if covered - {"$ref"}:
+        # **A ``$ref`` is not merged into a child that constrains the instance
+        # itself, and that is §9's rule rather than a preference.**  A ``$ref`` is
+        # the WHOLE schema of the node it sits at, so it is not one axis beside
+        # another: merging the base's into a child stating a ``const`` writes
+        # ``{"$ref": T, "const": v}``, which draft-07 reads as ``T`` ALONE.  That is a
+        # node no document states, and §9 names it twice -- "never refuse a keyword the
+        # walk itself inserted" and "do not decide a position the bundle does not hold
+        # from a view of it".
+        #
+        # The consequence used to be a REFUSAL on the inserted co-occurrence: the
+        # 5 documents the epic lists as "const beside $ref" refused as verdicts at a
+        # pointer whose own node states no ``$ref`` at all --
+        # ``core/compact-task-submitted.json#/properties/status`` is
+        # ``{"type": "string", "const": "submitted"}``, and the ``$ref`` came from
+        # ``core/protocol-envelope.json``'s declaration of the same key.  With §5's
+        # ``$ref`` row now compiling a constraining sibling to nothing, the same merge
+        # DROPS the ``const`` instead, and the comparison reports the document's own
+        # fact missing at that very pointer -- measured on all 5.
+        #
+        # So the base's ``$ref`` is left out and the field is decided from the child's
+        # own declaration.  The model is then LOOSER than the base's conjunct and §2
+        # permits exactly that ("a model may be looser than its document without being
+        # wrong, because the schema half already refused the payload"); what it forbids
+        # is tighter, and dropping a base's reference cannot tighten anything.
+        covered.add("$ref")
     merged = {**{k: v for k, v in b.items() if k not in covered}, **c}
     # **At a keyword BOTH state, the TIGHTER value and not the child's**, which is what
     # makes this function symmetric in its constraining content rather than only in the
@@ -2136,8 +2241,41 @@ def _intersection(
         if not _at_least_as_tight(kw, c[kw], b[kw], resolve):
             merged[kw] = b[kw]
     resolved = _dereferenced(child, resolve)
+    # **The BASE is gap-filled THROUGH ITS OWN REFERENCE, for the same reason the child
+    # is read through one.**  §6's description-authority clause 3 is "silence
+    # inherits", and silence means silent AFTER RESOLUTION on both sides: a base
+    # declaring a key as a bare ``$ref`` states its target's annotations at that
+    # pointer, because ``bundle.record`` inlines the target there and
+    # ``harness._composed`` folds the conjunct in -- so reading the base's own TEXT
+    # alone reports the composed document's description missing.
+    #
+    # Measured on ``media-buy/control-media-buy-response.json`` at
+    # ``/oneOf/0/properties/warnings/items/properties/code``: ``core/warning.json``
+    # declares ``code`` as ``{"$ref": "enums/warning-code.json"}`` and nothing else, the
+    # conjunct restates ``{"const": "inventory_shortfall_forecast"}``, and the
+    # description the comparison grades is ``warning-code.json``'s own root one.  2
+    # pairs, both of them ``/properties/code/description``.
+    # Gated on the base's reference having been DROPPED above, and the gate is
+    # measured: read unconditionally, the base's target annotations also reach a
+    # restatement whose own node resolves to something of its own, which is §6 clause
+    # 2's case and the 17 ``differs`` :func:`_restatement` records -- re-measured here
+    # at 11 extra red pairs over the three checks.  Where the reference was dropped
+    # there is nothing of the base's left for the child to disagree with, so the
+    # annotation is the only thing the base still contributes.
+    # **And the base's OWN annotation sibling wins over its target's**, which is §5's
+    # ``$ref`` row ("an annotation sibling → the sibling's description wins") and
+    # architecture §13 item 2's settled reading, applied one level up.  Measured on
+    # ``core/protocol-envelope.json``, whose ``status`` is
+    # ``{"$ref": "core/task-status.json", "description": "Current AdCP task state or
+    # structured outcome..."}``: read target-first, 11 pairs reported the TARGET's
+    # description where the composed document states the envelope's own.
+    based = (
+        {**_dereferenced(base, resolve), **base}
+        if "$ref" in b and "$ref" not in merged
+        else base
+    )
     annotated = {
-        **{k: v for k, v in base.items() if k in RENDERED and k not in resolved},
+        **{k: v for k, v in based.items() if k in RENDERED and k not in resolved},
         **{k: v for k, v in child.items() if k not in merged},
     }
     return {**annotated, **merged}

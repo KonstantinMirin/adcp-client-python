@@ -459,21 +459,25 @@ def _decide(
         # type once and this one names it; nothing of the target's own schema is read
         # here, so nothing of it can be copied.
         #
-        # A sibling beyond an annotation refuses, and the keyword it refuses on is
-        # the sibling.  draft-07 says a `$ref` IGNORES its siblings, so a sibling
-        # constraint would be a constraint the document does not apply.  The
-        # DELEGATED resolver merged it in, so emitting the import alone would have
-        # been graded against a stricter schema than the document means; row .3
-        # removed that half -- ``bundle.record`` keeps the sibling's key (§3 drops
-        # none) and lets the TARGET's value stand, which is architecture §13 item
-        # 2's settled reading.  The refusal stands until the cell says the keyword
-        # compiles to nothing at this co-occurrence and the run REPORTS it, which
-        # is rows .2 and .5's work and not this one's.
+        # **A CONSTRAINING sibling compiles to NOTHING and is REPORTED, and that is
+        # §5's ``$ref`` row as the design owner settled it on 2026-10-25.**  draft-07
+        # ignores every sibling of ``$ref``, so the keyword constrains no instance and
+        # the document's accepted set is the target's alone: the record keeps the key
+        # (§3 drops none), the cell says it compiles to nothing at this co-occurrence
+        # so §8 does not grade it, and the run names it because a key that reads as a
+        # constraint and is inert is worth reading once.  Refusing it instead refused a
+        # document whose accepted set its own draft decides -- which is the verdict the
+        # epic recorded as self-undermining, since the obstruction then belongs to
+        # neither the document, nor pydantic, nor the pointer space.
+        # ``compiler.inert_beside_a_reference`` is the one reading of the co-occurrence
+        # and the one that writes the report; the ``$ref``-conjunct arm of
+        # ``lower_composition`` reads the same one.  A key with NO ROW and a key whose
+        # cell is REFUSE still refuse, by name, through the screen below.
         check_keywords(
             node,
             pointer,
             position,
-            {"$ref"},
+            {"$ref", *compiler.inert_beside_a_reference(node, pointer, position, mod)},
             "a sibling of $ref, which draft-07 ignores",
             mod=mod,
         )
