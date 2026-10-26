@@ -1061,8 +1061,20 @@ def _entails_type(doc: dict, value: Any) -> bool:
     * a ``oneOf``/``anyOf`` whose EVERY branch declares the same ``type``.  Draft-07
       requires an instance to satisfy a branch, so a root that states no ``type`` of its
       own and whose branches all state ``object`` admits only objects.  §4's union base is
-      a pydantic model and so renders ``type: object``; 7 of this bundle's union roots
-      state the branches' type and not their own.
+      a pydantic model and so renders ``type: object``; **34 of this bundle's union roots
+      state the branches' type and not their own**, 33 of them with the branches read as
+      written and the 34th only once a branch's local reference is.
+
+      **The branch is asked for its own ``type`` word and a branch that is a bare local
+      ``$ref`` has none**, which is why :func:`_normalize` resolves one before this arm
+      reads it (:func:`_branch_target`).  Nothing here resolves anything: this arm reads
+      the branches it is handed, and :func:`_normalize` is where the two sides' spellings
+      are read, so the reading is applied once and to both.  Measured over the graded
+      population, the arm decides a model-only ``type`` at **221 pairs** with the branch
+      read through its reference and at **220** without -- the one pair is
+      ``core/requirements/catalog-field-binding.json#``, whose root states no ``type``
+      and whose three branches each state ``object``, two of them through
+      ``#/definitions/ScalarBinding`` and ``#/definitions/AssetPoolBinding``.
 
     **The ``enum`` arm MOVED HERE from ``_narrows_nothing``'s enum row and is not a fold
     added.**  That row admitted a model-only ``type``, ``description`` and ``default`` at
@@ -1587,6 +1599,40 @@ def _target(ref: Any, root: Any) -> Any:
     return target if isinstance(target, dict) else None
 
 
+def _branch_target(branch: Any, root: Any) -> Any:
+    """A union BRANCH that is a bare local ``$ref``, read as the node it names.
+
+    **The same reading :func:`_normalize` already takes at a NODE, taken one level in
+    at a BRANCH, and taken by the one function on BOTH sides.**  §9's "a nested class
+    hoisted to ``$defs``" is the reading: ``bundle.record`` inlines a REMOTE reference
+    and leaves a LOCAL one as written, pydantic names a nested class the same way, so
+    both sides spell a branch that is another node as a ``$ref`` -- and a reading
+    applied at the node and not at the branch makes a branch state nothing where its
+    document states a type, a ``required`` and a shape.  Measured: a root union whose
+    first two branches are ``{"$ref": "#/definitions/ScalarBinding"}`` and
+    ``{"$ref": "#/definitions/AssetPoolBinding"}``, each a ``type: object``, answered
+    :func:`_entails_type` with two silent branches, so the base's own ``type: object``
+    -- which §4 renders for every union base -- reported as ``added`` against a
+    document that states it at every branch.
+
+    **ONE HOP, and the gate is that the branch is BARE.**  Measured over the records of
+    all 1,054 portable documents there are 33 union branches that are a local ``$ref``,
+    in 28 union nodes, and **all 33 carry no key beside the ``$ref``** -- so the gate
+    costs no site and keeps the rule off a shape nobody showed it.  A branch with a
+    sibling, and a target that is itself a reference, are both left as they are: no hop
+    happens, the branch states no ``type`` word, :func:`_entails_type` answers ``False``
+    and the pair REDDENS rather than passing blind.  The targets bear this out -- 3 of
+    the 33 resolve to a node whose own content is a ``oneOf``, which states no ``type``,
+    and that is exactly the answer the one hop gives.
+
+    ``None`` from :func:`_target` is the same fail-safe: the branch stays as written.
+    """
+    if not isinstance(branch, dict) or set(branch) != {"$ref"}:
+        return branch
+    target = _target(branch["$ref"], root)
+    return branch if target is None else target
+
+
 def _conjoined_type(node: dict, kw: str, branches: list[dict]) -> tuple[dict, list[dict]]:
     """A ``type`` word BESIDE a union is conjoined into every branch, which is what
     draft-07 says it is.
@@ -1680,6 +1726,14 @@ def _normalize(
       ``$defs`` and references them.  ``codegen.bundle.record`` inlines a REMOTE
       reference and leaves a LOCAL one as written, so the document says ``$ref`` too,
       and this is the "nested class hoisted to ``$defs``" reading §9 names.
+
+      **AT A UNION BRANCH TOO, and that is one reading in one place rather than a
+      second rule.**  The reading was taken at the node and not at the branches inside
+      a combinator, so a branch that is a bare local ``$ref`` stated nothing and
+      :func:`_entails_type` read a root union's branches as typeless where the document
+      types every one of them -- ``core/requirements/catalog-field-binding.json#``, whose
+      base's ``type: object`` reported as ``added`` against a document stating it three
+      times.  :func:`_branch_target` carries the hop and the measurement that scopes it.
     * **An ``anyOf`` with a ``null`` branch, AND WHICH OF THE TWO THINGS IT IS.**
       D4 renders an optional property ``T | None``, because the attribute holds
       ``None`` for an omitted key.  pydantic states that as a union; the document
@@ -1792,8 +1846,21 @@ def _normalize(
         # ``oneOf: [{"enum": [false, true]}, ...]`` where the two that state it carry
         # ``{"type": "boolean"}``.  ``bundle.record`` copies the branch, so all five
         # now carry the one shape and the rewrite has nothing to undo (§9).
-        branches = list(stated)
+        #
+        # A branch that is a bare local ``$ref`` is read as the node it NAMES
+        # (:func:`_branch_target`) -- the same reading this function already takes at a
+        # node, taken one level in, and taken here so BOTH sides get it from the one
+        # call.  The node is rebuilt with the resolved branches below, so every reader
+        # downstream -- the two fold arms, and :func:`_entails_type`, which asks each
+        # branch for its ``type`` word -- sees what the branch states rather than the
+        # pointer it states it through.
+        branches = [_branch_target(b, root) for b in stated]
         node, branches = _conjoined_type(node, kw, branches)
+        # ``_conjoined_type`` rebuilds the node when a sibling ``type`` conjoins and
+        # leaves it alone otherwise, so the resolved branches are put back here: a
+        # fall-through returns ``node``, and returning it with the branches AS WRITTEN
+        # would make this reading reach the fold arms and nothing else.
+        node = {**node, kw: branches}
         live = [b for b in branches if b.get("type") != "null"]
         nulls = [b for b in branches if b.get("type") == "null"]
         outer = {k: v for k, v in node.items() if k != kw}

@@ -27,12 +27,20 @@ at the node.  The agreeing cases are the short half of the file.
 from __future__ import annotations
 
 import copy
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import pytest
 from pydantic import BaseModel, ConfigDict, Field
 
+from codegen import bundle
 from codegen.harness import ComparisonResult, Pair, check_pair, compare_schema
+from codegen.refusal import Refusal
+
+from tests.nodeset import claimed, partitions
+
+REPO = Path(__file__).resolve().parents[1]
+BUNDLE = REPO / "schemas" / "cache" / "3.2"
 
 # --------------------------------------------------------------------------- #
 # the documents.  Each is a ROOT with a `definitions` section, and the graded
@@ -1213,3 +1221,390 @@ def test_a_default_two_views_state_differently_is_NOT_moved() -> None:
     answer = _described_by_the_conjunct(node, conjunct)
     assert answer["default"] == "c", answer
     assert "description" not in answer, answer
+
+
+# --------------------------------------------------------------------------- #
+# reading three: a union BRANCH that is a bare local `$ref`
+# (adcp-client-python-10l.19)
+# --------------------------------------------------------------------------- #
+# Reading one takes the local reference at the NODE.  It was not taken at the
+# BRANCHES inside a combinator, and `_entails_type`'s union derivation asks every
+# branch for its own `type` word -- so a branch that is a bare local `$ref` answered
+# nothing, a root union whose every branch is typed `object` derived no type, and §4's
+# union base, which is a pydantic model and renders `type: object`, reported as `added`
+# against a document that states the word at every branch.  That is
+# `core/requirements/catalog-field-binding.json#`, whose first two branches are
+# `{"$ref": "#/definitions/ScalarBinding"}` and `{"$ref": "#/definitions/AssetPoolBinding"}`.
+#
+# `_branch_target` is the hop, it is ONE HOP, and it is gated on the branch being BARE.
+# Every test below is a perturbation that must still REPORT, for the reason the module
+# docstring gives: `added` is the direction that can make a faithful SDK refuse valid
+# traffic, and a reading that resolved the document until it matched the model would
+# drive it to 0 for a broken tree too.
+#: The two branch targets of the agreeing case: objects, each stating the same `type`.
+SCALAR = {
+    "type": "object",
+    "required": ["kind"],
+    "properties": {"kind": {"type": "string", "const": "scalar"}},
+}
+POOL = {
+    "type": "object",
+    "required": ["kind"],
+    "properties": {"kind": {"type": "string", "const": "pool"}},
+}
+
+
+def union_root(branches: list[dict], **targets: dict) -> dict:
+    """A ROOT union with a ``definitions`` section its branches point into.
+
+    The shape `core/requirements/catalog-field-binding.json` has, and the shape that
+    has no reading without the root: the branch's pointer names a SIBLING of the node
+    it is a branch of.
+    """
+    return {
+        "description": "a binding",
+        "definitions": dict(targets),
+        "oneOf": branches,
+    }
+
+
+#: §4's union base, which is a pydantic model and so renders ``type: object``.  **No
+#: ``extra`` setting and no docstring**: ``extra="forbid"`` renders
+#: ``additionalProperties: false``, which is a compared fact the document does not
+#: state, and a docstring renders a ``description`` -- either would be an ``added``
+#: fact of the fixture's own making rather than of the reading's.
+class UnionBase(BaseModel):
+    """a binding"""
+
+
+def root_graded(root: dict, model: Any = UnionBase) -> ComparisonResult:
+    """The root union, graded as a ROOT pair: the node IS the document."""
+    return compare_schema(root, model, document=root)
+
+
+def test_a_union_branch_that_is_a_bare_local_ref_states_its_targets_type() -> None:
+    """The defect, stated as the assertion that it is fixed.
+
+    Every branch of a draft-07 combinator is applied to the SAME instance and an
+    instance must satisfy one of them, so a root stating no ``type`` of its own whose
+    every branch states ``object`` admits only objects.  Two of the three branches of
+    the live document say ``object`` through a reference, and a derivation that reads
+    the pointer rather than the node it names answers ``False``.
+    """
+    root = union_root(
+        [{"$ref": "#/definitions/scalar"}, {"$ref": "#/definitions/pool"}],
+        scalar=SCALAR,
+        pool=POOL,
+    )
+    res = root_graded(root)
+    assert res.added == [], res.added
+    assert res.missing == [], res.missing
+    assert res.differs == [], res.differs
+    assert res.compared, "the root states a description; a 0-fact pair grades nothing"
+
+    # The derivation is the thing, so it is also asked directly -- and asked for the
+    # types the document does NOT force, which the one assertion above cannot see.
+    from codegen.harness import _entails_type, _normalize  # noqa: PLC0415
+
+    node = _normalize(root, root, declared_null=True)
+    assert _entails_type(node, "object") is True
+    for other in ("string", "array", "integer", "number", "boolean", "null"):
+        assert _entails_type(node, other) is False, other
+
+
+#: Every way a union branch can fail to state a type the document really forces, each
+#: of which must leave the model's ``type: object`` REPORTED.  A reading that answered
+#: ``True`` for any of these would excuse a narrowing nobody decided.
+MUST_STILL_REPORT = [
+    (
+        union_root(
+            [{"$ref": "#/definitions/scalar"}, {"$ref": "#/definitions/other"}],
+            scalar=SCALAR,
+            other={"type": "string"},
+        ),
+        "the branches disagree once resolved, so the union forces no one type",
+    ),
+    (
+        union_root(
+            [{"$ref": "#/definitions/scalar"}, {"$ref": "#/definitions/untyped"}],
+            scalar=SCALAR,
+            untyped={"required": ["kind"]},
+        ),
+        "a resolved branch stating no type word forces nothing",
+    ),
+    (
+        union_root(
+            [{"$ref": "#/definitions/scalar"}, {"$ref": "#/definitions/no-such-target"}],
+            scalar=SCALAR,
+        ),
+        "an unresolvable branch pointer leaves the branch as written -- FAIL-SAFE",
+    ),
+    (
+        union_root(
+            [
+                {"$ref": "#/definitions/scalar"},
+                {"$ref": "#/definitions/pool", "description": "a sibling"},
+            ],
+            scalar=SCALAR,
+            pool=POOL,
+        ),
+        "the gate is that the branch is BARE: a sibling means no hop, 0 sites in the bundle",
+    ),
+    (
+        union_root(
+            [{"$ref": "#/definitions/scalar"}, {"$ref": "#/definitions/hop"}],
+            scalar=SCALAR,
+            hop={"$ref": "#/definitions/pool"},
+            pool=POOL,
+        ),
+        "ONE HOP: a chain is not followed, and it reddens rather than passing blind",
+    ),
+    (
+        union_root(
+            [
+                {"$ref": "#/definitions/scalar"},
+                {"$ref": "https://adcontextprotocol.org/schemas/3.2.4/core/pool.json"},
+            ],
+            scalar=SCALAR,
+        ),
+        "a REMOTE reference is not a local one; bundle.record inlines those, 0 in a record",
+    ),
+    (
+        union_root([{"$ref": "#/definitions/scalar"}], scalar={"type": "object"}),
+        "a target that is itself bare is still read, and a one-branch union is still graded",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("root", "why"),
+    MUST_STILL_REPORT[:-1],
+    ids=[w[:44].replace(" ", "-") for _, w in MUST_STILL_REPORT[:-1]],
+)
+def test_a_branch_the_hop_does_not_reach_still_reports_the_models_type(
+    root: dict, why: str
+) -> None:
+    res = root_graded(root)
+    assert "/type" in keys(res.added), f"{why}: {res}"
+    assert res.outcome == "model_adds_a_fact", (why, res.outcome)
+
+
+def test_the_hop_does_not_excuse_any_other_model_only_fact() -> None:
+    """The hop answers a ``type`` and nothing else.
+
+    Scoped by what it changes, not by what it is gated on: the derivation it feeds is
+    ``_entails_type``, which decides exactly one keyword.  A model closing the root, or
+    requiring a key the document does not, is still reported at the same node the hop
+    made green for ``type``.
+    """
+    root = union_root(
+        [{"$ref": "#/definitions/scalar"}, {"$ref": "#/definitions/pool"}],
+        scalar=SCALAR,
+        pool=POOL,
+    )
+
+    class ClosesTheRoot(BaseModel):
+        """a binding"""
+
+        model_config = ConfigDict(extra="forbid")
+
+    res = root_graded(root, ClosesTheRoot)
+    assert "/additionalProperties" in keys(res.added), res.added
+    assert "/type" not in keys(res.added), res.added
+
+    class RequiresAKeyTheRootDoesNot(BaseModel):
+        """a binding"""
+
+        k: str
+
+    other = root_graded(root, RequiresAKeyTheRootDoesNot)
+    assert "/required" in keys(other.added), other.added
+    assert "/properties/k" in keys(other.added), other.added
+
+
+def test_the_hop_is_taken_against_whichever_root_it_is_handed() -> None:
+    """ONE function, BOTH sides -- §9's "each is applied to both sides".
+
+    ``_normalize`` is called once per side with that side's own root: the document for
+    the document, ``model_json_schema()`` for the model.  pydantic names a nested class
+    ``{"$ref": "#/$defs/X"}`` and ``bundle.record`` leaves a local ``#/definitions/X``
+    as written, so the branch is the same spelling against two different sections --
+    and the hop is the root's pointer walk, so it reads either.
+    """
+    from codegen.harness import _normalize  # noqa: PLC0415
+
+    document_side = {"oneOf": [{"$ref": "#/definitions/t"}], "definitions": {"t": SCALAR}}
+    model_side = {"anyOf": [{"$ref": "#/$defs/T"}], "$defs": {"T": SCALAR}}
+    assert _normalize(document_side, document_side)["oneOf"] == [SCALAR]
+    assert _normalize(model_side, model_side)["anyOf"] == [SCALAR]
+
+
+def test_a_branch_reference_to_a_bare_type_folds_to_the_type_list_it_spells() -> None:
+    """The ONE shape the hop can hand to a fold arm, and it has **0 sites**.
+
+    A resolved branch that is exactly ``{"type": X}`` reaches the type-list arm, which
+    the branch as written could not. That is the right answer -- a value has exactly one
+    JSON type, so ``oneOf: [string, integer]`` and ``type: ["string", "integer"]`` admit
+    the same instances -- but it is an answer this reading newly makes reachable, so it
+    is asserted rather than discovered. Measured over the records of all 1,054 portable
+    documents: of the 33 union branches that are a local ``$ref``, the targets' key sets
+    are ``{const, type}`` (21), ``{additionalProperties, properties, required, type}``
+    (5), ``{additionalProperties, description, properties, required, type}`` (4) and
+    ``{oneOf}`` (3) -- **none is ``{type}``**, so the cell is empty on this tree.
+
+    And it excuses nothing: a model listing FEWER types than the folded list still
+    reports, which is the half that keeps the arm honest.
+    """
+    from codegen.harness import _normalize  # noqa: PLC0415
+
+    root = {
+        "oneOf": [{"$ref": "#/definitions/s"}, {"type": "integer"}],
+        "definitions": {"s": {"type": "string"}},
+    }
+    assert _normalize(root, root, declared_null=True)["type"] == ["string", "integer"]
+
+    class StatesOneOfTheTwo(BaseModel):
+        v: str
+
+    res = compare_schema(root, StatesOneOfTheTwo, document=root)
+    assert "/type" in keys(res.differs), res
+
+    # The draft-07 overlap is still refused, through a reference as well as inline:
+    # ``integer`` and ``number`` both admit ``5``, so this ``oneOf`` refuses every
+    # integer and the type list would admit it.
+    overlap = {
+        "oneOf": [{"$ref": "#/definitions/n"}, {"type": "integer"}],
+        "definitions": {"n": {"type": "number"}},
+    }
+    assert "type" not in _normalize(overlap, overlap, declared_null=True)
+
+
+def test_the_bundles_union_branch_references_are_counted_by_shape() -> None:
+    """Every site the hop can fire at, enumerated off the records BY SHAPE, with the
+    one site where it changes an answer named and the empty shapes named too.
+
+    The standard ``adcp-client-python-10l.18`` set: a reading whose population nobody
+    split can quietly cover something it was never shown. So this walks the document of
+    record of every portable document, finds every union branch that is a ``$ref``, and
+    says what the hop does at each.
+
+    **The record and not the raw bundle**, because the record is what the comparison
+    reads -- and the difference is the point: ``bundle.record`` inlines a REMOTE
+    reference, and resolves the inlined document's own local pointers while doing it, so
+    a record carries **0** remote union branches where the raw bundle carries 201 over 47
+    documents, and a referrer's inlined copy of a union root carries none of the
+    target's local ones. The 33 local sites are therefore the whole population, and they
+    sit in the 6 documents that WRITE them.
+    """
+    from codegen.harness import _branch_target, _entails_type  # noqa: PLC0415
+
+    kinds = ("string", "object", "integer", "number", "boolean", "array", "null")
+    local: dict[tuple[str, str], str | None] = {}
+    remote: set[tuple[str, str]] = set()
+    siblinged: set[tuple[str, str]] = set()
+    chained: set[tuple[str, str]] = set()
+    bare_typed: set[tuple[str, str]] = set()
+    changed: set[tuple[str, str, str]] = set()
+
+    def visit(node: Any, pointer: str, document: str, root: Any) -> None:
+        if isinstance(node, dict):
+            for kw in ("oneOf", "anyOf"):
+                branches = node.get(kw)
+                if not (isinstance(branches, list) and branches):
+                    continue
+                refs = [
+                    (i, b)
+                    for i, b in enumerate(branches)
+                    if isinstance(b, dict) and isinstance(b.get("$ref"), str)
+                ]
+                for i, b in refs:
+                    at = (document, f"{pointer}/{kw}/{i}")
+                    if not b["$ref"].startswith("#"):
+                        remote.add(at)
+                        continue
+                    if set(b) != {"$ref"}:
+                        siblinged.add(at)
+                    target = _branch_target(b, root)
+                    local[at] = target.get("type") if target is not b else None
+                    if target is not b and set(target) == {"$ref"}:
+                        chained.add(at)
+                    if target is not b and set(target) == {"type"}:
+                        bare_typed.add(at)
+                if not refs:
+                    continue
+                hopped = {**node, kw: [_branch_target(b, root) for b in branches]}
+                for kind in kinds:
+                    if _entails_type(hopped, kind) != _entails_type(node, kind):
+                        changed.add((document, pointer, kind))
+            for key, value in node.items():
+                visit(value, f"{pointer}/{key}", document, root)
+        elif isinstance(node, list):
+            for i, value in enumerate(node):
+                visit(value, f"{pointer}/{i}", document, root)
+
+    documents = claimed("bundle.portable", bundle.portable(BUNDLE))
+    for document in sorted(documents):
+        record = bundle.record(BUNDLE, document)
+        if isinstance(record, Refusal):
+            continue
+        visit(record, "", document, record)
+
+    sites = claimed("union branches that are a local $ref, in a record", set(local))
+    # **BY SHAPE, and the shape is the target's own ``type`` word** -- which is what the
+    # derivation asks each branch for, so it is the axis that decides what the hop does.
+    partitions(
+        sites,
+        typed_boolean={a for a in sites if local[a] == "boolean"},
+        typed_object={a for a in sites if local[a] == "object"},
+        states_no_type={a for a in sites if local[a] is None},
+    )
+    # 21 sites in the two refused ``targeting-overlay-*`` documents, whose other branch
+    # is an object: resolved, the branches disagree and the derivation still answers
+    # ``False``.  3 sites in ``governance/reported-outcome-error.json``, whose target's
+    # own content is a ``oneOf`` and so states no ``type`` word: one hop leaves the
+    # derivation at ``False``, which is the fail-safe answer.  9 sites typed ``object``,
+    # of which exactly one is at a ROOT.
+    assert {d for d, _ in sites} == {
+        "core/bidding-policy-capability.json",
+        "core/placement-presentation.json",
+        "core/requirements/catalog-field-binding.json",
+        "core/targeting-overlay-requirements.json",
+        "core/targeting-overlay-support.json",
+        "governance/reported-outcome-error.json",
+    }, sorted({d for d, _ in sites})
+    # **EVERY NODE WHERE THE HOP CHANGES THE DERIVATION'S ANSWER**, derived by asking it
+    # both ways at every union node that carries a local-``$ref`` branch rather than
+    # read off the one pair that reddened.  FOUR nodes, all of them answering ``object``
+    # where they answered nothing, and the list is named so a fifth reddens here with
+    # its pointer.
+    assert changed == {
+        ("core/bidding-policy-capability.json", "/definitions/policy_profile/properties/supported_combinations/items", "object"),
+        ("core/placement-presentation.json", "/properties/decorations/items", "object"),
+        ("core/requirements/catalog-field-binding.json", "", "object"),
+        ("core/requirements/catalog-field-binding.json", "/oneOf/2/properties/per_item_bindings/items", "object"),
+    }, sorted(changed)
+    # **AND ONE OF THE FOUR IS EVER ASKED, which is §4's doing and not this reading's.**
+    # The derivation answers a MODEL-ONLY ``type``, so it is reached only where the
+    # model states one: §5 compiles a union at ROOT to a base plus a class per branch,
+    # and the base is a pydantic model that renders ``type: object``, while a NESTED
+    # union compiles to one type ``A | B``, whose alias renders an ``anyOf`` and no
+    # ``type`` at all.  The three nested nodes above therefore have no model-side
+    # ``type`` for the derivation to excuse, and the one root does.  Measured through
+    # ``compare_schema`` over the graded population: the union arm decides at 221 pairs
+    # with the hop and 220 without, and the one pair is this root.
+    partitions(
+        changed,
+        at_a_root={c for c in changed if c[1] == ""},
+        at_a_nested_union={c for c in changed if c[1] != ""},
+    )
+    assert {c for c in changed if c[1] == ""} == {
+        ("core/requirements/catalog-field-binding.json", "", "object")
+    }, sorted(changed)
+    # **THE SHAPES EXCLUDED, BY NAME AND AT ZERO SITES.**  Each is a cell the gate keeps
+    # the hop out of, and each is empty on this tree -- so none of them is what makes
+    # the one site above green, and a document arriving in one of them reddens here
+    # rather than being covered silently.
+    assert remote == set(), sorted(remote)  # record inlines every remote reference
+    assert siblinged == set(), sorted(siblinged)  # 0 of 33 carry a key beside the $ref
+    assert chained == set(), sorted(chained)  # 0 targets are themselves a bare $ref
+    assert bare_typed == set(), sorted(bare_typed)  # 0 targets are exactly {"type": X}
