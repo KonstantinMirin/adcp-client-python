@@ -829,3 +829,130 @@ def test_a_model_that_pins_NOTHING_is_still_reported() -> None:
     assert "/properties/v/enum" in keys(res.missing), res
     res = graded(holder({"type": "string", "const": "x"}), AnyString)
     assert "/properties/v/const" in keys(res.missing), res
+
+
+# --------------------------------------------------------------------------- #
+# reading five: a MAPPING's `additionalProperties: true` is the silence it is
+# (adcp-client-python-10l.3)
+#
+# Section 4's mapping row renders a property-less object as `dict[K, V]`, and pydantic
+# 2.13.5 has no spelling of `dict[str, Any]` that omits `additionalProperties: true`.
+# draft-07's `additionalProperties` constrains the keys a schema does not declare, and
+# `true` admits every one of them -- which is what silence admits -- so the two spellings
+# are ONE acceptance fact and a faithful mapping states a keyword its document does not.
+# 23 pairs of the committed tree, measured, every one of whose documents writes
+# `{"type": "object"}` in the RAW bundle.
+#
+# `harness._silent_about_extras` reads it as silence on BOTH sides, which is §9's "the
+# readings this pipeline's own output forces ... each applied to both sides".  What it
+# REPLACED was a model-only admission -- `_narrows_nothing`'s
+# `keyword == "additionalProperties" and value is True`, justified by a ONE-site
+# measurement of the delegated resolver's redundant-key drop and silently absorbing
+# these 23.  So the tests that matter here are the ones that say the SCOPE holds: a node
+# with `properties`, a `false`, and a typed value are each untouched, and each still
+# reports.
+# --------------------------------------------------------------------------- #
+class OpenMapping(Base):  # `dict[str, Any]` -- section 4's mapping row with no value type
+    v: dict[str, Any]
+
+
+class ClosedInner(Base):  # pydantic renders `{"additionalProperties": false, "properties": {}}`
+    pass
+
+
+class ClosedMapping(Base):
+    v: ClosedInner
+
+
+class TypedMapping(Base):
+    v: dict[str, str]
+
+
+def test_a_mappings_additional_properties_true_is_read_as_silence_on_both_sides() -> None:
+    """The live shape, in both directions, and the function on its own beside it.
+
+    A document writing ``{"type": "object"}`` against a model rendering
+    ``dict[str, Any]``, and the same document writing ``additionalProperties: true``
+    against a model that is silent -- one accepted set either way, so neither direction
+    reports.  Probed on the function too, because a pair that happens to pass says
+    nothing about which reading produced the pass.
+    """
+    from codegen.harness import _silent_about_extras  # noqa: PLC0415
+
+    assert _silent_about_extras({"type": "object", "additionalProperties": True}) == {
+        "type": "object"
+    }
+    assert _silent_about_extras({"type": "object"}) == {"type": "object"}
+
+    for node in ({"type": "object"}, {"type": "object", "additionalProperties": True}):
+        res = graded(holder(node), OpenMapping)
+        assert (res.added, res.missing, res.differs) == ([], [], []), (node, res)
+        assert res.outcome == "pass", (node, res)
+
+
+@pytest.mark.parametrize(
+    ("node", "why"),
+    [
+        (
+            {"type": "object", "properties": {"k": {"type": "string"}}, "additionalProperties": True},
+            "a node declaring properties is a CLASS, where D8 makes the distinction "
+            "load-bearing: silence is extra=ignore and true is extra=allow",
+        ),
+        (
+            {"type": "object", "additionalProperties": False},
+            "false FORBIDS what silence permits, so the two are different accepted sets",
+        ),
+        (
+            {"type": "object", "additionalProperties": {"type": "string"}},
+            "a typed value restricts the VALUE schema, which silence does not",
+        ),
+    ],
+    ids=["declares-properties", "closed", "typed"],
+)
+def test_the_mapping_reading_fires_on_NEITHER_side_outside_its_shape(node: dict, why: str) -> None:
+    """The control, and the whole of this reading's correctness.
+
+    The arm it replaced was blanket -- any model-only ``additionalProperties: true``,
+    whatever the node -- so the scope is what keeps one blanket predicate from becoming
+    another.  Asserted on the node itself rather than through a pair, because a pair that
+    happens to report says nothing about which gate held.
+    """
+    from codegen.harness import _silent_about_extras  # noqa: PLC0415
+
+    assert _silent_about_extras(node) == node, why
+
+
+def test_a_model_that_CLOSES_a_mapping_its_document_leaves_open_is_still_reported() -> None:
+    """The narrowing direction, which is the one that matters.
+
+    ``additionalProperties: false`` on the model at a mapping the document leaves open
+    refuses keys the document admits -- a model NARROWER than its schema, and the reading
+    above must not touch it.  Both spellings of the document's openness are asked, so a
+    reading that normalised ``false`` into silence by accident reddens here.
+    """
+
+    for node in ({"type": "object"}, {"type": "object", "additionalProperties": True}):
+        res = graded(holder(node), ClosedMapping)
+        # By NAME and not by ``outcome``: a model that happened to differ on some other
+        # keyword would satisfy "not pass" and say nothing about this reading.
+        assert "/properties/v/additionalProperties" in keys(res.added), (node, res)
+
+
+def test_a_document_that_CLOSES_a_mapping_the_model_leaves_open_is_still_reported() -> None:
+    """The other direction: the document forbids an extra key and the model admits one,
+    which is the model being WIDER and is reported as ``missing``."""
+
+    res = graded(holder({"type": "object", "additionalProperties": False}), OpenMapping)
+    assert "/properties/v/additionalProperties" in keys(res.missing), res
+
+
+def test_a_model_that_TYPES_a_mapping_whose_document_says_true_is_still_reported() -> None:
+    """A typed value is a restriction the document does not state, so it is reported.
+
+    This is the case the reading could most easily swallow -- the document's ``true`` is
+    normalised to silence, so the model's value schema has nothing to be compared
+    against and reads as ``added``.  Asserted rather than left to the gate's wording.
+    """
+
+    res = graded(holder({"type": "object", "additionalProperties": True}), TypedMapping)
+    assert "/properties/v/additionalProperties" in keys(res.added), res
