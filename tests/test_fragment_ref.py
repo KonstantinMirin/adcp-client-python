@@ -44,6 +44,7 @@ from pydantic import ValidationError
 from codegen import bundle, emit
 from codegen.refusal import Kind, Refusal
 import populations
+from conftest import refusal_from
 
 from tests.nodeset import claimed, partitions
 
@@ -725,14 +726,12 @@ def test_two_symbols_at_one_pointer_is_refused_rather_than_ordered() -> None:
 
     mod = Module(document="x.json")
     mod.declare("A", "/properties/a", "A = int")
-    with pytest.raises(Refusal) as first:
-        mod.declare("B", "/properties/a", "B = str")
-    assert first.value.keyword == "$ref"
-    assert first.value.pointer == "/properties/a"
-    assert "'A'" in first.value.detail and "'B'" in first.value.detail
-    with pytest.raises(Refusal) as second:
-        mod.declare("A", "/properties/b", "A = str")
-    assert second.value.keyword == "title"
+    first = refusal_from(mod.declare("B", "/properties/a", "B = str"))
+    assert first.keyword == "$ref"
+    assert first.pointer == "/properties/a"
+    assert "'A'" in first.detail and "'B'" in first.detail
+    second = refusal_from(mod.declare("A", "/properties/b", "A = str"))
+    assert second.keyword == "title"
 
 
 def test_no_document_of_the_bundle_declares_two_symbols_at_one_pointer() -> None:

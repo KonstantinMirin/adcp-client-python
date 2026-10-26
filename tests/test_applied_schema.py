@@ -46,7 +46,7 @@ from pydantic import ValidationError
 from adcp.types import _base
 from adcp.types._base import AdCPBaseModel, SchemaRef, applied_schema, schema_at
 from codegen import bundle, emit
-from codegen.refusal import Refusal
+from conftest import refusal_from
 
 from tests.nodeset import claimed, partitions, ratchet
 
@@ -572,9 +572,8 @@ def test_a_node_declaring_another_type_is_refused_whatever_encloses_it() -> None
     doc["oneOf"][0] = {**doc["oneOf"][0], "type": "string"}
     assert "/oneOf/0" not in bundle.constrained_to_object(doc)
     assert applied_schema(doc, "/oneOf/0")["type"] == "string"
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document("core/probe.json", doc)
-    assert (caught.value.keyword, caught.value.pointer) == ("type", "/oneOf/0"), caught.value
+    caught = refusal_from(emit.lower_document("core/probe.json", doc))
+    assert (caught.keyword, caught.pointer) == ("type", "/oneOf/0"), caught
 
 
 @pytest.mark.parametrize("keyword", ["if", "not"])

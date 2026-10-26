@@ -47,6 +47,7 @@ from codegen.harness import Pair, check_pair, compare_schema
 from codegen.lower import union
 from codegen.refusal import Kind, Refusal
 import populations
+from conftest import refusal_from
 
 from tests.nodeset import claimed, partitions, ratchet
 from codegen.schema import nodes as schema_nodes
@@ -262,7 +263,10 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         position = node.position if isinstance(node, schema_nodes.Base) else rest[1]
         pointer = node.pointer if isinstance(node, schema_nodes.Base) else rest[0]
         if position is keywords.Position.ROOT:
-            raise Refusal("allOf", pointer, refusal.DEFERRED_TO_A_LATER_ROW, kind=Kind.DEFERRED)
+            # RETURNED and not raised: §14 step 6 makes a refusal a value, so a stub
+            # standing in for the handler has to answer the way the handler answers or
+            # the perturbation is a crash rather than the row's own refusal.
+            return Refusal("allOf", pointer, refusal.DEFERRED_TO_A_LATER_ROW, kind=Kind.DEFERRED)
         return composing_at_a_root(node, name, mod, *rest, **kw)
 
     with mock.patch.object(compiler, "lower_composition", without_the_root_arm):
@@ -797,19 +801,18 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
         ({"type": "integer", "minimum": 1}, "minimum"),  # a LOOSER bound
         ({"type": "string"}, "minimum"),  # a different type, and the bound gone with it
     ):
-        with pytest.raises(Refusal) as caught:
-            _lower(
-                {
-                    "type": "object",
-                    "allOf": [{"$ref": REF.format("core/probe-base.json")}],
-                    "properties": {"n": restated},
-                },
-                binder=lambda _uri, _at: compiler.Target(
-                    ".base", "ProbeBase", compiler.Shape({"n": base}, frozenset())
-                ),
-            )
-        assert caught.value.keyword == keyword, (restated, caught.value.keyword)
-        assert "neither matches nor narrows" in caught.value.detail, caught.value.detail
+        caught = refusal_from(_lower(
+            {
+                "type": "object",
+                "allOf": [{"$ref": REF.format("core/probe-base.json")}],
+                "properties": {"n": restated},
+            },
+            binder=lambda _uri, _at: compiler.Target(
+                ".base", "ProbeBase", compiler.Shape({"n": base}, frozenset())
+            ),
+        ))
+        assert caught.keyword == keyword, (restated, caught.keyword)
+        assert "neither matches nor narrows" in caught.detail, caught.detail
 
 
 def test_a_lost_inherited_fact_is_reported_as_missing(tmp_path, monkeypatch) -> None:
@@ -1086,7 +1089,7 @@ def test_the_accepts_and_liveness_checks_are_green_with_a_denominator(
 # --------------------------------------------------------------------------- #
 # what refuses, by name, pointer and keyword
 # --------------------------------------------------------------------------- #
-def _lower(doc: dict, binder=emit._no_binder) -> str:  # noqa: SLF001 -- the test is the caller
+def _lower(doc: dict, binder=emit._no_binder) -> str | Refusal:  # noqa: SLF001 -- the test is the caller
     """One hand-written composing declaration, lowered as the walk lowers it.
 
     §14 step 5 makes a handler take its node, so the declaration goes through
@@ -1118,11 +1121,10 @@ def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> No
         "properties": {"n": {"type": "array", "items": {"type": "integer"}}},
         "allOf": [{"properties": {"n": {"type": "array", "items": {"type": "string"}}}}],
     }
-    with pytest.raises(Refusal) as caught:
-        _lower(doc)
-    assert caught.value.keyword == "items"
-    assert caught.value.pointer == "/allOf/0/properties/n"
-    assert "neither declaration narrows the other" in caught.value.detail
+    caught = refusal_from(_lower(doc))
+    assert caught.keyword == "items"
+    assert caught.pointer == "/allOf/0/properties/n"
+    assert "neither declaration narrows the other" in caught.detail
 
 
 def test_the_rule_is_symmetric_so_the_order_the_declarations_are_read_in_cannot_decide() -> None:
@@ -1205,10 +1207,9 @@ def test_a_conjunct_this_row_does_not_lower_refuses_by_its_own_keyword(
     enum with a referenced enum needs step 3's lowering and cannot be stated here.
     """
     doc = {"title": "Probe", "type": "object", "allOf": [conjunct]}
-    with pytest.raises(Refusal) as caught:
-        _lower(doc)
-    assert caught.value.keyword == keyword, caught.value.detail
-    assert caught.value.pointer == "/allOf/0"
+    caught = refusal_from(_lower(doc))
+    assert caught.keyword == keyword, caught.detail
+    assert caught.pointer == "/allOf/0"
 
 
 def test_a_constraining_sibling_of_a_ref_conjunct_compiles_to_nothing_and_is_reported() -> None:
@@ -1252,10 +1253,9 @@ def test_a_scalar_root_cannot_be_a_base_and_refuses_rather_than_writing_the_modu
     cannot mistake an alias for a class.
     """
     doc = {"title": "Probe", "type": "object", "allOf": [{"$ref": "x"}]}
-    with pytest.raises(Refusal) as caught:
-        _lower(doc, lambda uri, pointer: emit.Target("..core.brand_id", "BrandID", None))
-    assert caught.value.keyword == "allOf"
-    assert "cannot be a base" in caught.value.detail
+    caught = refusal_from(_lower(doc, lambda uri, pointer: emit.Target("..core.brand_id", "BrandID", None)))
+    assert caught.keyword == "allOf"
+    assert "cannot be a base" in caught.detail
 
 
 def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
@@ -1287,10 +1287,9 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
         ("oneOf", [{"type": "object", "properties": {"a": {"type": "string"}}}]),
     ):
         doc = {"title": "Probe", "type": "object", "allOf": [{"$ref": "x"}], keyword: value}
-        with pytest.raises(Refusal) as caught:
-            _lower(doc)
-        assert caught.value.keyword == keyword, (keyword, caught.value.keyword)
-        assert caught.value.pointer == "/"
+        caught = refusal_from(_lower(doc))
+        assert caught.keyword == keyword, (keyword, caught.keyword)
+        assert caught.pointer == "/"
 
     # Admitted, and the rule REACHES THE CLASS -- the point of the change, and what a
     # bare "does not raise" would not say.  Asserted on the emitted text, because that
