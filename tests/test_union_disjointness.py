@@ -32,9 +32,10 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from codegen import bundle, emit
+from codegen import bundle, emit, keywords
 from codegen.lower import union as lower_union
 from codegen.refusal import Kind
+from codegen.schema import nodes, parse as schema_parse
 
 from nodeset import claimed, partitions
 
@@ -50,8 +51,26 @@ SCALAR = "are scalars of type"
 
 
 def _branch(**node: Any) -> lower_union.Branch:
-    """One planned branch at a throwaway pointer; the derivation reads the node only."""
-    return lower_union.Branch(name="", pointer="/oneOf/0", node=dict(node))
+    """One planned branch at a throwaway pointer.
+
+    The derivation reads the branch's DECLARATION -- §4 "Names" and the dispatch sources
+    are readings of one (:attr:`codegen.schema.nodes.Union.branch_raw`) -- and the parsed
+    node beside it is what a branch's CLASS row takes, which no separator asks for.  It
+    is built by the production parse at BRANCH so that the planned branch here is the
+    shape ``_plan`` returns.
+    """
+    declaration = dict(node)
+    return lower_union.Branch(
+        name="",
+        pointer="/oneOf/0",
+        node=declaration,
+        parsed=schema_parse.parse(
+            declaration,
+            pointer="/oneOf/0",
+            position=keywords.Position.BRANCH,
+            source=schema_parse.Source(document="probe.json"),
+        ),
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -137,14 +156,28 @@ def test_scalar_branches_of_different_type_separate_a_pair_and_the_walk_delivers
 
     # The walk's own branches, over every union root of the bundle: both halves of the
     # clause's guard are false for all of them, which is WHY the separator decides none.
+    # Through the production parse, so the node asked is the node the walk asks: the
+    # applied word is a field the PARSER assigned (``nodes.Union.word`` handed down at
+    # the hop), not a second derivation over the document.
     applied = claimed(
         "applied types over the branches of every union root",
         [
-            lower_union.applied_type(doc, "", kw, i)
-            for doc in (bundle.read(BUNDLE, d) for d in sorted(bundle.portable(BUNDLE)))
-            if (kw := lower_union.keyword(doc)) is not None
-            and doc.get("type") in (None, "object")
-            for i, branch in enumerate(doc[kw])
+            lower_union.applied_type(root, i)
+            for document in sorted(bundle.portable(BUNDLE))
+            for doc in [bundle.read(BUNDLE, document)]
+            if lower_union.keyword(doc) is not None and doc.get("type") in (None, "object")
+            for root in [
+                schema_parse.parse(
+                    doc,
+                    pointer="",
+                    position=keywords.Position.ROOT,
+                    source=schema_parse.Source(
+                        document=document, applied_at=bundle.constrained_to_object(doc)
+                    ),
+                )
+            ]
+            if isinstance(root, nodes.Union)
+            for i, branch in enumerate(root.branch_raw)
             if isinstance(branch, dict) and branch.get("type") in (None, "object")
         ],
     )
@@ -292,14 +325,15 @@ def _reaching(population: list[str]) -> tuple[Any, set[str | None]]:
 
     Recorded AT THE CALL, so the set is what the walk produced rather than what a reader
     believes it produces.  By ``title``, because that is the only name of the document in
-    scope there -- the function is handed the root's node and its pointer.
+    scope there -- the function is handed the union NODE, whose title is its own
+    annotation (:attr:`codegen.schema.nodes.Base.title`).
     """
     seen: set[str | None] = set()
     real = lower_union.overlapping
 
-    def traced(planned: Any, doc: dict, pointer: str, kw: str) -> list[str]:
-        seen.add(doc.get("title"))
-        return real(planned, doc, pointer, kw)
+    def traced(planned: Any, node: Any) -> list[str]:
+        seen.add(node.annotations.get("title"))
+        return real(planned, node)
 
     lower_union.overlapping = traced  # type: ignore[assignment]
     try:

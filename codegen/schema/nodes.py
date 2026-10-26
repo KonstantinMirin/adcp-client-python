@@ -33,27 +33,26 @@ differing only in a ``$comment`` states a different thing to a reader, and a nod
 whose enclosing type word differs decides differently, which is the bit the old key
 appended by hand.
 
-**:attr:`Base.raw` is the declaration the node was parsed from, and it is excluded
-from equality too.**  Two readings are declaration-level by the design's own
-decision and neither is a second reading of what a node IS:
+**NO NODE CARRIES THE MAPPING IT WAS PARSED FROM.**  §14 step 5's staging allowed one
+during the conversion -- "a node may carry its originating mapping ... the step is not
+complete until that carrier is deleted" -- and it is deleted: ``Base.raw`` is gone and
+with it ``emit.content_key``, the JSON serialisation the content dedup was keyed on.
+A handler reads node fields, and the three readings that stay at the DECLARATION level
+are each a decision the design states, each with its own typed carrier:
 
-* §6 keeps ``restatement``, ``intersection`` and ``at_least_as_tight`` as "pure
-  functions over two nodes" -- section 2's intersection rule, which MERGES two
-  declarations of one property and hands the merged declaration back to
-  :func:`codegen.schema.parse.parse`.  The merge is over declarations because the
-  result has to be parsed as one node, not composed out of two decided ones;
-* ``lower/rules.py`` reads the rule sources a node carries (:attr:`Base.rules`),
-  which are the raw subschemas at RULE -- §4: "a node at RULE is parsed like any
-  other, kept on the enclosing node as a rule source, and is never handed to
-  ``decide``".
+* :attr:`Conjunct.raw` and :attr:`Base.declared` -- §6 keeps ``restatement``,
+  ``intersection`` and ``at_least_as_tight`` as pure functions over DECLARATIONS,
+  because section 2's intersection rule MERGES two declarations of one property and
+  hands the merged declaration back to :func:`codegen.schema.parse.parse`: the result
+  has to be parsed as one node, not composed out of two decided ones;
+* :attr:`Base.rules` -- the raw subschemas at RULE, §4: "a node at RULE is parsed like
+  any other, kept on the enclosing node as a rule source, and is never handed to
+  ``decide``".  ``lower/rules.py`` is its only reader;
+* :attr:`Union.branch_raw` -- §4 "Names"'s three rules and §4's dispatch derivation are
+  readings of a branch's own declaration: its title, its ``const`` pin, its ``required``
+  set.
 
-Nothing else reads it, and ``tests/test_import_rule.py`` is where that is held.
-
-**These kinds have no reader yet.**  ``schema/parse.py`` is what builds them and it
-is the half of §14 step 5 row ``adcp-client-python-10l.5`` did not land; the package
-docstring says why and on what precedent.  So this is a DECLARATION, in the layer §11
-gives it, and every sentence below is the decision a reader will have to agree with
-rather than a description of code that runs.
+``tests/test_import_rule.py`` is where "nothing else reads a mapping" is held.
 
 **Why frozen dataclasses and not a class hierarchy with a ``lower`` method.**  §2:
 the kinds are closed (draft-07 fixes them and §4's table lists every one) and the
@@ -98,9 +97,38 @@ class Base:
     #: keywords whose cell at this position compiles to a RULE.  ``lower/rules.py``
     #: is the only reader (§4).
     rules: Mapping[str, Any] = field(default_factory=dict)
-    #: The declaration this node was parsed from.  Excluded from equality; the two
-    #: declaration-level readers are named in the module docstring.
-    raw: Mapping[str, Any] = field(default_factory=dict, compare=False)
+    #: Every key this node STATES about an instance, sorted: ``keywords.declares`` at
+    #: this node's own position, which is precisely the set §3's admission reader can
+    #: refuse on -- a key with no row, a REFUSE cell, or a lowering cell the kind's
+    #: handler does not claim.  Names only and no values, because that is all the screen
+    #: reads; a key that annotates without constraining is in :attr:`annotations`
+    #: instead.  ``compiler.check_keywords`` and ``compiler.declaring``'s callers read
+    #: this, so the screen is a reader of the node and of the table and of nothing else.
+    declares: tuple[str, ...] = ()
+    #: The keys in the ``x-`` namespace with no row in §6, sorted: admitted by the prefix
+    #: alone and carried nowhere, which the screen REPORTS (§3, and the prefix rule once
+    #: dropped ``x-enum-descriptions`` silently).  Kept apart from :attr:`declares`
+    #: because the screen's answer for one is a line and for the other a refusal.
+    extensions: tuple[str, ...] = ()
+    #: The SHAPE faults §4 gives the parser -- "it validates shape: ``required`` is a
+    #: list of names, ``properties`` is a mapping of schemas, ``items`` is one schema and
+    #: not a list, and so on, each failure a VERDICT refusal because a malformed document
+    #: is a property of the document" -- keyed by the keyword each one is about, with the
+    #: detail as its value.  The kind's handler raises the one its own check raised
+    #: before, at the same point in its own order, so the report stays a function of the
+    #: document.  Excluded from equality: a node with a fault is refused.
+    faults: Mapping[str, str] = field(default_factory=dict, compare=False)
+    #: The property DECLARATIONS this node states, as the document wrote them.  The one
+    #: declaration-level carrier the design keeps beside the typed one, for the two
+    #: readers §6 names: §2's intersection rule, which merges two declarations of one
+    #: property (:class:`compiler.Shape`), and D6's ``uniqueItems`` claim, which reads a
+    #: property's array one level down (``lower.rules._distinct``).
+    declared: Mapping[str, Any] = field(default_factory=dict)
+    #: ``additionalProperties`` as the document states it: ``False``, ``True`` or the
+    #: typed schema.  ``None`` where the document is silent, which §2 reads as ``ignore``
+    #: -- absent and ``true`` are different statements, and ``"additionalProperties" in
+    #: declares`` is how "stated at all" is asked.
+    extra: Any = None
 
     @property
     def description(self) -> str | None:
@@ -185,19 +213,23 @@ class Conjunct:
     """
 
     pointer: str = field(compare=False)
-    raw: Mapping[str, Any]
+    #: The conjunct AS STATED, which is not always a schema: ``allOf: [3]`` is a
+    #: malformed document and the ``allOf`` row refuses it by name, so the entry travels
+    #: as the document wrote it and the conjunct list stays aligned with the pointers.
+    raw: Any
 
 
 @dataclass(frozen=True, kw_only=True)
 class Composition(Base):
-    """Selected by ``allOf``: conjuncts at CONJ, own fields, extra policy, rules."""
+    """Selected by ``allOf``: conjuncts at CONJ, own fields, extra policy, rules.
+
+    The node's own ``properties`` are :attr:`Base.declared` and its
+    ``additionalProperties`` is :attr:`Base.extra`, which is where every kind that can
+    state one carries it.
+    """
 
     conjuncts: tuple[Conjunct, ...]
-    #: The node's OWN ``properties``, as declarations: the merge reads them.
-    properties: Mapping[str, Any] = field(default_factory=dict)
     required: tuple[str, ...] = ()
-    #: ``additionalProperties`` as the document states it.
-    extra: Any = None
     word: Any = None
 
 
@@ -209,16 +241,36 @@ class Union(Base):
     dispatches on rather than a second reading of its keys.  :attr:`siblings` is what
     the root states beside the combinator, which §5's union row compiles onto the
     base; the handler is the one reader of it.
+
+    **The union knows its own position and TELLS its branches** (§6, settled
+    2026-10-26): a branch of a ROOT union is a class whatever it states, because §4 of
+    the semantics document emits one class per branch, so the branches of a root union
+    are parsed ``objectish`` and ``lower.enum.resolves_no_name`` is HANDED "of a root
+    union" rather than reconstructing it from a pointer.  A child never reconstructs its
+    parent.
     """
 
     combinator: str
-    branches: tuple[Base, ...]
+    #: Every branch, parsed at BRANCH, in document order -- including one that is not a
+    #: schema, which parses to :class:`Typeless` and whose own declaration below is what
+    #: the ``oneOf``/``anyOf`` row refuses it by.  Aligned 1:1 with :attr:`branch_raw`,
+    #: because §4's dispatch derivation and §4 "Names" index the two together.
+    branches: tuple[Base, ...] = ()
     #: The branch declarations, in document order, for the readings §4 "Names" and
-    #: §4's dispatch derivation make over a branch's own property map.
-    branch_raw: tuple[Mapping[str, Any], ...] = ()
+    #: §4's dispatch derivation make over a branch's own property map -- a branch's
+    #: ``const`` pin, its ``required`` set, its title.  §6 keeps those readings at the
+    #: declaration level, which is why this is the one carrier beside the parsed nodes.
+    branch_raw: tuple[Any, ...] = ()
     #: The keywords the root states beside the combinator, as the document states
-    #: them: ``allOf``, ``properties``, ``required``, ``additionalProperties``.
+    #: them: ``allOf``, ``properties``, ``required``, ``additionalProperties``.  §4 of
+    #: the semantics document: "every keyword beside the combinator compiles onto the
+    #: base, and every branch inherits it."
     siblings: Mapping[str, Any] = field(default_factory=dict)
+    #: The node's own ``type`` word, where it states one.  §4 of the semantics document
+    #: makes a root ``type`` an assertion about the same instance every branch sees, so
+    #: this is what a branch stating none of its own inherits (``lower.union``'s applied
+    #: reading, which is ``_base.applied_schema``'s rule at one hop).
+    word: Any = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -236,10 +288,6 @@ class Object(Base):
 
     properties: Mapping[str, Base]
     required: tuple[str, ...] = ()
-    #: ``additionalProperties`` as the document states it: ``False``, ``True`` or the
-    #: typed schema.  ``None`` where the document is silent, which §2 reads as
-    #: ``ignore`` -- absent and ``true`` are different statements.
-    extra: Any = None
     #: The VALUE schema of a typed ``additionalProperties``, parsed at MAPV.  ``None``
     #: for ``false``, ``true``, the empty schema and silence.
     extras: Base | None = None
@@ -272,8 +320,11 @@ class Mapping_(Base):
     key: Base | None = None
     #: The ``patternProperties`` expression, where the mapping is spelled that way.
     pattern: str | None = None
-    #: ``additionalProperties`` as stated, for the refusals §5 decides beside it.
-    extra: Any = None
+    #: How many ``patternProperties`` entries the node states: ``None`` where it states
+    #: the keyword not at all, ``-1`` where the value is not a mapping, and the count
+    #: otherwise.  §5 gives a mapping ONE key type, so anything but a single entry
+    #: refuses -- and the refusal has to say how many it found.
+    patterns: int | None = None
     #: ``minProperties``/``maxProperties``: how many keys the mapping may carry.
     bounds: Mapping[str, Any] = field(default_factory=dict)
     word: Any = None
@@ -332,7 +383,13 @@ class MultiType(Base):
     ignored for every other type.
     """
 
-    words: tuple[str, ...]
+    #: The ``type`` list AS STATED, which is not always a set of type names: an empty
+    #: list, a repeated word and a non-string entry are each a malformed document and
+    #: the row refuses them by name, so the list travels as the document wrote it.
+    words: tuple[Any, ...]
+    #: One member per entry that IS a type name, in document order; equal in length to
+    #: :attr:`words` exactly when every entry is one, which is the only case the row
+    #: reaches the members at all.
     members: tuple[Base, ...]
     #: The keywords the node states that SOME arm carries, for the one refusal §5's
     #: own rows do not decide (a constrained arm beside another live arm).

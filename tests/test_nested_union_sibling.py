@@ -30,8 +30,9 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from codegen import bundle, compiler, emit, harness
+from codegen import bundle, compiler, emit, harness, keywords
 from codegen.lower import union as lower_union
+from codegen.schema import parse as schema_parse
 
 from nodeset import claimed, partitions
 
@@ -195,15 +196,37 @@ def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None
             "properties": {"kind": {"const": "b"}, "shape": {"const": "square"}},
         },
     ]
-    keyed = {"discriminator": {"propertyName": "kind"}, "oneOf": branches}
+    # The keyword is READ ONCE, by ``union.dispatch_key`` off the union node's own
+    # annotations -- the cell CONSTRAINS NOTHING (§6), so the parser puts it there -- and
+    # the two readings that want it are handed the property it names rather than the
+    # node.  Both unions below go through the production parse, so what is graded is the
+    # node the walk builds.
+    keyed = _union_node({"discriminator": {"propertyName": "kind"}, "oneOf": branches})
+    bare = _union_node({"oneOf": branches})
+    assert lower_union.dispatch_key(keyed) == "kind"
+    assert lower_union.dispatch_key(bare) is None
     named = claimed(
         "branch identities under the keyword",
-        [lower_union.branch_identity(b, "X", keyed) for b in branches],
+        [
+            lower_union.branch_identity(b, "X", lower_union.dispatch_key(keyed))
+            for b in branches
+        ],
     )
     assert named == {"XA", "XB"}, sorted(named)
     assert {
-        lower_union.branch_identity(b, "X", {"oneOf": branches}) for b in branches
+        lower_union.branch_identity(b, "X", lower_union.dispatch_key(bare))
+        for b in branches
     } == {None}
+
+
+def _union_node(declaration: dict[str, Any]) -> Any:
+    """One union declaration as the node the walk builds for it, at a nested position."""
+    return schema_parse.parse(
+        declaration,
+        pointer="/properties/goal",
+        position=keywords.Position.PROP,
+        source=schema_parse.Source(document="probe.json"),
+    )
 
 
 # --------------------------------------------------------------------------- #

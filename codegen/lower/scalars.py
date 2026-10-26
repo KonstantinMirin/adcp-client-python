@@ -223,7 +223,7 @@ def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided:
     (``schema.parse.ARM``).  The parser states it once, from the table, at the position --
     which is what §11 asks for and what no column of §3 could answer on its own.
     """
-    word = node.raw.get("type")
+    word = node.word
     if word not in SCALAR:
         raise Refusal("type", node.pointer, f"unknown type {word!r}", kind=Kind.VERDICT)
     # ``rules.ON_A_VALUE`` is the step-7 keyword that can land on a node with no object to
@@ -232,13 +232,7 @@ def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided:
     # one.  Carrying it is not refusing it.
     from codegen.lower import rules as lower_rules
 
-    check_keywords(
-        node.raw,
-        node.pointer,
-        node.position,
-        {"type", "format", *node.facts, *lower_rules.ON_A_VALUE},
-        mod=mod,
-    )
+    check_keywords(node, {"type", "format", *node.facts, *lower_rules.ON_A_VALUE}, mod=mod)
     constraints = dict(node.facts)
     fmt = node.format
     # A format SELECTS a type where one is named for it and the document's own draft can
@@ -248,7 +242,7 @@ def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided:
     # selected the format rides as an annotation on the node's own scalar type, and the
     # schema comparison grades it there.
     if fmt is not None and fmt in mod.asserted and fmt in FORMAT_TYPES:
-        selected = FORMAT_TYPES[fmt](node.raw)
+        selected = FORMAT_TYPES[fmt](node.facts)
         if fmt in URL_FORMATS and constraints:
             unowned = sorted(set(constraints) - {"pattern"})
             if unowned:
@@ -272,7 +266,7 @@ def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided:
 
 def null(node: nodes.Null, name_hint: str, mod: Module) -> Decided:
     """``type: null``: nothing, which is ``None``."""
-    check_keywords(node.raw, node.pointer, node.position, {"type"}, mod=mod)
+    check_keywords(node, {"type"}, mod=mod)
     return Decided(ir.TypeRef("None"))
 
 
@@ -288,8 +282,8 @@ def typeless(node: nodes.Typeless, name_hint: str, mod: Module) -> Decided:
     from codegen.lower import rules as lower_rules
 
     if node.position is Position.ROOT:
-        kw = next((k for k in bundle.CONDITIONAL if k in node.raw), None)
-        declared = sorted(compiler.declaring(node.raw, node.position))
+        kw = next((k for k in bundle.CONDITIONAL if k in node.rules), None)
+        declared = list(node.declares)
         if kw is None:
             raise Refusal(
                 "type",
@@ -322,5 +316,5 @@ def typeless(node: nodes.Typeless, name_hint: str, mod: Module) -> Decided:
     # cell.  The one position whose cells carry nothing for seven of them is RULE, and a
     # node at RULE is never handed to the dispatch (§4).  Measured over the table at every
     # position, so the deletion moves no document and loses no refusal.
-    check_keywords(node.raw, node.pointer, node.position, {*lower_rules.ON_A_VALUE}, mod=mod)
+    check_keywords(node, {*lower_rules.ON_A_VALUE}, mod=mod)
     return Decided(ir.TypeRef("typing.Any"))  # §4's typeless row

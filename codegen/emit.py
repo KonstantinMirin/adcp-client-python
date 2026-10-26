@@ -186,53 +186,41 @@ def relative_module(frm: str, to: str) -> str:
 # --------------------------------------------------------------------------- #
 # the walk: what each node IS
 # --------------------------------------------------------------------------- #
-def content_key(node: nodes.Base) -> str:
-    """D3's content equality, AND the statement of where it cuts a reference cycle.
+def the_same_node(mod: Module, node: nodes.Base) -> str | None:
+    """The symbol an EQUAL node already declared in this module, or ``None``.
 
-    Two nodes are the same node when this returns the same string for both.  It is
-    the node's own JSON with every mapping ordered -- so a key order no instance can
-    observe is not a difference -- plus the one fact about the node's POSITION that
-    the decision reads.
+    **D3's content dedup, read off the type system.**  §14 step 5 deletes
+    ``content_key`` -- ``json.dumps([the node's own mapping, node.applied])`` -- and §4 says what
+    replaces it: "two nodes are equal exactly when they state the same thing about an
+    instance, which is §4's content dedup read off the type system rather than off a
+    JSON serialisation with a position bit appended."  ``pointer`` and ``position`` are
+    excluded from the kinds' equality and everything a node STATES is compared,
+    including :attr:`nodes.Base.annotations` (a node differing only in a ``$comment``
+    states a different thing to a reader) and :attr:`nodes.Base.applied` (a node whose
+    enclosing type word differs decides differently -- which is the bit the old key
+    appended by hand, and 1,390 of the bundle's nodes declare ``properties`` with no
+    ``type``, 556 of them with that word applied and 834 without, so both sides are
+    populated).
 
-    **A ``$ref`` is compared as a STRING and is never followed, and that is the cut.**
-    §9 records that two instruments once disagreed about whether two nodes were
-    identical entirely because each cut a reference cycle somewhere else, and D3 says
-    the comparison has to state its rule.  Here there is no recursion to cut: the node
-    is read as the document wrote it, so a cycle through a ``$ref`` is cut at the
-    reference, at depth 0, on every node and not only on a cyclic one.
+    :attr:`compiler.Module.collapsed` is where the equality's CUT at a ``$ref`` and the
+    reason the memo is a sequence are both written down.
 
-    **The cost of that cut is a measured population, not a hypothetical.**  Two nodes
-    that name ONE target through two spellings of the same reference are NOT equal
-    here, and the bundle has 17 such targets: 968 distinct reference strings over 4,200
-    sites, 0 of them relative, and 17 (document, pointer) pairs reached both by a local
-    ``#/definitions/x`` and by the document's own absolute URI carrying the same
-    fragment.  Those pairs are not collapsed, which is the conservative direction --
-    two classes where one would do, never one class where the document means two -- and
-    following the reference to compare the targets is the thing §9 says has to state
-    its cut before anything does it.
+    **Measured over the memo's own population**, which is the nodes :func:`decide_type`
+    is called on: 7,250 nodes in 677 documents over the whole portable set, 283 groups of
+    more than one node by the deleted key and 283 by this equality, and 0 documents whose
+    partition differs.  So the replacement is a relocation and not a decision.
 
-    **The POSITION bit is :attr:`nodes.Base.applied`, and the key is wrong without it.**
-    The parser reads it off ``bundle.constrained_to_object``, a set of POINTERS: a node stating no
-    ``type`` of its own is lowered as an object where an enclosing node applies
-    ``type: "object"`` to the same instance, and is refused where none does.  So two
-    nodes of byte-identical JSON at two such positions decide DIFFERENTLY, and a key
-    over the JSON alone would hand the refused position the class the admitted one
-    declared -- a model stating what that position's document does not.  1,390 of the
-    bundle's nodes declare ``properties`` with no ``type``, 556 of them in that set and
-    834 outside it, so both sides of the bit are populated.  Nothing else the decision
-    reads is per-pointer: ``mod.asserted`` and ``mod.root`` are per document, and
-    ``mod.named`` is handled by :func:`decide_type` itself.
-
-    **It still reads the CARRIER**, and §14 step 7 is where that ends.  §4 says the dedup
-    is "read off the type system rather than off a JSON serialisation with a position bit
-    appended" -- two nodes are equal exactly when they state the same thing about an
-    instance, which is what ``pointer`` and ``position`` being excluded from
-    :class:`nodes.Base`'s equality buys -- and §7 makes the dedup a pass over the finished
-    module in ``lower/names.py``.  Until the Composition and Union kinds carry their
-    children, a node's equality does not range over its subtree, so the declaration is
-    what can be compared and the position bit is read off the node's own field.
+    Asked of a WIDER population the two differ, and the reason says why the memo is the
+    right population to ask: a key whose cell LOWERS and whose kind does not consume it
+    survives on :attr:`nodes.Base.declares` as a NAME and not as a value, so two
+    ``Typeless`` nodes differing only in a ``required`` LIST are equal -- and a node like
+    that is one §3's admission screen refuses, so it never reaches the memo.  Every node
+    that does reach it has each key it states either in a field of its kind or admitted
+    as carrying nothing.  The 56 extra groups are all branches of a presence-only
+    combinator, which §4 makes a rule source on the enclosing node and never hands to
+    ``decide`` at all.
     """
-    return json.dumps([node.raw, node.applied], sort_keys=True, separators=(",", ":"))
+    return next((symbol for other, symbol in mod.collapsed if other == node), None)
 
 
 def bind_the_same_node(mod: Module, symbol: str, pointer: str, declared: str) -> Decided:
@@ -346,8 +334,7 @@ def decide_type(
     from codegen.lower.decide import decide
 
     pointer = node.pointer
-    key = content_key(node)
-    collapsed = mod.collapsed.get(key)
+    collapsed = the_same_node(mod, node)
     if collapsed is not None:
         mod.adopted[pointer] = collapsed
         return bind_the_same_node(mod, name_hint, pointer, collapsed)
@@ -355,7 +342,7 @@ def decide_type(
     if pointer in mod.named and not decided.type.local:
         decided = compiler.name_the_node(mod, name_hint, pointer, node, decided)
     if mod.declared.get(pointer) == decided.type.path:
-        mod.collapsed[key] = decided.type.path
+        mod.collapsed.append((node, decided.type.path))
     return decided
 
 
@@ -484,25 +471,8 @@ def lower_document(
     bind: Callable[[str, str], Target] = _no_binder,
     named: frozenset[str] = frozenset(),
 ) -> tuple[Module, str]:
-    title = doc.get("title")
-    if not isinstance(title, str) or not title:
-        raise Refusal(
-            "title",
-            "",
-            "the document declares no title to derive a name from",
-            kind=Kind.VERDICT,
-        )
-    symbol = class_name(title)
-    if not symbol.isidentifier():
-        raise Refusal(
-            "title",
-            "",
-            f"the title {title!r} derives {symbol!r}, not an identifier",
-            kind=Kind.VERDICT,
-        )
     mod = Module(
         document=document,
-        root=symbol,
         bind=bind,
         asserted=asserted_formats(doc),
         named=named,
@@ -534,6 +504,30 @@ def lower_document(
     from codegen.lower.decide import decide
 
     root = schema.parse(doc, pointer="", position=Position.ROOT, source=mod.source)
+    # **The module's SYMBOL is read off the root NODE**, and that is the last reading this
+    # function made of the raw mapping: §4 makes ``codegen/schema/parse.py`` the one
+    # function that reads one, and ``title`` at ROOT is a NAME cell, so the parser puts it
+    # in :attr:`nodes.Base.annotations` and :attr:`nodes.Base.title` is the reading.  The
+    # module is therefore built before the symbol is known and ``mod.root`` is written
+    # after it: nothing between the two reads it -- ``parse`` does not, and
+    # ``compiler.local_reference``, which does, runs inside ``decide`` below.
+    title = root.title
+    if title is None:
+        raise Refusal(
+            "title",
+            "",
+            "the document declares no title to derive a name from",
+            kind=Kind.VERDICT,
+        )
+    symbol = class_name(title)
+    if not symbol.isidentifier():
+        raise Refusal(
+            "title",
+            "",
+            f"the title {title!r} derives {symbol!r}, not an identifier",
+            kind=Kind.VERDICT,
+        )
+    mod.root = symbol
     decided = decide(root, symbol, mod)
 
     # **THE MODULE WRAPPER, which is the only thing ROOT adds** (§5).  A class carries
