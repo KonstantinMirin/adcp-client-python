@@ -501,8 +501,24 @@ _VALUES: dict[str, Row] = {
                 " → the enum with a module-level `strict_validate`.",
             ),
             Position.PROP: Cell(Effect.TYPE, True, None, " → a nested enum."),
+            # **FAITHFUL, and §5's group (a) is the sentence** (§14 step 9): "`propertyNames`
+            # with an `enum`, and `enum` at KEY.  Both rows refuse 'by name with the key
+            # set'.  A `Literal` of the members is the key type, and Pydantic renders
+            # `dict[Literal[…], V]` back as `propertyNames: {enum: […]}` -- the document's
+            # own keyword, rendered and gradable.  Faithful, not wide.  Where the key node
+            # is named, the `StrEnum` is the key type and renders the same way."
+            #
+            # ``rendered`` is True for exactly that reason: the fact reaches
+            # ``model_json_schema()`` under the document's own keyword, so §8 compares it
+            # rather than having to excuse it.
             Position.KEY: Cell(
-                Effect.REFUSE, False, None, " → refused by name with the key set."
+                Effect.TYPE,
+                True,
+                None,
+                " → a `Literal` of the members as the mapping's KEY type, which "
+                "pydantic renders back as `propertyNames: {enum: […]}` — the document's "
+                "own keyword, rendered and gradable; where the key node carries a "
+                "`title` the `StrEnum` is the key type and renders the same way.",
             ),
             Position.RULE: Cell(
                 Effect.RULE,
@@ -839,8 +855,9 @@ _OBJECTS: dict[str, Row] = {
             False,
             Position.KEY,
             "The mapping's KEY type: a `$ref` → that type; `minLength` / `maxLength` "
-            "→ a length-bounded `str`; `pattern` → an annotated `str`; `enum` → "
-            "refused by name with the key set; `anyOf` → a union of key types. Beside "
+            "→ a length-bounded `str`; `pattern` → an annotated `str`; `enum` → a "
+            "`Literal` of the members, which pydantic renders back as this very "
+            "keyword; `anyOf` → a union of key types. Beside "
             "`patternProperties` → the key type carries both, by §2's intersection: "
             "each states a constraint on the same key. On a CLASS with declared "
             "`properties` → checked against the declared names when the class is "

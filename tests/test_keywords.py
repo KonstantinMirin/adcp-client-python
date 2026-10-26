@@ -294,10 +294,19 @@ def test_a_refusals_kind_comes_from_the_cell_and_not_from_a_raise_site() -> None
     # A lowering effect with no handler for it: the obstruction is unwritten code.
     assert compiler.kind_for("multipleOf", Position.PROP) is refusal.Kind.DEFERRED
     assert compiler.kind_for("contains", Position.MAPV) is refusal.Kind.DEFERRED
-    # And a REFUSE cell at ONE position only is a verdict THERE and a deferral where
-    # the row lowers, which is the whole point of the cell being per position.
-    assert compiler.kind_for("enum", Position.KEY) is refusal.Kind.VERDICT
+    # A per-position override: ``enum`` LOWERS at every position the walk decides a node
+    # at, so every one of them is a deferral where the handler has no code for the shape.
+    # **The KEY entry was the one REFUSE cell at one position only, and
+    # ``adcp-client-python-10l.20`` retired it**: §5's group (a) makes a `Literal` of the
+    # members the key type, which pydantic renders back as the document's own
+    # ``propertyNames: {enum: […]}``, so the cell is a TYPE there like everywhere else and
+    # no position of this row refuses.  What the per-position shape is still graded on is
+    # that the two positions differ in their SENTENCE, which the grid round-trip asserts.
+    assert compiler.kind_for("enum", Position.KEY) is refusal.Kind.DEFERRED
     assert compiler.kind_for("enum", Position.PROP) is refusal.Kind.DEFERRED
+    assert cell("enum", Position.KEY).effect is Effect.TYPE
+    assert cell("enum", Position.KEY).rendered
+    assert cell("enum", Position.KEY).compiles != cell("enum", Position.PROP).compiles
 
 
 def test_the_descent_column_is_the_one_the_bundles_walk_descends_by() -> None:
