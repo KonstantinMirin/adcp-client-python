@@ -138,10 +138,7 @@
       ],
       "oneOf": [
         {
-          "additionalProperties": {
-            "not": {}
-          },
-          "maxProperties": 1,
+          "additionalProperties": false,
           "properties": {
             "account_id": {
               "description": "Seller-assigned account identifier. For upstream-managed account namespaces, this value comes from list_accounts; for seller-defined namespaces without a list_accounts surface, it is supplied out-of-band. Buyer-declared account sellers MAY echo account_id from sync_accounts as an internal handle, but they MUST continue accepting the account's current natural-key AccountRef on subsequent calls. Buyers of buyer-declared accounts send the natural key; a seller MAY also accept its echoed account_id, and buyers MUST NOT assume it does. A former key tombstoned by identity reconciliation returns ACCOUNT_MOVED to authorized callers.",
@@ -154,16 +151,11 @@
           ]
         },
         {
-          "additionalProperties": {
-            "not": {}
-          },
-          "maxProperties": 6,
+          "additionalProperties": false,
           "properties": {
             "brand": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "Brand reference identifying the advertiser",
               "examples": [
                 {
@@ -184,7 +176,6 @@
                   "domain": "nova-athletics.example"
                 }
               ],
-              "maxProperties": 6,
               "properties": {
                 "brand_id": {
                   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -202,9 +193,11 @@
                   "x-entity": "advertiser_brand"
                 },
                 "brand_kit_override": {
+                  "additionalProperties": true,
                   "description": "Inline override for brand-kit fields normally resolved from `/.well-known/brand.json` on `domain` (logo, colors, voice, tagline). Use when brand.json is missing, stale, or inappropriate for this specific call \u2014 e.g., a campaign-scoped tagline, a co-branded creative, a freshly-rebranded color palette the brand.json hasn't shipped yet. Same inline-override pattern as `industries` and `data_subject_contestation` above: brand.json is canonical, the override is per-call. Adopters needing to override fields outside this subset (`voice_attributes`, `prohibited_terms`, etc.) MUST publish a different brand.json and reference it via a different `domain` \u2014 the inline override is intentionally narrow to a small high-traffic subset.\n\n**Merge semantics (normative).** The merge is **field-level**, not whole-object replacement. Each field within `brand_kit_override` (`logo`, `colors`, `voice`, `tagline`) is evaluated independently \u2014 when a field is present on the override the override value applies; when a field is absent the brand.json value applies (or is absent if brand.json doesn't carry one either). For composite fields (`colors.primary`, `colors.secondary`, `colors.accent`), the merge is one level deeper: each color slot is evaluated independently \u2014 a producer can override `colors.primary` while still inheriting `colors.secondary` from brand.json. SDKs MUST NOT treat a present `brand_kit_override.colors` as wiping the brand.json `colors` block entirely; only the per-slot fields present in the override take precedence. Without this rule, a partial-override semantics would diverge across SDKs and produce inconsistent rendering for the same payload.",
                   "properties": {
                     "colors": {
+                      "additionalProperties": true,
                       "description": "Override brand colors (hex strings).",
                       "properties": {
                         "accent": {
@@ -224,6 +217,7 @@
                     },
                     "logo": {
                       "$schema": "http://json-schema.org/draft-07/schema#",
+                      "additionalProperties": true,
                       "description": "Override logo asset.",
                       "properties": {
                         "alt_text": {
@@ -232,7 +226,9 @@
                           "x-accessibility": true
                         },
                         "asset_type": {
-                          "const": "image"
+                          "const": "image",
+                          "description": "Discriminator identifying this as an image asset. See /schemas/creative/asset-types for the registry.",
+                          "type": "string"
                         },
                         "breakpoint_id": {
                           "description": "Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one breakpoint declared on the selected state (semantic validators resolve it). Omit for ordinary image slots.",
@@ -326,13 +322,22 @@
                                   "type": "string"
                                 },
                                 "role": {
+                                  "description": "Role of the declaring party in the supply chain",
                                   "enum": [
-                                    "tool",
-                                    "agency",
                                     "creator",
+                                    "advertiser",
+                                    "agency",
                                     "platform",
-                                    "advertiser"
-                                  ]
+                                    "tool"
+                                  ],
+                                  "enumDescriptions": {
+                                    "advertiser": "The brand or advertiser that owns the content",
+                                    "agency": "Agency acting on behalf of the advertiser",
+                                    "creator": "The party that created or generated the content",
+                                    "platform": "Ad platform or publisher that processed the content",
+                                    "tool": "Automated tool or service that attached provenance metadata"
+                                  },
+                                  "type": "string"
                                 }
                               },
                               "required": [
@@ -341,17 +346,32 @@
                               "type": "object"
                             },
                             "digital_source_type": {
+                              "$schema": "http://json-schema.org/draft-07/schema#",
+                              "description": "IPTC-aligned classification of AI involvement in producing this content",
                               "enum": [
-                                "human_edits",
                                 "digital_capture",
                                 "digital_creation",
+                                "trained_algorithmic_media",
+                                "composite_with_trained_algorithmic_media",
                                 "algorithmic_media",
                                 "composite_capture",
-                                "data_driven_media",
                                 "composite_synthetic",
-                                "trained_algorithmic_media",
-                                "composite_with_trained_algorithmic_media"
-                              ]
+                                "human_edits",
+                                "data_driven_media"
+                              ],
+                              "enumDescriptions": {
+                                "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
+                                "composite_capture": "Multiple digital captures composited together without AI",
+                                "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
+                                "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
+                                "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)",
+                                "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
+                                "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
+                                "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
+                                "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)"
+                              },
+                              "title": "Digital Source Type",
+                              "type": "string"
                             },
                             "disclosure": {
                               "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
@@ -382,6 +402,7 @@
                                         "properties": {
                                           "ext": {
                                             "$schema": "http://json-schema.org/draft-07/schema#",
+                                            "additionalProperties": true,
                                             "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                                             "title": "Extension Object",
                                             "type": "object"
@@ -392,27 +413,39 @@
                                             "type": "integer"
                                           },
                                           "persistence": {
+                                            "$schema": "http://json-schema.org/draft-07/schema#",
+                                            "description": "How long the disclosure must persist during content playback or display",
                                             "enum": [
+                                              "continuous",
                                               "initial",
-                                              "flexible",
-                                              "continuous"
-                                            ]
+                                              "flexible"
+                                            ],
+                                            "enumDescriptions": {
+                                              "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
+                                              "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion",
+                                              "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration."
+                                            },
+                                            "title": "Disclosure Persistence",
+                                            "type": "string"
                                           },
                                           "positions": {
                                             "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
                                             "items": {
+                                              "$schema": "http://json-schema.org/draft-07/schema#",
+                                              "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
                                               "enum": [
-                                                "audio",
+                                                "prominent",
                                                 "footer",
+                                                "audio",
+                                                "subtitle",
                                                 "overlay",
                                                 "end_card",
                                                 "pre_roll",
-                                                "subtitle",
-                                                "companion",
-                                                "prominent"
-                                              ]
+                                                "companion"
+                                              ],
+                                              "title": "Disclosure Position",
+                                              "type": "string"
                                             },
-                                            "maxItems": 8,
                                             "minItems": 1,
                                             "type": "array",
                                             "uniqueItems": true
@@ -431,10 +464,8 @@
                                   "type": "array"
                                 },
                                 "required": {
-                                  "enum": [
-                                    false,
-                                    true
-                                  ]
+                                  "description": "The declaring party's claim that AI disclosure is required for this content under applicable regulations. This is a declared signal carried through the supply chain \u2014 useful as a routing and audit input \u2014 not a regulatory determination made by the protocol. Receiving parties remain responsible for their own jurisdictional analysis and should not treat `required: false` as compliance cover.",
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
@@ -452,10 +483,18 @@
                                     "type": "string"
                                   },
                                   "method": {
+                                    "$schema": "http://json-schema.org/draft-07/schema#",
+                                    "description": "How provenance data is carried within the content",
                                     "enum": [
                                       "manifest_wrapper",
                                       "provenance_markers"
-                                    ]
+                                    ],
+                                    "enumDescriptions": {
+                                      "manifest_wrapper": "A provenance manifest embedded in the file container per format-specific rules (e.g., JUMBF box in JPEG, C2PATextManifestWrapper in plaintext per C2PA Section A.7). The manifest travels with the file but is tied to the file's byte structure.",
+                                      "provenance_markers": "Invisible markers embedded within the content stream that encode or reference a provenance record. Designed to survive reformatting, copy-paste, CMS ingestion, and ad-server transcoding that breaks file-level bindings."
+                                    },
+                                    "title": "Embedded Provenance Method",
+                                    "type": "string"
                                   },
                                   "provider": {
                                     "description": "Organization that performed the embedding (e.g., 'Encypher', 'Digimarc'). Display label and audit context \u2014 not a wire identifier.",
@@ -466,11 +505,8 @@
                                     "type": "string"
                                   },
                                   "verify_agent": {
-                                    "additionalProperties": {
-                                      "not": {}
-                                    },
+                                    "additionalProperties": false,
                                     "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
-                                    "maxProperties": 2,
                                     "properties": {
                                       "agent_url": {
                                         "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
@@ -500,24 +536,32 @@
                             },
                             "ext": {
                               "$schema": "http://json-schema.org/draft-07/schema#",
+                              "additionalProperties": true,
                               "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                               "title": "Extension Object",
                               "type": "object"
                             },
                             "human_oversight": {
+                              "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
                               "enum": [
                                 "none",
-                                "edited",
-                                "directed",
+                                "prompt_only",
                                 "selected",
-                                "prompt_only"
-                              ]
+                                "edited",
+                                "directed"
+                              ],
+                              "enumDescriptions": {
+                                "directed": "Human directed the creative process with AI as an assistive tool",
+                                "edited": "Human edited or refined AI-generated output",
+                                "none": "Fully automated with no human involvement in generation",
+                                "prompt_only": "Human provided the prompt or instructions but did not review outputs",
+                                "selected": "Human selected from multiple AI-generated candidates"
+                              },
+                              "type": "string"
                             },
                             "synthetic_depiction": {
-                              "enum": [
-                                false,
-                                true
-                              ]
+                              "description": "Assessed declaration of whether the content synthetically depicts a real or fictional person performing or appearing in a way that was generated or materially manipulated rather than captured as depicted. `true` covers both a fully synthetic performer and material manipulation of a real performer; `false` is an assessed declaration that the content does not contain such a depiction. Absence means the content has not been assessed for synthetic depiction. This field does not claim consent, legality, or independent verification, and receivers MUST NOT derive it solely from `digital_source_type`.",
+                              "type": "boolean"
                             },
                             "verification": {
                               "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
@@ -535,12 +579,14 @@
                                     "type": "string"
                                   },
                                   "result": {
+                                    "description": "Verification outcome",
                                     "enum": [
                                       "authentic",
-                                      "ai_modified",
                                       "ai_generated",
+                                      "ai_modified",
                                       "inconclusive"
-                                    ]
+                                    ],
+                                    "type": "string"
                                   },
                                   "verified_by": {
                                     "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')",
@@ -553,8 +599,8 @@
                                   }
                                 },
                                 "required": [
-                                  "result",
-                                  "verified_by"
+                                  "verified_by",
+                                  "result"
                                 ],
                                 "type": "object"
                               },
@@ -566,10 +612,18 @@
                               "items": {
                                 "properties": {
                                   "c2pa_action": {
+                                    "$schema": "http://json-schema.org/draft-07/schema#",
+                                    "description": "C2PA action classification for this watermark",
                                     "enum": [
                                       "c2pa.watermarked.bound",
                                       "c2pa.watermarked.unbound"
-                                    ]
+                                    ],
+                                    "enumDescriptions": {
+                                      "c2pa.watermarked.bound": "Watermark linked to a C2PA manifest for this asset. The watermark and manifest are mutually reinforcing: the manifest references the watermark, and the watermark can be used to locate the manifest.",
+                                      "c2pa.watermarked.unbound": "Watermark independent of any C2PA manifest. Applied before any provenance signing event (e.g., by the AI generator at creation time) or in pipelines where no manifest is present."
+                                    },
+                                    "title": "C2PA Watermark Action",
+                                    "type": "string"
                                   },
                                   "embedded_at": {
                                     "description": "When the watermark was applied (ISO 8601)",
@@ -577,23 +631,30 @@
                                     "type": "string"
                                   },
                                   "media_type": {
+                                    "$schema": "http://json-schema.org/draft-07/schema#",
+                                    "description": "Media category of the watermarked content",
                                     "enum": [
-                                      "text",
                                       "audio",
                                       "image",
-                                      "video"
-                                    ]
+                                      "video",
+                                      "text"
+                                    ],
+                                    "enumDescriptions": {
+                                      "audio": "Watermark applied to audio content (e.g., spread-spectrum, echo hiding)",
+                                      "image": "Watermark applied to image content (e.g., spatial domain, frequency domain)",
+                                      "text": "Watermark applied to text content (e.g., synonym substitution, structural modification)",
+                                      "video": "Watermark applied to video content (e.g., per-frame image watermarking, temporal watermarking)"
+                                    },
+                                    "title": "Watermark Media Type",
+                                    "type": "string"
                                   },
                                   "provider": {
                                     "description": "Organization that applied the watermark (e.g., 'Imatag', 'Steg.AI', 'Encypher'). Display label and audit context \u2014 not a wire identifier.",
                                     "type": "string"
                                   },
                                   "verify_agent": {
-                                    "additionalProperties": {
-                                      "not": {}
-                                    },
+                                    "additionalProperties": false,
                                     "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
-                                    "maxProperties": 2,
                                     "properties": {
                                       "agent_url": {
                                         "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
@@ -642,9 +703,9 @@
                       },
                       "required": [
                         "asset_type",
-                        "height",
                         "url",
-                        "width"
+                        "width",
+                        "height"
                       ],
                       "title": "Image Asset",
                       "type": "object"
@@ -671,23 +732,20 @@
                   "uniqueItems": true
                 },
                 "data_subject_contestation": {
-                  "additionalProperties": {
-                    "not": {}
-                  },
+                  "additionalProperties": false,
                   "anyOf": [
-                    {
-                      "required": [
-                        "email"
-                      ]
-                    },
                     {
                       "required": [
                         "url"
                       ]
+                    },
+                    {
+                      "required": [
+                        "email"
+                      ]
                     }
                   ],
                   "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand \u2192 house \u2192 missing.",
-                  "maxProperties": 3,
                   "properties": {
                     "email": {
                       "format": "email",
@@ -739,9 +797,7 @@
             },
             "operator_unit": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "Optional operator-owned business unit, agency seat, or platform account. Only id participates in the natural account key; name is mutable display metadata.",
               "examples": [
                 {
@@ -753,7 +809,6 @@
                   "name": "Nova Benelux"
                 }
               ],
-              "maxProperties": 2,
               "properties": {
                 "id": {
                   "description": "Stable identifier assigned by the operator. Numeric platform IDs and durable slugs are both valid. Scoped by the enclosing operator domain.",
@@ -777,10 +832,9 @@
               "x-entity": "operator_unit"
             },
             "sandbox": {
-              "enum": [
-                false,
-                true
-              ]
+              "default": false,
+              "description": "When true, references the sandbox account for this brand/operator pair. Defaults to false (production account).",
+              "type": "boolean"
             },
             "timezone": {
               "description": "Immutable account timezone. Include it in the natural key when get_adcp_capabilities.account.timezone declares account_fixed with buyer_selected; omit it for seller_fixed or seller_assigned accounts.",
@@ -799,6 +853,7 @@
     },
     "context": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
       "title": "Context Object",
       "type": "object"
@@ -822,6 +877,29 @@
         },
         "oneOf": [
           {
+            "additionalProperties": true,
+            "properties": {
+              "account": {
+                "description": "Optional account identifier on the platform",
+                "type": "string"
+              },
+              "platform": {
+                "description": "Platform identifier for DSPs (e.g., 'the-trade-desk', 'amazon-dsp')",
+                "type": "string"
+              },
+              "type": {
+                "const": "platform",
+                "description": "Discriminator indicating this is a platform-based deployment"
+              }
+            },
+            "required": [
+              "type",
+              "platform"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": true,
             "properties": {
               "account": {
                 "description": "Optional account identifier on the agent",
@@ -833,32 +911,13 @@
                 "type": "string"
               },
               "type": {
-                "const": "agent"
+                "const": "agent",
+                "description": "Discriminator indicating this is an agent URL-based deployment"
               }
             },
             "required": [
-              "agent_url",
-              "type"
-            ],
-            "type": "object"
-          },
-          {
-            "properties": {
-              "account": {
-                "description": "Optional account identifier on the platform",
-                "type": "string"
-              },
-              "platform": {
-                "description": "Platform identifier for DSPs (e.g., 'the-trade-desk', 'amazon-dsp')",
-                "type": "string"
-              },
-              "type": {
-                "const": "platform"
-              }
-            },
-            "required": [
-              "platform",
-              "type"
+              "type",
+              "agent_url"
             ],
             "type": "object"
           }
@@ -879,6 +938,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
@@ -928,16 +988,26 @@
     },
     "filters": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Filters to refine signal discovery results",
       "properties": {
         "catalog_types": {
           "description": "Filter by catalog type",
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Commercial/provenance types for signals available for audience targeting",
             "enum": [
-              "owned",
+              "marketplace",
               "custom",
-              "marketplace"
-            ]
+              "owned"
+            ],
+            "enumDescriptions": {
+              "custom": "Source-native segment built on demand from models, composites, or buyer inputs - not attributable to a standing upstream provider",
+              "marketplace": "Resold third-party segments (provider authorization verifiable via the provider's adagents.json)",
+              "owned": "First-party segments derived from data the signal agent or seller directly owns (retailer purchase data, publisher behavioral data, telco data)"
+            },
+            "title": "Signal Availability Type",
+            "type": "string"
           },
           "minItems": 1,
           "type": "array"
@@ -952,6 +1022,7 @@
         },
         "ext": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Vendor-namespaced extension parameters for seller- or platform-specific signal filter criteria not covered by standard fields. Keys MUST be namespaced under a vendor or platform key (e.g., ext.gam, ext.platform_x). Sellers MUST treat all values as untrusted buyer input; avoid unbounded logging or labels, and do not interpolate values into caller-visible error strings, LLM prompts, SQL queries, or system commands without sanitization. Persistent use of an extension key across multiple buyers is a signal to propose standardization.",
           "title": "Extension Object",
           "type": "object"
@@ -993,11 +1064,8 @@
     },
     "pagination": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "Pagination parameters. Use pagination.max_results (max: 100, default: 50) and pagination.cursor for cursor-based page walks. When the deprecated top-level max_results field is also present, pagination.max_results takes precedence.",
-      "maxProperties": 2,
       "properties": {
         "cursor": {
           "description": "Opaque cursor from a previous response to fetch the next page",
@@ -1019,12 +1087,9 @@
       "description": "Optional webhook configuration for async terminal completion/failure notifications on semantic signal discovery. Meaningful only for `discovery_mode: \"brief\"` requests that enter the async lifecycle. Submitted envelopes with `task_id` remain pollable through `get_task_status` (legacy `tasks/get`) whether or not this field is present. If a brief request includes this field and the agent returns a Submitted envelope, the agent MUST deliver at least the terminal completion/failure notification to the configured URL; intermediate progress notifications are MAY. If the agent cannot honor the webhook channel, it MUST reject the request with a structured error instead of silently accepting. This field does not change wholesale timing semantics: agents MUST NOT route `discovery_mode: \"wholesale\"` requests through the async/Submitted arm or emit async delivery solely because `push_notification_config` is present; partial wholesale completion is reported via `incomplete[]`.",
       "properties": {
         "authentication": {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "deprecated": true,
           "description": "Legacy authentication configuration (A2A-compatible). Opts the seller into Bearer or HMAC-SHA256 signing instead of the default RFC 9421 webhook profile. Deprecated; removed in AdCP 4.0. **Precedence is a switch, not a fallback:** presence of this block selects the legacy scheme; absence selects 9421. A seller MUST NOT sign the same webhook both ways, and a buyer MUST NOT attempt 'try 9421 first, fall back to HMAC' verification \u2014 signature mode is determined solely by whether this block was present at registration time. The seller's baseline 9421 webhook key is published at its brand.json `agents[]` `jwks_uri` using `adcp_use: \"request-signing\"` (deprecated `webhook-signing` keys remain accepted during the compatibility window); it does not override this selector and is only used when `authentication` is omitted. See docs/building/by-layer/L1/security.mdx#webhook-callbacks for the full precedence and downgrade-resistance rules (including the `webhook_mode_mismatch` rejection a buyer MUST apply when a received webhook's signing mode does not match the registered mode).",
-          "maxProperties": 2,
           "properties": {
             "credentials": {
               "description": "Credentials for the legacy scheme. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.",
@@ -1034,10 +1099,15 @@
             "schemes": {
               "description": "Array of authentication schemes. Supported: ['Bearer'] for simple token auth, ['HMAC-SHA256'] for legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit `authentication` and use the RFC 9421 webhook profile.",
               "items": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "deprecated": true,
+                "description": "Legacy authentication schemes for the webhook auth block. Bearer: token sent in Authorization header. HMAC-SHA256: legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit the authentication block and use the RFC 9421 webhook signing profile (applicable on schemas where authentication is optional). Removed in AdCP 4.0.",
                 "enum": [
                   "Bearer",
                   "HMAC-SHA256"
-                ]
+                ],
+                "title": "Authentication Scheme",
+                "type": "string"
               },
               "maxItems": 1,
               "minItems": 1,
@@ -1045,8 +1115,8 @@
             }
           },
           "required": [
-            "credentials",
-            "schemes"
+            "schemes",
+            "credentials"
           ],
           "type": "object"
         },
@@ -1087,30 +1157,7 @@
         },
         "oneOf": [
           {
-            "description": "Agent signal - references a signal native to a signal source identified by agent_url. Not externally verifiable through an upstream catalog; buyer trusts the issuing signal source's claim about the signal.",
-            "properties": {
-              "agent_url": {
-                "description": "URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')",
-                "format": "uri",
-                "type": "string"
-              },
-              "id": {
-                "description": "Signal identifier within the agent's signal set (e.g., 'custom_auto_intenders')",
-                "pattern": "^[a-zA-Z0-9_-]+$",
-                "type": "string"
-              },
-              "source": {
-                "const": "agent"
-              }
-            },
-            "required": [
-              "agent_url",
-              "id",
-              "source"
-            ],
-            "type": "object"
-          },
-          {
+            "additionalProperties": true,
             "description": "Data-provider signal - references a signal from a data provider's published adagents.json signals[]. Buyers can verify authorization by checking the data provider's adagents.json.",
             "properties": {
               "data_provider_domain": {
@@ -1124,13 +1171,42 @@
                 "type": "string"
               },
               "source": {
-                "const": "catalog"
+                "const": "catalog",
+                "description": "Discriminator indicating this signal is from a data provider's published adagents.json signals[]",
+                "type": "string"
               }
             },
             "required": [
+              "source",
               "data_provider_domain",
-              "id",
-              "source"
+              "id"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": true,
+            "description": "Agent signal - references a signal native to a signal source identified by agent_url. Not externally verifiable through an upstream catalog; buyer trusts the issuing signal source's claim about the signal.",
+            "properties": {
+              "agent_url": {
+                "description": "URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')",
+                "format": "uri",
+                "type": "string"
+              },
+              "id": {
+                "description": "Signal identifier within the agent's signal set (e.g., 'custom_auto_intenders')",
+                "pattern": "^[a-zA-Z0-9_-]+$",
+                "type": "string"
+              },
+              "source": {
+                "const": "agent",
+                "description": "Discriminator indicating this signal is native to the signal source identified by agent_url, not from a data provider's published signal definitions.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "source",
+              "agent_url",
+              "id"
             ],
             "type": "object"
           }
@@ -1151,237 +1227,42 @@
         },
         "oneOf": [
           {
-            "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-            "not": {
-              "anyOf": [
-                {
-                  "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                  "properties": {
-                    "data_provider_domain": {
-                      "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                      "type": "string"
-                    },
-                    "scope": {
-                      "const": "data_provider"
-                    },
-                    "signal_id": {
-                      "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "agent_url",
-                    "data_provider_domain",
-                    "scope",
-                    "signal_id"
-                  ],
-                  "type": "object"
-                },
-                {
-                  "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                  "properties": {
-                    "data_provider_domain": {
-                      "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                      "type": "string"
-                    },
-                    "scope": {
-                      "const": "data_provider"
-                    },
-                    "signal_id": {
-                      "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "data_provider_domain",
-                    "id",
-                    "scope",
-                    "signal_id"
-                  ],
-                  "type": "object"
-                },
-                {
-                  "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                  "properties": {
-                    "data_provider_domain": {
-                      "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                      "type": "string"
-                    },
-                    "scope": {
-                      "const": "data_provider"
-                    },
-                    "signal_id": {
-                      "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "data_provider_domain",
-                    "scope",
-                    "signal_id",
-                    "signal_source_url"
-                  ],
-                  "type": "object"
-                },
-                {
-                  "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                  "properties": {
-                    "data_provider_domain": {
-                      "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                      "type": "string"
-                    },
-                    "scope": {
-                      "const": "data_provider"
-                    },
-                    "signal_id": {
-                      "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "data_provider_domain",
-                    "scope",
-                    "signal_id",
-                    "source"
-                  ],
-                  "type": "object"
-                }
-              ]
-            },
-            "properties": {
-              "data_provider_domain": {
-                "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                "type": "string"
-              },
-              "scope": {
-                "const": "data_provider"
-              },
-              "signal_id": {
-                "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                "pattern": "^[a-zA-Z0-9_-]+$",
-                "type": "string"
-              }
-            },
-            "required": [
-              "data_provider_domain",
-              "scope",
-              "signal_id"
-            ],
-            "type": "object"
-          },
-          {
+            "additionalProperties": true,
             "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
             "not": {
               "anyOf": [
                 {
-                  "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                  "properties": {
-                    "scope": {
-                      "const": "product"
-                    },
-                    "signal_id": {
-                      "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    }
-                  },
                   "required": [
-                    "agent_url",
-                    "scope",
-                    "signal_id"
-                  ],
-                  "type": "object"
+                    "data_provider_domain"
+                  ]
                 },
                 {
-                  "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                  "properties": {
-                    "scope": {
-                      "const": "product"
-                    },
-                    "signal_id": {
-                      "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    }
-                  },
                   "required": [
-                    "data_provider_domain",
-                    "scope",
-                    "signal_id"
-                  ],
-                  "type": "object"
-                },
-                {
-                  "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                  "properties": {
-                    "scope": {
-                      "const": "product"
-                    },
-                    "signal_id": {
-                      "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "scope",
-                    "signal_id"
-                  ],
-                  "type": "object"
-                },
-                {
-                  "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                  "properties": {
-                    "scope": {
-                      "const": "product"
-                    },
-                    "signal_id": {
-                      "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "scope",
-                    "signal_id",
                     "signal_source_url"
-                  ],
-                  "type": "object"
+                  ]
                 },
                 {
-                  "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                  "properties": {
-                    "scope": {
-                      "const": "product"
-                    },
-                    "signal_id": {
-                      "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    }
-                  },
                   "required": [
-                    "scope",
-                    "signal_id",
+                    "agent_url"
+                  ]
+                },
+                {
+                  "required": [
                     "source"
-                  ],
-                  "type": "object"
+                  ]
+                },
+                {
+                  "required": [
+                    "id"
+                  ]
                 }
               ]
             },
             "properties": {
               "scope": {
-                "const": "product"
+                "const": "product",
+                "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
+                "type": "string"
               },
               "signal_id": {
                 "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
@@ -1396,114 +1277,88 @@
             "type": "object"
           },
           {
+            "additionalProperties": true,
+            "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "agent_url"
+                  ]
+                },
+                {
+                  "required": [
+                    "signal_source_url"
+                  ]
+                },
+                {
+                  "required": [
+                    "source"
+                  ]
+                },
+                {
+                  "required": [
+                    "id"
+                  ]
+                }
+              ]
+            },
+            "properties": {
+              "data_provider_domain": {
+                "description": "Domain that publishes the signal definition in its adagents.json signals[].",
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "type": "string"
+              },
+              "scope": {
+                "const": "data_provider",
+                "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
+                "type": "string"
+              },
+              "signal_id": {
+                "description": "Signal identifier within the data provider's published adagents.json signals[].",
+                "pattern": "^[a-zA-Z0-9_-]+$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "data_provider_domain",
+              "signal_id"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": true,
             "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
             "not": {
               "anyOf": [
                 {
-                  "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                  "properties": {
-                    "scope": {
-                      "const": "signal_source"
-                    },
-                    "signal_id": {
-                      "description": "Signal identifier within the issuing signal source's signal set.",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    },
-                    "signal_source_url": {
-                      "description": "URL of the signal source that issues this source-native signal.",
-                      "format": "uri",
-                      "type": "string"
-                    }
-                  },
                   "required": [
-                    "agent_url",
-                    "scope",
-                    "signal_id",
-                    "signal_source_url"
-                  ],
-                  "type": "object"
+                    "data_provider_domain"
+                  ]
                 },
                 {
-                  "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                  "properties": {
-                    "scope": {
-                      "const": "signal_source"
-                    },
-                    "signal_id": {
-                      "description": "Signal identifier within the issuing signal source's signal set.",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    },
-                    "signal_source_url": {
-                      "description": "URL of the signal source that issues this source-native signal.",
-                      "format": "uri",
-                      "type": "string"
-                    }
-                  },
                   "required": [
-                    "data_provider_domain",
-                    "scope",
-                    "signal_id",
-                    "signal_source_url"
-                  ],
-                  "type": "object"
+                    "agent_url"
+                  ]
                 },
                 {
-                  "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                  "properties": {
-                    "scope": {
-                      "const": "signal_source"
-                    },
-                    "signal_id": {
-                      "description": "Signal identifier within the issuing signal source's signal set.",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    },
-                    "signal_source_url": {
-                      "description": "URL of the signal source that issues this source-native signal.",
-                      "format": "uri",
-                      "type": "string"
-                    }
-                  },
                   "required": [
-                    "id",
-                    "scope",
-                    "signal_id",
-                    "signal_source_url"
-                  ],
-                  "type": "object"
-                },
-                {
-                  "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                  "properties": {
-                    "scope": {
-                      "const": "signal_source"
-                    },
-                    "signal_id": {
-                      "description": "Signal identifier within the issuing signal source's signal set.",
-                      "pattern": "^[a-zA-Z0-9_-]+$",
-                      "type": "string"
-                    },
-                    "signal_source_url": {
-                      "description": "URL of the signal source that issues this source-native signal.",
-                      "format": "uri",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "scope",
-                    "signal_id",
-                    "signal_source_url",
                     "source"
-                  ],
-                  "type": "object"
+                  ]
+                },
+                {
+                  "required": [
+                    "id"
+                  ]
                 }
               ]
             },
             "properties": {
               "scope": {
-                "const": "signal_source"
+                "const": "signal_source",
+                "description": "Discriminator indicating the signal resolves through the issuing signal source.",
+                "type": "string"
               },
               "signal_id": {
                 "description": "Signal identifier within the issuing signal source's signal set.",
@@ -1518,8 +1373,8 @@
             },
             "required": [
               "scope",
-              "signal_id",
-              "signal_source_url"
+              "signal_source_url",
+              "signal_id"
             ],
             "type": "object"
           }

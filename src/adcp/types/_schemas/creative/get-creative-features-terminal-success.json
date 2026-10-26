@@ -26,21 +26,19 @@
       "description": "Non-blocking audit observations from the governance agent. Observations surface audit-worthy claims that are not verifier refutations and are not rejection grounds by themselves.",
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": {
-          "not": {}
-        },
+        "additionalProperties": false,
         "description": "Non-blocking observation emitted by a creative governance agent. Audit observations surface claims that deserve human or downstream audit review but are not verifier refutations and are not rejection grounds by themselves.",
-        "maxProperties": 7,
         "properties": {
           "code": {
-            "const": "OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"
+            "description": "Machine-readable observation code. `OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED` means provenance declares `human_oversight` as `edited` or `directed` while also declaring `disclosure.required: false`; the verifier is surfacing the carve-out claim for audit, not adjudicating it.",
+            "enum": [
+              "OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"
+            ],
+            "type": "string"
           },
           "details": {
-            "additionalProperties": {
-              "not": {}
-            },
+            "additionalProperties": false,
             "description": "Audit-safe structured details. Mirrors the safe allowlist keys used for `PROVENANCE_CLAIM_CONTRADICTED`; value shapes remain observation-specific. Top-level `ext` remains the standard protocol extension point, but details do not allow arbitrary verifier response fields.",
-            "maxProperties": 6,
             "properties": {
               "agent_url": {
                 "description": "Governance agent URL that produced the observation.",
@@ -48,25 +46,26 @@
                 "type": "string"
               },
               "claimed_value": {
-                "additionalProperties": {
-                  "not": {}
-                },
+                "additionalProperties": false,
                 "description": "Compact object of claimed provenance values that triggered the observation.",
-                "maxProperties": 2,
                 "properties": {
                   "disclosure_required": {
-                    "const": false
+                    "const": false,
+                    "description": "Disclosure-required claim declared by the creative provenance.",
+                    "type": "boolean"
                   },
                   "human_oversight": {
+                    "description": "Human oversight level declared by the creative provenance.",
                     "enum": [
                       "edited",
                       "directed"
-                    ]
+                    ],
+                    "type": "string"
                   }
                 },
                 "required": [
-                  "disclosure_required",
-                  "human_oversight"
+                  "human_oversight",
+                  "disclosure_required"
                 ],
                 "type": "object"
               },
@@ -83,10 +82,10 @@
               "observed_value": {
                 "description": "Verifier observation relevant to the claim, when applicable.",
                 "type": [
-                  "null",
                   "boolean",
                   "number",
-                  "string"
+                  "string",
+                  "null"
                 ]
               },
               "substituted_for": {
@@ -103,6 +102,7 @@
           },
           "ext": {
             "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
             "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
             "title": "Extension Object",
             "type": "object"
@@ -116,19 +116,27 @@
             "type": "string"
           },
           "recovery": {
-            "const": "informational"
+            "description": "Caller recovery category for audit observations, distinct from the canonical error-code recovery enum. `informational` means the creative can continue through the normal flow; the observation is audit context rather than a required correction.",
+            "enum": [
+              "informational"
+            ],
+            "type": "string"
           },
           "severity": {
-            "const": "audit-worthy"
+            "description": "Routing severity. `audit-worthy` means the observation should be retained and may be routed to human or downstream audit review, but it is not a protocol rejection signal.",
+            "enum": [
+              "audit-worthy"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "code",
-          "details",
+          "severity",
+          "recovery",
           "field",
           "message",
-          "recovery",
-          "severity"
+          "details"
         ],
         "title": "Creative Audit Observation",
         "type": "object"
@@ -137,6 +145,7 @@
     },
     "consumption": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Structured consumption details for this evaluation. Informational \u2014 lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth.",
       "properties": {
         "duration_seconds": {
@@ -165,6 +174,7 @@
     },
     "context": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
       "title": "Context Object",
       "type": "object"
@@ -187,6 +197,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
@@ -200,11 +211,8 @@
       "description": "Feature values for the evaluated creative",
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": {
-          "not": {}
-        },
+        "additionalProperties": false,
         "description": "A single feature evaluation result for a creative. Uses the same value structure as property-feature-value (value, confidence, expires_at, etc.).",
-        "maxProperties": 10,
         "properties": {
           "confidence": {
             "description": "Confidence score for this value (0-1)",
@@ -213,6 +221,7 @@
             "type": "number"
           },
           "details": {
+            "additionalProperties": true,
             "description": "Additional vendor-specific details about this evaluation",
             "type": "object"
           },
@@ -223,6 +232,7 @@
           },
           "ext": {
             "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
             "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
             "title": "Extension Object",
             "type": "object"
@@ -253,10 +263,7 @@
             "description": "The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.",
             "oneOf": [
               {
-                "enum": [
-                  false,
-                  true
-                ]
+                "type": "boolean"
               },
               {
                 "type": "number"

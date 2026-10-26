@@ -6,21 +6,24 @@
     "representation_rejections": {
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
         "description": "Structured incompatibility reason for one candidate in a failed CreativeRepresentationSet resolution.",
         "properties": {
           "code": {
             "enum": [
-              "other",
-              "macro_unsupported",
-              "vast_version_mismatch",
-              "format_option_mismatch",
-              "asset_requirement_failed",
               "incompatible_format_kind",
+              "format_option_mismatch",
+              "unsupported_delivery_type",
+              "vast_version_mismatch",
+              "macro_unsupported",
               "tracker_contract_mismatch",
-              "unsupported_delivery_type"
-            ]
+              "asset_requirement_failed",
+              "other"
+            ],
+            "type": "string"
           },
           "details": {
+            "additionalProperties": true,
             "type": "object"
           },
           "message": {
@@ -34,9 +37,9 @@
           }
         },
         "required": [
+          "representation_id",
           "code",
-          "message",
-          "representation_id"
+          "message"
         ],
         "title": "Representation Rejection",
         "type": "object"

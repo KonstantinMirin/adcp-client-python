@@ -41,10 +41,8 @@
       "type": "string"
     },
     "grading_profile": {
-      "enum": [
-        "spec",
-        "legacy"
-      ]
+      "$ref": "#/definitions/VerificationTokenGradingProfile",
+      "description": "Grading policy that produced the badge. Absence on a historical token means Legacy; verification_modes remains an independent evidence axis."
     },
     "iat": {
       "minimum": 0,
@@ -78,10 +76,7 @@
     },
     "verification_modes": {
       "items": {
-        "enum": [
-          "live",
-          "spec"
-        ]
+        "$ref": "#/definitions/VerificationTokenMode"
       },
       "minItems": 1,
       "type": "array",

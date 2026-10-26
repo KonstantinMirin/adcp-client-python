@@ -1,13 +1,22 @@
-"""The fifth resolver canonicalization, and the gates that keep it honest.
+"""``_constrains_nothing``'s two remaining arms, and the gates that keep them honest.
 
 ``_constrains_nothing`` folds a DOCUMENT fact that admits exactly what its absence
-admits, so a model omitting it is not reported as dropping it.  Section 6 of the
-plan carries four such folds and this is the fifth.
+admits, so a model omitting it is not reported as dropping it.
+
+**TWO ARMS SINCE ROW .3, and the deleted one is why the negative cases below stayed.**
+``docs/plan/architecture.md`` §9 deletes every fold that undid a rewriting of the
+delegated resolver once ``bundle.record`` is this package's own inliner.  The
+``enum: [false, true]`` arm was one: the resolver wrote a finite ``type`` out as its
+members while inlining, and the arm restored what the document had said.  The record
+copies the document's ``type``, so the arm has nothing to undo -- and its own
+docstring already said the shape it would still fire on, a document stating the PAIR
+in its own text, must be COMPARED rather than folded.  So every case that used to fold
+on ``enum`` is now a case that does not, and they are kept below as exactly that.
 
 **Every test here that matters is a NEGATIVE one.** A fold is correct when it
 matches its own shape and nothing else, and a fold that matches one real
 constraint is invisible and permanent -- nobody re-reads a green ``missing``.  So
-the folding cases are three lines and the refusing cases are the file.
+the folding cases are two lines and the refusing cases are the file.
 """
 
 from __future__ import annotations
@@ -22,16 +31,6 @@ from codegen.harness import _constrains_nothing
 
 FOLDS = [
     ("required", {"type": "object", "required": []}, "an empty required demands no key"),
-    (
-        "enum",
-        {"type": "boolean", "enum": [False, True]},
-        "both booleans is the whole boolean domain",
-    ),
-    (
-        "enum",
-        {"type": "boolean", "enum": [True, False]},
-        "the same set, written the other way round",
-    ),
 ]
 
 
@@ -47,7 +46,19 @@ def test_a_fact_that_admits_what_its_absence_admits_is_folded(
 # --------------------------------------------------------------------------- #
 
 REFUSES = [
-    # enum: the SET is the gate, not the keyword and not the length.
+    # enum: no shape of it folds any more.  The two that did were the resolver's
+    # finite-type rewrite, and a document stating either in its own text states a fact
+    # to compare -- which is what the first two cases now assert.
+    (
+        "enum",
+        {"type": "boolean", "enum": [False, True]},
+        "the document's own boolean pair is a FACT and is compared, not folded",
+    ),
+    (
+        "enum",
+        {"type": "boolean", "enum": [True, False]},
+        "the same set the other way round, and compared for the same reason",
+    ),
     ("enum", {"type": "boolean", "enum": [False]}, "one member PINS the value to false"),
     ("enum", {"type": "boolean", "enum": [True]}, "one member PINS the value to true"),
     (
@@ -116,16 +127,19 @@ def test_a_default_on_an_optional_property_constrains_and_is_never_folded() -> N
     assert _constrains_nothing("default", DEFAULTED) is False, "the default is the safe one"
 
 
-def test_the_three_shapes_are_the_only_ones_and_the_population_is_not_empty() -> None:
-    """The fold admits exactly three shapes, asserted by exhausting the compared set.
+def test_the_two_shapes_are_the_only_ones_and_the_population_is_not_empty() -> None:
+    """The fold admits exactly two shapes, asserted by exhausting the compared set.
 
     A fold whose population nobody enumerated can grow silently when a keyword joins
     the compared set.  This reads the real set -- ``harness.compared_facts``, which is
     the table's rendered column -- rather than a copy of it, so a new keyword that this
-    fold would swallow fails here.  The third shape is
-    asked with ``required=True``, which is the only way to reach it, and the first
-    two are asked at the default -- so a rule that folded on requiredness alone
-    reddens in the third assertion.
+    fold would swallow fails here.  The second shape is asked with ``required=True``,
+    which is the only way to reach it, so a rule that folded on requiredness alone
+    reddens in the last assertion.
+
+    The deleted finite-type arm is asserted here too, over the whole compared set and
+    not only over ``enum``: a document stating the boolean pair folds NOTHING now, in
+    either keyword, so the fold cannot come back under another name.
     """
     from codegen.harness import compared_facts
     from codegen.keywords import Position
@@ -135,7 +149,7 @@ def test_the_three_shapes_are_the_only_ones_and_the_population_is_not_empty() ->
     folding = {
         kw for kw in facts if _constrains_nothing(kw, {"type": "boolean", "enum": [False, True]})
     }
-    assert folding == {"enum"}, folding
+    assert folding == set(), folding
     folding = {kw for kw in facts if _constrains_nothing(kw, {"type": "object", "required": []})}
     assert folding == {"required"}, folding
     folding = {kw for kw in facts if _constrains_nothing(kw, DEFAULTED, required=True)}

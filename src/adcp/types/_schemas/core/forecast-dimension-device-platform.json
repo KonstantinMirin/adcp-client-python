@@ -4,20 +4,24 @@
   "description": "An operating-system or platform dimension for a ForecastPoint row. Variant of ForecastPoint dimensions; see forecast-point-dimensions.json for dispatch rules.",
   "properties": {
     "device_platform": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Operating system or platform for this forecast row.",
       "enum": [
         "ios",
-        "tvos",
-        "linux",
+        "android",
+        "windows",
         "macos",
+        "linux",
+        "chromeos",
+        "tvos",
         "tizen",
         "webos",
-        "android",
         "fire_os",
         "roku_os",
-        "unknown",
-        "windows",
-        "chromeos"
-      ]
+        "unknown"
+      ],
+      "title": "Device Platform",
+      "type": "string"
     },
     "kind": {
       "const": "device_platform",

@@ -40,12 +40,16 @@
     "consent_basis": {
       "description": "Data provider's declared GDPR Article 6 lawful basis or consent basis for the underlying signal definition, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own processing basis for the provider-declared basis.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Common GDPR lawful bases relevant to advertising. Covers the Article 6(1) bases used in programmatic advertising contexts.",
         "enum": [
           "consent",
+          "legitimate_interest",
           "contract",
-          "legal_obligation",
-          "legitimate_interest"
-        ]
+          "legal_obligation"
+        ],
+        "title": "Consent Basis",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array"
@@ -195,29 +199,29 @@
     },
     "demographic_predicate": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Projected authoritative demographic meaning for the signal. When projected from another provider, this MUST match the provider's definition exactly. Signal names alone never establish demographic semantics.",
       "properties": {
         "age": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "anyOf": [
             {
               "required": [
-                "max"
+                "min"
               ]
             },
             {
               "required": [
-                "min"
+                "max"
               ]
             }
           ],
           "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
           "properties": {
             "include_unknown": {
-              "enum": [
-                false,
-                true
-              ]
+              "description": "Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.",
+              "type": "boolean"
             },
             "max": {
               "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
@@ -292,12 +296,10 @@
         },
         "disclosure": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
-          "anyOf": [
+          "additionalProperties": false,
+          "allOf": [
             {
-              "not": {
+              "if": {
                 "properties": {
                   "required": {
                     "const": true
@@ -305,41 +307,31 @@
                 },
                 "required": [
                   "required"
-                ],
-                "type": "object"
+                ]
               },
-              "type": "object"
-            },
-            {
-              "properties": {
-                "required": {
-                  "const": true
-                }
-              },
-              "required": [
-                "jurisdictions",
-                "required"
-              ]
+              "then": {
+                "required": [
+                  "jurisdictions"
+                ]
+              }
             }
           ],
           "description": "Disclosure requirements and jurisdictional notes for modeled data signals. This schema is intentionally separate from core/provenance.json because creative provenance is about generated content, render guidance, and asset-level chain of custody, while signal modeling disclosure is about data-segment methodology and data-use transparency.",
-          "maxProperties": 3,
           "properties": {
             "jurisdictions": {
               "description": "Jurisdictions where a modeling or AI-use disclosure applies.",
               "items": {
-                "additionalProperties": {
-                  "not": {}
-                },
-                "maxProperties": 6,
+                "additionalProperties": false,
                 "properties": {
                   "audience": {
+                    "description": "Primary audience for this disclosure entry.",
                     "enum": [
                       "buyer",
-                      "public",
+                      "data_subject",
                       "regulator",
-                      "data_subject"
-                    ]
+                      "public"
+                    ],
+                    "type": "string"
                   },
                   "country": {
                     "description": "ISO 3166-1 alpha-2 country code.",
@@ -379,10 +371,8 @@
               "type": "string"
             },
             "required": {
-              "enum": [
-                false,
-                true
-              ]
+              "description": "The provider's claim that a modeling or AI-use disclosure is required for this signal in at least one applicable jurisdiction. This is a declared compliance signal, not a protocol-level legal determination.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -508,18 +498,34 @@
     "restricted_attributes": {
       "description": "Restricted attribute categories this signal touches.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Personal data categories that may be restricted from use in audience targeting. Combines GDPR Article 9 special categories with US civil-rights protected classes (FHA familial_status, ADEA age). Used in two places: (1) on campaign plans via restricted_attributes to declare which categories are prohibited, and (2) on signal-definition.json via restricted_attributes to declare which categories a signal touches. Governance agents match plan restrictions against signal declarations for structural validation.",
         "enum": [
-          "age",
+          "racial_ethnic_origin",
+          "political_opinions",
+          "religious_beliefs",
+          "trade_union_membership",
           "health_data",
+          "sex_life_sexual_orientation",
           "genetic_data",
           "biometric_data",
-          "familial_status",
-          "religious_beliefs",
-          "political_opinions",
-          "racial_ethnic_origin",
-          "trade_union_membership",
-          "sex_life_sexual_orientation"
-        ]
+          "age",
+          "familial_status"
+        ],
+        "enumDescriptions": {
+          "age": "A person's age or age range. US ADEA (40+) for employment, US FHA for housing, EU AVMSD for content-directed targeting. Restricted for regulated verticals.",
+          "biometric_data": "Biometric data used for identification. GDPR Article 9(1).",
+          "familial_status": "Whether a household includes children under 18, a pregnant person, or a person seeking custody of a minor. US FHA protected class.",
+          "genetic_data": "Genetic data. GDPR Article 9(1), US GINA.",
+          "health_data": "Health status, medical conditions, disability. GDPR Article 9(1), US ADA protected class. Includes inferred health data from behavioral signals.",
+          "political_opinions": "Political opinions or affiliations. GDPR Article 9(1). EU DSA Article 26 prohibits targeting on this category.",
+          "racial_ethnic_origin": "Race or ethnic origin. GDPR Article 9(1), US FHA/ECOA/EEOC protected class.",
+          "religious_beliefs": "Religious or philosophical beliefs. GDPR Article 9(1), US FHA/EEOC protected class.",
+          "sex_life_sexual_orientation": "Sex life or sexual orientation. GDPR Article 9(1).",
+          "trade_union_membership": "Trade union membership. GDPR Article 9(1)."
+        },
+        "title": "Restricted Attribute",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array"

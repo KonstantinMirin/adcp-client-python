@@ -20,13 +20,34 @@
           },
           "oneOf": [
             {
+              "additionalProperties": true,
+              "properties": {
+                "segment_id": {
+                  "description": "The platform-specific segment identifier to use in campaign targeting",
+                  "type": "string"
+                },
+                "type": {
+                  "const": "segment_id",
+                  "description": "Segment ID based targeting",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "segment_id"
+              ]
+            },
+            {
+              "additionalProperties": true,
               "properties": {
                 "key": {
                   "description": "The targeting parameter key",
                   "type": "string"
                 },
                 "type": {
-                  "const": "key_value"
+                  "const": "key_value",
+                  "description": "Key-value pair based targeting",
+                  "type": "string"
                 },
                 "value": {
                   "description": "The targeting parameter value",
@@ -34,24 +55,9 @@
                 }
               },
               "required": [
-                "key",
                 "type",
+                "key",
                 "value"
-              ]
-            },
-            {
-              "properties": {
-                "segment_id": {
-                  "description": "The platform-specific segment identifier to use in campaign targeting",
-                  "type": "string"
-                },
-                "type": {
-                  "const": "segment_id"
-                }
-              },
-              "required": [
-                "segment_id",
-                "type"
               ]
             }
           ],
@@ -104,13 +110,34 @@
           },
           "oneOf": [
             {
+              "additionalProperties": true,
+              "properties": {
+                "segment_id": {
+                  "description": "The platform-specific segment identifier to use in campaign targeting",
+                  "type": "string"
+                },
+                "type": {
+                  "const": "segment_id",
+                  "description": "Segment ID based targeting",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "segment_id"
+              ]
+            },
+            {
+              "additionalProperties": true,
               "properties": {
                 "key": {
                   "description": "The targeting parameter key",
                   "type": "string"
                 },
                 "type": {
-                  "const": "key_value"
+                  "const": "key_value",
+                  "description": "Key-value pair based targeting",
+                  "type": "string"
                 },
                 "value": {
                   "description": "The targeting parameter value",
@@ -118,24 +145,9 @@
                 }
               },
               "required": [
-                "key",
                 "type",
+                "key",
                 "value"
-              ]
-            },
-            {
-              "properties": {
-                "segment_id": {
-                  "description": "The platform-specific segment identifier to use in campaign targeting",
-                  "type": "string"
-                },
-                "type": {
-                  "const": "segment_id"
-                }
-              },
-              "required": [
-                "segment_id",
-                "type"
               ]
             }
           ],

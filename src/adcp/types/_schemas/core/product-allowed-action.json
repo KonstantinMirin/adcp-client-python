@@ -7,35 +7,243 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "anyOf": [
         {
-          "const": "update_media_buy_frequency_cap"
-        },
-        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Actions the buyer can perform on a media buy. Used as the action identifier in both the legacy flat `valid_actions[]` field (string array) and the structured `available_actions[]` field on buy responses, and in `allowed_actions[]` on Product. The coarse values (`update_budget`, `update_dates`, `update_packages`, `sync_creatives`) predate the finer-grained vocabulary and are retained for backwards compatibility \u2014 see `x-deprecated-enum-values`. Sellers SHOULD declare the finer-grained values where their platform distinguishes them; the coarse values roll up to the finer set per `enumMetadata[<value>].rollup`. See action-to-field mapping table in docs/media-buy/task-reference/update_media_buy.mdx for the normative binding between each action and the fields it covers on update_media_buy.",
           "enum": [
             "pause",
-            "cancel",
             "resume",
+            "cancel",
             "update_name",
-            "add_packages",
-            "update_dates",
             "extend_flight",
-            "update_budget",
-            "update_pacing",
             "shorten_flight",
-            "sync_creatives",
-            "update_bidding",
-            "decrease_budget",
-            "increase_budget",
-            "remove_creative",
-            "remove_packages",
-            "update_packages",
-            "replace_creative",
-            "update_targeting",
-            "reallocate_budget",
             "update_flight_dates",
-            "update_frequency_caps",
+            "increase_budget",
+            "decrease_budget",
+            "reallocate_budget",
             "update_budget_allocation",
-            "update_creative_assignments"
-          ]
+            "update_targeting",
+            "update_pacing",
+            "update_bidding",
+            "update_frequency_caps",
+            "replace_creative",
+            "update_creative_assignments",
+            "remove_creative",
+            "add_packages",
+            "remove_packages",
+            "update_budget",
+            "update_dates",
+            "update_packages",
+            "sync_creatives"
+          ],
+          "enumDescriptions": {
+            "add_packages": "Add new packages to an existing media buy via `new_packages` on update_media_buy.",
+            "cancel": "Cancel the media buy. Irreversible. Maps to `canceled: true` on update_media_buy.",
+            "decrease_budget": "Lower the media-buy total budget or one or more package caps. Maps to a lower `total_budget.amount` or lower values on `packages[].budget`. Sellers typically bound this by already-spent.",
+            "extend_flight": "Push the buy's `end_time` later. Start time unchanged.",
+            "increase_budget": "Raise the media-buy total budget, raise one or more package caps, or remove a seller-optimized package cap. Maps to a higher `total_budget.amount`, higher values on `packages[].budget`, or `packages[].budget: null` (which relaxes the ceiling).",
+            "pause": "Pause the entire media buy. Maps to `paused: true` on update_media_buy.",
+            "reallocate_budget": "Redistribute budget across packages on `packages[].budget` without changing the sum.",
+            "remove_creative": "Remove a creative from the buy. Often the most time-sensitive action when a creative misbehaves; sellers SHOULD support self_serve removal where possible even when add/swap require approval.",
+            "remove_packages": "Remove packages from a media buy.",
+            "replace_creative": "Swap a creative for another without changing assignment logic. Distinct AM workflow from changing the assignment set.",
+            "resume": "Resume a paused media buy. Maps to `paused: false` on update_media_buy.",
+            "shorten_flight": "Pull the buy's `end_time` earlier. Start time unchanged.",
+            "sync_creatives": "Coarse legacy action covering any creative-related change. Retained for backwards compatibility with 3.x sellers that emit this rather than the finer `replace_creative`/`update_creative_assignments`/`remove_creative`. Removed in 4.0. Sellers SHOULD migrate to the finer vocabulary.",
+            "update_bidding": "Replace or clear the media-buy bidding default or package-authored bidding overrides. Maps to `bidding` and `packages[].bidding`; the seller validates the resulting effective policies atomically before mutation.",
+            "update_budget": "Coarse legacy action covering any budget change. Retained for backwards compatibility with 3.x sellers that emit this rather than the finer `increase_budget`/`decrease_budget`/`reallocate_budget`. Removed in 4.0. Sellers SHOULD migrate to the finer vocabulary.",
+            "update_budget_allocation": "Change fixed versus seller-optimized allocation mode, cross-package optimization goals, or package minimum-spend targets. Maps to `budget_allocation` and `packages[].min_spend_target`, including null to clear a target. Automatic seller allocation within an already-authorized seller-optimized buy is delivery behavior, not this action.",
+            "update_creative_assignments": "Change which creatives are assigned to which packages.",
+            "update_dates": "Coarse legacy action covering any flight-date change. Retained for backwards compatibility with 3.x sellers that emit this rather than the finer `extend_flight`/`shorten_flight`/`update_flight_dates`. Removed in 4.0. Sellers SHOULD migrate to the finer vocabulary.",
+            "update_flight_dates": "Shift `start_time` and/or `end_time`. Distinct from extend/shorten because shifting a start date is operationally different from extending an end date and approval paths typically differ.",
+            "update_frequency_caps": "Update package targeting-overlay frequency caps.",
+            "update_name": "Replace the human-readable media-buy name without changing accepted commercial terms. Maps to `name` on update_media_buy or control_media_buy.",
+            "update_pacing": "Update aggregate media-buy pacing or pacing on existing packages.",
+            "update_packages": "Coarse legacy action covering any package update. Retained for backwards compatibility with 3.x sellers that emit this rather than the finer `update_targeting`/`update_pacing`/`update_frequency_caps`/`reallocate_budget`/`remove_packages`. Removed in 4.0. Sellers SHOULD migrate to the finer vocabulary.",
+            "update_targeting": "Update targeting overlays on existing packages."
+          },
+          "enumMetadata": {
+            "$comment": "Structured per-action metadata. Each entry carries `update_fields` (the `update_media_buy` request fields this action covers, as dotted paths rooted at the request body) and optional `rollup` for legacy coarse values that are superseded by finer-grained vocabulary. SDKs MUST consume this block to dispatch update_media_buy requests rather than parsing the field-mapping table in the update_media_buy task-reference doc; the doc is the human-readable mirror of this normative data. Deprecated values are marked at the top-level `x-deprecated-enum-values` (repo convention); SDKs and codegen MAY hide deprecated values from caller-facing surfaces when any value in the entry's `rollup` array is present in the same `available_actions[]` or `valid_actions[]` payload. Structured-only actions that are absent from this deprecated flat enum, such as update_media_buy_frequency_cap, carry the same enumMetadata shape in core/media-buy-available-action-id.json; SDKs MUST merge both blocks.",
+            "add_packages": {
+              "update_fields": [
+                "new_packages"
+              ]
+            },
+            "cancel": {
+              "update_fields": [
+                "canceled",
+                "cancellation_reason"
+              ]
+            },
+            "decrease_budget": {
+              "update_fields": [
+                "total_budget",
+                "packages[].budget"
+              ]
+            },
+            "extend_flight": {
+              "update_fields": [
+                "end_time",
+                "packages[].end_time"
+              ]
+            },
+            "increase_budget": {
+              "update_fields": [
+                "total_budget",
+                "packages[].budget"
+              ]
+            },
+            "pause": {
+              "update_fields": [
+                "paused"
+              ]
+            },
+            "reallocate_budget": {
+              "update_fields": [
+                "packages[].budget"
+              ]
+            },
+            "remove_creative": {
+              "update_fields": [
+                "packages[].creatives",
+                "packages[].creative_assignments"
+              ]
+            },
+            "remove_packages": {
+              "update_fields": [
+                "packages[].canceled"
+              ]
+            },
+            "replace_creative": {
+              "update_fields": [
+                "packages[].creatives"
+              ]
+            },
+            "resume": {
+              "update_fields": [
+                "paused"
+              ]
+            },
+            "shorten_flight": {
+              "update_fields": [
+                "end_time",
+                "packages[].end_time"
+              ]
+            },
+            "sync_creatives": {
+              "rollup": [
+                "replace_creative",
+                "update_creative_assignments",
+                "remove_creative"
+              ],
+              "update_fields": [
+                "packages[].creatives",
+                "packages[].creative_assignments"
+              ]
+            },
+            "update_bidding": {
+              "update_fields": [
+                "bidding",
+                "packages[].bidding"
+              ]
+            },
+            "update_budget": {
+              "rollup": [
+                "increase_budget",
+                "decrease_budget",
+                "reallocate_budget",
+                "update_budget_allocation"
+              ],
+              "update_fields": [
+                "total_budget",
+                "budget_allocation",
+                "packages[].budget",
+                "packages[].min_spend_target"
+              ]
+            },
+            "update_budget_allocation": {
+              "update_fields": [
+                "budget_allocation",
+                "packages[].min_spend_target"
+              ]
+            },
+            "update_creative_assignments": {
+              "update_fields": [
+                "packages[].creative_assignments"
+              ]
+            },
+            "update_dates": {
+              "rollup": [
+                "extend_flight",
+                "shorten_flight",
+                "update_flight_dates"
+              ],
+              "update_fields": [
+                "start_time",
+                "end_time",
+                "packages[].start_time",
+                "packages[].end_time"
+              ]
+            },
+            "update_flight_dates": {
+              "update_fields": [
+                "start_time",
+                "end_time",
+                "packages[].start_time",
+                "packages[].end_time"
+              ]
+            },
+            "update_frequency_caps": {
+              "update_fields": [
+                "packages[].targeting_overlay.frequency_cap"
+              ]
+            },
+            "update_name": {
+              "update_fields": [
+                "name"
+              ]
+            },
+            "update_pacing": {
+              "update_fields": [
+                "pacing",
+                "packages[].pacing"
+              ]
+            },
+            "update_packages": {
+              "rollup": [
+                "update_targeting",
+                "update_pacing",
+                "update_bidding",
+                "update_frequency_caps",
+                "reallocate_budget",
+                "remove_packages"
+              ],
+              "update_fields": [
+                "packages[]"
+              ]
+            },
+            "update_targeting": {
+              "update_fields": [
+                "packages[].targeting_overlay",
+                "packages[].keyword_targets_add",
+                "packages[].keyword_targets_remove",
+                "packages[].negative_keywords_add",
+                "packages[].negative_keywords_remove"
+              ]
+            }
+          },
+          "title": "Media Buy Valid Action",
+          "type": "string",
+          "x-deprecated-enum-values": [
+            "update_budget",
+            "update_dates",
+            "update_packages",
+            "sync_creatives"
+          ],
+          "x-deprecated-enum-values-doc": "Coarse legacy values retained for backwards compatibility with 3.x sellers. Each rolls up to one or more finer-grained values published in 3.1 (see `enumMetadata[<value>].rollup`). Removed in 4.0."
+        },
+        {
+          "const": "update_media_buy_frequency_cap",
+          "type": "string"
         }
       ],
       "description": "The action identifier. Accepts every legacy valid_actions value plus structured-only actions such as update_media_buy_frequency_cap.",
@@ -51,15 +259,28 @@
     "allowed_statuses": {
       "description": "Media buy statuses in which this action is permitted. When absent, the action is permitted in all non-terminal statuses (`pending_creatives`, `pending_start`, `active`, `paused`).",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Status of a media buy.",
         "enum": [
+          "pending_creatives",
+          "pending_start",
           "active",
           "paused",
-          "canceled",
-          "rejected",
           "completed",
-          "pending_start",
-          "pending_creatives"
-        ]
+          "rejected",
+          "canceled"
+        ],
+        "enumDescriptions": {
+          "active": "Media buy is currently running",
+          "canceled": "Media buy was terminated before natural completion. Check cancellation.canceled_by to determine whether the buyer or seller initiated.",
+          "completed": "Media buy has finished running",
+          "paused": "Media buy is temporarily paused",
+          "pending_creatives": "**Buyer-side action required.** The media buy is approved by the seller and has no creatives assigned \u2014 the buyer must attach creatives via `sync_creatives` before the buy can serve. Not to be confused with a publisher-side or governance-side approval queue: the seller has already accepted the buy; only the buyer's creative submission is missing. Naming convention: `pending_X` names the lifecycle phase that is next required (here, `creatives`), not a state of waiting on seller/operator approval \u2014 consistent with `pending_start` (waiting for the flight date to begin).",
+          "pending_start": "Media buy is ready to serve and waiting for its flight date to begin.",
+          "rejected": "Media buy was declined by the seller after creation"
+        },
+        "title": "Media Buy Status",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -93,81 +314,111 @@
       },
       "oneOf": [
         {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "anyOf": [
             {
               "required": [
-                "earliest_effective_at"
+                "max_delta_amount"
               ]
             },
             {
               "required": [
-                "latest_effective_at"
+                "max_delta_percent"
               ]
             },
             {
               "required": [
-                "minimum_notice"
+                "min_result_amount"
+              ]
+            },
+            {
+              "required": [
+                "max_result_amount"
               ]
             }
           ],
-          "maxProperties": 4,
           "properties": {
-            "earliest_effective_at": {
-              "format": "date-time",
-              "type": "string"
-            },
             "kind": {
-              "const": "effective_timing"
-            },
-            "latest_effective_at": {
-              "format": "date-time",
+              "const": "budget",
               "type": "string"
             },
-            "minimum_notice": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
-              "description": "Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.",
-              "maxProperties": 2,
+            "max_delta_amount": {
+              "additionalProperties": false,
+              "description": "Maximum absolute amount by which the affected budget may change in the direction named by the action.",
               "properties": {
-                "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
+                "amount": {
+                  "minimum": 0,
+                  "type": "number"
                 },
-                "unit": {
-                  "enum": [
-                    "days",
-                    "hours",
-                    "minutes",
-                    "seconds",
-                    "campaign"
-                  ]
+                "currency": {
+                  "pattern": "^[A-Z]{3}$",
+                  "type": "string"
                 }
               },
               "required": [
-                "interval",
-                "unit"
+                "amount",
+                "currency"
               ],
-              "title": "Duration",
+              "type": "object"
+            },
+            "max_delta_percent": {
+              "description": "Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.",
+              "minimum": 0,
+              "type": "number"
+            },
+            "max_result_amount": {
+              "additionalProperties": false,
+              "description": "Maximum resulting committed value after the change.",
+              "properties": {
+                "amount": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "currency": {
+                  "pattern": "^[A-Z]{3}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "currency"
+              ],
+              "type": "object"
+            },
+            "min_result_amount": {
+              "additionalProperties": false,
+              "description": "Minimum resulting committed value after the change.",
+              "properties": {
+                "amount": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "currency": {
+                  "pattern": "^[A-Z]{3}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "currency"
+              ],
               "type": "object"
             }
           },
           "required": [
             "kind"
           ],
-          "title": "Effective timing constraints",
+          "title": "Budget change constraints",
           "type": "object"
         },
         {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "anyOf": [
+            {
+              "required": [
+                "max_change"
+              ]
+            },
             {
               "required": [
                 "earliest_result"
@@ -180,16 +431,10 @@
             },
             {
               "required": [
-                "max_change"
-              ]
-            },
-            {
-              "required": [
                 "minimum_notice"
               ]
             }
           ],
-          "maxProperties": 5,
           "properties": {
             "earliest_result": {
               "description": "Earliest resulting start or end timestamp accepted for this action.",
@@ -197,7 +442,8 @@
               "type": "string"
             },
             "kind": {
-              "const": "flight"
+              "const": "flight",
+              "type": "string"
             },
             "latest_result": {
               "description": "Latest resulting start or end timestamp accepted for this action.",
@@ -206,11 +452,8 @@
             },
             "max_change": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "Maximum extension, shortening, or shift in the direction named by the action.",
-              "maxProperties": 2,
               "properties": {
                 "interval": {
                   "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -218,13 +461,15 @@
                   "type": "integer"
                 },
                 "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
                   "enum": [
-                    "days",
-                    "hours",
-                    "minutes",
                     "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
                     "campaign"
-                  ]
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -236,11 +481,8 @@
             },
             "minimum_notice": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "Minimum elapsed notice before the requested flight change may take effect.",
-              "maxProperties": 2,
               "properties": {
                 "interval": {
                   "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -248,13 +490,15 @@
                   "type": "integer"
                 },
                 "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
                   "enum": [
-                    "days",
-                    "hours",
-                    "minutes",
                     "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
                     "campaign"
-                  ]
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -272,9 +516,7 @@
           "type": "object"
         },
         {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "anyOf": [
             {
               "required": [
@@ -292,10 +534,10 @@
               ]
             }
           ],
-          "maxProperties": 4,
           "properties": {
             "kind": {
-              "const": "package_count"
+              "const": "package_count",
+              "type": "string"
             },
             "max_additions": {
               "description": "Maximum packages that may be added by one exercise of the right.",
@@ -320,112 +562,71 @@
           "type": "object"
         },
         {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "anyOf": [
             {
               "required": [
-                "max_delta_amount"
+                "minimum_notice"
               ]
             },
             {
               "required": [
-                "max_delta_percent"
+                "earliest_effective_at"
               ]
             },
             {
               "required": [
-                "max_result_amount"
-              ]
-            },
-            {
-              "required": [
-                "min_result_amount"
+                "latest_effective_at"
               ]
             }
           ],
-          "maxProperties": 5,
           "properties": {
+            "earliest_effective_at": {
+              "format": "date-time",
+              "type": "string"
+            },
             "kind": {
-              "const": "budget"
+              "const": "effective_timing",
+              "type": "string"
             },
-            "max_delta_amount": {
-              "additionalProperties": {
-                "not": {}
-              },
-              "description": "Maximum absolute amount by which the affected budget may change in the direction named by the action.",
-              "maxProperties": 2,
+            "latest_effective_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "minimum_notice": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": false,
+              "description": "Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.",
               "properties": {
-                "amount": {
-                  "minimum": 0,
-                  "type": "number"
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
                 },
-                "currency": {
-                  "pattern": "^[A-Z]{3}$",
+                "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+                  "enum": [
+                    "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
+                    "campaign"
+                  ],
                   "type": "string"
                 }
               },
               "required": [
-                "amount",
-                "currency"
+                "interval",
+                "unit"
               ],
-              "type": "object"
-            },
-            "max_delta_percent": {
-              "description": "Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.",
-              "minimum": 0,
-              "type": "number"
-            },
-            "max_result_amount": {
-              "additionalProperties": {
-                "not": {}
-              },
-              "description": "Maximum resulting committed value after the change.",
-              "maxProperties": 2,
-              "properties": {
-                "amount": {
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "currency": {
-                  "pattern": "^[A-Z]{3}$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "currency"
-              ],
-              "type": "object"
-            },
-            "min_result_amount": {
-              "additionalProperties": {
-                "not": {}
-              },
-              "description": "Minimum resulting committed value after the change.",
-              "maxProperties": 2,
-              "properties": {
-                "amount": {
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "currency": {
-                  "pattern": "^[A-Z]{3}$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "currency"
-              ],
+              "title": "Duration",
               "type": "object"
             }
           },
           "required": [
             "kind"
           ],
-          "title": "Budget change constraints",
+          "title": "Effective timing constraints",
           "type": "object"
         }
       ],
@@ -434,12 +635,23 @@
     "modes": {
       "description": "Modes available for this action on this product. A product may declare multiple modes (for example `self_serve` within tolerances, escalating to `requires_approval` outside) \u2014 the buy-side `available_actions[<action>].mode` resolves to the singular mode in effect at mutation time. SDKs that see multiple modes MUST NOT assume which one will fire; they must read the resolved `mode` on the buy.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "How a seller honors a given action on a media buy. Buyers branch on this to decide whether to expect a synchronous response, an automatic-with-fallback flow, or seller-managed asynchronous processing. The mode is declared on each entry of `allowed_actions[]` (product, as `modes[]` array) or `available_actions[]` (buy, as singular `mode`). Requotes that fall outside the current buy envelope are not an action mode in 3.1; sellers return REQUOTE_REQUIRED from update_media_buy instead. Buyer SDKs MUST tolerate unknown future values by treating the affected action as unavailable until they re-fetch the product or buy and inspect the current `available_actions[]` / `allowed_actions[]` metadata.",
         "enum": [
           "self_serve",
+          "conditional_self_serve",
           "seller_managed",
-          "requires_approval",
-          "conditional_self_serve"
-        ]
+          "requires_approval"
+        ],
+        "enumDescriptions": {
+          "conditional_self_serve": "Seller completes the action automatically within declared tolerances and uses seller-managed processing outside them. Constraint metadata defining the tolerances is out of scope for v1; buyers cannot statically predict which path will apply unless negotiated terms define it.",
+          "requires_approval": "Legacy 3.x mode indicating an approval-dependent async path. New declarations SHOULD use seller_managed so the protocol describes externally meaningful processing without exposing internal workflow.",
+          "self_serve": "Seller honors the request synchronously without approval or conditional checks. Buyer SDKs dispatch the task declared on the available action; legacy entries without task metadata use update_media_buy.",
+          "seller_managed": "Asynchronous seller-managed processing. Buyer SDKs use the standard submitted, working, and input-required lifecycle and do not infer whether a person, model, queue, or other internal control is involved."
+        },
+        "title": "Media Buy Action Mode",
+        "type": "string",
+        "x-extensible": true
       },
       "minItems": 1,
       "type": "array",
@@ -447,11 +659,8 @@
     },
     "sla": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "Optional SLA commitment for this action on this product. Absence means no commitment.",
-      "maxProperties": 2,
       "properties": {
         "completion_max": {
           "description": "Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",

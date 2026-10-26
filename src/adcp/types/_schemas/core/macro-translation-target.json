@@ -128,83 +128,164 @@
       "then": {
         "properties": {
           "dialect_semantic": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Standardized macro placeholders for dynamic value substitution in creative tracking URLs. Macros are replaced with actual values at impression time. See docs/creative/universal-macros.mdx for detailed documentation.",
             "enum": [
+              "MEDIA_BUY_ID",
+              "PACKAGE_ID",
+              "CREATIVE_ID",
+              "CACHEBUSTER",
+              "TIMESTAMP",
+              "CLICK_URL",
+              "GDPR",
+              "GDPR_CONSENT",
+              "US_PRIVACY",
+              "GPP_STRING",
+              "GPP_SID",
+              "IP_ADDRESS",
+              "LIMIT_AD_TRACKING",
+              "DEVICE_TYPE",
               "OS",
+              "OS_VERSION",
+              "DEVICE_MAKE",
+              "DEVICE_MODEL",
+              "USER_AGENT",
+              "APP_BUNDLE",
+              "APP_NAME",
+              "COUNTRY",
+              "REGION",
+              "CITY",
+              "ZIP",
               "DMA",
               "LAT",
-              "SKU",
-              "ZIP",
-              "AXEM",
-              "CITY",
-              "GDPR",
-              "GTIN",
               "LONG",
-              "TMPX",
-              "DOMAIN",
-              "JOB_ID",
-              "REGION",
-              "COUNTRY",
-              "GPP_SID",
-              "AD_WIDTH",
-              "APP_NAME",
-              "HOTEL_ID",
-              "KEYWORDS",
-              "PAGE_URL",
-              "POD_SIZE",
-              "REFERRER",
-              "STORE_ID",
-              "VIDEO_ID",
-              "AD_HEIGHT",
-              "CLICK_URL",
               "DEVICE_ID",
-              "FLIGHT_ID",
-              "ITEM_NAME",
-              "TIMESTAMP",
-              "APP_BUNDLE",
-              "CATALOG_ID",
-              "GPP_STRING",
-              "IP_ADDRESS",
-              "ITEM_PRICE",
-              "LISTING_ID",
-              "OS_VERSION",
-              "PACKAGE_ID",
-              "PROGRAM_ID",
-              "STATION_ID",
-              "USER_AGENT",
-              "US_PRIVACY",
-              "VEHICLE_ID",
-              "AD_BREAK_ID",
-              "APP_ITEM_ID",
-              "CACHEBUSTER",
-              "CREATIVE_ID",
-              "DEVICE_MAKE",
-              "DEVICE_TYPE",
-              "OFFERING_ID",
-              "VIDEO_TITLE",
-              "DEVICE_MODEL",
-              "GDPR_CONSENT",
-              "ITEM_TAGLINE",
-              "MEDIA_BUY_ID",
-              "PLACEMENT_ID",
-              "PLAYER_WIDTH",
-              "POD_POSITION",
-              "CONTENT_GENRE",
-              "FOLD_POSITION",
-              "IMPRESSION_ID",
-              "PLAYER_HEIGHT",
-              "AUDIO_DURATION",
-              "CONTENT_RATING",
-              "DESTINATION_ID",
               "DEVICE_ID_TYPE",
-              "INSTALLMENT_ID",
-              "VIDEO_CATEGORY",
+              "DOMAIN",
+              "PAGE_URL",
+              "REFERRER",
+              "KEYWORDS",
+              "PLACEMENT_ID",
+              "FOLD_POSITION",
+              "AD_WIDTH",
+              "AD_HEIGHT",
+              "VIDEO_ID",
+              "VIDEO_TITLE",
               "VIDEO_DURATION",
+              "VIDEO_CATEGORY",
+              "CONTENT_GENRE",
+              "CONTENT_RATING",
+              "PLAYER_WIDTH",
+              "PLAYER_HEIGHT",
+              "POD_POSITION",
+              "POD_SIZE",
+              "AD_BREAK_ID",
+              "STATION_ID",
               "COLLECTION_NAME",
-              "ITEM_DESCRIPTION",
-              "LIMIT_AD_TRACKING",
+              "INSTALLMENT_ID",
+              "AUDIO_DURATION",
+              "TMPX",
+              "IMPRESSION_ID",
+              "AXEM",
+              "CATALOG_ID",
+              "SKU",
+              "GTIN",
+              "OFFERING_ID",
+              "JOB_ID",
+              "HOTEL_ID",
+              "FLIGHT_ID",
+              "VEHICLE_ID",
+              "LISTING_ID",
+              "STORE_ID",
+              "PROGRAM_ID",
+              "DESTINATION_ID",
               "CREATIVE_VARIANT_ID",
+              "APP_ITEM_ID",
+              "ITEM_NAME",
+              "ITEM_DESCRIPTION",
+              "ITEM_TAGLINE",
+              "ITEM_PRICE",
               "ITEM_PRICE_CURRENCY"
-            ]
+            ],
+            "enumDescriptions": {
+              "AD_BREAK_ID": "Unique ad break identifier",
+              "AD_HEIGHT": "Ad slot height in pixels",
+              "AD_WIDTH": "Ad slot width in pixels",
+              "APP_BUNDLE": "App bundle ID (domain or numeric)",
+              "APP_ITEM_ID": "Mobile app identifier for the catalog item being rendered",
+              "APP_NAME": "Human-readable app name",
+              "AUDIO_DURATION": "Audio content duration in seconds",
+              "AXEM": "AXE contextual metadata (encoded blob). Legacy \u2014 in TMP, use Offer creative_data for dynamic creative values and TMPX for exposure tracking.",
+              "CACHEBUSTER": "Random number to prevent caching",
+              "CATALOG_ID": "Buyer-defined catalog identifier from the catalog's catalog_id field",
+              "CITY": "City name",
+              "CLICK_URL": "Publisher's click tracking URL (auto-inserted by sales agent)",
+              "COLLECTION_NAME": "Program or collection name",
+              "CONTENT_GENRE": "Content genre (news, sports, comedy, etc.)",
+              "CONTENT_RATING": "Content rating (G, PG, TV-14, etc.)",
+              "COUNTRY": "ISO 3166-1 alpha-2 country code",
+              "CREATIVE_ID": "AdCP creative identifier",
+              "CREATIVE_VARIANT_ID": "Seller-assigned creative variant identifier, passed through at serve time",
+              "DESTINATION_ID": "Travel destination identifier for the catalog item being rendered",
+              "DEVICE_ID": "Mobile advertising ID (IDFA/AAID)",
+              "DEVICE_ID_TYPE": "Type of device ID (idfa, aaid)",
+              "DEVICE_MAKE": "Device manufacturer",
+              "DEVICE_MODEL": "Device model identifier",
+              "DEVICE_TYPE": "Device category (mobile, tablet, desktop, ctv, dooh)",
+              "DMA": "Nielsen DMA code (US TV markets)",
+              "DOMAIN": "Domain where ad is shown",
+              "FLIGHT_ID": "Flight route identifier for the catalog item being rendered",
+              "FOLD_POSITION": "Position relative to fold (above_fold, below_fold)",
+              "GDPR": "GDPR applicability flag (1=applies, 0=doesn't apply)",
+              "GDPR_CONSENT": "IAB TCF 2.0 consent string",
+              "GPP_SID": "GPP Section ID(s) indicating applicable privacy framework sections",
+              "GPP_STRING": "Global Privacy Platform consent string",
+              "GTIN": "Global Trade Item Number for the catalog item being rendered",
+              "HOTEL_ID": "Hotel property identifier for the catalog item being rendered",
+              "IMPRESSION_ID": "Opaque, collision-resistant identifier for one impression opportunity. Used for impression deduplication, cross-vendor reconciliation, pixel-retry dedup, and TMP cross-identity exposure dedup. Minted by the publisher, ad-decision layer, or buyer at {TMPX} decode; required upstream for TMP context-only impressions where {TMPX} is absent.",
+              "INSTALLMENT_ID": "Installment identifier (podcast episode, print issue, etc.)",
+              "IP_ADDRESS": "User IP address (often masked for privacy, may return empty)",
+              "ITEM_DESCRIPTION": "Description of the catalog item being rendered (catalog_field: description). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+              "ITEM_NAME": "Name/title of the catalog item being rendered (catalog_field: name). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+              "ITEM_PRICE": "Price amount of the catalog item being rendered (catalog_field: price.amount). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+              "ITEM_PRICE_CURRENCY": "ISO 4217 currency code of the catalog item being rendered (catalog_field: price.currency). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+              "ITEM_TAGLINE": "Short promotional tagline of the catalog item being rendered (catalog_field: tagline). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+              "JOB_ID": "Job posting identifier for the catalog item being rendered",
+              "KEYWORDS": "Page keywords (comma-separated)",
+              "LAT": "Latitude coordinate",
+              "LIMIT_AD_TRACKING": "Limit Ad Tracking enabled (1=limited, 0=allowed)",
+              "LISTING_ID": "Real estate listing identifier for the catalog item being rendered",
+              "LONG": "Longitude coordinate",
+              "MEDIA_BUY_ID": "AdCP media buy identifier",
+              "OFFERING_ID": "AdCP offering identifier for the catalog item being rendered",
+              "OS": "Operating system (iOS, Android, tvOS, Roku, etc.)",
+              "OS_VERSION": "OS version number",
+              "PACKAGE_ID": "AdCP package identifier",
+              "PAGE_URL": "Full page URL (encoded)",
+              "PLACEMENT_ID": "Global Placement ID (IAB standard)",
+              "PLAYER_HEIGHT": "Video player height in pixels",
+              "PLAYER_WIDTH": "Video player width in pixels",
+              "POD_POSITION": "Position within ad break",
+              "POD_SIZE": "Total ads in the ad break",
+              "PROGRAM_ID": "Education program identifier for the catalog item being rendered",
+              "REFERRER": "HTTP referrer URL",
+              "REGION": "State/province/region code",
+              "SKU": "Product SKU identifier for the catalog item being rendered",
+              "STATION_ID": "Radio station or podcast identifier",
+              "STORE_ID": "Store location identifier for the catalog item being rendered",
+              "TIMESTAMP": "Unix timestamp in milliseconds",
+              "TMPX": "TMP exposure token \u2014 HPKE-encrypted identity tokens for per-user exposure tracking. Produced by Identity Match, substituted into creative tracking URLs, received by the buyer's impression pixel.",
+              "USER_AGENT": "Full user agent string",
+              "US_PRIVACY": "US Privacy (CCPA) string",
+              "VEHICLE_ID": "Vehicle listing identifier for the catalog item being rendered",
+              "VIDEO_CATEGORY": "IAB content category",
+              "VIDEO_DURATION": "Content duration in seconds",
+              "VIDEO_ID": "Content video identifier",
+              "VIDEO_TITLE": "Content video title",
+              "ZIP": "Postal code"
+            },
+            "title": "Universal Macro",
+            "type": "string"
           },
           "mapping_status": {
             "const": "verified_universal"
@@ -266,13 +347,24 @@
   "description": "The exact downstream-native token produced by a `translate_to_native` operation. The output asset replaces the source declaration with a declaration for this token and its next operation.",
   "properties": {
     "dialect": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Governed family for a creative macro token. `vendor` is qualified by an authority-controlled namespace and immutable revision on the declaration/capability; AdCP does not enumerate companies as dialects. `unknown` is declaration-only and always byte-preserved.",
       "enum": [
         "adcp",
-        "vendor",
-        "unknown",
         "iab_vast",
-        "iab_daast"
-      ]
+        "iab_daast",
+        "vendor",
+        "unknown"
+      ],
+      "enumDescriptions": {
+        "adcp": "AdCP universal macro syntax and semantics.",
+        "iab_daast": "IAB DAAST macro syntax, qualified by the referenced specification/registry revision.",
+        "iab_vast": "IAB VAST macro syntax, qualified by the referenced live-registry revision.",
+        "unknown": "The token namespace cannot be established. Preserve the token unchanged and never advertise it as resolvable.",
+        "vendor": "A vendor- or platform-owned macro namespace, qualified by its authoritative URI and immutable revision."
+      },
+      "title": "Macro Dialect Family",
+      "type": "string"
     },
     "dialect_namespace": {
       "format": "uri",
@@ -288,106 +380,67 @@
     },
     "encoding": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "allOf": [
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "kind": {
-                    "const": "iab_vast_uri"
-                  }
-                },
-                "required": [
-                  "kind"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
             },
-            {
-              "properties": {
-                "depth": {
-                  "const": 1
-                },
-                "kind": {
-                  "const": "iab_vast_uri"
-                }
-              },
-              "required": [
-                "kind"
-              ]
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "depth": {
+                "const": 0
+              }
             }
-          ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "kind": {
-                    "const": "none"
-                  }
-                },
-                "required": [
-                  "kind"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "rfc3986"
+              }
             },
-            {
-              "properties": {
-                "depth": {
-                  "const": 0
-                },
-                "kind": {
-                  "const": "none"
-                }
-              },
-              "required": [
-                "kind"
-              ]
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "depth": {
+                "minimum": 1
+              }
             }
-          ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "kind": {
-                    "const": "rfc3986"
-                  }
-                },
-                "required": [
-                  "kind"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "iab_vast_uri"
+              }
             },
-            {
-              "properties": {
-                "depth": {
-                  "minimum": 1
-                },
-                "kind": {
-                  "const": "rfc3986"
-                }
-              },
-              "required": [
-                "kind"
-              ]
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "depth": {
+                "const": 1
+              }
             }
-          ]
+          }
         }
       ],
       "description": "Exact encoding profile applied to a concrete substitution value. `rfc3986` encodes UTF-8 bytes outside the RFC 3986 unreserved set once per depth. `iab_vast_uri` follows the cited IAB VAST macro registry, including its array serialization rules, and is exactly one pass.",
-      "maxProperties": 2,
       "properties": {
         "depth": {
           "minimum": 0,
@@ -398,118 +451,220 @@
             "none",
             "rfc3986",
             "iab_vast_uri"
-          ]
+          ],
+          "type": "string"
         }
       },
       "required": [
-        "depth",
-        "kind"
+        "kind",
+        "depth"
       ],
       "title": "Macro Encoding",
       "type": "object"
     },
     "mapping_status": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Evidence level connecting a dialect-local macro meaning to the AdCP universal vocabulary.",
       "enum": [
-        "unresolved",
+        "verified_universal",
         "dialect_defined",
-        "verified_universal"
-      ]
+        "unresolved"
+      ],
+      "enumDescriptions": {
+        "dialect_defined": "The dialect defines the token, but no AdCP universal semantic is asserted.",
+        "unresolved": "No safe meaning is established; the token remains byte-preserved.",
+        "verified_universal": "The cited dialect mapping verifies an AdCP universal semantic."
+      },
+      "title": "Macro Mapping Status",
+      "type": "string"
     },
     "next_operation": {
       "const": "resolve_value",
       "type": "string"
     },
     "performed_by": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Protocol role authorized to translate the token or bind its concrete value.",
       "enum": [
         "buyer",
-        "seller",
         "creative_agent",
+        "seller",
         "request_executor",
         "source_ad_server"
-      ]
+      ],
+      "enumDescriptions": {
+        "buyer": "The buyer agent acts before submission.",
+        "creative_agent": "The creative agent executing build_creative, preview_creative, or validate_input performs the declared build-time operation.",
+        "request_executor": "The component executing the governed request acts, whether a client player, publisher player, SSAI service, or another request executor.",
+        "seller": "The AdCP seller or its execution adapter acts during trafficking or serving.",
+        "source_ad_server": "The originating creative/ad server acts on its own native token."
+      },
+      "title": "Macro Processing Actor",
+      "type": "string"
     },
     "token": {
       "minLength": 1,
       "type": "string"
     },
     "universal_semantic": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Standardized macro placeholders for dynamic value substitution in creative tracking URLs. Macros are replaced with actual values at impression time. See docs/creative/universal-macros.mdx for detailed documentation.",
       "enum": [
+        "MEDIA_BUY_ID",
+        "PACKAGE_ID",
+        "CREATIVE_ID",
+        "CACHEBUSTER",
+        "TIMESTAMP",
+        "CLICK_URL",
+        "GDPR",
+        "GDPR_CONSENT",
+        "US_PRIVACY",
+        "GPP_STRING",
+        "GPP_SID",
+        "IP_ADDRESS",
+        "LIMIT_AD_TRACKING",
+        "DEVICE_TYPE",
         "OS",
+        "OS_VERSION",
+        "DEVICE_MAKE",
+        "DEVICE_MODEL",
+        "USER_AGENT",
+        "APP_BUNDLE",
+        "APP_NAME",
+        "COUNTRY",
+        "REGION",
+        "CITY",
+        "ZIP",
         "DMA",
         "LAT",
-        "SKU",
-        "ZIP",
-        "AXEM",
-        "CITY",
-        "GDPR",
-        "GTIN",
         "LONG",
-        "TMPX",
-        "DOMAIN",
-        "JOB_ID",
-        "REGION",
-        "COUNTRY",
-        "GPP_SID",
-        "AD_WIDTH",
-        "APP_NAME",
-        "HOTEL_ID",
-        "KEYWORDS",
-        "PAGE_URL",
-        "POD_SIZE",
-        "REFERRER",
-        "STORE_ID",
-        "VIDEO_ID",
-        "AD_HEIGHT",
-        "CLICK_URL",
         "DEVICE_ID",
-        "FLIGHT_ID",
-        "ITEM_NAME",
-        "TIMESTAMP",
-        "APP_BUNDLE",
-        "CATALOG_ID",
-        "GPP_STRING",
-        "IP_ADDRESS",
-        "ITEM_PRICE",
-        "LISTING_ID",
-        "OS_VERSION",
-        "PACKAGE_ID",
-        "PROGRAM_ID",
-        "STATION_ID",
-        "USER_AGENT",
-        "US_PRIVACY",
-        "VEHICLE_ID",
-        "AD_BREAK_ID",
-        "APP_ITEM_ID",
-        "CACHEBUSTER",
-        "CREATIVE_ID",
-        "DEVICE_MAKE",
-        "DEVICE_TYPE",
-        "OFFERING_ID",
-        "VIDEO_TITLE",
-        "DEVICE_MODEL",
-        "GDPR_CONSENT",
-        "ITEM_TAGLINE",
-        "MEDIA_BUY_ID",
-        "PLACEMENT_ID",
-        "PLAYER_WIDTH",
-        "POD_POSITION",
-        "CONTENT_GENRE",
-        "FOLD_POSITION",
-        "IMPRESSION_ID",
-        "PLAYER_HEIGHT",
-        "AUDIO_DURATION",
-        "CONTENT_RATING",
-        "DESTINATION_ID",
         "DEVICE_ID_TYPE",
-        "INSTALLMENT_ID",
-        "VIDEO_CATEGORY",
+        "DOMAIN",
+        "PAGE_URL",
+        "REFERRER",
+        "KEYWORDS",
+        "PLACEMENT_ID",
+        "FOLD_POSITION",
+        "AD_WIDTH",
+        "AD_HEIGHT",
+        "VIDEO_ID",
+        "VIDEO_TITLE",
         "VIDEO_DURATION",
+        "VIDEO_CATEGORY",
+        "CONTENT_GENRE",
+        "CONTENT_RATING",
+        "PLAYER_WIDTH",
+        "PLAYER_HEIGHT",
+        "POD_POSITION",
+        "POD_SIZE",
+        "AD_BREAK_ID",
+        "STATION_ID",
         "COLLECTION_NAME",
-        "ITEM_DESCRIPTION",
-        "LIMIT_AD_TRACKING",
+        "INSTALLMENT_ID",
+        "AUDIO_DURATION",
+        "TMPX",
+        "IMPRESSION_ID",
+        "AXEM",
+        "CATALOG_ID",
+        "SKU",
+        "GTIN",
+        "OFFERING_ID",
+        "JOB_ID",
+        "HOTEL_ID",
+        "FLIGHT_ID",
+        "VEHICLE_ID",
+        "LISTING_ID",
+        "STORE_ID",
+        "PROGRAM_ID",
+        "DESTINATION_ID",
         "CREATIVE_VARIANT_ID",
+        "APP_ITEM_ID",
+        "ITEM_NAME",
+        "ITEM_DESCRIPTION",
+        "ITEM_TAGLINE",
+        "ITEM_PRICE",
         "ITEM_PRICE_CURRENCY"
-      ]
+      ],
+      "enumDescriptions": {
+        "AD_BREAK_ID": "Unique ad break identifier",
+        "AD_HEIGHT": "Ad slot height in pixels",
+        "AD_WIDTH": "Ad slot width in pixels",
+        "APP_BUNDLE": "App bundle ID (domain or numeric)",
+        "APP_ITEM_ID": "Mobile app identifier for the catalog item being rendered",
+        "APP_NAME": "Human-readable app name",
+        "AUDIO_DURATION": "Audio content duration in seconds",
+        "AXEM": "AXE contextual metadata (encoded blob). Legacy \u2014 in TMP, use Offer creative_data for dynamic creative values and TMPX for exposure tracking.",
+        "CACHEBUSTER": "Random number to prevent caching",
+        "CATALOG_ID": "Buyer-defined catalog identifier from the catalog's catalog_id field",
+        "CITY": "City name",
+        "CLICK_URL": "Publisher's click tracking URL (auto-inserted by sales agent)",
+        "COLLECTION_NAME": "Program or collection name",
+        "CONTENT_GENRE": "Content genre (news, sports, comedy, etc.)",
+        "CONTENT_RATING": "Content rating (G, PG, TV-14, etc.)",
+        "COUNTRY": "ISO 3166-1 alpha-2 country code",
+        "CREATIVE_ID": "AdCP creative identifier",
+        "CREATIVE_VARIANT_ID": "Seller-assigned creative variant identifier, passed through at serve time",
+        "DESTINATION_ID": "Travel destination identifier for the catalog item being rendered",
+        "DEVICE_ID": "Mobile advertising ID (IDFA/AAID)",
+        "DEVICE_ID_TYPE": "Type of device ID (idfa, aaid)",
+        "DEVICE_MAKE": "Device manufacturer",
+        "DEVICE_MODEL": "Device model identifier",
+        "DEVICE_TYPE": "Device category (mobile, tablet, desktop, ctv, dooh)",
+        "DMA": "Nielsen DMA code (US TV markets)",
+        "DOMAIN": "Domain where ad is shown",
+        "FLIGHT_ID": "Flight route identifier for the catalog item being rendered",
+        "FOLD_POSITION": "Position relative to fold (above_fold, below_fold)",
+        "GDPR": "GDPR applicability flag (1=applies, 0=doesn't apply)",
+        "GDPR_CONSENT": "IAB TCF 2.0 consent string",
+        "GPP_SID": "GPP Section ID(s) indicating applicable privacy framework sections",
+        "GPP_STRING": "Global Privacy Platform consent string",
+        "GTIN": "Global Trade Item Number for the catalog item being rendered",
+        "HOTEL_ID": "Hotel property identifier for the catalog item being rendered",
+        "IMPRESSION_ID": "Opaque, collision-resistant identifier for one impression opportunity. Used for impression deduplication, cross-vendor reconciliation, pixel-retry dedup, and TMP cross-identity exposure dedup. Minted by the publisher, ad-decision layer, or buyer at {TMPX} decode; required upstream for TMP context-only impressions where {TMPX} is absent.",
+        "INSTALLMENT_ID": "Installment identifier (podcast episode, print issue, etc.)",
+        "IP_ADDRESS": "User IP address (often masked for privacy, may return empty)",
+        "ITEM_DESCRIPTION": "Description of the catalog item being rendered (catalog_field: description). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_NAME": "Name/title of the catalog item being rendered (catalog_field: name). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_PRICE": "Price amount of the catalog item being rendered (catalog_field: price.amount). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_PRICE_CURRENCY": "ISO 4217 currency code of the catalog item being rendered (catalog_field: price.currency). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "ITEM_TAGLINE": "Short promotional tagline of the catalog item being rendered (catalog_field: tagline). Catalog content macro \u2014 scalar text value substituted under the catalog-item substitution-safety rules.",
+        "JOB_ID": "Job posting identifier for the catalog item being rendered",
+        "KEYWORDS": "Page keywords (comma-separated)",
+        "LAT": "Latitude coordinate",
+        "LIMIT_AD_TRACKING": "Limit Ad Tracking enabled (1=limited, 0=allowed)",
+        "LISTING_ID": "Real estate listing identifier for the catalog item being rendered",
+        "LONG": "Longitude coordinate",
+        "MEDIA_BUY_ID": "AdCP media buy identifier",
+        "OFFERING_ID": "AdCP offering identifier for the catalog item being rendered",
+        "OS": "Operating system (iOS, Android, tvOS, Roku, etc.)",
+        "OS_VERSION": "OS version number",
+        "PACKAGE_ID": "AdCP package identifier",
+        "PAGE_URL": "Full page URL (encoded)",
+        "PLACEMENT_ID": "Global Placement ID (IAB standard)",
+        "PLAYER_HEIGHT": "Video player height in pixels",
+        "PLAYER_WIDTH": "Video player width in pixels",
+        "POD_POSITION": "Position within ad break",
+        "POD_SIZE": "Total ads in the ad break",
+        "PROGRAM_ID": "Education program identifier for the catalog item being rendered",
+        "REFERRER": "HTTP referrer URL",
+        "REGION": "State/province/region code",
+        "SKU": "Product SKU identifier for the catalog item being rendered",
+        "STATION_ID": "Radio station or podcast identifier",
+        "STORE_ID": "Store location identifier for the catalog item being rendered",
+        "TIMESTAMP": "Unix timestamp in milliseconds",
+        "TMPX": "TMP exposure token \u2014 HPKE-encrypted identity tokens for per-user exposure tracking. Produced by Identity Match, substituted into creative tracking URLs, received by the buyer's impression pixel.",
+        "USER_AGENT": "Full user agent string",
+        "US_PRIVACY": "US Privacy (CCPA) string",
+        "VEHICLE_ID": "Vehicle listing identifier for the catalog item being rendered",
+        "VIDEO_CATEGORY": "IAB content category",
+        "VIDEO_DURATION": "Content duration in seconds",
+        "VIDEO_ID": "Content video identifier",
+        "VIDEO_TITLE": "Content video title",
+        "ZIP": "Postal code"
+      },
+      "title": "Universal Macro",
+      "type": "string"
     }
   },
   "required": [

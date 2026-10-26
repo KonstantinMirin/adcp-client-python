@@ -158,12 +158,16 @@
     "consent_basis": {
       "description": "Declared GDPR Article 6 lawful basis or consent basis under which this signal's data is processed. For non-GDPR regimes, use countries, policy_categories, and disclosure fields to describe jurisdiction-specific obligations unless a future enum value applies.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Common GDPR lawful bases relevant to advertising. Covers the Article 6(1) bases used in programmatic advertising contexts.",
         "enum": [
           "consent",
+          "legitimate_interest",
           "contract",
-          "legal_obligation",
-          "legitimate_interest"
-        ]
+          "legal_obligation"
+        ],
+        "title": "Consent Basis",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array"
@@ -325,29 +329,29 @@
     },
     "demographic_predicate": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Authoritative machine-readable demographic meaning for this signal. Signal names and taxonomy labels alone never establish exact demographic equivalence. Signals carrying this field MUST also declare restricted_attributes including age.",
       "properties": {
         "age": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "anyOf": [
             {
               "required": [
-                "max"
+                "min"
               ]
             },
             {
               "required": [
-                "min"
+                "max"
               ]
             }
           ],
           "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
           "properties": {
             "include_unknown": {
-              "enum": [
-                false,
-                true
-              ]
+              "description": "Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.",
+              "type": "boolean"
             },
             "max": {
               "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
@@ -452,12 +456,10 @@
         },
         "disclosure": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
-          "anyOf": [
+          "additionalProperties": false,
+          "allOf": [
             {
-              "not": {
+              "if": {
                 "properties": {
                   "required": {
                     "const": true
@@ -465,41 +467,31 @@
                 },
                 "required": [
                   "required"
-                ],
-                "type": "object"
+                ]
               },
-              "type": "object"
-            },
-            {
-              "properties": {
-                "required": {
-                  "const": true
-                }
-              },
-              "required": [
-                "jurisdictions",
-                "required"
-              ]
+              "then": {
+                "required": [
+                  "jurisdictions"
+                ]
+              }
             }
           ],
           "description": "Signal/modeling-specific disclosure requirements and jurisdictional notes. This is not creative provenance render guidance.",
-          "maxProperties": 3,
           "properties": {
             "jurisdictions": {
               "description": "Jurisdictions where a modeling or AI-use disclosure applies.",
               "items": {
-                "additionalProperties": {
-                  "not": {}
-                },
-                "maxProperties": 6,
+                "additionalProperties": false,
                 "properties": {
                   "audience": {
+                    "description": "Primary audience for this disclosure entry.",
                     "enum": [
                       "buyer",
-                      "public",
+                      "data_subject",
                       "regulator",
-                      "data_subject"
-                    ]
+                      "public"
+                    ],
+                    "type": "string"
                   },
                   "country": {
                     "description": "ISO 3166-1 alpha-2 country code.",
@@ -539,10 +531,8 @@
               "type": "string"
             },
             "required": {
-              "enum": [
-                false,
-                true
-              ]
+              "description": "The provider's claim that a modeling or AI-use disclosure is required for this signal in at least one applicable jurisdiction. This is a declared compliance signal, not a protocol-level legal determination.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -703,30 +693,50 @@
       "type": "string"
     },
     "resolution_method": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "How the subject is resolved at decision time.",
       "enum": [
-        "mixed",
+        "deterministic_id",
+        "probabilistic_device",
         "browser",
         "geographic",
         "content_signal",
-        "deterministic_id",
-        "probabilistic_device"
-      ]
+        "mixed"
+      ],
+      "title": "Audience Resolution Method",
+      "type": "string"
     },
     "restricted_attributes": {
       "description": "Restricted attribute categories this signal touches. Data providers SHOULD declare these so governance agents can structurally match signals against a plan's restricted_attributes without relying on semantic inference from the signal name or description.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Personal data categories that may be restricted from use in audience targeting. Combines GDPR Article 9 special categories with US civil-rights protected classes (FHA familial_status, ADEA age). Used in two places: (1) on campaign plans via restricted_attributes to declare which categories are prohibited, and (2) on signal-definition.json via restricted_attributes to declare which categories a signal touches. Governance agents match plan restrictions against signal declarations for structural validation.",
         "enum": [
-          "age",
+          "racial_ethnic_origin",
+          "political_opinions",
+          "religious_beliefs",
+          "trade_union_membership",
           "health_data",
+          "sex_life_sexual_orientation",
           "genetic_data",
           "biometric_data",
-          "familial_status",
-          "religious_beliefs",
-          "political_opinions",
-          "racial_ethnic_origin",
-          "trade_union_membership",
-          "sex_life_sexual_orientation"
-        ]
+          "age",
+          "familial_status"
+        ],
+        "enumDescriptions": {
+          "age": "A person's age or age range. US ADEA (40+) for employment, US FHA for housing, EU AVMSD for content-directed targeting. Restricted for regulated verticals.",
+          "biometric_data": "Biometric data used for identification. GDPR Article 9(1).",
+          "familial_status": "Whether a household includes children under 18, a pregnant person, or a person seeking custody of a minor. US FHA protected class.",
+          "genetic_data": "Genetic data. GDPR Article 9(1), US GINA.",
+          "health_data": "Health status, medical conditions, disability. GDPR Article 9(1), US ADA protected class. Includes inferred health data from behavioral signals.",
+          "political_opinions": "Political opinions or affiliations. GDPR Article 9(1). EU DSA Article 26 prohibits targeting on this category.",
+          "racial_ethnic_origin": "Race or ethnic origin. GDPR Article 9(1), US FHA/ECOA/EEOC protected class.",
+          "religious_beliefs": "Religious or philosophical beliefs. GDPR Article 9(1), US FHA/EEOC protected class.",
+          "sex_life_sexual_orientation": "Sex life or sexual orientation. GDPR Article 9(1).",
+          "trade_union_membership": "Trade union membership. GDPR Article 9(1)."
+        },
+        "title": "Restricted Attribute",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array"
@@ -737,13 +747,17 @@
       "type": "string"
     },
     "subject_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "What kind of subject this signal characterizes.",
       "enum": [
-        "none",
-        "business",
+        "individual",
         "household",
+        "business",
         "contextual",
-        "individual"
-      ]
+        "none"
+      ],
+      "title": "Audience Subject Type",
+      "type": "string"
     },
     "tags": {
       "description": "Tags for grouping and filtering this domain's published signal definitions",
@@ -856,11 +870,20 @@
       "type": "object"
     },
     "value_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "The data type of this signal's values",
       "enum": [
         "binary",
-        "numeric",
-        "categorical"
-      ]
+        "categorical",
+        "numeric"
+      ],
+      "title": "Signal Value Type",
+      "type": "string",
+      "x-enum-descriptions": {
+        "binary": "Boolean signal - user either matches or doesn't (e.g., 'likely_tesla_buyers')",
+        "categorical": "Signal with discrete values from a defined set (e.g., 'vehicle_ownership' with values 'tesla', 'bmw', etc.)",
+        "numeric": "Signal with continuous numeric values within a range (e.g., 'purchase_propensity' from 0.0 to 1.0)"
+      }
     }
   },
   "required": [

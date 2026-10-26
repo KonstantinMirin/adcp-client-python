@@ -157,11 +157,7 @@
     "primary_keys": {
       "description": "Ordered scalar fields used to sort rows and reject duplicate logical rows. This MUST equal the offering's primary_keys.",
       "items": {
-        "maxLength": 128,
-        "minLength": 1,
-        "title": "Reporting Primary Key",
-        "type": "string",
-        "x-adcp-model-context-inline": true
+        "$ref": "#/definitions/ReportingPrimaryKey"
       },
       "minItems": 1,
       "type": "array",

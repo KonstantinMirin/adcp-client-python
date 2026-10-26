@@ -73,6 +73,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
@@ -117,122 +118,9 @@
         },
         "oneOf": [
           {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 2,
+            "additionalProperties": false,
             "properties": {
-              "description": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "kind": {
-                "const": "account_setup"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 2,
-            "properties": {
-              "description": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "kind": {
-                "const": "creative_restriction"
-              }
-            },
-            "required": [
-              "description",
-              "kind"
-            ]
-          },
-          {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 2,
-            "properties": {
-              "description": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "kind": {
-                "const": "destination_restriction"
-              }
-            },
-            "required": [
-              "description",
-              "kind"
-            ]
-          },
-          {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 2,
-            "properties": {
-              "description": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "kind": {
-                "const": "prior_authorization"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 2,
-            "properties": {
-              "description": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "kind": {
-                "const": "sales_assisted"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 2,
-            "properties": {
-              "description": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "kind": {
-                "const": "transparency_reporting"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 3,
-            "properties": {
-              "credential": {
+              "declaration": {
                 "minLength": 1,
                 "type": "string"
               },
@@ -241,7 +129,8 @@
                 "type": "string"
               },
               "kind": {
-                "const": "certification"
+                "const": "category_declaration",
+                "type": "string"
               }
             },
             "required": [
@@ -249,21 +138,19 @@
             ]
           },
           {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 3,
+            "additionalProperties": false,
             "properties": {
-              "credential": {
-                "minLength": 1,
-                "type": "string"
-              },
               "description": {
                 "minLength": 1,
                 "type": "string"
               },
               "kind": {
-                "const": "license"
+                "const": "advertiser_verification",
+                "type": "string"
+              },
+              "verification_scheme": {
+                "minLength": 1,
+                "type": "string"
               }
             },
             "required": [
@@ -271,10 +158,7 @@
             ]
           },
           {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 3,
+            "additionalProperties": false,
             "properties": {
               "criteria": {
                 "description": "Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.",
@@ -291,19 +175,17 @@
                 "type": "string"
               },
               "kind": {
-                "const": "advertiser_eligibility"
+                "const": "advertiser_eligibility",
+                "type": "string"
               }
             },
             "required": [
-              "criteria",
-              "kind"
+              "kind",
+              "criteria"
             ]
           },
           {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 3,
+            "additionalProperties": false,
             "properties": {
               "criteria": {
                 "description": "Stable restrictions such as no_foreign_funding or sponsor_identity_required.",
@@ -320,21 +202,19 @@
                 "type": "string"
               },
               "kind": {
-                "const": "funding_restriction"
+                "const": "funding_restriction",
+                "type": "string"
               }
             },
             "required": [
-              "criteria",
-              "kind"
+              "kind",
+              "criteria"
             ]
           },
           {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 3,
+            "additionalProperties": false,
             "properties": {
-              "declaration": {
+              "credential": {
                 "minLength": 1,
                 "type": "string"
               },
@@ -343,7 +223,8 @@
                 "type": "string"
               },
               "kind": {
-                "const": "category_declaration"
+                "const": "certification",
+                "type": "string"
               }
             },
             "required": [
@@ -351,10 +232,184 @@
             ]
           },
           {
-            "additionalProperties": {
-              "not": {}
+            "additionalProperties": false,
+            "properties": {
+              "credential": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "license",
+                "type": "string"
+              }
             },
-            "maxProperties": 3,
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "prior_authorization",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "account_setup",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "sales_assisted",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "format": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "disclosure",
+                "type": "string"
+              },
+              "placement": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "targeting_restriction",
+                "type": "string"
+              },
+              "restricted_attributes": {
+                "items": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "Personal data categories that may be restricted from use in audience targeting. Combines GDPR Article 9 special categories with US civil-rights protected classes (FHA familial_status, ADEA age). Used in two places: (1) on campaign plans via restricted_attributes to declare which categories are prohibited, and (2) on signal-definition.json via restricted_attributes to declare which categories a signal touches. Governance agents match plan restrictions against signal declarations for structural validation.",
+                  "enum": [
+                    "racial_ethnic_origin",
+                    "political_opinions",
+                    "religious_beliefs",
+                    "trade_union_membership",
+                    "health_data",
+                    "sex_life_sexual_orientation",
+                    "genetic_data",
+                    "biometric_data",
+                    "age",
+                    "familial_status"
+                  ],
+                  "enumDescriptions": {
+                    "age": "A person's age or age range. US ADEA (40+) for employment, US FHA for housing, EU AVMSD for content-directed targeting. Restricted for regulated verticals.",
+                    "biometric_data": "Biometric data used for identification. GDPR Article 9(1).",
+                    "familial_status": "Whether a household includes children under 18, a pregnant person, or a person seeking custody of a minor. US FHA protected class.",
+                    "genetic_data": "Genetic data. GDPR Article 9(1), US GINA.",
+                    "health_data": "Health status, medical conditions, disability. GDPR Article 9(1), US ADA protected class. Includes inferred health data from behavioral signals.",
+                    "political_opinions": "Political opinions or affiliations. GDPR Article 9(1). EU DSA Article 26 prohibits targeting on this category.",
+                    "racial_ethnic_origin": "Race or ethnic origin. GDPR Article 9(1), US FHA/ECOA/EEOC protected class.",
+                    "religious_beliefs": "Religious or philosophical beliefs. GDPR Article 9(1), US FHA/EEOC protected class.",
+                    "sex_life_sexual_orientation": "Sex life or sexual orientation. GDPR Article 9(1).",
+                    "trade_union_membership": "Trade union membership. GDPR Article 9(1)."
+                  },
+                  "title": "Restricted Attribute",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "creative_restriction",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "description"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "destination_restriction",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "description"
+            ]
+          },
+          {
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "minLength": 1,
@@ -374,28 +429,7 @@
                 "x-removed-in": "4.0.0"
               },
               "kind": {
-                "const": "format_restriction"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 3,
-            "properties": {
-              "description": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "kind": {
-                "const": "advertiser_verification"
-              },
-              "verification_scheme": {
-                "minLength": 1,
+                "const": "format_restriction",
                 "type": "string"
               }
             },
@@ -404,48 +438,7 @@
             ]
           },
           {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 3,
-            "properties": {
-              "description": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "kind": {
-                "const": "targeting_restriction"
-              },
-              "restricted_attributes": {
-                "items": {
-                  "enum": [
-                    "age",
-                    "health_data",
-                    "genetic_data",
-                    "biometric_data",
-                    "familial_status",
-                    "religious_beliefs",
-                    "political_opinions",
-                    "racial_ethnic_origin",
-                    "trade_union_membership",
-                    "sex_life_sexual_orientation"
-                  ]
-                },
-                "maxItems": 10,
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 4,
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "minLength": 1,
@@ -456,7 +449,8 @@
                 "type": "string"
               },
               "kind": {
-                "const": "time_restriction"
+                "const": "time_restriction",
+                "type": "string"
               },
               "starts_at": {
                 "format": "date-time",
@@ -468,10 +462,23 @@
             ]
           },
           {
-            "additionalProperties": {
-              "not": {}
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "const": "transparency_reporting",
+                "type": "string"
+              }
             },
-            "maxProperties": 4,
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "minLength": 1,
@@ -479,6 +486,7 @@
               },
               "ext": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": true,
                 "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                 "title": "Extension Object",
                 "type": "object"
@@ -488,39 +496,14 @@
                 "type": "string"
               },
               "kind": {
-                "const": "custom"
+                "const": "custom",
+                "type": "string"
               }
             },
             "required": [
-              "description",
+              "kind",
               "id",
-              "kind"
-            ]
-          },
-          {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 4,
-            "properties": {
-              "description": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "format": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "kind": {
-                "const": "disclosure"
-              },
-              "placement": {
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind"
+              "description"
             ]
           }
         ],

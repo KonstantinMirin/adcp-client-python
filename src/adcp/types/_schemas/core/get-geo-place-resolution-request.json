@@ -66,23 +66,24 @@
       "anyOf": [
         {
           "enum": [
-            "city",
-            "ward",
-            "state",
-            "county",
             "airport",
             "borough",
-            "commune",
-            "quarter",
-            "district",
-            "province",
-            "post_town",
-            "territory",
-            "prefecture",
+            "city",
             "city_region",
+            "commune",
+            "county",
+            "district",
             "municipality",
-            "neighborhood"
-          ]
+            "neighborhood",
+            "post_town",
+            "prefecture",
+            "province",
+            "quarter",
+            "state",
+            "territory",
+            "ward"
+          ],
+          "type": "string"
         },
         {
           "format": "uri",

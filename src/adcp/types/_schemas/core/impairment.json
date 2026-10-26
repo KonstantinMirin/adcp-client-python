@@ -27,19 +27,36 @@
       "type": "string"
     },
     "reason_code": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Categorical reason for the offline transition. Drives buyer-side remediation logic.",
       "enum": [
-        "ttl_expired",
-        "seller_removed",
-        "source_offline",
-        "source_private",
-        "consent_expired",
-        "content_rejected",
-        "pii_audit_failed",
         "policy_violation",
-        "property_depublished",
+        "consent_expired",
+        "ttl_expired",
+        "pii_audit_failed",
+        "seller_removed",
+        "content_rejected",
+        "identity_authorization_revoked",
         "identity_authorization_expired",
-        "identity_authorization_revoked"
-      ]
+        "source_private",
+        "source_offline",
+        "property_depublished"
+      ],
+      "enumDescriptions": {
+        "consent_expired": "Consent basis for using the resource has lapsed (e.g., hashed identifier consent expiry on a synced audience). Applies to: audience.",
+        "content_rejected": "Previously-approved creative content was re-reviewed and rejected. Applies to: creative.",
+        "identity_authorization_expired": "Authorization for a creative's referenced identity or post expired. Applies to: creative, especially `published_post` reference creatives. Offline state is usually `suspended` while authorization can be renewed.",
+        "identity_authorization_revoked": "Authorization for a creative's referenced identity or post was revoked. Applies to: creative, especially `published_post` reference creatives. Offline state is usually `suspended` while authorization can be restored.",
+        "pii_audit_failed": "Resource failed a privacy / PII audit. Applies to: audience.",
+        "policy_violation": "Seller policy enforcement removed the resource from active use. Applies to: audience, creative, catalog_item, property.",
+        "property_depublished": "Property was depublished or removed from the seller's catalog via brand.json / adagents.json. Verification is via the publisher's brand.json / adagents.json files. Applies to: property.",
+        "seller_removed": "Seller withdrew the resource from active use for operational reasons not covered by other codes (e.g., inventory withdrawal). Applies to: catalog_item, audience, creative, property. Distinct from policy_violation (seller-policy-driven) and from catalog_item's withdrawn state (the lifecycle endpoint) \u2014 this code is the impairment reason that surfaces when a previously-active resource is withdrawn.",
+        "source_offline": "Underlying event/signal source stopped firing (zero events received over the seller's evaluation window). Applies to: event_source.",
+        "source_private": "A creative's referenced source post became private or inaccessible to the seller. Applies to: creative, especially `published_post` reference creatives. Offline state is usually `suspended` while visibility can be restored.",
+        "ttl_expired": "Resource exceeded its time-to-live and was retired by the seller. Applies to: audience."
+      },
+      "title": "Impairment Reason Code",
+      "type": "string"
     },
     "remediation": {
       "description": "Action the buyer can take to clear the impairment, if any. Free text. Absent when no buyer-side remediation is possible (e.g., seller-initiated withdrawal pending re-publication).",
@@ -71,13 +88,24 @@
           "type": "string"
         },
         "to": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Current (offline) status of the resource. Drawn from the resource_type's canonical lifecycle enum; see impairment-offline-state for per-value resource_type pairing. The pairing is validated by impairment.coherence.",
           "enum": [
-            "rejected",
             "suspended",
+            "rejected",
             "withdrawn",
-            "depublished",
-            "insufficient"
-          ]
+            "insufficient",
+            "depublished"
+          ],
+          "enumDescriptions": {
+            "depublished": "Synthetic offline marker \u2014 property has no per-resource status field; publication state is derived from brand.json / adagents.json. Valid when resource_type='property'.",
+            "insufficient": "Offline value of assessment-status surfaced through event-source-health.status. Valid when resource_type='event_source'. Covers source-offline (zero events received over the evaluation window) \u2014 disambiguate via events_received_24h and last_event_at.",
+            "rejected": "Offline value of creative-status. Valid when resource_type='creative'. Reached from approved when seller revokes post-approval.",
+            "suspended": "Offline value of audience-status and a recoverable offline value of creative-status. Valid when resource_type='audience', and valid when resource_type='creative' for recoverable dependency/authorization loss such as a published-post authorization expiring or a source post becoming private.",
+            "withdrawn": "Offline value of catalog-item-status. Valid when resource_type='catalog_item'. Seller-initiated removal, distinct from review-failure rejection."
+          },
+          "title": "Impairment Offline State",
+          "type": "string"
         }
       },
       "required": [

@@ -459,11 +459,14 @@ def _decide(
         #
         # A sibling beyond an annotation refuses, and the keyword it refuses on is
         # the sibling.  draft-07 says a `$ref` IGNORES its siblings, so a sibling
-        # constraint would be a constraint the document does not apply -- and
-        # `resolve_all_refs`, which the harness resolves with, MERGES it instead.
-        # Emitting the import alone is the draft-07 reading and would then be
-        # graded against the stricter merged one, so the document is refused by
-        # name rather than graded against a schema it does not mean.
+        # constraint would be a constraint the document does not apply.  The
+        # DELEGATED resolver merged it in, so emitting the import alone would have
+        # been graded against a stricter schema than the document means; row .3
+        # removed that half -- ``bundle.record`` keeps the sibling's key (§3 drops
+        # none) and lets the TARGET's value stand, which is architecture §13 item
+        # 2's settled reading.  The refusal stands until the cell says the keyword
+        # compiles to nothing at this co-occurrence and the run REPORTS it, which
+        # is rows .2 and .5's work and not this one's.
         check_keywords(
             node,
             pointer,
@@ -1237,8 +1240,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         def do(uri: str, pointer: str) -> Target:
             # A reference is a (document, node) pair, and the node half is what a
             # FRAGMENT carries.  Both halves come from one reading of the ``#``
-            # (``bundle.split_ref``), the same one ``bundle.resolved`` keys its store
-            # on, so the binder and the resolver cannot disagree about which document
+            # (``bundle.split_ref``), the same one ``bundle.record`` reads a reference
+            # with, so the binder and the inliner cannot disagree about which document
             # a reference names.
             head, into = bundle.split_ref(uri)
             if not head:
@@ -1360,12 +1363,10 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             # checked here because a refusal belongs where every other one is.**  A
             # ``$ref`` at a position the package's own validation reaches is a schema
             # nothing local can decide, so ``jsonschema`` fetches the target over the
-            # network; the write loop below says what that costs.  ``bundle.resolved``
-            # is the one resolution, and it does not reach every position:
-            # ``resolve_all_refs`` descends ``SCHEMA_KEYS`` and ``SCHEMA_OBJECT_KEYS``
-            # only, and ``definitions`` and ``$defs`` are in NEITHER -- by its own
-            # design, since a section asserts nothing about an instance.  So a
-            # reference under a section survives resolution.
+            # network; the write loop below says what that costs.  ``bundle.record``
+            # is the one resolution, and what survives it is a LOCAL reference: it
+            # inlines every cross-document ``$ref``, at every position the table's
+            # descent column reaches, which includes a ``definitions``/``$defs`` entry.
             #
             # **WHICH OF THOSE SURVIVORS IS A DEFECT IS DECIDED BY DECLARATION, AND
             # ``bundle.undecidable_references`` IS THE PREDICATE.**  Section 5 makes a
@@ -1396,9 +1397,26 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             # A LOCAL reference is decidable at every position and is counted at none:
             # it names a node of the very document the package carries, so
             # ``jsonschema`` resolves it against the referrer and fetches nothing.
-            unresolved = bundle.undecidable_references(
-                bundle.resolved(bundle_dir, document), named.get(document, frozenset())
-            )
+            #
+            # **0 SITES SINCE ``bundle.record`` BECAME THIS PACKAGE'S OWN INLINER, and
+            # the check is kept as the guard that says so.**  The record inlines every
+            # cross-document reference the descent column reaches, sections included, so
+            # the only reference left in one is local and this predicate selects none.
+            # ``core/requirements/catalog-field-binding.json`` was the one document it
+            # refused -- a reference at ``/definitions/ScalarBinding/properties/ext``,
+            # inside an entry a ``$ref`` names, which the delegated resolver did not
+            # descend to -- and that is an emission delta of this row and not a check
+            # relaxed to fit: nothing here is narrower, the record is wider.  Firing
+            # again would mean ``record`` left a reference at a position the package's
+            # own validation decides through, which is a defect in the inliner.
+            rec = bundle.record(bundle_dir, document)
+            if isinstance(rec, Refusal):
+                # §4: a reference whose target is not a bundle document, and a
+                # cross-document cycle, make the record undefined for this document.
+                # The refusal is the one ``record`` minted, re-raised here because this
+                # is where every other refusal of a document is recorded.
+                raise rec
+            unresolved = bundle.undecidable_references(rec, named.get(document, frozenset()))
             if unresolved:
                 pointer, uri = unresolved[0]
                 raise Refusal(
@@ -1443,13 +1461,23 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         # P10's compare cover the schemas the runtime asks and not only the
         # modules.
         #
-        # RESOLVED: a reference is an import in the MODULE (P2), but a `$ref`
-        # left in the DOCUMENT is a schema nothing local can decide, so
+        # THE DOCUMENT OF RECORD: a reference is an import in the MODULE (P2), but a
+        # `$ref` left in the DOCUMENT is a schema nothing local can decide, so
         # `jsonschema` fetches the target over the network -- deprecated, 4.4 s
         # per validation measured, and simply unavailable offline.  See
-        # ``bundle.resolved``; a document with no reference resolves to itself.
-        schema = bundle.resolved(bundle_dir, document) if bundle.references(doc) else doc
-        out.files[document] = json.dumps(schema, indent=2, sort_keys=True) + "\n"
+        # ``bundle.record``; a document with no reference records as itself, and the
+        # record is the bundle's document with its references inlined and nothing
+        # else changed (``docs/plan/rebuild-plan.md`` §3).
+        #
+        # The ``isinstance`` arm cannot be reached here: ``lower`` above takes the
+        # record of every document it lowers and raises the refusal, so a document
+        # whose record is undefined is in ``refused`` and not in ``lowered``.  It is
+        # written rather than asserted because this is the call that produces the FILE,
+        # and a mapping is the only thing that can be written to one.
+        record = bundle.record(bundle_dir, document) if bundle.references(doc) else doc
+        if isinstance(record, Refusal):
+            raise record
+        out.files[document] = json.dumps(record, indent=2, sort_keys=True) + "\n"
         parts = rel.split("/")[:-1]
         packages.update("/".join(parts[: i + 1]) for i in range(len(parts)))
 

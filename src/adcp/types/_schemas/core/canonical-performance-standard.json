@@ -4,19 +4,38 @@
   "description": "Compact committed metric threshold with resolvable vendor identity and no creative or brand-asset graph.",
   "properties": {
     "metric": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Performance metrics that support rate thresholds on media buys \u2014 the verification subset of the broader metric vocabulary. Each metric specifies whether its threshold is a floor (must exceed) or ceiling (must not exceed). Shared values with `available-metric.json` mirror the delivery vocabulary (`viewability` \u2192 `viewable_rate` family, `completion_rate` \u2192 same name); verification-only values (`ivt`, `brand_safety`, `attention_score`) are typically vendor-attested and do not appear in `available-metric.json` because they're not seller-reportable scalars \u2014 they flow through `vendor_metric_values` or vendor-scope `committed_metrics` entries with the matching `performance_standard.vendor` BrandRef anchoring identity.",
       "enum": [
-        "ivt",
         "viewability",
+        "ivt",
+        "completion_rate",
         "brand_safety",
-        "attention_score",
-        "completion_rate"
-      ]
+        "attention_score"
+      ],
+      "enumDescriptions": {
+        "attention_score": "Attention score rate (floor \u2014 must exceed threshold). Denominator: measurable_impressions.",
+        "brand_safety": "Brand-safe impression rate (floor \u2014 must exceed threshold). Denominator: total_impressions.",
+        "completion_rate": "Video or audio completion rate (floor \u2014 must exceed threshold). Denominator: total_impressions.",
+        "ivt": "Invalid Traffic rate (ceiling \u2014 must not exceed threshold). Denominator: total_impressions.",
+        "viewability": "Viewable impression rate (floor \u2014 must exceed threshold). Requires viewability_standard. Denominator: measurable_impressions."
+      },
+      "title": "Performance Standard Metric",
+      "type": "string"
     },
     "standard": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Viewability measurement standard applied to determine whether an impression qualifies as viewable. These are materially different thresholds and should not be compared across standards.",
       "enum": [
         "mrc",
         "groupm"
-      ]
+      ],
+      "enumDescriptions": {
+        "groupm": "GroupM standard: 100% of pixels in view for 1 continuous second (display) or 50% of video duration.",
+        "mrc": "MRC/IAB standard: 50% of pixels in view for 1 continuous second (display) or 2 continuous seconds (video)."
+      },
+      "title": "Viewability Standard",
+      "type": "string"
     },
     "threshold": {
       "maximum": 1,
@@ -25,11 +44,8 @@
     },
     "vendor": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-      "maxProperties": 3,
       "properties": {
         "brand_id": {
           "$schema": "http://json-schema.org/draft-07/schema#",

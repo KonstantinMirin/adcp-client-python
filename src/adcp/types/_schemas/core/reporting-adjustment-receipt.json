@@ -60,10 +60,7 @@
     },
     "rejection_codes": {
       "items": {
-        "maxLength": 128,
-        "minLength": 1,
-        "pattern": "^[A-Z][A-Z0-9_]*$",
-        "type": "string"
+        "$ref": "#/definitions/ReportingAdjustmentRejectionCode"
       },
       "minItems": 1,
       "type": "array",

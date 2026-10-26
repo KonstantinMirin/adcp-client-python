@@ -30,7 +30,7 @@ SITES = [
 
 for doc_name, ptr, key in SITES:
     try:
-        root = bundle.resolved(B, doc_name)
+        root = bundle.record(B, doc_name)
     except Exception as exc:
         print(f"{doc_name}: unresolvable ({type(exc).__name__})")
         continue

@@ -74,29 +74,29 @@
     },
     "demographic_predicate": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Machine-readable demographic meaning. For product-local signals this listing is authoritative; for data-provider and signal-source refs, any projected value MUST match the referenced authoritative definition. Signal names alone never establish demographic semantics.",
       "properties": {
         "age": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "anyOf": [
             {
               "required": [
-                "max"
+                "min"
               ]
             },
             {
               "required": [
-                "min"
+                "max"
               ]
             }
           ],
           "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
           "properties": {
             "include_unknown": {
-              "enum": [
-                false,
-                true
-              ]
+              "description": "Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.",
+              "type": "boolean"
             },
             "max": {
               "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
@@ -164,18 +164,34 @@
     "restricted_attributes": {
       "description": "Restricted attribute categories this listing touches. Required with demographic_predicate and must include age. For referenced provider/source signals, any projected values must match the authoritative definition.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Personal data categories that may be restricted from use in audience targeting. Combines GDPR Article 9 special categories with US civil-rights protected classes (FHA familial_status, ADEA age). Used in two places: (1) on campaign plans via restricted_attributes to declare which categories are prohibited, and (2) on signal-definition.json via restricted_attributes to declare which categories a signal touches. Governance agents match plan restrictions against signal declarations for structural validation.",
         "enum": [
-          "age",
+          "racial_ethnic_origin",
+          "political_opinions",
+          "religious_beliefs",
+          "trade_union_membership",
           "health_data",
+          "sex_life_sexual_orientation",
           "genetic_data",
           "biometric_data",
-          "familial_status",
-          "religious_beliefs",
-          "political_opinions",
-          "racial_ethnic_origin",
-          "trade_union_membership",
-          "sex_life_sexual_orientation"
-        ]
+          "age",
+          "familial_status"
+        ],
+        "enumDescriptions": {
+          "age": "A person's age or age range. US ADEA (40+) for employment, US FHA for housing, EU AVMSD for content-directed targeting. Restricted for regulated verticals.",
+          "biometric_data": "Biometric data used for identification. GDPR Article 9(1).",
+          "familial_status": "Whether a household includes children under 18, a pregnant person, or a person seeking custody of a minor. US FHA protected class.",
+          "genetic_data": "Genetic data. GDPR Article 9(1), US GINA.",
+          "health_data": "Health status, medical conditions, disability. GDPR Article 9(1), US ADA protected class. Includes inferred health data from behavioral signals.",
+          "political_opinions": "Political opinions or affiliations. GDPR Article 9(1). EU DSA Article 26 prohibits targeting on this category.",
+          "racial_ethnic_origin": "Race or ethnic origin. GDPR Article 9(1), US FHA/ECOA/EEOC protected class.",
+          "religious_beliefs": "Religious or philosophical beliefs. GDPR Article 9(1), US FHA/EEOC protected class.",
+          "sex_life_sexual_orientation": "Sex life or sexual orientation. GDPR Article 9(1).",
+          "trade_union_membership": "Trade union membership. GDPR Article 9(1)."
+        },
+        "title": "Restricted Attribute",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array"
@@ -189,30 +205,7 @@
       },
       "oneOf": [
         {
-          "description": "Agent signal - references a signal native to a signal source identified by agent_url. Not externally verifiable through an upstream catalog; buyer trusts the issuing signal source's claim about the signal.",
-          "properties": {
-            "agent_url": {
-              "description": "URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')",
-              "format": "uri",
-              "type": "string"
-            },
-            "id": {
-              "description": "Signal identifier within the agent's signal set (e.g., 'custom_auto_intenders')",
-              "pattern": "^[a-zA-Z0-9_-]+$",
-              "type": "string"
-            },
-            "source": {
-              "const": "agent"
-            }
-          },
-          "required": [
-            "agent_url",
-            "id",
-            "source"
-          ],
-          "type": "object"
-        },
-        {
+          "additionalProperties": true,
           "description": "Data-provider signal - references a signal from a data provider's published adagents.json signals[]. Buyers can verify authorization by checking the data provider's adagents.json.",
           "properties": {
             "data_provider_domain": {
@@ -226,13 +219,42 @@
               "type": "string"
             },
             "source": {
-              "const": "catalog"
+              "const": "catalog",
+              "description": "Discriminator indicating this signal is from a data provider's published adagents.json signals[]",
+              "type": "string"
             }
           },
           "required": [
+            "source",
             "data_provider_domain",
-            "id",
-            "source"
+            "id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "description": "Agent signal - references a signal native to a signal source identified by agent_url. Not externally verifiable through an upstream catalog; buyer trusts the issuing signal source's claim about the signal.",
+          "properties": {
+            "agent_url": {
+              "description": "URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')",
+              "format": "uri",
+              "type": "string"
+            },
+            "id": {
+              "description": "Signal identifier within the agent's signal set (e.g., 'custom_auto_intenders')",
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "source": {
+              "const": "agent",
+              "description": "Discriminator indicating this signal is native to the signal source identified by agent_url, not from a data provider's published signal definitions.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "agent_url",
+            "id"
           ],
           "type": "object"
         }
@@ -248,237 +270,42 @@
       },
       "oneOf": [
         {
-          "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-          "not": {
-            "anyOf": [
-              {
-                "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                "properties": {
-                  "data_provider_domain": {
-                    "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                    "type": "string"
-                  },
-                  "scope": {
-                    "const": "data_provider"
-                  },
-                  "signal_id": {
-                    "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "agent_url",
-                  "data_provider_domain",
-                  "scope",
-                  "signal_id"
-                ],
-                "type": "object"
-              },
-              {
-                "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                "properties": {
-                  "data_provider_domain": {
-                    "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                    "type": "string"
-                  },
-                  "scope": {
-                    "const": "data_provider"
-                  },
-                  "signal_id": {
-                    "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "data_provider_domain",
-                  "id",
-                  "scope",
-                  "signal_id"
-                ],
-                "type": "object"
-              },
-              {
-                "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                "properties": {
-                  "data_provider_domain": {
-                    "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                    "type": "string"
-                  },
-                  "scope": {
-                    "const": "data_provider"
-                  },
-                  "signal_id": {
-                    "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "data_provider_domain",
-                  "scope",
-                  "signal_id",
-                  "signal_source_url"
-                ],
-                "type": "object"
-              },
-              {
-                "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                "properties": {
-                  "data_provider_domain": {
-                    "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                    "type": "string"
-                  },
-                  "scope": {
-                    "const": "data_provider"
-                  },
-                  "signal_id": {
-                    "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "data_provider_domain",
-                  "scope",
-                  "signal_id",
-                  "source"
-                ],
-                "type": "object"
-              }
-            ]
-          },
-          "properties": {
-            "data_provider_domain": {
-              "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-              "type": "string"
-            },
-            "scope": {
-              "const": "data_provider"
-            },
-            "signal_id": {
-              "description": "Signal identifier within the data provider's published adagents.json signals[].",
-              "pattern": "^[a-zA-Z0-9_-]+$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "data_provider_domain",
-            "scope",
-            "signal_id"
-          ],
-          "type": "object"
-        },
-        {
+          "additionalProperties": true,
           "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
           "not": {
             "anyOf": [
               {
-                "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                "properties": {
-                  "scope": {
-                    "const": "product"
-                  },
-                  "signal_id": {
-                    "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  }
-                },
                 "required": [
-                  "agent_url",
-                  "scope",
-                  "signal_id"
-                ],
-                "type": "object"
+                  "data_provider_domain"
+                ]
               },
               {
-                "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                "properties": {
-                  "scope": {
-                    "const": "product"
-                  },
-                  "signal_id": {
-                    "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  }
-                },
                 "required": [
-                  "data_provider_domain",
-                  "scope",
-                  "signal_id"
-                ],
-                "type": "object"
-              },
-              {
-                "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                "properties": {
-                  "scope": {
-                    "const": "product"
-                  },
-                  "signal_id": {
-                    "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "scope",
-                  "signal_id"
-                ],
-                "type": "object"
-              },
-              {
-                "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                "properties": {
-                  "scope": {
-                    "const": "product"
-                  },
-                  "signal_id": {
-                    "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "scope",
-                  "signal_id",
                   "signal_source_url"
-                ],
-                "type": "object"
+                ]
               },
               {
-                "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                "properties": {
-                  "scope": {
-                    "const": "product"
-                  },
-                  "signal_id": {
-                    "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  }
-                },
                 "required": [
-                  "scope",
-                  "signal_id",
+                  "agent_url"
+                ]
+              },
+              {
+                "required": [
                   "source"
-                ],
-                "type": "object"
+                ]
+              },
+              {
+                "required": [
+                  "id"
+                ]
               }
             ]
           },
           "properties": {
             "scope": {
-              "const": "product"
+              "const": "product",
+              "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
+              "type": "string"
             },
             "signal_id": {
               "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
@@ -493,114 +320,88 @@
           "type": "object"
         },
         {
+          "additionalProperties": true,
+          "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "agent_url"
+                ]
+              },
+              {
+                "required": [
+                  "signal_source_url"
+                ]
+              },
+              {
+                "required": [
+                  "source"
+                ]
+              },
+              {
+                "required": [
+                  "id"
+                ]
+              }
+            ]
+          },
+          "properties": {
+            "data_provider_domain": {
+              "description": "Domain that publishes the signal definition in its adagents.json signals[].",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            },
+            "scope": {
+              "const": "data_provider",
+              "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
+              "type": "string"
+            },
+            "signal_id": {
+              "description": "Signal identifier within the data provider's published adagents.json signals[].",
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "scope",
+            "data_provider_domain",
+            "signal_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
           "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
           "not": {
             "anyOf": [
               {
-                "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                "properties": {
-                  "scope": {
-                    "const": "signal_source"
-                  },
-                  "signal_id": {
-                    "description": "Signal identifier within the issuing signal source's signal set.",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  },
-                  "signal_source_url": {
-                    "description": "URL of the signal source that issues this source-native signal.",
-                    "format": "uri",
-                    "type": "string"
-                  }
-                },
                 "required": [
-                  "agent_url",
-                  "scope",
-                  "signal_id",
-                  "signal_source_url"
-                ],
-                "type": "object"
+                  "data_provider_domain"
+                ]
               },
               {
-                "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                "properties": {
-                  "scope": {
-                    "const": "signal_source"
-                  },
-                  "signal_id": {
-                    "description": "Signal identifier within the issuing signal source's signal set.",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  },
-                  "signal_source_url": {
-                    "description": "URL of the signal source that issues this source-native signal.",
-                    "format": "uri",
-                    "type": "string"
-                  }
-                },
                 "required": [
-                  "data_provider_domain",
-                  "scope",
-                  "signal_id",
-                  "signal_source_url"
-                ],
-                "type": "object"
+                  "agent_url"
+                ]
               },
               {
-                "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                "properties": {
-                  "scope": {
-                    "const": "signal_source"
-                  },
-                  "signal_id": {
-                    "description": "Signal identifier within the issuing signal source's signal set.",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  },
-                  "signal_source_url": {
-                    "description": "URL of the signal source that issues this source-native signal.",
-                    "format": "uri",
-                    "type": "string"
-                  }
-                },
                 "required": [
-                  "id",
-                  "scope",
-                  "signal_id",
-                  "signal_source_url"
-                ],
-                "type": "object"
-              },
-              {
-                "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                "properties": {
-                  "scope": {
-                    "const": "signal_source"
-                  },
-                  "signal_id": {
-                    "description": "Signal identifier within the issuing signal source's signal set.",
-                    "pattern": "^[a-zA-Z0-9_-]+$",
-                    "type": "string"
-                  },
-                  "signal_source_url": {
-                    "description": "URL of the signal source that issues this source-native signal.",
-                    "format": "uri",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "scope",
-                  "signal_id",
-                  "signal_source_url",
                   "source"
-                ],
-                "type": "object"
+                ]
+              },
+              {
+                "required": [
+                  "id"
+                ]
               }
             ]
           },
           "properties": {
             "scope": {
-              "const": "signal_source"
+              "const": "signal_source",
+              "description": "Discriminator indicating the signal resolves through the issuing signal source.",
+              "type": "string"
             },
             "signal_id": {
               "description": "Signal identifier within the issuing signal source's signal set.",
@@ -615,8 +416,8 @@
           },
           "required": [
             "scope",
-            "signal_id",
-            "signal_source_url"
+            "signal_source_url",
+            "signal_id"
           ],
           "type": "object"
         }
@@ -625,11 +426,20 @@
       "x-entity": "signal"
     },
     "value_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "The data type of this signal's values. Required when signal_ref.scope is 'product'.",
       "enum": [
         "binary",
-        "numeric",
-        "categorical"
-      ]
+        "categorical",
+        "numeric"
+      ],
+      "title": "Signal Value Type",
+      "type": "string",
+      "x-enum-descriptions": {
+        "binary": "Boolean signal - user either matches or doesn't (e.g., 'likely_tesla_buyers')",
+        "categorical": "Signal with discrete values from a defined set (e.g., 'vehicle_ownership' with values 'tesla', 'bmw', etc.)",
+        "numeric": "Signal with continuous numeric values within a range (e.g., 'purchase_propensity' from 0.0 to 1.0)"
+      }
     }
   },
   "title": "Signal Listing",

@@ -14,6 +14,7 @@
     },
     "placement_ref": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Structured placement reference for this forecast row. References an entry from the product's placements array.",
       "properties": {
         "placement_id": {

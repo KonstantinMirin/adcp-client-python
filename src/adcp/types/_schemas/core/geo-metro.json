@@ -4,13 +4,17 @@
   "description": "A targeted metro area.",
   "properties": {
     "system": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')",
       "enum": [
-        "custom",
+        "nielsen_dma",
         "uk_itl1",
         "uk_itl2",
-        "nielsen_dma",
-        "eurostat_nuts2"
-      ]
+        "eurostat_nuts2",
+        "custom"
+      ],
+      "title": "Metro Area System",
+      "type": "string"
     },
     "values": {
       "description": "Metro codes within the system (e.g., ['501', '602'] for Nielsen DMAs)",

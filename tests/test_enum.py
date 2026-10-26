@@ -37,7 +37,7 @@ from adcp.types._base import SchemaRef, schema_at
 from codegen import bundle, compiler, emit, keywords
 from codegen.keywords import Position
 from codegen.harness import (
-    _implied_by_an_enum,
+    _entails_type,
     _narrows_nothing,
     _text,
     compare_schema,
@@ -631,18 +631,28 @@ def test_the_schema_comparison_is_what_grades_this_row() -> None:
     assert wide.outcome.startswith("comparison:"), wide.outcome
 
 
-def test_a_model_only_fact_an_enum_implies_is_excused_and_a_narrowing_is_not() -> None:
-    """The one instrument edit this step forced, and each clause of it falsified.
+def test_the_type_an_enums_members_force_is_excused_and_a_narrowing_is_not() -> None:
+    """The one instrument clause that SURVIVES row .3, and each case of it falsified.
 
-    ``hypothesis_jsonschema``'s ``canonicalish`` -- which ``harness.resolve``
-    runs, and which the documents the package carries are written through --
-    reduces an enum node to its ``enum`` ALONE.  So a faithful enumeration states
-    three facts its own resolved document no longer does, and
-    ``_narrows_nothing`` excuses exactly those three at exactly that node.
+    This used to be ``_narrows_nothing``'s enum row, which excused a model-only
+    ``type``, ``description`` and ``default`` at an enum node.  Its reason was the
+    delegated resolver: ``hypothesis_jsonschema``'s ``canonicalish`` reduces an enum
+    node to its ``enum`` ALONE, so a faithful enumeration stated three facts its own
+    resolved document no longer did.  ``bundle.record`` copies the node, so the
+    ``description`` and the ``default`` are now COMPARED against the document's own and
+    the row's two annotation clauses are deleted (architecture §9).
 
-    The canonicalization is measured here rather than cited, and then each clause
-    is shown to still report a real narrowing -- which is what keeps the row from
-    being a hole of the shape the symmetric comparison was built to close.
+    **The ``type`` clause has a second source the record does not touch, so it stays
+    and it MOVED to the function that asks its question.**  164 nodes of the raw 3.2
+    bundle, in 79 documents, state an ``enum`` and no ``type`` -- the document's own
+    text, not a view of it -- and a pydantic ``StrEnum`` renders
+    ``{"enum": [...], "type": "string"}``.  So the answer is "the type the node's own
+    content forces", which is ``_entails_type``'s question, beside the ``const``
+    derivation it already carried.
+
+    The canonicalization is still measured here rather than cited, because it is what
+    the deletion rests on: the resolver really did drop the three, and the record
+    really does not.
     """
     from hypothesis_jsonschema._canonicalise import canonicalish
 
@@ -652,6 +662,13 @@ def test_a_model_only_fact_an_enum_implies_is_excused_and_a_narrowing_is_not() -
     # enum collapse and not a general drop.
     kept = {"type": "string", "minLength": 1, "description": "d", "default": "x"}
     assert canonicalish(kept) == kept
+    # The record performs no such reduction: the node is copied through a reference
+    # with every key it states, which is the whole of why the two clauses are gone.
+    assert bundle.record(BUNDLE, "core/catalog-selection.json")["properties"]["type"].keys() >= {
+        "description",
+        "enum",
+        "type",
+    }
 
     doc = {"enum": ["a", "b"]}
 
@@ -661,31 +678,33 @@ def test_a_model_only_fact_an_enum_implies_is_excused_and_a_narrowing_is_not() -
         A = "a"
         B = "b"
 
+    # The model states the TYPE its members force, which is excused, and a
+    # ``description`` the document no longer fails to state -- so it is now reported.
     excused = compare_schema(doc, Faithful)
-    assert excused.outcome == "pass", (excused.added, excused.missing)
     assert excused.model_facts == 2, excused.model_facts  # type and description
+    assert [a.split(":")[0] for a in excused.added] == ["/description"], excused.added
 
-    # Each clause, falsified on the RULE.  End to end is the wrong level for
-    # these: every model that states a wrong type or an invented default without
-    # also stating the enum is already caught as ``model_drops_a_fact``, so a
-    # report read off one says nothing about whether this row excused anything.
-    assert _implied_by_an_enum("type", "string", ["a", "b"]) is True
-    assert _implied_by_an_enum("type", "integer", ["a", "b"]) is False
-    assert _implied_by_an_enum("type", "string", ["a", 1]) is False  # no one implied type
-    # bool before int, because bool IS an int: a model claiming ``integer`` over a
-    # boolean enum is a narrowing and stays reported.
-    assert _implied_by_an_enum("type", "integer", [True, False]) is False
-    assert _implied_by_an_enum("type", "boolean", [True, False]) is True
-    assert _implied_by_an_enum("default", "a", ["a", "b"]) is True
-    assert _implied_by_an_enum("default", "z", ["a", "b"]) is False  # not in the set
-    assert _implied_by_an_enum("default", 1, ["a"]) is False  # nor of the members' type
-    assert _implied_by_an_enum("default", None, ["a"]) is True  # Python's spelling of absence
-    assert _implied_by_an_enum("description", "anything", ["a"]) is True
-    # Anything the three rows do not name is reported, so the row excuses three
-    # keywords and not "whatever sits beside an enum".
-    assert _implied_by_an_enum("minLength", 5, ["a"]) is False
+    # Each case, falsified on the RULE.  End to end is the wrong level for these: every
+    # model that states a wrong type without also stating the enum is already caught as
+    # ``model_drops_a_fact``, so a report read off one says nothing about whether this
+    # clause excused anything.
+    assert _entails_type({"enum": ["a", "b"]}, "string") is True
+    assert _entails_type({"enum": ["a", "b"]}, "integer") is False
+    assert _entails_type({"enum": ["a", 1]}, "string") is False  # no one implied type
+    # bool is not int here, because ``_JSON_TYPE`` is keyed on the EXACT type: a model
+    # claiming ``integer`` over a boolean enum is a narrowing and stays reported.
+    assert _entails_type({"enum": [True, False]}, "integer") is False
+    assert _entails_type({"enum": [True, False]}, "boolean") is True
+    assert _entails_type({"enum": []}, "string") is False  # not an enum to imply from
+    # Anything else beside an enum is reported, so the clause excuses ONE keyword and
+    # not "whatever sits beside an enum".
     assert _narrows_nothing("minLength", 5, doc) is False
-    assert _implied_by_an_enum("type", "string", []) is False  # not an enum to imply from
+    assert _narrows_nothing("description", "anything", doc) is False
+    assert _narrows_nothing("default", "a", doc) is False
+    # ``default: None`` stays excused, and by the OTHER clause: it is D4's spelling of
+    # an absent key and has nothing to do with the enum.
+    assert _narrows_nothing("default", None, doc) is True
+    assert _narrows_nothing("default", None, doc, required=True) is False
 
     # And end to end, a constraint at an enum node is still in ``added``.
     narrower = compare_schema(doc, Annotated[str, Field(min_length=5)])

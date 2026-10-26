@@ -13,14 +13,18 @@
       "type": "string"
     },
     "audience_source": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Origin of the audience segment.",
       "enum": [
         "synced",
-        "unknown",
         "platform",
+        "third_party",
         "lookalike",
         "retargeting",
-        "third_party"
-      ]
+        "unknown"
+      ],
+      "title": "Audience Source",
+      "type": "string"
     },
     "kind": {
       "const": "audience",

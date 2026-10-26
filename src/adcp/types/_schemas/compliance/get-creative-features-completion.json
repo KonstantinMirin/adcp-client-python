@@ -5,6 +5,7 @@
   "properties": {
     "consumption": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Structured consumption details returned by build_creative when a paid creative agent computes cost. Contains well-known fields for common consumption metrics. The consumption object is informational \u2014 it lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth, not consumption.",
       "properties": {
         "duration_seconds": {
@@ -47,11 +48,8 @@
     "results": {
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": {
-          "not": {}
-        },
+        "additionalProperties": false,
         "description": "A single feature evaluation result for a creative. Uses the same value structure as property-feature-value (value, confidence, expires_at, etc.).",
-        "maxProperties": 10,
         "properties": {
           "confidence": {
             "description": "Confidence score for this value (0-1)",
@@ -60,6 +58,7 @@
             "type": "number"
           },
           "details": {
+            "additionalProperties": true,
             "description": "Additional vendor-specific details about this evaluation",
             "type": "object"
           },
@@ -70,6 +69,7 @@
           },
           "ext": {
             "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
             "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
             "title": "Extension Object",
             "type": "object"
@@ -100,10 +100,7 @@
             "description": "The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.",
             "oneOf": [
               {
-                "enum": [
-                  false,
-                  true
-                ]
+                "type": "boolean"
               },
               {
                 "type": "number"

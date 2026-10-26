@@ -292,25 +292,42 @@ def test_a_refusals_kind_comes_from_the_cell_and_not_from_a_raise_site() -> None
     assert compiler.kind_for("enum", Position.PROP) is refusal.Kind.DEFERRED
 
 
-def test_the_descent_column_agrees_with_the_walk_the_bundle_reads_with() -> None:
-    """The descent column against ``bundle``'s own descent, which §11 makes it the
-    owner of.
+def test_the_descent_column_is_the_one_the_bundles_walk_descends_by() -> None:
+    """``bundle``'s walk READS the descent column, which §11 makes it the owner of.
 
-    This row DECLARES the column; its readers are §14 step 5's.  Until they exist the
-    two can disagree, and the disagreement would be invisible -- so it is asserted
-    here, in the direction that matters: every keyword the table says descends is one
-    the bundle's walk descends, so a reader switching over will not lose a node.  The
-    other direction is deliberately not asserted: ``bundle`` also descends four
-    draft-2019 keywords this bundle does not carry and the table therefore has no row
-    for.
+    The row that declared the column asserted the two AGREED, because ``bundle`` then
+    held three descent literals of its own.  Row .3's inliner needed the same descent
+    to place a reference's target, and two descents in one module is what §11 names as
+    the repetition -- so the literals are gone and ``bundle.subschemas`` reads the
+    column.  What is left to assert is that the reading is the column and nothing
+    beside it, in both directions, and that the walk really reaches a node at every
+    keyword the column carries.
+
+    The four draft-2019 keywords ``bundle`` used to descend and the table has no row
+    for -- ``prefixItems``, ``dependentSchemas``, ``additionalItems``,
+    ``unevaluatedProperties``, ``unevaluatedItems`` -- have **0 sites in the 3.2
+    bundle**, measured, so dropping them changed no census.  ``dependencies`` has 27
+    sites and descends in neither reading: draft-07 lets it hold a schema, this
+    bundle's 27 hold a list of names, and the table gives it no descent.
     """
     from codegen import bundle
 
-    walks = set(bundle._DESCEND_MAP) | set(bundle._DESCEND_ONE) | set(bundle._DESCEND_LIST)
     declared = claimed(
         "keywords the table says hold a subschema",
         {k for k in keywords.TABLE if any(
             (c := cell(k, p)) is not None and c.descends is not None for p in Position
         )},
     )
-    assert declared <= walks | {"dependencies"}, sorted(declared - walks)
+    assert set(bundle._DESCENDS) == declared, sorted(set(bundle._DESCENDS) ^ declared)
+    assert "dependencies" not in declared
+    # Every keyword of the column is reached by the walk at a node that states it, so
+    # the shape declaration (:data:`bundle._HELD_BY_NAME`, :data:`_HELD_IN_A_LIST`)
+    # covers the column rather than a part of it.
+    for keyword, position in bundle._DESCENDS.items():
+        held = {"properties": {"x": {}}, "patternProperties": {"^x$": {}},
+                "definitions": {"x": {}}, "$defs": {"x": {}}}.get(keyword)
+        if held is None:
+            held = [{}, {}] if keyword in bundle._HELD_IN_A_LIST else {}
+        reached = list(bundle.subschemas({keyword: held}))
+        assert reached, keyword
+        assert {at for _, _, _, at in reached} == {position}, (keyword, reached)

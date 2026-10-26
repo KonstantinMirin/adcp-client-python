@@ -19,11 +19,8 @@
       "properties": {
         "brand": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-          "maxProperties": 3,
           "properties": {
             "brand_id": {
               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -74,9 +71,7 @@
         },
         "operator_unit": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Optional operator-owned business unit, agency seat, or platform account. Only id participates in identity; name is mutable display metadata.",
           "examples": [
             {
@@ -88,7 +83,6 @@
               "name": "Nova Benelux"
             }
           ],
-          "maxProperties": 2,
           "properties": {
             "id": {
               "description": "Stable identifier assigned by the operator. Numeric platform IDs and durable slugs are both valid. Scoped by the enclosing operator domain.",

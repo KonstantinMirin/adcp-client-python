@@ -111,13 +111,22 @@
               "type": "string"
             },
             "role": {
+              "description": "Role of the declaring party in the supply chain",
               "enum": [
-                "tool",
-                "agency",
                 "creator",
+                "advertiser",
+                "agency",
                 "platform",
-                "advertiser"
-              ]
+                "tool"
+              ],
+              "enumDescriptions": {
+                "advertiser": "The brand or advertiser that owns the content",
+                "agency": "Agency acting on behalf of the advertiser",
+                "creator": "The party that created or generated the content",
+                "platform": "Ad platform or publisher that processed the content",
+                "tool": "Automated tool or service that attached provenance metadata"
+              },
+              "type": "string"
             }
           },
           "required": [
@@ -126,17 +135,32 @@
           "type": "object"
         },
         "digital_source_type": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "IPTC-aligned classification of AI involvement in producing this content",
           "enum": [
-            "human_edits",
             "digital_capture",
             "digital_creation",
+            "trained_algorithmic_media",
+            "composite_with_trained_algorithmic_media",
             "algorithmic_media",
             "composite_capture",
-            "data_driven_media",
             "composite_synthetic",
-            "trained_algorithmic_media",
-            "composite_with_trained_algorithmic_media"
-          ]
+            "human_edits",
+            "data_driven_media"
+          ],
+          "enumDescriptions": {
+            "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
+            "composite_capture": "Multiple digital captures composited together without AI",
+            "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
+            "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
+            "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)",
+            "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
+            "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
+            "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
+            "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)"
+          },
+          "title": "Digital Source Type",
+          "type": "string"
         },
         "disclosure": {
           "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
@@ -167,6 +191,7 @@
                     "properties": {
                       "ext": {
                         "$schema": "http://json-schema.org/draft-07/schema#",
+                        "additionalProperties": true,
                         "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                         "title": "Extension Object",
                         "type": "object"
@@ -177,27 +202,39 @@
                         "type": "integer"
                       },
                       "persistence": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "How long the disclosure must persist during content playback or display",
                         "enum": [
+                          "continuous",
                           "initial",
-                          "flexible",
-                          "continuous"
-                        ]
+                          "flexible"
+                        ],
+                        "enumDescriptions": {
+                          "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
+                          "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion",
+                          "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration."
+                        },
+                        "title": "Disclosure Persistence",
+                        "type": "string"
                       },
                       "positions": {
                         "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
                         "items": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
                           "enum": [
-                            "audio",
+                            "prominent",
                             "footer",
+                            "audio",
+                            "subtitle",
                             "overlay",
                             "end_card",
                             "pre_roll",
-                            "subtitle",
-                            "companion",
-                            "prominent"
-                          ]
+                            "companion"
+                          ],
+                          "title": "Disclosure Position",
+                          "type": "string"
                         },
-                        "maxItems": 8,
                         "minItems": 1,
                         "type": "array",
                         "uniqueItems": true
@@ -216,10 +253,8 @@
               "type": "array"
             },
             "required": {
-              "enum": [
-                false,
-                true
-              ]
+              "description": "The declaring party's claim that AI disclosure is required for this content under applicable regulations. This is a declared signal carried through the supply chain \u2014 useful as a routing and audit input \u2014 not a regulatory determination made by the protocol. Receiving parties remain responsible for their own jurisdictional analysis and should not treat `required: false` as compliance cover.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -237,10 +272,18 @@
                 "type": "string"
               },
               "method": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "How provenance data is carried within the content",
                 "enum": [
                   "manifest_wrapper",
                   "provenance_markers"
-                ]
+                ],
+                "enumDescriptions": {
+                  "manifest_wrapper": "A provenance manifest embedded in the file container per format-specific rules (e.g., JUMBF box in JPEG, C2PATextManifestWrapper in plaintext per C2PA Section A.7). The manifest travels with the file but is tied to the file's byte structure.",
+                  "provenance_markers": "Invisible markers embedded within the content stream that encode or reference a provenance record. Designed to survive reformatting, copy-paste, CMS ingestion, and ad-server transcoding that breaks file-level bindings."
+                },
+                "title": "Embedded Provenance Method",
+                "type": "string"
               },
               "provider": {
                 "description": "Organization that performed the embedding (e.g., 'Encypher', 'Digimarc'). Display label and audit context \u2014 not a wire identifier.",
@@ -251,11 +294,8 @@
                 "type": "string"
               },
               "verify_agent": {
-                "additionalProperties": {
-                  "not": {}
-                },
+                "additionalProperties": false,
                 "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
-                "maxProperties": 2,
                 "properties": {
                   "agent_url": {
                     "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
@@ -285,24 +325,32 @@
         },
         "ext": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
           "title": "Extension Object",
           "type": "object"
         },
         "human_oversight": {
+          "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
           "enum": [
             "none",
-            "edited",
-            "directed",
+            "prompt_only",
             "selected",
-            "prompt_only"
-          ]
+            "edited",
+            "directed"
+          ],
+          "enumDescriptions": {
+            "directed": "Human directed the creative process with AI as an assistive tool",
+            "edited": "Human edited or refined AI-generated output",
+            "none": "Fully automated with no human involvement in generation",
+            "prompt_only": "Human provided the prompt or instructions but did not review outputs",
+            "selected": "Human selected from multiple AI-generated candidates"
+          },
+          "type": "string"
         },
         "synthetic_depiction": {
-          "enum": [
-            false,
-            true
-          ]
+          "description": "Assessed declaration of whether the content synthetically depicts a real or fictional person performing or appearing in a way that was generated or materially manipulated rather than captured as depicted. `true` covers both a fully synthetic performer and material manipulation of a real performer; `false` is an assessed declaration that the content does not contain such a depiction. Absence means the content has not been assessed for synthetic depiction. This field does not claim consent, legality, or independent verification, and receivers MUST NOT derive it solely from `digital_source_type`.",
+          "type": "boolean"
         },
         "verification": {
           "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
@@ -320,12 +368,14 @@
                 "type": "string"
               },
               "result": {
+                "description": "Verification outcome",
                 "enum": [
                   "authentic",
-                  "ai_modified",
                   "ai_generated",
+                  "ai_modified",
                   "inconclusive"
-                ]
+                ],
+                "type": "string"
               },
               "verified_by": {
                 "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')",
@@ -338,8 +388,8 @@
               }
             },
             "required": [
-              "result",
-              "verified_by"
+              "verified_by",
+              "result"
             ],
             "type": "object"
           },
@@ -351,10 +401,18 @@
           "items": {
             "properties": {
               "c2pa_action": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "C2PA action classification for this watermark",
                 "enum": [
                   "c2pa.watermarked.bound",
                   "c2pa.watermarked.unbound"
-                ]
+                ],
+                "enumDescriptions": {
+                  "c2pa.watermarked.bound": "Watermark linked to a C2PA manifest for this asset. The watermark and manifest are mutually reinforcing: the manifest references the watermark, and the watermark can be used to locate the manifest.",
+                  "c2pa.watermarked.unbound": "Watermark independent of any C2PA manifest. Applied before any provenance signing event (e.g., by the AI generator at creation time) or in pipelines where no manifest is present."
+                },
+                "title": "C2PA Watermark Action",
+                "type": "string"
               },
               "embedded_at": {
                 "description": "When the watermark was applied (ISO 8601)",
@@ -362,23 +420,30 @@
                 "type": "string"
               },
               "media_type": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Media category of the watermarked content",
                 "enum": [
-                  "text",
                   "audio",
                   "image",
-                  "video"
-                ]
+                  "video",
+                  "text"
+                ],
+                "enumDescriptions": {
+                  "audio": "Watermark applied to audio content (e.g., spread-spectrum, echo hiding)",
+                  "image": "Watermark applied to image content (e.g., spatial domain, frequency domain)",
+                  "text": "Watermark applied to text content (e.g., synonym substitution, structural modification)",
+                  "video": "Watermark applied to video content (e.g., per-frame image watermarking, temporal watermarking)"
+                },
+                "title": "Watermark Media Type",
+                "type": "string"
               },
               "provider": {
                 "description": "Organization that applied the watermark (e.g., 'Imatag', 'Steg.AI', 'Encypher'). Display label and audit context \u2014 not a wire identifier.",
                 "type": "string"
               },
               "verify_agent": {
-                "additionalProperties": {
-                  "not": {}
-                },
+                "additionalProperties": false,
                 "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
-                "maxProperties": 2,
                 "properties": {
                   "agent_url": {
                     "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
