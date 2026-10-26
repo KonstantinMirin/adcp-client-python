@@ -141,6 +141,84 @@ class SchemaRef(NamedTuple):
     pointer: str = "#"
 
 
+class Approximation(NamedTuple):
+    """One fact a generated annotation does NOT carry, declared on the artifact.
+
+    ``docs/plan/rebuild-plan.md`` section 2, "An approximation is declared, and it is
+    local": "Every one carries its document, its pointer, the keyword whose fact the
+    annotation does not carry, the rung it took, that fact in the document's own
+    spelling, and an **attribution**.  Nothing is approximated by silence: an undeclared
+    widening is a defect and section 8 reports it as one."
+
+    **It lives HERE, beside :class:`SchemaRef`, because it is part of the ARTIFACT's own
+    vocabulary and not of the compiler's.**  ``docs/plan/architecture.md`` section 7:
+    "An approximation is a DECLARATION and not a report, and it is written into the
+    emitted module ... ``render.py`` writes ``__adcp_approximations__`` onto the class,
+    the root model or the enumeration, and beside the module for an alias -- exactly the
+    split section 4 of the semantics document already makes for ``strict_validate`` --
+    and ``verify/`` reads it as a consumer reads any other class attribute."  The other
+    class attribute a consumer reads is ``__adcp_schema__``, and it is a ``NamedTuple``
+    declared in this module; this is the same thing for the same reason, so there is ONE
+    declaration of what an approximation is and the verifier does not restate its field
+    names.  ``codegen.ir`` binds the name section 7's table puts in the IR, the way it
+    already binds ``SchemaRef`` and ``Rule``.
+
+    A ``NamedTuple`` for :class:`SchemaRef`'s third reason above: its ``repr`` is a valid
+    Python expression naming this type, so the emitter writes the declaration with no
+    template of its own and the field names in the emitted module are read off this
+    declaration rather than spelled again.
+
+    **``kind``, ``rung`` and ``attribution`` are ``str`` and not enums**, because what
+    the emitted module carries is text a consumer reads: a ``StrEnum`` member's ``repr``
+    is ``<Rung.KEYWORD: 'KEYWORD'>``, which is not a constructor expression, so the
+    minting function writes the member's VALUE.  ``codegen.keywords.Rung`` is still the
+    one declaration of which rungs exist, and ``tests/test_approximation.py`` asserts
+    every declared rung is one of its members.
+
+    **It is NOT a ``Field(json_schema_extra=...)``**, and section 7 says why: that would
+    put the approximation into ``model_json_schema()``, "where section 8 of the semantics
+    document would read it as a fact the model states and the document does not --
+    *added*, a defect.  The declaration is a class attribute precisely because it has to
+    be invisible to the comparison's own subject and visible to the comparison."
+    """
+
+    #: The bundle-relative document the widened node belongs to.
+    document: str
+    #: The JSON pointer of the node whose annotation does not carry the fact.
+    pointer: str
+    #: The keyword whose fact is dropped.  It is a keyword the DOCUMENT states, by
+    #: section 9's "Never approximate on a keyword the walk itself inserted".
+    keyword: str
+    #: ``WIDENED`` or ``UNDERDETERMINED`` (section 2's two kinds, never summed).
+    kind: str
+    #: The ``codegen.keywords.Rung`` this drop took, by value.
+    rung: str
+    #: The dropped fact in the DOCUMENT'S OWN SPELLING, as the document states it, so
+    #: section 8 can look for it in the document and find it.
+    fact: Any
+    #: Section 2's attribution, a choice of two: the cell's own address
+    #: (``"<section>/<keyword>"``) where the design decided the widening, or an upstream
+    #: issue reference where the document could state the fact and does not.
+    attribution: str
+
+
+#: The two kinds of approximation section 2 names, which are NEVER summed: "WIDENED --
+#: the annotation admits a value the document refuses ... UNDERDETERMINED -- the
+#: annotation admits exactly what the document admits, and the VALUE it constructs is
+#: not determined by the document."  Declared beside :class:`Approximation` because the
+#: artifact carries the word and both halves read it.
+WIDENED, UNDERDETERMINED = "WIDENED", "UNDERDETERMINED"
+KINDS = (WIDENED, UNDERDETERMINED)
+
+#: **The attribute the emitted artifact carries its declarations under**, named here for
+#: the reason :class:`Approximation` is declared here: three writers spell it -- a class
+#: body line, a root model's body line, the module-level line a root alias or enumeration
+#: takes -- and one reader grades it, and a second spelling is how a declaration comes to
+#: be written where nothing looks for it.  ``codegen/render.py`` writes under this name and
+#: ``codegen/harness.py`` reads it, each by importing this.
+APPROXIMATIONS = "__adcp_approximations__"
+
+
 @functools.lru_cache(maxsize=None)
 def _document(document: str) -> dict:
     """One document, read from the package and held.
