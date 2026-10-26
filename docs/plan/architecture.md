@@ -392,7 +392,23 @@ results.
 
 **Who carries the position.** The node does. The parser assigned it from the structural keyword
 it descended through, so a handler never derives position from a pointer string, and the one
-place that did (`enum.resolves_no_name` reading `hops[-2]`) becomes `node.position is BRANCH`.
+place that did is `enum.resolves_no_name`, reading `hops[-2]`.
+
+*What that one place becomes, settled 2026-10-26.* This said `node.position is BRANCH` and that
+is the wrong fact. `position is BRANCH` says "this node is a branch of some union", while the
+predicate it replaces answers "this node is a branch of a ROOT union" — and the two differ.
+Taking the shorter sentence literally turns `error-details/accessibility-violation.json`'s
+`StrEnum` into a `Literal`, which changes a module where a document emitted before and so breaks
+§14 step 5's own check; the row measured it rather than reasoning about it.
+
+The fact belongs to the UNION, not to the enum. §5 of the semantics document writes the row as
+"an untitled BRANCH of a root union → a `Literal` of the members", and "of a root union" is a
+statement about the enclosing union. §4 already gives the `Union` node the root's siblings when
+it is at ROOT, so the union knows its own position; the branch lowering is told by its parent
+rather than inferring it from itself. So the enum handler reads a fact it is HANDED, the union
+handler reads `node.position`, and no node parses a pointer. The rule generalises: where a
+lowering needs to know something about the node ENCLOSING it, the enclosing handler passes it
+down — a child never reconstructs its parent.
 
 **How a child's result composes.** `Lowering` is:
 
@@ -782,6 +798,21 @@ tree and comparing it byte for byte with the committed one.
    carries it where today they name a rewritten node; the key-schema union and the empty-schema
    `additionalProperties` on a class stop refusing or crashing. *Tree unchanged where a
    document emitted before.* Unblocks §5 and §6 in full.
+
+   *The refusal ORDER is document order, and that settles what this step owes the old report
+   (2026-10-26).* The first attempt at this step stalled on trying to reproduce the sequence six
+   handlers happen to screen in — `lower_composition` checking `type` before its screen,
+   `union.ROOT_CLAIMS` claiming four keywords so its own refusal reports after them — and
+   concluded the parser could not be written without preserving all six. It does not owe them
+   that. §2 and §6 both state the rule: `first_refusal` returns the earliest refusal in DOCUMENT
+   order, "which keeps the report a function of the document and not of the walk's iteration".
+   The present sequence IS the walk's iteration, and it is what this step exists to remove.
+
+   So where a refusal moves because document order puts a different node first, that is this
+   step's "report changes" and not a regression. What must NOT change is which documents refuse
+   and with which `resolved` kind; the pointer and keyword within a refused document may move to
+   the node document order reaches first. Measure both: the refused SET with its kinds, which
+   holds, and the moved pointers, which are enumerated and explained.
 
 6. **Refusal as a value.** `Refusal` stops subclassing `Exception`; every handler returns
    `Lowering | Refusal`; `first_refusal` replaces the try/except in `lower_document`;
