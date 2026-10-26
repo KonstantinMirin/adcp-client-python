@@ -255,15 +255,28 @@
     "indicator_types_evaluated": {
       "description": "Indicator types covered by this snapshot. Required whenever indicators is present. Types omitted from this list remain unknown even when indicators is empty. Every returned indicator.type MUST appear in this list.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.",
         "enum": [
-          "pacing_risk",
           "creative_fatigue",
-          "budget_constrained",
-          "audience_saturation",
-          "creative_diversity_low",
           "creative_quality_opportunity",
-          "inventory_shortfall_forecast"
-        ]
+          "creative_diversity_low",
+          "audience_saturation",
+          "inventory_shortfall_forecast",
+          "pacing_risk",
+          "budget_constrained"
+        ],
+        "enumDescriptions": {
+          "audience_saturation": "Package only. The seller currently judges that the package's reachable audience is materially saturated independent of any single creative, such that targeting, frequency, or reach strategy may need adjustment.",
+          "budget_constrained": "Media-buy or package. The seller currently judges that budget or a spend cap is materially limiting otherwise eligible delivery. Normal exhaustion at a completed flight is lifecycle/delivery state rather than this indicator.",
+          "creative_diversity_low": "Package only. The seller currently judges that the package has too few meaningfully distinct eligible creatives for effective rotation, learning, reach, or fatigue resistance. This is package state rather than a defect on any one creative.",
+          "creative_fatigue": "Package\u2013creative assignment only. The seller currently attributes material audience saturation or objective-relevant performance degradation to repeated delivery of this creative in the enclosing package and optional publisher/placement scope, such that the buyer should consider changing it. Ordinary underperformance without an asserted repeated-exposure relationship is not creative fatigue.",
+          "creative_quality_opportunity": "Package\u2013creative assignment only. The creative remains accepted and usable, but the seller currently judges that a material format, asset, composition, or quality improvement could improve delivery or objective-relevant performance. Rejected or ineligible creative remains approval state, not this indicator.",
+          "inventory_shortfall_forecast": "Package only. The seller's current forecast is materially below the package's requested delivery goal, although the package remains accepted and may still deliver partially. Forecast method, horizon, requested value, and projected value belong in ext.",
+          "pacing_risk": "Package only. The seller currently projects material over- or under-delivery by the end of the package flight absent intervention. Current factual delivery remains in snapshot/reporting; this type is the seller's forward-looking interpretation."
+        },
+        "title": "Indicator Type",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -273,6 +286,7 @@
       "description": "Current seller assertions for the indicator types and publisher/placement coverage named by the sibling evaluation fields. Omitted means unknown or not evaluated. A present empty array means evaluated with no current assertion for indicator_types_evaluated in the evaluated scope.",
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
         "description": "A compact current seller assertion identifying a material risk or optimization opportunity that warrants buyer attention on the containing media buy, package, or package\u2013creative relationship. An indicator is read-side state, not an error, warning, durable event record, authorization, executable action, or independently addressable resource. The responding seller is the source. Different sellers may use different methodologies for the same standard type; native scores, evaluation windows, suggested actions, deep links, and upstream attribution belong in ext.",
         "properties": {
           "detected_at": {
@@ -282,6 +296,7 @@
           },
           "ext": {
             "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
             "description": "Seller- or provider-specific detail such as scores, thresholds, evaluation windows, methodology identifiers, or upstream attribution. Core consumers must not need ext to understand the broad meaning of type.",
             "title": "Extension Object",
             "type": "object"
@@ -290,6 +305,7 @@
             "description": "Optional narrower publisher or placement scope within the enclosing media buy, package, or package\u2013creative assignment. Omit only when the seller evaluated and asserts the indicator across the whole enclosing resource/relationship. When partial indicators_evaluated_scope is declared, every returned indicator MUST include scope and every entry MUST fall within that coverage. This is scope, not source: the responding seller remains the source.",
             "items": {
               "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": true,
               "description": "A publisher or placement scope within an enclosing media buy, package, or package\u2013creative assignment. publisher_domain alone means all delivery for that publisher within the enclosing object; placement_id narrows to one placement in that publisher's namespace.",
               "properties": {
                 "placement_id": {
@@ -314,15 +330,28 @@
             "uniqueItems": true
           },
           "type": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.",
             "enum": [
-              "pacing_risk",
               "creative_fatigue",
-              "budget_constrained",
-              "audience_saturation",
-              "creative_diversity_low",
               "creative_quality_opportunity",
-              "inventory_shortfall_forecast"
-            ]
+              "creative_diversity_low",
+              "audience_saturation",
+              "inventory_shortfall_forecast",
+              "pacing_risk",
+              "budget_constrained"
+            ],
+            "enumDescriptions": {
+              "audience_saturation": "Package only. The seller currently judges that the package's reachable audience is materially saturated independent of any single creative, such that targeting, frequency, or reach strategy may need adjustment.",
+              "budget_constrained": "Media-buy or package. The seller currently judges that budget or a spend cap is materially limiting otherwise eligible delivery. Normal exhaustion at a completed flight is lifecycle/delivery state rather than this indicator.",
+              "creative_diversity_low": "Package only. The seller currently judges that the package has too few meaningfully distinct eligible creatives for effective rotation, learning, reach, or fatigue resistance. This is package state rather than a defect on any one creative.",
+              "creative_fatigue": "Package\u2013creative assignment only. The seller currently attributes material audience saturation or objective-relevant performance degradation to repeated delivery of this creative in the enclosing package and optional publisher/placement scope, such that the buyer should consider changing it. Ordinary underperformance without an asserted repeated-exposure relationship is not creative fatigue.",
+              "creative_quality_opportunity": "Package\u2013creative assignment only. The creative remains accepted and usable, but the seller currently judges that a material format, asset, composition, or quality improvement could improve delivery or objective-relevant performance. Rejected or ineligible creative remains approval state, not this indicator.",
+              "inventory_shortfall_forecast": "Package only. The seller's current forecast is materially below the package's requested delivery goal, although the package remains accepted and may still deliver partially. Forecast method, horizon, requested value, and projected value belong in ext.",
+              "pacing_risk": "Package only. The seller currently projects material over- or under-delivery by the end of the package flight absent intervention. Current factual delivery remains in snapshot/reporting; this type is the seller's forward-looking interpretation."
+            },
+            "title": "Indicator Type",
+            "type": "string"
           }
         },
         "required": [
@@ -343,6 +372,7 @@
       "description": "Optional publisher or placement coverage for this evaluation. Omit when the named indicator types were evaluated across the whole enclosing resource or relationship. Unlisted scopes remain unknown. When present, every returned indicator MUST include scope and every scope entry MUST be contained by this coverage.",
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
         "description": "A publisher or placement scope within an enclosing media buy, package, or package\u2013creative assignment. publisher_domain alone means all delivery for that publisher within the enclosing object; placement_id narrows to one placement in that publisher's namespace.",
         "properties": {
           "placement_id": {

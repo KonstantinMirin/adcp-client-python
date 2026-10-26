@@ -75,11 +75,7 @@
   "description": "One atomic combination a seller can honor. Buyers MUST NOT form a cross-product from separate capability arrays; each installed configuration selects one offering_id and values within that offering. A Core API-delivered offering requires no Managed external-materialization canonicalization code or contract, but every resulting revision still carries the fixed RFC 8785/JCS revision-binding canonicalization and digest.",
   "properties": {
     "feed_purpose": {
-      "enum": [
-        "pacing",
-        "billing",
-        "analytics"
-      ]
+      "$ref": "#/definitions/ReportingFeedPurpose"
     },
     "method": {
       "additionalProperties": false,
@@ -162,17 +158,17 @@
           "type": "string"
         },
         "orchestration": {
+          "description": "Party responsible for starting, configuring, and monitoring the delivery operation. Independent of destination ownership and the service that moves the data.",
           "enum": [
-            "consumer_managed",
-            "producer_managed"
-          ]
+            "producer_managed",
+            "consumer_managed"
+          ],
+          "title": "Reporting Orchestration",
+          "type": "string",
+          "x-adcp-model-context-inline": true
         },
         "pattern": {
-          "enum": [
-            "dataset_share",
-            "file_transfer",
-            "warehouse_materialization"
-          ]
+          "$ref": "#/definitions/ReportingDeliveryPattern"
         },
         "producer_identity": {
           "additionalProperties": false,
@@ -189,9 +185,12 @@
             "cloud": {
               "enum": [
                 "aws",
-                "gcp",
-                "azure"
-              ]
+                "azure",
+                "gcp"
+              ],
+              "title": "Reporting Cloud",
+              "type": "string",
+              "x-adcp-model-context-inline": true
             },
             "identity": {
               "maxLength": 512,
@@ -270,10 +269,15 @@
       "x-entity": "reporting_offering"
     },
     "reconciliation_mode": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Receipt contract included in this atomic offering. Billing offerings MUST require consumer_receipt.",
       "enum": [
         "delivery_only",
         "consumer_receipt"
-      ]
+      ],
+      "title": "Reporting Reconciliation Mode",
+      "type": "string",
+      "x-status": "experimental"
     },
     "report_definition_id": {
       "description": "Immutable semantic definition for metric, grain, attribution, action-report-time, timezone/calendar, source/API mapping, and restatement/finality policy. Configurations and revisions MUST echo this exact value.",
@@ -388,406 +392,93 @@
     },
     "schedule": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
-      "anyOf": [
+      "additionalProperties": false,
+      "allOf": [
         {
-          "anyOf": [
-            {
-              "anyOf": [
-                {
-                  "not": {
-                    "anyOf": [
-                      {
-                        "properties": {
-                          "period_timezone_policy": {
-                            "const": "fixed"
-                          }
-                        },
-                        "required": [
-                          "period_timezone_policy"
-                        ],
-                        "type": "object"
-                      },
-                      {
-                        "required": [
-                          "period_timezone"
-                        ],
-                        "type": "object"
-                      }
-                    ]
-                  },
-                  "type": "object"
-                },
-                {
-                  "properties": {
-                    "period_timezone_policy": {
-                      "const": "fixed"
-                    }
-                  },
-                  "required": [
-                    "period_timezone",
-                    "period_timezone_policy"
-                  ]
-                }
-              ],
+          "else": {
+            "else": {
               "not": {
                 "anyOf": [
                   {
-                    "anyOf": [
-                      {
-                        "not": {
-                          "anyOf": [
-                            {
-                              "properties": {
-                                "period_timezone_policy": {
-                                  "const": "fixed"
-                                }
-                              },
-                              "required": [
-                                "period_timezone_policy"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "required": [
-                                "period_timezone"
-                              ],
-                              "type": "object"
-                            }
-                          ]
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "properties": {
-                          "period_timezone_policy": {
-                            "const": "fixed"
-                          }
-                        },
-                        "required": [
-                          "period_timezone",
-                          "period_timezone_policy"
-                        ]
-                      }
-                    ],
-                    "properties": {
-                      "alignment": {
-                        "const": "source_timezone"
-                      }
-                    },
                     "required": [
-                      "alignment",
-                      "period_anchor",
-                      "period_timezone_policy"
-                    ],
-                    "type": "object"
+                      "period_anchor_policy"
+                    ]
                   },
                   {
-                    "anyOf": [
-                      {
-                        "not": {
-                          "anyOf": [
-                            {
-                              "properties": {
-                                "period_timezone_policy": {
-                                  "const": "fixed"
-                                }
-                              },
-                              "required": [
-                                "period_timezone_policy"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "required": [
-                                "period_timezone"
-                              ],
-                              "type": "object"
-                            }
-                          ]
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "properties": {
-                          "period_timezone_policy": {
-                            "const": "fixed"
-                          }
-                        },
-                        "required": [
-                          "period_timezone",
-                          "period_timezone_policy"
-                        ]
-                      }
-                    ],
-                    "properties": {
-                      "alignment": {
-                        "const": "source_timezone"
-                      }
-                    },
                     "required": [
-                      "alignment",
-                      "period_anchor_policy",
                       "period_timezone_policy"
-                    ],
-                    "type": "object"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "period_anchor"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "period_timezone"
+                    ]
                   }
                 ]
-              },
+              }
+            },
+            "if": {
               "properties": {
                 "alignment": {
                   "const": "source_timezone"
                 }
               },
               "required": [
-                "alignment",
-                "period_timezone_policy"
-              ],
-              "type": "object"
+                "alignment"
+              ]
             },
-            {
-              "not": {
-                "anyOf": [
-                  {
-                    "properties": {
-                      "alignment": {
-                        "const": "source_timezone"
-                      }
-                    },
-                    "required": [
-                      "alignment"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "required": [
-                      "period_anchor"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "required": [
-                      "period_anchor_policy"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "required": [
-                      "period_timezone"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "required": [
-                      "period_timezone_policy"
-                    ],
-                    "type": "object"
-                  }
-                ]
-              },
-              "type": "object"
-            }
-          ],
-          "not": {
-            "anyOf": [
-              {
-                "anyOf": [
-                  {
+            "then": {
+              "allOf": [
+                {
+                  "else": {
                     "not": {
-                      "anyOf": [
-                        {
-                          "properties": {
-                            "period_timezone_policy": {
-                              "const": "fixed"
-                            }
-                          },
-                          "required": [
-                            "period_timezone_policy"
-                          ],
-                          "type": "object"
-                        },
-                        {
-                          "required": [
-                            "period_timezone"
-                          ],
-                          "type": "object"
-                        }
+                      "required": [
+                        "period_timezone"
                       ]
-                    },
-                    "type": "object"
+                    }
                   },
-                  {
+                  "if": {
                     "properties": {
                       "period_timezone_policy": {
                         "const": "fixed"
                       }
                     },
                     "required": [
-                      "period_timezone",
                       "period_timezone_policy"
                     ]
+                  },
+                  "then": {
+                    "required": [
+                      "period_timezone"
+                    ]
                   }
-                ],
-                "not": {
-                  "anyOf": [
-                    {
-                      "anyOf": [
-                        {
-                          "not": {
-                            "anyOf": [
-                              {
-                                "properties": {
-                                  "period_timezone_policy": {
-                                    "const": "fixed"
-                                  }
-                                },
-                                "required": [
-                                  "period_timezone_policy"
-                                ],
-                                "type": "object"
-                              },
-                              {
-                                "required": [
-                                  "period_timezone"
-                                ],
-                                "type": "object"
-                              }
-                            ]
-                          },
-                          "type": "object"
-                        },
-                        {
-                          "properties": {
-                            "period_timezone_policy": {
-                              "const": "fixed"
-                            }
-                          },
-                          "required": [
-                            "period_timezone",
-                            "period_timezone_policy"
-                          ]
-                        }
-                      ],
-                      "properties": {
-                        "alignment": {
-                          "const": "source_timezone"
-                        }
-                      },
-                      "required": [
-                        "alignment",
-                        "period_anchor",
-                        "period_timezone_policy"
-                      ],
-                      "type": "object"
-                    },
-                    {
-                      "anyOf": [
-                        {
-                          "not": {
-                            "anyOf": [
-                              {
-                                "properties": {
-                                  "period_timezone_policy": {
-                                    "const": "fixed"
-                                  }
-                                },
-                                "required": [
-                                  "period_timezone_policy"
-                                ],
-                                "type": "object"
-                              },
-                              {
-                                "required": [
-                                  "period_timezone"
-                                ],
-                                "type": "object"
-                              }
-                            ]
-                          },
-                          "type": "object"
-                        },
-                        {
-                          "properties": {
-                            "period_timezone_policy": {
-                              "const": "fixed"
-                            }
-                          },
-                          "required": [
-                            "period_timezone",
-                            "period_timezone_policy"
-                          ]
-                        }
-                      ],
-                      "properties": {
-                        "alignment": {
-                          "const": "source_timezone"
-                        }
-                      },
-                      "required": [
-                        "alignment",
-                        "period_anchor_policy",
-                        "period_timezone_policy"
-                      ],
-                      "type": "object"
-                    }
-                  ]
-                },
-                "properties": {
-                  "alignment": {
-                    "const": "source_timezone"
+                }
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "period_anchor_policy"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "period_anchor"
+                    ]
                   }
-                },
-                "required": [
-                  "alignment",
-                  "period_timezone_policy"
-                ],
-                "type": "object"
+                ]
               },
-              {
-                "not": {
-                  "anyOf": [
-                    {
-                      "properties": {
-                        "alignment": {
-                          "const": "source_timezone"
-                        }
-                      },
-                      "required": [
-                        "alignment"
-                      ],
-                      "type": "object"
-                    },
-                    {
-                      "required": [
-                        "period_anchor"
-                      ],
-                      "type": "object"
-                    },
-                    {
-                      "required": [
-                        "period_anchor_policy"
-                      ],
-                      "type": "object"
-                    },
-                    {
-                      "required": [
-                        "period_timezone"
-                      ],
-                      "type": "object"
-                    },
-                    {
-                      "required": [
-                        "period_timezone_policy"
-                      ],
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "object"
-              }
-            ],
+              "required": [
+                "period_timezone_policy"
+              ]
+            }
+          },
+          "if": {
             "properties": {
               "alignment": {
                 "const": "billing_cycle"
@@ -795,77 +486,64 @@
             },
             "required": [
               "alignment"
-            ],
-            "type": "object"
+            ]
           },
-          "type": "object"
-        },
-        {
-          "anyOf": [
-            {
-              "not": {
-                "anyOf": [
-                  {
-                    "properties": {
-                      "period_anchor_policy": {
-                        "const": "fixed"
+          "then": {
+            "allOf": [
+              {
+                "else": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "period_anchor"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "period_timezone"
+                        ]
                       }
-                    },
-                    "required": [
-                      "period_anchor_policy"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "required": [
-                      "period_anchor"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "required": [
-                      "period_timezone"
-                    ],
-                    "type": "object"
+                    ]
                   }
-                ]
-              },
-              "type": "object"
-            },
-            {
-              "properties": {
-                "period_anchor_policy": {
-                  "const": "fixed"
+                },
+                "if": {
+                  "properties": {
+                    "period_anchor_policy": {
+                      "const": "fixed"
+                    }
+                  },
+                  "required": [
+                    "period_anchor_policy"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "period_anchor",
+                    "period_timezone"
+                  ]
                 }
-              },
-              "required": [
-                "period_anchor",
-                "period_anchor_policy",
-                "period_timezone"
-              ]
-            }
-          ],
-          "properties": {
-            "alignment": {
-              "const": "billing_cycle"
-            }
-          },
-          "required": [
-            "alignment",
-            "period_anchor_policy"
-          ]
+              }
+            ],
+            "required": [
+              "period_anchor_policy"
+            ]
+          }
         }
       ],
       "description": "Period and availability SLA this offering can honor. For example, PT1H with snapshot finality explicitly advertises hourly provisional snapshots; a separate P1D official offering advertises daily finalized reporting.",
-      "maxProperties": 7,
       "properties": {
         "alignment": {
+          "description": "Calendar used to establish exact period boundaries. source_timezone is an explicit upstream reporting clock, such as an ad server network timezone, that may differ from the AdCP account timezone. The obligation echoes resolved timestamps and source timezone.",
           "enum": [
             "utc",
-            "billing_cycle",
+            "account_timezone",
             "source_timezone",
-            "account_timezone"
-          ]
+            "billing_cycle"
+          ],
+          "title": "Reporting Schedule Alignment",
+          "type": "string",
+          "x-adcp-model-context-inline": true
         },
         "delivery_sla": {
           "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
@@ -876,10 +554,12 @@
           "type": "string"
         },
         "period_anchor_policy": {
+          "description": "For billing_cycle only. fixed requires the advertised anchor and timezone; configurable lets each authorized account configuration select them.",
           "enum": [
             "fixed",
             "configurable"
-          ]
+          ],
+          "type": "string"
         },
         "period_duration": {
           "pattern": "^P(?=.*[1-9])(?=\\d|T)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
@@ -891,16 +571,18 @@
           "type": "string"
         },
         "period_timezone_policy": {
+          "description": "For source_timezone only. fixed advertises one exact upstream IANA timezone; account_resolved requires the seller to resolve and echo the account's upstream reporting timezone during configuration.",
           "enum": [
             "fixed",
             "account_resolved"
-          ]
+          ],
+          "type": "string"
         }
       },
       "required": [
+        "period_duration",
         "alignment",
-        "delivery_sla",
-        "period_duration"
+        "delivery_sla"
       ],
       "title": "Reporting Schedule Offering",
       "type": "object",
@@ -914,10 +596,18 @@
     "supported_finality": {
       "description": "Finality classes available under this exact report definition, schedule, and delivery method. snapshot is an explicit provisional capability, not inferred from poll frequency. Use separate atomic offerings when snapshot and official schedules or methods differ.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Finality of a reporting revision. Snapshot revisions are provisional and may be superseded. An official revision is the immutable, invoice-addressable close for its reporting slice and MUST NOT be superseded; later source corrections are explicit reporting adjustments rather than silent replacement revisions.",
         "enum": [
-          "official",
-          "snapshot"
-        ]
+          "snapshot",
+          "official"
+        ],
+        "enumDescriptions": {
+          "official": "Immutable seller-authoritative close for the represented period. Buyers may key invoices and settlement records to its reporting_revision_id. Later corrections are explicit adjustments, never superseding revisions.",
+          "snapshot": "Provisional seller/source reporting evidence; not sufficient by itself for billing."
+        },
+        "title": "Reporting Finality",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",

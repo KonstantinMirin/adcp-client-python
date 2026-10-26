@@ -127,7 +127,7 @@ def test_the_comparison_does_not_look_for_the_keyword_at_the_pointer_it_sits_at(
 
     out = emit.emit(BUNDLE, [document])
     assert document in out.emitted, out.refusals.get(document)
-    resolved = bundle.resolved(BUNDLE, document)
+    resolved = bundle.record(BUNDLE, document)
     classes = _declared(out, document)
     root = claimed(
         "classes naming the document root",

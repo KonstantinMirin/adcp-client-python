@@ -8,12 +8,17 @@
       "type": "boolean"
     },
     "compression": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Physical compression applied to each data object listed by a reporting file manifest.",
       "enum": [
-        "gzip",
         "none",
+        "gzip",
         "zstd",
         "snappy"
-      ]
+      ],
+      "title": "Reporting File Compression",
+      "type": "string",
+      "x-status": "experimental"
     },
     "control_totals": {
       "items": {
@@ -21,45 +26,7 @@
         "description": "One profile-defined aggregate used to reconcile a reporting revision without rereading every row. Names and units are defined by the immutable report definition. Values use canonical strings so currency and large integer comparisons are exact across SDKs.",
         "oneOf": [
           {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 4,
-            "properties": {
-              "name": {
-                "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                "type": "string"
-              },
-              "unit": {
-                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                "maxLength": 32,
-                "minLength": 1,
-                "type": "string"
-              },
-              "value": {
-                "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
-                "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
-                "type": "string"
-              },
-              "value_type": {
-                "const": "decimal"
-              }
-            },
-            "required": [
-              "name",
-              "value",
-              "value_type"
-            ],
-            "title": "DecimalReportingControlTotal",
-            "type": "object"
-          },
-          {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 4,
+            "additionalProperties": false,
             "properties": {
               "name": {
                 "maxLength": 128,
@@ -79,7 +46,8 @@
                 "type": "string"
               },
               "value_type": {
-                "const": "integer"
+                "const": "integer",
+                "type": "string"
               }
             },
             "required": [
@@ -88,6 +56,39 @@
               "value_type"
             ],
             "title": "IntegerReportingControlTotal",
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+                "type": "string"
+              },
+              "unit": {
+                "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              "value": {
+                "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
+                "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+                "type": "string"
+              },
+              "value_type": {
+                "const": "decimal",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value",
+              "value_type"
+            ],
+            "title": "DecimalReportingControlTotal",
             "type": "object"
           }
         ],
@@ -104,11 +105,8 @@
     "files": {
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": {
-          "not": {}
-        },
+        "additionalProperties": false,
         "description": "One immutable data object committed by a reporting file manifest.",
-        "maxProperties": 6,
         "properties": {
           "native_version_ref": {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -151,9 +149,9 @@
         },
         "required": [
           "object_ref",
-          "row_count",
+          "size_bytes",
           "sha256",
-          "size_bytes"
+          "row_count"
         ],
         "title": "Reporting File Entry",
         "type": "object",

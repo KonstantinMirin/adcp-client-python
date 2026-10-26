@@ -42,11 +42,8 @@
             "properties": {
               "brand": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
-                "additionalProperties": {
-                  "not": {}
-                },
+                "additionalProperties": false,
                 "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-                "maxProperties": 3,
                 "properties": {
                   "brand_id": {
                     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -87,6 +84,7 @@
               },
               "ext": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": true,
                 "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                 "title": "Extension Object",
                 "type": "object"
@@ -112,6 +110,7 @@
               },
               "ext": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": true,
                 "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                 "title": "Extension Object",
                 "type": "object"
@@ -132,6 +131,7 @@
             "properties": {
               "ext": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": true,
                 "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                 "title": "Extension Object",
                 "type": "object"
@@ -173,14 +173,18 @@
     },
     "accepted_methodologies": {
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "How a population-level audience-evidence estimate was produced. This vocabulary is intentionally separate from signal-definition methodology: `projected` describes expansion of a sample or panel to a reference population and does not become a user-level signal-membership method.",
         "enum": [
-          "derived",
-          "modeled",
-          "declared",
-          "inferred",
           "observed",
+          "declared",
+          "derived",
+          "inferred",
+          "modeled",
           "projected"
-        ]
+        ],
+        "title": "Audience Evidence Methodology",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -189,11 +193,8 @@
     "accepted_providers": {
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": {
-          "not": {}
-        },
+        "additionalProperties": false,
         "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-        "maxProperties": 3,
         "properties": {
           "brand_id": {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -237,14 +238,18 @@
     },
     "accepted_resolution_methods": {
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "How subjects were resolved when producing a signal or population-level evidence estimate.",
         "enum": [
-          "mixed",
+          "deterministic_id",
+          "probabilistic_device",
           "browser",
           "geographic",
           "content_signal",
-          "deterministic_id",
-          "probabilistic_device"
-        ]
+          "mixed"
+        ],
+        "title": "Audience Resolution Method",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -252,13 +257,17 @@
     },
     "accepted_subject_types": {
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "The kind of subject characterized by audience data or population-level evidence.",
         "enum": [
-          "none",
-          "business",
+          "individual",
           "household",
+          "business",
           "contextual",
-          "individual"
-        ]
+          "none"
+        ],
+        "title": "Audience Subject Type",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -273,14 +282,18 @@
     },
     "excluded_methodologies": {
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "How a population-level audience-evidence estimate was produced. This vocabulary is intentionally separate from signal-definition methodology: `projected` describes expansion of a sample or panel to a reference population and does not become a user-level signal-membership method.",
         "enum": [
-          "derived",
-          "modeled",
-          "declared",
-          "inferred",
           "observed",
+          "declared",
+          "derived",
+          "inferred",
+          "modeled",
           "projected"
-        ]
+        ],
+        "title": "Audience Evidence Methodology",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -289,11 +302,8 @@
     "excluded_providers": {
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": {
-          "not": {}
-        },
+        "additionalProperties": false,
         "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-        "maxProperties": 3,
         "properties": {
           "brand_id": {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -337,6 +347,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
@@ -349,11 +360,8 @@
       "allOf": [
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
-          "maxProperties": 2,
           "properties": {
             "interval": {
               "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -361,13 +369,15 @@
               "type": "integer"
             },
             "unit": {
+              "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
               "enum": [
-                "days",
-                "hours",
-                "minutes",
                 "seconds",
+                "minutes",
+                "hours",
+                "days",
                 "campaign"
-              ]
+              ],
+              "type": "string"
             }
           },
           "required": [

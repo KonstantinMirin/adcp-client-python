@@ -13,15 +13,17 @@ denominator in the plan's metric.
 
 from __future__ import annotations
 
+import copy
 import json
-from collections.abc import Collection, Iterator
+from collections.abc import Collection, Iterator, Mapping
 from pathlib import Path
+from typing import NamedTuple
 
 from adcp.types._base import applied_schema
 
 from codegen import compiler, keywords
-from codegen.harness import resolve
 from codegen.lower import rules, union
+from codegen.refusal import Kind, Refusal
 
 #: Top-level directories holding projections of documents published elsewhere.
 PROJECTIONS = ("bundled", "mcp")
@@ -48,49 +50,91 @@ def read(bundle: Path, document: str) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# the census of node kinds this step's population is selected by
+# the one descent: which keys hold a subschema, and the position each one holds it at
 # --------------------------------------------------------------------------- #
-# Descend only where a subschema can legally appear.  The same reason
-# ``harness.formats_used`` does: ``examples``, ``default``, ``const`` and ``enum``
-# hold INSTANCE data, so a key named ``$ref`` or ``allOf`` beneath one of them is
-# a data field whose name collides, and a blanket walk reports a composition this
-# document does not have.
-_DESCEND_MAP = ("properties", "$defs", "definitions", "patternProperties", "dependentSchemas")
-_DESCEND_ONE = (
-    "items",
-    "additionalProperties",
-    "contains",
-    "not",
-    "if",
-    "then",
-    "else",
-    "propertyNames",
-    "additionalItems",
-    "unevaluatedProperties",
-    "unevaluatedItems",
+#: The table's descent column, which is the ONE descent table
+#: (``docs/plan/architecture.md`` §11) and which this module is one of the named
+#: readers of.  Descend only where a subschema can legally appear: ``examples``,
+#: ``default``, ``const`` and ``enum`` hold INSTANCE data, so a key named ``$ref`` or
+#: ``allOf`` beneath one of them is a data field whose name collides, and a blanket
+#: walk reports a composition the document does not have.
+#:
+#: Read at ROOT and used at every position, which is a fact about the table rather
+#: than an assumption: measured over all nine positions, the column is the same
+#: fifteen keywords with the same child position at each one.  A row that ever
+#: differed would make this a per-position read, not a second table.
+_DESCENDS = keywords.descends_at(keywords.Position.ROOT)
+
+#: Of those keywords, the ones whose subschemas are reached THROUGH A NAME, and the
+#: ones that hold a LIST of them.  Everything else in the column holds exactly one
+#: subschema.  This is draft-07's GRAMMAR -- how the keyword spells what it holds --
+#: and not one of the table's decisions, which is why the SET of descending keywords
+#: is read above and never restated here.
+#:
+#: Derived from the child POSITION wherever the position decides it: a PROP value and
+#: a DEF entry are each reached through a name, and a BRANCH or a CONJ is one of a
+#: list.  MAPV is the one position two keywords reach by different spellings --
+#: ``patternProperties`` holds pattern → schema there and ``additionalProperties``
+#: holds one schema -- so that one name is written, and it is the only one.
+_HELD_BY_NAME = frozenset(
+    {k for k, p in _DESCENDS.items() if p in (keywords.Position.PROP, keywords.Position.DEF)}
+    | {"patternProperties"}
 )
-_DESCEND_LIST = ("oneOf", "anyOf", "allOf", "prefixItems")
+_HELD_IN_A_LIST = frozenset(
+    k for k, p in _DESCENDS.items() if p in (keywords.Position.BRANCH, keywords.Position.CONJ)
+)
 
 #: The combinators and the conditionals, READ OFF the declaration's descent column
 #: rather than named: a combinator holds subschemas at a BRANCH or a CONJ and a
 #: conditional holds one at a RULE, which is what each one IS.  Two literals before
 #: this, and a keyword joining either family had to be written here as well as in the
 #: table (``docs/plan/architecture.md`` §11: the descent column is the one owner).
-_DESCENDS_AT_ROOT = keywords.descends_at(keywords.Position.ROOT)
-COMPOSITION = tuple(
-    k
-    for k, p in _DESCENDS_AT_ROOT.items()
-    if p in (keywords.Position.BRANCH, keywords.Position.CONJ)
-)
-CONDITIONAL = tuple(k for k, p in _DESCENDS_AT_ROOT.items() if p is keywords.Position.RULE)
+COMPOSITION = tuple(sorted(_HELD_IN_A_LIST))
+CONDITIONAL = tuple(k for k, p in _DESCENDS.items() if p is keywords.Position.RULE)
 #: The two keywords holding a bag of named subschemas, READ OFF the declaration's
 #: descent column rather than named: they are the keywords whose subschemas occupy a
 #: DEF position, which is what a definitions section IS.  ``compiler.check_keywords``
 #: admits them at every node from the same table and the selectors below exclude a
 #: document declaring one, so there is no literal here for the pair to drift from.
-DEFINITIONS = frozenset(
-    k for k, p in keywords.descends_at(keywords.Position.ROOT).items() if p is keywords.Position.DEF
-)
+DEFINITIONS = frozenset(k for k, p in _DESCENDS.items() if p is keywords.Position.DEF)
+
+
+def subschemas(node: Mapping) -> Iterator[tuple[str, str, object, keywords.Position]]:
+    """Every subschema ``node`` holds: ``(keyword, pointer suffix, subschema, position)``.
+
+    THE ONE DESCENT STEP of this module, and both readers of it need the same answer:
+    :func:`nodes` walks it to build the censuses, and :func:`record` rebuilds along it
+    to place a reference's target.  A walk and an inliner that descended by two sets
+    would disagree about which ``$ref`` is a reference at all, which is the defect the
+    table's descent column exists to remove.
+
+    The pointer suffix is what reaches the subschema from ``node`` -- ``/properties/x``,
+    ``/allOf/0``, ``/items`` -- with a key escaped by RFC 6901's two escapes
+    (``compiler.escape_key``), and the position is the one the table says the keyword
+    holds its subschemas at.
+
+    In the NODE'S OWN KEY ORDER and not the table's, because :func:`references` states
+    its result is in document order and the run reads the first of them by name.
+    """
+    for keyword, held in node.items():
+        position = _DESCENDS.get(keyword)
+        if position is None:
+            continue
+        if keyword in _HELD_BY_NAME:
+            if isinstance(held, dict):
+                for key, sub in held.items():
+                    yield keyword, f"/{keyword}/{compiler.escape_key(key)}", sub, position
+        elif keyword in _HELD_IN_A_LIST:
+            if isinstance(held, list):
+                for i, sub in enumerate(held):
+                    yield keyword, f"/{keyword}/{i}", sub, position
+        elif isinstance(held, list):
+            # A draft-07 ``items`` may be a TUPLE of schemas, and nothing else in the
+            # column spells a list it is not already read as one for.
+            for i, sub in enumerate(held):
+                yield keyword, f"/{keyword}/{i}", sub, position
+        elif isinstance(held, dict):
+            yield keyword, f"/{keyword}", held, position
 
 
 def nodes(node: object, pointer: str = "") -> Iterator[tuple[str, dict]]:
@@ -99,7 +143,8 @@ def nodes(node: object, pointer: str = "") -> Iterator[tuple[str, dict]]:
     The one walk.  ``schema_keywords`` and ``references`` are both read off it, so
     the two censuses cannot come to disagree about what a schema position is --
     which is the same reason ``harness`` declares its descent tables beside both
-    of its walks.
+    of its walks.  It descends by :func:`subschemas`, so the walk and
+    :func:`record`'s inliner read one declaration of what a schema position is.
     """
     if isinstance(node, list):
         for i, v in enumerate(node):
@@ -108,14 +153,8 @@ def nodes(node: object, pointer: str = "") -> Iterator[tuple[str, dict]]:
     if not isinstance(node, dict):
         return
     yield pointer, node
-    for k, v in node.items():
-        if k in _DESCEND_MAP and isinstance(v, dict):
-            for kk, vv in v.items():
-                yield from nodes(vv, f"{pointer}/{k}/{compiler.escape_key(kk)}")
-        elif k in _DESCEND_ONE and isinstance(v, (dict, list)):
-            yield from nodes(v, f"{pointer}/{k}")
-        elif k in _DESCEND_LIST and isinstance(v, list):
-            yield from nodes(v, f"{pointer}/{k}")
+    for _, suffix, sub, _ in subschemas(node):
+        yield from nodes(sub, f"{pointer}{suffix}")
 
 
 def schema_keywords(node: object) -> set[str]:
@@ -287,82 +326,277 @@ def constrained_to_object(doc: dict) -> frozenset[str]:
     )
 
 
-def resolved(bundle_dir: Path, document: str) -> dict:
-    """``document``, with every ``$ref`` in it inlined from this bundle.
+def _is_an_annotation(key: str, position: keywords.Position) -> bool:
+    """Does this sibling of a ``$ref`` state nothing about ACCEPTANCE?
+
+    The one question :func:`record` asks of a sibling, and the answer decides which
+    side wins where the referring node and its target both state the key.  Read off
+    the TABLE's effect column rather than from a set of annotation names, which §11
+    names as one of today's repetitions: an annotation is a key whose cell compiles to
+    no type, no field and no rule, which is what "states nothing about acceptance"
+    IS.  A key in the ``x-`` namespace with no row of its own is one too -- §6 admits
+    it by prefix -- and a key with no row and no prefix is not: the screen refuses the
+    document on it, and until then the target's value is the one the draft holds.
+    """
+    answer = keywords.cell(key, position)
+    if answer is None:
+        return keywords.admitted_by_prefix(key)
+    return answer.effect not in keywords.COMPILES and answer.effect is not keywords.Effect.REFUSE
+
+
+def _beside(placed: dict, referring: Mapping, position: keywords.Position) -> dict:
+    """The inlined copy with the referring node's own keys kept beside it.
+
+    ``docs/plan/architecture.md`` §4, and §13 item 2 is where the two halves of it
+    were settled:
+
+    * **no key is dropped**, on either side.  §3 of the semantics document forbids it,
+      so every key of the referring node other than the ``$ref`` itself is in the
+      result whether the target states it or not.
+    * **an ANNOTATION sibling's referring value wins.**  §5's ``$ref`` row says the
+      sibling's description wins, and an annotation states nothing about acceptance, so
+      it cannot disagree with the draft.
+    * **a CONSTRAINING sibling's referring value does NOT win.**  Draft-07 ignores
+      every sibling of a ``$ref``, so the document's accepted set at this node is the
+      target's alone; letting the referring value win would make the record state an
+      acceptance fact the bundle's own draft does not hold, which is §3's
+      canonicalisation and §9's last rule.  The key is kept, the target's value stands
+      where both state one, and the cell says the keyword compiles to nothing at this
+      co-occurrence so §8 does not grade it.
+
+    Measured over the 3.2 bundle's raw documents: **0 constraining siblings**.  The
+    only keys ever beside a ``$ref`` are ``description`` (1,158 sites), ``title`` (62),
+    ``default`` (37), ``deprecated`` (36), ``$schema`` (1) and five ``x-`` keys (26),
+    and every one of them is an annotation by the test above.  So the second clause has
+    no site today and is written because the rule is the document's, not because a site
+    asks for it -- a document adding a constraining sibling gets the draft's answer
+    rather than this inliner's.
+    """
+    siblings = {k: copy.deepcopy(v) for k, v in referring.items() if k != "$ref"}
+    wins = {k: v for k, v in siblings.items() if k not in placed or _is_an_annotation(k, position)}
+    return {**placed, **wins}
+
+
+class _Where(NamedTuple):
+    """Where in the reference graph one inlining step stands: the two cycle guards.
+
+    Both are a PATH and not a visited set, because a diamond is not a cycle: two
+    references to one target each get their own copy (§4 says a deep copy per
+    reference), so meeting a document twice on different paths is the record's normal
+    shape and only meeting it twice on ONE path is undefined.
+    """
+
+    #: The cross-document hop path, starting at the document whose record this is.
+    chain: tuple[str, ...]
+    #: The ``(document, pointer)`` pairs of the local references already open inside the
+    #: copy being taken.  Empty outside a copy, since a local reference is left alone
+    #: there and so is never followed.
+    anchors: tuple[tuple[str, str], ...]
+
+
+def record(bundle_dir: Path, document: str) -> dict | Refusal:
+    """THE DOCUMENT OF RECORD: ``document`` with every cross-document ``$ref`` inlined.
+
+    This package's own inliner (``docs/plan/architecture.md`` §4), and it does what §3
+    of the semantics document says and nothing else.  Resolution INLINES; it does not
+    rewrite.  No keyword is dropped, derived, reordered or restated in another spelling,
+    on the referring node or on the inlined target.
 
     THE SELF-CONTAINED FORM, and both consumers need exactly it:
 
-    * ``AdCPBaseModel.strict_validate`` decides acceptance against the document
-      the emitter wrote into the package beside the module, which is the one its
-      class names on ``__adcp_schema__`` (D4).  The RAW document of a referencing
-      class is not decidable there: ``jsonschema`` meets an absolute ``$ref``,
-      finds no store, and FETCHES IT OVER THE NETWORK -- measured at 4.4 s per
-      validation against a live URL, on a code path ``jsonschema`` deprecates and
-      says "will shortly become an error".  Offline it raises instead.  So the
-      package carries this.
-    * ``check_pair``'s whole input is a document with no reference left in it.
+    * ``AdCPBaseModel.strict_validate`` decides acceptance against the document the
+      emitter wrote into the package beside the module, which is the one its class names
+      on ``__adcp_schema__`` (D4).  The RAW document of a referencing class is not
+      decidable there: ``jsonschema`` meets an absolute ``$ref``, finds no store, and
+      FETCHES IT OVER THE NETWORK -- measured at 4.4 s per validation against a live
+      URL, on a code path ``jsonschema`` deprecates and says "will shortly become an
+      error".  Offline it raises instead.  So the package carries this.
+    * ``check_pair``'s whole input is a document with no cross-document reference left
+      in it, and §8 compares against the document rather than against any
+      canonicalisation of it.
 
-    One function for both, and the class names ONE document, so the schema the
-    runtime decides with and the schema the harness grades cannot be two
-    different schemas -- there is no second artifact for them to disagree
-    through.
+    *Why our own, and what it replaced.*  This was ``hypothesis_jsonschema``'s resolver,
+    which CANONICALISES while it inlines: it writes a finite type out as its members
+    (``{"type": "boolean"}`` → ``{"enum": [false, true]}``), rewrites
+    ``additionalProperties: false`` into ``{"not": {}}``, drops a redundant
+    ``additionalProperties: true``, respells a one-member ``enum`` as a ``const``,
+    derives a ``maxItems`` from a ``uniqueItems``, reduces an enum node to its members
+    and drops every annotation at it, and rewrites a root ``if``/``then`` into an
+    ``anyOf`` of the two cases with the node's ``title`` copied into both.  Every one of
+    those writes a document the bundle does not state, and every reader downstream then
+    needed a fold to undo it -- six of them in the verifier, which §9 deletes with this.
+    An inliner that changes nothing needs none.  The payload generator's resolver stays
+    where §4 confines it, drawing payloads in the accepts check, where it may
+    canonicalise its own copy because that copy is an instrument of one check and is not
+    the document.
 
-    ``harness.resolve`` does the inlining -- the resolution the harness itself
-    uses, rather than a second cheaper one, because a cheaper resolution that
-    changed a verdict would be a different resolution.  The store is the
-    transitive closure of THIS document's references, read off the same ``$ref``
-    strings the emitter walks, so a document with none is handed back as read and
-    nothing resolves a bundle.  It inlines a fresh copy per path through the graph
-    (which is why ``acp-sdkgen/codegen/resolved_cache.py`` exists); over the
-    emitted population that is affordable and measured -- 0.84 s for all 43, the
-    largest 3,079 bytes -- because an emitted document's targets are leaves or
-    aliases: a target that composes refuses and takes its referrer with it.
+    **The four rules, each one §4's:**
 
-    KNOWN CEILING, and the point at which ``resolved_cache`` stops being optional:
-    this is O(paths through the ref graph), and the bundle holds a 9,109-byte
-    document that resolves to 4.8 MB.  Step 8 emits the whole population and will
-    meet it; step 2's 43 do not.
+    * every cross-document ``$ref`` is replaced by a DEEP COPY of the node its pointer
+      names, so two references to one target cannot alias into each other;
+    * the referring node's own keys are kept beside the copy (:func:`_beside`);
+    * a LOCAL ``$ref`` of this very document is left exactly as written.  It names a
+      node of the document the package carries, so ``jsonschema`` resolves it against
+      the referrer and fetches nothing;
+    * a copy taken from document D has its OWN local references inlined from D before
+      it is placed, **because it is leaving D's root scope**.  ``#/definitions/x`` in
+      the copy would otherwise be read against the REFERRING document's root, where it
+      names a different node or none.
+
+    **Two shapes make the record undefined and return a** :class:`Refusal` **(VERDICT)
+    rather than a mapping**, which is §4's own answer: a reference whose target is not a
+    bundle document -- or is, and names no node of it -- and a cross-document cycle.
+    Each is an obstruction of the POINTER SPACE or of the document, which is what §9
+    makes a verdict rather than a deferral: there is no code to write that would clear
+    it.  Measured on the 3.2 bundle: 0 of the 814 absolute references miss a document,
+    0 of the 76 fragment pointers miss a node, and 0 cross-document cycles, so neither
+    arm has a site and both are written because the record is undefined there.
+
+    The kind is minted HERE and not read from ``compiler.kind_for``, and the two answer
+    different questions: ``kind_for`` asks what the TABLE decides about a keyword, and
+    its answer for ``$ref`` is DEFERRED at every position because the cell is a lowering
+    effect the handler claims.  Nothing about this bundle's reference graph is in that
+    cell.  Reading it would report a permanent obstruction as clearable work, which is
+    §9's first rule run backwards.
+
+    **A section IS descended, which the delegated resolver did not do.**
+    ``resolve_all_refs`` descends its own ``SCHEMA_KEYS`` and ``SCHEMA_OBJECT_KEYS``,
+    and ``definitions`` and ``$defs`` are in neither, so a reference under a section
+    survived it.  This descends by the table's descent column (:func:`subschemas`),
+    where a section's entry is a subschema at a DEF position, so "every cross-document
+    ``$ref``" means every one.  ``undecidable_references`` therefore has fewer survivors
+    to find, and that is an EMISSION change rather than a relaxation: the entry is still
+    a position the package's own validation may decide through, and now the record
+    decides it locally.
+
+    KNOWN CEILING, unchanged in kind from the delegated resolver's: this is O(paths
+    through the reference graph), because a fresh copy is placed per path, and the bundle
+    holds a 9,109-byte document whose record is megabytes.  A cache keyed on
+    ``(document, pointer)`` is not sound while :func:`_beside` lets a referring node
+    contribute keys, so the cache's key would be the referring node too; nothing asks
+    for it yet.
     """
     known = set(portable(bundle_dir))
-    doc = read(bundle_dir, document)
-    store: dict[str, dict] = {}
-    queue = [doc]
-    while queue:
-        for pointer, uri in references(queue.pop()):
-            # **The store is keyed on the DOCUMENT URI and holds the whole
-            # document; the resolver follows the fragment itself.**  Keying on the
-            # full URI is what this did, and it is why a fragment-bearing reference
-            # failed even with its target read in: probed on
-            # ``hypothesis_jsonschema``'s resolver, a store holding the target
-            # under ``<uri>#/properties/cat`` raises ``_RefResolutionError`` ("does
-            # not fetch remote references") while the same target under ``<uri>``
-            # inlines the node at the pointer.  So the ``None`` was never the only
-            # gate -- the key was the other half.
-            #
-            # A LOCAL reference is SKIPPED rather than looked up: it names a node of
-            # this document, and ``LocalResolver`` is built with ``referrer=doc``,
-            # so it resolves one with no store entry at all.  Looking it up instead
-            # raised for 93 of the 1,054 portable documents, and 63 of those carry
-            # no absolute fragment reference at all -- a document whose only
-            # unresolvable reference was a pointer into itself.
-            head = split_ref(uri)[0]
-            if not head or head in store:
-                continue
-            target = document_for(head, known)
-            if target is None:
-                raise ValueError(
-                    f"{document}: {uri} at {pointer or '/'} names no document of {bundle_dir}"
+    roots: dict[str, dict] = {document: read(bundle_dir, document)}
+
+    def root_of(name: str) -> dict:
+        if name not in roots:
+            roots[name] = read(bundle_dir, name)
+        return roots[name]
+
+    def refuse(pointer: str, detail: str) -> Refusal:
+        return Refusal("$ref", pointer, detail, kind=Kind.VERDICT)
+
+    def placed(
+        uri: str, *, pointer: str, home: str, scope: dict | None, where: _Where
+    ) -> dict | Refusal | None:
+        """The node a reference names, inlined and ready to be placed, or ``None`` where
+        the reference STAYS as written.
+
+        ``None`` is the one case §4 leaves alone: a LOCAL reference of the document whose
+        record this is, which ``scope is None`` says we are at.
+        """
+        head, into = split_ref(uri)
+        if not head:
+            if scope is None:
+                return None
+            if (home, into) in where.anchors:
+                open_now = " -> ".join(p for _, p in where.anchors)
+                return refuse(
+                    pointer,
+                    f"{uri} closes a cycle of local references inside {home}, which is "
+                    f"being copied out of its own root scope: {open_now} -> {into}",
                 )
-            store[head] = read(bundle_dir, target)
-            queue.append(store[head])
-    # ``references(doc)`` and not ``store``: a document whose only reference is a
-    # pointer into ITSELF builds an empty store and still has a ``$ref`` to inline,
-    # so the old ``if store`` would hand it back with the reference left in -- which
-    # is the one thing this function exists to prevent.  13 documents are in that
-    # position (45 carry a local reference, and the other 32 carry an absolute one as
-    # well, so their store is not empty).  A document with no reference of its own is
-    # handed back as read, and nothing resolves a bundle.
-    return resolve(doc, store=store) if references(doc) else doc
+            root, at_home = scope, home
+            where = _Where(where.chain, (*where.anchors, (home, into)))
+        else:
+            named = document_for(head, known)
+            if named is None:
+                return refuse(pointer, f"{uri} names no document of {bundle_dir}")
+            if named in where.chain:
+                return refuse(
+                    pointer,
+                    f"{uri} closes a cross-document reference cycle, which leaves the "
+                    f"record undefined for {document}: {' -> '.join([*where.chain, named])}",
+                )
+            root, at_home = root_of(named), named
+            where = _Where((*where.chain, named), ())
+        try:
+            target = compiler.node_at(root, into)
+        except (KeyError, IndexError, TypeError, ValueError):
+            return refuse(pointer, f"{uri} names no node of {at_home}")
+        if not isinstance(target, dict):
+            return refuse(
+                pointer, f"{uri} names a {type(target).__name__} of {at_home}, not a schema"
+            )
+        return inline(target, pointer=pointer, home=at_home, scope=root, where=where)
+
+    def inline(
+        node: dict,
+        *,
+        pointer: str,
+        home: str,
+        scope: dict | None,
+        position: keywords.Position = keywords.Position.ROOT,
+        where: _Where = _Where((), ()),
+    ) -> dict | Refusal:
+        """``node`` with every reference under it inlined, or the first refusal reached.
+
+        ``home`` is the document whose text this node is and ``scope`` is the root a
+        local pointer in it resolves against -- ``None`` at the document whose record
+        this is, where a local reference is left as written.  ``where`` carries the two
+        cycle guards.
+        """
+        uri = node.get("$ref")
+        if isinstance(uri, str):
+            copied = placed(uri, pointer=pointer, home=home, scope=scope, where=where)
+            if isinstance(copied, Refusal):
+                return copied
+            if copied is not None:
+                return _beside(copied, node, position)
+        done: dict[str, object] = {}
+        for _, suffix, sub, at in subschemas(node):
+            if not isinstance(sub, dict):
+                continue  # not a schema; §3 drops nothing, so ``_rebuilt`` keeps it
+            answer = inline(
+                sub, pointer=f"{pointer}{suffix}", home=home, scope=scope, position=at, where=where
+            )
+            if isinstance(answer, Refusal):
+                return answer
+            done[suffix] = answer
+        return {
+            key: _rebuilt(key, value, done) if key in _DESCENDS else copy.deepcopy(value)
+            for key, value in node.items()
+        }
+
+    return inline(
+        roots[document], pointer="", home=document, scope=None, where=_Where((document,), ())
+    )
+
+
+def _rebuilt(keyword: str, held: object, done: Mapping[str, object]) -> object:
+    """``held`` with each subschema replaced by the one :func:`record` inlined for it.
+
+    The inverse of :func:`subschemas` for one keyword, and it rebuilds the keyword's own
+    SPELLING: a map stays a map with its keys in their own order, a list stays a list of
+    the same length, one schema stays one.  A value the descent did not reach -- an
+    ``additionalProperties: false``, an ``items`` that is neither a schema nor a list of
+    them -- is deep-copied as it stands, because §3 drops nothing and because a record
+    that aliased the bundle's own object would let one reader's edit reach another's.
+    """
+    def done_or_copy(suffix: str, sub: object) -> object:
+        return done[suffix] if suffix in done else copy.deepcopy(sub)
+
+    if keyword in _HELD_BY_NAME and isinstance(held, dict):
+        return {
+            key: done_or_copy(f"/{keyword}/{compiler.escape_key(key)}", sub)
+            for key, sub in held.items()
+        }
+    if isinstance(held, list):
+        return [done_or_copy(f"/{keyword}/{i}", sub) for i, sub in enumerate(held)]
+    if isinstance(held, dict):
+        return done_or_copy(f"/{keyword}", held)
+    return copy.deepcopy(held)
 
 
 def pointers_above(pointer: str, candidates: Collection[str]) -> list[str]:
@@ -385,11 +619,11 @@ def section_entries(node: object) -> frozenset[str]:
     KEYWORD position.  ``/properties/definitions/properties/x`` is a property named
     ``definitions`` and the text cannot tell the two apart; the walk can, because it
     arrives at a property's value through ``properties`` and at a section's entry
-    through the section.  The 3.2 bundle holds 0 such properties, and after resolution
-    the two readings cannot disagree at all -- a reference under a property IS reached
-    by the resolver and inlined, so only a keyword-position section leaves one behind.
-    The difference is readable on a RAW document, which is what the censuses in
-    ``tests/`` ask this of.
+    through the section.  The 3.2 bundle holds 0 such properties.  The difference is
+    readable on a RAW document, which is what the censuses in ``tests/`` ask this of;
+    in a RECORD a section is still a section -- :func:`record` descends one, so the
+    references under it are inlined, but the entries themselves travel with the copy
+    and a nested section is reachable at a pointer no document on disk spells.
 
     A section NESTED inside another node counts, which is why this is not limited to
     the root: resolution inlines a target's whole body, sections and all, so a carried

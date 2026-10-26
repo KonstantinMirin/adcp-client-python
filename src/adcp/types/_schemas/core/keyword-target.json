@@ -12,11 +12,20 @@
       "type": "string"
     },
     "match_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Keyword targeting match type. broad: ads may serve on queries semantically related to the keyword. phrase: ads serve when the query contains the keyword phrase. exact: ads serve only when the query matches the keyword exactly.",
       "enum": [
         "broad",
-        "exact",
-        "phrase"
-      ]
+        "phrase",
+        "exact"
+      ],
+      "enumDescriptions": {
+        "broad": "Ads may serve on queries semantically related to the keyword",
+        "exact": "Ads serve only when the query matches the keyword exactly",
+        "phrase": "Ads serve when the query contains the keyword phrase in order"
+      },
+      "title": "Match Type",
+      "type": "string"
     }
   },
   "required": [

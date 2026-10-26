@@ -182,7 +182,7 @@ def test_a_ref_branch_is_a_class_with_two_bases_and_the_dispatch_is_derived() ->
         # check the retired refusal's stated reason was about -- an inherited field being
         # unreportable at the branch's pointer -- and for a ``$ref`` branch it is not:
         # the resolved document carries the target's whole content AT that pointer.
-        resolved = bundle.resolved(at, "root.json")
+        resolved = bundle.record(at, "root.json")
         for arm in base._branch_models:
             node = resolved
             for step in arm.__adcp_schema__.pointer.removeprefix("#").strip("/").split("/"):

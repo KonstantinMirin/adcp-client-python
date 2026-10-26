@@ -31,6 +31,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
@@ -65,14 +66,26 @@
       "type": "string"
     },
     "previous_status": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Account status immediately before this transition.",
       "enum": [
         "active",
-        "closed",
+        "pending_approval",
         "rejected",
-        "suspended",
         "payment_required",
-        "pending_approval"
-      ]
+        "suspended",
+        "closed"
+      ],
+      "enumDescriptions": {
+        "active": "Account is operational and can create media buys",
+        "closed": "Was active, now terminated \u2014 terminal state",
+        "payment_required": "Credit limit reached or funds depleted",
+        "pending_approval": "Seller is reviewing the account (credit, contracts)",
+        "rejected": "Seller declined the account request \u2014 terminal state",
+        "suspended": "Was active, now paused \u2014 operations gated"
+      },
+      "title": "Account Status",
+      "type": "string"
     },
     "reason_code": {
       "description": "Machine-readable reason for the transition. This is advisory routing/debug metadata; receivers MUST re-read list_accounts rather than relying on the reason code as the source of truth.",
@@ -118,14 +131,26 @@
       "type": "object"
     },
     "status": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Account status after this transition. Receivers SHOULD treat this as advisory and re-read list_accounts for the authoritative account snapshot.",
       "enum": [
         "active",
-        "closed",
+        "pending_approval",
         "rejected",
-        "suspended",
         "payment_required",
-        "pending_approval"
-      ]
+        "suspended",
+        "closed"
+      ],
+      "enumDescriptions": {
+        "active": "Account is operational and can create media buys",
+        "closed": "Was active, now terminated \u2014 terminal state",
+        "payment_required": "Credit limit reached or funds depleted",
+        "pending_approval": "Seller is reviewing the account (credit, contracts)",
+        "rejected": "Seller declined the account request \u2014 terminal state",
+        "suspended": "Was active, now paused \u2014 operations gated"
+      },
+      "title": "Account Status",
+      "type": "string"
     },
     "subscriber_id": {
       "description": "Identifies which sync_accounts.accounts[].notification_configs[] entry is receiving this fire. Echoed verbatim from the entry's subscriber_id.",

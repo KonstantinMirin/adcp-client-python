@@ -70,7 +70,7 @@ class Exemption(NamedTuple):
     0 ``$ref`` occurrences, so a node reached through a ``$ref`` in the bundle
     source is an inlined COPY here, at a pointer of its own.  Two entries below are
     the same authored node for exactly that reason, and that is why they are two
-    entries rather than one with a clever matcher: the resolver's copy is a real
+    entries rather than one with a clever matcher: the record's copy is a real
     position in a real packaged document, and naming it is what keeps this a set of
     pointers.
 
@@ -121,7 +121,7 @@ _D8 = (
 #: DERIVED against the packaged tree, and one on ``minProperties``, which is pinned.
 #:
 #: Three of the four are one authored node, ``core/attestation-issuer.json``'s
-#: ``AttestationOriginIssuer.origin``, which the resolver inlines into
+#: ``AttestationOriginIssuer.origin``, which the record inlines into
 #: ``core/attestation-capabilities.json`` and into
 #: ``core/audience-evidence-requirements.json`` as well.
 #:
@@ -181,7 +181,7 @@ EXEMPT: tuple[Exemption, ...] = (
     ),
     Exemption(
         # A THIRD packaged copy of entry one's authored node, and the same mechanism as
-        # entry two: the resolver inlines ``core/attestation-issuer.json``'s origin
+        # entry two: the record inlines ``core/attestation-issuer.json``'s origin
         # branch here, so this is a position of audience-evidence-requirements' own
         # packaged document and the pair graded against it is a different pair.  The
         # bundle SOURCE does not state the pattern at this document at all.

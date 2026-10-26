@@ -9,12 +9,19 @@
       "x-entity": "creative"
     },
     "execution_daast_version": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Exact DAAST version verified for seller-assembled first-class DAAST trackers. This is selection lineage and part of the execution review identity; it is not included in selected_output_digest.",
       "enum": [
         "1.0",
         "1.1"
-      ]
+      ],
+      "title": "DAAST Version",
+      "type": "string"
     },
     "execution_vast_version": {
+      "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Exact VAST version verified for seller-assembled first-class VAST trackers. This is selection lineage and part of the execution review identity; it is not included in selected_output_digest.",
       "enum": [
         "2.0",
         "3.0",
@@ -22,7 +29,9 @@
         "4.1",
         "4.2",
         "4.3"
-      ]
+      ],
+      "title": "VAST Version",
+      "type": "string"
     },
     "resolved_by": {
       "description": "Who performed deterministic compatibility resolution. A buyer may resolve locally from seller discovery. Seller resolution is valid only on the destination sales agent when it advertised representation_resolution; an independent creative agent cannot claim seller-bound compatibility.",
@@ -57,10 +66,14 @@
       "x-entity": "creative_representation"
     },
     "strategy": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Deterministic strategy applied after compatibility filtering.",
       "enum": [
         "representation_order",
         "highest_compatible_vast"
-      ]
+      ],
+      "title": "Representation Selection Strategy",
+      "type": "string"
     }
   },
   "required": [

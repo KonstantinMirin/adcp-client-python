@@ -248,7 +248,7 @@ def _refuse_at(ref: SchemaRef, payload: Any, name: str) -> None:
     """:func:`_refuse` for a node a :class:`SchemaRef` names: the DOCUMENT is the scope.
 
     **One call so the node and its resolution scope cannot be supplied separately**,
-    which is the defect this closes.  ``bundle.resolved`` inlines a REMOTE reference
+    which is the defect this closes.  ``bundle.record`` inlines a REMOTE reference
     and leaves a LOCAL one, so a node at ``#/definitions/box_decoration`` can say
     ``{"$ref": "#/definitions/rectangle"}`` -- a pointer relative to the DOCUMENT
     ROOT.  Handed the node as its own schema, ``jsonschema`` resolves ``#/`` within

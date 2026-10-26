@@ -142,12 +142,16 @@
   "description": "Schedule constraint advertised by a seller. Unlike an installed reporting-schedule, an offering may resolve an account-specific upstream source timezone or let a billing-cycle configuration select its own anchor and IANA timezone.",
   "properties": {
     "alignment": {
+      "description": "Calendar used to establish exact period boundaries. source_timezone is an explicit upstream reporting clock, such as an ad server network timezone, that may differ from the AdCP account timezone. The obligation echoes resolved timestamps and source timezone.",
       "enum": [
         "utc",
-        "billing_cycle",
+        "account_timezone",
         "source_timezone",
-        "account_timezone"
-      ]
+        "billing_cycle"
+      ],
+      "title": "Reporting Schedule Alignment",
+      "type": "string",
+      "x-adcp-model-context-inline": true
     },
     "delivery_sla": {
       "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",

@@ -207,9 +207,9 @@ def test_the_difference_between_the_two_halves_is_a_schema_fact() -> None:
     **The ``jsonschema`` half runs over the constrained nodes with no ``$ref`` in
     their own subtree, 1,541 of the 2,040, and that exclusion is named rather than
     silent.**  A raw bundle node carrying an absolute ``$ref`` sends ``jsonschema``
-    to the network (``bundle.resolved``'s docstring measures it at 4.4 s per
+    to the network (``bundle.record``'s docstring measures it at 4.4 s per
     validation, on a path it deprecates), and resolving all 1,054 documents to avoid
-    that costs more than the claim is worth -- the same reason ``bundle.resolved``
+    that costs more than the claim is worth -- the same reason ``bundle.record``
     exists for the emitted population only.  The structural half below covers all
     2,040.
 
@@ -646,7 +646,7 @@ def test_the_assertion_is_inherited_down_a_chain_of_combinator_hops() -> None:
 #
 # `applied_schema` says WHICH assertions a nested node's schema carries;  this is
 # the other half of the same question -- what a `$ref` inside that node resolves
-# AGAINST.  `bundle.resolved` inlines a REMOTE reference and leaves a LOCAL one, so
+# AGAINST.  `bundle.record` inlines a REMOTE reference and leaves a LOCAL one, so
 # a node at `#/definitions/box_decoration` can say `{"$ref": "#/definitions/
 # rectangle"}`: a pointer relative to the DOCUMENT ROOT.  Handed the node alone as
 # its own schema, `jsonschema` resolves `#/` within the node and raises
@@ -757,17 +757,44 @@ def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
             per_document[g.ref.document] += 1
             # and it resolves, which is what the scope widening is for
             assert applied_schema(root, reference), (g.ref, reference)
-    # The two documents, by name, each with a non-empty set of local references -- and
-    # every one of them is asserted to RESOLVE in the loop above, which is the
-    # obligation.  Counted once per (PAIR, reference) here, where
-    # ``tests/test_emit.py`` reads the same references once per document: two
-    # denominators for one fact, and naming the set says which rather than how many.
+    # The documents, by name, each with a non-empty set of local references -- and every
+    # one of them is asserted to RESOLVE in the loop above, which is the obligation.
+    # Counted once per (PAIR, reference) here, where ``tests/test_emit.py`` reads the
+    # same references once per document: two denominators for one fact, and naming the
+    # set says which rather than how many.
+    #
+    # **3 -> 21 AT ``adcp-client-python-10l.3``, AND THE POPULATION IS THE ROW'S
+    # PRODUCT.**  Architecture §4 decides that a local ``$ref`` stays as written in the
+    # document of record; the delegated resolver it replaced INLINED one, and the three
+    # named below were only the documents whose chain is RECURSIVE and therefore had no
+    # finite inlining.  So the scope widening this test is the denominator for now has
+    # eighteen more documents under it, and every reference in all 21 resolves through
+    # ``applied_schema`` above.
     assert set(per_document) == {
+        "aao/agent-publishers.json",
         "core/bidding-policy-capability.json",
         "core/placement-presentation.json",
-        # The third joined at ``salesagent-j3k2l.41``: its bounded-value definitions
-        # reference each other locally, and the array and mapping branches that carry
-        # their own bound now have a named type to carry it on.
+        "core/reporting-adjustment-receipt.json",
+        "core/reporting-canonicalization-contract.json",
+        "core/reporting-coverage.json",
+        "core/reporting-dataset-share-destination.json",
+        "core/reporting-delivery-config-state.json",
+        "core/reporting-delivery-method.json",
+        "core/reporting-delivery-offering.json",
+        "core/reporting-reliability-statistics.json",
+        "core/reporting-report-definition.json",
+        "core/reporting-resource.json",
+        "core/reporting-schedule.json",
+        "core/reporting-status-issue.json",
+        "core/requirements/catalog-field-binding.json",
+        "core/response-payload-jws-envelope.json",
+        "core/verification-token-claims.json",
+        # The third of the original three joined at ``salesagent-j3k2l.41``: its
+        # bounded-value definitions reference each other locally, and the array and
+        # mapping branches that carry their own bound now have a named type to carry it
+        # on.
         "governance/reported-outcome-error.json",
+        "media-buy/change-term-constraints.json",
+        "media-buy/get-reporting-status-request.json",
     }, dict(per_document)
     assert all(per_document.values()), dict(per_document)

@@ -13,81 +13,89 @@
           "type": "string"
         },
         "metric_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Standard delivery and performance metrics available for reporting. Most values name flat numeric fields of `core/delivery-metrics.json`. Leaf identities address a single numeric value nested inside an object-shaped metric so it can be declared, committed, aggregated, and sorted individually: `quartile_25`/`quartile_50`/`quartile_75`/`quartile_100` resolve to `quartile_data.q1_views`\u2013`q4_views`, and `viewable_rate`/`viewable_impressions`/`measurable_impressions`/`viewed_seconds` resolve to the same-named fields of `viewability`. Structured nested identities `viewed_seconds_percentiles` and `viewed_seconds_histogram` make the corresponding optional distribution carriers discoverable, committable, and requestable, but not aggregatable or sortable. The nested object or array remains the canonical carrier \u2014 nested identities never introduce duplicate flat response fields. Container tokens such as `viewability`, `quartile_data`, `dooh_metrics`, and `time_based_views` declare their documented nested surface. **Container subsumption applies only to numeric leaves**: `viewability` subsumes `viewable_rate`, `viewable_impressions`, `measurable_impressions`, and `viewed_seconds`; `quartile_data` subsumes `quartile_25`, `quartile_50`, `quartile_75`, and `quartile_100`. This rule applies to capability declaration, `required_metrics` filtering, format `reported_metrics` intersection, and `requested_metrics` selection. Optional structured identities MUST be declared explicitly: `viewability` alone does not satisfy `viewed_seconds_percentiles` or `viewed_seconds_histogram`. Requesting any nested identity selects its canonical carrier in the response. A nested identity declaration does not imply sibling values or the carrier's non-metric fields.",
           "enum": [
-            "cpm",
-            "ctr",
-            "grps",
-            "roas",
-            "leads",
-            "plays",
-            "reach",
-            "saves",
-            "spend",
-            "views",
-            "clicks",
-            "follows",
-            "downloads",
-            "frequency",
-            "brand_lift",
-            "units_sold",
-            "conversions",
-            "engagements",
             "impressions",
-            "ooh_metrics",
+            "spend",
+            "clicks",
+            "ctr",
+            "views",
+            "completed_views",
+            "completion_rate",
+            "conversions",
+            "conversion_value",
+            "commissionable_value",
+            "roas",
+            "cost_per_acquisition",
+            "new_to_brand_rate",
+            "leads",
+            "reach",
+            "frequency",
+            "grps",
+            "engagements",
+            "engagement_rate",
+            "follows",
+            "saves",
+            "profile_visits",
+            "viewability",
+            "viewable_rate",
+            "viewable_impressions",
+            "measurable_impressions",
+            "viewed_seconds",
+            "viewed_seconds_percentiles",
+            "viewed_seconds_histogram",
+            "quartile_data",
             "quartile_25",
             "quartile_50",
             "quartile_75",
-            "viewability",
-            "dooh_metrics",
-            "foot_traffic",
             "quartile_100",
-            "quartile_data",
-            "viewable_rate",
-            "cost_per_click",
-            "profile_visits",
-            "viewed_seconds",
-            "completed_views",
-            "completion_rate",
-            "conversion_lift",
-            "engagement_rate",
-            "conversion_value",
             "time_based_views",
-            "brand_search_lift",
-            "new_to_brand_rate",
-            "new_to_brand_units",
-            "commissionable_value",
-            "cost_per_acquisition",
-            "viewable_impressions",
-            "incremental_sales_lift",
-            "measurable_impressions",
+            "dooh_metrics",
+            "ooh_metrics",
+            "cost_per_click",
             "cost_per_completed_view",
-            "viewed_seconds_histogram",
-            "viewed_seconds_percentiles"
-          ]
+            "cpm",
+            "downloads",
+            "units_sold",
+            "new_to_brand_units",
+            "plays",
+            "incremental_sales_lift",
+            "brand_lift",
+            "foot_traffic",
+            "conversion_lift",
+            "brand_search_lift"
+          ],
+          "title": "Available Metric",
+          "type": "string"
         },
         "qualifier": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Compact qualifier set that distinguishes incompatible reporting definitions for the same metric ID.",
-          "maxProperties": 5,
           "properties": {
             "attribution_methodology": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "How attribution between ad exposure and outcome events was computed. Used as a `qualifier.attribution_methodology` key on `committed_metrics`, `missing_metrics`, package-level delivery values (`metric_values` or `vendor_metric_values`), and `performance-feedback.metric` to disambiguate the same outcome metric reported under different methodologies \u2014 `conversion_value` measured deterministically (matched purchase IDs) is not the same number as `conversion_value` measured probabilistically (modeled match) and should never be summed across methodologies. The retail-media closed-loop pattern typically reports under `deterministic_purchase`; MMM and clean-room outputs typically report under `modeled` or `probabilistic`; panel-based measurement (Nielsen, comScore, Edison) reports under `panel_based`.",
               "enum": [
-                "modeled",
-                "panel_based",
+                "deterministic_purchase",
                 "probabilistic",
-                "deterministic_purchase"
-              ]
+                "panel_based",
+                "modeled"
+              ],
+              "enumDescriptions": {
+                "deterministic_purchase": "1:1 deterministic match between exposed users and purchasers, typically via shared identifier (loyalty card, logged-in account, hashed email). Standard in retail-media closed-loop measurement (Walmart Connect, Kroger Precision, Amazon DSP attribution).",
+                "modeled": "Modeled output \u2014 Media Mix Modeling (MMM), Multi-Touch Attribution (MTA), incrementality testing, or other statistical inference that produces an estimated outcome rather than a directly-observed match. Includes most clean-room outputs.",
+                "panel_based": "Panel methodology \u2014 outcomes measured against a recruited respondent panel and projected to the population. Standard for Nielsen, comScore, Edison Research, and similar panel providers.",
+                "probabilistic": "Probabilistic match using statistical models over device graphs, IP/UA fingerprinting, or behavioral signals. No 1:1 identifier link."
+              },
+              "title": "Attribution Methodology",
+              "type": "string"
             },
             "attribution_window": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
-              "maxProperties": 2,
               "properties": {
                 "interval": {
                   "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -95,13 +103,15 @@
                   "type": "integer"
                 },
                 "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
                   "enum": [
-                    "days",
-                    "hours",
-                    "minutes",
                     "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
                     "campaign"
-                  ]
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -112,25 +122,52 @@
               "type": "object"
             },
             "completion_source": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Trust-source disambiguator for `completion_rate` \u2014 *who* attested to the completion event, not *how* (methodology granularity is a separate dimension; future qualifier keys may add it if buyer demand surfaces). The two paths can yield materially different rates, particularly in SSAI environments where the player's view of completion may differ from a vendor's. Used as a `qualifier.completion_source` key on `committed_metrics`, `missing_metrics`, and package-level delivery values (`metric_values` or `vendor_metric_values`) to disambiguate which trust source the row represents. Edge cases: walled gardens where the seller is also the measurement vendor (YouTube, Spotify) collapse to `seller_attested` by trust-model logic \u2014 the same party served and counted. IAB-certified first-party podcast measurement (Podtrac, Triton on their own platforms; Art19 on its own platform) likewise collapses to `seller_attested`. The same vendor's offering on a third-party platform (Podtrac on a publisher who isn't Podtrac) is `vendor_attested`. The trust axis is *not* who runs the SDK \u2014 it's who is independent of the seller's revenue interest.",
               "enum": [
                 "seller_attested",
                 "vendor_attested"
-              ]
+              ],
+              "enumDescriptions": {
+                "seller_attested": "The party serving the ad witnessed and counted the completion event. Includes ad-server / player completion beacons, walled-garden first-party measurement, and IAB-certified first-party podcast measurement on the platform's own inventory. Source of truth is the seller's delivery infrastructure.",
+                "vendor_attested": "An independent third-party measurement vendor (Nielsen, DV, IAS, Moat, HUMAN, Podtrac on third-party inventory, Edison Research panel, etc.) attested to the completion via SDK callbacks, server-beacon validation, or panel methodology. Source of truth is the vendor; vendor identity SHOULD be anchored on a matching `performance_standard.vendor` BrandRef in the buy contract \u2014 if a buyer wants vendor-attested completion for transparency without an accountability gate, they MAY commit a vendor metric via `vendor_metrics` on the product rather than `committed_metrics` with this qualifier."
+              },
+              "title": "Completion Source",
+              "type": "string"
             },
             "lift_dimension": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Brand-lift dimension disambiguator. Brand lift is multidimensional in production \u2014 Kantar, Upwave, Cint, DoubleVerify, and similar vendors report awareness, consideration, favorability, purchase intent, and ad recall as separate measurements with their own sample sizes and confidence intervals. Used as a `qualifier.lift_dimension` key on `committed_metrics`, `missing_metrics`, package-level delivery values (`metric_values` or `vendor_metric_values`), and `performance-feedback.metric` to disambiguate which dimension of `brand_lift` a row represents. Two `brand_lift` rows under different lift dimensions represent different surveyed outcomes and must not be combined into a single number.",
               "enum": [
-                "ad_recall",
                 "awareness",
-                "favorability",
                 "consideration",
-                "purchase_intent"
-              ]
+                "favorability",
+                "purchase_intent",
+                "ad_recall"
+              ],
+              "enumDescriptions": {
+                "ad_recall": "Lift in unaided or aided ad recall \u2014 'do you remember seeing an ad for [brand]'.",
+                "awareness": "Lift in unaided or aided brand awareness \u2014 typically measured as 'have you heard of [brand]'.",
+                "consideration": "Lift in brand consideration \u2014 'would you consider buying [brand] next time'.",
+                "favorability": "Lift in brand favorability or affinity \u2014 'how favorable is your view of [brand]'.",
+                "purchase_intent": "Lift in stated purchase intent \u2014 'are you likely to buy [brand] in the next [N] days'."
+              },
+              "title": "Lift Dimension",
+              "type": "string"
             },
             "viewability_standard": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Viewability measurement standard applied to determine whether an impression qualifies as viewable. These are materially different thresholds and should not be compared across standards.",
               "enum": [
                 "mrc",
                 "groupm"
-              ]
+              ],
+              "enumDescriptions": {
+                "groupm": "GroupM standard: 100% of pixels in view for 1 continuous second (display) or 50% of video duration.",
+                "mrc": "MRC/IAB standard: 50% of pixels in view for 1 continuous second (display) or 2 continuous seconds (video)."
+              },
+              "title": "Viewability Standard",
+              "type": "string"
             }
           },
           "title": "Canonical Metric Qualifier",
@@ -172,27 +209,31 @@
         },
         "qualifier": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Compact qualifier set that distinguishes incompatible reporting definitions for the same metric ID.",
-          "maxProperties": 5,
           "properties": {
             "attribution_methodology": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "How attribution between ad exposure and outcome events was computed. Used as a `qualifier.attribution_methodology` key on `committed_metrics`, `missing_metrics`, package-level delivery values (`metric_values` or `vendor_metric_values`), and `performance-feedback.metric` to disambiguate the same outcome metric reported under different methodologies \u2014 `conversion_value` measured deterministically (matched purchase IDs) is not the same number as `conversion_value` measured probabilistically (modeled match) and should never be summed across methodologies. The retail-media closed-loop pattern typically reports under `deterministic_purchase`; MMM and clean-room outputs typically report under `modeled` or `probabilistic`; panel-based measurement (Nielsen, comScore, Edison) reports under `panel_based`.",
               "enum": [
-                "modeled",
-                "panel_based",
+                "deterministic_purchase",
                 "probabilistic",
-                "deterministic_purchase"
-              ]
+                "panel_based",
+                "modeled"
+              ],
+              "enumDescriptions": {
+                "deterministic_purchase": "1:1 deterministic match between exposed users and purchasers, typically via shared identifier (loyalty card, logged-in account, hashed email). Standard in retail-media closed-loop measurement (Walmart Connect, Kroger Precision, Amazon DSP attribution).",
+                "modeled": "Modeled output \u2014 Media Mix Modeling (MMM), Multi-Touch Attribution (MTA), incrementality testing, or other statistical inference that produces an estimated outcome rather than a directly-observed match. Includes most clean-room outputs.",
+                "panel_based": "Panel methodology \u2014 outcomes measured against a recruited respondent panel and projected to the population. Standard for Nielsen, comScore, Edison Research, and similar panel providers.",
+                "probabilistic": "Probabilistic match using statistical models over device graphs, IP/UA fingerprinting, or behavioral signals. No 1:1 identifier link."
+              },
+              "title": "Attribution Methodology",
+              "type": "string"
             },
             "attribution_window": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
-              "maxProperties": 2,
               "properties": {
                 "interval": {
                   "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -200,13 +241,15 @@
                   "type": "integer"
                 },
                 "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
                   "enum": [
-                    "days",
-                    "hours",
-                    "minutes",
                     "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
                     "campaign"
-                  ]
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -217,25 +260,52 @@
               "type": "object"
             },
             "completion_source": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Trust-source disambiguator for `completion_rate` \u2014 *who* attested to the completion event, not *how* (methodology granularity is a separate dimension; future qualifier keys may add it if buyer demand surfaces). The two paths can yield materially different rates, particularly in SSAI environments where the player's view of completion may differ from a vendor's. Used as a `qualifier.completion_source` key on `committed_metrics`, `missing_metrics`, and package-level delivery values (`metric_values` or `vendor_metric_values`) to disambiguate which trust source the row represents. Edge cases: walled gardens where the seller is also the measurement vendor (YouTube, Spotify) collapse to `seller_attested` by trust-model logic \u2014 the same party served and counted. IAB-certified first-party podcast measurement (Podtrac, Triton on their own platforms; Art19 on its own platform) likewise collapses to `seller_attested`. The same vendor's offering on a third-party platform (Podtrac on a publisher who isn't Podtrac) is `vendor_attested`. The trust axis is *not* who runs the SDK \u2014 it's who is independent of the seller's revenue interest.",
               "enum": [
                 "seller_attested",
                 "vendor_attested"
-              ]
+              ],
+              "enumDescriptions": {
+                "seller_attested": "The party serving the ad witnessed and counted the completion event. Includes ad-server / player completion beacons, walled-garden first-party measurement, and IAB-certified first-party podcast measurement on the platform's own inventory. Source of truth is the seller's delivery infrastructure.",
+                "vendor_attested": "An independent third-party measurement vendor (Nielsen, DV, IAS, Moat, HUMAN, Podtrac on third-party inventory, Edison Research panel, etc.) attested to the completion via SDK callbacks, server-beacon validation, or panel methodology. Source of truth is the vendor; vendor identity SHOULD be anchored on a matching `performance_standard.vendor` BrandRef in the buy contract \u2014 if a buyer wants vendor-attested completion for transparency without an accountability gate, they MAY commit a vendor metric via `vendor_metrics` on the product rather than `committed_metrics` with this qualifier."
+              },
+              "title": "Completion Source",
+              "type": "string"
             },
             "lift_dimension": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Brand-lift dimension disambiguator. Brand lift is multidimensional in production \u2014 Kantar, Upwave, Cint, DoubleVerify, and similar vendors report awareness, consideration, favorability, purchase intent, and ad recall as separate measurements with their own sample sizes and confidence intervals. Used as a `qualifier.lift_dimension` key on `committed_metrics`, `missing_metrics`, package-level delivery values (`metric_values` or `vendor_metric_values`), and `performance-feedback.metric` to disambiguate which dimension of `brand_lift` a row represents. Two `brand_lift` rows under different lift dimensions represent different surveyed outcomes and must not be combined into a single number.",
               "enum": [
-                "ad_recall",
                 "awareness",
-                "favorability",
                 "consideration",
-                "purchase_intent"
-              ]
+                "favorability",
+                "purchase_intent",
+                "ad_recall"
+              ],
+              "enumDescriptions": {
+                "ad_recall": "Lift in unaided or aided ad recall \u2014 'do you remember seeing an ad for [brand]'.",
+                "awareness": "Lift in unaided or aided brand awareness \u2014 typically measured as 'have you heard of [brand]'.",
+                "consideration": "Lift in brand consideration \u2014 'would you consider buying [brand] next time'.",
+                "favorability": "Lift in brand favorability or affinity \u2014 'how favorable is your view of [brand]'.",
+                "purchase_intent": "Lift in stated purchase intent \u2014 'are you likely to buy [brand] in the next [N] days'."
+              },
+              "title": "Lift Dimension",
+              "type": "string"
             },
             "viewability_standard": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Viewability measurement standard applied to determine whether an impression qualifies as viewable. These are materially different thresholds and should not be compared across standards.",
               "enum": [
                 "mrc",
                 "groupm"
-              ]
+              ],
+              "enumDescriptions": {
+                "groupm": "GroupM standard: 100% of pixels in view for 1 continuous second (display) or 50% of video duration.",
+                "mrc": "MRC/IAB standard: 50% of pixels in view for 1 continuous second (display) or 2 continuous seconds (video)."
+              },
+              "title": "Viewability Standard",
+              "type": "string"
             }
           },
           "title": "Canonical Metric Qualifier",
@@ -247,11 +317,8 @@
         },
         "vendor": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-          "maxProperties": 3,
           "properties": {
             "brand_id": {
               "$schema": "http://json-schema.org/draft-07/schema#",

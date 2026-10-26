@@ -6,7 +6,7 @@ documents), its sense and its instrument.  Instruments:
 A. BOUNDARY WITNESS, for the three vocabulary keywords the plan never decided
    (minItems, exclusiveMinimum, exclusiveMaximum): at every site derive the witness from
    the keyword's own value, validate it against the node as the DOCUMENT applies it
-   (bundle.resolved + applied_schema) and against the same node with the keyword deleted.
+   (bundle.record + applied_schema) and against the same node with the keyword deleted.
    CONSTRAINS iff refused with and accepted without.  salesagent-j3k2l.53's instrument A.
 
 B. ONE-KEYWORD SCHEMA, for every keyword jsonschema's Draft7Validator has no validator for

@@ -75,12 +75,7 @@
           "type": "string"
         },
         "timezone_basis": {
-          "enum": [
-            "utc",
-            "account_timezone",
-            "schedule_timezone",
-            "configured_timezone"
-          ]
+          "$ref": "#/definitions/ReportCalendarTimezoneBasis"
         }
       },
       "required": [

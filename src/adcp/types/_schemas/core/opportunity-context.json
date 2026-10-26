@@ -103,6 +103,7 @@
     },
     "planning_horizon": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Inclusive calendar range in which the buyer expects the campaign to run.",
       "properties": {
         "end": {
@@ -117,8 +118,8 @@
         }
       },
       "required": [
-        "end",
-        "start"
+        "start",
+        "end"
       ],
       "title": "Date Range",
       "type": "object"

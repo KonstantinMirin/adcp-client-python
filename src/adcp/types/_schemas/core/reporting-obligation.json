@@ -325,9 +325,7 @@
     },
     "coverage": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "definitions": {
         "ReportingMediaBuyId": {
           "minLength": 1,
@@ -345,7 +343,6 @@
         }
       },
       "description": "Immutable effective coverage of the exact selected offering at this period boundary. Delivery health is evaluated separately over the covered denominator.",
-      "maxProperties": 12,
       "properties": {
         "covered_package_ids": {
           "items": {
@@ -376,10 +373,7 @@
         "limitations": {
           "description": "Stable reasons that some requested scope is not covered by the exact selected offering. These are capability facts, not delivery failures.",
           "items": {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 3,
+            "additionalProperties": false,
             "properties": {
               "media_buy_id": {
                 "minLength": 1,
@@ -402,17 +396,18 @@
               },
               "reason": {
                 "enum": [
-                  "capability_unknown",
-                  "provider_limitation",
                   "offering_unsupported",
+                  "account_entitlement_unavailable",
                   "credential_scope_insufficient",
-                  "account_entitlement_unavailable"
-                ]
+                  "provider_limitation",
+                  "capability_unknown"
+                ],
+                "type": "string"
               }
             },
             "required": [
-              "media_buy_id",
-              "reason"
+              "reason",
+              "media_buy_id"
             ],
             "type": "object"
           },
@@ -456,10 +451,11 @@
         "status": {
           "enum": [
             "full",
-            "none",
             "partial",
+            "none",
             "unknown"
-          ]
+          ],
+          "type": "string"
         },
         "unknown_media_buy_ids": {
           "items": {
@@ -507,18 +503,18 @@
         }
       },
       "required": [
-        "covered_package_ids",
-        "evaluated_at",
-        "fully_covered_media_buy_ids",
-        "limitations",
-        "media_buy_ids",
-        "package_ids",
-        "partially_covered_media_buy_ids",
         "status",
-        "unknown_media_buy_ids",
-        "unknown_package_ids",
+        "evaluated_at",
+        "media_buy_ids",
+        "fully_covered_media_buy_ids",
+        "partially_covered_media_buy_ids",
         "unsupported_media_buy_ids",
-        "unsupported_package_ids"
+        "unknown_media_buy_ids",
+        "package_ids",
+        "covered_package_ids",
+        "unsupported_package_ids",
+        "unknown_package_ids",
+        "limitations"
       ],
       "title": "Reporting Coverage",
       "type": "object",
@@ -560,137 +556,102 @@
       "type": "string"
     },
     "feed_purpose": {
+      "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
       "enum": [
         "pacing",
-        "billing",
-        "analytics"
-      ]
+        "analytics",
+        "billing"
+      ],
+      "title": "Reporting Feed Purpose",
+      "type": "string",
+      "x-adcp-model-context-inline": true
     },
     "health": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Operational health for an explicitly echoed reporting scope. Aggregate precedence is action_required, delayed, then healthy. waiting applies only when no active obligation is due. action_required also applies immediately when a readable consumer-receipt revision or adjustment lacks an accepted current receipt; Reliable Reporting defines no separate receipt SLA. complete applies only when the queried scope is closed, retained coverage is complete, and every obligation has its configured required finality plus a verified readable materialization.",
       "enum": [
-        "delayed",
         "healthy",
         "waiting",
-        "complete",
-        "action_required"
-      ]
+        "delayed",
+        "action_required",
+        "complete"
+      ],
+      "enumDescriptions": {
+        "action_required": "A delivery, SLA, retry, or immediate readable-evidence receipt-reconciliation boundary was crossed and at least one structured human action is supplied.",
+        "complete": "The queried scope is closed, retained coverage is complete, and every obligation has its configured required finality plus a verified readable materialization.",
+        "delayed": "At least one obligation is late but remains within the seller's declared automated recovery path, or \u2014 for a caller-scoped Reliable Reporting view only \u2014 an authenticated consumer's received status was made stale by a seller restatement and is still inside its bounded re-read grace window. In the second case nothing is late; treat the two causes separately when building a seller-lateness SLA view, and read issues[].code to tell them apart.",
+        "healthy": "Due obligations in the queried active scope are current and automated delivery is working.",
+        "waiting": "No obligation in the queried active scope is due yet."
+      },
+      "title": "Reporting Health",
+      "type": "string"
     },
     "issues": {
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": {
-          "not": {}
-        },
+        "additionalProperties": false,
         "allOf": [
           {
-            "anyOf": [
-              {
-                "anyOf": [
-                  {
-                    "not": {
-                      "properties": {
-                        "recommended_action": {
-                          "const": "contact_seller"
-                        },
-                        "responsible_party": {
-                          "const": "seller"
-                        },
-                        "severity": {
-                          "const": "delayed"
-                        }
-                      },
-                      "required": [
-                        "reporting_obligation_id",
-                        "reporting_revision_id"
-                      ],
-                      "type": "object"
-                    },
-                    "properties": {
-                      "recommended_action": {
-                        "const": "contact_seller"
-                      },
-                      "responsible_party": {
-                        "const": "seller"
-                      }
-                    },
-                    "required": [
-                      "reporting_obligation_id",
-                      "reporting_revision_id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "recommended_action": {
-                        "const": "wait_for_retry"
-                      },
-                      "responsible_party": {
-                        "const": "seller"
-                      },
-                      "severity": {
-                        "const": "delayed"
-                      }
-                    },
-                    "required": [
-                      "reporting_obligation_id",
-                      "reporting_revision_id"
-                    ]
-                  }
-                ],
-                "properties": {
-                  "code": {
-                    "const": "REVISION_UNREADABLE"
-                  }
-                },
-                "required": [
-                  "code"
-                ]
+            "if": {
+              "properties": {
+                "code": {
+                  "const": "CONSUMER_STATUS_MISMATCH"
+                }
               },
-              {
-                "not": {
-                  "properties": {
-                    "code": {
-                      "const": "REVISION_UNREADABLE"
-                    }
-                  },
-                  "required": [
-                    "code"
-                  ],
-                  "type": "object"
-                },
-                "type": "object"
-              }
-            ]
+              "required": [
+                "code"
+              ]
+            },
+            "then": {
+              "required": [
+                "opened_at",
+                "reporting_status_id"
+              ]
+            }
           },
           {
-            "anyOf": [
-              {
-                "not": {
-                  "properties": {
-                    "code": {
-                      "const": "CONSUMER_STATUS_MISMATCH"
-                    }
-                  },
-                  "required": [
-                    "code"
-                  ],
-                  "type": "object"
-                },
-                "type": "object"
+            "if": {
+              "properties": {
+                "code": {
+                  "const": "REVISION_UNREADABLE"
+                }
               },
-              {
+              "required": [
+                "code"
+              ]
+            },
+            "then": {
+              "else": {
                 "properties": {
-                  "code": {
-                    "const": "CONSUMER_STATUS_MISMATCH"
+                  "recommended_action": {
+                    "const": "contact_seller"
                   }
-                },
-                "required": [
-                  "code",
-                  "opened_at",
-                  "reporting_status_id"
-                ]
+                }
+              },
+              "if": {
+                "properties": {
+                  "severity": {
+                    "const": "delayed"
+                  }
+                }
+              },
+              "properties": {
+                "responsible_party": {
+                  "const": "seller"
+                }
+              },
+              "required": [
+                "reporting_obligation_id",
+                "reporting_revision_id"
+              ],
+              "then": {
+                "properties": {
+                  "recommended_action": {
+                    "const": "wait_for_retry"
+                  }
+                }
               }
-            ]
+            }
           }
         ],
         "definitions": {
@@ -705,26 +666,26 @@
           }
         },
         "description": "Structured reporting condition that explains delayed or action_required health without exposing credentials, provider response bodies, or internal stack traces.",
-        "maxProperties": 20,
         "properties": {
           "code": {
             "enum": [
               "REPORT_OVERDUE",
-              "ACCESS_REQUIRED",
-              "DELIVERY_FAILED",
-              "RECEIPT_REJECTED",
-              "RECEIPT_REQUIRED",
-              "RESOURCE_EXPIRED",
               "PRODUCTION_FAILED",
-              "HISTORY_UNAVAILABLE",
-              "READER_INCOMPATIBLE",
-              "REVISION_UNREADABLE",
+              "DELIVERY_FAILED",
+              "ACCESS_REQUIRED",
               "CONFIGURATION_REQUIRED",
-              "CONSUMER_STATUS_MISMATCH",
-              "ADJUSTMENT_RECEIPT_REJECTED",
+              "REPORTING_COVERAGE_INCOMPLETE",
+              "RESOURCE_EXPIRED",
+              "READER_INCOMPATIBLE",
+              "HISTORY_UNAVAILABLE",
+              "REVISION_UNREADABLE",
+              "RECEIPT_REQUIRED",
+              "RECEIPT_REJECTED",
               "ADJUSTMENT_RECEIPT_REQUIRED",
-              "REPORTING_COVERAGE_INCOMPLETE"
-            ]
+              "ADJUSTMENT_RECEIPT_REJECTED",
+              "CONSUMER_STATUS_MISMATCH"
+            ],
+            "type": "string"
           },
           "delivery_config_id": {
             "maxLength": 64,
@@ -749,11 +710,15 @@
             "type": "string"
           },
           "feed_purpose": {
+            "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
             "enum": [
               "pacing",
-              "billing",
-              "analytics"
-            ]
+              "analytics",
+              "billing"
+            ],
+            "title": "Reporting Feed Purpose",
+            "type": "string",
+            "x-adcp-model-context-inline": true
           },
           "issue_id": {
             "description": "Seller-issued stable identifier for this logical issue: re-emissions and later polls of the same unresolved condition reuse it, and resolution retires it, so consumers can project AdCP reporting issues into durable work items. A recurrence after resolution receives a new id.",
@@ -763,12 +728,14 @@
             "type": "string"
           },
           "issue_state": {
+            "description": "Optional seller-maintained lifecycle for this issue_id. open is the default when omitted. acknowledged means a human on responsible_party has taken it up but the condition persists. resolved means the underlying condition no longer holds; a recurrence uses a new issue_id. waived means the parties agreed off-protocol to disregard this exact issue even though its underlying condition may still hold. Only open and acknowledged issues appear in issues[]; retiring an issue removes it from the projection rather than publishing it at resolved or waived, so a reader that treats a nonempty issues[] as degradation stays correct. A CONSUMER_STATUS_MISMATCH waiver follows the bilateral, exact-scope requirements in consumer_mismatch_lifecycle.",
             "enum": [
               "open",
-              "waived",
+              "acknowledged",
               "resolved",
-              "acknowledged"
-            ]
+              "waived"
+            ],
+            "type": "string"
           },
           "media_buy_ids": {
             "items": {
@@ -814,15 +781,16 @@
           },
           "recommended_action": {
             "enum": [
-              "contact_buyer",
-              "repair_access",
-              "contact_seller",
               "wait_for_retry",
+              "contact_buyer",
+              "contact_seller",
               "contact_provider",
+              "repair_access",
               "update_configuration",
-              "use_supported_reader",
-              "change_reporting_scope"
-            ]
+              "change_reporting_scope",
+              "use_supported_reader"
+            ],
+            "type": "string"
           },
           "reporting_obligation_id": {
             "maxLength": 255,
@@ -852,21 +820,25 @@
               "buyer",
               "seller",
               "provider"
-            ]
+            ],
+            "type": "string"
           },
           "severity": {
             "enum": [
               "delayed",
               "action_required"
-            ]
+            ],
+            "title": "Reporting Status Severity",
+            "type": "string",
+            "x-adcp-model-context-inline": true
           }
         },
         "required": [
-          "code",
           "issue_id",
-          "recommended_action",
+          "code",
+          "severity",
           "responsible_party",
-          "severity"
+          "recommended_action"
         ],
         "title": "Reporting Status Issue",
         "type": "object",
@@ -941,10 +913,15 @@
       "type": "integer"
     },
     "reconciliation_mode": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Whether producer delivery evidence is sufficient or an authenticated consumer receipt is required.",
       "enum": [
         "delivery_only",
         "consumer_receipt"
-      ]
+      ],
+      "title": "Reporting Reconciliation Mode",
+      "type": "string",
+      "x-status": "experimental"
     },
     "reconciliation_status": {
       "description": "Consumer agreement state for the current required revision. A later superseding revision returns a receipt-required obligation to pending until that revision is accepted.",
@@ -976,10 +953,18 @@
       "type": "string"
     },
     "required_finality": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Finality of a reporting revision. Snapshot revisions are provisional and may be superseded. An official revision is the immutable, invoice-addressable close for its reporting slice and MUST NOT be superseded; later source corrections are explicit reporting adjustments rather than silent replacement revisions.",
       "enum": [
-        "official",
-        "snapshot"
-      ]
+        "snapshot",
+        "official"
+      ],
+      "enumDescriptions": {
+        "official": "Immutable seller-authoritative close for the represented period. Buyers may key invoices and settlement records to its reporting_revision_id. Later corrections are explicit adjustments, never superseding revisions.",
+        "snapshot": "Provisional seller/source reporting evidence; not sufficient by itself for billing."
+      },
+      "title": "Reporting Finality",
+      "type": "string"
     },
     "resource_retained_until": {
       "description": "Minimum time through which at least one verified materialization for a completed obligation remains readable. Managed-delivery only; Core revisions are retained per status_retention_days and readable through the existing API transports.",
@@ -993,126 +978,48 @@
     },
     "schedule": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
-      "anyOf": [
+      "additionalProperties": false,
+      "allOf": [
         {
-          "anyOf": [
-            {
+          "else": {
+            "else": {
               "not": {
                 "anyOf": [
                   {
-                    "properties": {
-                      "alignment": {
-                        "const": "source_timezone"
-                      }
-                    },
-                    "required": [
-                      "alignment"
-                    ],
-                    "type": "object"
-                  },
-                  {
                     "required": [
                       "period_anchor"
-                    ],
-                    "type": "object"
+                    ]
                   },
                   {
                     "required": [
                       "period_timezone"
-                    ],
-                    "type": "object"
+                    ]
                   }
                 ]
-              },
-              "type": "object"
+              }
             },
-            {
-              "not": {
-                "properties": {
-                  "alignment": {
-                    "const": "source_timezone"
-                  }
-                },
-                "required": [
-                  "alignment",
-                  "period_anchor",
-                  "period_timezone"
-                ],
-                "type": "object"
-              },
+            "if": {
               "properties": {
                 "alignment": {
                   "const": "source_timezone"
                 }
               },
               "required": [
-                "alignment",
-                "period_timezone"
-              ],
-              "type": "object"
-            }
-          ],
-          "not": {
-            "anyOf": [
-              {
-                "not": {
-                  "anyOf": [
-                    {
-                      "properties": {
-                        "alignment": {
-                          "const": "source_timezone"
-                        }
-                      },
-                      "required": [
-                        "alignment"
-                      ],
-                      "type": "object"
-                    },
-                    {
-                      "required": [
-                        "period_anchor"
-                      ],
-                      "type": "object"
-                    },
-                    {
-                      "required": [
-                        "period_timezone"
-                      ],
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "object"
-              },
-              {
-                "not": {
-                  "properties": {
-                    "alignment": {
-                      "const": "source_timezone"
-                    }
-                  },
-                  "required": [
-                    "alignment",
-                    "period_anchor",
-                    "period_timezone"
-                  ],
-                  "type": "object"
-                },
-                "properties": {
-                  "alignment": {
-                    "const": "source_timezone"
-                  }
-                },
+                "alignment"
+              ]
+            },
+            "then": {
+              "not": {
                 "required": [
-                  "alignment",
-                  "period_timezone"
-                ],
-                "type": "object"
-              }
-            ],
+                  "period_anchor"
+                ]
+              },
+              "required": [
+                "period_timezone"
+              ]
+            }
+          },
+          "if": {
             "properties": {
               "alignment": {
                 "const": "billing_cycle"
@@ -1120,22 +1027,14 @@
             },
             "required": [
               "alignment"
-            ],
-            "type": "object"
+            ]
           },
-          "type": "object"
-        },
-        {
-          "properties": {
-            "alignment": {
-              "const": "billing_cycle"
-            }
-          },
-          "required": [
-            "alignment",
-            "period_anchor",
-            "period_timezone"
-          ]
+          "then": {
+            "required": [
+              "period_anchor",
+              "period_timezone"
+            ]
+          }
         }
       ],
       "definitions": {
@@ -1153,15 +1052,18 @@
         }
       },
       "description": "Resolved immutable schedule generation that created this obligation.",
-      "maxProperties": 5,
       "properties": {
         "alignment": {
+          "description": "Calendar used to establish exact period boundaries. source_timezone is an explicit upstream reporting clock, such as an ad server network timezone, that may differ from the AdCP account timezone. The obligation echoes resolved timestamps and source timezone.",
           "enum": [
             "utc",
-            "billing_cycle",
+            "account_timezone",
             "source_timezone",
-            "account_timezone"
-          ]
+            "billing_cycle"
+          ],
+          "title": "Reporting Schedule Alignment",
+          "type": "string",
+          "x-adcp-model-context-inline": true
         },
         "delivery_sla": {
           "description": "Non-negative maximum time after period end before the required revision is due. PT0S means due at period close; expected_at equals the resolved period end plus this duration.",
@@ -1186,9 +1088,9 @@
         }
       },
       "required": [
+        "period_duration",
         "alignment",
-        "delivery_sla",
-        "period_duration"
+        "delivery_sla"
       ],
       "title": "Reporting Schedule",
       "type": "object",

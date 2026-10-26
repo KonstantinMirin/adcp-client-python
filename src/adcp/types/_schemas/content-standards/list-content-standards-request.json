@@ -34,34 +34,61 @@
     "channels": {
       "description": "Filter by channel",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Standardized advertising media channels describing how buyers allocate budget. Channels are planning abstractions, not technical substrates. See the Media Channel Taxonomy specification for detailed definitions.",
         "enum": [
-          "ctv",
-          "olv",
-          "ooh",
-          "dooh",
-          "email",
-          "print",
-          "radio",
-          "cinema",
-          "gaming",
-          "search",
-          "social",
           "display",
-          "podcast",
-          "affiliate",
+          "olv",
+          "social",
+          "search",
+          "ctv",
           "linear_tv",
-          "influencer",
-          "retail_media",
+          "radio",
           "streaming_audio",
+          "podcast",
+          "dooh",
+          "ooh",
+          "print",
+          "cinema",
+          "email",
+          "gaming",
+          "retail_media",
+          "influencer",
+          "affiliate",
           "product_placement",
           "sponsored_intelligence"
-        ]
+        ],
+        "enumDescriptions": {
+          "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
+          "cinema": "Movie theater advertising",
+          "ctv": "Connected TV and streaming on television screens",
+          "display": "Digital display advertising (banners, native, rich media) across web and app",
+          "dooh": "Digital out-of-home buying context, including inventory on venue-operated screens and audio players",
+          "email": "Email advertising and sponsored newsletter content",
+          "gaming": "In-game advertising across platforms",
+          "influencer": "Creator and influencer marketing partnerships",
+          "linear_tv": "Traditional broadcast and cable television",
+          "olv": "Online video advertising outside CTV (pre-roll, outstream, in-app video)",
+          "ooh": "Classic out-of-home (physical billboards, transit, etc.)",
+          "podcast": "Podcast advertising (host-read or dynamically inserted)",
+          "print": "Newspapers, magazines, and other print publications",
+          "product_placement": "Product placement, branded content, and sponsorship integrations",
+          "radio": "Traditional AM/FM radio broadcast",
+          "retail_media": "Retail media networks and commerce marketplaces (Amazon, Walmart, Instacart)",
+          "search": "Search engine advertising and search networks",
+          "social": "Social media platforms (Facebook, Instagram, TikTok, LinkedIn, etc.)",
+          "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow",
+          "streaming_audio": "Digital audio streaming services (Spotify, Pandora, etc.)"
+        },
+        "title": "Media Channel",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array"
     },
     "context": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
       "title": "Context Object",
       "type": "object"
@@ -76,6 +103,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
@@ -90,11 +118,8 @@
     },
     "pagination": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "Standard cursor-based pagination parameters for list operations",
-      "maxProperties": 2,
       "properties": {
         "cursor": {
           "description": "Opaque cursor from a previous response to fetch the next page",

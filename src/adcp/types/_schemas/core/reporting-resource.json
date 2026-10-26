@@ -99,11 +99,7 @@
     "reader_compatibility": {
       "description": "Reader features or format constraints required to consume this resource. Readiness verification MUST use a representative supported reader.",
       "items": {
-        "maxLength": 128,
-        "minLength": 1,
-        "title": "Reporting Reader Compatibility Item",
-        "type": "string",
-        "x-adcp-model-context-inline": true
+        "$ref": "#/definitions/ReportingReaderCompatibilityItem"
       },
       "type": "array",
       "uniqueItems": true

@@ -26,11 +26,20 @@
     "supported_billing": {
       "description": "Echoed copy of the seller's `supported_billing` capability for the caller's convenience \u2014 saves a `get_adcp_capabilities` round-trip when `scope` is `\"capability\"`. Sellers MAY omit this field; callers MUST treat absence as \"call `get_adcp_capabilities`\" rather than \"any value is permitted.\"",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Which party the seller invoices for a buyer\u2013storefront account relationship. Determines the billing entity and invoicing flow, not a payment rail, clearing intermediary, or per-media-buy settlement route. AdCP does not perform in-protocol payment or settlement.",
         "enum": [
-          "agent",
           "operator",
+          "agent",
           "advertiser"
-        ]
+        ],
+        "enumDescriptions": {
+          "advertiser": "Seller invoices the advertiser directly, even when a different operator places orders on their behalf",
+          "agent": "Agent consolidates billing across brands and is invoiced by the seller",
+          "operator": "Seller invoices the operator \u2014 agency or brand buying direct"
+        },
+        "title": "Billing Party",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array"

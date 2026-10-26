@@ -6,11 +6,20 @@
     "catalog_types": {
       "description": "Filter by catalog type",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Commercial/provenance types for signals available for audience targeting",
         "enum": [
-          "owned",
+          "marketplace",
           "custom",
-          "marketplace"
-        ]
+          "owned"
+        ],
+        "enumDescriptions": {
+          "custom": "Source-native segment built on demand from models, composites, or buyer inputs - not attributable to a standing upstream provider",
+          "marketplace": "Resold third-party segments (provider authorization verifiable via the provider's adagents.json)",
+          "owned": "First-party segments derived from data the signal agent or seller directly owns (retailer purchase data, publisher behavioral data, telco data)"
+        },
+        "title": "Signal Availability Type",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array"
@@ -25,6 +34,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Vendor-namespaced extension parameters for seller- or platform-specific signal filter criteria not covered by standard fields. Keys MUST be namespaced under a vendor or platform key (e.g., ext.gam, ext.platform_x). Sellers MUST treat all values as untrusted buyer input; avoid unbounded logging or labels, and do not interpolate values into caller-visible error strings, LLM prompts, SQL queries, or system commands without sanitization. Persistent use of an extension key across multiple buyers is a signal to propose standardization.",
       "title": "Extension Object",
       "type": "object"

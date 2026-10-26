@@ -66,6 +66,7 @@
         },
         "renderer": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.",
           "properties": {
             "export": {
@@ -79,16 +80,16 @@
               "type": "string"
             },
             "rendering_origin": {
+              "description": "Informational implementation origin copied from the selected route. It does not grant authority.",
               "enum": [
                 "platform_native",
                 "agent_approximation"
-              ]
+              ],
+              "type": "string"
             },
             "tracking_suppressed": {
-              "enum": [
-                false,
-                true
-              ]
+              "description": "True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.",
+              "type": "boolean"
             },
             "version": {
               "description": "Exact semantic version of the renderer implementation.",
@@ -97,11 +98,11 @@
             }
           },
           "required": [
-            "export",
             "renderer_id",
+            "version",
+            "export",
             "rendering_origin",
-            "tracking_suppressed",
-            "version"
+            "tracking_suppressed"
           ],
           "title": "Preview Renderer Metadata",
           "type": "object"
@@ -179,6 +180,7 @@
         },
         "renderer": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.",
           "properties": {
             "export": {
@@ -192,16 +194,16 @@
               "type": "string"
             },
             "rendering_origin": {
+              "description": "Informational implementation origin copied from the selected route. It does not grant authority.",
               "enum": [
                 "platform_native",
                 "agent_approximation"
-              ]
+              ],
+              "type": "string"
             },
             "tracking_suppressed": {
-              "enum": [
-                false,
-                true
-              ]
+              "description": "True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.",
+              "type": "boolean"
             },
             "version": {
               "description": "Exact semantic version of the renderer implementation.",
@@ -210,11 +212,11 @@
             }
           },
           "required": [
-            "export",
             "renderer_id",
+            "version",
+            "export",
             "rendering_origin",
-            "tracking_suppressed",
-            "version"
+            "tracking_suppressed"
           ],
           "title": "Preview Renderer Metadata",
           "type": "object"
@@ -297,6 +299,7 @@
         },
         "renderer": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Optional renderer implementation and safety metadata for audit and reproducibility. Authority is still resolved from capability discovery and placement delegation.",
           "properties": {
             "export": {
@@ -310,16 +313,16 @@
               "type": "string"
             },
             "rendering_origin": {
+              "description": "Informational implementation origin copied from the selected route. It does not grant authority.",
               "enum": [
                 "platform_native",
                 "agent_approximation"
-              ]
+              ],
+              "type": "string"
             },
             "tracking_suppressed": {
-              "enum": [
-                false,
-                true
-              ]
+              "description": "True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.",
+              "type": "boolean"
             },
             "version": {
               "description": "Exact semantic version of the renderer implementation.",
@@ -328,11 +331,11 @@
             }
           },
           "required": [
-            "export",
             "renderer_id",
+            "version",
+            "export",
             "rendering_origin",
-            "tracking_suppressed",
-            "version"
+            "tracking_suppressed"
           ],
           "title": "Preview Renderer Metadata",
           "type": "object"

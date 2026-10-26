@@ -34,144 +34,132 @@
             },
             "oneOf": [
               {
-                "additionalProperties": {
-                  "not": {}
-                },
+                "additionalProperties": false,
                 "allOf": [
                   {
-                    "anyOf": [
-                      {
-                        "not": {
-                          "anyOf": [
-                            {
-                              "properties": {
-                                "metric": {
-                                  "enum": [
-                                    "viewable_rate",
-                                    "viewed_seconds"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "metric"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "required": [
-                                "standard"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "required": [
-                                "vendor"
-                              ],
-                              "type": "object"
-                            }
-                          ]
-                        },
-                        "type": "object"
+                    "if": {
+                      "properties": {
+                        "metric": {
+                          "const": "viewable_rate"
+                        }
                       },
-                      {
-                        "properties": {
-                          "metric": {
-                            "enum": [
-                              "viewable_rate",
-                              "viewed_seconds"
-                            ]
+                      "required": [
+                        "metric"
+                      ]
+                    },
+                    "then": {
+                      "properties": {
+                        "target": {
+                          "properties": {
+                            "value": {
+                              "maximum": 1
+                            }
                           }
-                        },
-                        "required": [
-                          "metric"
-                        ]
-                      }
-                    ]
+                        }
+                      },
+                      "required": [
+                        "standard"
+                      ]
+                    }
                   },
                   {
-                    "anyOf": [
-                      {
-                        "not": {
-                          "properties": {
-                            "metric": {
-                              "const": "viewable_rate"
-                            }
+                    "else": {
+                      "not": {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "standard"
+                            ]
                           },
-                          "required": [
-                            "metric"
-                          ],
-                          "type": "object"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "properties": {
-                          "metric": {
-                            "const": "viewable_rate"
-                          },
-                          "target": {
-                            "properties": {
-                              "value": {
-                                "maximum": 1
-                              }
-                            }
+                          {
+                            "required": [
+                              "vendor"
+                            ]
                           }
-                        },
-                        "required": [
-                          "metric",
-                          "standard"
                         ]
                       }
-                    ]
+                    },
+                    "if": {
+                      "properties": {
+                        "metric": {
+                          "enum": [
+                            "viewable_rate",
+                            "viewed_seconds"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "metric"
+                      ]
+                    }
                   }
                 ],
-                "maxProperties": 9,
                 "properties": {
                   "kind": {
-                    "const": "metric"
+                    "const": "metric",
+                    "type": "string"
                   },
                   "metric": {
                     "enum": [
-                      "reach",
-                      "saves",
-                      "views",
                       "clicks",
-                      "follows",
-                      "engagements",
-                      "viewable_rate",
-                      "profile_visits",
+                      "views",
+                      "completed_views",
                       "viewed_seconds",
-                      "completed_views"
-                    ]
+                      "viewable_rate",
+                      "engagements",
+                      "follows",
+                      "saves",
+                      "profile_visits",
+                      "reach"
+                    ],
+                    "type": "string"
                   },
                   "priority": {
                     "minimum": 1,
                     "type": "integer"
                   },
                   "reach_unit": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Unit of measurement for reach and audience size metrics. Different channels and measurement providers count reach in fundamentally different units, making cross-channel comparison impossible without declaring the unit.",
                     "enum": [
-                      "custom",
-                      "cookies",
+                      "individuals",
+                      "households",
                       "devices",
                       "accounts",
-                      "households",
-                      "individuals"
-                    ]
+                      "cookies",
+                      "custom"
+                    ],
+                    "enumDescriptions": {
+                      "accounts": "Unique logged-in accounts (platform-specific identity).",
+                      "cookies": "Unique browser cookies.",
+                      "custom": "Seller-defined reach unit. Describe in ext. For a Product.identity declaration with persistent_identifier false, describe the unit in Product.identity.reach_methodology.",
+                      "devices": "Unique device identifiers (IDFA, GAID, CTV device ID).",
+                      "households": "Unique households or TV homes.",
+                      "individuals": "Unique people. Panel-based or identity-resolved measurement."
+                    },
+                    "title": "Reach Unit",
+                    "type": "string"
                   },
                   "standard": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Viewability measurement standard applied to determine whether an impression qualifies as viewable. These are materially different thresholds and should not be compared across standards.",
                     "enum": [
                       "mrc",
                       "groupm"
-                    ]
+                    ],
+                    "enumDescriptions": {
+                      "groupm": "GroupM standard: 100% of pixels in view for 1 continuous second (display) or 50% of video duration.",
+                      "mrc": "MRC/IAB standard: 50% of pixels in view for 1 continuous second (display) or 2 continuous seconds (video)."
+                    },
+                    "title": "Viewability Standard",
+                    "type": "string"
                   },
                   "target": {
-                    "additionalProperties": {
-                      "not": {}
-                    },
-                    "maxProperties": 2,
+                    "additionalProperties": false,
                     "properties": {
                       "kind": {
-                        "const": "threshold_rate"
+                        "const": "threshold_rate",
+                        "type": "string"
                       },
                       "value": {
                         "exclusiveMinimum": 0,
@@ -185,22 +173,19 @@
                     "type": "object"
                   },
                   "target_frequency": {
-                    "additionalProperties": {
-                      "not": {}
-                    },
+                    "additionalProperties": false,
                     "anyOf": [
-                      {
-                        "required": [
-                          "max"
-                        ]
-                      },
                       {
                         "required": [
                           "min"
                         ]
+                      },
+                      {
+                        "required": [
+                          "max"
+                        ]
                       }
                     ],
-                    "maxProperties": 3,
                     "properties": {
                       "max": {
                         "minimum": 1,
@@ -212,11 +197,8 @@
                       },
                       "window": {
                         "$schema": "http://json-schema.org/draft-07/schema#",
-                        "additionalProperties": {
-                          "not": {}
-                        },
+                        "additionalProperties": false,
                         "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
-                        "maxProperties": 2,
                         "properties": {
                           "interval": {
                             "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -224,13 +206,15 @@
                             "type": "integer"
                           },
                           "unit": {
+                            "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
                             "enum": [
-                              "days",
-                              "hours",
-                              "minutes",
                               "seconds",
+                              "minutes",
+                              "hours",
+                              "days",
                               "campaign"
-                            ]
+                            ],
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -248,11 +232,8 @@
                   },
                   "vendor": {
                     "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": {
-                      "not": {}
-                    },
+                    "additionalProperties": false,
                     "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-                    "maxProperties": 3,
                     "properties": {
                       "brand_id": {
                         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -303,83 +284,93 @@
                 "type": "object"
               },
               {
-                "additionalProperties": {
-                  "not": {}
-                },
-                "maxProperties": 5,
+                "additionalProperties": false,
                 "properties": {
                   "attribution_window": {
                     "$schema": "http://json-schema.org/draft-07/schema#",
+                    "additionalProperties": true,
                     "description": "Describes the attribution methodology and lookback windows used for conversion measurement. Enables cross-platform comparison by making attribution methodology transparent. Used as a `$ref` from `optimization-goal.json` (buyer's optimization-time attribution choice), `get-media-buy-delivery-response.json` (seller-declared attribution methodology in delivery reports), and similar surfaces. All fields are optional individually but at least one of `post_click`, `post_view`, or `model` SHOULD be populated; absence of `model` means the seller's default attribution model applies (typically `last_touch` per industry convention) \u2014 sellers SHOULD populate `model` explicitly when committing to a specific methodology.",
                     "properties": {
                       "model": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "Attribution model used to assign credit when multiple touchpoints exist. SHOULD be populated when committing to a specific model; when absent, the seller's default applies.",
                         "enum": [
-                          "linear",
                           "last_touch",
+                          "first_touch",
+                          "linear",
                           "time_decay",
-                          "data_driven",
-                          "first_touch"
-                        ]
+                          "data_driven"
+                        ],
+                        "title": "Attribution Model",
+                        "type": "string"
                       },
                       "post_click": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "additionalProperties": {
-                          "not": {}
-                        },
-                        "description": "Post-click attribution window. Conversions occurring within this duration after a click are attributed to the ad.",
-                        "maxProperties": 2,
-                        "properties": {
-                          "interval": {
-                            "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                            "minimum": 1,
-                            "type": "integer"
-                          },
-                          "unit": {
-                            "enum": [
-                              "days",
-                              "hours",
-                              "minutes",
-                              "seconds",
-                              "campaign"
-                            ]
+                        "allOf": [
+                          {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
+                            "additionalProperties": false,
+                            "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+                            "properties": {
+                              "interval": {
+                                "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "unit": {
+                                "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+                                "enum": [
+                                  "seconds",
+                                  "minutes",
+                                  "hours",
+                                  "days",
+                                  "campaign"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "interval",
+                              "unit"
+                            ],
+                            "title": "Duration",
+                            "type": "object"
                           }
-                        },
-                        "required": [
-                          "interval",
-                          "unit"
                         ],
-                        "title": "Duration",
-                        "type": "object"
+                        "description": "Post-click attribution window. Conversions occurring within this duration after a click are attributed to the ad."
                       },
                       "post_view": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "additionalProperties": {
-                          "not": {}
-                        },
-                        "description": "Post-view attribution window. Conversions occurring within this duration after an ad impression (without click) are attributed to the ad.",
-                        "maxProperties": 2,
-                        "properties": {
-                          "interval": {
-                            "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                            "minimum": 1,
-                            "type": "integer"
-                          },
-                          "unit": {
-                            "enum": [
-                              "days",
-                              "hours",
-                              "minutes",
-                              "seconds",
-                              "campaign"
-                            ]
+                        "allOf": [
+                          {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
+                            "additionalProperties": false,
+                            "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+                            "properties": {
+                              "interval": {
+                                "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "unit": {
+                                "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+                                "enum": [
+                                  "seconds",
+                                  "minutes",
+                                  "hours",
+                                  "days",
+                                  "campaign"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "interval",
+                              "unit"
+                            ],
+                            "title": "Duration",
+                            "type": "object"
                           }
-                        },
-                        "required": [
-                          "interval",
-                          "unit"
                         ],
-                        "title": "Duration",
-                        "type": "object"
+                        "description": "Post-view attribution window. Conversions occurring within this duration after an ad impression (without click) are attributed to the ad."
                       }
                     },
                     "title": "Attribution Window",
@@ -387,10 +378,7 @@
                   },
                   "event_sources": {
                     "items": {
-                      "additionalProperties": {
-                        "not": {}
-                      },
-                      "maxProperties": 5,
+                      "additionalProperties": false,
                       "properties": {
                         "custom_event_name": {
                           "minLength": 1,
@@ -402,39 +390,76 @@
                           "x-entity": "event_source"
                         },
                         "event_type": {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "description": "Standard marketing event types for event logging, aligned with IAB ECAPI",
                           "enum": [
-                            "lead",
-                            "share",
-                            "custom",
-                            "donate",
-                            "follow",
-                            "refund",
-                            "search",
-                            "contact",
-                            "purchase",
-                            "schedule",
                             "page_view",
-                            "subscribe",
-                            "app_launch",
-                            "add_to_cart",
-                            "app_install",
-                            "select_item",
-                            "start_trial",
-                            "viewed_cart",
-                            "content_view",
-                            "qualify_lead",
                             "view_content",
                             "select_content",
-                            "add_to_wishlist",
-                            "disqualify_lead",
-                            "watch_milestone",
-                            "add_payment_info",
+                            "select_item",
+                            "search",
+                            "share",
+                            "add_to_cart",
                             "remove_from_cart",
+                            "viewed_cart",
+                            "add_to_wishlist",
                             "initiate_checkout",
+                            "add_payment_info",
+                            "purchase",
+                            "refund",
+                            "lead",
+                            "qualify_lead",
                             "close_convert_lead",
+                            "disqualify_lead",
+                            "complete_registration",
+                            "subscribe",
+                            "follow",
+                            "content_view",
+                            "watch_milestone",
+                            "start_trial",
+                            "app_install",
+                            "app_launch",
+                            "contact",
+                            "schedule",
+                            "donate",
                             "submit_application",
-                            "complete_registration"
-                          ]
+                            "custom"
+                          ],
+                          "enumDescriptions": {
+                            "add_payment_info": "User added payment information",
+                            "add_to_cart": "User added an item to cart",
+                            "add_to_wishlist": "User added an item to a wishlist",
+                            "app_install": "User installed an application",
+                            "app_launch": "User launched an application",
+                            "close_convert_lead": "Lead converted to a customer or closed deal",
+                            "complete_registration": "User completed account registration",
+                            "contact": "User initiated contact (call, message, etc.)",
+                            "content_view": "User meaningfully consumed a content unit, such as a watch, listen, stream, episode play, or read",
+                            "custom": "Custom event type (specify in custom_event_name)",
+                            "disqualify_lead": "Lead disqualified or marked as not viable",
+                            "donate": "User made a donation",
+                            "follow": "User made a free, durable opt-in to an account, channel, feed, list, podcast, or similar owned property",
+                            "initiate_checkout": "User started checkout process",
+                            "lead": "User expressed interest (form submission, signup, etc.)",
+                            "page_view": "User viewed a page",
+                            "purchase": "User completed a purchase",
+                            "qualify_lead": "Lead qualified by sales or scoring criteria",
+                            "refund": "A purchase was fully or partially refunded (adjusts ROAS)",
+                            "remove_from_cart": "User removed an item from cart",
+                            "schedule": "User scheduled an appointment or event",
+                            "search": "User performed a search",
+                            "select_content": "User selected or clicked on content (article, video, etc.)",
+                            "select_item": "User selected a specific product or item from a list",
+                            "share": "User shared content via social or messaging",
+                            "start_trial": "User started a free trial",
+                            "submit_application": "User submitted an application (loan, job, etc.)",
+                            "subscribe": "User started a paid subscription or paid membership",
+                            "view_content": "User viewed specific content (product, article, etc.)",
+                            "viewed_cart": "User viewed their shopping cart",
+                            "watch_milestone": "User reached a content progress threshold, such as 25%, 50%, 75%, 100%, or a seconds-viewed milestone"
+                          },
+                          "title": "Event Type",
+                          "type": "string"
                         },
                         "value_factor": {
                           "default": 1,
@@ -455,20 +480,19 @@
                     "type": "array"
                   },
                   "kind": {
-                    "const": "event"
+                    "const": "event",
+                    "type": "string"
                   },
                   "priority": {
                     "minimum": 1,
                     "type": "integer"
                   },
                   "target": {
-                    "additionalProperties": {
-                      "not": {}
-                    },
-                    "maxProperties": 1,
+                    "additionalProperties": false,
                     "properties": {
                       "kind": {
-                        "const": "maximize_value"
+                        "const": "maximize_value",
+                        "type": "string"
                       }
                     },
                     "required": [
@@ -478,19 +502,17 @@
                   }
                 },
                 "required": [
-                  "event_sources",
-                  "kind"
+                  "kind",
+                  "event_sources"
                 ],
                 "type": "object"
               },
               {
-                "additionalProperties": {
-                  "not": {}
-                },
-                "maxProperties": 5,
+                "additionalProperties": false,
                 "properties": {
                   "kind": {
-                    "const": "vendor_metric"
+                    "const": "vendor_metric",
+                    "type": "string"
                   },
                   "metric_id": {
                     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -514,13 +536,11 @@
                     "type": "integer"
                   },
                   "target": {
-                    "additionalProperties": {
-                      "not": {}
-                    },
-                    "maxProperties": 2,
+                    "additionalProperties": false,
                     "properties": {
                       "kind": {
-                        "const": "threshold_rate"
+                        "const": "threshold_rate",
+                        "type": "string"
                       },
                       "value": {
                         "exclusiveMinimum": 0,
@@ -535,11 +555,8 @@
                   },
                   "vendor": {
                     "$schema": "http://json-schema.org/draft-07/schema#",
-                    "additionalProperties": {
-                      "not": {}
-                    },
+                    "additionalProperties": false,
                     "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-                    "maxProperties": 3,
                     "properties": {
                       "brand_id": {
                         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -581,8 +598,8 @@
                 },
                 "required": [
                   "kind",
-                  "metric_id",
-                  "vendor"
+                  "vendor",
+                  "metric_id"
                 ],
                 "type": "object"
               }

@@ -37,18 +37,26 @@
       "type": "array"
     },
     "co_branding": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Co-branding requirement",
       "enum": [
-        "none",
+        "required",
         "optional",
-        "required"
-      ]
+        "none"
+      ],
+      "title": "Co-Branding Requirement",
+      "type": "string"
     },
     "landing_page": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Landing page requirements",
       "enum": [
         "any",
         "retailer_site_only",
         "must_include_retailer"
-      ]
+      ],
+      "title": "Landing Page Requirement",
+      "type": "string"
     },
     "provenance_required": {
       "description": "Whether creatives must include provenance metadata. When true, the seller requires buyers to attach provenance declarations to creative submissions. The seller may independently verify claims via get_creative_features.",

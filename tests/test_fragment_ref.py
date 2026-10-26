@@ -196,7 +196,7 @@ def test_every_fragment_reference_in_the_bundle_names_a_node_that_exists() -> No
 
 
 def test_no_portable_documents_reference_closure_names_a_document_this_bundle_lacks() -> None:
-    """``bundle.resolved``'s store loop, over the whole population, with the
+    """``bundle.record``'s store loop, over the whole population, with the
     inlining left off.
 
     **INSTRUMENT, stated because it is not the function itself.**  ``resolved`` has a
@@ -256,41 +256,37 @@ def test_resolved_inlines_the_node_a_fragment_names_and_not_the_whole_document()
     assert into == "/properties/type", uri
     target = bundle.document_for(head, known)
     assert target == "core/catalog.json", target
-    got = bundle.resolved(BUNDLE, document)["properties"]["type"]
+    got = bundle.record(BUNDLE, document)["properties"]["type"]
     assert "$ref" not in got, got
     # The NODE, resolved the way the TARGET's own document resolves it -- not the
     # document the node lives in.  A resolver that substituted the whole target would
     # put ``core/catalog.json``'s other properties and its title here.
-    assert got == bundle.resolved(BUNDLE, target)["properties"][into.split("/")[-1]], got
+    assert got == bundle.record(BUNDLE, target)["properties"][into.split("/")[-1]], got
     assert "properties" not in got, "the whole target document was inlined, not the node"
     assert "enum" in got, got
 
 
-def test_a_local_reference_resolves_against_the_referrer_with_no_store_entry() -> None:
-    """A pointer into the document itself is SKIPPED by the store loop, not looked up.
+def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_it() -> None:
+    """**ROW .3's rule, and it reverses this test's old answer.**
 
-    63 documents' only unresolvable reference was one of these.  ``LocalResolver`` is
-    built with ``referrer=doc``, so it inlines one from the document's own body; the
-    loop raising on it was reading ``#`` as "names another document" when it means
-    the opposite.
+    Architecture §4: "a local ``$ref`` stays as written".  It names a node of the very
+    document the package carries, so ``jsonschema`` resolves it against the referrer and
+    fetches nothing -- and §3's "nothing else changed" means the record does not inline
+    what it does not have to.  The delegated resolver inlined one, through
+    ``LocalResolver(referrer=doc)``, which is why this test used to measure how many
+    survived: 3 of the 13 did, the ones whose chain is RECURSIVE and has no finite
+    inlining.
 
-    And a document whose ONLY reference is local must still be RESOLVED: it builds an
-    empty store, and the shortcut that skipped resolution when the store was empty
-    would have handed it back with the ``$ref`` left in -- the one thing ``resolved``
-    exists to prevent.
+    Now all 13 keep every local reference they state, and that is the stronger claim,
+    because it is a property of the inliner rather than of what the library could
+    manage.  The comparison reads a local ``$ref`` on BOTH sides against a per-side
+    root (``harness._normalize``), which is the reading architecture §9 keeps for
+    exactly this; and ``bundle.undecidable_references`` counts none of them, because a
+    local reference is decidable at every position.
 
-    **KNOWN CEILING, measured here rather than asserted away: 3 of the 13 keep a
-    local reference.**  ``resolve_all_refs`` cannot inline a RECURSIVE one -- a
-    ``definitions`` entry that references itself through a chain has no finite
-    inlining -- and those three (``core/bidding-policy-capability.json``,
-    ``core/placement-presentation.json``,
-    ``governance/reported-outcome-error.json``) carry 4, 8 and 10 of them.  All three
-    are still refused in the lowering, so no pair grades a document with a reference
-    left in it -- but no longer on ``definitions``: since `salesagent-j3k2l.20` they
-    refuse on ``allOf``, ``const`` and ``maxProperties``, each inside the section the
-    walk now descends.  The answer when one of them emits is a recursive model, not a
-    deeper resolver, and ``compiler.local_reference`` refuses the cycle by name until
-    there is one.
+    Asserted in both directions over every document whose references are all local: the
+    record's local references are the document's own, pointer for pointer and URI for
+    URI, and it holds no cross-document reference at all.
     """
     local = [
         d
@@ -299,21 +295,24 @@ def test_a_local_reference_resolves_against_the_referrer_with_no_store_entry() -
         and all(not bundle.split_ref(u)[0] for _, u in rs)
     ]
     claimed("documents whose every reference is local", local, inside=bundle.portable(BUNDLE))
-    recursive = {}
-    for document in local:
-        left = bundle.references(bundle.resolved(BUNDLE, document))  # raises if the gate is back
-        if left:
-            recursive[document] = len(left)
-    assert sorted(recursive) == [
+    recursive = {
         "core/bidding-policy-capability.json",
         "core/placement-presentation.json",
         "governance/reported-outcome-error.json",
-    ], recursive
-    # The rest are fully inlined from the document's own body, with no store -- named
-    # as the complement of the recursive set rather than as the difference of two
-    # counts, which is what says the two halves exhaust the local documents.
-    claimed("locally-referencing documents fully inlined", set(local) - set(recursive))
-    assert set(recursive) <= set(local), sorted(set(recursive) - set(local))
+    }
+    assert recursive <= set(local), sorted(recursive - set(local))
+    for document in local:
+        raw = bundle.read(BUNDLE, document)
+        record = bundle.record(BUNDLE, document)
+        assert not isinstance(record, Refusal), (document, record)
+        assert bundle.references(record) == bundle.references(raw), document
+        assert bundle.undecidable_references(
+            record, bundle.named_nodes(BUNDLE).get(document, frozenset())
+        ) == [], document
+    # The three whose chain is recursive are still in the set and are no longer special:
+    # named here so a reading that started inlining a local reference again reddens
+    # with the documents it cannot finish on.
+    claimed("locally-referencing documents with a recursive chain", recursive, inside=set(local))
 
 
 # --------------------------------------------------------------------------- #
@@ -962,7 +961,7 @@ def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
     whose 24 ``$ref``\\ s are all inside that dead section -- so declaring them would
     also pull that target's whole closure into a module no instance reaches.  Those
     same 24 are why that document is refused once D2's ``const`` row lets the walk
-    reach it: ``bundle.resolved`` does not descend a section, so the document the
+    reach it: ``bundle.record`` does not descend a section, so the document the
     package would carry is not locally decidable (``codegen.emit``).
 
     The second direction is what makes the first non-vacuous: the same keyword in a
@@ -1357,7 +1356,7 @@ def test_a_remote_reference_under_a_section_is_owed_where_its_entry_is_declared(
 
     counted, admitted = set(), set()
     for document, refs in sites.items():
-        # The RAW document and not ``bundle.resolved``: the predicate is a function of
+        # The RAW document and not ``bundle.record``: the predicate is a function of
         # (document, named) and the references are at their own pointers either way, so
         # resolving 1,054 documents to ask a positional question would cost the whole
         # bundle's resolution for an answer that does not depend on it.
@@ -1398,11 +1397,17 @@ def test_a_remote_reference_in_a_dead_section_leaves_the_document_decidable(
     """The POSITIVE half on a bundle this file writes, and the measurement is a
     validation with the network removed.
 
-    The document emits with the reference still in the schema it carries, and that
-    schema decides: ``jsonschema`` accepts and refuses instances through it while
-    ``socket.socket`` is a constructor that raises, so nothing is fetched.  A reference
-    in a dead entry is therefore not a document the package cannot decide with -- which
-    is what this check refused it for.
+    **ROW .3 MOVED THIS FROM "decidable with the reference left in" to "no reference
+    left".**  The delegated resolver descended its own ``SCHEMA_KEYS`` and
+    ``SCHEMA_OBJECT_KEYS``, and ``definitions``/``$defs`` were in neither, so a
+    reference under a section survived it and the question was whether the document
+    could still be decided with one in it.  ``bundle.record`` descends by the table's
+    descent column, where a section entry is a subschema at a DEF position, so "every
+    cross-document ``$ref``" (architecture §4) means every one -- including a dead
+    section's.  The claim this test exists for is unchanged and now holds a fortiori:
+    the document the package carries DECIDES, with the network removed, and
+    ``jsonschema`` accepts and refuses instances through it while ``socket.socket`` is
+    a constructor that raises.
     """
     root = write_bundle(
         tmp_path, {"a2ui/catalog.json": DEAD_SECTION_REMOTE, "core/target.json": TARGET}
@@ -1416,9 +1421,12 @@ def test_a_remote_reference_in_a_dead_section_leaves_the_document_decidable(
     assert "Widget" not in declared_in(source), sorted(declared_in(source))
 
     carried = json.loads(out.files["a2ui/catalog.json"])
+    # The record holds NO cross-document reference, at any position, which is what the
+    # inliner's own contract says and is asserted here rather than at the dead entry.
+    assert [p for p, u in bundle.references(carried) if bundle.split_ref(u)[0]] == [], carried
     left = claimed(
-        "remote references the carried document still holds",
-        [p for p, u in bundle.references(carried) if bundle.split_ref(u)[0]],
+        "pointers of the dead section's entries in the carried document",
+        list(bundle.section_entries(carried)),
     )
     entries = bundle.section_entries(carried)
     assert all(bundle.pointers_above(p, entries) for p in left), (
@@ -1441,14 +1449,28 @@ def test_a_remote_reference_in_a_dead_section_leaves_the_document_decidable(
     assert err.value.validator == "type", err.value.validator
 
 
-def test_a_remote_reference_in_a_declared_entry_is_still_refused(tmp_path: Path) -> None:
-    """The NEGATIVE half, on the same fixture with the one dimension flipped.
+def test_a_remote_reference_in_a_declared_entry_is_inlined_and_no_longer_refused(
+    tmp_path: Path,
+) -> None:
+    """The other half of the same fixture, and **row .3 is what changed its answer.**
 
     A ``$ref`` names the entry, so section 5 declares it, a class grades at
     ``#/definitions/Widget`` and ``_refuse_at`` evolves a validator onto that pointer --
-    which descends the entry's ``properties`` and meets the reference.  The document is
-    then one the package cannot decide with, and it refuses, with the kind that says the
-    reference is unresolved rather than that a lowering is missing.
+    which descends the entry's ``properties`` and meets the reference.  Under the
+    delegated resolver that reference SURVIVED resolution, because
+    ``resolve_all_refs`` descends neither ``definitions`` nor ``$defs``, so the document
+    the package carried was one it could not decide with and the run refused it
+    UNRESOLVED.  ``bundle.record`` descends a section entry like any other subschema
+    position (architecture §4, §11), so the reference is inlined, the carried document
+    decides locally, and the document emits.
+
+    **This is an EMISSION delta of row .3 and not a check relaxed to fit**: nothing
+    here is narrower, the record is wider.  The check that refused it is still in
+    ``emit`` and still ranges over the same predicate -- it simply has no survivor to
+    find, and firing again would mean the inliner left a reference at a position the
+    package's own validation decides through.  On the real bundle the one document it
+    refused was ``core/requirements/catalog-field-binding.json``, at
+    ``/definitions/ScalarBinding/properties/ext``.
     """
     live = {
         **DEAD_SECTION_REMOTE,
@@ -1458,13 +1480,16 @@ def test_a_remote_reference_in_a_declared_entry_is_still_refused(tmp_path: Path)
         },
     }
     root = write_bundle(tmp_path, {"a2ui/catalog.json": live, "core/target.json": TARGET})
-    r = refusal_for(root, "a2ui/catalog.json")
-    assert r["keyword"] == "$ref", r
-    assert bundle.pointers_above(
-        r["pointer"], bundle.section_entries(bundle.read(root, "a2ui/catalog.json"))
-    ) == ["/definitions/Widget"], r
-    assert r["resolved"] is Kind.UNRESOLVED, r
-    assert f"{BASE}core/target.json" in r["detail"], r
+    out = emit.emit(root, ["a2ui/catalog.json"])
+    assert "a2ui/catalog.json" in out.emitted, out.refusals
+    carried = json.loads(out.files["a2ui/catalog.json"])
+    # The entry a ``$ref`` NAMES, with the cross-document reference under it inlined --
+    # the one thing the old answer turned on.
+    assert "/definitions/Widget" in bundle.section_entries(carried), carried
+    assert [p for p, u in bundle.references(carried) if bundle.split_ref(u)[0]] == [], carried
+    assert bundle.undecidable_references(carried, bundle.named_nodes(root).get(
+        "a2ui/catalog.json", frozenset()
+    )) == []
 
 
 def test_a_property_named_definitions_is_a_property_and_not_a_section(tmp_path: Path) -> None:
