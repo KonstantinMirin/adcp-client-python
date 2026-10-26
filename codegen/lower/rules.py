@@ -40,7 +40,7 @@ name, and that is the true reason, because a rule has nowhere to live there.
 branch, step 5's row.  A ``oneOf``/``anyOf`` whose every branch is ``required``-only has
 no shape to subclass -- the branches declare no property at all -- so it is a class plus
 a rule, which is this row.  :func:`presence_only` is that test, and
-``bundle.states_an_object_rule`` is the selector built on it, so the two rows cannot
+``populations.states_an_object_rule`` is the selector built on it, so the two rows cannot
 both claim one document and the unordered dispatch table has no precedence question to
 answer.
 """

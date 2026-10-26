@@ -2,7 +2,7 @@
 
 ``docs/plan/rebuild-plan.md`` D13 and §5 Layout put the pieces here:
 ``codegen/__main__.py`` holds the command and the refusal report;
-``codegen/emit.py`` holds the run and the dispatch table ``ROWS``;
+``codegen/emit.py`` holds the run and the ONE per-node dispatch;
 ``codegen/ir.py`` declares what a decision IS and ``codegen/render.py`` is the one
 module that turns one into text (``docs/plan/architecture.md`` §7 and §8);
 ``codegen/compiler.py`` holds the machinery a lowering is handed; and each lowering
@@ -19,10 +19,15 @@ layer in.  ``codegen/__main__.py`` removed the double binding, so there is one
 ``tests/test_import_rule.py`` is down to the two boundaries that ARE about design
 (``docs/plan/architecture.md`` §§8-10).
 
-The cycle itself is still there -- ``emit.ROWS`` names ``bundle``'s selectors at
-module level and ``bundle`` imports this package -- so the per-node decision is
-reached through :func:`codegen.compiler.decide`, which defers the import to call
-time.  §14 step 5 moves ``decide`` and the table in here and ends it.
+**The cycle itself is gone, at §14 step 5.**  ``emit.ROWS`` named ``bundle``'s root
+selectors at module level while ``bundle`` imported this package, so the per-node
+decision had to be reached through :func:`codegen.compiler.decide`, which defers the
+import to call time.  §5 deletes the table -- "root and non-root are one path.  There
+is no second table of root selectors" -- and the two selectors that read a lowering
+(``union_root`` and ``states_an_object_rule``) are ``tests/populations.py``'s, so
+``bundle`` imports nothing of this package and the deferral has nothing left to break.
+What remains of step 5 is moving ``decide`` itself in here, as the exhaustive ``match``
+over ``codegen/schema/nodes.py``'s kinds, which needs ``schema/parse.py``.
 
 So a row answers for its own node kind and is handed everything else:
 
@@ -39,14 +44,10 @@ So a row answers for its own node kind and is handed everything else:
 * the MODULE text -- the header, the imports, the ``__all__`` -- is the module
   writer's.
 
-A row's SELECTOR is its step's population test in ``codegen.bundle``, so a row
-cannot come to claim a document its step does not count, and ``bundle`` may read a
-lowering's own predicate to build one (``states_an_object_rule`` reads
-``rules.presence_only``).  That direction is ``bundle`` -> ``lower``, and it is why
-the reverse has to stay deferred: ``bundle`` is half-initialised while this package
-loads, so a module-level import of ``emit`` from here reads a ``bundle`` whose
-selectors do not exist yet.
-
-A lane adds its module here, its selector to ``codegen.bundle``, and ONE row to
-``codegen.emit.ROWS``.
+**A row has no SELECTOR any more.**  Each step's population test was a predicate in
+``codegen.bundle`` doubling as the selector of a table row, which §11 names as the
+second reading of a node's kind; the populations are measurements and live in
+``tests/populations.py`` (§5), and the walk reads a node's kind once, in
+``emit._decide``, at the node's own position.  So a lane adds its module here and the
+ARM its kind reaches, and nothing anywhere claims a document.
 """

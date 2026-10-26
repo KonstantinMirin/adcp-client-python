@@ -46,13 +46,14 @@ from codegen.harness import (
 from codegen.lower import enum as lower_enum
 from codegen import refusal as refusal_module
 from codegen.refusal import Refusal
+import populations
 from tests.test_emit import BUNDLE, graded, population, TREE
 from tests.nodeset import claimed, partitions
 
 
 def root_enums() -> list[str]:
     """Every document whose ROOT carries an ``enum``, off the bundle."""
-    return [d for d in bundle.portable(BUNDLE) if bundle.is_enum_root(bundle.read(BUNDLE, d))]
+    return [d for d in bundle.portable(BUNDLE) if populations.is_enum_root(bundle.read(BUNDLE, d))]
 
 
 def emitted_enum_classes() -> list[tuple[str, str, ast.ClassDef]]:
@@ -159,31 +160,49 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     assert [d for d in refused_referrers if "task-type" in out.refusals[d]["detail"]] == []
 
 
-def test_the_dispatch_table_is_unordered_because_no_document_is_claimed_twice() -> None:
-    """§5's rule, and the one word that makes it true.
+#: The seven population predicates, in the order their steps landed.  Read off
+#: ``tests/populations.py`` rather than off ``emit.ROWS``, which §14 step 5 deleted: the
+#: walk dispatches on a node's KIND at every position now, so there is no table of
+#: selectors and no second reading of a root's kind for a test to count.
+ROOT_POPULATIONS = (
+    populations.is_object_root,
+    populations.is_scalar_root,
+    populations.is_enum_root,
+    populations.composes_at_the_root,
+    populations.union_root,
+    populations.is_container_root,
+)
 
-    A document two rows claim is a build failure rather than a precedence, and
-    that is only a workable rule if the rows are actually disjoint.  Asserted in
-    both directions over all 1,054 documents: 0 claimed twice as the rows stand,
-    and 214 -- every root enum -- the moment the scalar row stops excluding an
-    enumeration.  So the exclusion is load-bearing and is measured as such.
+
+def test_the_root_populations_are_disjoint_because_a_root_is_exactly_one_kind() -> None:
+    """A root is exactly one kind, and the one word that makes the measurement true.
+
+    **This asserted ``emit.ROWS``, and §14 step 5 deleted the table.**  §5: "Root and
+    non-root are one path.  There is no second table of root selectors."  So what was a
+    rule about a DISPATCH -- a document two rows claim is a build failure -- is now a
+    property of the MEASUREMENTS in ``tests/populations.py``: each one counts the
+    documents of one step, and a root belonging to two of them would mean two steps
+    counted one document and the epic's arithmetic double-counted it.  The walk cannot
+    be ambiguous any more, because a ``match`` over a node's kind reaches one arm.
+
+    Asserted in both directions over all 1,054 documents: 0 counted twice as the
+    predicates stand, and 214 -- every root enum -- the moment the scalar one stops
+    excluding an enumeration.  So the exclusion is load-bearing and is measured as such.
     """
     documents = [bundle.read(BUNDLE, d) for d in bundle.portable(BUNDLE)]
-    # Every row's selector comes from ``codegen.bundle`` (D13), which is what a
-    # count of rows cannot say and what keeps this from going stale as rows land.
-    assert [s for s, _ in emit.ROWS if getattr(bundle, s.__name__, None) is not s] == []
-    claims = [sum(1 for selects, _ in emit.ROWS if selects(doc)) for doc in documents]
+    claims = [sum(1 for counts in ROOT_POPULATIONS if counts(doc)) for doc in documents]
     assert [n for n in claims if n > 1] == []
-    # The two parts partition the bundle, and the one-row part is NON-EMPTY -- which is
-    # what keeps the disjointness above from being satisfied by a table that selects
-    # nothing.  Which documents no row describes at all is the other part, and how many
-    # there are is a function of the rows rather than a fact about this step.
+    # The two parts partition the bundle, and the one-population part is NON-EMPTY --
+    # which is what keeps the disjointness above from being satisfied by predicates that
+    # count nothing.  Which documents no predicate describes at all is the other part,
+    # and how many there are is a function of the predicates rather than a fact about
+    # this step.
     partitions(
         range(len(claims)),
-        claimed_by_one_row=[i for i, n in enumerate(claims) if n == 1],
-        claimed_by_no_row=[i for i, n in enumerate(claims) if n == 0],
+        counted_by_one_population=[i for i, n in enumerate(claims) if n == 1],
+        counted_by_no_population=[i for i, n in enumerate(claims) if n == 0],
     )
-    assert [i for i, n in enumerate(claims) if n == 1], "no document is claimed by any row"
+    assert [i for i, n in enumerate(claims) if n == 1], "no document is counted at all"
 
     def scalar_without_the_exclusion(doc: dict) -> bool:
         return isinstance(doc.get("type"), str) and doc["type"] in emit.SCALAR
@@ -192,7 +211,7 @@ def test_the_dispatch_table_is_unordered_because_no_document_is_claimed_twice() 
         d
         for d in bundle.portable(BUNDLE)
         if scalar_without_the_exclusion(bundle.read(BUNDLE, d))
-        and bundle.is_enum_root(bundle.read(BUNDLE, d))
+        and populations.is_enum_root(bundle.read(BUNDLE, d))
     ]
     # Every root enum would be claimed twice the moment the scalar row stops excluding
     # an enumeration, so the exclusion is load-bearing.  Asserted as the SET IDENTITY
@@ -201,29 +220,38 @@ def test_the_dispatch_table_is_unordered_because_no_document_is_claimed_twice() 
     assert claimed("documents the scalar row would also claim", overlap) == set(root_enums())
 
     # A row cannot claim a document its step does not count.
-    assert [d for d in documents if bundle.is_enum_root(d) and not bundle.carries_an_enum(d)] == []
+    assert [
+        d for d in documents if populations.is_enum_root(d) and not bundle.carries_an_enum(d)
+    ] == []
 
 
-def test_two_rows_claiming_one_root_is_a_build_failure_and_not_a_refusal() -> None:
-    """The rule itself, on a document built to break it.
+def test_a_root_stating_two_kinds_reaches_one_arm_and_the_enum_wins_by_position() -> None:
+    """**``AmbiguousRoot`` is gone, and what replaces it is that there is no table.**
 
-    No bundle document reaches it (the test above is why), so it is graded on a
-    row added for the purpose.  A ``Refusal`` would be the wrong outcome: it would
-    land in the refusal report as a document the BUNDLE is responsible for, when
-    it is the emitter disagreeing with itself about which row owns a node kind.
+    This asserted the build failure a document two ``emit.ROWS`` selectors claimed
+    produced, on a table built to collide, because no bundle document could reach one.
+    §14 step 5 deletes the table: §5 says "root and non-root are one path", so a root
+    goes to ``emit._decide`` like every other node and a dispatch on a node's KIND
+    reaches exactly one arm.  A build failure with no way to occur is not a check that
+    was dropped -- it is a shape the structure no longer has.
+
+    What is still a real question is which ARM a root stating two kinds reaches, and
+    that is the ORDER of the arms rather than a precedence between rows.
+    ``{"type": "string", "enum": [...]}`` is the shape: the ``enum`` arm is read before
+    ``type`` is read at all, because the base comes from the MEMBERS
+    (``lower.enum.BASES``) and an ``enum`` closes the value set whatever ``type`` the
+    document spells beside it.  So the document emits an enumeration, which is what the
+    deleted ``is_enum_root`` row did -- and ``populations.is_scalar_root``'s exclusion
+    of an enumeration is the measurement above that says the two agree.
     """
     doc = {"title": "Both", "type": "string", "enum": ["a", "b"]}
-    rows = (*emit.ROWS, (lambda d: "enum" in d, emit._enum_root))  # noqa: SLF001
-    original = emit.ROWS
-    try:
-        emit.ROWS = rows
-        with pytest.raises(emit.AmbiguousRoot) as caught:
-            emit.lower_document("both.json", doc)
-    finally:
-        emit.ROWS = original
-    assert "is_enum_root" in str(caught.value)
-    # and with the real table the same document emits
-    assert emit.lower_document("both.json", doc)[1] == "Both"
+    mod, symbol = emit.lower_document("both.json", doc)
+    assert symbol == "Both"
+    # The ENUMERATION, not the scalar alias the ``type`` word would have produced: one
+    # declaration, and it is the root binding around an ``EnumDecl``.
+    held = [d for d in mod.declarations if isinstance(d, ir.RootBinding)]
+    assert [type(d.declaration).__name__ for d in held] == ["EnumDecl"], mod.declarations
+    assert [m.value for m in held[0].declaration.members] == ["a", "b"]
 
 
 # --------------------------------------------------------------------------- #
@@ -962,7 +990,7 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
     # is not an enum root and did not emit, and once it emitted the price grew without
     # this number moving.  So the set is named, and ``direct`` below adds that document
     # to it explicitly.
-    enum_rooted = [d for d in carriers if bundle.is_enum_root(bundle.read(BUNDLE, d))]
+    enum_rooted = [d for d in carriers if populations.is_enum_root(bundle.read(BUNDLE, d))]
     assert claimed("enum-rooted carriers of enumMetadata", enum_rooted) == {
         "enums/error-code.json",
         "enums/media-buy-valid-action.json",

@@ -21,14 +21,61 @@ from typing import NamedTuple
 
 from adcp.types._base import applied_schema
 
-from codegen import compiler, keywords
-from codegen.lower import rules, union
+from codegen import keywords
 from codegen.refusal import Kind, Refusal
 
 #: Top-level directories holding projections of documents published elsewhere.
 PROJECTIONS = ("bundled", "mcp")
 #: Files describing the bundle, not a message.
 REGISTRY = ("index.json", "manifest.json", "manifest.schema.json")
+
+
+def escape_key(key: str) -> str:
+    """One JSON Pointer segment from a document KEY (RFC 6901's two escapes).
+
+    **In the SOURCE layer, which is where ``docs/plan/architecture.md`` §11 puts it**:
+    this module knows "files, paths, ``$ref`` URIs, edges, the record", and a pointer
+    segment is the spelling of a path into a document.  It was in ``compiler.py`` --
+    the walk -- and that was the one import ``codegen/harness.py`` made of the walk,
+    which §9 forbids the verifier outright (``tests/test_import_rule.py``'s
+    ``VERIFIER_MAY_IMPORT``).  §14 step 5 is the row that moves it, because the move is
+    only correct once this module imports no LOWERING: it did, for the root selectors
+    this row deletes, so ``import codegen.bundle`` reached ``codegen.lower`` and trading
+    the named import for that reach would have bought the ratchet a line and cost §9 its
+    point.
+
+    One speller, because a pointer segment is spelled by FOUR readers --
+    :func:`subschemas`, ``harness._nodes``, ``harness.compare_schema``'s property
+    descent, and the mapping row's ``patternProperties`` pointer -- and the inverse is
+    beside it (:func:`node_at`).  A ``patternProperties`` expression is the first key in
+    this bundle that actually NEEDS it: the ``media-buy/get-products-response.json``
+    extension pattern is ``^https?://[^@]+@sha256:[a-f0-9]{64}$``, whose two slashes
+    would otherwise read as two pointer hops and make the refusal's own pointer
+    undereferenceable.
+    """
+    return key.replace("~", "~0").replace("/", "~1")
+
+
+def node_at(root: object, pointer: str) -> object:
+    """The node a JSON Pointer names in ``root``.  The INVERSE of :func:`escape_key`.
+
+    Beside its inverse for the same reason that one is here: a pointer segment is
+    spelled and read by more than one module, and :func:`record` dereferences the
+    fragment half of a ``$ref`` while ``harness.at`` dereferences a pointer on the
+    document side.  Two readings of RFC 6901's two escapes is how an inliner and a
+    grader come to disagree about which node a reference names.
+
+    Raises ``KeyError``, ``IndexError``, ``TypeError`` or ``ValueError`` for a pointer
+    that names no node, which is what lets :func:`record` turn one into a refusal
+    naming the reference rather than letting it crash the run.
+    """
+    cur = root
+    for part in pointer.lstrip("/").split("/"):
+        if part == "":
+            continue
+        part = part.replace("~1", "/").replace("~0", "~")
+        cur = cur[int(part)] if isinstance(cur, list) else cur[part]  # type: ignore[index]
+    return cur
 
 
 def portable(bundle: Path) -> list[str]:
@@ -110,7 +157,7 @@ def subschemas(node: Mapping) -> Iterator[tuple[str, str, object, keywords.Posit
 
     The pointer suffix is what reaches the subschema from ``node`` -- ``/properties/x``,
     ``/allOf/0``, ``/items`` -- with a key escaped by RFC 6901's two escapes
-    (``compiler.escape_key``), and the position is the one the table says the keyword
+    (:func:`escape_key`), and the position is the one the table says the keyword
     holds its subschemas at.
 
     In the NODE'S OWN KEY ORDER and not the table's, because :func:`references` states
@@ -123,7 +170,7 @@ def subschemas(node: Mapping) -> Iterator[tuple[str, str, object, keywords.Posit
         if keyword in _HELD_BY_NAME:
             if isinstance(held, dict):
                 for key, sub in held.items():
-                    yield keyword, f"/{keyword}/{compiler.escape_key(key)}", sub, position
+                    yield keyword, f"/{keyword}/{escape_key(key)}", sub, position
         elif keyword in _HELD_IN_A_LIST:
             if isinstance(held, list):
                 for i, sub in enumerate(held):
@@ -622,7 +669,7 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
             root, at_home = root_of(named), named
             where = _Where((*where.chain, named), ())
         try:
-            target = compiler.node_at(root, into)
+            target = node_at(root, into)
         except (KeyError, IndexError, TypeError, ValueError):
             return refuse(pointer, f"{uri} names no node of {at_home}")
         if not isinstance(target, dict):
@@ -689,7 +736,7 @@ def _rebuilt(keyword: str, held: object, done: Mapping[str, object]) -> object:
 
     if keyword in _HELD_BY_NAME and isinstance(held, dict):
         return {
-            key: done_or_copy(f"/{keyword}/{compiler.escape_key(key)}", sub)
+            key: done_or_copy(f"/{keyword}/{escape_key(key)}", sub)
             for key, sub in held.items()
         }
     if isinstance(held, list):
@@ -731,7 +778,7 @@ def section_entries(node: object) -> frozenset[str]:
     disk spells.
     """
     return frozenset(
-        f"{pointer}/{kw}/{compiler.escape_key(key)}"
+        f"{pointer}/{kw}/{escape_key(key)}"
         for pointer, n in nodes(node)
         for kw in DEFINITIONS
         if isinstance(n.get(kw), dict)
@@ -815,108 +862,35 @@ def undecidable_references(
 
 
 # --------------------------------------------------------------------------- #
-# the dispatch table's selectors: which ROW lowers a document's root
+# the populations a step's result was stated over
 # --------------------------------------------------------------------------- #
-# One predicate per D2 root row, and together they are a PARTITION of the bundle's
-# documents by what their root IS -- so ``emit.ROWS`` is unordered and two rows
-# selecting one document is a defect in these predicates rather than a question of
-# precedence.  They live beside the population selectors below because a selector
-# and the population a step's result is stated over are the same kind of thing.
+# **The six ROOT SELECTORS are gone, and so is the dispatch table they fed.**
+# ``docs/plan/architecture.md`` §5: "Root and non-root are one path.  There is no
+# second table of root selectors.  A document is ``parse(raw, position=ROOT)``
+# followed by ``decide``."  §11's repetition table says the same thing from the
+# other end -- "the kind read in ``_decide``, in the root selectors, in
+# ``union.keyword``, in ``rules.presence_only`` | ``parse``'s classification" -- so a
+# predicate here that read a ROOT'S KIND was the second reading of the one the walk
+# makes per node.  ``is_object_root``, ``is_scalar_root``, ``is_enum_root``,
+# ``is_container_root``, ``composes_at_the_root`` and ``union_root`` are deleted with
+# ``emit.ROWS``, and ``declares_its_own_root_kind`` -- the disjointness clause that
+# existed only to keep the table a partition -- with them.
 #
-# Disjointness is by construction and asserted in ``tests/test_emit.py``, over the
-# whole bundle and in both directions.  Each row that lands adds its EXCLUSION to
-# the two generic rows here rather than a precedence line to the table: a root
-# ``oneOf`` makes the document a union whatever else it declares, and a root
-# ``enum`` makes it an enumeration though its ``type`` names a scalar, so the
-# clauses below are what keep this a partition.
-
-
-def declares_its_own_root_kind(doc: dict) -> bool:
-    """Does the root declare a kind of its OWN, which one of the specific rows owns?
-
-    A root is exactly ONE kind, and each keyword here decides it whatever else the
-    root declares: an ``enum`` at the root makes the document an enumeration though
-    its ``type`` names a scalar; an ``allOf`` at the root makes it a composition
-    though it declares ``properties`` as well -- a draft-07 root ``allOf`` applies
-    to the whole instance, so a row that lowered the properties without the
-    conjuncts would drop the bases; and a ``oneOf``/``anyOf`` at the root makes it a
-    union whatever else it declares, for the same reason read the other way round.
-
-    Measured, so each clause is known to be load-bearing rather than defensive:
-    without the union clause ``is_object_root`` and ``union_root`` both claim 35
-    documents and ``is_scalar_root`` and ``union_root`` both claim 1; without the
-    ``allOf`` clause the object row collides with step 4's.
-
-    So the two GENERIC rows below are "none of these, and <shape>".  That is what
-    makes ``emit.ROWS`` a partition by construction, and it is a fact about the
-    SELECTORS rather than a precedence rule in the table: D13 says a collision is a
-    selector defect and gets fixed here.  Each specific row adds its own name to
-    this function when it lands, and ``tests/test_emit.py`` asserts over the whole
-    bundle that no document is claimed twice.
-    """
-    return is_enum_root(doc) or isinstance(doc.get("allOf"), list) or union_root(doc)
-
-
-def is_object_root(doc: dict) -> bool:
-    """D2's object row: a plain object root -- ``properties``, and no kind of its
-    own that a specific row owns."""
-    return (
-        "properties" in doc
-        and doc.get("type") in (None, "object")
-        and not declares_its_own_root_kind(doc)
-    )
-
-
-def is_scalar_root(doc: dict) -> bool:
-    """D2's root-scalar row: a root whose ``type`` names one scalar, and NOT an
-    enumeration.
-
-    ``"enum" not in doc`` is the load-bearing clause and not a belt: all 214 of the
-    bundle's root enums declare ``type: "string"``, so without it the scalar row and
-    the enumeration row claim the same 214 documents and the table has an ambiguity
-    at a sixth of the population.
-    """
-    return (
-        isinstance(doc.get("type"), str)
-        and doc["type"] in compiler.SCALAR
-        and not declares_its_own_root_kind(doc)
-    )
-
-
-def is_enum_root(doc: dict) -> bool:
-    """D2's enumeration row: the root itself carries an ``enum`` (step 3).
-
-    A DIFFERENT predicate from step 3's population test :func:`carries_an_enum`,
-    and it IMPLIES it -- the root carrying an enum is a node carrying an enum -- so
-    the row cannot claim a document the step does not count.  That implication is
-    the relationship and ``tests/test_enum.py`` asserts it over the whole bundle;
-    the two are not interchangeable, because 535 documents carry an enum somewhere
-    and only 214 carry one at the root.
-    """
-    return "enum" in doc
-
-def is_container_root(doc: dict) -> bool:
-    """Step 6's row, and step 6's population: a root that is a container.
-
-    An array (D2's ``RootModel[list[X]]`` row), a mapping (an object declaring no
-    property), or a multi-type node.
-
-    **The exclusion is load-bearing and the lane's own count was over the predicate
-    WITHOUT it.**  Measured both ways on the 3.2 bundle: the bare shape test selects
-    37 documents (32 mappings, 5 arrays, 0 multi-type), and 28 of those 32 mappings
-    declare a union at the root as well -- so without the clause ``union_root`` and
-    this row both claim all 28.  The union owns them for the reason
-    :func:`declares_its_own_root_kind` states: a root ``oneOf`` makes the document a
-    union whatever else the root declares.  With it, this row's population is 9 (5
-    arrays, 4 mappings), overlapping neither :func:`is_leaf_object` nor
-    :func:`references_a_property` in a single document.
-    """
-    kind = doc.get("type")
-    if declares_its_own_root_kind(doc):
-        return False
-    if isinstance(kind, list):
-        return True
-    return kind == "array" or (kind == "object" and "properties" not in doc)
+# ``states_an_object_rule`` goes too, and for the OTHER half of §5's sentence: "the
+# document-set predicates a step's result was stated over are the tests' business and
+# live under ``tests/``."  It and the deleted selectors are now
+# ``tests/populations.py``, which is also what lets this module import no LOWERING:
+# ``union_root`` and ``states_an_object_rule`` were the two readers of
+# ``lower.union.keyword`` and ``lower.rules.presence_only``, so ``import
+# codegen.bundle`` reached eight ``codegen`` modules and now reaches two.  That is the
+# measurement §14 step 5 owed ``tests/test_import_rule.py``: with the reach gone,
+# :func:`escape_key` and :func:`node_at` move here and the verifier stops importing
+# the walk.
+#
+# What stays are the three predicates that read a document's SHAPE rather than its
+# root's kind, because the run itself reads them: ``is_leaf_object`` and
+# ``references_a_property`` are the command in this package's own docstrings, and
+# ``carries_an_enum`` is a census over schema positions.
 
 
 def is_leaf_object(doc: dict) -> bool:
@@ -953,76 +927,9 @@ def carries_an_enum(doc: dict) -> bool:
     Position is the whole of it, which is why this reads ``nodes`` rather than
     searching for the key: an ``enum`` holds INSTANCE data, so a value inside one
     may itself be an object with a property named ``enum``, and a blanket walk
-    would count a document that has none.  ``emit.is_enum_root`` is the narrowing
-    of this to the root, and implies it.
+    would count a document that has none.
     """
     return any("enum" in n for _, n in nodes(doc))
-
-
-def composes_at_the_root(doc: dict) -> bool:
-    """Step 4's population: a root carrying ``allOf`` with NO union beside it.
-
-    **301 documents**, and the definition is what lands on that number: the other
-    readings give 342 (any root ``allOf``, union or not), 401 (``allOf`` anywhere
-    in the document) and 257 (``allOf`` at the root and nowhere else).  A verdict
-    read off a population nobody counted is a verdict over however many documents
-    there turned out to be.
-
-    The union clause is not a convenience: a ``oneOf``/``anyOf`` root is step 5's
-    row whatever ELSE it carries, because the root ``allOf`` of a draft-07
-    document applies to the whole instance and therefore to every branch, and a
-    row that lowered the conjuncts without the branches would apply the bases to
-    some branches and not others.  So the two populations are DISJOINT by this
-    clause and ``emit.lower_document`` fails on a document two rows select rather
-    than letting a table order decide.
-
-    **"A union beside it" IS :func:`union_root`, and reading it any other way left
-    a 14-document hole in the partition.**  This clause used to ask whether the key
-    ``oneOf`` or ``anyOf`` was PRESENT, while ``union_root`` asks the lowering
-    (``union.keyword`` plus ``rules.presence_only``) and answers no for a
-    combinator of ``required`` GROUPS -- which is a rule on one class, not a union
-    of shapes.  So a root carrying ``allOf`` beside a presence-only ``anyOf`` was
-    refused by this row for having a union and by step 5's row for not having one,
-    and ``emit.lower_document`` reported "no D2 row selects this root" for all 14
-    of them.  Those 14 were 14 of the 21 documents ``salesagent-j3k2l.21`` was
-    filed over.
-
-    The fix is the one ``union_root``'s own docstring already states for the other
-    direction -- ONE implementation of the keyword read, and it is the LOWERING'S.
-    Measured over all 1,054 portable documents: 287 -> 301, **0 documents lost**,
-    and **0 of the 301 claimed by any other row**, so the table is still a
-    partition.
-
-    This is the row's selector and the predicate its metric is stated over, so it
-    cannot come to claim a document the step does not count.
-    """
-    return isinstance(doc.get("allOf"), list) and not union_root(doc)
-
-
-def union_root(doc: dict) -> bool:
-    """Step 5's population: a document whose root carries ``oneOf`` or ``anyOf``.
-
-    156 of the 3.2 bundle's 1,054 portable documents, and 0 of them carry both.
-
-    ONE implementation of the keyword read, and it is the LOWERING'S:
-    ``lower.union.keyword`` is what the lowering reads the keyword with, and this
-    selector is built on that same function, so a row cannot come to claim a
-    document the selector does not count.  The lane had it the other way round --
-    the function here and the lowering importing this module -- which D13's import
-    rule forbids; ``bundle`` -> ``lower`` is the direction that works, and
-    ``states_an_object_rule`` reads ``rules.presence_only`` the same way.
-    """
-    # A combinator of ``required`` GROUPS is not a union, and that clause is the
-    # step-5/step-7 boundary.  A branch declaring no property has no shape to
-    # subclass -- ``lower.union._plan`` refuses exactly that -- so such a root is a
-    # rule on one class (D6) and step 7's lowering reads it inside
-    # ``compiler.lower_object``.  Measured: all 5 of the bundle's presence-only roots
-    # were claimed by this row and by none other, so step 7's whole population was
-    # selected by a row that refuses it.  Both readings are each step's own --
-    # ``union.keyword`` and ``rules.presence_only`` -- and they meet HERE because a
-    # lowering cannot import another lowering (D13).
-    kw = union.keyword(doc)
-    return kw is not None and not rules.presence_only({kw: doc[kw]})
 
 
 def _is_property_or_items(pointer: str) -> bool:
@@ -1032,35 +939,3 @@ def _is_property_or_items(pointer: str) -> bool:
     return len(parts) == 2 or (len(parts) == 3 and parts[2] == "items")
 
 
-def states_an_object_rule(doc: dict) -> bool:
-    """Step 7's population: an object root whose composition is a rule about PRESENCE.
-
-    The three clauses, and each one is what makes this selector DISJOINT from another
-    step's rather than a matter of precedence -- a document two rows select is a build
-    failure, so the disjointness has to be a property of the predicates and not a
-    convention:
-
-    * no ``$ref``, ``allOf``, ``definitions`` or ``$defs`` anywhere.  That is steps 2
-      and 4 and a later row, and it is also what keeps this out of
-      :func:`references_a_property`, which selects on a reference EXISTING.
-    * at least one ``if``/``then``/``else``/``not``/``oneOf``/``anyOf``.  Those six are
-      exactly the keywords :func:`is_leaf_object` excludes, so a document satisfying
-      this clause is not step 1's.  ``dependencies``, ``min``/``maxProperties`` and
-      ``uniqueItems`` do NOT appear in that clause on purpose: ``is_leaf_object``
-      already selects a document carrying only those, so claiming one here would be
-      the two-rows failure.  ``core/format-id.json`` is such a document -- step 1's
-      row, refused there until this step, emitted there now.
-    * every combinator in it is ``required``-only (``rules.presence_only``).  That is
-      the step-5 boundary: a combinator of SHAPES is a union root and step 5's, a
-      combinator of ``required`` groups has no shape to subclass and is a rule.  The
-      test is the lowering's own reading, so a row cannot claim a document its step
-      cannot lower.
-    """
-    if "properties" not in doc or doc.get("type") not in (None, "object"):
-        return False
-    kw = schema_keywords(doc)
-    if kw & {"$ref", "allOf", *DEFINITIONS}:
-        return False
-    if not kw & {*CONDITIONAL, "oneOf", "anyOf"}:
-        return False
-    return all(rules.presence_only(n) for _, n in nodes(doc))
