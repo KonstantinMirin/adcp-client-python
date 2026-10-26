@@ -1531,12 +1531,91 @@ def _refuse_a_combinator_of_shapes(
     return None
 
 
+def _the_conjuncts_own_type(
+    node: "nodes.Base",
+    conjoined: Sequence[tuple[str, str]],
+    *,
+    fields_declared: Collection[str],
+    bases: Sequence[ir.TypeRef],
+    rule_nodes: Sequence[Mapping[str, Any]],
+) -> Decided | Refusal:
+    """§5's ``$ref`` row at CONJ where the target is NOT a class: the node's own TYPE.
+
+    "Where it is not -- a scalar, an enum, a container, or a union root, whose instance
+    is one of its branches -- it is not a class a model can extend: the target is this
+    node's own TYPE, and the other conjuncts and the ``allOf``'s siblings constrain it,
+    which is §2's intersection at a node that declares no fields of its own."
+
+    So the answer is the target's symbol as this node's type, and the clause's own last
+    phrase is the whole of the screen below: the row holds **at a node that declares no
+    fields of its own**.  A node declaring one is a different shape -- the instance must
+    be the target AND carry those properties, and a Python type that is the target
+    cannot state a property -- so it refuses by name, and the refusal says which half
+    the document stated.  Measured over the 1,054 portable documents, of the 23 nodes
+    whose ``$ref`` conjunct resolves to something that is not a class: **21 declare no
+    fields and 2 do** (``core/package-signal-targeting.json``, whose root states
+    ``properties`` and ``additionalProperties`` beside the conjunct, and
+    ``core/vendor-pricing-option.json``, whose other conjunct is an inline object).
+
+    Two more screens, each for a shape §5 decides elsewhere:
+
+    * **TWO non-class targets** would be §2's intersection of two Python types, and §2
+      computes an intersection over DECLARATIONS rather than over decided types -- there
+      is no slot on an :class:`codegen.ir.TypeRef` for the conjunction of two.  0 nodes
+      over the population; written so the first one is loud.
+    * **A conjunct stating a RULE beside the type** is §2's "where a rule hangs": with no
+      class above the value the rule hangs off the value's own annotated type, which is
+      :attr:`codegen.ir.TypeRef.validators` -- the slot §7 declares for ``AtLeastOne``,
+      ``NotValue`` and ``Distinct`` and which no row has written.  2 nodes over the
+      population, both ``core/agent-notification-config*.json``'s ``event_types``
+      items, whose conjuncts are a ``$ref`` to an enumeration beside a
+      ``not: {enum: [...]}``.  The refusal is a DEFERRAL, because what obstructs it is
+      unwritten code and not a property of the document (§9).
+    """
+    if len(conjoined) > 1:
+        return Refusal(
+            "allOf",
+            conjoined[1][0],
+            f"two conjuncts resolve to something that is not a class -- "
+            f"{', '.join(symbol for _, symbol in conjoined)} -- so section 5's $ref row "
+            "at CONJ makes each of them this node's own TYPE and the node has one type: "
+            "the conjunction of two decided types is section 2's intersection, which is "
+            "computed over DECLARATIONS and has no slot on an ir.TypeRef",
+            kind=Kind.VERDICT,
+        )
+    where, symbol = conjoined[0]
+    if fields_declared or bases:
+        return Refusal(
+            "allOf",
+            where,
+            f"{symbol} is not a class, so section 5's $ref row at CONJ makes it this "
+            f"node's own TYPE -- and that clause holds at a node declaring no fields of "
+            f"its own, where this node declares {sorted(fields_declared)} and composes "
+            f"{[b.path for b in bases]}: the instance must be {symbol} AND carry those "
+            "properties, and a Python type that IS the target has no slot for a property",
+            kind=Kind.VERDICT,
+        )
+    rules_beside = sorted({k for one in rule_nodes for k in one})
+    if rules_beside:
+        return Refusal(
+            "allOf",
+            where,
+            f"{symbol} is this node's own TYPE (section 5's $ref row at CONJ) and a "
+            f"conjunct states {rules_beside} beside it: section 2 hangs a rule with no "
+            "class above the value off the value's own annotated type, which is "
+            "ir.TypeRef.validators -- the slot section 7 declares for AtLeastOne, "
+            "NotValue and Distinct and which no row has written",
+            kind=Kind.DEFERRED,
+        )
+    return Decided(ir.TypeRef(symbol, local=True))
+
+
 def lower_composition(
     node: "nodes.Base",
     mod: Module,
     *,
     bases: tuple[ir.TypeRef, ...] = (),
-) -> str | Refusal:
+) -> str | Decided | Refusal:
     """Append the class for an ``allOf`` node and return its POINTER.
 
     **CONVERTED to node fields, and ``schema/nodes.py`` says which half of this row stays
@@ -1673,6 +1752,11 @@ def lower_composition(
         return screened
 
     conjunct_bases: list[ir.TypeRef] = []
+    #: **§5's ``$ref`` row at CONJ where the target is NOT a class**: the symbol is this
+    #: node's own TYPE and not a base, with the conjunct's own pointer beside it so the
+    #: refusal for a shape this row does not answer can name the conjunct that carried
+    #: it.  Read once, by :func:`_the_conjuncts_own_type`, after the worklist.
+    conjoined: list[tuple[str, str]] = []
     inherited: dict[str, dict] = {}
     inherited_required: set[str] = set()
     #: The FIELD each inherited key came out as on the base that declares it, and the
@@ -1810,28 +1894,25 @@ def lower_composition(
                 # run's to mint because it is the one that knows the target's refusal.
                 return target
             if target.shape is None:
-                # **The KIND is read off the cell and is a DEFERRAL, not a verdict.**
-                # §5's ``$ref`` row at CONJ decides this very case -- "a BASE where the
-                # target is a class declaring fields.  Where it is not -- a scalar, an
-                # enum, a container, or a union root, whose instance is one of its
-                # branches -- it is not a class a model can extend: the target is this
-                # node's own TYPE, and the other conjuncts and the ``allOf``'s siblings
-                # constrain it" -- and §14 step 8 is the step that writes it ("a scalar
-                # or alias target as the type of a composing node").  So the
-                # compilation is DECIDED and merely unwritten, which §9's first rule
-                # makes a deferral: a verdict claims the obstruction belongs to the
-                # document, to pydantic or to the pointer space, and it belongs to none
-                # of the three here.  ``kind_for`` is the derivation and the only place
-                # the two are told apart.
-                return Refusal(
-                    "allOf",
-                    where,
-                    f"{target.symbol} is not a class, so it cannot be a base "
-                    "(D2 makes a scalar root an Annotated alias, and subclassing "
-                    "one is a TypeError at import); section 5's $ref row at CONJ makes "
-                    "the target this node's own TYPE, which section 14 step 8 writes",
-                    kind=kind_for("allOf", Position.CONJ),
-                )
+                # **§5's ``$ref`` row at CONJ, the half that was never written** (§14
+                # step 9): "a BASE where the target is a class declaring fields.  Where
+                # it is not -- a scalar, an enum, a container, or a union root, whose
+                # instance is one of its branches -- it is not a class a model can
+                # extend: the target is this node's own TYPE, and the other conjuncts
+                # and the ``allOf``'s siblings constrain it, which is §2's intersection
+                # at a node that declares no fields of its own."
+                #
+                # So the symbol is recorded as a CONJOINED TYPE rather than as a base,
+                # and :func:`_the_conjuncts_own_type` below is what answers with it once
+                # every conjunct has been read -- after, because the answer depends on
+                # what the OTHER conjuncts contribute: a type beside a field is not this
+                # row's shape at all, and the reading has to see the whole list before it
+                # can say so.  The import is added here because the symbol is this
+                # module's to name either way, and the two arms differ in what they do
+                # with it rather than in whether they need it.
+                mod.imports.add((target.module, target.symbol))
+                conjoined.append((where, target.symbol))
+                continue
             mod.imports.add((target.module, target.symbol))
             # A base another MODULE declares, carried as the symbol the module writer
             # imported: §7 makes ``bases`` ``TypeRef``s so one slot holds that beside a
@@ -2014,6 +2095,21 @@ def lower_composition(
             "are properties, required, rule keywords, an additionalProperties identity "
             "and a nested allOf; a later row lowers this one",
             kind=Kind.DEFERRED,
+        )
+
+    if conjoined:
+        # **§5's ``$ref`` row at CONJ, read after the WHOLE list** (§14 step 9): the
+        # answer is a TYPE and not a class, and whether the row holds depends on what the
+        # other conjuncts contribute -- so it cannot be decided at the conjunct that
+        # carried the reference.  ``local`` is every key some view of this node declares,
+        # which is the "declares no fields of its own" clause asked of the node and its
+        # conjuncts together.
+        return _the_conjuncts_own_type(
+            node,
+            conjoined,
+            fields_declared=set(local) | set(inherited) | required,
+            bases=(*bases, *conjunct_bases),
+            rule_nodes=conjunct_rules,
         )
 
     stated = rules_at(node, *conjunct_rules, position=position)
