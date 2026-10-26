@@ -170,6 +170,7 @@ def parse(
     position: Position,
     source: Source,
     objectish: bool = False,
+    applied: str | None = None,
 ) -> nodes.Base:
     """One raw subschema as the node its keys and its type select.
 
@@ -189,6 +190,16 @@ def parse(
     handler says so by name -- and a BRANCH of a ROOT union, which §4 of the semantics
     document makes a class whatever it states, because a union root emits one class per
     branch.  Told, not inferred.
+
+    ``applied`` is §6's rule again, for the OTHER fact an enclosing node states about the
+    same instance: the ``type`` word.  §4 of the semantics document makes a root
+    ``type`` an assertion about the instance every branch sees -- "a ``type: object``
+    beside ``oneOf`` is a union whose branches inherit the applied word" -- so the union
+    TELLS each branch, which is ``_base.applied_schema``'s own rule read at the hop
+    rather than re-derived from the document.  Where no caller says, it is
+    ``bundle.constrained_to_object``'s answer for this pointer, which is the same rule
+    read over the one node walk.  A node's own ``type`` always wins (``applied_schema``
+    again), so this decides a kind only where the node states none.
     """
     if not isinstance(raw, Mapping):
         # Not a schema.  The kind that can hold the value and let the handler name the
@@ -200,7 +211,9 @@ def parse(
             document=source.document, pointer=pointer, position=position, raw={}
         )
 
-    applied = "object" if pointer in source.applied_at else None
+    if applied is None:
+        applied = "object" if pointer in source.applied_at else None
+    declared = raw.get("properties")
     common: dict[str, Any] = {
         "document": source.document,
         "pointer": pointer,
@@ -208,6 +221,17 @@ def parse(
         "applied": applied,
         "annotations": {k: v for k, v in raw.items() if not keywords.declares(k, position)},
         "rules": _rule_sources(raw, position),
+        "declares": tuple(sorted(k for k in raw if keywords.declares(k, position))),
+        "extensions": tuple(
+            sorted(
+                k
+                for k in raw
+                if keywords.cell(k, position) is None and keywords.admitted_by_prefix(k)
+            )
+        ),
+        "declared": declared if isinstance(declared, Mapping) else {},
+        "extra": raw.get("additionalProperties"),
+        "faults": _faults(raw),
         "raw": raw,
     }
 
@@ -237,17 +261,31 @@ def parse(
     if word is None:
         if "properties" in raw and (position is Position.ROOT or objectish or applied == "object"):
             return _object(raw, common, pointer, position, source)
-        return nodes.Typeless(**common)
+        if not isinstance(applied, str) or applied == "object":
+            # An APPLIED ``object`` is already answered, by the clause above: §5 of the
+            # semantics document's ``type`` row is "absent beside ``properties`` -> an
+            # object, where an enclosing node applies ``type: object`` to the same
+            # instance", and a node stating neither a word nor a property map has no
+            # property map for that row to read -- §5 reads it as ``{}``, which IS
+            # ``true``.  A non-object word has no such clause: the word alone decides.
+            return nodes.Typeless(**common)
+        # **The word an enclosing node asserts about the SAME instance decides the kind
+        # where the node states none** -- §4 of the semantics document's ``type`` row and
+        # ``_base.applied_schema``'s own rule, which is what the SCHEMA half of every
+        # graded pair already reads.  ``lower.union._alias`` built the conjunction by
+        # hand, as a mapping per branch handed back to the dispatch; the reading is the
+        # parser's and it is made here, once, at the hop that implies it.
+        word = applied
     if isinstance(word, list):
         return _multi_type(raw, common, word, pointer, position, source)
     if word == "null":
         return nodes.Null(**common)
     if word == "object":
         if "properties" in raw:
-            return _object(raw, common, pointer, position, source)
-        return _mapping(raw, common, pointer, source)
+            return _object(raw, common, pointer, position, source, word)
+        return _mapping(raw, common, pointer, source, word)
     if word == "array":
-        return _array(raw, common, pointer, source)
+        return _array(raw, common, pointer, source, word)
     # A scalar word, and the one word that is none of the above: an unknown ``type`` is a
     # contradiction in the document and the scalar handler refuses it by name, so the
     # word travels on the node rather than being classified away here.
@@ -329,7 +367,12 @@ def _enumeration(raw: Mapping[str, Any], common: dict) -> nodes.Enumeration:
 # the kinds that hold subschemas
 # --------------------------------------------------------------------------- #
 def _object(
-    raw: Mapping[str, Any], common: dict, pointer: str, position: Position, source: Source
+    raw: Mapping[str, Any],
+    common: dict,
+    pointer: str,
+    position: Position,
+    source: Source,
+    word: Any = None,
 ) -> nodes.Object:
     """``type: object`` (stated or applied) with ``properties``: the fields, and the two
     readings §2 names as node rewrites.
@@ -361,15 +404,13 @@ def _object(
         }
     required = raw.get("required")
     key = _key(raw.get("propertyNames"), f"{pointer}/propertyNames", source)
-    extra = raw.get("additionalProperties")
     extras = extras_store(raw, pointer, position, source)
     return nodes.Object(
         properties=children,
         required=tuple(required) if isinstance(required, list) else (),
-        extra=extra,
         extras=extras,
         key=key,
-        word=raw.get("type"),
+        word=word,
         **common,
     )
 
@@ -412,7 +453,7 @@ def extras_store(
 
 
 def _mapping(
-    raw: Mapping[str, Any], common: dict, pointer: str, source: Source
+    raw: Mapping[str, Any], common: dict, pointer: str, source: Source, word: Any = None
 ) -> nodes.Mapping_:
     """``type: object`` without ``properties``: ``dict[K, V]``, in either spelling.
 
@@ -436,24 +477,23 @@ def _mapping(
             # implies it.
             key=_key({"pattern": expression}, f"{pointer}/patternProperties", source),
             pattern=expression if isinstance(expression, str) else None,
-            extra=raw.get("additionalProperties"),
+            patterns=1,
             bounds={k: raw[k] for k in _KEY_BOUNDS if k in raw},
-            word=raw.get("type"),
+            word=word,
             **common,
         )
-    extra = raw.get("additionalProperties", True)
     return nodes.Mapping_(
-        value=_value(extra, f"{pointer}/additionalProperties", source),
+        value=_value(raw.get("additionalProperties", True), f"{pointer}/additionalProperties", source),
         key=_key(raw.get("propertyNames"), f"{pointer}/propertyNames", source),
-        extra=raw.get("additionalProperties"),
+        patterns=_pattern_count(raw),
         bounds={k: raw[k] for k in _KEY_BOUNDS if k in raw},
-        word=raw.get("type"),
+        word=word,
         **common,
     )
 
 
 def _array(
-    raw: Mapping[str, Any], common: dict, pointer: str, source: Source
+    raw: Mapping[str, Any], common: dict, pointer: str, source: Source, word: Any = None
 ) -> nodes.Array:
     """``type: array``: the element at ELEM, the LIST's own bound, ``distinct``, the
     ``contains`` predicate as stated.
@@ -473,7 +513,7 @@ def _array(
         bounds={k: raw[k] for k in _ITEM_BOUNDS if k in raw},
         distinct=raw.get("uniqueItems") is True,
         contains=raw.get("contains"),
-        word=raw.get("type"),
+        word=word,
         **common,
     )
 
@@ -507,7 +547,7 @@ def _multi_type(
     )
     carried = frozenset().union(*(ARM.get(w, frozenset()) for w in words)) if words else frozenset()
     return nodes.MultiType(
-        words=tuple(w for w in words if isinstance(w, str)),
+        words=tuple(words),
         members=members,
         stated=tuple(sorted(set(raw) & carried)),
         **common,
@@ -538,20 +578,37 @@ def _union(
     reconstructs its parent.
     """
     branches = raw[combinator]
+    word = raw.get("type")
+    # **The union TELLS its branches the two things it knows about them** (§6, "a child
+    # never reconstructs its parent"): that a branch of a ROOT union is a class whatever
+    # it states (§4 of the semantics document emits one class per branch), and the
+    # ``type`` word the document applies to the same instance every branch sees (§4 of
+    # the semantics document: "every keyword beside the combinator compiles onto the
+    # base, and every branch inherits it"; ``_base.applied_schema``'s own rule, which is
+    # what the SCHEMA half of each graded pair reads).  Both were read by the union row --
+    # as an ``objectish`` argument and as a mapping per branch built by hand -- and both
+    # are the parser's descent now.
+    inherits = word if isinstance(word, str) else None
     return nodes.Union(
         combinator=combinator,
-        # **The branches are NOT parsed here yet**, and that is the staging rather than the
-        # design: the union row still reads its branch plan off the declarations and
-        # reaches a branch through ``compiler.decide``, which parses it at BRANCH.  When
-        # that row converts, this field holds the parsed branches and the row dispatches
-        # on a branch's own kind rather than on a second reading of its keys.
-        branches=(),
-        branch_raw=tuple(b for b in branches if isinstance(b, Mapping)),
+        branches=tuple(
+            parse(
+                branch,
+                pointer=f"{pointer}/{combinator}/{i}",
+                position=Position.BRANCH,
+                source=source,
+                objectish=position is Position.ROOT,
+                applied=inherits,
+            )
+            for i, branch in enumerate(branches)
+        ),
+        branch_raw=tuple(branches),
         siblings={
             k: raw[k]
             for k in ("allOf", "properties", "required", "additionalProperties")
             if k in raw
         },
+        word=word,
         **common,
     )
 
@@ -569,11 +626,8 @@ def _composition(raw: Mapping[str, Any], common: dict, pointer: str) -> nodes.Co
         conjuncts=tuple(
             nodes.Conjunct(pointer=f"{pointer}/allOf/{i}", raw=conjunct)
             for i, conjunct in enumerate(raw["allOf"])
-            if isinstance(conjunct, Mapping)
         ),
-        properties=raw.get("properties") if isinstance(raw.get("properties"), Mapping) else {},
         required=tuple(raw["required"]) if isinstance(raw.get("required"), list) else (),
-        extra=raw.get("additionalProperties"),
         word=raw.get("type"),
         **common,
     )
@@ -612,6 +666,43 @@ def _key(raw: Any, pointer: str, source: Source) -> nodes.Base | None:
     if "$ref" in raw:
         return parse(raw, pointer=pointer, position=Position.KEY, source=source)
     return parse({"type": "string", **raw}, pointer=pointer, position=Position.KEY, source=source)
+
+
+# --------------------------------------------------------------------------- #
+# the shape validation §4 gives the parser
+# --------------------------------------------------------------------------- #
+def _faults(raw: Mapping[str, Any]) -> dict[str, str]:
+    """Every SHAPE fault this declaration states, keyed by the keyword it is about.
+
+    §4: "it validates shape: ``required`` is a list of names, ``properties`` is a mapping
+    of schemas, ``items`` is one schema and not a list, and so on, each failure a VERDICT
+    refusal because a malformed document is a property of the document."  The faults a
+    kind can read off its own fields are NOT here -- an ``items`` that is not a schema is
+    :attr:`nodes.Array.element` being ``None`` beside ``items`` in
+    :attr:`nodes.Base.declares`, and an ``enum`` that is not a list is
+    :attr:`nodes.Enumeration.members` being empty -- so this carries only the ones whose
+    answer is neither a field nor derivable from one.
+
+    The kind's handler RAISES the fault at the point its own check raised it, which is
+    what keeps the report a function of the document rather than of where the reading
+    happens: ``required``'s shape is checked after the ``type`` and ``properties`` checks
+    in the object row and after the conjunct list in the ``allOf`` row.
+    """
+    out: dict[str, str] = {}
+    if "required" in raw:
+        required = raw["required"]
+        if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
+            out["required"] = f"required is {required!r}, not a list of names"
+    return out
+
+
+def _pattern_count(raw: Mapping[str, Any]) -> int | None:
+    """How many ``patternProperties`` entries the node states; see
+    :attr:`nodes.Mapping_.patterns`."""
+    if "patternProperties" not in raw:
+        return None
+    stated = raw["patternProperties"]
+    return len(stated) if isinstance(stated, Mapping) else -1
 
 
 # --------------------------------------------------------------------------- #

@@ -130,7 +130,7 @@ def lower(node: nodes.Constant, name_hint: str, mod: compiler.Module) -> compile
     :attr:`codegen.ir.TypeRef.literals`.
     """
     pointer = node.pointer
-    compiler.check_keywords(node.raw, pointer, node.position, CLAIMS, mod=mod)
+    compiler.check_keywords(node, CLAIMS, mod=mod)
     value = node.value
     if not isinstance(value, LITERALS):
         raise Refusal(
@@ -141,7 +141,14 @@ def lower(node: nodes.Constant, name_hint: str, mod: compiler.Module) -> compile
             "with no document, pointer or keyword in the message",
             kind=Kind.VERDICT,
         )
-    if not jsonschema.Draft7Validator(node.raw).is_valid(value):
+    # **The node's own ``type`` is the only thing left that can refuse the value.**
+    # The screen above admits exactly :data:`CLAIMS` plus the cells that constrain no
+    # instance, so by here the node states ``const``, a ``type`` word and annotations --
+    # and a ``const`` validates against its own ``const``.  So the question is whether
+    # the word admits the value, which is what :attr:`nodes.Constant.word` is.
+    if not jsonschema.Draft7Validator(
+        {"type": node.word} if node.word is not None else {}
+    ).is_valid(value):
         raise Refusal(
             "const",
             pointer,
