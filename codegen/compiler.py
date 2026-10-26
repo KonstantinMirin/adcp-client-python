@@ -63,6 +63,7 @@ from codegen import ir, keywords, refusal
 from codegen.ir import MISSING
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
+from codegen.schema import nodes, parse as schema
 
 SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool"}
 
@@ -70,50 +71,15 @@ SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool
 # --------------------------------------------------------------------------- #
 # the machinery a lowering is handed (D13)
 # --------------------------------------------------------------------------- #
-#: **D6's six keyword families, as the set a keyword screen admits.**
-#:
-#: Derived from the table's cells: a rule source is a keyword whose cell at this
-#: position compiles to a RULE, and the two COMBINATORS join it only where every
-#: branch is ``required``-only -- which is a co-occurrence and not a position, so it is
-#: the caller's question (:func:`rules_at`) and not the cell's.  Written here rather
-#: than in ``codegen.lower.rules`` because ``compiler`` sits BELOW both
-#: ``codegen.lower`` and ``codegen.bundle``, so every reader can import it while a
-#: lowering may not import a sibling lowering (D13); ``codegen.lower.rules``
-#: re-exports it as its own ``KEYWORDS`` rather than restating it.
-def rule_sources(position: Position) -> frozenset[str]:
-    """The keywords whose cell at ``position`` compiles to a RULE."""
-    return frozenset(
-        k
-        for k in keywords.TABLE
-        if (c := keywords.cell(k, position)) is not None and c.effect is keywords.Effect.RULE
-    )
-
-
-def combinators(position: Position) -> frozenset[str]:
-    """``oneOf`` and ``anyOf``, read off the descent column rather than named.
-
-    They are the keywords whose subschemas occupy a BRANCH, which is what a
-    combinator IS -- so the pair is a reading of the declaration and not a literal.
-    """
-    return frozenset(
-        k
-        for k in keywords.TABLE
-        if (c := keywords.cell(k, position)) is not None and c.descends is Position.BRANCH
-    )
-
-
-def declares(keyword: str, position: Position) -> bool:
-    """Does this key STATE something about an instance at this position?
-
-    The question three readers ask -- ``lower.union._plan``, :func:`_constraining` and
-    ``lower.rules._own`` -- and the one the screen asks in the other direction.  A key
-    that annotates without constraining is not a declaration; a key with no row is,
-    because a keyword the bundle did not use before could constrain anything.
-    """
-    answer = keywords.cell(keyword, position)
-    if answer is None:
-        return not keywords.admitted_by_prefix(keyword)
-    return keywords.lowers(answer) or answer.effect is keywords.Effect.REFUSE
+# **``rule_sources``, ``combinators`` and ``declares`` are ``codegen/keywords.py``'s
+# now.**  Each is a predicate over a CELL, so each belongs to the layer §11 gives
+# "positions, keywords, cells, descent" -- and ``codegen/schema/parse.py``'s
+# classification (§4) asks all three while being forbidden to import this module: §11's
+# arrow is ``keywords <- ir <- schema <- lower``.  Re-bound here under their own names so
+# that every existing reader keeps one spelling of each.
+rule_sources = keywords.rule_sources
+combinators = keywords.combinators
+declares = keywords.declares
 
 
 def declaring(node: Mapping[str, Any], position: Position) -> dict[str, Any]:
@@ -170,14 +136,25 @@ def inert_beside_a_reference(
         and keywords.lowers(answer)
     )
     if mod is not None:
-        mod.carries_nothing.extend(
-            f"{pointer or '/'}: {k}: a constraining sibling of $ref, which draft-07 "
-            "ignores, so the keyword constrains no instance and the document's accepted "
-            "set is the target's alone (section 5's $ref row); the record keeps the key "
-            "and section 8 does not grade it"
-            for k in sorted(inert)
-        )
+        report_inert(inert, pointer, mod)
     return inert
+
+
+def report_inert(inert: "Collection[str]", pointer: str, mod: "Module") -> None:
+    """The REPORTED half of §5's ``$ref`` row, for a caller that already has the set.
+
+    ``codegen/lower/references.py`` reads :attr:`nodes.Reference.inert` -- the parser's
+    one reading of the co-occurrence (§4) -- so it needs the report and not the reading;
+    :func:`inert_beside_a_reference` is still the reading for ``lower_composition``'s
+    ``$ref``-conjunct arm, which meets the co-occurrence on a DECLARATION.
+    """
+    mod.carries_nothing.extend(
+        f"{pointer or '/'}: {k}: a constraining sibling of $ref, which draft-07 "
+        "ignores, so the keyword constrains no instance and the document's accepted "
+        "set is the target's alone (section 5's $ref row); the record keeps the key "
+        "and section 8 does not grade it"
+        for k in sorted(inert)
+    )
 
 
 
@@ -354,38 +331,62 @@ def _no_binder(uri: str, pointer: str) -> Target:
 
 
 def decide(
-    node: dict, pointer: str, name_hint: str, mod: "Module", position: Position
+    raw: Any,
+    pointer: str,
+    name_hint: str,
+    mod: "Module",
+    position: Position,
+    *,
+    objectish: bool = False,
+    of_a_root_union: bool = False,
 ) -> Decided:
-    """What one schema node IS: ``emit.decide_type``, reached by NAME.
+    """PARSE one raw subschema, then dispatch on the kind the parser decided.
 
-    ``position`` is the node's own, passed by the caller because it is a STRUCTURAL
-    fact of the caller -- a property's value is at PROP, an array's element at ELEM, a
-    mapping's value at MAPV, a branch at BRANCH, a ``definitions`` entry at DEF -- and
-    never recovered from the pointer string, which cannot tell a RULE reference from a
-    PROP one.
+    **The one entry a not-yet-converted descent site uses**, and the reason it still
+    takes a raw mapping is §14 step 5's staging: a kind whose handler reads its children
+    off node fields never comes here, and a kind that has not converted yet reaches a
+    child through this function -- which PARSES it.  So every raw mapping is read by
+    ``codegen/schema/parse.py`` and by nothing else at every rung, and the last
+    conversion deletes this entry along with the carrier.
 
-    This used to be a callable carried on :attr:`Module.decide`, because reaching
-    ``emit`` by name was forbidden: ``python -m codegen.emit`` executed that file as
-    ``__main__`` under ``runpy``, so an importer of ``codegen.emit`` held a SECOND
-    module object with a second dispatch table and a second decider.
-    ``codegen/__main__.py`` is the fix -- no module of this compiler is ever bound as
-    ``__main__`` -- so the decision is a function with one name again and the
-    :class:`Module` carries data rather than functions.
+    ``position`` is the node's own, passed by the caller because it is a structural fact
+    of the caller -- a property's value is at PROP, an array's element at ELEM, a branch
+    at BRANCH, a ``definitions`` entry at DEF -- and never recovered from the pointer
+    string, which cannot tell a RULE reference from a PROP one.
 
-    **The import is function-scope, and the cycle that forced it is GONE.**
-    ``emit.ROWS`` read ``bundle``'s root selectors at MODULE level and ``bundle``
-    imported the lowerings for two of them, so a module-level import of ``emit`` from
-    anywhere the lowerings reach made ``import codegen.bundle`` an ``AttributeError`` on
-    a partially initialised ``bundle`` -- measured, not theorised.  §14 step 5 deleted
-    the table and moved those two predicates to ``tests/populations.py``, so ``bundle``
-    imports nothing of ``lower`` and nothing of ``emit``.  What still retires the shim
-    is the other half of that step: ``decide`` becomes ``lower/decide.py``'s exhaustive
-    ``match`` over ``schema/nodes.py``'s kinds, and a lowering then imports it directly.
-    Until then the one deferred import is here rather than at each of its call sites.
+    ``objectish`` is §6's "a child never reconstructs its parent": a branch of a ROOT
+    union is a class whatever it states, because §4 of the semantics document emits one
+    class per branch, and the UNION is what knows that about itself and tells the branch.
+
+    The import is function-scope because ``decide`` is ``emit``'s wrapper over the
+    dispatch -- the content memo and the naming of a node a ``$ref`` elsewhere names --
+    and §14 step 7 moves both into ``lower/names.py`` as a pass over the finished module.
+    """
+    return lower_node(
+        schema.parse(
+            raw, pointer=pointer, position=position, source=mod.source, objectish=objectish
+        ),
+        name_hint,
+        mod,
+        of_a_root_union=of_a_root_union,
+    )
+
+
+def lower_node(
+    node: nodes.Base, name_hint: str, mod: "Module", *, of_a_root_union: bool = False
+) -> Decided:
+    """What one PARSED node is: ``emit.decide_type``, reached by name.
+
+    ``of_a_root_union`` is the one fact §6 names as travelling DOWN the tree: "where a
+    lowering needs to know something about the node ENCLOSING it, the enclosing handler
+    passes it down -- a child never reconstructs its parent."  The union handler reads
+    ``node.position`` and tells its branches, because "of a root union" is a statement
+    about the UNION and not about the branch; ``lower.enum.resolves_no_name`` is the
+    predicate that needs it, and it read ``pointer.split("/")`` before this.
     """
     from codegen.emit import decide_type
 
-    return decide_type(node, pointer, name_hint, mod, position)
+    return decide_type(node, name_hint, mod, of_a_root_union=of_a_root_union)
 
 
 @dataclass
@@ -518,6 +519,20 @@ class Module:
     #: dataclass takes the second declaration silently, so the earlier writer's
     #: ``mod.drops[pointer] = value`` met a list.  One name per channel.
     carries_nothing: list[str] = field(default_factory=list)
+
+    #: What the PARSER is handed about this document: its path and the pointers an
+    #: enclosing node constrains to ``type: "object"``.  Built here rather than passed,
+    #: so there is one Source per module and the ``carries_nothing`` report the parser
+    #: writes is the one this module collects.  §11 keeps the run out of the reading
+    #: layer, and a Source carries no run: a path and a pointer set are the document.
+    source: schema.Source = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.source = schema.Source(
+            document=self.document,
+            applied_at=self.object_constrained,
+            report=self.carries_nothing,
+        )
 
     def resolve_node(self, uri: str) -> dict | None:
         """The schema a cross-document reference names, or ``None``.
@@ -739,7 +754,7 @@ def carried(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRe
     # :func:`decide`'s reason: the spellings are ``codegen.constraints``'s, that module
     # imports this one, and ``emit.name_the_constraint`` is the one function that pairs
     # a resolved spelling with the record of the alias it resolved to.
-    from codegen.emit import name_the_constraint
+    from codegen.lower.scalars import name_the_constraint
 
     named = name_the_constraint(decided, mod)
     if named is not None:
@@ -837,7 +852,7 @@ def check_keywords(
 # the field builder and the class declarer
 # --------------------------------------------------------------------------- #
 def fields(
-    props: Mapping[str, Any],
+    props: Mapping[str, nodes.Base],
     required: Collection[str],
     pointer: str,
     name: str,
@@ -912,10 +927,8 @@ def fields(
     spelled: dict[str, str] = {}
     where = declared_at or {}
     reuse = reuse or {}
-    for key, sub in props.items():
+    for key, child in props.items():
         at = where.get(key, f"{pointer}/properties/{key}")
-        if not isinstance(sub, dict):
-            raise Refusal("properties", at, "property is not a schema", kind=Kind.VERDICT)
         fname = field_name(key)
         if fname in spelled:
             raise Refusal(
@@ -923,11 +936,6 @@ def fields(
             , kind=Kind.VERDICT)
         spelled[fname] = key
         is_distinct = key in distinct
-        if is_distinct:
-            # D6 owns the keyword at this position, so the walk below must not see it:
-            # the array row carries no ``uniqueItems`` and refuses one by name, which
-            # is what keeps an array NO class holds refused rather than widened.
-            sub = {k: v for k, v in sub.items() if k != "uniqueItems"}
         if key in reuse:
             held = reuse[key]
             # The REUSED field's type ALREADY states its bound and its format (§2, and
@@ -937,7 +945,7 @@ def fields(
             field_type = held.type
             is_distinct = held.distinct
         else:
-            decided_type = decide(sub, at, name + class_name(key), mod, Position.PROP)
+            decided_type = lower_node(child, name + class_name(key), mod)
             # §2: **constraints bind to the TYPE, not the field.**  A :class:`Decided`
             # carries the three apart because a format is either IN the type or beside
             # it and never in both; the field carries one type that states all of them,
@@ -950,7 +958,7 @@ def fields(
             )
         is_required = key in required
         default = MISSING
-        if "default" in sub:
+        if "default" in child.annotations:
             if is_required:
                 # Section 5's ``default`` row: **on a REQUIRED property, dropped and
                 # reported, because no rendering makes a field both required and
@@ -973,10 +981,9 @@ def fields(
                 # has no other guard against.  :attr:`Module.drops` carries it out to
                 # ``emit.emit``, which prints it and hands it to the suite.  5 of the
                 # bundle's 339 property defaults sit on a required property.
-                mod.drops[at] = sub["default"]
+                mod.drops[at] = child.annotations["default"]
             else:
-                default = sub["default"]
-        doc = sub.get("description")
+                default = child.annotations["default"]
         built.append(
             ir.Field(
                 name=fname,
@@ -984,7 +991,7 @@ def fields(
                 type=field_type,
                 required=is_required,
                 default=default,
-                description=doc if isinstance(doc, str) and doc else None,
+                description=child.description,
                 distinct=is_distinct,
             )
         )
@@ -1000,6 +1007,7 @@ def declare_object(
     shape: Shape,
     position: Position = Position.ROOT,
     *,
+    extras: nodes.Base | None = None,
     bases: tuple[str, ...] = (),
     rule_nodes: Sequence[dict] = (),
     root_required: tuple[str, ...] | None = None,
@@ -1030,6 +1038,11 @@ def declare_object(
     conjunct, which draft-07 applies to the same instance.  Empty for every row but
     the composing one.
 
+    ``extras`` is the extras STORE as a parsed node -- the ``dict[K, V]`` §5 says a typed
+    ``additionalProperties`` on a class is -- or ``None`` where the document states
+    ``false``, ``true``, the empty schema or nothing.  The parser builds it
+    (``schema.parse.extras_store``) and the three callers that can meet one pass it.
+
     ``root_required``, ``discriminator`` and ``combinator`` are §4's three facts a UNION
     BASE carries and no other class does, so all three are ``None`` for every row but
     the union row.  They are declared on the class rather than formatted into a body
@@ -1047,19 +1060,14 @@ def declare_object(
     # because the per-node dispatch is one function and a second entrance to the
     # container row would be a second reading of which row a node belongs to.
     ap = node.get("additionalProperties")
-    extra_type = None
-    if isinstance(ap, dict) and ap:
-        extra_type = decide(
-            {
-                "type": "object",
-                "additionalProperties": ap,
-                **{k: node[k] for k in ("propertyNames",) if k in node},
-            },
-            pointer,
-            name,
-            mod,
-            position,
-        ).type
+    # **§2's SECOND node rewrite, retired.**  This built a synthetic
+    # ``{"type": "object", "additionalProperties": ap, "propertyNames": ...}`` and handed
+    # it to the dispatch -- a node the document does not have.  The extras STORE is now a
+    # ``nodes.Mapping_`` the PARSER builds, at the class's own pointer, with its value at
+    # MAPV and its key at KEY (``schema.parse.extras_store``), so the extras store and a
+    # mapping cannot come to read ``additionalProperties`` two different ways because
+    # there is one reading of it and the parser makes it.
+    extra_type = None if extras is None else lower_node(extras, name, mod).type
     description = node.get("description")
     declaration = ir.ClassDecl(
         name=name,
@@ -1093,16 +1101,35 @@ def declare_object(
     return name
 
 
+def _parsed_property(declaration: Any, at: str, mod: Module) -> nodes.Base:
+    """One property DECLARATION as the node it states, at the pointer it was declared at.
+
+    The shape guard that stood inside :func:`fields` -- "property is not a schema" -- is
+    here, because a property map reaching that function is a map of NODES now and a node
+    is a schema by construction.  A VERDICT: a property that is not a schema is a
+    malformed document, which is a property of the document (§4).
+    """
+    if not isinstance(declaration, Mapping):
+        raise Refusal("properties", at, "property is not a schema", kind=Kind.VERDICT)
+    return schema.parse(declaration, pointer=at, position=Position.PROP, source=mod.source)
+
+
 def lower_object(
-    node: dict,
+    node: nodes.Object,
     name: str,
-    pointer: str,
     mod: Module,
-    position: Position,
     *,
     bases: tuple[str, ...] = (),
 ) -> str:
-    """Append the class for an object node, children first, and return its name.
+    """Append the class for an object NODE, children first, and return its name.
+
+    **Converted to node fields** for everything structural: the properties are the child
+    nodes the parser built at PROP, in the document's own key order; the extras store is
+    :attr:`nodes.Object.extras`; ``propertyNames`` is :attr:`nodes.Object.key`; the type
+    word is :attr:`nodes.Object.word` and the word an enclosing node applies to the same
+    instance is :attr:`nodes.Base.applied`, which is what ``mod.object_constrained`` was
+    read as per node.  The ADMISSION SCREEN and the two shape validations still read
+    :attr:`nodes.Base.raw`, which is §14 step 5's carrier and the next conversion.
 
     ``bases`` is what a COMPOSITION and a union BRANCH need and a leaf object does not,
     and it defaults to the leaf's answer -- no base, so the base is ``AdCPBaseModel`` --
@@ -1117,9 +1144,10 @@ def lower_object(
     # reading is :func:`rules_at`'s, which is also where the TUPLE is written
     # (:func:`declare_object`) -- so this row and the ``allOf`` row and a union branch
     # all admit the same keywords and all write the same rule.
-    stated = rules_at(node, position=position)
+    pointer, position = node.pointer, node.position
+    stated = rules_at(node.raw, position=position)
     check_keywords(
-        node,
+        node.raw,
         pointer,
         position,
         # The cells an OBJECT node consumes, which is what is left of a ``handled``
@@ -1134,8 +1162,8 @@ def lower_object(
         },
         mod=mod,
     )
-    declared = node.get("type")
-    if declared != "object" and not (declared is None and pointer in mod.object_constrained):
+    declared = node.word
+    if declared != "object" and not (declared is None and node.applied == "object"):
         # A node carrying ``properties`` and no ``type`` ADMITS A NON-OBJECT: JSON
         # Schema applies ``properties`` only to objects and asserts nothing about
         # anything else, so ``{"properties": {"a": {"type": "string"}}, "required":
@@ -1169,19 +1197,18 @@ def lower_object(
             "type",
             pointer,
             f"an object node must declare type: object; this one declares "
-            f"{node.get('type', '<absent>')!r} and nothing enclosing it constrains the "
+            f"{node.word if node.word is not None else '<absent>'!r} and nothing enclosing it constrains the "
             "instance to an object, so the document admits a non-object that no class can",
             kind=Kind.VERDICT,
         )
-    props = node["properties"]
-    if not isinstance(props, dict) or not props:
+    if not node.properties:
         raise Refusal(
             "properties",
             pointer,
             "an object node with no property declared",
             kind=Kind.VERDICT,
         )
-    required = node.get("required", [])
+    required = node.raw.get("required", [])
     if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
         raise Refusal(
             "required",
@@ -1189,15 +1216,16 @@ def lower_object(
             f"required is {required!r}, not a list of names",
             kind=Kind.VERDICT,
         )
-    built = fields(props, required, pointer, name, mod, distinct=stated.distinct)
+    built = fields(node.properties, required, pointer, name, mod, distinct=stated.distinct)
     return declare_object(
-        node,
+        node.raw,
         name,
         pointer,
         mod,
         built,
-        Shape(props, frozenset(required)),
+        Shape(node.raw["properties"], frozenset(required)),
         position,
+        extras=node.extras,
         bases=bases,
     )
 
@@ -1294,15 +1322,25 @@ def _refuse_a_combinator_of_shapes(doc: dict, pointer: str, screen: frozenset[st
 
 
 def lower_composition(
-    doc: dict,
+    node: "nodes.Composition | Mapping[str, Any]",
     name: str,
-    pointer: str,
     mod: Module,
-    position: Position,
+    pointer: str | None = None,
+    position: Position | None = None,
     *,
     bases: tuple[str, ...] = (),
 ) -> str:
     """Append the class for an ``allOf`` node and return its name.
+
+    **This row still reads the CARRIER**, and ``schema/nodes.py`` says which half of that
+    is permanent: §6 keeps ``restatement``, ``intersection`` and ``at_least_as_tight`` as
+    pure functions over DECLARATIONS, because the merge of two declarations of one
+    property has to be parsed as one node and not composed out of two decided ones -- so
+    a :class:`nodes.Conjunct` is a declaration by the design's own decision.  What is
+    still §14 step 5's to convert here is the node's OWN facts: its screen, its
+    ``properties`` and ``required``, its ``additionalProperties``.  A union BRANCH reaches
+    this row with a raw declaration too, which is why the first argument takes either and
+    the pointer and the position are read off the node when it is one.
 
     The reference conjuncts become BASES, and the rest becomes fields of the node
     itself.  D2's product row, and **shared machinery rather than a lowering**: a
@@ -1385,6 +1423,15 @@ def lower_composition(
     reason :class:`Rules` states: a rule naming a key the class has no field for
     refuses a payload the document admits.
     """
+    # A NODE carries its own pointer and position; a raw declaration is a union BRANCH's,
+    # which this row still meets as a declaration (§14 step 5's staging).  Any kind may
+    # arrive -- a hand-written probe states ``allOf`` beside a combinator and the parser
+    # classifies it a ``Union``, which is §5's own arm order -- so the test is on
+    # ``nodes.Base`` and not on the one kind this row is dispatched for.
+    if isinstance(node, nodes.Base):
+        doc, pointer, position = node.raw, node.pointer, node.position
+    else:
+        doc, pointer, position = node, pointer or "", position or Position.ROOT
     # **The TYPE first, BEFORE the keyword screen**, and the order is measured rather
     # than preferred: a node stating a non-object ``type`` composes no object whatever
     # else it states, so the type is the reason and a keyword it carries is not.  It sat
@@ -1921,8 +1968,18 @@ def lower_composition(
         )
         own[key] = dict(inherited[key])
 
+    # **The merged declarations go through the PARSER**, which is ``schema/nodes.py``'s
+    # own sentence about why a conjunct is a declaration: §2's intersection rule merges
+    # two declarations of one property and "hands the merged declaration back to
+    # :func:`codegen.schema.parse.parse`", because the result has to be parsed as ONE node
+    # rather than composed out of two decided ones.  So the one reader of a raw mapping
+    # reads these too, at the pointer the key was declared at.
+    own_nodes = {
+        key: _parsed_property(declaration, at.get(key, f"{pointer}/properties/{key}"), mod)
+        for key, declaration in own.items()
+    }
     decided = fields(
-        own,
+        own_nodes,
         required | (inherited_required & set(own)),
         pointer,
         name,
@@ -2458,7 +2515,7 @@ def bind_without_a_model(
     return symbol
 
 
-def _alias_for(symbol: str, node: dict, decided: Decided) -> ir.AliasDecl:
+def _alias_for(symbol: str, node: nodes.Base, decided: Decided) -> ir.AliasDecl:
     """One node's own decision, as the alias that names it.
 
     Shared by the TWO rows that declare an alias -- a root (:func:`declare_alias`) and
@@ -2472,15 +2529,16 @@ def _alias_for(symbol: str, node: dict, decided: Decided) -> ir.AliasDecl:
     (§2, and :attr:`codegen.ir.TypeRef.facts`): one carrier, so an alias and a property
     cannot come to spell one ``minLength`` two ways.
     """
-    description = node.get("description")
     return ir.AliasDecl(
         symbol,
         replace(decided.type, facts=decided.constraints, format=decided.format),
-        description=description if isinstance(description, str) and description else None,
+        description=node.description,
     )
 
 
-def name_the_node(mod: Module, symbol: str, pointer: str, node: dict, decided: Decided) -> Decided:
+def name_the_node(
+    mod: Module, symbol: str, pointer: str, node: nodes.Base, decided: Decided
+) -> Decided:
     """Give a node a SYMBOL in its own module, because a ``$ref`` elsewhere names it.
 
     A fragment reference resolves to an import of a symbol the target module
@@ -2599,7 +2657,7 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided:
         mod.resolving.pop()
 
 
-def declare_alias(mod: Module, symbol: str, doc: dict, decided: Decided) -> str:
+def declare_alias(mod: Module, symbol: str, doc: nodes.Base, decided: Decided) -> str:
     """Declare the module for a root D2 makes an ALIAS rather than a class.
 
     A scalar root takes this shape, and so does every other root with no field to
