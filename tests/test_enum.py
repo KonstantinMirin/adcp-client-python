@@ -47,8 +47,8 @@ from codegen.lower import enum as lower_enum
 from codegen.schema import nodes as schema_nodes
 from codegen.schema import parse as schema_parse
 from codegen import refusal as refusal_module
-from codegen.refusal import Refusal
 import populations
+from conftest import refusal_from
 from tests.test_emit import BUNDLE, graded, population, TREE
 from tests.nodeset import claimed, partitions
 
@@ -783,11 +783,10 @@ def test_a_node_this_row_cannot_represent_refuses_by_name(values: list, because:
     are graded on nodes written here, which is the right level -- they are
     properties of the lowering, not of the bundle.
     """
-    with pytest.raises(Refusal) as caught:
-        lower_enum.decide(_probe({"enum": values}, "/properties/x"), "Probe")
-    assert caught.value.keyword == "enum"
-    assert caught.value.pointer == "/properties/x"
-    assert because in caught.value.detail, caught.value.detail
+    caught = refusal_from(lower_enum.decide(_probe({"enum": values}, "/properties/x"), "Probe"))
+    assert caught.keyword == "enum"
+    assert caught.pointer == "/properties/x"
+    assert because in caught.detail, caught.detail
 
 
 def test_the_colliding_node_is_in_the_bundle_and_its_document_refuses_earlier() -> None:
