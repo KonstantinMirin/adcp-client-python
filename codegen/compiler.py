@@ -1423,7 +1423,12 @@ def lower_composition(
     reason :class:`Rules` states: a rule naming a key the class has no field for
     refuses a payload the document admits.
     """
-    if isinstance(node, nodes.Composition):
+    # A NODE carries its own pointer and position; a raw declaration is a union BRANCH's,
+    # which this row still meets as a declaration (§14 step 5's staging).  Any kind may
+    # arrive -- a hand-written probe states ``allOf`` beside a combinator and the parser
+    # classifies it a ``Union``, which is §5's own arm order -- so the test is on
+    # ``nodes.Base`` and not on the one kind this row is dispatched for.
+    if isinstance(node, nodes.Base):
         doc, pointer, position = node.raw, node.pointer, node.position
     else:
         doc, pointer, position = node, pointer or "", position or Position.ROOT

@@ -44,11 +44,30 @@ from codegen.harness import (
     compared_facts,
 )
 from codegen.lower import enum as lower_enum
+from codegen.schema import nodes as schema_nodes
+from codegen.schema import parse as schema_parse
 from codegen import refusal as refusal_module
 from codegen.refusal import Refusal
 import populations
 from tests.test_emit import BUNDLE, graded, population, TREE
 from tests.nodeset import claimed, partitions
+
+def _probe(raw: dict, pointer: str = "", position: Position = Position.PROP) -> schema_nodes.Base:
+    """One hand-written declaration as the NODE the parser decides it is.
+
+    §14 step 5 makes a handler take its node, so a test that grades the lowering of a
+    shape the bundle does not carry builds the node the way the walk builds it -- through
+    ``codegen.schema.parse.parse``, at a pointer and a position of its own.  Going round
+    the parser would grade a node no document can produce, which is the fixture-derived-
+    from-the-thing-it-grades defect this file's own rules name.
+    """
+    return schema_parse.parse(
+        raw,
+        pointer=pointer,
+        position=position,
+        source=schema_parse.Source(document="probe.json"),
+    )
+
 
 
 def root_enums() -> list[str]:
@@ -765,7 +784,7 @@ def test_a_node_this_row_cannot_represent_refuses_by_name(values: list, because:
     properties of the lowering, not of the bundle.
     """
     with pytest.raises(Refusal) as caught:
-        lower_enum.decide({"enum": values}, "Probe", "/properties/x")
+        lower_enum.decide(_probe({"enum": values}, "/properties/x"), "Probe")
     assert caught.value.keyword == "enum"
     assert caught.value.pointer == "/properties/x"
     assert because in caught.value.detail, caught.value.detail
@@ -872,7 +891,7 @@ def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one()
         assert issubclass(cls, pyenum.IntEnum), (document, pointer)
         assert [m.value for m in cls] == node["enum"], (document, pointer)
 
-    decided = lower_enum.decide({"type": "integer", "enum": [16, 24, 32]}, "BitDepth", "")
+    decided = lower_enum.decide(_probe({"type": "integer", "enum": [16, 24, 32]}), "BitDepth")
     assert decided.kind == "integer"
     assert [m.name for m in decided.members] == ["V_16", "V_24", "V_32"]
     text = render.enum(decided).text
@@ -911,7 +930,7 @@ def test_the_base_comes_from_the_members_which_is_what_admits_a_typeless_node() 
     # reading of one bundle version and said nothing the non-emptiness does not.
     assert counted["disagreeing"] == 0, counted
     assert counted["typed"] and counted["typeless"], counted
-    assert lower_enum.decide({"enum": ["a"]}, "P", "").kind == "string"
+    assert lower_enum.decide(_probe({"enum": ["a"]}), "P").kind == "string"
     assert "boolean" not in lower_enum.BASES.values()
 
 

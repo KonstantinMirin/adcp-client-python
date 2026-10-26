@@ -68,6 +68,7 @@ from codegen import bundle, compiler, emit, harness, ir, keywords, render
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.lower import scalars
+from codegen.schema import parse as schema_parse
 from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
 from codegen.lower import union as lower_union
@@ -6442,6 +6443,25 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     question is about exactly that disagreement between two instruments.  The one thing
     read off the TREE is the identity in clause 2, because identity is a property of the
     imported module and of nothing else.
+
+    **The nodes are PARSED, and clause 3 now states §4's own sentence.**  §4: two nodes
+    "are equal exactly when they state the same thing about an instance -- which is §4's
+    content dedup read off the type system rather than off a JSON serialisation with a
+    position bit appended", which is what ``pointer`` and ``position`` being excluded from
+    :class:`codegen.schema.nodes.Base`'s equality buys and what ``applied`` being COMPARED
+    is.  So clause 3 asserts all three and keeps the two it had: the two declarations are
+    equal, the one position fact the decision reads is equal, and **the two parsed NODES
+    are equal**.  The third is the §4 reading and it is strictly stronger than the first
+    two taken together; adding rather than replacing is what keeps the clause graded while
+    ``emit.content_key`` is still keyed on the declaration (§14 step 7 is where the memo
+    becomes the node's own equality, because a node carrying mappings is not hashable and
+    the memo needs a key).
+
+    The walk is ``bundle.nodes_at``, which carries the POSITION the descent column assigns
+    -- so each node is parsed AT ITS OWN POSITION rather than at an invented one, and the
+    parse here is the production parse.  Measured over all 1,054 portable documents:
+    ``bundle.nodes`` and ``bundle.nodes_at`` agree on the pointer SEQUENCE for every one,
+    so the population this clause ranges over is the population it ranged over before.
     """
     portable = sorted(bundle.portable(BUNDLE))
     out = emit.emit(BUNDLE, portable)
@@ -6460,15 +6480,23 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
         doc = bundle.read(BUNDLE, document)
         # The per-pointer facts ``content_key`` reads, built the way ``lower_document``
         # builds them, so the key here is the production key.
-        mod = compiler.Module(
-            document=document, object_constrained=bundle.constrained_to_object(doc)
+        source = schema_parse.Source(
+            document=document, applied_at=bundle.constrained_to_object(doc)
         )
-        walked = list(bundle.nodes(doc))  # ONE walk: document order, and the nodes
-        order = {pointer: i for i, (pointer, _) in enumerate(walked)}
-        at = dict(walked)
+        # ONE walk: document order, the nodes, and the POSITION the descent column gives
+        # each -- so the parse below is the production parse at the production position.
+        walked = list(bundle.nodes_at(doc))
+        order = {pointer: i for i, (pointer, _, _) in enumerate(walked)}
+        at = {pointer: node for pointer, node, _ in walked}
+        parsed = {
+            pointer: schema_parse.parse(
+                node, pointer=pointer, position=position, source=source
+            )
+            for pointer, node, position in walked
+        }
         by_content: dict[str, list[str]] = {}
-        for pointer, node in walked:
-            by_content.setdefault(emit.content_key(node, pointer, mod), []).append(pointer)
+        for pointer in at:
+            by_content.setdefault(emit.content_key(parsed[pointer]), []).append(pointer)
 
         here = out.declared[document]
         declared |= {(document, pointer) for pointer in here}
@@ -6494,9 +6522,16 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
             # grades.  Python's own equality over the two parsed nodes, plus the one
             # position fact the decision reads, is what the key is supposed to encode.
             assert at[pointer] == at[declaring[0]], (document, pointer, declaring[0])
-            assert (pointer in mod.object_constrained) == (
-                declaring[0] in mod.object_constrained
-            ), (document, pointer, declaring[0])
+            assert parsed[pointer].applied == parsed[declaring[0]].applied, (
+                document,
+                pointer,
+                declaring[0],
+            )
+            # §4's own sentence: equal exactly when they state the same thing about an
+            # instance.  ``pointer`` and ``position`` are excluded from the kinds'
+            # equality and ``applied`` is not, so this is the dedup read off the type
+            # system -- and it is what the string key above is supposed to encode.
+            assert parsed[pointer] == parsed[declaring[0]], (document, pointer, declaring[0])
 
         for key, pointers in by_content.items():
             reached = [p for p in pointers if p in here]

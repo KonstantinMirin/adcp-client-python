@@ -107,8 +107,6 @@ from codegen.compiler import (
     check_keywords,
     class_name,
     declare_alias,
-    lower_composition,
-    lower_object,
 )
 from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum

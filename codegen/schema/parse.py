@@ -47,6 +47,18 @@ implies them.**  A handler never sees a mapping the document does not state:
 * the multi-type cut -- one member per type word, each holding only the keywords that
   word can carry (:data:`ARM`), which is draft-07's own semantics.
 
+**The screen and the classification INTERLEAVE, and §4 is where that is decided** (settled
+2026-10-26, after this row found that the section's "four things … in this order" could not
+be taken literally).  §4 now says it: three admission arms answer from
+``cell(keyword, position)`` alone -- a key with no row, a REFUSE cell, a NOTHING cell -- and
+run before anything is classified; the fourth cannot, because §3's reader ends "any other
+effect is a fact the node's kind consumes" and whether a lowering effect is CLAIMED or is a
+DEFERRAL is a question about which kind owns the node, so that arm runs after the
+classification it depends on.  "A node is classified once and screened once, and the
+dependency runs one way… Nothing is screened twice and no mapping is traversed twice, which
+is what §4 is actually protecting."  :func:`parse` classifies, and the one screen pass over
+``sorted(raw)`` answers all four arms in the order the cell and the kind make available.
+
 **WHAT THIS RUNG OWNS, AND WHAT §14 STEP 5 STAGES.**  The step's end state is not
 negotiable -- "``parse`` is the only reader of a raw mapping, and a handler reads node
 fields" -- and the step says how it is reached: "during this step a node may carry its

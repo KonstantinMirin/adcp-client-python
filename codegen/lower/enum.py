@@ -163,6 +163,16 @@ def lower(node: nodes.Enumeration, name_hint: str, mod: Module, *, of_a_root_uni
     ``StrEnum``.  A branch of a ROOT union takes none, because the root's own class holds
     the only name that position derives.
     """
+    # **The row's own screen, at the node's own position, over the cells this row
+    # consumes.**  It was in ``emit._decide``'s enum arm and the conversion dropped it;
+    # nothing in the bundle paid for that -- the emitted set, the refused set and the tree
+    # were all identical -- which is exactly why it is a hole rather than a harmless
+    # omission.  ``test_enum.py``'s ``enumMetadata`` cost claim found it by REMOVING the
+    # keyword's row and measuring which documents then refuse: three enum roots kept
+    # emitting a keyword no section names, which is §9's "a keyword handled in code but
+    # named in none of §5, §6 or §7 is an invented rule" arriving through a screen that
+    # was not there.
+    compiler.check_keywords(node.raw, node.pointer, node.position, CLAIMS, mod=mod)
     if resolves_no_name(node, of_a_root_union=of_a_root_union):
         return literal(node)
     declared = decide(node, name_hint)
