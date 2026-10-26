@@ -137,6 +137,34 @@ def subschemas(node: Mapping) -> Iterator[tuple[str, str, object, keywords.Posit
             yield keyword, f"/{keyword}", held, position
 
 
+def nodes_at(
+    node: object,
+    pointer: str = "",
+    position: keywords.Position = keywords.Position.ROOT,
+) -> Iterator[tuple[str, dict, keywords.Position]]:
+    """Every ``(JSON Pointer, subschema, POSITION)`` at a schema position.
+
+    **The POSITION is the descent column's own answer and is never recovered from the
+    pointer string.**  ``docs/plan/architecture.md`` §6: the position is assigned from
+    the structural keyword descended through, so no reader derives it from a pointer --
+    and the readings that did were a measured defect in both directions.  A pointer
+    segment reading ``then`` is a conditional only at a KEYWORD position, and a scan
+    for one missed ``not`` entirely, which is the other half of §3's RULE position.
+
+    ``position`` is the root's by default, which is the one position no keyword
+    descends into.  The nine are §3's and the column is :func:`subschemas`'.
+    """
+    if isinstance(node, list):
+        for i, v in enumerate(node):
+            yield from nodes_at(v, f"{pointer}/{i}", position)
+        return
+    if not isinstance(node, dict):
+        return
+    yield pointer, node, position
+    for _, suffix, sub, held_at in subschemas(node):
+        yield from nodes_at(sub, f"{pointer}{suffix}", held_at)
+
+
 def nodes(node: object, pointer: str = "") -> Iterator[tuple[str, dict]]:
     """Every ``(JSON Pointer, subschema)`` at a SCHEMA POSITION in the document.
 
@@ -145,16 +173,13 @@ def nodes(node: object, pointer: str = "") -> Iterator[tuple[str, dict]]:
     which is the same reason ``harness`` declares its descent tables beside both
     of its walks.  It descends by :func:`subschemas`, so the walk and
     :func:`record`'s inliner read one declaration of what a schema position is.
+
+    The POSITION-carrying form is :func:`nodes_at`, and this is it with the position
+    dropped rather than a second walk: a reader that does not ask where a node is
+    should not have to pass the root's position in to find out.
     """
-    if isinstance(node, list):
-        for i, v in enumerate(node):
-            yield from nodes(v, f"{pointer}/{i}")
-        return
-    if not isinstance(node, dict):
-        return
-    yield pointer, node
-    for _, suffix, sub, _ in subschemas(node):
-        yield from nodes(sub, f"{pointer}{suffix}")
+    for pointer_, node_, _ in nodes_at(node, pointer):
+        yield pointer_, node_
 
 
 def schema_keywords(node: object) -> set[str]:
@@ -162,9 +187,84 @@ def schema_keywords(node: object) -> set[str]:
     return {k for _, n in nodes(node) for k in n}
 
 
-def references(node: object) -> list[tuple[str, str]]:
-    """Every ``(pointer, $ref)`` at a schema position, in document order."""
-    return [(p, n["$ref"]) for p, n in nodes(node) if isinstance(n.get("$ref"), str)]
+def references(node: object) -> list[tuple[str, str, keywords.Position]]:
+    """Every ``(pointer, $ref, POSITION)`` at a schema position, in document order.
+
+    **The position is carried, and a reader that needs to know whether the walk
+    LOWERS a reference is why.**  ``docs/plan/rebuild-plan.md`` §3: "RULE is the
+    position that changes a keyword's meaning most: under a conditional, a keyword
+    describes what a rule TESTS, not what an instance must be, so no type is lowered
+    from it" -- so a ``$ref`` at RULE emits no import and its target is legitimately
+    absent from the run.  Without the position this list cannot tell such a reference
+    from a PROP one, which is the repetition §11 names: one descent table, read by
+    the parser, by this module and by the verifier's record walk.
+
+    :func:`lowered_references` is the derived reading; this is the census.
+    """
+    return [(p, n["$ref"], at) for p, n, at in nodes_at(node) if isinstance(n.get("$ref"), str)]
+
+
+def lowers_no_type(node: object) -> frozenset[str]:
+    """The pointers of this document that NO TYPE is lowered from.
+
+    ``docs/plan/rebuild-plan.md`` §3's RULE position, read transitively: a node inside
+    ``not``, ``if``, ``then`` or ``else`` describes what a rule TESTS, so no type is
+    lowered from it -- and nothing BELOW such a node is lowered either, because
+    ``lower/rules.py`` is the rule source's only reader and it reads no reference, no
+    format and no nested shape.  The walk never arrives there at all.
+
+    Derived from :func:`nodes_at`, so the answer is the descent column's and the
+    transitivity is the walk's: a child of a RULE node is reached THROUGH the RULE hop,
+    whatever its own position then is.  Read off pointer segments instead -- which two
+    readers did -- it is wrong in both directions: a property legitimately named
+    ``then`` is not a conditional, and a scan for ``if``/``then``/``else`` misses
+    ``not``.
+    """
+    out: set[str] = set()
+
+    def walk(held: object, pointer: str, tested: bool) -> None:
+        if isinstance(held, list):
+            for i, item in enumerate(held):
+                walk(item, f"{pointer}/{i}", tested)
+            return
+        if not isinstance(held, dict):
+            return
+        if tested:
+            out.add(pointer)
+        for _, suffix, sub, at in subschemas(held):
+            walk(sub, f"{pointer}{suffix}", tested or at is keywords.Position.RULE)
+
+    walk(node, "", False)
+    return frozenset(out)
+
+
+def lowered_references(doc: dict, named: Collection[str]) -> list[tuple[str, str]]:
+    """The ``(pointer, $ref)`` pairs the WALK LOWERS a type or an import from.
+
+    The closure claim ranges over THIS and not over :func:`references`, and the
+    difference is two of the design's own sentences rather than a narrowing:
+
+    * **§3's RULE position.**  No type is lowered from a node under a conditional, so
+      such a reference emits no import and its target is legitimately not emitted.  The
+      live case is ``core/forecast-dimension-geo.json`` referencing
+      ``core/postal-country-system.json`` at ``/allOf/3/then/anyOf/0``: the emitted
+      module imports nothing from the target, and the target is refused.
+    * **§5's ``definitions`` row, read by :func:`reaches`.**  A section is "nothing by
+      itself" and an entry "nothing references is not declared", so a reference inside a
+      dead entry is at a position no class names and no assertion descends into.
+
+    ``named`` is :func:`named_nodes` for this document -- the on-demand declaration set
+    -- which is the same argument :func:`undecidable_references` takes and for the same
+    reason.  Neither clause is a hand-written document set, which is the defect §9 names:
+    both are predicates over the document's own structure.
+    """
+    tested = lowers_no_type(doc)
+    entries = section_entries(doc)
+    return [
+        (pointer, uri)
+        for pointer, uri, _ in references(doc)
+        if pointer not in tested and reaches(pointer, entries=entries, declared=named)
+    ]
 
 
 def split_ref(uri: str) -> tuple[str, str]:
@@ -273,7 +373,7 @@ def named_nodes(bundle_dir: Path) -> dict[str, frozenset[str]]:
     known = set(portable(bundle_dir))
     out: dict[str, set[str]] = {}
     for document in sorted(known):  # sorted, like ``portable``: P7
-        for _, uri in references(read(bundle_dir, document)):
+        for _, uri, _ in references(read(bundle_dir, document)):
             head, pointer = split_ref(uri)
             if not pointer:
                 continue
@@ -709,7 +809,7 @@ def undecidable_references(
     entries = section_entries(resolved_doc)
     return [
         (pointer, uri)
-        for pointer, uri in references(resolved_doc)
+        for pointer, uri, _ in references(resolved_doc)
         if split_ref(uri)[0] and reaches(pointer, entries=entries, declared=named)
     ]
 
@@ -840,7 +940,7 @@ def references_a_property(doc: dict) -> bool:
     before any reference is read.
     """
     rs = references(doc)
-    return bool(rs) and all(_is_property_or_items(p) for p, _ in rs)
+    return bool(rs) and all(_is_property_or_items(p) for p, _, _ in rs)
 
 
 def carries_an_enum(doc: dict) -> bool:

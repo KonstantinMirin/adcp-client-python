@@ -65,7 +65,7 @@ def fragment_refs() -> list[tuple[str, str, str]]:
     return [
         (document, pointer, uri)
         for document in bundle.portable(BUNDLE)
-        for pointer, uri in bundle.references(bundle.read(BUNDLE, document))
+        for pointer, uri, _ in bundle.references(bundle.read(BUNDLE, document))
         if all(bundle.split_ref(uri))
     ]
 
@@ -219,7 +219,7 @@ def test_no_portable_documents_reference_closure_names_a_document_this_bundle_la
         store: dict[str, dict] = {}
         queue = [read[document]]
         while queue:
-            for pointer, uri in bundle.references(queue.pop()):
+            for pointer, uri, _ in bundle.references(queue.pop()):
                 head = bundle.split_ref(uri)[0]
                 if not head or head in store:
                     continue
@@ -292,7 +292,7 @@ def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_
         d
         for d in bundle.portable(BUNDLE)
         if (rs := bundle.references(bundle.read(BUNDLE, d)))
-        and all(not bundle.split_ref(u)[0] for _, u in rs)
+        and all(not bundle.split_ref(u)[0] for _, u, _ in rs)
     ]
     claimed("documents whose every reference is local", local, inside=bundle.portable(BUNDLE))
     recursive = {
@@ -352,7 +352,7 @@ def test_the_named_node_population_is_read_off_the_bundle_and_not_off_a_run() ->
     halves: dict[bool, dict[str, set[str]]] = {True: {}, False: {}}
     known = set(bundle.portable(BUNDLE))
     for document in known:
-        for _, uri in bundle.references(bundle.read(BUNDLE, document)):
+        for _, uri, _ in bundle.references(bundle.read(BUNDLE, document)):
             head, pointer = bundle.split_ref(uri)
             if not pointer:
                 continue
@@ -1287,7 +1287,7 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
         # And the reference that reaches it is one of policy-entry's own.
         assert document in {
             bundle.document_for(bundle.split_ref(u)[0], known)
-            for _, u in bundle.references(read("governance/policy-entry.json"))
+            for _, u, _ in bundle.references(read("governance/policy-entry.json"))
             if bundle.split_ref(u)[0]
         }, document
 
@@ -1326,7 +1326,7 @@ def _remote_under_a_section() -> dict[str, list[tuple[str, str]]]:
     for document in bundle.portable(BUNDLE):
         doc = bundle.read(BUNDLE, document)
         entries = bundle.section_entries(doc)
-        for pointer, uri in bundle.references(doc):
+        for pointer, uri, _ in bundle.references(doc):
             if bundle.split_ref(uri)[0] and bundle.pointers_above(pointer, entries):
                 out.setdefault(document, []).append((pointer, uri))
     return out
@@ -1423,7 +1423,7 @@ def test_a_remote_reference_in_a_dead_section_leaves_the_document_decidable(
     carried = json.loads(out.files["a2ui/catalog.json"])
     # The record holds NO cross-document reference, at any position, which is what the
     # inliner's own contract says and is asserted here rather than at the dead entry.
-    assert [p for p, u in bundle.references(carried) if bundle.split_ref(u)[0]] == [], carried
+    assert [p for p, u, _ in bundle.references(carried) if bundle.split_ref(u)[0]] == [], carried
     left = claimed(
         "pointers of the dead section's entries in the carried document",
         list(bundle.section_entries(carried)),
@@ -1486,7 +1486,7 @@ def test_a_remote_reference_in_a_declared_entry_is_inlined_and_no_longer_refused
     # The entry a ``$ref`` NAMES, with the cross-document reference under it inlined --
     # the one thing the old answer turned on.
     assert "/definitions/Widget" in bundle.section_entries(carried), carried
-    assert [p for p, u in bundle.references(carried) if bundle.split_ref(u)[0]] == [], carried
+    assert [p for p, u, _ in bundle.references(carried) if bundle.split_ref(u)[0]] == [], carried
     assert bundle.undecidable_references(carried, bundle.named_nodes(root).get(
         "a2ui/catalog.json", frozenset()
     )) == []
@@ -1522,7 +1522,7 @@ def test_a_property_named_definitions_is_a_property_and_not_a_section(tmp_path: 
     assert bundle.section_entries(doc) == frozenset(), bundle.section_entries(doc)
     claimed(
         "references the document spells",
-        [p for p, _ in bundle.references(doc)],
+        [p for p, _, _ in bundle.references(doc)],
     )
 
     root = write_bundle(tmp_path, {"a2ui/odd.json": doc, "core/target.json": TARGET})
