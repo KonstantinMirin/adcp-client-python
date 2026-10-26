@@ -154,9 +154,26 @@ VERIFIER = frozenset({"harness.py", "dump_exemptions.py"})
 #:
 #: A hand-written entry names itself and can be audited, where a rule wide enough to
 #: admit it would admit the walk as well: this set may SHRINK and may not grow.
+#: ``codegen.attribution`` JOINS the set at §14 step 8, and §9 names it second: "its
+#: import set is the whole of that rule ... ``codegen.keywords`` (for the compared set and
+#: the rungs), ``codegen.attribution`` (to grade an approximation's issue reference)".  §9
+#: also says what makes it not a hole, in the same breath as the keyword table:
+#: "``codegen.attribution`` joins the set and ``codegen.ir`` does not, which is the whole
+#: of why the approximation is written into the emitted module (§7).  The verifier reads
+#: the DECLARATION off the class, as a consumer; it reads the registry to check the
+#: declaration's issue exists; it never reads the value the walk built.  Sharing the
+#: registry is sharing DATA, which is the same division that already lets both halves read
+#: the keyword table."
+#:
+#: It costs the transitive test below nothing, which is the measurement that matters here:
+#: §11 makes ``attribution.py`` "a leaf like ``keywords.py``" that "imports nothing of
+#: ``codegen/``", so ``import codegen.attribution`` reaches ZERO ``codegen`` modules and
+#: cannot put the walk back in the verifier's reach the way ``codegen.bundle``'s root
+#: selectors did.
 VERIFIER_MAY_IMPORT = frozenset(
     {
         "codegen.keywords",
+        "codegen.attribution",
         "codegen.bundle",
         "codegen.refusal",
         "codegen.dump_exemptions",
@@ -958,6 +975,66 @@ def test_a_refusal_is_a_value_and_no_module_raises_or_catches_one() -> None:
     assert catching == {}, (
         f"{sorted(catching)} catch a Refusal; §2: 'nothing raises one and nothing catches "
         "one', and the one try left in this compiler is around nothing"
+    )
+
+
+#: **§11's FOURTH AST test, by the paths the section names**: "no ``raise`` of anything
+#: but ``BuildFailure`` inside ``schema/`` or ``lower/``".  The two layers whose seam §2
+#: collapsed to one inhabitant.
+SECTION_11_TOTAL = ("schema/", "lower/")
+
+
+def _total_seam_population() -> list[Path]:
+    """The modules §11's fourth test ranges over: ``schema/`` and ``lower/``, derived."""
+    return [p for p in _modules() if _rel(p).startswith(SECTION_11_TOTAL)]
+
+
+def test_the_lowering_seam_raises_nothing_but_a_build_failure() -> None:
+    """§11's fourth test, which REPLACES the guarantee §2 gave up.
+
+    §2: "**What that costs is a type-system guarantee, and it has to be replaced rather
+    than mourned.**  The sum type used to make a caller that read a ``Lowering`` field
+    without handling the other branch a type error, which was the mechanical form of §9's
+    'a crash is not an outcome'.  With one inhabitant there is no branch to force, so the
+    obligation moves into each handler: a handler's match over the shapes of its own node
+    is total, its final arm calls ``approximate(node, keyword)``, and **no handler
+    raises**."
+
+    §11 says what that buys and names the cost honestly: "The fourth is new and it is the
+    test that replaces the type-system guarantee §2 gave up: with one inhabitant at the
+    seam the type checker can no longer force a handler to answer for the other branch, so
+    the thing it was preventing -- a node reaching no outcome -- is prevented by banning
+    the only other way out."
+
+    **It passes at §14 step 8 without a line changing, and that is the measurement rather
+    than an accident.**  The seam is still ``Decided | Refusal`` on this tree (step 8's
+    reported conflict), so the guarantee the test replaces has not been given up yet --
+    and the test is written now because the rule it holds is already true: ``schema/`` and
+    ``lower/`` raise NOTHING today, so the day the seam collapses the ban is already in
+    force rather than arriving with the change it is supposed to guard.
+
+    Graded over a DERIVED population -- every module under the two paths -- so a handler
+    added later is banned without anyone listing it, and asserted non-empty so the clause
+    cannot be green over no module.
+    """
+    population = _total_seam_population()
+    assert population, "§11's fourth test is graded over no module"
+    raised: dict[str, list[str]] = {}
+    for path in population:
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Raise) or node.exc is None:
+                continue
+            call = node.exc.func if isinstance(node.exc, ast.Call) else node.exc
+            name = call.attr if isinstance(call, ast.Attribute) else getattr(call, "id", "")
+            if name and name != BUILD_FAILURE:
+                raised.setdefault(_rel(path), []).append(name)
+    assert raised == {}, (
+        f"{raised} raise something other than {BUILD_FAILURE} under "
+        f"{list(SECTION_11_TOTAL)}; §11's fourth test bans every other way out of a "
+        "handler, because with one inhabitant at the lowering seam the type checker can "
+        "no longer force a handler to answer for a node it cannot render -- its final arm "
+        "calls approximate(), and a raise is the only other exit"
     )
 
 

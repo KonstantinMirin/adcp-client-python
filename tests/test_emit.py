@@ -95,6 +95,26 @@ from conftest import refusal_from
 from nodeset import claimed, partitions, ratchet
 
 REPO = Path(__file__).resolve().parents[1]
+
+#: **The ``PYTHONPATH`` a SUBPROCESS of this suite needs, and why ``REPO`` alone is not
+#: it.**  Two tests below run ``python -m codegen`` as a child process, and a child gets
+#: none of the parent's ``sys.path`` except what this names.  ``REPO`` reaches ``codegen``,
+#: and ``adcp`` is then resolved by the environment's own editable install -- a ``.pth``
+#: naming ONE checkout's ``src``.  In the checkout that owns the install the two agree; in
+#: any other, the child grades ``codegen`` from THIS tree against ``adcp`` from ANOTHER,
+#: and a defect in either is invisible to it.
+#:
+#: Measured: with ``PYTHONPATH=REPO`` a sibling worktree's child imported
+#: ``/srv/ws/adcp-client-python/src/adcp/types/_base.py`` while the in-process suite
+#: imported this tree's, and the first symbol added to that module by a row working in a
+#: worktree turned both tests into an ``ImportError`` traceback -- which each test then
+#: reported as its own subject failing (``"Traceback" not in done.stderr``, and an empty
+#: output set) rather than as a path it had assembled wrong.
+#:
+#: So ``src`` is named FIRST, which is what makes the child's ``adcp`` the same object the
+#: parent's is.  Not a relaxation of either assertion: both still grade the tree this file
+#: sits in, which is the tree they claim to grade.
+SUBPROCESS_PATH = os.pathsep.join((str(REPO / "src"), str(REPO)))
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
 TREE = REPO / emit.TREE
 
@@ -304,7 +324,15 @@ def pair_of(g: Graded) -> Pair:
     than parsed back out of ``name``, and not read off ``model`` -- D2's
     root-scalar row is graded as an alias, whose ``__adcp_schema__`` is on its
     module and not on the model.
+
+    ``declared`` is §7's approximation declaration, read off the same object
+    ``__adcp_schema__`` is read off: the CLASS for a class, and the MODULE for an alias or
+    an enumeration, which is the split §7 makes ("beside the module for an alias") and the
+    one ``graded()`` above already draws.  ``harness.declarations_of`` does the reading, so
+    §9's "the verifier reads the declaration off the class, as a consumer" stays true of
+    the code that grades it and this function only says WHICH object holds it.
     """
+    holder = g.model if isinstance(g.model, type) else importlib.import_module(g.module)
     return Pair(
         name=f"{g.ref.document}{g.ref.pointer}",
         schema=schema_at(g.ref),
@@ -312,6 +340,7 @@ def pair_of(g: Graded) -> Pair:
         accept=g.accept,
         document=schema_at(SchemaRef(g.ref.document, "#")),
         ref=g.ref,
+        declared=harness.declarations_of(holder),
     )
 
 
@@ -904,6 +933,46 @@ PAIRS_FLOOR = 1095
 #: complement in ``test_the_harness_result_is_counted_over_the_whole_population`` is a
 #: derivation from the mechanism rather than a second count.
 ROUND_TRIPS_NOTHING = ("no_instrument",)
+
+#: **§14 step 8's exit condition, as two numbers.**  "*Exit condition: every count
+#: unchanged -- the same documents emit, the same documents refuse -- with ``APPROXIMATED``
+#: 0 and ``OVER_DECLARED`` 0.*"
+#:
+#: ``APPROXIMATED`` is the FACTS and ``APPROXIMATED_DOCUMENTS`` is the documents carrying
+#: at least one: "``K`` and ``D`` are different counts over different denominators and the
+#: report never adds them" (§10).  Both are zero because the row builds the instrument and
+#: widens no cell, and both are asserted rather than assumed -- a count the row's own
+#: exit condition names and no check reads is a count nothing holds.
+#:
+#: **NEITHER IS A RATCHET and neither may be pinned once a cell widens**, which is §9's
+#: own rule: "Do not pin the approximation count.  It rises whenever the emitted set grows
+#: ... Pin the four disagreement counts, which do not, and ratchet the *ours* split down."
+#: They are pinned HERE, at this row only, because at this row the figure is not yet a
+#: function of emission: nothing is approximated, so 0 is the measurement and not a target.
+#: The row that widens the first cell replaces these two with the *ours* split and its
+#: ratchet.
+APPROXIMATED = 0
+APPROXIMATED_DOCUMENTS = 0
+
+#: **§8's UNDERDETERMINED equality, as the set the derivation cannot separate.**  "The set
+#: of unions declaring one equals the set the derivation cannot separate, in both
+#: directions, so a union that becomes separable loses its declaration and a union that
+#: stops being separable gains one."
+#:
+#: EMPTY over the emitted tree, and the three readings that make it so are each a decided
+#: sentence rather than an exclusion to reach zero -- ``harness.inseparable_unions``
+#: carries all three with its measurement:
+#:
+#: * a presence-only combinator is not a union (architecture §4's ``presence_only``
+#:   reading): 185 pointers before this clause, 16 of them roots;
+#: * a union at a RULE position lowers no type (semantics §3): 3 pointers;
+#: * a union whose branches are not all shapes lowers to an alias over their types, so
+#:   there are no branch classes for a declaration order to choose between.
+#:
+#: A LIST and not a count, because a pointer arriving or leaving is a fact about a
+#: document and a count cannot say which -- and because at zero the list is the one form
+#: that cannot be mistaken for an allowlist.
+UNDERDETERMINED_UNIONS: list[str] = []
 NON_PASS_PAIRS: dict[str, list[str]] = {
     "no_instrument": [
         "core/reference-renderer.json#",
@@ -2135,6 +2204,42 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
         live["missing"] += len(r.comparison.missing)
         live["differs"] += len(r.comparison.differs)
     assert +live == +named, (dict(live), dict(named))
+    # **§8's TWO SET EQUALITIES, over the whole emitted tree.**  "Two checks stand above
+    # the three, and each is an equality between two sets neither of which is
+    # hand-written.  Nothing else in this section means anything until both hold, because
+    # every other check inherits their reach."
+    #
+    # The first is held by ``tests/test_every_check_names_its_set.py`` over
+    # ``keywords.rendered_at``, which is where an equality between two DERIVATIONS of a
+    # keyword set belongs.  The second is this: the approximated set equals the declared
+    # set, in both directions, over every pair of the run.
+    #
+    # **At §14 step 8 both sets are EMPTY, and that is the step's exit condition rather
+    # than a reason to skip the assertion**: the row builds the instrument and widens no
+    # cell, so ``APPROXIMATED`` is 0 and ``OVER_DECLARED`` is 0.  The clause is written now
+    # because the first row that widens a cell has to move these two numbers TOGETHER, and
+    # a check added with the widening could not say whether it was ever able to fail.
+    # ``tests/test_approximation.py`` is where each direction is perturbed.
+    census = harness.census([(pair_of(g), r) for g, r in graded_reports()])
+    assert census.over_declared == [], census.over_declared
+    assert census.undeclared_widenings == [], census.undeclared_widenings
+    assert census.unattributed == [], census.unattributed
+    assert census.outcome == "pass", census
+    # The three figures §10 prints, asserted at the step's own exit condition.  ``K`` and
+    # ``D`` are different counts over different denominators and are never added (§2).
+    assert len(census.approximated) == APPROXIMATED, sorted(census.approximated)
+    assert len(census.declared) == APPROXIMATED, sorted(census.declared)
+    assert census.documents == APPROXIMATED_DOCUMENTS
+    # §8's UNDERDETERMINED equality, which no comparison, draw or dump can see: the set of
+    # unions declaring one equals the set §4's disjointness derivation cannot separate, in
+    # both directions.  Over the documents of record, which is the verifier's own reading
+    # of what each document states (§9).
+    stale, silent = harness.underdetermined_census(
+        list(census.declared.values()),
+        {g.ref.document: schema_at(SchemaRef(g.ref.document, "#")) for g in graded()},
+    )
+    assert stale == [], stale
+    assert silent == UNDERDETERMINED_UNIONS, silent
     # D5's URL-type rows, the one category that excuses a fact the model does not state.
     # The claim is WHICH facts it excuses, so that is what is asserted: a URL type
     # renders ``minLength: 1`` and ``HttpUrl`` renders ``maxLength: 2083``, and the
@@ -5694,7 +5799,7 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
     outs = []
     for seed in ("0", "12345"):
         into = Path(tempfile.mkdtemp())
-        env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": str(REPO)}
+        env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": SUBPROCESS_PATH}
         subprocess.run(
             [*cmd, str(into), *population()], check=False, cwd=REPO, env=env, capture_output=True
         )
@@ -5755,7 +5860,7 @@ def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
         ],
         check=False,
         cwd=REPO,
-        env={**os.environ, "PYTHONPATH": str(REPO)},
+        env={**os.environ, "PYTHONPATH": SUBPROCESS_PATH},
         capture_output=True,
         text=True,
     )
