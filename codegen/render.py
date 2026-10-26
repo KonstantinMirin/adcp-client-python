@@ -89,7 +89,7 @@ from datamodel_code_generator.types import DataType
 from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._base import APPROXIMATIONS, Approximation, SchemaRef
-from adcp.types._runtime import Match, Rule
+from adcp.types._runtime import Match, Rule, UniqueItems
 from codegen import constraints as constraint_names
 from codegen import ir
 from codegen.ir import MISSING
@@ -641,10 +641,38 @@ def root_model(decl: ir.RootModelDecl, declared: Sequence[Approximation] = ()) -
     writes one.
     """
     annotation = _field(
-        ir.Field(name="root", wire="root", type=decl.type, required=True)
+        ir.Field(
+            name=ir.ROOT_FIELD,
+            wire=ir.ROOT_FIELD,
+            type=decl.type,
+            required=True,
+            # **D6's ``uniqueItems``, DERIVED from the rule tuple rather than carried
+            # beside it.**  :attr:`ir.Field.distinct` is the ``json_schema_extra`` half of
+            # one claim whose other half is the ``UniqueItems`` rule, and at a root the two
+            # halves are both this declaration's: the rule is keyed on
+            # :data:`ir.ROOT_FIELD`, so the rule tuple already says the fact, and a second
+            # slot on :class:`ir.RootModelDecl` holding it would be the second copy
+            # ``ir.Field.distinct``'s own reasoning warns about.  §8 of the semantics
+            # document needs the fact RENDERED -- pydantic v2 removed ``unique_items``, so
+            # ``json_schema_extra`` is the one channel that reaches
+            # ``model_json_schema()`` -- and this is where it is written.
+            distinct=any(
+                isinstance(rule, UniqueItems) and rule.key == ir.ROOT_FIELD
+                for rule in decl.rules
+            ),
+        )
     )
     body = [
-        f"root: {annotation.type_hint}",
+        # ``annotated or type_hint``, which is :func:`alias`'s own expression and for its
+        # reason: the ``Field`` is where every fact that is not the type word itself rides
+        # -- the ``minItems``/``maxItems`` of a root array, and D6's ``uniqueItems``
+        # through ``json_schema_extra`` -- and ``type_hint`` alone is the type with the
+        # ``Field`` dropped.  Measured on ``core/acceptance-policy-profile-ids.json``:
+        # ``type_hint`` alone rendered ``root: list[StrMinLen1]`` and
+        # ``model_json_schema()`` then stated no ``uniqueItems``, so §8's comparison read
+        # the document's own keyword as *missing* at a root model whose rule tuple
+        # enforces it.
+        f"{ir.ROOT_FIELD}: {annotation.annotated or annotation.type_hint}",
         f"__adcp_schema__: ClassVar[SchemaRef] = {decl.ref!r}",
     ]
     rule_lines, rule_imports = _rule_lines(decl.rules)

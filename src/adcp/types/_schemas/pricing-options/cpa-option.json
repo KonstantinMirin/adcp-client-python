@@ -1,0 +1,256 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Cost Per Acquisition pricing. Advertiser pays a fixed price when a specified conversion event occurs. The event_type field declares which event triggers billing (e.g., purchase, lead, app_install).",
+  "properties": {
+    "currency": {
+      "description": "ISO 4217 currency code",
+      "examples": [
+        "USD",
+        "EUR",
+        "GBP",
+        "JPY"
+      ],
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "custom_event_name": {
+      "description": "Name of the custom event when event_type is 'custom'. Required when event_type is 'custom', ignored otherwise.",
+      "type": "string"
+    },
+    "eligible_adjustments": {
+      "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Categorizes how a price adjustment affects the transaction",
+        "enum": [
+          "fee",
+          "discount",
+          "commission",
+          "settlement"
+        ],
+        "enumDescriptions": {
+          "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+          "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+          "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+          "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+        },
+        "title": "Price Adjustment Kind",
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "event_source_id": {
+      "description": "When present, only events from this specific event source count toward billing. Allows different CPA rates for different sources (e.g., online vs in-store purchases). Must match an event source configured via sync_event_sources.",
+      "type": "string"
+    },
+    "event_type": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Standard marketing event types for event logging, aligned with IAB ECAPI",
+          "enum": [
+            "page_view",
+            "view_content",
+            "select_content",
+            "select_item",
+            "search",
+            "share",
+            "add_to_cart",
+            "remove_from_cart",
+            "viewed_cart",
+            "add_to_wishlist",
+            "initiate_checkout",
+            "add_payment_info",
+            "purchase",
+            "refund",
+            "lead",
+            "qualify_lead",
+            "close_convert_lead",
+            "disqualify_lead",
+            "complete_registration",
+            "subscribe",
+            "follow",
+            "content_view",
+            "watch_milestone",
+            "start_trial",
+            "app_install",
+            "app_launch",
+            "contact",
+            "schedule",
+            "donate",
+            "submit_application",
+            "custom"
+          ],
+          "enumDescriptions": {
+            "add_payment_info": "User added payment information",
+            "add_to_cart": "User added an item to cart",
+            "add_to_wishlist": "User added an item to a wishlist",
+            "app_install": "User installed an application",
+            "app_launch": "User launched an application",
+            "close_convert_lead": "Lead converted to a customer or closed deal",
+            "complete_registration": "User completed account registration",
+            "contact": "User initiated contact (call, message, etc.)",
+            "content_view": "User meaningfully consumed a content unit, such as a watch, listen, stream, episode play, or read",
+            "custom": "Custom event type (specify in custom_event_name)",
+            "disqualify_lead": "Lead disqualified or marked as not viable",
+            "donate": "User made a donation",
+            "follow": "User made a free, durable opt-in to an account, channel, feed, list, podcast, or similar owned property",
+            "initiate_checkout": "User started checkout process",
+            "lead": "User expressed interest (form submission, signup, etc.)",
+            "page_view": "User viewed a page",
+            "purchase": "User completed a purchase",
+            "qualify_lead": "Lead qualified by sales or scoring criteria",
+            "refund": "A purchase was fully or partially refunded (adjusts ROAS)",
+            "remove_from_cart": "User removed an item from cart",
+            "schedule": "User scheduled an appointment or event",
+            "search": "User performed a search",
+            "select_content": "User selected or clicked on content (article, video, etc.)",
+            "select_item": "User selected a specific product or item from a list",
+            "share": "User shared content via social or messaging",
+            "start_trial": "User started a free trial",
+            "submit_application": "User submitted an application (loan, job, etc.)",
+            "subscribe": "User started a paid subscription or paid membership",
+            "view_content": "User viewed specific content (product, article, etc.)",
+            "viewed_cart": "User viewed their shopping cart",
+            "watch_milestone": "User reached a content progress threshold, such as 25%, 50%, 75%, 100%, or a seconds-viewed milestone"
+          },
+          "title": "Event Type",
+          "type": "string"
+        }
+      ],
+      "description": "The conversion event type that triggers billing (e.g., purchase, lead, app_install)"
+    },
+    "fixed_price": {
+      "description": "Fixed price per acquisition in the specified currency",
+      "exclusiveMinimum": 0,
+      "type": "number"
+    },
+    "min_spend_per_package": {
+      "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+      "minimum": 0,
+      "type": "number"
+    },
+    "price_breakdown": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+      "properties": {
+        "adjustments": {
+          "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+          "items": {
+            "additionalProperties": true,
+            "oneOf": [
+              {
+                "required": [
+                  "rate"
+                ]
+              },
+              {
+                "required": [
+                  "amount"
+                ]
+              }
+            ],
+            "properties": {
+              "amount": {
+                "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              "beneficiary": {
+                "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                "maxLength": 256,
+                "type": "string"
+              },
+              "description": {
+                "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                "maxLength": 256,
+                "type": "string"
+              },
+              "kind": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Categorizes how a price adjustment affects the transaction",
+                "enum": [
+                  "fee",
+                  "discount",
+                  "commission",
+                  "settlement"
+                ],
+                "enumDescriptions": {
+                  "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+                  "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+                  "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+                  "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+                },
+                "title": "Price Adjustment Kind",
+                "type": "string"
+              },
+              "name": {
+                "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                "examples": [
+                  "ad_serving",
+                  "data_targeting",
+                  "brand_safety",
+                  "volume",
+                  "negotiated",
+                  "early_booking",
+                  "agency",
+                  "intermediary",
+                  "cash_discount",
+                  "early_payment"
+                ],
+                "maxLength": 64,
+                "type": "string"
+              },
+              "rate": {
+                "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                "exclusiveMaximum": 1,
+                "exclusiveMinimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "name"
+            ],
+            "type": "object"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "type": "array"
+        },
+        "list_price": {
+          "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "list_price",
+        "adjustments"
+      ],
+      "title": "Price Breakdown",
+      "type": "object"
+    },
+    "pricing_model": {
+      "const": "cpa",
+      "description": "Cost per acquisition (conversion event)",
+      "type": "string"
+    },
+    "pricing_option_id": {
+      "description": "Unique identifier for this pricing option within the product",
+      "type": "string"
+    }
+  },
+  "required": [
+    "pricing_option_id",
+    "pricing_model",
+    "event_type",
+    "currency",
+    "fixed_price"
+  ],
+  "title": "CPA Pricing Option",
+  "type": "object"
+}

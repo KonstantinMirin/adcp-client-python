@@ -279,36 +279,54 @@ def null(node: nodes.Null, mod: Module) -> Decided | Refusal:
 def typeless(node: nodes.Typeless, mod: Module) -> Decided | Refusal:
     """No type and no kind keyword: a ``not`` over a value, or nothing.
 
-    At ROOT there are two shapes and §4's table has a row for neither, so the keyword a
-    reader needs is the one that WOULD have decided a kind: a CONDITIONAL -- read off the
-    descent column rather than named -- and otherwise nothing, reported on ``type``.  Both
-    are properties of the document and so both are VERDICTS.
+    **At ROOT the answer is §4's third root shape, and both of the refusals that stood
+    here are gone** (§14 step 9).  §4's table's last row is "a root stating no schema
+    keyword at all -> a permissive root model", and §5's group (a) gives a root stating
+    only ``if``/``then`` the same shape with the conditional as a rule.  So one arm
+    answers both, which is what the two shapes always were: a root with no kind keyword,
+    once with a rule to carry and once without.
     """
     from codegen import bundle
     from codegen.lower import rules as lower_rules
 
     if node.position is Position.ROOT:
-        kw = next((k for k in bundle.CONDITIONAL if k in node.rules), None)
-        declared = list(node.declares)
-        if kw is None:
-            return Refusal(
-                "type",
-                node.pointer,
-                f"the root declares no kind keyword at all: {declared} are data keys, "
-                "not schema keywords, so there is no type, no properties and no "
-                "composition to read -- and a class over them would state what no "
-                "part of this document declares",
-                kind=Kind.VERDICT,
-            )
-        return Refusal(
-            kw,
+        # **§4: "a root stating no schema keyword at all -> a permissive root model",
+        # and it is FAITHFUL rather than wide.**  §4's own reasoning: "Read by its own
+        # declared draft it is the empty schema: draft-07 ignores an unknown key, so the
+        # document admits every instance, and a permissive root model is faithful to it
+        # rather than wide."  Measured on ``core/asset-group-vocabulary.json``, which
+        # declares draft-07 and whose keys are not schema keywords:
+        # ``Draft7Validator`` accepts ``42``, ``"x"``, ``null``, an object and an array,
+        # so ``root: Any`` is exactly as wide as the document.  §5(b)'s row for this was
+        # MOVED to group (a) on 2026-10-26 for that reason, and it therefore carries NO
+        # approximation -- "a permissive root model over a document that constrains
+        # nothing DROPS nothing, so there is no fact to declare", and §8's
+        # *over-declared* outcome would report one.
+        #
+        # **And a root stating only ``if``/``then`` is the same shape with a RULE.**
+        # §5's group (a): "The conditional is a rule, and §2 hangs a rule with no class
+        # above it on the value's own type: the root is a permissive root model carrying
+        # ``ConditionalRequired``.  The document states a conditional and nothing else,
+        # and so does the model."  The conditional is read by the same
+        # ``lower.rules.lower`` every class's is, off the rule sources the parser
+        # classified from the table -- so there is no second reading of what an ``if``
+        # compiles to, and the root model's tuple carries it exactly as a class's would.
+        #
+        # The upstream issue a registry document earns -- the schema should say more
+        # than it does -- stands and is the issue list's, not a declaration's (§5(b)).
+        stated = compiler.rules_at(node, position=Position.ROOT)
+        refused = check_keywords(node, {*stated.screen, *lower_rules.ON_A_VALUE}, mod=mod)
+        if refused is not None:
+            return refused
+        return compiler.declare_root_model(
+            mod,
             node.pointer,
-            f"a root is exactly one kind and this one states {kw!r} (the root "
-            f"declares {declared}): a conditional describes what a rule TESTS, so "
-            "section 5 hangs it on the nearest class and this root declares no "
-            "properties for one -- there is no class, and no type, for the rule to "
-            "attach to",
-            kind=Kind.VERDICT,
+            node,
+            # §4's "permissive": the empty schema admits every instance, and ``Any`` is
+            # that set -- the same reading §4's typeless row gives a typeless node at
+            # every other position, which the last line of this function returns.
+            ir.TypeRef("typing.Any"),
+            rules=stated.rules,
         )
     # ``rules.ON_A_VALUE`` for :func:`lower`'s reason, which does not depend on the type
     # word being present: a ``not`` is a statement about which VALUES the node admits, so
