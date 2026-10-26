@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from codegen import bundle, compiler, emit, harness, keywords
+from codegen.lower import names
 from codegen.lower import union as lower_union
 from codegen.schema import parse as schema_parse
 
@@ -205,18 +206,21 @@ def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None
     bare = _union_node({"oneOf": branches})
     assert lower_union.dispatch_key(keyed) == "kind"
     assert lower_union.dispatch_key(bare) is None
+    # §4 "Names"'s rules are ``lower/names.py``'s and the DECLARATION reading that feeds
+    # them is this module's (``_naming_facts``), which is the seam §14 step 7 drew: the
+    # walk extracts the three facts and the pass decides which one wins.
+    def identity(branch: Any, key: str | None) -> str | None:
+        hop = lower_union._naming_facts(  # noqa: SLF001 -- the test is the caller
+            branch, branch.get("properties"), key, refuses=False
+        )
+        return names.branch_identity(hop, "X")
+
     named = claimed(
         "branch identities under the keyword",
-        [
-            lower_union.branch_identity(b, "X", lower_union.dispatch_key(keyed))
-            for b in branches
-        ],
+        [identity(b, lower_union.dispatch_key(keyed)) for b in branches],
     )
     assert named == {"XA", "XB"}, sorted(named)
-    assert {
-        lower_union.branch_identity(b, "X", lower_union.dispatch_key(bare))
-        for b in branches
-    } == {None}
+    assert {identity(b, lower_union.dispatch_key(bare)) for b in branches} == {None}
 
 
 def _union_node(declaration: dict[str, Any]) -> Any:

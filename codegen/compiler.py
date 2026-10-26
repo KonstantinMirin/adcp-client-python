@@ -307,7 +307,7 @@ def unresolved(uri: str, pointer: str) -> Refusal:
     default binder had, and it is a refusal by name rather than an invented import, so
     there is no path on which a reference is silently dropped.
     """
-    return Refusal("$ref", pointer, f"{NO_TARGET}: {uri}", kind=Kind.VERDICT)
+    return Refusal("$ref", pointer, f"{NO_TARGET} -- {uri}", kind=Kind.VERDICT)
 
 
 def decide(
@@ -396,6 +396,20 @@ class Module:
     #: the walk reaches and this map has no entry for is a document lowered outside a
     #: run (:func:`unresolved`).
     targets: Mapping[tuple[str, str], Target | Refusal] = field(default_factory=dict)
+    #: **The reference sites this document's walk ASKED about**, written by
+    #: :meth:`target` and read by the run.  It is what decides which documents the run
+    #: WRITES, and §10's own sentence is the reason: "a module cannot import from a
+    #: module no run wrote", so the documents a run owes are the ones some module it
+    #: attempted actually referenced.
+    #:
+    #: The closure and the dependency order range over a STATIC reading
+    #: (``bundle.lowered_references``), which is what lets a target be a finished module
+    #: before its referrer is parsed -- and that reading is an over-approximation of what
+    #: the walk reaches, because a document that refuses stops before its later sites.
+    #: Measured on the suite's population of 991: taking the order's visit set as the
+    #: output writes 11 modules nothing imports and nobody named.  A set rather than a
+    #: count, because the fixed point the run takes is over the TARGETS.
+    asked: set[tuple[str, str]] = field(default_factory=set)
     #: ``$ref`` URI -> the ROOT NODE of the document it names, for the one reader that
     #: needs the target's schema rather than its symbol: §2's intersection rule asked of
     #: two declarations that are each a bare ``$ref`` (:func:`Module.resolve_node`).
@@ -619,6 +633,7 @@ class Module:
         in-flight stack to consult.  A site with no entry is a document lowered outside
         a run (:func:`unresolved`), which is the refusing default the binder had.
         """
+        self.asked.add((uri, pointer))
         return self.targets.get((uri, pointer)) or unresolved(uri, pointer)
 
     def declare(self, pointer: str, declaration: ir.Declaration) -> Refusal | None:

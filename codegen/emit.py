@@ -90,7 +90,7 @@ from __future__ import annotations
 
 import functools
 import json
-from collections.abc import Callable, Collection, Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace as dataclasses_replace
 from pathlib import Path
 from typing import Any
@@ -408,6 +408,7 @@ def lower_document(
     named: frozenset[str] = frozenset(),
     roots: Mapping[str, dict] | None = None,
     reserved: frozenset[str] = frozenset(),
+    asked: set[tuple[str, str]] | None = None,
 ) -> tuple[Module, str] | Refusal:
     """One document's module and root symbol, or the refusal the walk returned.
 
@@ -427,6 +428,11 @@ def lower_document(
         targets=targets if targets is not None else {},
         roots=roots if roots is not None else {},
         reserved=reserved,
+        # The run's own record of which sites this walk asked about, handed IN so that
+        # it survives a refusal: a document that refuses has no module to hand back, and
+        # the sites it reached before refusing are what decide whether their targets are
+        # documents this run owes (:attr:`compiler.Module.asked`).
+        asked=asked if asked is not None else set(),
         asserted=asserted_formats(doc),
         named=named,
         # The SUBSCHEMA behind each named pointer, read off ``bundle.nodes`` -- the one
@@ -721,6 +727,7 @@ def decidable(
     named: frozenset[str],
     roots: Mapping[str, dict],
     reserved: frozenset[str],
+    asked: set[tuple[str, str]],
 ) -> tuple[Module, ir.Module] | Refusal:
     """One document lowered, NAMED, and its carried record checked, as one value.
 
@@ -736,7 +743,7 @@ def decidable(
     document is lowered once, when the order reaches it, so there is no memo to consult
     and no in-flight stack to push.
     """
-    outcome = lower_document(document, doc, targets, named, roots, reserved)
+    outcome = lower_document(document, doc, targets, named, roots, reserved, asked)
     if isinstance(outcome, Refusal):
         return outcome
     mod, _ = outcome
@@ -865,12 +872,30 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     #: the one caller that can meet one without going through ``nodes.Reference.head``
     #: -- ``compiler.lower_composition``'s ``$ref``-conjunct arm -- is answered by name
     #: rather than by the absence of an entry, which is the arm the binder closure kept
-    #: for exactly this reason.  :func:`closure` and :func:`order` read ``edge.target``,
-    #: which is ``None`` for a local reference, so neither follows one.
+    #: for exactly this reason.
     sites: dict[str, list[bundle.Edge]] = {}
     for edge in found:
         sites.setdefault(edge.document, []).append(edge)
-    ordered, refused = order(closure(documents, sites), sites)
+    #: **The edges the WALK LOWERS a type or an import from, which is what the closure
+    #: and the order range over.**  ``bundle.lowered_references`` is the derived reading
+    #: and its docstring is the argument: §3's RULE position lowers no type, so a
+    #: reference under a conditional emits no import and its target is legitimately not
+    #: emitted; and §5's ``definitions`` row makes a section "nothing by itself", so a
+    #: reference inside an entry nothing names is at a position no class names.  Taking
+    #: the closure over EVERY edge instead would emit a module for a target no module
+    #: imports -- measured on the suite's own population: 22 documents more than the
+    #: committed tree, which is exactly the set those two sentences exclude.
+    lowering: dict[str, list[bundle.Edge]] = {}
+    for document, edges in sites.items():
+        reached = {
+            pointer
+            for pointer, _ in bundle.lowered_references(
+                bundle.read(bundle_dir, document), named.get(document, frozenset())
+            )
+        }
+        lowering[document] = [e for e in edges if e.pointer in reached]
+    ordered, refused = order(closure(documents, lowering), lowering)
+
     lowered: dict[str, tuple[Module, ir.Module, dict]] = {}
     #: ``$ref`` URI -> the ROOT NODE of the document it names, for §2's intersection
     #: rule (:meth:`compiler.Module.resolve_node`).  **Run-level and not per document**,
@@ -880,6 +905,10 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     #: finishes each document, which is early enough by construction -- a base precedes
     #: the document composing it, and the base's own targets precede the base.
     roots: dict[str, dict] = {}
+    #: document -> the reference sites its walk ASKED about, kept whatever the outcome:
+    #: a refused document has no module to hand back and the sites it reached before
+    #: refusing are what say whether their targets are documents this run owes.
+    asked: dict[str, set[tuple[str, str]]] = {}
     #: target document -> the no-fragment URIs that name it, so the fill above is a
     #: lookup rather than a scan per document.
     spellings: dict[str, set[str]] = {}
@@ -921,6 +950,27 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                     "$ref",
                     edge.pointer,
                     f"{edge.uri} names no document of this bundle",
+                    kind=Kind.VERDICT,
+                )
+                continue
+            if edge.target not in lowered and edge.target not in refused:
+                # **A target the order has not reached, which happens at exactly the
+                # sites the walk lowers NOTHING from.**  The closure and the order range
+                # over ``bundle.lowered_references``, so a site outside that reading --
+                # a reference at a RULE position, or one inside a ``definitions`` entry
+                # nothing names -- constrains no order and its target may come later.
+                # The walk never asks at such a site; this is the loud answer if it ever
+                # does, because the two readings of which positions lower a type would
+                # then disagree, which is a defect in this compiler and not in any
+                # document.
+                answers[site] = Refusal(
+                    "$ref",
+                    edge.pointer,
+                    f"{edge.uri}: the dependency order has not reached its target, "
+                    "because no reference the walk lowers a type or an import from "
+                    "reaches this position (bundle.lowered_references: a reference at a "
+                    "RULE position lowers nothing, and one inside a definitions entry "
+                    "nothing names is at a position no class names)",
                     kind=Kind.VERDICT,
                 )
                 continue
@@ -1007,6 +1057,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             named.get(document, frozenset()),
             roots,
             render.RESERVED,
+            asked.setdefault(document, set()),
         )
         if isinstance(outcome, Refusal):
             refused[document] = outcome
@@ -1019,6 +1070,35 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         # what the binder answered for a refused target before.
         for uri in sorted(spellings.get(document, ())):
             roots[uri] = doc
+
+    # **WHAT THE RUN WRITES is §10's own sentence and not everything the order
+    # visited**: "a module cannot import from a module no run wrote".  So a run owes the
+    # documents it was NAMED, and every document one of those actually REFERENCED,
+    # transitively -- and the sites a walk asked about are the record of that
+    # (``compiler.Module.asked``).
+    #
+    # The closure and the order range over a STATIC reading
+    # (``bundle.lowered_references``), which is what lets a target be finished before its
+    # referrer is parsed; that reading is an over-approximation of what the walk reaches,
+    # because a document that refuses stops before its later sites.  Measured on the
+    # suite's population of 991: taking the order's visit set as the output writes 11
+    # modules nothing imports and nobody named -- ``core/collection.json`` and 10 like
+    # it, every one reached only from a document that refused.
+    #
+    # Written as a FIXED POINT over the run's own record, so it is a function of
+    # (bundle, named set, this package) and of nothing a caller orders.
+    sited = {(e.uri, e.pointer): e.target for e in found}
+    wanted = set(documents)
+    unread = sorted(wanted)
+    while unread:
+        document = unread.pop()
+        for site in sorted(asked.get(document, ())):
+            target = sited.get(site)
+            if target is not None and target not in wanted:
+                wanted.add(target)
+                unread.append(target)
+    lowered = {d: held for d, held in lowered.items() if d in wanted}
+    refused = {d: r for d, r in refused.items() if d in wanted}
 
     for document in sorted(lowered):
         mod, bound, doc = lowered[document]

@@ -270,11 +270,68 @@ def keyword(doc: dict) -> str | None:
 # --------------------------------------------------------------------------- #
 # D3: which rule names a branch
 # --------------------------------------------------------------------------- #
-# **``pins`` is ``codegen/lower/names.py``'s now** and re-bound here under its own name,
-# because §4 "Names"'s second branch rule moved there with the other two and the two
-# readers of a branch's pin must stay one reading: a class named after a key the union
-# does not dispatch on is exactly what a second reading buys.
-pins = names.pins
+def pins(props: Any) -> dict[str, Any]:
+    """Every property of a property map that is pinned to a ``const``.
+
+    ONE reading, and two things read it: §4 "Names"'s second branch-naming choice -- the
+    ``const`` a branch pins on the discriminating property (:func:`_const_pin`) -- and
+    §4's first dispatch source (:func:`discriminator`).  They are the same question asked
+    of the same map -- "which key does this branch pin, and to what" -- and a second
+    reading is how a class could come to be NAMED after a key the union does not dispatch
+    on.
+
+    A SCALAR pin only.  An object or an array ``const`` is refused by §5's ``const`` row
+    at the property itself, and a value that is not hashable has no place in the
+    distinctness test :func:`discriminator` runs, so it is not a pin here either.
+    """
+    if not isinstance(props, dict):
+        return {}
+    return {
+        k: v["const"]
+        for k, v in props.items()
+        if isinstance(v, dict) and isinstance(v.get("const"), (str, bool, int))
+    }
+
+
+def _const_pin(props: Any, named: str | None) -> Any:
+    """The ``const`` a branch pins on the discriminating property, or ``None``.
+
+    The property is the root's ``discriminator.propertyName`` where it declares one, and
+    otherwise the branch's single ``const``-pinned property.  Two pins and no
+    ``discriminator`` is ambiguous and falls through to §4's next rule rather than taking
+    the alphabetically first, which would make a class name a function of spelling.
+
+    ``props`` is the branch's OWN property map, or -- for a bare ``$ref`` branch -- the
+    map it inherits from its target (:class:`Branch`).  A ``$ref`` branch's fields come
+    from the target by §4's own sentence, so its pin does too: read off the branch node
+    instead, every such branch pins nothing and that naming choice would be dead at the
+    exact position §4 names it for.
+
+    **It reads the declaration and hands a FACT to ``lower/names.py``**, which is the
+    seam §6 draws: the reading stays in a module ``MAY_READ_A_DECLARATION`` names, and
+    which of §4's three facts wins is the naming pass's (``names.branch_identity``).
+    """
+    pinned = pins(props)
+    if named is not None and named in pinned:
+        return pinned[named]
+    return next(iter(pinned.values())) if len(pinned) == 1 else None
+
+
+def _naming_facts(branch: Any, props: Any, named: str | None, *, refuses: bool) -> Any:
+    """The three facts §4 "Names"'s branch rules read, off one branch's declaration.
+
+    One reading for the two positions a branch is named at, so a root branch and a nested
+    one cannot come to read one declaration differently.
+    """
+    title = branch.get("title") if isinstance(branch, Mapping) else None
+    required = branch.get("required") if isinstance(branch, Mapping) else None
+    return names.Branch(
+        parent="",
+        title=title if isinstance(title, str) and title else None,
+        pin=_const_pin(props, named),
+        required=tuple(required) if isinstance(required, list) else (),
+        refuses=refuses,
+    )
 
 
 def dispatch_key(node: "nodes.Union") -> str | None:
@@ -865,12 +922,8 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
     # module-wide check, so it also catches a branch colliding with a class elsewhere in
     # the document -- strictly wider than the per-union check it replaces).
     for plan in planned:
-        mod.hops[plan.pointer] = names.Branch(
-            pointer,
-            plan.node,
-            discriminator=named,
-            properties=plan.properties,
-            refuses=True,
+        mod.hops[plan.pointer] = replace(
+            _naming_facts(plan.node, plan.properties, named, refuses=True), parent=pointer
         )
 
     mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
@@ -1206,7 +1259,10 @@ def _arms(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refus
         # **§4 "Names"'s branch rules as a HOP**, with ``refuses=False``: a nested union
         # is a TYPE, so a branch that lowers to an annotation needs no name and falls back
         # to the union's own derived name rather than refusing a union the walk can lower.
-        mod.hops[at] = names.Branch(pointer, branch, discriminator=named)
+        mod.hops[at] = replace(
+            _naming_facts(branch, branch.get("properties"), named, refuses=False),
+            parent=pointer,
+        )
         # A NESTED union's branch is NOT ``objectish``: §4 makes a branch of a ROOT union
         # a class whatever it states, and a nested union's branch is a member TYPE, so a
         # branch stating ``properties`` with no ``type`` word is refused here exactly as

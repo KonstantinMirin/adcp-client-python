@@ -152,13 +152,21 @@ class Entry:
 
 @dataclass(frozen=True)
 class Branch:
-    """A branch of ``oneOf``/``anyOf``: §4's three rules, in order.
+    """A branch of ``oneOf``/``anyOf``: the three FACTS §4's three rules read, as values.
 
-    :attr:`declaration` is the branch's own declaration, which is what all three rules
-    read -- its ``title``, the ``const`` it pins on :attr:`discriminator`, its
-    ``required`` set.  :attr:`properties` is the property map those readings range over:
-    the branch's own, or -- for a bare ``$ref`` branch -- the TARGET's, because §4 says a
-    ``$ref`` branch's fields are the target's and the walk is what resolved them.
+    §4 "Names"'s branch rules are "its own ``title``, else the ``const`` it pins on the
+    discriminating property, else its sorted ``required`` set", and each of the three is a
+    fact of the branch's own DECLARATION.  The declaration is ``lower/union.py``'s to read
+    -- §6 keeps that reading at the declaration level and
+    ``tests/test_import_rule.py``'s ``MAY_READ_A_DECLARATION`` names the module -- so what
+    crosses into this pass is the three facts and not the mapping.  Extracting a fact is
+    not deriving a name: which fact wins, how it is spelled, and what a parent prefix is
+    are all below, and a module that reads no mapping cannot come to read one.
+
+    :attr:`pin` is the ``const`` the branch pins on the discriminating property, read over
+    the property map §4 gives the rule: the branch's own, or -- for a bare ``$ref`` branch
+    -- the TARGET's, because §4 says a ``$ref`` branch's fields are the target's and the
+    walk is what resolved them.
 
     :attr:`refuses` is the difference between the two positions a branch is named at.  A
     ROOT union declares one class per branch, so a branch with no identity is a document
@@ -168,9 +176,12 @@ class Branch:
     """
 
     parent: str
-    declaration: Any
-    discriminator: str | None = None
-    properties: Any = None
+    #: The branch's own ``title``, where it states one that is a non-empty string.
+    title: str | None = None
+    #: The ``const`` it pins on the discriminating property, where exactly one is derived.
+    pin: Any = None
+    #: Its ``required`` set, as the document lists it.
+    required: tuple[str, ...] = ()
     refuses: bool = False
 
 
@@ -200,51 +211,8 @@ Hop = Root | Property | Item | Value | Entry | Branch | Unnamed
 # --------------------------------------------------------------------------- #
 # §4's branch rules
 # --------------------------------------------------------------------------- #
-def pins(props: Any) -> dict[str, Any]:
-    """Every property of a property map that is pinned to a ``const``.
-
-    ONE reading, and two things read it: §4 "Names"'s second branch-naming choice -- the
-    ``const`` a branch pins on the discriminating property (:func:`_const_pin`) -- and
-    §4's first dispatch source (``lower.union.discriminator``, which re-binds this name).
-    They are the same question asked of the same map -- "which key does this branch pin,
-    and to what" -- and a second reading is how a class could come to be NAMED after a key
-    the union does not dispatch on.
-
-    A SCALAR pin only.  An object or an array ``const`` is refused by §5's ``const`` row
-    at the property itself, and a value that is not hashable has no place in the
-    distinctness test the dispatch derivation runs, so it is not a pin here either.
-    """
-    if not isinstance(props, dict):
-        return {}
-    return {
-        k: v["const"]
-        for k, v in props.items()
-        if isinstance(v, dict) and isinstance(v.get("const"), (str, bool, int))
-    }
-
-
-def _const_pin(props: Any, named: str | None) -> Any:
-    """The ``const`` a branch pins on the discriminating property, or ``None``.
-
-    The property is the root's ``discriminator.propertyName`` where it declares one, and
-    otherwise the branch's single ``const``-pinned property.  Two pins and no
-    ``discriminator`` is ambiguous and falls through to the next rule rather than taking
-    the alphabetically first, which would make a class name a function of spelling.
-
-    ``props`` is the branch's OWN property map, or -- for a bare ``$ref`` branch -- the
-    map it inherits from its target (``names.Branch.properties``).  A ``$ref`` branch's
-    fields come from the target by §4's own sentence, so its pin does too: read off the
-    branch node instead, every such branch pins nothing and that naming choice would be
-    dead at the exact position §4 names it for.
-    """
-    pinned = pins(props)
-    if named is not None and named in pinned:
-        return pinned[named]
-    return next(iter(pinned.values())) if len(pinned) == 1 else None
-
-
 def branch_identity(hop: Branch, parent: str) -> str | None:
-    """§4 "Names"'s three branch rules, or ``None`` where none of them applies.
+    """§4 "Names"'s three branch rules, in order, or ``None`` where none of them applies.
 
     A title names itself.  A ``const`` or a required set is prefixed with the PARENT's
     name, so a branch named by either shares its base's spelling.  The required-set key
@@ -257,19 +225,12 @@ def branch_identity(hop: Branch, parent: str) -> str | None:
     function of what its siblings happen to be, so adding a branch renames an unrelated
     class.  §4 has no such rule and the caller refuses or falls back instead.
     """
-    branch = hop.declaration
-    if not isinstance(branch, Mapping):
-        return None
-    title = branch.get("title")
-    if isinstance(title, str) and title:
-        return class_name(title)
-    props = branch.get("properties") if hop.properties is None else hop.properties
-    pin = _const_pin(props, hop.discriminator)
-    if pin is not None:
-        return parent + class_name(str(pin))
-    required = branch.get("required")
-    if isinstance(required, list) and required:
-        return parent + "".join(class_name(str(k)) for k in sorted(required))
+    if hop.title:
+        return class_name(hop.title)
+    if hop.pin is not None:
+        return parent + class_name(str(hop.pin))
+    if hop.required:
+        return parent + "".join(class_name(str(k)) for k in sorted(hop.required))
     return None
 
 
