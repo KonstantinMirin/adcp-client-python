@@ -40,7 +40,7 @@ import pydantic
 import pytest
 
 from adcp.types import _base, constraints
-from codegen import bundle, compiler, emit
+from codegen import bundle, compiler, emit, keywords
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, compare_schema
 from codegen.refusal import Refusal
@@ -161,9 +161,9 @@ def test_a_required_only_conjunct_has_no_population_so_the_arm_is_not_built() ->
     for d in bundle.portable(BUNDLE):
         for i, c in enumerate(bundle.read(BUNDLE, d).get("allOf") or []):
             conjuncts.add(f"{d}#/allOf/{i}")
-            if isinstance(c, dict) and {
-                k for k in c if k not in compiler.ANNOTATIONS and not k.startswith("x-")
-            } == {"required"}:
+            if isinstance(c, dict) and set(
+                compiler.declaring(c, keywords.Position.CONJ)
+            ) == {"required"}:
                 found.append(f"{d}#/allOf/{i}")
     # The set this ranges over is named NON-EMPTY first: "no conjunct states only
     # ``required``" is free over a walk that reached no conjunct at all, which is the
@@ -440,7 +440,7 @@ def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzz
     assert bundle.composes_at_the_root(doc)
     saved = emit.ROWS
     try:
-        emit.ROWS = (*saved, (bundle.composes_at_the_root, compiler.lower_composition))
+        emit.ROWS = (*saved, (bundle.composes_at_the_root, emit._composing_root))
         with pytest.raises(emit.AmbiguousRoot, match="composes_at_the_root"):
             emit.lower_document("media-buy/get-products-request.json", doc)
     finally:
@@ -1009,7 +1009,9 @@ def test_the_accepts_and_liveness_checks_are_green_with_a_denominator(
 # what refuses, by name, pointer and keyword
 # --------------------------------------------------------------------------- #
 def _lower(doc: dict, binder=emit._no_binder) -> str:  # noqa: SLF001 -- the test is the caller
-    return compiler.lower_composition(doc, "Probe", "", emit.Module(document="probe.json", bind=binder))
+    return compiler.lower_composition(
+        doc, "Probe", "", emit.Module(document="probe.json", bind=binder), keywords.Position.ROOT
+    )
 
 
 def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> None:
@@ -1198,7 +1200,7 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
             keyword: value,
             **also,
         }
-        compiler.lower_composition(doc, "Probe", "", mod)
+        compiler.lower_composition(doc, "Probe", "", mod, keywords.Position.ROOT)
         assert mod.declared[""] == "Probe", (keyword, mod.declared)
         assert [b for b in mod.blocks if "_adcp_rules" in b], keyword
 
@@ -1372,7 +1374,17 @@ def test_breaking_the_shared_reader_reddens_the_product_row_and_the_union_row(
         arm.files["core/probe_union.py"]
     ), arm.files["core/probe_union.py"]
 
-    monkeypatch.setattr(compiler, "ANNOTATIONS", compiler.ANNOTATIONS | {"$ref"})
+    # The break: ``$ref`` stops being a DECLARATION, so a bare-``$ref`` conjunct reads
+    # as carrying nothing.  Patched in the TABLE rather than in a set beside it, which
+    # is the one place the answer is written now.
+    monkeypatch.setitem(
+        keywords.TABLE,
+        "$ref",
+        keywords.Row(
+            keywords.Cell(keywords.Effect.NOTHING, False, None, ""),
+            grid=keywords.STRUCTURE,
+        ),
+    )
     product = emit.emit(product_at, documents(product_at))
     union = emit.emit(union_at, documents(union_at))
 
@@ -1473,8 +1485,8 @@ def test_breaking_the_inner_annotation_carrier_reddens_the_comparison(
     monkeypatch.setattr(
         containers,
         "_contents",
-        lambda node, pointer, symbol, what, mod: containers._inner(
-            compiler.decide(node, pointer, symbol, mod), pointer, what, mod
+        lambda node, pointer, symbol, what, mod, position: containers._inner(
+            compiler.decide(node, pointer, symbol, mod, position), pointer, what, mod
         ),
     )
     cls, text, schema = _emit_probe(

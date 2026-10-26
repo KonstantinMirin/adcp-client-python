@@ -21,7 +21,7 @@ rather than a result of one:
   and their order in ``_decide`` is not a precedence;
 * the whole key vocabulary is ``const`` (826), ``const type`` (397),
   ``const description type`` (257) and ``const description`` (6).  **Nothing else
-  appears beside a ``const`` anywhere in the bundle**, so :data:`HANDLED` is two
+  appears beside a ``const`` anywhere in the bundle**, so :data:`CLAIMS` is two
   keywords and the screen has no constraint intersection to resolve;
 * **1,310** string values, **161** boolean, **15** integer; no ``null``, no object
   and no array;
@@ -88,13 +88,12 @@ import jsonschema
 from codegen import compiler
 from codegen.refusal import Kind, Refusal
 
-#: The keywords a ``const`` node can carry that this row ANSWERS for, screened by
-#: the caller (``codegen.emit``) against the one annotation set, exactly as the
-#: ``enum`` row's :data:`codegen.lower.enum.HANDLED` is.  Two keywords, because two
-#: keywords is the whole vocabulary the bundle writes beside a ``const``;
-#: ``description`` is a caller's concern (the parent's field carries it) and is in
-#: ``compiler.ANNOTATIONS`` already.
-HANDLED = frozenset({"type", "const"})
+#: The cells a ``const`` node CONSUMES -- this row's own coverage, which is what a
+#: screen's second argument is once the table decides admission.  Two keywords, because
+#: two keywords is the whole vocabulary the bundle writes beside a ``const``;
+#: ``description`` is a caller's concern (the parent's field carries it) and the table
+#: admits it as the annotation §6 says it is.
+CLAIMS = frozenset({"type", "const"})
 
 #: The value types the COMPILER can spell as a ``Literal``, which is where the one
 #: refusal about the value itself comes from.  dmcg's ``DataType.literals`` is

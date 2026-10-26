@@ -80,6 +80,7 @@ from __future__ import annotations
 from typing import Any
 
 from codegen import compiler
+from codegen.keywords import Position
 from codegen.compiler import Decided, Module
 from codegen.refusal import Kind, Refusal
 
@@ -93,12 +94,16 @@ from codegen.refusal import Kind, Refusal
 #: says what the alternative costs.
 #:
 #: It is absent from this set and ADMITTED BY THE SCREEN anyway
-#: (:data:`_ARRAY_HANDLED`), so that :data:`_DISTINCT_HAS_NOWHERE_TO_LIVE` is what
-#: reports it -- the ``union.ROOT_HANDLED`` shape, and for that comment's reason.
+#: (:data:`_ARRAY_CLAIMS`), so that :data:`_DISTINCT_HAS_NOWHERE_TO_LIVE` is what
+#: reports it -- the ``union.ROOT_CLAIMS`` shape, and for that comment's reason.
 BOUNDS = ("minItems", "maxItems")
 
-#: What the array row's screen ADMITS, which is its bounds plus the one keyword it
-#: refuses by name.  ``uniqueItems`` is in here and lowered nowhere: left out, it
+#: The cells the array row CONSUMES, plus the two it claims in order to refuse or
+#: carry them by name.  This is the row's own coverage and not an admission list: the
+#: table admits every annotation, the definition sections and the ``x-`` namespace at
+#: every position, so none of them is named here.
+#:
+#: ``uniqueItems`` is in here and lowered nowhere: left out, it
 #: refused through ``compiler.check_keywords``, whose answer for a draft-07 keyword is
 #: ``DEFERRED_TO_A_LATER_ROW`` -- a promise of a later row, which the two measurements
 #: in :data:`_DISTINCT_HAS_NOWHERE_TO_LIVE` say will never be written.  Admitted here,
@@ -127,7 +132,7 @@ BOUNDS = ("minItems", "maxItems")
 #: 102 on a TYPELESS node, which is a ``contains``-only ``allOf`` conjunct or a node
 #: inside another ``contains``.  Those 102 are not admitted here and are not this row's
 #: position; no document of the deferred population is blocked at one.
-_ARRAY_HANDLED = frozenset({"type", "items", "uniqueItems", "contains", *BOUNDS})
+_ARRAY_CLAIMS = frozenset({"type", "items", "uniqueItems", "contains", *BOUNDS})
 
 #: Why ``uniqueItems`` on an array NO CLASS HOLDS is a VERDICT and not a deferral.
 #:
@@ -180,7 +185,7 @@ _DISTINCT_HAS_NOWHERE_TO_LIVE = (
 #: ``{"type": "object", "minProperties": 1, "maxProperties": 4}`` and refuses ``{}``
 #: and a five-key object while accepting a one-key one.
 #:
-#: These are NOT D6 rules even though :data:`compiler.RULE_KEYWORDS` names them, and
+#: These are NOT D6 rules even though :func:`compiler.rule_sources` names them, and
 #: the difference is the position: D6's ``PropertyCount`` reads a model's
 #: ``__pydantic_fields_set__``, and a mapping has no fields -- it is a ``dict`` -- so
 #: the rule cannot carry this node's bound and the annotation is the only place it can
@@ -219,7 +224,9 @@ def _inner(decided: Decided, pointer: str, what: str, mod: Module) -> compiler.T
     return compiler.carried(decided, pointer, what, mod)
 
 
-def _contents(node: dict, pointer: str, symbol: str, what: str, mod: Module) -> compiler.Type:
+def _contents(
+    node: dict, pointer: str, symbol: str, what: str, mod: Module, position: Position
+) -> compiler.Type:
     """The type of a container's CONTENTS -- its element, or its mapping's value.
 
     One function for the two, because the two are the same question asked at two
@@ -261,7 +268,7 @@ def _contents(node: dict, pointer: str, symbol: str, what: str, mod: Module) -> 
     ``missing``, which is the safe direction and is visible.  0 inner nodes of the
     bundle state one.
     """
-    decided = compiler.decide(node, pointer, symbol, mod)
+    decided = compiler.decide(node, pointer, symbol, mod, position)
     description = node.get("description")
     if not decided.type.local and isinstance(description, str) and description:
         # **The node's OWN name is asked for FIRST, and the order is the P2 rule rather
@@ -280,7 +287,9 @@ def _contents(node: dict, pointer: str, symbol: str, what: str, mod: Module) -> 
 # --------------------------------------------------------------------------- #
 # the rows
 # --------------------------------------------------------------------------- #
-def array(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
+def array(
+    node: dict, pointer: str, name_hint: str, mod: Module, position: Position
+) -> Decided:
     """``list[X]``, with ``minItems``/``maxItems`` on the LIST and not on ``X``.
 
     The bound comes back in the document's own spelling and rides on the field
@@ -288,7 +297,9 @@ def array(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     spells a list's length bound the way it spells a string's, and the document does
     not, which is exactly why the two are decided here and spelled by the compiler.
     """
-    compiler.check_keywords(node, pointer, set(_ARRAY_HANDLED))  # the walk's own check
+    compiler.check_keywords(  # the walk's own check
+        node, pointer, position, _ARRAY_CLAIMS, mod=mod
+    )
     if "uniqueItems" in node:
         # AFTER the screen, so an array carrying BOTH this and a keyword no row lowers
         # is reported on the other one: this refusal is final and that one may not be.
@@ -311,11 +322,13 @@ def array(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
             kind=Kind.VERDICT,
         )
     at = f"{pointer}/items"
-    element = _contents(items, at, name_hint + "Item", "the element", mod)
+    element = _contents(items, at, name_hint + "Item", "the element", mod, Position.ELEM)
     return Decided(compiler.Type(container="list", of=(element,)), bounds)
 
 
-def mapping(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
+def mapping(
+    node: dict, pointer: str, name_hint: str, mod: Module, position: Position
+) -> Decided:
     """``dict[K, V]`` for an object node that declares no property.
 
     The node has no field to hang a class on and no property name to derive a class
@@ -331,7 +344,9 @@ def mapping(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     compiler.check_keywords(  # the walk's own check
         node,
         pointer,
+        position,
         {"type", "additionalProperties", "patternProperties", "propertyNames", *KEY_BOUNDS},
+        mod=mod,
     )
     bounds = {k: node[k] for k in KEY_BOUNDS if k in node}
     patterned = node.get("patternProperties")
@@ -452,7 +467,7 @@ def _value(
         return compiler.Type("typing.Any")
     if not isinstance(node, dict):
         raise Refusal(keyword, pointer, f"not a schema: {node!r}", kind=Kind.VERDICT)
-    return _contents(node, pointer, name_hint + "Value", "the value", mod)
+    return _contents(node, pointer, name_hint + "Value", "the value", mod, Position.MAPV)
 
 
 def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
@@ -501,7 +516,9 @@ def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
     if "$ref" in node:
         # The one key kind that needs no alias: the bundle already names the type, so
         # P2 applies unchanged -- an import, and no constraint of the target copied.
-        return _inner(compiler.decide(node, pointer, "", mod), pointer, "the key", mod)
+        return _inner(
+            compiler.decide(node, pointer, "", mod, Position.KEY), pointer, "the key", mod
+        )
     if "enum" in node:
         raise Refusal(
             "enum",
@@ -520,11 +537,16 @@ def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
     # key is a string: without it the node is typeless and the walk reads it as
     # ``Any``, which would drop the bound.
     return _inner(
-        compiler.decide({"type": "string", **node}, pointer, "", mod), pointer, "the key", mod
+        compiler.decide({"type": "string", **node}, pointer, "", mod, Position.KEY),
+        pointer,
+        "the key",
+        mod,
     )
 
 
-def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
+def multi_type(
+    node: dict, pointer: str, name_hint: str, mod: Module, position: Position
+) -> Decided:
     """``X | Y`` for a node whose ``type`` is a list, each keyword on its OWN arm.
 
     An arm is the node re-cut to one type, carrying only the keywords that type can
@@ -573,8 +595,10 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
     compiler.check_keywords(  # the walk's own check
         node,
         pointer,
+        position,
         {"type", *carried},
         f"no arm of {sorted(kinds)} can carry it, so it constrains nothing",
+        mod=mod,
     )
     stated = sorted(set(node) & carried)
     live = [k for k in kinds if k != "null"]
@@ -629,7 +653,12 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
         cut = {"type": kind, **{k: v for k, v in node.items() if k in ARM[kind]}}
         at = f"{pointer}/type/{kind}"  # not a real pointer; it names the ARM that refused
         arms.append(
-            _inner(compiler.decide(cut, pointer, name_hint, mod), at, f"the {kind!r} arm", mod)
+            _inner(
+                compiler.decide(cut, pointer, name_hint, mod, position),
+                at,
+                f"the {kind!r} arm",
+                mod,
+            )
         )
     unique = tuple(dict.fromkeys(arms))  # document order, deduped
     if len(unique) == 1:
@@ -640,7 +669,7 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
 # --------------------------------------------------------------------------- #
 # the dispatch row: a root that is a container
 # --------------------------------------------------------------------------- #
-def root(doc: dict, symbol: str, pointer: str, mod: Module) -> str:
+def root(doc: dict, symbol: str, pointer: str, mod: Module, position: Position) -> str:
     """Declare the module for a document whose ROOT is a container.
 
     A mapping root and a multi-type root have no field to hang themselves on, so D2
@@ -652,7 +681,7 @@ def root(doc: dict, symbol: str, pointer: str, mod: Module) -> str:
     element so the refusal reports the element type the row would have wrapped.  This
     module's docstring carries the measurement.
     """
-    decided = compiler.decide(doc, pointer, symbol, mod)
+    decided = compiler.decide(doc, pointer, symbol, mod, position)
     if doc.get("type") == "array":
         raise Refusal(
             "type",

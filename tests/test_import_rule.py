@@ -95,10 +95,13 @@ RENDERER = frozenset({"compiler.py"})
 #: and ``dump_exemptions.py`` holds what the dump check strikes.
 VERIFIER = frozenset({"harness.py", "dump_exemptions.py"})
 
-#: §9's permitted import set for the verifier, under ``codegen``.  ``codegen.bundle``
-#: is the document of record and the document set; ``codegen.refusal`` is how a
-#: refusal the run recorded is read; ``codegen.dump_exemptions`` is the verifier's own
-#: other half.
+#: §9's permitted import set for the verifier, under ``codegen``.  ``codegen.keywords``
+#: is the DECLARATION -- §9 names it first, "for the compared set", and §9's own reason
+#: says why it is not a hole: "sharing DATA is a different matter from sharing a
+#: READING: the keyword table is the declared semantics, and both halves must read the
+#: same declaration or the grade means nothing."  ``codegen.bundle`` is the document of
+#: record and the document set; ``codegen.refusal`` is how a refusal the run recorded is
+#: read; ``codegen.dump_exemptions`` is the verifier's own other half.
 #:
 #: ``codegen.compiler`` is the one entry §9 does NOT permit, and it is written here
 #: because ``harness.py`` takes ``compiler.escape_key`` -- a JSON Pointer segment
@@ -108,6 +111,7 @@ VERIFIER = frozenset({"harness.py", "dump_exemptions.py"})
 #: retires this entry by moving the renderer out of ``compiler.py``.
 VERIFIER_MAY_IMPORT = frozenset(
     {
+        "codegen.keywords",
         "codegen.bundle",
         "codegen.refusal",
         "codegen.dump_exemptions",

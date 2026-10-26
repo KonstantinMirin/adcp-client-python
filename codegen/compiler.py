@@ -88,11 +88,11 @@ from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
 from datamodel_code_generator.model.pydantic_v2.types import DataTypeManager
 from datamodel_code_generator.reference import Reference
 from datamodel_code_generator.types import DataType
-from jsonschema import Draft7Validator
 from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._base import SchemaRef
-from codegen import refusal
+from codegen import keywords, refusal
+from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 
 #: The import path of the hand-written base every emitted module imports from.
@@ -623,133 +623,60 @@ def render(decided: Class) -> Rendered:
 # --------------------------------------------------------------------------- #
 # the machinery a lowering is handed (D13)
 # --------------------------------------------------------------------------- #
-#: DRAFT-07's own annotation keywords: names the draft DEFINES and that annotate a
-#: node without constraining an instance.  ``default`` and ``description`` are
-#: carried by the compiler (they are rendering, and rendering is what the compiler
-#: is for); the rest have nowhere to go and are never a reason to refuse.
-_DRAFT_ANNOTATIONS = frozenset(
-    {
-        "$schema",
-        "$id",
-        "$comment",
-        "title",
-        "description",
-        "examples",
-        "example",
-        "default",
-        "deprecated",
-        "readOnly",
-        "writeOnly",
-    }
-)
-
-#: THE BUNDLE'S OWN annotation names: names draft-07 does not define at all, which
-#: this bundle uses to annotate a node, ENUMERATED and never derived from a prefix.
-#:
-#: An unknown keyword that COULD CONSTRAIN an instance must keep refusing, because
-#: that refusal is what keeps the generator from emitting a class quietly wider than
-#: its author meant.  So membership here is by name and by measurement.
-#:
-#: **The census, over all 1,054 portable documents** (every key at a schema position
-#: that draft-07 does not define, is not ``x-*``, and is not already admitted; all
-#: 1,054 declare draft-07, so one draft decides the vocabulary): 24 names over 251
-#: sites.  Two are admitted here:
-#:
-#: * ``notes`` -- 2 sites, 2 documents, both at a root, a list of English sentences
-#:   in each.  It annotates the document for a reader.
-#: * ``enumMetadata`` -- 4 sites, 4 documents, all at a root.  ``lower.enum.HANDLED``
-#:   already admitted it on the reason written there -- it states nothing about an
-#:   instance, the ``enum`` having already closed the value set -- for the three
-#:   whose root IS an enum.  The fourth (``core/media-buy-available-action-id.json``)
-#:   is a UNION root, which that set does not reach.  Admitting it HERE is the same
-#:   decision in one place rather than two, so it is removed from that set.
-#:
-#: And twenty-two are not, each for a stated reason:
-#:
-#: * ``enumDescriptions`` (137 sites, 135 documents) is CARRIED, not ignored: the
-#:   enum row reads it into the member docstrings.  Admitting it here would delete a
-#:   fact the SDK emits.
-#: * ``discriminator`` (81 sites, 73 documents, 7 refusals) COULD CONSTRAIN AN
-#:   INSTANCE -- in OpenAPI it selects which branch a payload resolves to, a job §4
-#:   gives to ``DataType.discriminator``.  It keeps refusing.
-#: * ``errorMessage`` (2 sites, 1 document) constrains nothing, and its document
-#:   refuses on ``if`` first, so admitting it would change no outcome.  Nothing is
-#:   admitted on no evidence.
-#: * The other 19 -- ``version``, ``lastUpdated``, ``last_updated``, ``mappings``,
-#:   ``vocabulary``, ``governance``, ``extensions``, ``_generated``,
-#:   ``_generatedAt``, ``adcp_version``, ``architecture``, ``asset_types``,
-#:   ``baseUrl``, ``prerelease``, ``protocol_layers``, ``published_version``,
-#:   ``stability``, ``usage_notes``, ``versioning`` -- ARE NOT ANNOTATIONS.  They are
-#:   a document's own INSTANCE DATA at a schema root: five registry, vocabulary and
-#:   index documents carry their payload beside their schema.  Measured: 4 of those 5
-#:   refuse on ``type`` ("no D2 row selects this root") and not on a payload key at
-#:   all, so admitting the 19 changes nothing for them and buys the fifth
-#:   (``registries/v1-canonical-mapping.json``) by calling a registry's 300-line
-#:   ``mappings`` payload an annotation.  That is the blanket allowance in another
-#:   shape, and the set would then grow by a data field name per registry.  The fifth
-#:   stays refused, which is a designed outcome.
-BUNDLE_ANNOTATIONS = frozenset({"notes", "enumMetadata"})
-
-#: The ONE set every reader asks, so the two halves above cannot drift apart from a
-#: second literal.  Read by :func:`check_keywords` and by the three places that ask
-#: what a node DECLARES (``lower.union._plan``, :func:`_constraining`,
-#: ``lower.rules._own``) -- the same question, since a key that annotates without
-#: constraining is not a declaration either.
-ANNOTATIONS = _DRAFT_ANNOTATIONS | BUNDLE_ANNOTATIONS
-
-#: Every name draft-07 DEFINES, read off the draft's own meta-schema rather than
-#: typed here, and used for one thing: to tell a keyword no row lowers YET from a
-#: name no row can EVER lower (:func:`check_keywords`).
-DRAFT07 = frozenset(Draft7Validator.META_SCHEMA["properties"])
-
 #: **D6's six keyword families, as the set a keyword screen admits.**
 #:
-#: Here rather than in ``codegen.lower.rules`` for the reason ``ANNOTATIONS`` is here,
-#: and it is the same reason verbatim: ``compiler`` sits BELOW both ``codegen.lower``
-#: and ``codegen.bundle``, so every reader can import it, while a lowering may not
-#: import a sibling lowering (D13).  Three lowerings need it -- the object row screens
-#: an object node with it, the ``allOf`` row screens a root, the union row screens a
-#: root and each branch -- and two of the three cannot reach ``rules`` at all.  Two
-#: copies of the set would be one place for a screen to admit a keyword the lowering
-#: writes nothing for, which is a model wider than its document.
-#:
-#: ``codegen.lower.rules`` re-exports this as its own ``KEYWORDS`` rather than
-#: restating it, which is the direction D13 fixes.
-RULE_KEYWORDS = frozenset(
-    {
-        "oneOf",
-        "anyOf",
-        "if",
-        "then",
-        "else",
-        "dependencies",
-        "minProperties",
-        "maxProperties",
-        "uniqueItems",
-        "not",
-    }
-)
+#: Derived from the table's cells: a rule source is a keyword whose cell at this
+#: position compiles to a RULE, and the two COMBINATORS join it only where every
+#: branch is ``required``-only -- which is a co-occurrence and not a position, so it is
+#: the caller's question (:func:`rules_at`) and not the cell's.  Written here rather
+#: than in ``codegen.lower.rules`` because ``compiler`` sits BELOW both
+#: ``codegen.lower`` and ``codegen.bundle``, so every reader can import it while a
+#: lowering may not import a sibling lowering (D13); ``codegen.lower.rules``
+#: re-exports it as its own ``KEYWORDS`` rather than restating it.
+def rule_sources(position: Position) -> frozenset[str]:
+    """The keywords whose cell at ``position`` compiles to a RULE."""
+    return frozenset(
+        k
+        for k in keywords.TABLE
+        if (c := keywords.cell(k, position)) is not None and c.effect is keywords.Effect.RULE
+    )
 
-#: The two keywords holding a BAG OF NAMED SUBSCHEMAS, admitted at every node and
-#: separate from :data:`ANNOTATIONS` because the reason is different.
-#:
-#: Neither keyword asserts anything about an instance in any draft this bundle
-#: declares: a section is a place to PUT a subschema, and what it holds reaches an
-#: instance only through a ``$ref``.  So admitting one drops nothing -- the node a
-#: reference names is declared when the reference asks for it
-#: (:func:`local_reference`), and a node nothing references cannot change what the
-#: document accepts, which is the whole of what a refusal protects (P3).
-#:
-#: One place rather than a member of each row's own handled set, because the screen
-#: runs at 13 call sites across five modules and the answer is the same at every one:
-#: the section is not a root kind and not a row's business.  Measured on the 3.2
-#: bundle: 45 documents declare a section at their root and 1 declares one deeper
-#: (``brand/get-brand-identity-response.json#/oneOf/0/properties/fonts``), so a
-#: root-only admission would leave that one refusing on a keyword this now handles.
-#:
-#: ``codegen.bundle`` imports this set rather than restating it, which is the
-#: direction D13 fixes: ``bundle`` imports this module and never the other way.
-DEFINITION_SECTIONS = frozenset({"definitions", "$defs"})
+
+def combinators(position: Position) -> frozenset[str]:
+    """``oneOf`` and ``anyOf``, read off the descent column rather than named.
+
+    They are the keywords whose subschemas occupy a BRANCH, which is what a
+    combinator IS -- so the pair is a reading of the declaration and not a literal.
+    """
+    return frozenset(
+        k
+        for k in keywords.TABLE
+        if (c := keywords.cell(k, position)) is not None and c.descends is Position.BRANCH
+    )
+
+
+def declares(keyword: str, position: Position) -> bool:
+    """Does this key STATE something about an instance at this position?
+
+    The question three readers ask -- ``lower.union._plan``, :func:`_constraining` and
+    ``lower.rules._own`` -- and the one the screen asks in the other direction.  A key
+    that annotates without constraining is not a declaration; a key with no row is,
+    because a keyword the bundle did not use before could constrain anything.
+    """
+    answer = keywords.cell(keyword, position)
+    if answer is None:
+        return not keywords.admitted_by_prefix(keyword)
+    return keywords.lowers(answer) or answer.effect is keywords.Effect.REFUSE
+
+
+def declaring(node: Mapping[str, Any], position: Position) -> dict[str, Any]:
+    """``node`` less every key that annotates without constraining.
+
+    One reading for the four callers that used to subtract a hand-written annotation
+    set and the ``x-`` prefix by hand.
+    """
+    return {k: v for k, v in node.items() if declares(k, position)}
+
 
 
 # --------------------------------------------------------------------------- #
@@ -930,8 +857,16 @@ def _no_binder(uri: str, pointer: str) -> Target:
     )
 
 
-def decide(node: dict, pointer: str, name_hint: str, mod: "Module") -> Decided:
+def decide(
+    node: dict, pointer: str, name_hint: str, mod: "Module", position: Position
+) -> Decided:
     """What one schema node IS: ``emit.decide_type``, reached by NAME.
+
+    ``position`` is the node's own, passed by the caller because it is a STRUCTURAL
+    fact of the caller -- a property's value is at PROP, an array's element at ELEM, a
+    mapping's value at MAPV, a branch at BRANCH, a ``definitions`` entry at DEF -- and
+    never recovered from the pointer string, which cannot tell a RULE reference from a
+    PROP one.
 
     This used to be a callable carried on :attr:`Module.decide`, because reaching
     ``emit`` by name was forbidden: ``python -m codegen.emit`` executed that file as
@@ -952,7 +887,7 @@ def decide(node: dict, pointer: str, name_hint: str, mod: "Module") -> Decided:
     """
     from codegen.emit import decide_type
 
-    return decide_type(node, pointer, name_hint, mod)
+    return decide_type(node, pointer, name_hint, mod, position)
 
 
 @dataclass
@@ -1154,7 +1089,7 @@ class Rules:
     complete three modules away.
 
     * ``screen`` is what a keyword check may ADMIT at this node.  It is not
-      :data:`RULE_KEYWORDS` flat, and the difference is load-bearing: a
+      :func:`rule_sources` flat, and the difference is load-bearing: a
       ``oneOf``/``anyOf`` is a rule only where every branch is ``required``-only
       (``rules.presence_only``, the published step-5/step-7 test).  A combinator of
       SHAPES is a nested union, ``rules.lower`` writes nothing for it, and admitting
@@ -1182,13 +1117,19 @@ class Rules:
     distinct: tuple[str, ...]
 
 
-def rules_at(node: dict, *also: dict) -> Rules:
+def rules_at(node: dict, *also: dict, position: Position = Position.ROOT) -> Rules:
     """D6's reading of a node, for a lowering that cannot import the rules module.
 
     Imported on use, because ``codegen.lower.rules`` imports this module for
-    :data:`ANNOTATIONS` and :data:`RULE_KEYWORDS` -- the one place the two halves
+    :func:`rule_sources` and :func:`declares` -- the one place the two halves
     meet, and the lowering's direction is the one D13 fixes, so this side is the lazy
     one.  The same lazy import ``lower_object`` already used, now in one place.
+
+    ``screen`` is READ OFF THE TABLE at ``position``: a rule source is a keyword whose
+    cell compiles to a RULE there, and the two combinators join it only where every
+    branch is ``required``-only -- a co-occurrence, which is this caller's question and
+    not the cell's.  The eight rule sources are the same at every position a class can
+    sit at, so the default is ROOT and a caller at another position says so.
 
     **``also`` is the other nodes whose rules belong to THIS class**, which is what a
     draft-07 ``allOf`` conjunct is: it applies to the same instance, so it is not a
@@ -1205,7 +1146,9 @@ def rules_at(node: dict, *also: dict) -> Rules:
     from codegen.lower import rules
 
     lowered = [rules.lower(n) for n in (node, *also)]
-    screen = RULE_KEYWORDS if rules.presence_only(node) else RULE_KEYWORDS - {"oneOf", "anyOf"}
+    screen = rule_sources(position)
+    if rules.presence_only(node):
+        screen |= combinators(position)
     sources = [source for one in lowered for source in one.rules]
     distinct: list[str] = []
     for one in lowered:
@@ -1220,40 +1163,47 @@ def rules_at(node: dict, *also: dict) -> Rules:
     )
 
 
-def _why(key: str) -> tuple[str, Kind]:
-    """Why this key stopped the walk, and the two answers are not the same claim.
+def kind_for(key: str, position: Position) -> Kind:
+    """The KIND of the refusal this key mints, read off the CELL.
 
-    A key draft-07 DEFINES is a keyword some D2 row owns, so "a later row does" is
-    a schedule and the bead for it exists.  A key draft-07 does not define has no
-    row to be scheduled -- it is not a schema keyword, so there is no lowering to
-    write -- and answering "a later D2 row does" about one PROMISES AN UNSCHEDULED
-    ROW.  Measured on the base tree (``5d92cf2c0``, 406 emitted and 648 refused of
-    1,054): 11 of the 648 refusals answered that about a
-    non-keyword (``discriminator`` 7, ``notes`` 2, ``enumMetadata`` 1,
-    ``last_updated`` 1), and the four this bead names were three distinct names at
-    a root with no row anywhere that could ever claim them.
+    ``docs/plan/architecture.md`` §3: "a refusal's kind is derived from the cell and
+    never chosen at a raise site."  Three answers and each is the cell's:
 
-    So the admission decision and the refusal REASON are the one bug read twice:
-    :data:`BUNDLE_ANNOTATIONS` names the non-keywords that annotate, and this names
-    what a refusal says about the rest.
+    * a key whose cell is REFUSE is a VERDICT -- the obstruction belongs to the
+      document, which is what §7 of the semantics document decided about it;
+    * a key with NO ROW is a VERDICT too, and for a different reason worth keeping
+      apart: a keyword in none of §5, §6 or §7 is one the bundle did not use, so there
+      is no lowering to schedule and answering "a later row does" about it would
+      promise an unscheduled row;
+    * a key whose cell is a LOWERING effect and whose handler claims nothing is a
+      DEFERRAL -- §9's first rule, because minting a verdict for unwritten code reports
+      clearable work as finished.
 
-    **The KIND travels with the reason here, and this is the one place it does not
-    travel with the raise site.**  :func:`check_keywords` is a single ``raise``
-    reached for three different reasons -- a deferral, a verdict about a
-    non-keyword, and whatever a caller's own ``why`` says -- so a kind attached to
-    the line would be one answer for three claims.  That is precisely the mistake
-    the regex over details made in the other direction, and the pair returned here
-    is what keeps the two from drifting: the sentence and its classification are
-    one value and are written in one place.
+    *Why derived.*  The reviews record the two kinds assigned by hand at a raise site
+    and the assignment coming out inverted in bulk: a cell the semantics document
+    decides, written up as a verdict against the document.  A kind read off the table
+    cannot say that, because the table is where the decision that the keyword compiles
+    was made.  Measured on the base tree (``5d92cf2c0``, 406 emitted and 648 refused of
+    1,054), the old reading -- "is the name in draft-07's meta-schema" -- called 11 of
+    the 648 a verdict about a non-keyword: ``discriminator`` 7, ``notes`` 2,
+    ``enumMetadata`` 1, ``last_updated`` 1.  Of those four names the table admits three
+    (§6) and refuses one (§7), so the same four reach three different answers now and
+    none of them is read off a meta-schema.
     """
-    if key in DRAFT07:
-        return refusal.DEFERRED_TO_A_LATER_ROW, Kind.DEFERRED
-    return (
-        "draft-07 defines no such keyword, so no D2 row lowers it and none is "
-        "scheduled; a non-keyword that ANNOTATES a node is named in "
-        "compiler.BUNDLE_ANNOTATIONS and this is not one of those names"
-    ), Kind.VERDICT
+    answer = keywords.cell(key, position)
+    if answer is None or answer.effect is keywords.Effect.REFUSE:
+        return Kind.VERDICT
+    return Kind.DEFERRED
 
+
+#: What a refusal says about a key the table gives no row at all.  A SENTENCE and not a
+#: classification: :func:`kind_for` carries the classification, so nothing here is read
+#: to decide anything.
+NO_SUCH_KEYWORD = (
+    "sections 5, 6 and 7 of docs/plan/rebuild-plan.md name every keyword the bundle "
+    "uses, and none of them names this one; the first document to carry a new keyword "
+    "refuses by name rather than being emitted with it ignored"
+)
 
 def carried(decided: Decided, pointer: str, what: str, mod: Module) -> Type:
     """The type of a node at a position with NO FIELD to carry its facts.
@@ -1305,29 +1255,77 @@ def carried(decided: Decided, pointer: str, what: str, mod: Module) -> Type:
 
 
 def check_keywords(
-    node: dict,
+    node: Mapping[str, Any],
     pointer: str,
-    handled: set[str],
+    position: Position,
+    handled: Collection[str] = (),
     why: str | None = None,
-    kind: Kind = Kind.VERDICT,
+    mod: "Module | None" = None,
 ) -> None:
-    """Refuse the first keyword at this node no caller claimed.
+    """Refuse the first keyword at this node the TABLE does not admit here.
 
-    A caller passing its own ``why`` passes the ``kind`` that goes with it.  The
-    default is ``VERDICT`` because every ``why`` in the tree today is one -- a
-    caller-supplied reason is a reason this position can never be lowered, where
-    the generic answer :func:`_why` gives has a deferral in it -- and a caller
-    whose reason is a deferral says so rather than inheriting a default.
+    **The screen is a reader of ``codegen.keywords`` and holds no keyword set of its
+    own.**  Every key is looked up at the node's POSITION, which the caller passes
+    because it is a structural fact of the caller -- a property's value is at PROP, an
+    array's element at ELEM, a branch at BRANCH -- and never recovered from the pointer
+    string, which cannot tell a RULE reference from a PROP one.  The cell then decides,
+    and ``docs/plan/architecture.md`` §3's admission reader is exactly these arms:
+
+    * a cell that carries NOTHING, ANNOTATES or names (``NAME``) is admitted and
+      carried nowhere by the screen;
+    * a cell that is REFUSE refuses the document, and :func:`kind_for` makes it a
+      VERDICT;
+    * a key with NO ROW refuses the document as a VERDICT naming a keyword the bundle
+      did not use before -- unless it is in the ``x-`` namespace, which is admitted by
+      PREFIX because a vendor extension cannot be a schema keyword, and REPORTED,
+      because the prefix rule once dropped ``x-enum-descriptions`` silently and that
+      key carries member docstrings;
+    * a cell with a lowering effect is a fact the node's kind consumes: ``handled``
+      names the ones this caller has written, and anything else is a DEFERRAL.
+
+    ``handled`` is therefore the caller's own COVERAGE and no longer an admission list:
+    what is left in it at each call site is the set of cells that handler writes, which
+    is the LOWERING reader §3 gives to ``lower/*`` and §14 step 8 closes.  Everything
+    those sets used to carry for admission alone -- the annotations, the definition
+    sections, the ``x-`` prefix, ``enumMetadata``, ``discriminator`` -- is the table's
+    answer now and is gone from all of them.
+
+    **The KIND is never chosen here.**  A caller may pass its own ``why``, which is
+    prose for a reader, and the classification still comes from :func:`kind_for`: a
+    sentence and a kind decided together at one raise site is how a cell the semantics
+    document decides came to be written up as a verdict against the document.
     """
     for key in sorted(node):
-        if key in handled or key in ANNOTATIONS or key in DEFINITION_SECTIONS:
+        # **``handled`` is asked FIRST**, before the cell, because a caller that claims
+        # a key has already decided what happens to it -- including a key the table
+        # REFUSES: ``lower_composition`` hands its ``foreign`` set here precisely so
+        # that an ``errorMessage`` on a conjunct is DROPPED AND REPORTED, which is §7's
+        # own answer for it, rather than refused on the very name the drop accounted
+        # for.  Measured on ``media-buy/sync-catalogs-request.json``.
+        if key in handled:
             continue
-        if key.startswith("x-"):
+        answer = keywords.cell(key, position)
+        if answer is None:
+            if keywords.admitted_by_prefix(key):
+                # Admitted by shape, and READ ONCE rather than assumed to be metadata.
+                if mod is not None:
+                    mod.carries_nothing.append(
+                        f"{pointer or '/'}: {key}: a key in the x- namespace with no "
+                        "row in section 6, so it is admitted by the prefix alone and "
+                        "nothing has read it"
+                    )
+                continue
+            raise Refusal(key, pointer, NO_SUCH_KEYWORD, kind=kind_for(key, position))
+        if answer.effect is keywords.Effect.REFUSE:
+            raise Refusal(key, pointer, why or answer.compiles, kind=kind_for(key, position))
+        if not keywords.lowers(answer):
             continue
-        if why is not None:
-            raise Refusal(key, pointer, why, kind=kind)
-        generic, generic_kind = _why(key)
-        raise Refusal(key, pointer, generic, kind=generic_kind)
+        raise Refusal(
+            key,
+            pointer,
+            why or refusal.DEFERRED_TO_A_LATER_ROW,
+            kind=kind_for(key, position),
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -1430,7 +1428,7 @@ def fields(
             decided_type = Decided(held.type, dict(held.constraints), held.format)
             is_distinct = held.distinct
         else:
-            decided_type = decide(sub, at, name + class_name(key), mod)
+            decided_type = decide(sub, at, name + class_name(key), mod, Position.PROP)
         is_required = key in required
         default = MISSING
         if "default" in sub:
@@ -1483,6 +1481,7 @@ def declare_object(
     mod: Module,
     props: Sequence[Property],
     shape: Shape,
+    position: Position = Position.ROOT,
     *,
     bases: tuple[str, ...] = (),
     body_lines: tuple[str, ...] = (),
@@ -1513,7 +1512,7 @@ def declare_object(
     conjunct, which draft-07 applies to the same instance.  Empty for every row but
     the composing one.
     """
-    stated = rules_at(node, *rule_nodes)
+    stated = rules_at(node, *rule_nodes, position=position)
     body_lines = (*body_lines, *(line for line in (stated.body.text,) if line))
     imports = (imports or set()) | stated.body.imports
     # D8's typed row: a property the class does not DECLARE is validated against
@@ -1537,6 +1536,7 @@ def declare_object(
             pointer,
             name,
             mod,
+            position,
         ).type
     description = node.get("description")
     rendered = render(
@@ -1577,6 +1577,7 @@ def lower_object(
     name: str,
     pointer: str,
     mod: Module,
+    position: Position,
     *,
     bases: tuple[str, ...] = (),
     body_lines: tuple[str, ...] = (),
@@ -1594,10 +1595,13 @@ def lower_object(
     # reading is :func:`rules_at`'s, which is also where the TUPLE is written
     # (:func:`declare_object`) -- so this row and the ``allOf`` row and a union branch
     # all admit the same keywords and all write the same rule.
-    stated = rules_at(node)
+    stated = rules_at(node, position=position)
     check_keywords(
         node,
         pointer,
+        position,
+        # The cells an OBJECT node consumes, which is what is left of a ``handled``
+        # set once the table admits everything it used to carry for admission alone.
         {
             "type",
             "properties",
@@ -1606,6 +1610,7 @@ def lower_object(
             "propertyNames",
             *stated.screen,
         },
+        mod=mod,
     )
     declared = node.get("type")
     if declared != "object" and not (declared is None and pointer in mod.object_constrained):
@@ -1670,6 +1675,7 @@ def lower_object(
         mod,
         built,
         Shape(props, frozenset(required)),
+        position,
         bases=bases,
         body_lines=body_lines,
     )
@@ -1771,6 +1777,7 @@ def lower_composition(
     name: str,
     pointer: str,
     mod: Module,
+    position: Position,
     *,
     bases: tuple[str, ...] = (),
 ) -> str:
@@ -1820,7 +1827,7 @@ def lower_composition(
     every keyword the inherited declaration states, with the same value, and adds at
     least one more.  A restatement that says something DIFFERENT about the instance is a
     conflict and the document is refused.  A restatement that says the same thing or
-    nothing is the subclass's field by its ANNOTATIONS alone, over the base's own type:
+    nothing is the subclass's field by its annotations alone, over the base's own type:
     the node where the two agree, the base's decided field where the restatement states
     no constraint at all.  :func:`_restatement` is the whole of that decision, and it is
     SYMMETRIC, so there is no order-dependent "last wins" to come back to -- a generator
@@ -1864,7 +1871,7 @@ def lower_composition(
     # ``media-buy/legacy-purchase-continuation-input.json#/properties/accepted_losses``,
     # a composing ARRAY, was reported on ``items`` with "a later D2 row does", which
     # promises a row for an array keyword at a node no array row will ever see.  The same
-    # misattribution ``union.ROOT_HANDLED`` measured at 55 of 156 and fixed the same way.
+    # misattribution ``union.ROOT_CLAIMS`` measured at 55 of 156 and fixed the same way.
     # Measured over every node of every portable document: **4 composing nodes state a
     # non-object type and all 4 state ``array``**; all 4 already refused here, so the
     # order moves no document and changes the reported keyword for one.
@@ -1875,9 +1882,9 @@ def lower_composition(
             f"an allOf of type {doc['type']!r} composes no object",
             kind=Kind.VERDICT,
         )
-    stated = rules_at(doc)
+    stated = rules_at(doc, position=position)
     _refuse_a_combinator_of_shapes(doc, pointer, stated.screen)
-    check_keywords(doc, pointer, COMPOSING | stated.screen)
+    check_keywords(doc, pointer, position, COMPOSING | stated.screen, mod=mod)
 
     conjunct_bases: list[str] = []
     inherited: dict[str, dict] = {}
@@ -1946,24 +1953,34 @@ def lower_composition(
         where, conjunct = unread.pop(0)
         if not isinstance(conjunct, dict):
             raise Refusal("allOf", where, "a conjunct that is not a schema", kind=Kind.VERDICT)
-        keys = {k for k in conjunct if k not in ANNOTATIONS and not k.startswith("x-")}
-        # **A name draft-07 does not DEFINE contributes nothing, and the walk says so.**
-        # Section 7's ``errorMessage`` row states it for the one name that occurs: "it
-        # has no Pydantic rendering, and a conjunct carrying one contributes nothing, so
-        # the drop is reported rather than silent".  ``media-buy/sync-catalogs-request``
-        # at ``/allOf/1`` states it beside a ``not``, and ``min(keys)`` reported the
-        # document on ``errorMessage`` with ``DEFERRED`` -- a deferral promising a row
-        # for a name no row can ever lower, which is exactly what :func:`_why` exists to
-        # stop saying about a non-keyword.
+        keys = set(declaring(conjunct, Position.CONJ))
+        # **A key whose CELL refuses contributes nothing to a conjunct, and the walk
+        # says so.**  Section 7's ``errorMessage`` row states it for the one name that
+        # occurs: "it has no Pydantic rendering, and a conjunct carrying one
+        # contributes nothing, so the drop is reported rather than silent".
+        # ``media-buy/sync-catalogs-request`` at ``/allOf/1`` states it beside a
+        # ``not``, and ``min(keys)`` reported the document on ``errorMessage`` with
+        # ``DEFERRED`` -- a deferral promising a row for a name no row can ever lower.
+        #
+        # Read off the cell rather than off draft-07's meta-schema, which is what this
+        # asked before: the meta-schema answers "is this a keyword", and the question
+        # is "does this keyword contribute anything here".  A key with NO ROW is not
+        # dropped -- it refuses below, because a keyword the bundle did not use before
+        # could constrain anything.
         #
         # Reported rather than silent, and reported on the MODULE rather than raised: a
         # drop is not a refusal (the document still emits) and it is not nothing (a
         # reader has to be able to see that the class does not carry the name).
         # :attr:`Module.carries_nothing` is that channel and ``emit`` prints it.
-        foreign = {k for k in keys if k not in DRAFT07}
+        foreign = {
+            k
+            for k in keys
+            if (c := keywords.cell(k, Position.CONJ)) is not None
+            and c.effect is keywords.Effect.REFUSE
+        }
         if foreign:
             mod.carries_nothing.extend(
-                f"{where}: {k}: draft-07 defines no such keyword, so it constrains no "
+                f"{where}: {k}: section 7 refuses this keyword, so it constrains no "
                 "instance and the class carries nothing for it (section 2, 'a keyword "
                 "we cannot express': a name that cannot constrain an instance compiles "
                 "to nothing)"
@@ -2039,16 +2056,20 @@ def lower_composition(
         # Screened by the conjunct's OWN ``screen`` at its OWN pointer, so a conjunct
         # carrying a combinator of SHAPES is not admitted here and refuses below --
         # rather than being emitted with the combinator dropped.
-        screen = rules_at(conjunct).screen
+        screen = rules_at(conjunct, position=Position.CONJ).screen
         if keys <= INLINE | screen | CONJ_COMPOSES:
-            # ``foreign`` is handed to the screen as HANDLED, because this arm has
+            # ``foreign`` is handed to the screen as CLAIMED, because this arm has
             # already decided what happens to it: it is dropped and reported.  Left
             # out, ``check_keywords`` walks ``sorted(node)`` and refuses on the very
             # name the drop above accounted for, which loses the document and leaves
             # the drop record unwritten -- measured on
             # ``media-buy/sync-catalogs-request.json``.
             check_keywords(
-                conjunct, where, set(INLINE) | screen | set(CONJ_COMPOSES) | foreign
+                conjunct,
+                where,
+                Position.CONJ,
+                set(INLINE) | screen | set(CONJ_COMPOSES) | foreign,
+                mod=mod,
             )
             if conjunct.get("type") not in (None, "object"):
                 raise Refusal(
@@ -2165,7 +2186,7 @@ def lower_composition(
             kind=Kind.DEFERRED,
         )
 
-    stated = rules_at(doc, *conjunct_rules)
+    stated = rules_at(doc, *conjunct_rules, position=position)
 
     own: dict[str, dict] = {}
     #: The keys whose field is the inherited one wearing this document's annotations.
@@ -2390,6 +2411,7 @@ def lower_composition(
             frozenset(required | inherited_required),
             decided=inherited_fields,
         ),
+        position,
         bases=(*bases, *conjunct_bases),
         rule_nodes=conjunct_rules,
     )
@@ -2472,19 +2494,23 @@ def _symbols(decided: Type) -> set[str]:
 def _constraining(node: dict) -> dict:
     """What a declaration says about the INSTANCE.
 
-    ``default``, ``description`` and the rest of ``ANNOTATIONS`` annotate the node
-    without constraining anything, so a declaration holding only those says
-    nothing and cannot narrow.  That is precisely the shadow: the three
+    ``default``, ``description`` and every other key whose CELL carries nothing
+    annotate the node without constraining anything, so a declaration holding only
+    those says nothing and cannot narrow.  That is precisely the shadow: the three
     ``responsive_creative.json`` restatements are a ``default`` plus a
     ``description`` and nothing else.
+
+    Read at PROP, which is the position every caller asks it at: a restatement is a
+    property's declaration against the base's.
     """
-    return {k: v for k, v in node.items() if k not in ANNOTATIONS and not k.startswith("x-")}
+    return declaring(node, Position.PROP)
 
 
 #: The annotations a FIELD renders, so the two a restatement can differ about in a way
 #: the comparison sees.  :func:`fields` reads exactly these off the declaration --
 #: ``description`` into ``Field(description=...)`` and ``default`` into the field's
-#: default -- and the rest of ``ANNOTATIONS`` (``title``, ``$comment``, ``$id``,
+#: default -- and the rest of the keys whose cell carries nothing (``title``,
+#: ``$comment``,
 #: ``$schema``) reach nothing on a field, so a restatement differing only in one of
 #: those renders the same field and states nothing to anyone.
 RENDERED = ("default", "description")
@@ -2602,7 +2628,7 @@ def _intersection(
     restatement is a bare ``{"contains": {"const": "create_media_buy"}}`` over a base's
     ``{"type": "array", "items": {...}, "uniqueItems": true}`` -- decided alone it is a
     TYPELESS node the array row cannot read, and decided as the intersection it is an
-    array that carries the ``contains`` (``lower.containers._ARRAY_HANDLED``).
+    array that carries the ``contains`` (``lower.containers._ARRAY_CLAIMS``).
 
     **A keyword is dropped from the base where the child states the same AXIS and not
     only the same KEY**, which is :data:`_AXES` and is what keeps the merge from writing
@@ -2979,7 +3005,7 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided:
     symbol = mod.root + class_name(key)
     mod.resolving.append(pointer)
     try:
-        return decide(node, pointer, symbol, mod)
+        return decide(node, pointer, symbol, mod, Position.DEF)
     finally:
         mod.resolving.pop()
 
