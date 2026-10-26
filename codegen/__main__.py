@@ -2,15 +2,13 @@
 
     python -m codegen --bundle schemas/cache/3.2 core/pagination-request.json
 
-The committed tree is the same command over this step's whole population, which
-is derived from the bundle and never listed by hand (``tests/test_emit.py``
-grades the tree against exactly this):
-
-    python -m codegen --bundle schemas/cache/3.2 $(python -c 'from pathlib \
-      import Path; from codegen import bundle; b = Path("schemas/cache/3.2"); \
-      print(*[d for d in bundle.portable(b) if bundle.is_leaf_object(bundle.read(b, d)) \
-      or bundle.references_a_property(bundle.read(b, d)) \
-      or bundle.composes_at_the_root(bundle.read(b, d))])')
+The committed tree is the same command over the steps' whole population, which is
+derived from the bundle and never listed by hand.  The predicates it is the union of
+live in ``tests/populations.py`` and ``tests/test_emit.py``'s ``population()`` is the
+union -- ``docs/plan/architecture.md`` §5 puts them there ("the document-set predicates
+a step's result was stated over are the tests' business and live under ``tests/``"), so
+this package names no population and the one the tree is graded against is the one the
+suite counts.
 
 A document this command does not name is still emitted when a named one
 REFERENCES it: a module cannot import a symbol from a module no run wrote, so

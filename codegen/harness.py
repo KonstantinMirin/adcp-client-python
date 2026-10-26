@@ -93,7 +93,7 @@ from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
 from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef
-from codegen import compiler, dump_exemptions, keywords
+from codegen import bundle, dump_exemptions, keywords
 from codegen.keywords import Position
 
 # --------------------------------------------------------------------------- #
@@ -435,18 +435,24 @@ _DESCEND_MAP = ("properties", "$defs", "definitions", "patternProperties", "depe
 _DESCEND_LIST = ("oneOf", "anyOf", "allOf", "prefixItems")
 
 
-#: ``compiler.escape_key``, not a second copy: a pointer segment is spelled by four
+#: ``bundle.escape_key``, not a second copy: a pointer segment is spelled by four
 #: readers and the two halves have to agree about a key carrying a ``/``.
-_esc = compiler.escape_key
+#:
+#: **It was ``compiler.escape_key``, and that import is what kept ``codegen.compiler``
+#: in §9's permitted set.**  §11 puts a pointer speller in the SOURCE layer, so §14
+#: step 5 moved the pair to ``codegen/bundle.py`` -- a module §9 permits by name, "for
+#: the record and the document set" -- and the verifier now imports no module of the
+#: walk at all.
+_esc = bundle.escape_key
 
 
 def at(doc: Any, pointer: str) -> Any:
     """Dereference a JSON Pointer against a document.
 
-    ``compiler.node_at`` is the one reading, beside ``escape_key``'s inverse; this is
+    ``bundle.node_at`` is the one reading, beside ``escape_key``'s inverse; this is
     the verifier's name for it.
     """
-    return compiler.node_at(doc, pointer)
+    return bundle.node_at(doc, pointer)
 
 
 def _nodes(schema: Any, pointer: str = "") -> list[tuple[str, dict]]:

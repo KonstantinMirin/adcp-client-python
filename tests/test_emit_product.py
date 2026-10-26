@@ -30,6 +30,7 @@ does not have.
 from __future__ import annotations
 
 import importlib
+from unittest import mock
 import json
 import shutil
 import sys
@@ -40,12 +41,27 @@ import pydantic
 import pytest
 
 from adcp.types import _base, constraints
-from codegen import bundle, compiler, emit, ir, keywords, render
+from codegen import bundle, compiler, emit, ir, keywords, refusal, render
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, compare_schema
-from codegen.refusal import Refusal
+from codegen.lower import union
+from codegen.refusal import Kind, Refusal
+import populations
 
 from tests.nodeset import claimed, partitions, ratchet
+
+#: The seven population predicates, in the order their steps landed.  Read off
+#: ``tests/populations.py`` rather than off ``emit.ROWS``, which §14 step 5 deleted: the
+#: walk dispatches on a node's KIND at every position now, so there is no table of
+#: selectors and no second reading of a root's kind for a test to count.
+ROOT_POPULATIONS = (
+    populations.is_object_root,
+    populations.is_scalar_root,
+    populations.is_enum_root,
+    populations.composes_at_the_root,
+    populations.union_root,
+    populations.is_container_root,
+)
 
 #: A FLOOR over THIS step's 599-document population, which is NOT the whole-bundle
 #: figure: a count is evidence for its own population and the two have been confused.
@@ -65,7 +81,7 @@ ENVELOPE = "core/version-envelope.json"
 
 def composing() -> list[str]:
     """This step's population, read through the row's own selector."""
-    return [d for d in bundle.portable(BUNDLE) if bundle.composes_at_the_root(bundle.read(BUNDLE, d))]
+    return [d for d in bundle.portable(BUNDLE) if populations.composes_at_the_root(bundle.read(BUNDLE, d))]
 
 
 # --------------------------------------------------------------------------- #
@@ -128,7 +144,7 @@ def test_the_union_clause_is_what_keeps_the_rows_disjoint() -> None:
         if isinstance((doc := bundle.read(BUNDLE, d)).get("allOf"), list)
         and any(k in doc for k in ("oneOf", "anyOf"))
     ]
-    both = [d for d in key_test if bundle.union_root(bundle.read(BUNDLE, d))]
+    both = [d for d in key_test if populations.union_root(bundle.read(BUNDLE, d))]
     claimed("a root allOf beside the oneOf/anyOf KEY", key_test, inside=bundle.portable(BUNDLE))
     claimed("a root allOf beside a UNION, which is what decides it", both, inside=key_test)
     # The documents the two readings DISAGREE about are step 4's and nobody else's, and
@@ -139,14 +155,20 @@ def test_the_union_clause_is_what_keeps_the_rows_disjoint() -> None:
     rule_shaped = sorted(set(key_test) - set(both))
     claimed("documents the KEY test and union_root disagree about", rule_shaped, inside=key_test)
     assert set(rule_shaped) <= set(composing()), rule_shaped
+    # **The 14 are counted by step 4's population and by NO other**, which is the claim
+    # this loop makes.  It read ``emit.ROWS`` and §14 step 5 deleted the table, so what
+    # it asks now is the measurements in ``tests/populations.py``: the walk reaches one
+    # arm per node by construction, and what a test can still get wrong is counting one
+    # document under two steps.
     for d in rule_shaped:
         doc = bundle.read(BUNDLE, d)
-        assert [s.__name__ for s, _ in emit.ROWS if s(doc)] == ["composes_at_the_root"], d
+        counting = [p.__name__ for p in ROOT_POPULATIONS if p(doc)]
+        assert counting == ["composes_at_the_root"], d
     # And the disjointness the clause exists for still holds, over the population
     # that decides it.
     assert not set(both) & set(composing())
     for d in both:
-        assert not bundle.composes_at_the_root(bundle.read(BUNDLE, d)), d
+        assert not populations.composes_at_the_root(bundle.read(BUNDLE, d)), d
 
 
 def test_a_required_only_conjunct_has_no_population_so_the_arm_is_not_built() -> None:
@@ -192,21 +214,31 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
             for d in docs
             if bundle.is_leaf_object(read(d))
             or bundle.references_a_property(read(d))
-            or bundle.composes_at_the_root(read(d))
+            or populations.composes_at_the_root(read(d))
         }
     )
     claimed("this step's population", pop, inside=docs)
 
     with_row = emit.emit(BUNDLE, pop)
-    # Removing THIS row from the merged table, rather than emptying it: the other
-    # rows are other steps' and a verdict read with them absent is a verdict about
-    # a table nobody runs.
-    saved = emit.ROWS
-    try:
-        emit.ROWS = tuple(r for r in saved if r[0] is not bundle.composes_at_the_root)
+    # Removing THIS ARM at THIS POSITION, rather than emptying the walk: the other
+    # arms are other steps' and a verdict read with them absent is a verdict about a
+    # compiler nobody runs.
+    #
+    # **It patched ``emit.ROWS``, and §14 step 5 deleted the table.**  §5: "Root and
+    # non-root are one path."  So the row this test measures is now the ``allOf`` arm of
+    # ``emit._decide`` AT ROOT, and the stub is scoped to that position for the same
+    # reason the row's selector carried a root clause: a NESTED ``allOf`` is a different
+    # step's measurement (``test_emit.py`` counts it), and stubbing the whole arm would
+    # take those documents out of ``without`` as well and inflate this row's delta.
+    composing_at_a_root = emit.lower_composition
+
+    def without_the_root_arm(node, name, pointer, mod, position, **kw):  # noqa: ANN001,ANN202
+        if position is keywords.Position.ROOT:
+            raise Refusal("allOf", pointer, refusal.DEFERRED_TO_A_LATER_ROW, kind=Kind.DEFERRED)
+        return composing_at_a_root(node, name, pointer, mod, position, **kw)
+
+    with mock.patch.object(emit, "lower_composition", without_the_root_arm):
         without = emit.emit(BUNDLE, pop)
-    finally:
-        emit.ROWS = saved
 
     claimed("bundle.portable", docs)
     # N over this population on the merged table (43 when this lane measured it
@@ -426,27 +458,45 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     assert at_root == [], at_root
 
 
-def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzzle() -> None:
-    """The table is unordered, graded by registering a second row that collides.
+def test_a_composing_root_reaches_one_arm_and_nothing_can_claim_it_twice() -> None:
+    """**The build failure this graded is unrepresentable now, and that is §5.**
 
-    Unreachable at one row, which is exactly why it gets a test that manufactures
-    the second: an ordered chain would make precedence a property of where a lane
-    inserted its line, and five lanes are inserting lines now.  The failure is an
-    ``AmbiguousRoot`` and not a ``Refusal``, because a document two rows claim is a
-    defect in their SELECTORS and a refusal would file it against the document and
-    let the build pass.
+    It manufactured a second ``emit.ROWS`` entry colliding with step 4's and asserted
+    ``emit.AmbiguousRoot``, because an ordered chain would make precedence a property of
+    where a lane inserted its line.  §14 step 5 deletes the table -- "root and non-root
+    are one path", so a root goes to ``emit._decide`` like every other node -- and a
+    dispatch on a node's kind reaches exactly ONE arm.  There is no table for two
+    selectors to collide in, so a build failure guarding against one is not a check that
+    was dropped.
+
+    What is a real question, and what this now asserts, is WHICH arm a root carrying
+    ``allOf`` beside a union keyword reaches.  The two arms are ordered, and §5's
+    ``allOf`` row decides the order: "ROOT with no union beside → ``$ref`` conjuncts are
+    BASES ...; **beside a union → the same, onto the base**".  A union keyword therefore
+    selects the KIND and the ``allOf`` is a sibling the union handler consumes
+    (``nodes.Union.siblings``), so the union arm is read FIRST -- which is exactly the
+    clause ``populations.composes_at_the_root`` carries, now read once by the walk
+    instead of twice.
     """
-    doc = bundle.read(BUNDLE, "media-buy/get-products-request.json")
-    assert bundle.composes_at_the_root(doc)
-    saved = emit.ROWS
-    try:
-        emit.ROWS = (*saved, (bundle.composes_at_the_root, emit._composing_root))
-        with pytest.raises(emit.AmbiguousRoot, match="composes_at_the_root"):
-            emit.lower_document("media-buy/get-products-request.json", doc)
-    finally:
-        emit.ROWS = saved
-    # and the same document goes back to one row once the table is restored
-    assert len([r for r in emit.ROWS if r[0](doc)]) == 1
+    document = "media-buy/get-products-request.json"
+    doc = bundle.read(BUNDLE, document)
+    assert populations.composes_at_the_root(doc)
+    counting = [p.__name__ for p in ROOT_POPULATIONS if p(doc)]
+    assert counting == ["composes_at_the_root"], counting
+    # A root carrying BOTH reaches the union arm, which is what the ordering decides.
+    # Graded on the bundle's own documents: every one of them is counted by step 5 and
+    # not by step 4, and the refusal names a keyword the UNION handler reads.
+    both = [
+        d
+        for d in bundle.portable(BUNDLE)
+        if isinstance((raw := bundle.read(BUNDLE, d)).get("allOf"), list)
+        and populations.union_root(raw)
+    ]
+    claimed("roots carrying allOf beside a union", both, inside=bundle.portable(BUNDLE))
+    out = emit.emit(BUNDLE, both)
+    for d in both:
+        assert d in out.refusals, d
+        assert out.refusals[d]["keyword"] in union.ROOT_CONJUNCTS, (d, out.refusals[d])
 
 
 # --------------------------------------------------------------------------- #

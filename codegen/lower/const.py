@@ -13,7 +13,7 @@ rather than a result of one:
 * **1,486** ``const`` nodes over **347** documents;
 * **0** of them at a document ROOT -- which is why this row is not an entry in
   ``emit.ROWS`` and adds no selector to ``codegen.bundle``.  A root carrying one is
-  already selected by ``bundle.is_scalar_root`` (its ``type`` names a scalar and it
+  already selected by ``populations.is_scalar_root`` (its ``type`` names a scalar and it
   declares no kind of its own) and would reach this branch through D2's alias row, so
   the upgrade path for a bundle that grows one is an exclusion clause rather than a
   new row;

@@ -43,6 +43,7 @@ from pydantic import ValidationError
 
 from codegen import bundle, emit
 from codegen.refusal import Kind, Refusal
+import populations
 
 from tests.nodeset import claimed, partitions
 
@@ -1273,7 +1274,7 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
             for d in bundle.portable(BUNDLE)
             if bundle.is_leaf_object(read(d))
             or bundle.references_a_property(read(d))
-            or bundle.composes_at_the_root(read(d))
+            or populations.composes_at_the_root(read(d))
         }
     )
     reached = set(emit.emit(BUNDLE, pop).emitted)
