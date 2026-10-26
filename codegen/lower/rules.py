@@ -47,6 +47,7 @@ answer.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -112,22 +113,54 @@ class Lowered:
     distinct: tuple[str, ...] = ()
 
 
-def lower(node: dict) -> Lowered:
-    """Every rule one object node states."""
+def lower(
+    sources: Mapping[str, Any],
+    declared: Mapping[str, Any] = {},  # noqa: B006 -- read-only, and the empty mapping is the answer
+    extra_stated: bool = False,
+) -> Lowered:
+    """Every rule one node states, off the three facts a node carries for it.
+
+    ``sources`` is :attr:`codegen.schema.nodes.Base.rules` -- "the rule sources this node
+    carries: ``keyword -> the raw value``, for the keywords whose cell at this position
+    compiles to a RULE" -- and §4 makes this module its only reader.  Two facts are not
+    rule sources and are read beside them, each for a reason stated at its own reduction:
+    ``declared`` because ``uniqueItems`` sits on a node one level DOWN (the array a
+    property holds), and ``extra_stated`` because the ``minProperties`` minimum rides
+    only where the class keeps every key the document would count.
+
+    :func:`lower_declaration` is the same reading asked of a raw declaration, for §2's
+    one declaration-level reader: an ``allOf`` conjunct.
+    """
     out = Lowered()
-    _depends(node, out)
-    _count(node, out)
-    _negated(node, out)
-    _combinator(node, out)
-    _conditional(node, out)
-    _distinct(node, out)
+    _depends(sources, out)
+    _count(sources, out, extra_stated)
+    _negated(sources, out)
+    _combinator(sources, out)
+    _conditional(sources, out)
+    _distinct(declared, out)
     return out
+
+
+def lower_declaration(declaration: Mapping[str, Any], position: Position) -> Lowered:
+    """:func:`lower`, asked of a raw DECLARATION: an ``allOf`` conjunct's rules.
+
+    The sources are read off the table at the conjunct's own position, which is what
+    ``schema.parse`` does for a node, so the two readings are one reading of one table.
+    """
+    sources = KEYWORDS(position)
+    if presence_only(declaration):
+        sources |= compiler.combinators(position)
+    return lower(
+        {k: v for k, v in declaration.items() if k in sources},
+        declaration.get("properties") if isinstance(declaration.get("properties"), dict) else {},
+        "additionalProperties" in declaration,
+    )
 
 
 # --------------------------------------------------------------------------- #
 # the step-5 boundary, which is also the selector's per-node test
 # --------------------------------------------------------------------------- #
-def presence_only(node: dict) -> bool:
+def presence_only(node: Mapping[str, Any]) -> bool:
     """Is every combinator at ``node`` a statement about key PRESENCE?
 
     The one question that decides between step 5's row and this one, asked per node
@@ -162,7 +195,7 @@ def _required_only(branch: Any) -> bool:
 # --------------------------------------------------------------------------- #
 # one reduction per keyword family
 # --------------------------------------------------------------------------- #
-def _depends(node: dict, out: Lowered) -> None:
+def _depends(node: Mapping[str, Any], out: Lowered) -> None:
     """draft-07 ``dependencies``, the list-of-names form.
 
     Sorted by trigger: the keyword's value is a JSON object, so document order is dict
@@ -180,7 +213,7 @@ def _depends(node: dict, out: Lowered) -> None:
             out.rules.append(Dependencies(trigger, names))
 
 
-def _count(node: dict, out: Lowered) -> None:
+def _count(node: Mapping[str, Any], out: Lowered, extra_stated: bool) -> None:
     """``minProperties`` / ``maxProperties``, counted over the keys that arrived.
 
     **The MINIMUM is written only where the class KEEPS every key the document would
@@ -201,21 +234,21 @@ def _count(node: dict, out: Lowered) -> None:
     over-refuse.  Under-refusing is what D4 already says the constructor may do.
     """
     lo, hi = (_whole(node.get(k)) for k in ("minProperties", "maxProperties"))
-    if "additionalProperties" not in node:
+    if not extra_stated:
         lo = None
     if lo is None and hi is None:
         return
     out.rules.append(PropertyCount(minimum=lo, maximum=hi))
 
 
-def _negated(node: dict, out: Lowered) -> None:
+def _negated(node: Mapping[str, Any], out: Lowered) -> None:
     groups = _required_groups(node.get("not"))
     if not groups:
         return
     out.rules.append(ForbiddenGroups(tuple(groups)))
 
 
-def _combinator(node: dict, out: Lowered) -> None:
+def _combinator(node: Mapping[str, Any], out: Lowered) -> None:
     """``oneOf`` / ``anyOf`` over ``required``: which groups of keys may be present.
 
     Only the all-``required``-only form, which is :func:`presence_only`'s test and the
@@ -238,7 +271,7 @@ def _combinator(node: dict, out: Lowered) -> None:
         out.rules.append(RequiredGroups(groups, keyword))
 
 
-def _distinct(node: dict, out: Lowered) -> None:
+def _distinct(declared: Mapping[str, Any], out: Lowered) -> None:
     """``uniqueItems: true`` on an array this node holds as a property.
 
     The one keyword here that is read one level down, because D2 puts the rule on the
@@ -254,7 +287,7 @@ def _distinct(node: dict, out: Lowered) -> None:
     """
     claimed = [
         key
-        for key, declaration in (node.get("properties") or {}).items()
+        for key, declaration in declared.items()
         if isinstance(declaration, dict)
         and declaration.get("type") == "array"
         and declaration.get("uniqueItems") is True
@@ -265,7 +298,7 @@ def _distinct(node: dict, out: Lowered) -> None:
     out.rules.extend(UniqueItems(key) for key in claimed)
 
 
-def _conditional(node: dict, out: Lowered) -> None:
+def _conditional(node: Mapping[str, Any], out: Lowered) -> None:
     when = _clauses(node.get("if"))
     if when is None:
         return
