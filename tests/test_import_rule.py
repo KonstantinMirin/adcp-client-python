@@ -24,9 +24,12 @@ What remains are the two boundaries the architecture decides on their own merits
   model layer is one-way: the walk DECIDES and the renderer WRITES.  A node's
   decision expressed as a ``DataType``, a ``Field`` or an ``Annotated`` is a decision
   made in the renderer's vocabulary, which is how a rendering detail comes to decide a
-  type.  So :data:`MODEL_LAYER` is importable by the renderer, and by the verifier
-  (which reads emitted classes and is the other side of the boundary), and by nothing
-  else.
+  type.  So :data:`MODEL_LAYER` is importable by ``codegen/render.py``, and by the
+  verifier (which reads emitted classes and is the other side of the boundary), and by
+  nothing else -- with ONE named exception, :data:`MODEL_LAYER_EXCEPTIONS`, which says
+  what forces it and which row retires it.  :data:`SECTION_8_BANS` is the section's own
+  list of paths, asserted to be inside the graded population so an exemption cannot
+  quietly take one of them out of it.
 * **§9 -- no walk in the verifier.**  One body of code deciding what the model states
   and what the document states agrees with itself by construction, so a defect in it
   is green on BOTH sides.  The verifier therefore reads the document of record and the
@@ -84,10 +87,39 @@ PACKAGES = frozenset(
 MODEL_LAYER = frozenset({"pydantic", "pydantic_core", "datamodel_code_generator"})
 
 #: The RENDERER, by path under ``codegen/``: the one module on the walk's side of the
-#: package that may name the model layer (§8).  ``compiler.py`` is today's spelling of
-#: it -- §11 splits it into ``ir.py`` and ``render.py``, and the ban then applies to
-#: ``ir.py`` too.
-RENDERER = frozenset({"compiler.py"})
+#: package that may name the model layer (§8).  ``render.py`` is it, and it is the whole
+#: of §8's exemption -- ``ir.py`` carries the declarations and is banned like the rest.
+RENDERER = frozenset({"render.py"})
+
+#: **§8's ban, by the paths the section names**, so the rule is graded where the document
+#: puts it and not only wherever the exemptions happen to leave: "nothing in
+#: ``schema/``, ``lower/``, ``ir.py``, ``keywords.py`` or ``bundle.py`` imports
+#: ``pydantic``, ``pydantic_core`` or ``datamodel_code_generator``".  Asserted as a
+#: SUBSET of the graded population (:func:`_walk_population`), which is wider -- the
+#: whole package less the renderer and the verifier -- so the named paths cannot fall out
+#: of the grade when a module is added or renamed.  ``schema/`` arrives with §14 step 5
+#: and the prefix already resolves it.
+SECTION_8_BANS = ("lower/", "schema/", "ir.py", "keywords.py", "bundle.py")
+
+#: The ONE module outside :data:`RENDERER` that still names the model layer, with what
+#: forces it.  ``compiler.field_name`` asks what pydantic's ``BaseModel`` carries, because
+#: a document key that spells an attribute of it is no field at all -- measured on
+#: ``core/truncation-sentinel.json``'s ``_truncation``, which was silently absent from the
+#: model -- and the answer is a fact about pydantic, not about the bundle.
+#:
+#: §8's own ban list does not name ``compiler.py``: the section bans the model layer in
+#: ``schema/``, ``lower/``, ``ir.py``, ``keywords.py`` and ``bundle.py``, which is where
+#: §14 steps 5 and 7 distribute this module's contents.  **Step 7 is the row that retires
+#: this entry**, by moving D3's name rules into ``codegen/lower/names.py`` -- a path §8
+#: DOES ban -- so the reading has to become data the naming pass reads rather than an
+#: import the walk makes.  A hand-written entry names itself and can be audited; this
+#: mapping may SHRINK and may not grow.
+MODEL_LAYER_EXCEPTIONS = {
+    "compiler.py": (
+        "field_name reads what pydantic's BaseModel carries; §14 step 7 moves D3's name "
+        "rules into lower/names.py, where §8's ban applies, and has to answer it"
+    ),
+}
 
 #: The VERIFIER, by path under ``codegen/``.  It grades an emitted class, so it reads
 #: the emitted package and therefore pydantic: §8 exempts ``verify/`` by name, and
@@ -103,12 +135,26 @@ VERIFIER = frozenset({"harness.py", "dump_exemptions.py"})
 #: record and the document set; ``codegen.refusal`` is how a refusal the run recorded is
 #: read; ``codegen.dump_exemptions`` is the verifier's own other half.
 #:
-#: ``codegen.compiler`` is the one entry §9 does NOT permit, and it is written here
-#: because ``harness.py`` takes ``compiler.escape_key`` -- a JSON Pointer segment
-#: speller, which §11 puts in the source layer and not in the walk.  A hand-written
-#: entry names itself and can be audited, where a rule wide enough to admit it would
-#: admit the walk as well: this set may SHRINK and may not grow, and §14 step 4
-#: retires this entry by moving the renderer out of ``compiler.py``.
+#: §14 step 4 moved the renderer out of ``compiler.py`` and this set did NOT shrink by
+#: it, because the renderer was never what forced the one entry §9 does not permit:
+#: ``harness.py`` takes ``compiler.escape_key`` and ``compiler.node_at`` -- a JSON Pointer
+#: segment speller and its inverse, which §11 puts in the SOURCE layer (``bundle.py``,
+#: already permitted here) and not in the walk.
+#:
+#: **Moving the pair to ``bundle.py`` today makes the rule greener and the coupling
+#: wider, which is why it waits.**  Measured, as the ``codegen`` modules each import
+#: pulls in: ``codegen.compiler`` reaches 4 (``compiler``, ``ir``, ``keywords``,
+#: ``refusal``), and ``codegen.bundle`` reaches 8 -- those four plus ``bundle``,
+#: ``lower``, ``lower.rules`` and ``lower.union``, because ``bundle`` imports two
+#: LOWERINGS for its root selectors.  §9's reason is that the verifier must not read the
+#: walk, so trading one named import for a transitive reach into ``codegen.lower`` buys
+#: the ratchet a line and costs the section its point.  **§14 step 5 is the row that
+#: retires this entry**: it deletes the root selectors from ``bundle.py`` along with
+#: ``content_key``, ``object_constrained`` and the HANDLED sets, and the pointer speller
+#: can then move to a ``bundle`` that reaches no lowering.
+#:
+#: A hand-written entry names itself and can be audited, where a rule wide enough to
+#: admit it would admit the walk as well: this set may SHRINK and may not grow.
 VERIFIER_MAY_IMPORT = frozenset(
     {
         "codegen.keywords",
@@ -223,8 +269,38 @@ def test_each_rule_has_a_population_and_the_file_sets_are_real() -> None:
     present = {_rel(p) for p in _modules()}
     assert RENDERER <= present, RENDERER - present
     assert VERIFIER <= present, VERIFIER - present
+    assert set(MODEL_LAYER_EXCEPTIONS) <= present, set(MODEL_LAYER_EXCEPTIONS) - present
     assert _walk_population(), "§8 is graded over no module"
     assert _verifier_population(), "§9 is graded over no module"
+
+
+def test_section_8_bans_the_model_layer_where_the_section_names_it() -> None:
+    """§8's named paths are inside the graded population, and the exemptions are not.
+
+    The graded population is derived -- the package less the renderer and the verifier --
+    so a module added under ``lower/`` is banned without anyone listing it.  What a
+    derivation cannot say is that the SECTION's own list is covered: an exemption added
+    by file name could quietly take ``ir.py`` or ``bundle.py`` out of the grade, and the
+    rule would stay green over a smaller set.  So the list is asserted against the
+    population rather than used as it.
+
+    ``schema/`` has no module yet (§14 step 5 writes it) and the prefix is listed anyway:
+    a path with no file contributes nothing here, and the day it has one it is graded
+    without this file changing.
+    """
+    graded = {_rel(p) for p in _walk_population()}
+    named = {rel for rel in graded if rel.startswith(SECTION_8_BANS) or rel in SECTION_8_BANS}
+    assert named, graded
+    for path in SECTION_8_BANS:
+        if path.endswith("/"):
+            continue
+        assert path in graded, (
+            f"§8 bans the model layer in {path} and it is not in the graded population; "
+            f"an exemption has taken it out"
+        )
+    assert not (named & (RENDERER | VERIFIER | set(MODEL_LAYER_EXCEPTIONS))), (
+        "a path §8 bans by name is also exempted"
+    )
 
 
 def _walk_population() -> list[Path]:
@@ -247,8 +323,18 @@ def test_the_walk_does_not_import_the_model_layer(path: Path) -> None:
     ``Annotated`` or a ``DataType`` is, and only the renderer does it, which is why
     the rule is about the IMPORT and not about the string.
     """
-    assert _model_layer_violations(path) == [], (
-        f"{_rel(path)} imports {_model_layer_violations(path)}; §8 puts the model layer "
+    found = _model_layer_violations(path)
+    excuse = MODEL_LAYER_EXCEPTIONS.get(_rel(path))
+    if excuse is not None:
+        # A named exception, graded in the other direction: it must still be VIOLATING,
+        # or it is an entry nothing forces and the set has to shrink.
+        assert found, (
+            f"{_rel(path)} is excused from §8 for {excuse!r} and imports nothing of the "
+            "model layer; MODEL_LAYER_EXCEPTIONS may only shrink, so drop the entry"
+        )
+        return
+    assert found == [], (
+        f"{_rel(path)} imports {found}; §8 puts the model layer "
         f"behind {sorted(RENDERER)} and the verifier, and a node's decision expressed in "
         "the renderer's vocabulary is a rendering detail deciding a type"
     )
@@ -292,6 +378,7 @@ def test_the_rule_catches_each_spelling(tmp_path: Path) -> None:
         ],
         "from codegen import bundle\nfrom codegen.refusal import Refusal": [],
         "from codegen.compiler import escape_key\nimport jsonschema": [],
+        "from codegen import ir, render": ["codegen.ir", "codegen.render"],
     }
     model_cases = {
         "import pydantic": ["pydantic"],
@@ -309,3 +396,141 @@ def test_the_rule_catches_each_spelling(tmp_path: Path) -> None:
     for source, expected in model_cases.items():
         probe.write_text(source + "\n")
         assert _model_layer_violations(probe) == expected, source
+
+
+# --------------------------------------------------------------------------- #
+# §7: the IR is COMPLETE, so nothing before render.py holds a string of Python
+# --------------------------------------------------------------------------- #
+#: The statement kinds a string of PYTHON is.  A string that parses as a bare
+#: expression is prose as far as this rule is concerned -- every docstring and every
+#: refusal detail in the package is one -- so the test asks for a STATEMENT: an
+#: assignment, an annotated assignment, a ``def``, a ``class``, an import, a ``return``.
+#: Those are what the walk used to format: class-body lines
+#: (``_adcp_rules: ClassVar[...] = (...)``, ``_branch_models: ClassVar[...] = ()``), an
+#: alias statement (``X = Annotated[...]``), a module trailer
+#: (``X._branch_models = (...)``) and a root binding
+#: (``strict_validate = strict_alias(...)``).
+PYTHON_STATEMENTS = (
+    ast.Assign,
+    ast.AnnAssign,
+    ast.AugAssign,
+    ast.FunctionDef,
+    ast.AsyncFunctionDef,
+    ast.ClassDef,
+    ast.Import,
+    ast.ImportFrom,
+    ast.Return,
+    ast.For,
+    ast.While,
+    ast.If,
+    ast.With,
+    ast.Raise,
+    ast.Assert,
+)
+
+
+def _string_literals(tree: ast.AST) -> list[tuple[int, str]]:
+    """Every string a module holds, f-strings included, with the line it sits on.
+
+    An f-string is read as its TEMPLATE, with each interpolation replaced by an
+    identifier: an f-string spelling ``_adcp_rules: ClassVar[...] = (`` plus an
+    interpolated body is a Python statement whatever the body holds, and a rule that
+    only looked at plain strings would miss every one of the four texts §7 names,
+    because all four were f-strings.
+    """
+    out: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            out.append((node.lineno, node.value))
+        elif isinstance(node, ast.JoinedStr):
+            out.append(
+                (
+                    node.lineno,
+                    "".join(
+                        part.value
+                        if isinstance(part, ast.Constant) and isinstance(part.value, str)
+                        else "_interpolated"
+                        for part in node.values
+                    ),
+                )
+            )
+    return out
+
+
+def _python_text(path: Path) -> list[str]:
+    """Every string in ``path`` that parses as a Python STATEMENT."""
+    found = []
+    for lineno, text in _string_literals(ast.parse(path.read_text())):
+        try:
+            parsed = ast.parse(text)
+        except (SyntaxError, ValueError):
+            continue
+        if any(isinstance(statement, PYTHON_STATEMENTS) for statement in parsed.body):
+            found.append(f"line {lineno}: {text.splitlines()[0][:90]!r}")
+    return found
+
+
+@pytest.mark.parametrize("path", _walk_population(), ids=_rel)
+def test_nothing_before_the_renderer_holds_a_string_of_python(path: Path) -> None:
+    """§7.  "There is an IR between a decided node and emitted text, and it is complete:
+    nothing before ``render.py`` holds a string of Python."
+
+    That is the section's own word -- COMPLETE -- and it is a test rather than a style
+    note, because the four texts it replaced were each produced by a different module and
+    each for a defensible local reason: ``lower/rules.py`` formatted the ``_adcp_rules``
+    line, ``compiler`` appended it to a class's ``body_lines`` and wrote a root's two
+    binding statements, ``lower/union.py`` wrote the base's four attributes and the
+    module trailer, and ``constraints.py`` wrote the alias module's own statements.  A
+    declaration carrying one is a layer boundary that exists in the docstrings and not in
+    the code.
+
+    Graded over the same population as §8 and in the same file, because the two rules are
+    one judgement from two sides: the walk DECIDES and the renderer WRITES.  §8 is about
+    the import and this is about the output, and a module can satisfy either alone -- a
+    hand-rolled text emitter imports no pydantic at all, and that is the arrangement that
+    dropped three of three schema defaults and all 142 property descriptions.
+
+    Asked of STATEMENTS and not of strings, so a docstring, a refusal detail and a
+    pointer stay what they are; :data:`PYTHON_STATEMENTS` says which kinds and why.
+    """
+    found = _python_text(path)
+    assert found == [], (
+        f"{_rel(path)} holds {found}; §7 says the IR is complete -- a declaration "
+        "carries the decision and codegen/render.py writes every string"
+    )
+
+
+def test_the_python_text_rule_catches_the_four_texts_it_replaced(tmp_path: Path) -> None:
+    """The instrument, on the four texts §7 names and on the strings that stay prose.
+
+    Without this a reader cannot tell the rule from one that resolves nothing, and the
+    package is clean -- so the only exercise the rule would otherwise get is a future
+    violation.  The f-string cases are the ones that matter: all four texts §7 replaced
+    interpolated a decided value, so a rule reading plain strings alone would be green
+    over every one of them.
+    """
+    caught = (
+        'x = "_adcp_rules: ClassVar[tuple[Rule, ...]] = (\\n    )"',
+        'x = f"_adcp_rules: ClassVar[tuple[Rule, ...]] = (\\n{body}    )"',
+        'x = f\'_BRANCH_DISCRIMINATOR: ClassVar[str] = "{on}"\'',
+        'x = f"{symbol} = {annotation}"',
+        'x = f"{symbol}._branch_models = ({names},)"',
+        'x = f\'strict_validate = strict_alias(__adcp_schema__, "{s}", {s})\'',
+        "x = 'def _branch_combinator(cls) -> str:\\n    return 0'",
+    )
+    prose = (
+        '"""A docstring, which parses as an expression and is not a statement."""',
+        'x = "a sibling of $ref, which draft-07 ignores"',
+        'x = f"{pointer}/properties/{key}"',
+        'x = f"two nodes in this document derive the class name {name!r}"',
+        # The one shape that reads like code and is not: a keyword's ``compiles``
+        # sentence quoting the semantics document inside prose.
+        'x = "generically, as `type NonEmptyList[T] = Annotated[list[T], Field(...)]`"',
+    )
+    probe = tmp_path / "probe.py"
+    for source in caught:
+        probe.write_text(source + "\n")
+        assert _python_text(probe), source
+    for source in prose:
+        probe.write_text(source + "\n")
+        assert _python_text(probe) == [], source

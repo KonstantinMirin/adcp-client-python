@@ -40,7 +40,7 @@ import pydantic
 import pytest
 
 from adcp.types import _base, constraints
-from codegen import bundle, compiler, emit, keywords
+from codegen import bundle, compiler, emit, ir, keywords, render
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, compare_schema
 from codegen.refusal import Refusal
@@ -748,8 +748,8 @@ def test_a_lost_inherited_fact_is_reported_as_missing(tmp_path, monkeypatch) -> 
     monkeypatch.setattr(
         compiler,
         "_reused",
-        lambda key, held, source, pointer, mod: compiler.Property(
-            name=key, wire=key, type=compiler.Type("typing.Any"), required=False
+        lambda key, held, source, pointer, mod: ir.Field(
+            name=key, wire=key, type=ir.TypeRef("typing.Any"), required=False
         ),
     )
     # ``shared`` because this probe is graded by the COMPARISON, and only then does
@@ -1202,7 +1202,9 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
         }
         compiler.lower_composition(doc, "Probe", "", mod, keywords.Position.ROOT)
         assert mod.declared[""] == "Probe", (keyword, mod.declared)
-        assert [b for b in mod.blocks if "_adcp_rules" in b], keyword
+        assert [
+            one for one in render.blocks(mod.declarations) if "_adcp_rules" in one.text
+        ], keyword
 
 
 # --------------------------------------------------------------------------- #

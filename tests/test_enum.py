@@ -34,7 +34,7 @@ import pytest
 from pydantic import Field, TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
-from codegen import bundle, compiler, emit, keywords
+from codegen import bundle, compiler, emit, ir, keywords, render
 from codegen.keywords import Position
 from codegen.harness import (
     _entails_type,
@@ -335,11 +335,11 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
     naming function would produce and finding that exact text in the rendering.
     """
     members = (
-        compiler.Member(name="zZ_not_a_name_any_rule_would_pick", value="a"),
-        compiler.Member(name="SECOND", value="b"),
+        ir.Member(name="zZ_not_a_name_any_rule_would_pick", value="a"),
+        ir.Member(name="SECOND", value="b"),
     )
-    text = compiler.render_enum(
-        compiler.Enumeration(name="Probe", kind="string", members=members)
+    text = render.enum(
+        ir.EnumDecl(name="Probe", kind="string", members=members)
     ).text
     assigned = [
         t.id
@@ -570,7 +570,7 @@ def test_a_root_enum_binds_its_schema_and_strict_validate_at_module_scope() -> N
     cls = getattr(module, symbol)
     assert module.__adcp_schema__ == SchemaRef(document, "#")
     assert not hasattr(cls, "strict_validate")
-    assert "class_body_lines" not in (compiler.StrEnum.TEMPLATE_FILE_PATH or "")
+    assert "class_body_lines" not in (render.StrEnum.TEMPLATE_FILE_PATH or "")
 
     member = schema_at(module.__adcp_schema__)["enum"][0]
     assert module.strict_validate(member) is cls(member)
@@ -847,7 +847,7 @@ def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one()
     decided = lower_enum.decide({"type": "integer", "enum": [16, 24, 32]}, "BitDepth", "")
     assert decided.kind == "integer"
     assert [m.name for m in decided.members] == ["V_16", "V_24", "V_32"]
-    text = compiler.render_enum(decided).text
+    text = render.enum(decided).text
     assert text.startswith("class BitDepth(IntEnum):"), text
     scope: dict[str, Any] = {"IntEnum": pyenum.IntEnum}
     exec(compile(text, "<probe>", "exec"), scope)  # noqa: S102 -- the compiler's own output

@@ -2,10 +2,13 @@
 
 ``oneOf``/``anyOf`` over ``required``; ``if``/``then``/``else``; ``dependencies``;
 ``min``/``maxProperties``; ``uniqueItems``; ``not``.  None of them has a field to live
-on, so none can be a ``Field`` kwarg.  Each becomes either a frozen-dataclass
-constructor in the one class-level ``_adcp_rules`` tuple that
-``adcp.types._runtime.RuleBound`` reads, or -- when it is a statement about a VALUE
-rather than about which keys are present -- nothing on the class at all.
+on, so none can be a ``Field`` kwarg.  Each becomes either an INSTANCE of one of
+``adcp.types._runtime``'s frozen dataclasses -- which ``codegen.render`` writes into the
+one class-level ``_adcp_rules`` tuple that ``adcp.types._runtime.RuleBound`` reads -- or,
+when it is a statement about a VALUE rather than about which keys are present, nothing on
+the class at all.  **The rule kinds are declared once, in the runtime** (§2 of the
+semantics document, "rules are after-validators, written once"; §7 of the architecture
+document for why the walk composes values and holds no text).
 
 **Nothing here refuses a document.**  That is D4, and it is the one judgement this
 module makes, so it is stated once rather than per keyword.  The accepted set of every
@@ -47,10 +50,19 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from adcp.types._runtime import (
+    ConditionalRequired,
+    Dependencies,
+    ForbiddenGroups,
+    Match,
+    NegatedConditional,
+    PropertyCount,
+    RequiredGroups,
+    Rule,
+    UniqueItems,
+)
 from codegen import compiler
 from codegen.keywords import Position
-
-RUNTIME_MODULE = "adcp.types._runtime"
 
 #: Everything this module reads off a node with FIELDS: the keywords whose CELL
 #: compiles to a RULE, read off ``codegen.keywords`` at the position asked about.
@@ -81,18 +93,21 @@ _COMBINATORS = ("oneOf", "anyOf")
 class Lowered:
     """What one object node's rules come to.
 
-    ``rules`` is the SOURCE of each constructor, in document order, which is what makes
-    the emitted tuple a function of the document rather than of a dict's iteration
-    (P7).  ``imports`` is ``(module, name)``, the shape ``emit.Module.imports`` holds.
+    ``rules`` holds INSTANCES of the runtime's own frozen dataclasses, in document
+    order, which is what makes the emitted tuple a function of the document rather than
+    of a dict's iteration (P7).  They were constructor expressions as TEXT, and
+    ``docs/plan/architecture.md`` §7 is why they are values: a rule kind is declared
+    ONCE, in ``adcp.types._runtime``, and ``codegen.render`` writes the call and reports
+    the names it uses -- so adding a kind adds a dataclass and a lowering and renames
+    nothing.
     """
 
-    rules: list[str] = field(default_factory=list)
-    imports: set[tuple[str, str]] = field(default_factory=set)
+    rules: list[Rule] = field(default_factory=list)
     #: The property keys whose array this node states is DISTINCT, in document order.
     #: Names only, because the keyword's two consequences belong to the compiler: it
     #: is stripped off the declaration before the array row sees it, and it is
     #: rendered onto the field so the schema comparison grades it
-    #: (``compiler.fields``, ``compiler.Property.distinct``).  A declaration re-cut
+    #: (``compiler.fields``, ``ir.Field.distinct``).  A declaration re-cut
     #: here instead would put the walk's input in two modules.
     distinct: tuple[str, ...] = ()
 
@@ -106,24 +121,7 @@ def lower(node: dict) -> Lowered:
     _combinator(node, out)
     _conditional(node, out)
     _distinct(node, out)
-    if out.rules:
-        out.imports.add((RUNTIME_MODULE, "Rule"))
-        out.imports.add(("typing", "ClassVar"))
     return out
-
-
-def block(rules: list[str]) -> str:
-    """The class-body line that binds the tuple, or nothing when there is no rule.
-
-    The FIRST line carries no indentation and the continuation lines carry their own:
-    this goes through the compiler's ``class_body_lines`` channel, whose template
-    indents the first line of an entry and passes the rest through verbatim (measured,
-    and the reason the shape is asymmetric rather than tidy).
-    """
-    if not rules:
-        return ""
-    body = "".join(f"        {r},\n" for r in rules)
-    return f"_adcp_rules: ClassVar[tuple[Rule, ...]] = (\n{body}    )"
 
 
 # --------------------------------------------------------------------------- #
@@ -179,8 +177,7 @@ def _depends(node: dict, out: Lowered) -> None:
             continue  # the schema-valued form: a conditional, and the schema's own
         names = tuple(r for r in requires if r != trigger)
         if names:
-            out.rules.append(f"Dependencies({trigger!r}, {names!r})")
-            out.imports.add((RUNTIME_MODULE, "Dependencies"))
+            out.rules.append(Dependencies(trigger, names))
 
 
 def _count(node: dict, out: Lowered) -> None:
@@ -208,16 +205,14 @@ def _count(node: dict, out: Lowered) -> None:
         lo = None
     if lo is None and hi is None:
         return
-    out.rules.append(f"PropertyCount(minimum={lo!r}, maximum={hi!r})")
-    out.imports.add((RUNTIME_MODULE, "PropertyCount"))
+    out.rules.append(PropertyCount(minimum=lo, maximum=hi))
 
 
 def _negated(node: dict, out: Lowered) -> None:
     groups = _required_groups(node.get("not"))
     if not groups:
         return
-    out.rules.append(f"ForbiddenGroups({tuple(groups)!r})")
-    out.imports.add((RUNTIME_MODULE, "ForbiddenGroups"))
+    out.rules.append(ForbiddenGroups(tuple(groups)))
 
 
 def _combinator(node: dict, out: Lowered) -> None:
@@ -240,8 +235,7 @@ def _combinator(node: dict, out: Lowered) -> None:
         )
         if not any(groups):
             continue
-        out.rules.append(f"RequiredGroups({groups!r}, {keyword!r})")
-        out.imports.add((RUNTIME_MODULE, "RequiredGroups"))
+        out.rules.append(RequiredGroups(groups, keyword))
 
 
 def _distinct(node: dict, out: Lowered) -> None:
@@ -268,23 +262,20 @@ def _distinct(node: dict, out: Lowered) -> None:
     if not claimed:
         return
     out.distinct = tuple(claimed)
-    out.rules.extend(f"UniqueItems({key!r})" for key in claimed)
-    out.imports.add((RUNTIME_MODULE, "UniqueItems"))
+    out.rules.extend(UniqueItems(key) for key in claimed)
 
 
 def _conditional(node: dict, out: Lowered) -> None:
     when = _clauses(node.get("if"))
     if when is None:
         return
-    spelled = "(" + "".join(f"Match({c!r}, {p!r}, {a!r})," for c, p, a in when) + ")"
-    for keyword, kind in (("then", "ConditionalRequired"), ("else", "NegatedConditional")):
+    clauses = tuple(Match(c, p, a) for c, p, a in when)
+    for keyword, kind in (("then", ConditionalRequired), ("else", NegatedConditional)):
         branch = _branch(node.get(keyword))
         if branch is None or not any(branch):
             continue
         require, forbid = branch
-        out.rules.append(f"{kind}({spelled}, require={require!r}, forbid={forbid!r})")
-        out.imports.add((RUNTIME_MODULE, kind))
-        out.imports.add((RUNTIME_MODULE, "Match"))
+        out.rules.append(kind(clauses, require=require, forbid=forbid))
 
 
 def _whole(value: Any) -> int | None:
