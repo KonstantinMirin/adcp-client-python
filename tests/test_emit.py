@@ -125,7 +125,9 @@ def enums() -> list[str]:
 def composing() -> list[str]:
     """Step 4's population: a root ``allOf`` with no union beside it."""
     return [
-        d for d in bundle.portable(BUNDLE) if populations.composes_at_the_root(bundle.read(BUNDLE, d))
+        d
+        for d in bundle.portable(BUNDLE)
+        if populations.composes_at_the_root(bundle.read(BUNDLE, d))
     ]
 
 
@@ -199,14 +201,20 @@ def container_roots() -> list[str]:
     Also step 6's row in ``emit.ROWS``, and the two being one predicate is the
     point: a row cannot claim a document its step does not count.
     """
-    return [d for d in bundle.portable(BUNDLE) if populations.is_container_root(bundle.read(BUNDLE, d))]
+    return [
+        d
+        for d in bundle.portable(BUNDLE)
+        if populations.is_container_root(bundle.read(BUNDLE, d))
+    ]
 
 
 @functools.cache
 def object_rules() -> list[str]:
     """Step 7's population: an object root whose composition is a presence rule."""
     return [
-        d for d in bundle.portable(BUNDLE) if populations.states_an_object_rule(bundle.read(BUNDLE, d))
+        d
+        for d in bundle.portable(BUNDLE)
+        if populations.states_an_object_rule(bundle.read(BUNDLE, d))
     ]
 
 

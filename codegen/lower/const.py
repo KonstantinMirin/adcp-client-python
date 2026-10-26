@@ -11,12 +11,13 @@ position ``bundle.nodes`` reaches, and each number is an input to a decision bel
 rather than a result of one:
 
 * **1,486** ``const`` nodes over **347** documents;
-* **0** of them at a document ROOT -- which is why this row is not an entry in
-  ``emit.ROWS`` and adds no selector to ``codegen.bundle``.  A root carrying one is
-  already selected by ``populations.is_scalar_root`` (its ``type`` names a scalar and it
-  declares no kind of its own) and would reach this branch through D2's alias row, so
-  the upgrade path for a bundle that grows one is an exclusion clause rather than a
-  new row;
+* **0** of them at a document ROOT.  A root carrying one would reach this lowering
+  through ``emit._decide``'s ``const`` arm like any other node -- §5's "root and
+  non-root are one path" -- and ``emit.lower_document`` would then have no class to
+  wrap, so the upgrade path for a bundle that grows one is the ROOT cell of this arm:
+  §5's ``const`` row already decides it ("where EVERY branch of a root union is a
+  scalar ... the root emits as an alias over the union of their types"), read at a bare
+  root;
 * **0** carrying an ``enum`` beside the ``const``, so the two branches do not overlap
   and their order in ``_decide`` is not a precedence;
 * the whole key vocabulary is ``const`` (826), ``const type`` (397),

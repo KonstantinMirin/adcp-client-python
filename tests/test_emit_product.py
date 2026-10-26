@@ -81,7 +81,11 @@ ENVELOPE = "core/version-envelope.json"
 
 def composing() -> list[str]:
     """This step's population, read through the row's own selector."""
-    return [d for d in bundle.portable(BUNDLE) if populations.composes_at_the_root(bundle.read(BUNDLE, d))]
+    return [
+        d
+        for d in bundle.portable(BUNDLE)
+        if populations.composes_at_the_root(bundle.read(BUNDLE, d))
+    ]
 
 
 # --------------------------------------------------------------------------- #

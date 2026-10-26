@@ -1051,18 +1051,20 @@ def nested(
     ``lower.containers.multi_type`` already builds for a ``type`` LIST, through the same
     ``ir.TypeRef(container="union", ...)``.
 
-    It is reached from ``emit.decide_type`` and NOT through ``emit.ROWS``, for the
-    reason the nested ``allOf`` arm beside it is: ``ROWS`` dispatches on ROOT KIND and
-    is a partition by it, so a keyword at a position no root selector sees has no row to
-    be and no selector to select it.  Measured on the 3.2 bundle, of the NODE'S POSITION
-    and not of the document: of the 32 deferred nested combinators **0 sit at a root**,
-    so no root selector sees one and a row would have claimed none.  (Asked of the
-    document instead, 2 of the 32 have a root ``populations.union_root`` already claims and 14
-    have one ``composes_at_the_root`` claims -- a row claiming the document says nothing
-    about the position inside it, which is the whole of why ``ROWS`` partitions by root
-    kind.)  The other 4 of the 48 deferrals that DO sit at a root are all on
-    ``uniqueItems`` at a root ARRAY, a kind ``populations.is_container_root`` already claims.
-    So ``ROWS`` stays six.
+    It is the SAME ARM of ``emit._decide`` that :func:`lower_union` is, reached at a
+    position that is not ROOT -- §5's "root and non-root are one path", so what the
+    position changes is the arm's ANSWER and not which arm answers.  There was a table
+    of root selectors above this and §14 step 5 deleted it: dispatching on a root's KIND
+    is the second reading of the one the walk makes per node (§11), and both readings
+    were ``lower.union.keyword`` plus ``rules.presence_only`` anyway.
+
+    Measured on the 3.2 bundle, of the NODE'S POSITION and not of the document: of the
+    32 deferred nested combinators **0 sit at a root**.  (Asked of the DOCUMENT instead
+    the answer differs, which is why it is asked of the node: 2 of the 32 have a root
+    step 5's population counts and 14 have one step 4's counts -- a measurement over a
+    document says nothing about the position inside it.)  The other 4 of the 48
+    deferrals that DO sit at a root are all on ``uniqueItems`` at a root ARRAY, which
+    ``containers.array`` refuses at ROOT.
 
     **Each branch is decided by the same walk as any other node**, at its own
     ``<pointer>/<kw>/<i>``, which is what gives a branch that becomes a CLASS its own
