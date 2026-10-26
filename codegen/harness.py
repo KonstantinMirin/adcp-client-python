@@ -3412,18 +3412,28 @@ def unattributed(declared: Sequence[Approximation] | Any) -> list[str]:
 # --------------------------------------------------------------------------- #
 # the UNDERDETERMINED equality: the one approximation no check above can see
 # --------------------------------------------------------------------------- #
-#: The three same-instance combinators, so a union's branches are read where the document
-#: puts them.  ``adcp.types._base.SAME_INSTANCE_LIST`` is the one declaration of the three
-#: and this reads it rather than restating it.
-_COMBINATORS = ("oneOf", "anyOf")
+#: The combinators whose branches a union's dispatch has to separate, DERIVED from the
+#: declaration: ``keywords.combinators`` is "the keywords whose subschemas occupy a BRANCH,
+#: which is what a combinator IS -- so the pair is a reading of the declaration and not a
+#: literal".  Section 9's rule that nothing under ``codegen/`` names a keyword in a set
+#: literal holds of the verifier too, and section 9's own permitted import is what makes it
+#: possible: the keyword table is "the declared semantics, and both halves must read the
+#: same declaration or the grade means nothing".
+#:
+#: At ROOT, because a union's branches are read under the enclosing node's own position and
+#: ROOT is where the derivation enters; the pair is the same at every position the table
+#: gives one.
+_COMBINATORS = tuple(sorted(keywords.combinators(Position.ROOT)))
 
 
-#: The four keywords a subschema under which is at RULE: a conditional's test, its two
-#: consequents, and a negation.  ``adcp.types._base``'s ``SAME_INSTANCE_*`` excludes
-#: ``if`` and ``not`` for the neighbouring reason -- "a ``type`` under ``if`` is a
-#: CONDITION the instance may fail without the document refusing it" -- and ``then`` and
-#: ``else`` are here because section 5 lowers both to a RULE and no type.
-_RULE_KEYWORDS = ("if", "then", "else", "not")
+#: The keywords whose subschema sits at RULE, DERIVED from the descent column rather than
+#: named: ``keywords.descends_at`` is "the ONE descent table, where today there are three",
+#: and a keyword holding a RULE subschema is exactly what a conditional is.  Section 11
+#: names the three descent tables as a repetition with one owner, and the verifier's own
+#: walk of the record is one of the three readers section 3 gives that column.
+_RULE_KEYWORDS = tuple(
+    sorted(k for k, p in keywords.descends_at(Position.ROOT).items() if p is Position.RULE)
+)
 
 
 def _rule_free_nodes(schema: Any, pointer: str = "") -> list[tuple[str, dict]]:
