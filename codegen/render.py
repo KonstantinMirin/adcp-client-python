@@ -75,7 +75,7 @@ import dataclasses
 from collections import defaultdict
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any
 
 from datamodel_code_generator import PythonVersion
 from datamodel_code_generator.model import DataModelFieldBase
@@ -86,6 +86,7 @@ from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
 from datamodel_code_generator.model.pydantic_v2.types import DataTypeManager
 from datamodel_code_generator.reference import Reference
 from datamodel_code_generator.types import DataType
+from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._runtime import Match, Rule
 from codegen import constraints as constraint_names
@@ -172,6 +173,31 @@ def _data_type(decided: ir.TypeRef) -> Any:
             )
         )
     return _TYPES.get_data_type_from_full_path(decided.path, is_custom_type=False)
+
+
+#: **What the MODEL LAYER carries, derived and never listed by hand**: every attribute
+#: a pydantic ``BaseModel`` already has, so a property key spelling one of them is
+#: carried under an alias instead of shadowing it (``names.field_name``).
+#:
+#: It is HERE because §8 draws the boundary here: ``codegen/render.py`` is the only
+#: module under ``codegen/`` outside ``verify/`` that may import ``pydantic``, and the
+#: reading used to sit in ``compiler.field_name`` as the one model-layer import left
+#: outside it -- a shrink-only exception in ``tests/test_import_rule.py``'s set.  §4's
+#: name rules moved to ``codegen/lower/names.py`` in §14 step 7, and ``lower/`` is a
+#: package §8 bans ``pydantic`` from OUTRIGHT, so the reading could not move with them:
+#: it moves the other way, into the one module that already knows the model layer, and
+#: the run hands the SET to the naming pass as data.  The exception shrinks to nothing.
+#:
+#: An emitted class inherits ``AdCPBaseModel`` rather than ``BaseModel``, and the two
+#: differ by the runtime's own additions (``strict_validate``, ``__adcp_schema__``,
+#: ``_adcp_rules``).  ``BaseModel`` is what is read, because that is the surface the
+#: field builder has always been checked against and because the runtime's additions are
+#: this project's own names rather than the model layer's: a key colliding with one of
+#: them is a fact about ``src/adcp/types/_base.py`` and belongs to the row that owns it.
+#: Measured over every property key of the 1,054 portable documents: 0 keys spell an
+#: ``AdCPBaseModel`` attribute that is not a ``BaseModel`` attribute, so the two readings
+#: name the same fields today and the narrower one is the one with a reason.
+RESERVED = frozenset(dir(PydanticBaseModel))
 
 
 def _field(decided: ir.Field) -> DataModelField:
@@ -412,7 +438,15 @@ def klass(decl: ir.ClassDecl) -> Rendered:
     model = BaseModel(
         reference=Reference(path=f"#/{decl.name}", original_name=decl.name, name=decl.name),
         fields=[_field(f) for f in decl.fields],
-        base_classes=[Reference(path=f"#/{b}", original_name=b, name=b) for b in decl.bases],
+        # A base is a ``TypeRef`` (§7) and its ``path`` is the SYMBOL the module writes
+        # -- a class this module declares, or one it imported from a sibling.  The
+        # renderer adds no import for either, for the reason ``TypeRef.local`` adds
+        # none: a cross-document import is derived from the two document paths (D1) and
+        # is the module writer's.
+        base_classes=[
+            Reference(path=f"#/{b.path}", original_name=b.path, name=b.path)
+            for b in decl.bases
+        ],
         custom_base_class="adcp.types._base.AdCPBaseModel",
         description=decl.description or None,
         extra_template_data=extra_template_data,
@@ -552,9 +586,10 @@ def union_install(decl: ir.UnionInstall) -> Rendered:
     template has a slot for a line beside a class), and they declare no name -- so they
     are appended to the module's declarations rather than declared.
     """
+    base = decl.base.path
     return Rendered(
-        text=f"{decl.base}._branch_models = ({', '.join(decl.branches)},)\n"
-        f"{decl.base}.model_rebuild(force=True)"
+        text=f"{base}._branch_models = ({', '.join(b.path for b in decl.branches)},)\n"
+        f"{base}.model_rebuild(force=True)"
     )
 
 
@@ -608,38 +643,19 @@ def blocks(declarations: Sequence[ir.Declaration]) -> list[Rendered]:
     return [declaration(decl) for decl in declarations]
 
 
-class Written(Protocol):
-    """What this module reads off the decision layer's module value, and all it reads.
-
-    ``compiler.Module`` satisfies it.  A Protocol rather than an import of that class,
-    because §11's arrows run ``ir <- render <- emit``: the renderer may not know the
-    decision layer, and what it needs of a module is three attributes.  §7 puts ``Module``
-    in ``codegen.ir`` and §14 step 7 is what gets it there -- it still carries ``bind``,
-    a closure over the run, and the ``Shape``/``Target`` carriers a lowering is handed.
-    """
-
-    # READ-ONLY members, which is what makes ``compiler.Module`` satisfy it: a mutable
-    # Protocol attribute is INVARIANT, so ``declarations: Sequence[...]`` would refuse a
-    # ``list[...]`` and ``imports: Collection[...]`` a ``set[...]`` -- and what this
-    # module does with all three is read them.  Properties say that, and the structural
-    # match then holds for any module value whose fields are at least as narrow.
-    @property
-    def document(self) -> str: ...
-
-    @property
-    def declarations(self) -> Sequence[ir.Declaration]: ...
-
-    @property
-    def imports(self) -> Collection[tuple[str, str]]: ...
-
-
-def module(mod: Written, exports: Sequence[str]) -> str:
+def module(mod: ir.Module, exports: Sequence[str]) -> str:
     """One document's module: the header, the imports, the declarations, ``__all__``.
 
-    ``mod`` is the decision layer's module value (``compiler.Module``): this reads its
-    ``document``, its ``declarations`` and the imports the WALK decided -- a
-    cross-document symbol, a base class, a runtime name -- and unions them with the
-    imports each rendered declaration reports.  The export list is the walk's
+    ``mod`` is :class:`codegen.ir.Module`, the value ``codegen/lower/names.py`` returns:
+    this reads its ``document``, its ``declarations`` and the imports the WALK decided --
+    a cross-document symbol, a base class, a runtime name -- and unions them with the
+    imports each rendered declaration reports.  Every symbol in it is already bound, so
+    the renderer resolves nothing.
+
+    It took a ``Written`` Protocol over three attributes while ``Module`` lived in the
+    decision layer, which §11's arrows (``ir <- render <- emit``) forbid this module to
+    know; §7 puts ``Module`` in ``codegen.ir`` and §14 step 7 is what got it there, so
+    the type is named directly.  The export list is the walk's
     (``emit.exported``), because which names another module may ask for is a decision
     about the bundle and not about text.
     """

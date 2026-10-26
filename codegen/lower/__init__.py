@@ -31,16 +31,20 @@ over ``codegen/schema/nodes.py``'s kinds, which needs ``schema/parse.py``.
 
 So a row answers for its own node kind and is handed everything else:
 
-* the NAME is an input (D3: "a name is an input to a lowering and is never
-  computed inside one");
+* the NAME is not an input at all.  §7 reads D3's rule strictly -- "the walk computes
+  no name, which is the semantics document's own rule that a name is an input to a
+  lowering and is never computed inside one -- read strictly, it is not an input
+  either: it is assigned after" -- so a row declares at a POINTER and
+  ``codegen/lower/names.py`` assigns every symbol in one pass over the finished module;
 * the keyword SCREEN is run by the caller, over the set the row declares as
   a per-row CLAIMS set -- one screen for every row, reading ``codegen.keywords`` at
   the node's position, so a keyword cannot be silently dropped
   by one row's private copy of it;
-* the nested-node decision is :func:`codegen.compiler.decide`, called by name --
-  reference resolution still arrives on the :class:`codegen.compiler.Module` the
-  row is handed, as ``mod.bind``, because that one is a closure over the RUN and
-  not a function anything can name (§14 step 7);
+* the nested-node decision is :func:`codegen.compiler.decide`, called by name, and
+  reference resolution is a LOOKUP on the :class:`codegen.compiler.Module` the row is
+  handed (``mod.target``): §14 step 7 computes the closure and the dependency order in
+  ``emit`` up front, so every target is finished before this document is parsed and
+  the context carries DATA and no callable;
 * the MODULE text -- the header, the imports, the ``__all__`` -- is the module
   writer's.
 

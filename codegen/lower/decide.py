@@ -18,9 +18,12 @@ answer -- a root array is ``RootModel[list[X]]``, a root union is a base plus on
 per branch, a root scalar is a module-level alias -- it changes the HANDLER'S ANSWER at
 ``node.position`` and never which handler answers.
 
-``name_hint`` rides beside the node because §4 of the semantics document makes a name an
-INPUT to a lowering; §14 step 7 moves naming to ``lower/names.py`` as a pass over the
-finished module, and this parameter is what goes then.
+**The dispatch carries NO NAME, and §14 step 7 is what removed the parameter.**  §7 reads
+§4's rule strictly -- "a name is an input to a lowering and is never computed inside one;
+read strictly, it is not an input either: it is assigned after" -- so a handler declares at
+its node's POINTER and ``codegen/lower/names.py`` assigns every symbol in one pass over the
+finished module.  What travels down the tree instead is a HOP per child
+(``compiler.Module.hops``), which is the structural fact §4's nested rule reads.
 """
 
 from __future__ import annotations
@@ -34,7 +37,7 @@ from codegen.schema import nodes
 
 
 def decide(
-    node: nodes.Node, name_hint: str, mod: Module, *, of_a_root_union: bool = False
+    node: nodes.Node, mod: Module, *, of_a_root_union: bool = False
 ) -> Decided | Refusal:
     """What one parsed node IS, routed by its kind -- or the refusal that says it is not.
 
@@ -52,28 +55,28 @@ def decide(
     """
     match node:
         case nodes.Reference():
-            return references.lower(node, name_hint, mod)
+            return references.lower(node, mod)
         case nodes.Enumeration():
-            return enum.lower(node, name_hint, mod, of_a_root_union=of_a_root_union)
+            return enum.lower(node, mod, of_a_root_union=of_a_root_union)
         case nodes.Constant():
-            return const.lower(node, name_hint, mod)
+            return const.lower(node, mod)
         case nodes.Composition():
-            return composition.lower(node, name_hint, mod)
+            return composition.lower(node, mod)
         case nodes.Union():
-            return union.lower(node, name_hint, mod)
+            return union.lower(node, mod)
         case nodes.Object():
-            return objects.lower(node, name_hint, mod)
+            return objects.lower(node, mod)
         case nodes.Mapping_():
-            return containers.mapping(node, name_hint, mod)
+            return containers.mapping(node, mod)
         case nodes.Array():
-            return containers.array(node, name_hint, mod)
+            return containers.array(node, mod)
         case nodes.Scalar():
-            return scalars.lower(node, name_hint, mod)
+            return scalars.lower(node, mod)
         case nodes.MultiType():
-            return containers.multi_type(node, name_hint, mod)
+            return containers.multi_type(node, mod)
         case nodes.Null():
-            return scalars.null(node, name_hint, mod)
+            return scalars.null(node, mod)
         case nodes.Typeless():
-            return scalars.typeless(node, name_hint, mod)
+            return scalars.typeless(node, mod)
         case _:
             assert_never(node)

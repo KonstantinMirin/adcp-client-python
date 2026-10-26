@@ -44,7 +44,7 @@ from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit, ir, keywords, refusal, render
 from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, compare_schema
-from codegen.lower import union
+from codegen.lower import names, union
 from codegen.refusal import Kind, Refusal
 import populations
 from conftest import refusal_from
@@ -257,17 +257,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # assertion is for, and it is what caught the stale target.
     composing_at_a_root = compiler.lower_composition
 
-    def without_the_root_arm(node, name, mod, *rest, **kw):  # noqa: ANN001,ANN202
-        # The POSITION is the node's own field now; a union BRANCH still arrives as a raw
-        # declaration with its position beside it (the staging), so both are read.
-        position = node.position if isinstance(node, schema_nodes.Base) else rest[1]
-        pointer = node.pointer if isinstance(node, schema_nodes.Base) else rest[0]
+    def without_the_root_arm(node, mod, *rest, **kw):  # noqa: ANN001,ANN202
+        # The POSITION and the POINTER are the node's own fields: §14 step 7 took the
+        # name argument off every handler, so a stub standing in for one takes the node
+        # and the module and nothing else.
+        position, pointer = node.position, node.pointer
         if position is keywords.Position.ROOT:
             # RETURNED and not raised: §14 step 6 makes a refusal a value, so a stub
             # standing in for the handler has to answer the way the handler answers or
             # the perturbation is a crash rather than the row's own refusal.
             return Refusal("allOf", pointer, refusal.DEFERRED_TO_A_LATER_ROW, kind=Kind.DEFERRED)
-        return composing_at_a_root(node, name, mod, *rest, **kw)
+        return composing_at_a_root(node, mod, *rest, **kw)
 
     with mock.patch.object(compiler, "lower_composition", without_the_root_arm):
         without = emit.emit(BUNDLE, pop)
@@ -807,9 +807,11 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
                 "allOf": [{"$ref": REF.format("core/probe-base.json")}],
                 "properties": {"n": restated},
             },
-            binder=lambda _uri, _at: compiler.Target(
-                ".base", "ProbeBase", compiler.Shape({"n": base}, frozenset())
-            ),
+            {
+                (REF.format("core/probe-base.json"), "/allOf/0"): compiler.Target(
+                    ".base", "ProbeBase", compiler.Shape({"n": base}, frozenset())
+                )
+            },
         ))
         assert caught.keyword == keyword, (restated, caught.keyword)
         assert "neither matches nor narrows" in caught.detail, caught.detail
@@ -1089,15 +1091,15 @@ def test_the_accepts_and_liveness_checks_are_green_with_a_denominator(
 # --------------------------------------------------------------------------- #
 # what refuses, by name, pointer and keyword
 # --------------------------------------------------------------------------- #
-def _lower(doc: dict, binder=emit._no_binder) -> str | Refusal:  # noqa: SLF001 -- the test is the caller
+def _lower(doc: dict, targets: dict | None = None) -> str | Refusal:
     """One hand-written composing declaration, lowered as the walk lowers it.
 
     §14 step 5 makes a handler take its node, so the declaration goes through
     ``codegen.schema.parse.parse`` at the position it is written for -- the production
     parse, so the node graded here is a node a document can produce.
     """
-    mod = emit.Module(document="probe.json", bind=binder)
-    return compiler.lower_composition(_probe_node(doc, mod), "Probe", mod)
+    mod = emit.Module(document="probe.json", targets=targets or {})
+    return compiler.lower_composition(_probe_node(doc, mod), mod)
 
 
 def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> None:
@@ -1236,9 +1238,9 @@ def test_a_constraining_sibling_of_a_ref_conjunct_compiles_to_nothing_and_is_rep
     shape = compiler.Shape({"a": {"type": "string"}}, frozenset())
     mod = emit.Module(
         document="probe.json",
-        bind=lambda uri, pointer: emit.Target("..core.probe_base", "ProbeBase", shape),
+        targets={("x", "/allOf/0"): emit.Target("..core.probe_base", "ProbeBase", shape)},
     )
-    compiler.lower_composition(_probe_node(doc, mod), "Probe", mod)
+    compiler.lower_composition(_probe_node(doc, mod), mod)
     assert "ProbeBase" in {symbol for _, symbol in mod.imports}
     assert [line for line in mod.carries_nothing if "minimum" in line], mod.carries_nothing
     assert "/allOf/0: minimum" in mod.carries_nothing[0], mod.carries_nothing
@@ -1253,7 +1255,9 @@ def test_a_scalar_root_cannot_be_a_base_and_refuses_rather_than_writing_the_modu
     cannot mistake an alias for a class.
     """
     doc = {"title": "Probe", "type": "object", "allOf": [{"$ref": "x"}]}
-    caught = refusal_from(_lower(doc, lambda uri, pointer: emit.Target("..core.brand_id", "BrandID", None)))
+    caught = refusal_from(
+        _lower(doc, {("x", "/allOf/0"): emit.Target("..core.brand_id", "BrandID", None)})
+    )
     assert caught.keyword == "allOf"
     assert "cannot be a base" in caught.detail
 
@@ -1309,10 +1313,7 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
         ("if", {"required": ["a"]}, {"then": {"required": ["b"]}}),
         ("oneOf", [{"required": ["a"]}, {"required": ["b"]}], {}),
     ):
-        mod = emit.Module(
-            document="probe.json",
-            bind=emit._no_binder,  # noqa: SLF001 -- the test is the caller
-        )
+        mod = emit.Module(document="probe.json")
         doc = {
             "title": "Probe",
             "type": "object",
@@ -1321,8 +1322,13 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
             keyword: value,
             **also,
         }
-        compiler.lower_composition(_probe_node(doc, mod), "Probe", mod)
-        assert mod.declared[""] == "Probe", (keyword, mod.declared)
+        compiler.lower_composition(_probe_node(doc, mod), mod)
+        # The walk declares at a POINTER and ``lower/names.py`` binds the name (§7), so
+        # the probe asks the pass for the symbol rather than the walk.
+        mod.hops[""] = names.Root("Probe")
+        bound = names.assign(mod)
+        assert not isinstance(bound, Refusal), bound
+        assert bound.symbols[""] == "Probe", (keyword, bound.symbols)
         assert [
             one for one in render.blocks(mod.declarations) if "_adcp_rules" in one.text
         ], keyword
@@ -1608,8 +1614,8 @@ def test_breaking_the_inner_annotation_carrier_reddens_the_comparison(
     monkeypatch.setattr(
         containers,
         "_contents",
-        lambda node, symbol, what, mod: containers._inner(
-            compiler.lower_node(node, symbol, mod), node.pointer, what, mod
+        lambda node, what, mod: containers._inner(
+            compiler.lower_node(node, mod), node.pointer, what, mod
         ),
     )
     cls, text, schema = _emit_probe(
