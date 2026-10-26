@@ -345,6 +345,42 @@ def _conjunction(node: dict, through: str) -> list:
     return out
 
 
+def _cut_to_its_own_word(node: dict) -> dict:
+    """A node whose ``type`` is a LIST, read at the one word a CLASS describes.
+
+    **§8's DUAL of the union-branch pairing rule** (added 2026-10-26): "A class cut out
+    of a type list is paired with its node read at ITS OWN TYPE WORD, not at the whole
+    list.  The union-branch rule adds the root's siblings because the branch describes
+    the same instance the root does; this one subtracts the list's other words for the
+    mirror reason -- the class describes one member of the union and the other members
+    are carried by the field holding it, not by this class."
+
+    The word is ``object``, and it is DERIVED rather than chosen: a type list lowers to
+    one arm per word and ``object`` is the only word an arm can be a CLASS at -- a
+    scalar arm is an annotation, an array arm is a ``list[X]``, a ``null`` arm is
+    ``None`` -- so the node that declares ``properties`` is the one whose object arm is
+    declared, at the node's own pointer, and that arm is what this schema is read for.
+    The gate is ``properties``, because that is what §4's ``type`` row makes an object
+    node a class by; a type list that declares none has no class cut out of it and is
+    handed back untouched (61 of the 62 type-list nodes of this bundle).
+
+    ``core/delivery-metrics.json#/properties/quartile_data`` is the one site and the
+    measured case §8 records: it states ``type: ["object", "null"]``, the field renders
+    ``DeliveryMetricsQuartileData | None``, the ROOT pair passes because
+    ``harness._normalize`` folds the model's ``anyOf`` back into the document's own
+    list, and the nested class reported ``differs /type`` -- ``object`` against
+    ``["object", "null"]`` -- for a fact the parent already carries and the comparison
+    already graded.  The model is faithful at both pointers; only the pairing was wrong.
+
+    It subtracts WORDS and nothing else.  A keyword only another word can carry is that
+    arm's and reaches no class either way (``codegen.schema.parse.ARM``), and a keyword
+    the object word carries is this class's, so there is nothing else to take away.
+    """
+    if not isinstance(node.get("type"), list) or not node.get("properties"):
+        return node
+    return {**node, "type": "object"}
+
+
 def applied_schema(root: dict, pointer: str) -> dict:
     """The node at ``pointer``, carrying the ``type`` the document applies to it.
 
@@ -414,6 +450,11 @@ def applied_schema(root: dict, pointer: str) -> dict:
         node = node[part.replace("~1", "/").replace("~0", "~")]
     if not isinstance(node, dict):
         raise LookupError(f"{pointer} is {type(node).__name__}, not a schema")
+    # §8's DUAL, applied FIRST: it reads the node's OWN ``type``, so it is a statement
+    # about this node and not about anything enclosing it, and the clause below -- which
+    # conjoins an enclosing word only where the node states none -- then sees the word
+    # the class describes rather than the list it was cut from.
+    node = _cut_to_its_own_word(node)
     if ("type" in node or enclosing is None) and not conjoined:
         return node
     applied = node if "type" in node or enclosing is None else {**node, "type": enclosing}

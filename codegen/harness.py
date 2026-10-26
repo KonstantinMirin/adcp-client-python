@@ -3500,6 +3500,37 @@ def _pins(node: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _forbids(node: Mapping[str, Any]) -> frozenset[str]:
+    """The names ``node`` forbids ONE AT A TIME, read off its ``not`` over ``required``.
+
+    **A second spelling of ``codegen.lower.rules``' reduction, over the DOCUMENT**, for
+    the reason :func:`separates` is one of the walk's: a verifier that asked the walk
+    which names a branch forbids would compare the walk's answer with itself.
+
+    ``not: {"required": [n]}`` says ``n`` is not present.  ``not`` over an ``anyOf`` of
+    those says none of them is -- "not (a or b)" is "not a and not b" -- and over an
+    ``allOf`` of them says the same, because every member asserts the presence of its own
+    name.  A group of MORE than one name forbids no single name: "not (a and b)" leaves
+    either one present, so a longer group is read and contributes nothing, which is the
+    same distinction ``adcp.types._runtime.ForbiddenGroups`` draws between its shapes.
+    """
+    found: set[str] = set()
+
+    def groups(sub: Any) -> None:
+        if not isinstance(sub, Mapping):
+            return
+        names = sub.get("required")
+        if isinstance(names, list) and len(names) == 1 and isinstance(names[0], str):
+            found.add(names[0])
+        for keyword in ("anyOf", "allOf"):
+            if isinstance(sub.get(keyword), list):
+                for member in sub[keyword]:
+                    groups(member)
+
+    groups(node.get("not"))
+    return frozenset(found)
+
+
 def separates(a: Mapping[str, Any], b: Mapping[str, Any], a_type: Any, b_type: Any) -> str | None:
     """What tells two branch NODES apart, or ``None`` where nothing does.
 
@@ -3514,14 +3545,21 @@ def separates(a: Mapping[str, Any], b: Mapping[str, Any], a_type: Any, b_type: A
     Section 4's three separators, each read off the branch nodes of the record:
 
     * one property pinned to different single values;
-    * a ``required`` name one branch declares and the other forbids, where the other
-      admits no name outside its own map;
+    * a ``required`` name one branch declares and the other forbids -- BY NAME, through a
+      ``not`` over ``required`` (:func:`_forbids`), which is the idiom §4 itself names
+      ("each branch forbidding a name the other requires"), or by admitting no name
+      outside its own map;
     * scalar branches of different ``type``.
     """
     first, second = _pins(a), _pins(b)
     for key in sorted(set(first) & set(second)):
         if first[key] != second[key]:
             return f"{key!r} is pinned two ways"
+    for one, other in ((a, b), (b, a)):
+        required = {n for n in (one.get("required") or []) if isinstance(n, str)}
+        named = sorted(required & _forbids(other))
+        if named:
+            return f"one branch requires {named} and the other forbids each by name"
     for one, other in ((a, b), (b, a)):
         closed = other.get("additionalProperties") is False and "patternProperties" not in other
         if not closed:
