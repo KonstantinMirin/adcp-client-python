@@ -1733,6 +1733,30 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             # name, and would have passed unchanged while the other arm went
             # unimported.
             choose = scalars.FORMAT_TYPES.get(fmt) if fmt in checked else None
+            # **A URL format beside another string constraint takes the row's own
+            # FALLBACK and selects no type** (§5's group (a), landed at
+            # ``adcp-client-python-10l.20``): "the type is the constrained `str` and the
+            # `format` rides as `json_schema_extra={"format": "uri"}`.  Both facts are
+            # kept and neither half narrows."  So there is no URL type to import, and the
+            # carrier is whichever of the two arms below the position has -- which is
+            # what the ``choose is None`` branch already grades for every other
+            # unselected format.
+            #
+            # ``scalars.selects_a_url_type`` is the PRODUCTION reading, asked here rather
+            # than restated, for the reason the alias NAME is asked of the production
+            # function below: a second reading of "is a type selected here" is how a
+            # check comes to grade a document against a compiler nobody runs.  Measured:
+            # 1 site, ``core/reporting-delivery-capabilities.json`` at
+            # ``/properties/operations_contact/properties/url``, a ``format: uri`` beside
+            # a ``maxLength``.
+            if (
+                choose is not None
+                and fmt in scalars.URL_FORMATS
+                and not scalars.selects_a_url_type(
+                    fmt, {k: node[k] for k in ir.FACTS if k in node}
+                )
+            ):
+                choose = None
             if choose is None:
                 # **Where no type is selected, section 5's ``format`` row has TWO
                 # answers and the position decides which.**  On a FIELD the format
@@ -6581,6 +6605,16 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
             and declaration.get("type") == "array"
             and declaration.get("uniqueItems") is True
         )
+        # **A ROOT MODEL's array is the ROOT and not a property**, which is §5's group
+        # (a) at the position §2 gives it: "A root array is a root model, and a root
+        # model carries a rule tuple exactly as a class does, so `Distinct` and
+        # `AtLeastOne` reach it.  The keyword is enforced, not dropped."  So the
+        # document's own node IS the array, the rule is keyed on the root model's one
+        # pydantic field, and ``want`` is read off that node rather than off a
+        # ``properties`` map the document does not have there.  Landed at
+        # ``adcp-client-python-10l.20``; 4 pairs over the committed tree.
+        if node.get("type") == "array":
+            want = [ir.ROOT_FIELD] if node.get("uniqueItems") is True else []
         got = sorted(
             r.key
             for r in g.model.__dict__.get("_adcp_rules", ())

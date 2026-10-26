@@ -266,16 +266,11 @@ def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
     # stays with the schema half."  That is a different trade from this one -- there the
     # document's two facts are a type and a regex and the row keeps the type; here they
     # are a bound and a format and the fallback keeps both.
-    selects_a_url_type = (
-        fmt is not None
-        and fmt in URL_FORMATS
-        and not sorted(set(constraints) - {"pattern"})
-    )
     if (
         fmt is not None
         and fmt in mod.asserted
         and fmt in FORMAT_TYPES
-        and (fmt not in URL_FORMATS or selects_a_url_type)
+        and (fmt not in URL_FORMATS or selects_a_url_type(fmt, constraints))
     ):
         selected = FORMAT_TYPES[fmt](node.facts)
         if fmt in URL_FORMATS:
@@ -285,6 +280,36 @@ def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
     if path is not None:
         return Decided(_named_alias(path, word, constraints, mod), format=fmt)
     return Decided(ir.TypeRef(SCALAR[word]), constraints, format=fmt)
+
+
+def selects_a_url_type(fmt: str | None, constraints: Mapping[str, Any]) -> bool:
+    """Does a ``uri`` format select a URL TYPE here, or take the row's own fallback?
+
+    §5's ``format`` row names a URL type for ``uri``; §5's group (a) says what happens
+    where the node states another string constraint beside it: "the type is the
+    constrained ``str`` and the ``format`` rides as
+    ``json_schema_extra={"format": "uri"}``.  Both facts are kept and neither half
+    narrows; what is given up is the URL type's parsing, which is not an acceptance
+    fact."  pydantic refuses to apply a string constraint to a URL type at all, so the
+    two readings are exclusive and this is the one function that says which fires.
+
+    ``pattern`` is NOT a constraint for this question, and that is §5's ``pattern`` row
+    rather than an exception here: "On ``format: uri`` → selects the type instead, and
+    the pattern stays with the schema half."  There the document's two facts are a type
+    and a regex and the row keeps the type; here they are a bound and a format and the
+    fallback keeps both.
+
+    **Declared at module scope because a CHECK asks it too.**  ``tests/test_emit.py``'s
+    format check derives the type a format selects from :data:`FORMAT_TYPES` and asserts
+    the module imports it, so it needs the same answer to "is a type selected here" --
+    and a second reading of that is how a check comes to grade a document against a
+    compiler nobody runs.  One function, two readers.
+    """
+    return (
+        fmt is not None
+        and fmt in URL_FORMATS
+        and not sorted(set(constraints) - {"pattern"})
+    )
 
 
 def null(node: nodes.Null, mod: Module) -> Decided | Refusal:
