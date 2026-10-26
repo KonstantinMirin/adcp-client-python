@@ -19,7 +19,7 @@ from pathlib import Path
 
 from adcp.types._base import applied_schema
 
-from codegen import compiler
+from codegen import compiler, keywords
 from codegen.harness import resolve
 from codegen.lower import rules, union
 
@@ -71,13 +71,26 @@ _DESCEND_ONE = (
 )
 _DESCEND_LIST = ("oneOf", "anyOf", "allOf", "prefixItems")
 
-COMPOSITION = ("allOf", "oneOf", "anyOf")
-CONDITIONAL = ("if", "then", "else", "not")
-#: The two keywords holding a bag of named subschemas, named ONCE and in the module
-#: both halves of the walk can import: ``compiler.check_keywords`` admits them at every
-#: node and the selectors below exclude a document declaring one, so a second literal
-#: here is a second place for the pair to drift.
-DEFINITIONS = compiler.DEFINITION_SECTIONS
+#: The combinators and the conditionals, READ OFF the declaration's descent column
+#: rather than named: a combinator holds subschemas at a BRANCH or a CONJ and a
+#: conditional holds one at a RULE, which is what each one IS.  Two literals before
+#: this, and a keyword joining either family had to be written here as well as in the
+#: table (``docs/plan/architecture.md`` §11: the descent column is the one owner).
+_DESCENDS_AT_ROOT = keywords.descends_at(keywords.Position.ROOT)
+COMPOSITION = tuple(
+    k
+    for k, p in _DESCENDS_AT_ROOT.items()
+    if p in (keywords.Position.BRANCH, keywords.Position.CONJ)
+)
+CONDITIONAL = tuple(k for k, p in _DESCENDS_AT_ROOT.items() if p is keywords.Position.RULE)
+#: The two keywords holding a bag of named subschemas, READ OFF the declaration's
+#: descent column rather than named: they are the keywords whose subschemas occupy a
+#: DEF position, which is what a definitions section IS.  ``compiler.check_keywords``
+#: admits them at every node from the same table and the selectors below exclude a
+#: document declaring one, so there is no literal here for the pair to drift from.
+DEFINITIONS = frozenset(
+    k for k, p in keywords.descends_at(keywords.Position.ROOT).items() if p is keywords.Position.DEF
+)
 
 
 def nodes(node: object, pointer: str = "") -> Iterator[tuple[str, dict]]:

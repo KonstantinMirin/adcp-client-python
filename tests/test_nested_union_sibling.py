@@ -1,6 +1,6 @@
 """§6's ``discriminator`` row at a NESTED union, and the sibling screen that admits it.
 
-``salesagent-j3k2l.67``.  ``union.ROOT_HANDLED`` admitted the keyword at a root union
+``salesagent-j3k2l.67``.  ``union.ROOT_CLAIMS`` admitted the keyword at a root union
 with the reason written beside it -- it constrains nothing, so ignoring it cannot make
 the model wider than its document, and it is READ there as the property §4 "Names" takes
 a branch's name from.  ``union.nested``'s screen refused it, on a sentence whose stated
@@ -14,7 +14,7 @@ That mechanism does not reach this keyword, and both halves are graded here:
   CONFIRMS a dispatch key the branches already state -- it does not establish one";
 * the comparison does not look for it, so a model whose node is a bare ``oneOf`` is
   reported ``missing`` nothing at that pointer.  That is asserted BY RUNNING the
-  comparison over a real pair, not by reading ``harness.FACTS``.
+  comparison over a real pair, not by reading the compared set.
 
 A constraining sibling still refuses, which is the perturbation under each assertion: the
 screen was narrowed by one name and not opened.
@@ -67,7 +67,7 @@ def _sites(document: dict) -> list[str]:
 def _nested_sites() -> dict[str, list[str]]:
     """The bundle's NESTED ``discriminator``-beside-a-union sites, by document.
 
-    A ROOT site is left out: ``ROOT_HANDLED`` already admits the keyword there, and this
+    A ROOT site is left out: the table already admits the keyword there, and this
     row is about the other position.
     """
     out = {}
@@ -111,7 +111,7 @@ def test_the_position_this_row_is_about_is_a_real_population() -> None:
 def test_the_comparison_does_not_look_for_the_keyword_at_the_pointer_it_sits_at() -> (
     None
 ):
-    """The exit condition's harness half, RUN rather than read off ``harness.FACTS``.
+    """The exit condition's harness half, RUN rather than read off the compared set.
 
     ``media-buy/outcome-target.json`` is the one document of the population that emits,
     and its union sits at ``/properties/goal`` with the keyword beside it.  The pair is
@@ -299,11 +299,21 @@ def test_the_refusal_sentence_names_no_owner_for_the_position() -> None:
 
 
 def test_the_screen_admits_exactly_the_one_name() -> None:
-    """``NESTED_HANDLED`` is the narrowing, and it is one name.
+    """The narrowing is one name, and the TABLE is where it is written.
 
-    Every other member of §6's table reaches this node through
-    ``compiler.ANNOTATIONS``, which is the set every screen in the generator asks, so a
-    second name here would be a second reading of §6 at one position.
+    This module used to carry a ``NESTED_HANDLED`` set naming ``discriminator`` here,
+    beside ``compiler.ANNOTATIONS`` naming every other member of §6's table -- one
+    decision in two places, differing only in the position each reached.  §6's own row
+    carries no position split, so ``codegen.keywords`` admits the keyword at every
+    position and this module names nothing: asserted as the CELL, in both directions.
     """
-    assert lower_union.NESTED_HANDLED == frozenset({"discriminator"})
-    assert not lower_union.NESTED_HANDLED & compiler.ANNOTATIONS
+    from codegen import keywords
+    from codegen.keywords import Effect, Position
+
+    for position in Position:
+        answer = keywords.cell("discriminator", position)
+        assert answer is not None and answer.effect is Effect.NOTHING, position
+        assert not answer.rendered, position
+    # The other direction: this module holds no keyword set for a screen to read, so
+    # there is no second place for §6's row to drift to.
+    assert not [name for name in vars(lower_union) if name.endswith("_HANDLED")]

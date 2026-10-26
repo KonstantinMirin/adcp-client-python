@@ -92,7 +92,8 @@ from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
 from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef
-from codegen import compiler, dump_exemptions
+from codegen import compiler, dump_exemptions, keywords
+from codegen.keywords import Position
 
 # --------------------------------------------------------------------------- #
 # formats
@@ -936,36 +937,48 @@ def _dump(x: Any) -> str:
 # --------------------------------------------------------------------------- #
 # the schema comparison: the model's own schema against the document
 # --------------------------------------------------------------------------- #
-#: What a document can STATE about a value, and therefore what the model has to
-#: state too.  Three groups, and the grouping is the reason this is one list:
-#: the constraints (an accepted set), ``required`` / ``additionalProperties`` /
-#: ``type`` / ``enum`` / ``const`` (also an accepted set, at the object level),
-#: and ``default`` / ``description`` / ``format``, which do NOT change the
-#: accepted set and are exactly what a hand-rolled renderer drops without any
-#: acceptance test noticing.  ``title`` is absent on purpose: pydantic derives
-#: one for every class and every property and the documents carry one only at a
-#: root, so it is a name the compiler makes up rather than a fact to compare.
-FACTS = (
-    "type",
-    "enum",
-    "const",
-    "format",
-    "minimum",
-    "maximum",
-    "exclusiveMinimum",
-    "exclusiveMaximum",
-    "multipleOf",
-    "minLength",
-    "maxLength",
-    "pattern",
-    "minItems",
-    "maxItems",
-    "uniqueItems",
-    "required",
-    "additionalProperties",
-    "default",
-    "description",
-)
+#: What a document can STATE about a value, and therefore what the model has to state
+#: too -- **DERIVED from ``codegen.keywords``, never written here.**
+#:
+#: Section 8 of the semantics document: "the comparison derives its compared set from
+#: the same declaration: every keyword it renders as a fact.  A hand-written list beside
+#: the comparison is the one way this check can be complete with respect to itself and
+#: blind to everything beyond it: a keyword missing from it is unexamined in BOTH
+#: directions, so the grader cannot tell whether we rendered it, dropped it, or invented
+#: it -- and it reports a pass either way."  So one check stands above the three: the
+#: comparison's keyword set EQUALS the set the declaration renders, and this function is
+#: that equality rather than an assertion about it.
+#:
+#: The POSITION is a parameter because ``rendered`` is per cell: ``deprecated`` is a
+#: field fact at PROP and at a class root and nothing at an element, and a list written
+#: here could not say so.  Each caller passes the position it is reading at, which is a
+#: structural fact of the caller -- a property's value is at PROP, an array's element at
+#: ELEM, a mapping's value at MAPV, a key schema at KEY -- and never recovered from the
+#: pointer string.
+#:
+#: ``title`` is absent, and it is the table that says so: §6's row ends "Never
+#: rendered."  pydantic derives one for every class and every property and the documents
+#: carry one only at a root, so it is a name the compiler makes up rather than a fact to
+#: compare.
+def compared_facts(position: Position) -> tuple[str, ...]:
+    """The keywords a faithful model RENDERS at ``position``, read off the table.
+
+    A TUPLE in the table's own declaration order, and that is not decoration: the
+    comparison reports one line per fact and a reader of two reports compares them, so
+    the order facts are reported in has to be a function of the DECLARATION rather than
+    of a set's hash.  The set is ``keywords.rendered_at``; this is that set, ordered by
+    the document the grids are generated into.
+    """
+    rendered = keywords.rendered_at(position)
+    return tuple(k for k in keywords.TABLE if k in rendered)
+
+
+#: The facts the document-side FOLDS range over: a composed conjunct's and a union
+#: branch agreement's.  The same derivation at the position those readings are taken at
+#: -- a conjunct applies to the same instance as the node it composes, and a branch of a
+#: root union is read under the root's own siblings, so both are the node's own position
+#: and ROOT is the one every pair is entered at.
+FOLDED_FACTS = compared_facts(Position.ROOT)
 
 
 @dataclass
@@ -1551,7 +1564,9 @@ def _constrains_a_key(key_schema: Mapping[str, Any]) -> bool:
     and no fact is not a side that dropped one.  A local ``$ref`` counts, because
     the comparison resolves one and the facts behind it are the key type's.
     """
-    return "$ref" in key_schema or any(kw in key_schema for kw in FACTS)
+    return "$ref" in key_schema or any(
+        kw in key_schema for kw in compared_facts(Position.KEY)
+    )
 
 
 def _extra_key_typed(doc: Mapping[str, Any], got: Mapping[str, Any]) -> bool:
@@ -1620,7 +1635,7 @@ def _patterned_key(node: Any, *, closed: bool) -> dict | None:
 
     So this writes all three as the FIRST spelling, which is the one whose two
     keywords the rest of the comparison already reads: ``additionalProperties`` is
-    in :data:`FACTS` and recursed into, and ``propertyNames`` is descended into
+    in :func:`compared_facts` and recursed into, and ``propertyNames`` is descended into
     beside it.  Without it the ``propertyNames`` document reported a faithful model
     as dropping its ``additionalProperties`` (measured: ``model_drops_a_fact`` at
     ``core/geo-region-support.json#/properties/countries/additionalProperties`` and
@@ -1749,7 +1764,7 @@ def _conjoined_type(node: dict, kw: str, branches: list[dict]) -> tuple[dict, li
     is where the walk asks it -- so pydantic renders it per branch and the node itself
     states no type at all.
 
-    Without this the word is in :data:`FACTS` on the document's side and absent from
+    Without this the word is in :func:`compared_facts` on the document's side and absent from
     the model's, and a faithful alias reports as dropping its own ``type``.  Measured on
     ``core/macro-bearing-url.json``, the bundle's only graded node stating a ``type``
     beside a union, and the first document to reach it (``salesagent-j3k2l.41``).
@@ -1893,7 +1908,7 @@ def _normalize(
       accepted set goes, but this keeps the exact-key test -- folding would throw the
       branch's own description away, and the direction of the miss is safe: the node
       stays a combinator,
-      states no fact in :data:`FACTS`, and the pair reddens rather than passing
+      states no fact in :func:`compared_facts`, and the pair reddens rather than passing
       blind.  0 of the 3 fold positions in this bundle carry one.
     * **The outer keys win.**  ``default`` and ``description`` sit outside the
       ``anyOf`` and the type facts inside the branch.
@@ -1909,7 +1924,7 @@ def _normalize(
       other direction -- the compiler transcribes the sibling onto the field, so
       a reading that preferred the target's description would report an ``added``
       fact at 58 sites.  The upgrade path, if a document ever states a constraint
-      beside a local ``$ref``, is to keep only the keys outside :data:`FACTS`.
+      beside a local ``$ref``, is to keep only the keys outside :func:`compared_facts`.
     """
     if depth > 16 or not isinstance(node, dict):  # a self-referential $defs chain
         return node if isinstance(node, dict) else {}
@@ -1963,7 +1978,7 @@ def _normalize(
             # ``test_a_declared_null_is_never_read_as_absence`` exists to redden on.
             # A live branch with no ``type`` word of its own has nowhere to put it, so
             # that case does not fold: the node stays a combinator, states no fact in
-            # ``FACTS``, and the pair reddens visibly instead of passing blind.
+            # ``compared_facts``, and the pair reddens visibly instead of passing blind.
             if isinstance(kind, str):
                 return {**one, "type": [kind, "null"]}
             if isinstance(kind, list) and "null" in kind:
@@ -2030,7 +2045,7 @@ def _agreed(branches: list[dict]) -> dict:
       about it is still reported.
     """
     agreed: dict = {}
-    for kw in FACTS:
+    for kw in FOLDED_FACTS:
         if kw == "required" or not all(kw in b for b in branches):
             continue
         first = branches[0][kw]
@@ -2103,7 +2118,7 @@ _COMPOSE_DEPTH = 16
 #: keyword can hold it -- ``default: null`` is in the bundle.
 _UNDECIDED = object()
 
-#: The ordering keywords of :data:`FACTS`, and which direction is TIGHTER: ``max`` for a
+#: The ordering keywords of :func:`compared_facts`, and which direction is TIGHTER: ``max`` for a
 #: floor (the higher of two minima binds) and ``min`` for a ceiling.
 _TIGHTER_BOUND = {
     "minimum": max,
@@ -2222,7 +2237,7 @@ def _composed(doc: Any, depth: int = 0) -> Any:
 
     **``if`` / ``then`` / ``else`` / ``not`` need no code and that is not an
     oversight.**  A conjunct holding only those states nothing unconditional
-    about the value, and none of them is in ``FACTS``, so such a conjunct
+    about the value, and none of them is in ``compared_facts``, so such a conjunct
     contributes nothing by construction.  That is the dominant conjunct shape in
     the bundle: 352 ``if``/``then`` conjuncts against 21 that state
     ``properties``.
@@ -2239,7 +2254,7 @@ def _composed(doc: Any, depth: int = 0) -> Any:
     caller hands this a RESOLVED document (``codegen.bundle.resolved`` writes it
     into the package and ``adcp.types._base.schema_at`` reads it back), and 0 of
     the conjuncts in that 61-document sample still carried a ``$ref``.  A
-    conjunct that somehow did would state no fact in ``FACTS`` and so fold to
+    conjunct that somehow did would state no fact in ``compared_facts`` and so fold to
     nothing, which is the pre-existing behaviour rather than a new hole.
     """
     conjuncts = doc.get("allOf") if isinstance(doc, dict) else None
@@ -2271,7 +2286,7 @@ def _composed(doc: Any, depth: int = 0) -> Any:
         # One statement on the vocabulary axis before anything is gap-filled, so the
         # merged node cannot carry a ``const`` beside the ``enum`` it pins.
         out, c = _one_vocabulary(out, c)
-        for kw in FACTS:
+        for kw in FOLDED_FACTS:
             if kw == "required" or kw not in c:
                 continue
             if kw not in out:
@@ -2333,7 +2348,13 @@ def _composed(doc: Any, depth: int = 0) -> Any:
     return out
 
 
-def compare_schema(schema: dict, model: Any, *, document: dict | None = None) -> ComparisonResult:
+def compare_schema(
+    schema: dict,
+    model: Any,
+    *,
+    document: dict | None = None,
+    position: Position = Position.ROOT,
+) -> ComparisonResult:
     """The document's facts and the model's, compared in BOTH directions.
 
     ``document`` is the WHOLE resolved document ``schema`` is a node of, and it is
@@ -2387,8 +2408,23 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
     #: into a node is still relative to the document root.
     root = document if isinstance(document, dict) else schema
 
-    def compare(doc: Any, got: Any, pointer: str, *, required: bool = False) -> None:
-        """``required`` is whether the PARENT document demands this key.
+    def compare(
+        doc: Any,
+        got: Any,
+        pointer: str,
+        at_position: Position,
+        *,
+        required: bool = False,
+    ) -> None:
+        """``at_position`` is this node's POSITION, and ``required`` is whether the
+        PARENT document demands this key.
+
+        The position decides the compared set (:func:`compared_facts`), and it is a
+        PARAMETER at every recursion because each descent knows it structurally: a
+        value of ``properties`` is at PROP, an ``items`` at ELEM, a typed
+        ``additionalProperties`` at MAPV, a ``propertyNames`` at KEY.  Deriving it from
+        ``pointer`` instead would be the reading §11 names as a repetition, and a
+        pointer cannot tell a RULE node from a PROP one.
 
         Two of this function's decisions need it and neither can derive it from the
         node: ``_narrows_nothing`` asks it of a model-only ``default``, and a
@@ -2431,7 +2467,7 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
         doc = _patterned_key(doc, closed=False) or doc
         got = _patterned_key(got, closed=True) or got
         doc, rewritten = _uncanonicalized(doc)
-        for kw in FACTS:
+        for kw in compared_facts(at_position):
             if kw not in doc:
                 continue
             res.compared += 1
@@ -2471,7 +2507,7 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
                     # mappings reported ``model_drops_a_fact`` for a model stating
                     # exactly what its document states; recursing instead grades the
                     # value's own ``type``, ``required`` and ``enum``.
-                    compare(a, b, f"{where}")
+                    compare(a, b, f"{where}", Position.MAPV)
                     continue
                 a, b = _closed(a), _closed(b)
             elif kw == "description":
@@ -2483,11 +2519,11 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
                 b = sorted(b) if isinstance(b, list) else [b]
             if a != b:
                 res.differs.append(f"{where}: the document says {doc[kw]!r}, the model {got[kw]!r}")
-        for kw in FACTS:
+        for kw in compared_facts(at_position):
             if kw in doc or kw not in got:
                 continue
             res.model_facts += 1
-            # ``rewritten``: the resolver dropped the node's ANNOTATIONS when it
+            # ``rewritten``: the resolver dropped the node's annotations when it
             # wrote the finite type out as its members, so the model states a
             # ``description`` and a ``default`` its RESOLVED document no longer does.
             # Admitted at that node only; see ``_uncanonicalized``.  The ``default``
@@ -2537,23 +2573,28 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
                     res.compared += 1
                     res.missing.append(f"{at}: the model declares no such property")
                     continue
-                compare(props[key], mine[key], at, required=key in demanded)
+                compare(props[key], mine[key], at, Position.PROP, required=key in demanded)
         for key in sorted(set(mine) - set(props)):
             res.model_facts += 1
             res.added.append(
                 f"{pointer}/properties/{_esc(key)}: the document declares no such property"
             )
         if isinstance(doc.get("items"), dict):
-            compare(doc["items"], got.get("items"), f"{pointer}/items")
+            compare(doc["items"], got.get("items"), f"{pointer}/items", Position.ELEM)
         # A mapping's KEY SCHEMA, descended into the way ``items`` is -- it is a
         # schema at a pointer the document names, and §2 makes it a type, so the
         # facts it states are the key type's and are graded as such.  Ungraded
-        # before this row: ``propertyNames`` is in neither ``FACTS`` nor any
+        # before this row: ``propertyNames`` is in neither ``compared_facts`` nor any
         # descent, so a model that widened a bounded key to ``str`` compared
         # identically to one that carried the bound.
         key_doc, key_got = doc.get("propertyNames"), got.get("propertyNames")
         if isinstance(key_doc, dict) and isinstance(key_got, dict):
-            compare(_key_schema(key_doc), _key_schema(key_got), f"{pointer}/propertyNames")
+            compare(
+                _key_schema(key_doc),
+                _key_schema(key_got),
+                f"{pointer}/propertyNames",
+                Position.KEY,
+            )
         elif isinstance(key_doc, dict) and _constrains_a_key(key_doc):
             res.compared += 1
             if _extra_key_typed(doc, got):
@@ -2573,7 +2614,7 @@ def compare_schema(schema: dict, model: Any, *, document: dict | None = None) ->
                 f"{pointer}/propertyNames: the model says {key_got!r}, the document nothing"
             )
 
-    compare(schema, emitted, "")
+    compare(schema, emitted, "", position)
     return res
 
 

@@ -92,6 +92,7 @@ from pathlib import Path
 from typing import Any
 
 from codegen import bundle, compiler, harness
+from codegen.keywords import Position
 from codegen import constraints as constraints_module
 from codegen.compiler import (
     BASE_MODULE,
@@ -363,7 +364,9 @@ def bind_the_same_node(mod: Module, symbol: str, pointer: str, declared: str) ->
     return Decided(compiler.Type(symbol, local=True))
 
 
-def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
+def decide_type(
+    node: dict, pointer: str, name_hint: str, mod: Module, position: Position
+) -> Decided:
     """What one schema node IS, plus a SYMBOL where another document names the node.
 
     The decision is :func:`_decide`'s, unchanged.  What is here is the two things a
@@ -426,7 +429,7 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     if collapsed is not None:
         mod.adopted[pointer] = collapsed
         return bind_the_same_node(mod, name_hint, pointer, collapsed)
-    decided = _decide(node, pointer, name_hint, mod)
+    decided = _decide(node, pointer, name_hint, mod, position)
     if pointer in mod.named and not decided.type.local:
         decided = compiler.name_the_node(mod, name_hint, pointer, node, decided)
     if mod.declared.get(pointer) == decided.type.path:
@@ -434,7 +437,9 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     return decided
 
 
-def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
+def _decide(
+    node: dict, pointer: str, name_hint: str, mod: Module, position: Position
+) -> Decided:
     """What one schema node IS: a Python type, and what constrains it.
 
     Nullability is NOT a question here (D4).  This returns the node's own type,
@@ -459,7 +464,14 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # Emitting the import alone is the draft-07 reading and would then be
         # graded against the stricter merged one, so the document is refused by
         # name rather than graded against a schema it does not mean.
-        check_keywords(node, pointer, {"$ref"}, "a sibling of $ref, which draft-07 ignores")
+        check_keywords(
+            node,
+            pointer,
+            position,
+            {"$ref"},
+            "a sibling of $ref, which draft-07 ignores",
+            mod=mod,
+        )
         # **The DOCUMENT HALF decides which of the two resolutions this is**, and the
         # reading is ``bundle.split_ref``'s one reading of the ``#``.  An EMPTY half is
         # a pointer into the document being written: there is no module to import from,
@@ -482,7 +494,7 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # comes from the members (``lower.enum.BASES``), which is what admits the
         # bundle's 164 typeless enum nodes.  A root enum reaches the same row
         # through the dispatch table below.
-        check_keywords(node, pointer, lower_enum.HANDLED)
+        check_keywords(node, pointer, position, lower_enum.CLAIMS, mod=mod)
         # **D2 gives an enum node TWO renderings and the NAME decides between them:**
         # a ``StrEnum``/``IntEnum`` where a name reaches it, and a ``Literal`` of its
         # members where none does.  The second claims no symbol, which is the rendering
@@ -508,7 +520,7 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # population: 0 nodes carry both a ``const`` and an ``allOf``, so the order of
         # the two moves no document.  It is written this way round because a ``const``
         # pins the whole value and a conjunct list cannot widen a pinned value.
-        check_keywords(node, pointer, lower_const.HANDLED)
+        check_keywords(node, pointer, position, lower_const.CLAIMS, mod=mod)
         return lower_const.decide(node, pointer)
 
     if isinstance(node.get("allOf"), list):
@@ -544,7 +556,7 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # array element.
         return Decided(
             compiler.Type(
-                lower_composition(node, name_hint, pointer, mod), local=True
+                lower_composition(node, name_hint, pointer, mod, position), local=True
             )
         )
 
@@ -590,7 +602,7 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # sibling ``properties`` then refused.  The predicate is read HERE, at the
         # dispatch, because ``lower.union`` imports ``compiler`` and ``refusal`` and
         # nothing else of this package (D13) and so cannot ask step 7's question.
-        return lower_union.nested(node, pointer, name_hint, mod)
+        return lower_union.nested(node, pointer, name_hint, mod, position)
 
     kind = node.get("type")
 
@@ -604,7 +616,7 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # whose whole schema is ``{"not": {}}``), and refusing it there while carrying
         # ``not: {"const": ...}`` here would be the same keyword read two ways by the
         # presence of a word that changes nothing about it.
-        check_keywords(node, pointer, {*lower_rules.ON_A_VALUE})
+        check_keywords(node, pointer, position, {*lower_rules.ON_A_VALUE}, mod=mod)
         if set(node) & set(CONSTRAINTS):
             raise Refusal(
                 "type", pointer, "a typeless node carrying a constraint has nothing to apply it to"
@@ -612,19 +624,21 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         return Decided(compiler.Type("typing.Any"))  # D2's typeless row
 
     if isinstance(kind, list):
-        return lower_containers.multi_type(node, pointer, name_hint, mod)
+        return lower_containers.multi_type(node, pointer, name_hint, mod, position)
 
     if kind == "null":
-        check_keywords(node, pointer, {"type"})
+        check_keywords(node, pointer, position, {"type"}, mod=mod)
         return Decided(compiler.Type("None"))
 
     if kind == "object":
         if "properties" not in node:
-            return lower_containers.mapping(node, pointer, name_hint, mod)
-        return Decided(compiler.Type(lower_object(node, name_hint, pointer, mod), local=True))
+            return lower_containers.mapping(node, pointer, name_hint, mod, position)
+        return Decided(
+            compiler.Type(lower_object(node, name_hint, pointer, mod, position), local=True)
+        )
 
     if kind == "array":
-        return lower_containers.array(node, pointer, name_hint, mod)
+        return lower_containers.array(node, pointer, name_hint, mod, position)
 
     if kind not in SCALAR:
         raise Refusal("type", pointer, f"unknown type {kind!r}", kind=Kind.VERDICT)
@@ -633,7 +647,9 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     # object to carry a rule tuple: a ``not`` over a ``const`` or an ``enum`` is an
     # excluded VALUE, which D4 leaves to the schema half exactly as it leaves a
     # conditional that narrows one.  Carrying it is not refusing it.
-    check_keywords(node, pointer, {"type", "format", *CONSTRAINTS, *lower_rules.ON_A_VALUE})
+    check_keywords(
+        node, pointer, position, {"type", "format", *CONSTRAINTS, *lower_rules.ON_A_VALUE}, mod=mod
+    )
     constraints = {k: node[k] for k in CONSTRAINTS if k in node}
     fmt = node.get("format") if isinstance(node.get("format"), str) else None
     # A format SELECTS a type where one is named for it and the document's own
@@ -904,7 +920,7 @@ def _object_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
     """D2's object row: a root declaring ``properties`` is a model named by its
     title.  ``lower_object`` is the whole of it, and it is the compiler's because a
     nested object is the same job at a different pointer."""
-    return lower_object(doc, name, pointer, mod)
+    return lower_object(doc, name, pointer, mod, Position.ROOT)
 
 
 def _scalar_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
@@ -915,7 +931,7 @@ def _scalar_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
     make every referencing model carry an object where the document carries a
     string.  ``compiler.declare_alias`` holds the rest, including its known
     ceiling."""
-    return declare_alias(mod, name, doc, decide_type(doc, pointer, name, mod))
+    return declare_alias(mod, name, doc, decide_type(doc, pointer, name, mod, Position.ROOT))
 
 
 def _enum_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
@@ -926,10 +942,23 @@ def _enum_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
     because ``Enum.jinja2`` has no ``class_body_lines`` slot for the
     ``__adcp_schema__`` line and D9 forbids writing one in afterwards.
     """
-    check_keywords(doc, pointer, lower_enum.HANDLED)
+    check_keywords(doc, pointer, Position.ROOT, lower_enum.CLAIMS, mod=mod)
     return compiler.bind_without_a_model(
         mod, name, compiler.render_enum(lower_enum.decide(doc, name, pointer))
     )
+
+
+def _composing_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
+    """D7's composition at a root.  A wrapper and not the lowering itself, because a
+    row's lowering is reached with the four arguments every row takes and the POSITION
+    is the row's own fact: a root is at ROOT, and nothing derives that from a pointer.
+    """
+    return lower_composition(doc, name, pointer, mod, Position.ROOT)
+
+
+def _container_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
+    """D2's container row at a root, wrapped for :func:`_composing_root`'s reason."""
+    return lower_containers.root(doc, name, pointer, mod, Position.ROOT)
 
 
 def _union_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
@@ -965,9 +994,9 @@ ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str
     (bundle.is_object_root, _object_root),
     (bundle.is_scalar_root, _scalar_root),
     (bundle.is_enum_root, _enum_root),
-    (bundle.composes_at_the_root, lower_composition),
+    (bundle.composes_at_the_root, _composing_root),
     (bundle.union_root, _union_root),
-    (bundle.is_container_root, lower_containers.root),
+    (bundle.is_container_root, _container_root),
 )
 
 
@@ -980,8 +1009,9 @@ ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str
 ROOT_KIND = ("$ref", "if", "oneOf", "anyOf", "allOf", "enum", "properties", "type")
 
 #: Root keys that state no kind, so a refusal reporting what the root declares
-#: leaves them out: they are the same on every document and carry no signal.
-_ANNOTATIONS = frozenset({"$schema", "$id", "$comment", "title", "description"})
+#: leaves them out: they are the same on every document and carry no signal.  Read off
+#: the table rather than named: a key that states no kind is one whose CELL at ROOT
+#: carries nothing and holds no subschema, which is the same question in one place.
 
 
 class AmbiguousRoot(Exception):
@@ -1051,7 +1081,7 @@ def lower_document(
         # them.  A refusal that points at a file without saying what in it stopped
         # the emitter sends the reader back to re-run.
         kw = next((k for k in ROOT_KIND if k in doc), None)
-        declared = sorted(k for k in doc if k not in _ANNOTATIONS)
+        declared = sorted(compiler.declaring(doc, Position.ROOT))
         if kw is None:
             raise Refusal(
                 "type",

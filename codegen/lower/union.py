@@ -121,14 +121,16 @@ from typing import Any
 
 from adcp.types._base import applied_schema
 
-from codegen import compiler
+from codegen import compiler, keywords
+from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 
-#: What the ROOT of a union document may carry.  ``discriminator`` is an annotation in
-#: draft-07 -- ``jsonschema`` has no validator for it, so ignoring it cannot make the model
-#: wider than its document -- and it is READ here, as the property D3's rule 2 takes a
-#: branch's name from.
-#: The four conjuncts are HANDLED here so that the explicit refusal below is what reports
+#: The cells the ROOT of a union document CONSUMES -- this row's own coverage, not an
+#: admission list.  ``discriminator`` is gone from it: §6 admits the keyword by name at
+#: every position and the TABLE is where that decision lives now, which is also what
+#: reaches the three other positions this set never did.  It is still READ here, as the
+#: property §4's rule 2 takes a branch's name from.
+#: The four conjuncts are CLAIMED here so that the explicit refusal below is what reports
 #: them, after every other keyword has been checked.  Left out of this set, they refuse
 #: through ``compiler.check_keywords``, which walks ``sorted(node)`` -- so a root carrying
 #: both ``additionalProperties`` and ``oneOf`` branches blocked by a later step's keyword
@@ -137,9 +139,7 @@ from codegen.refusal import Kind, Refusal
 #: over the 156 read 55 ``additionalProperties`` / 42 ``allOf`` that way, and 0 / 55 this
 #: way.  Attribution is the point of a refusal report, and the same principle
 #: ``harness.violated_keywords`` is built on.
-ROOT_HANDLED = frozenset(
-    {"type", "discriminator", "properties", "required", "additionalProperties", "allOf"}
-)
+ROOT_CLAIMS = frozenset({"type", "properties", "required", "additionalProperties", "allOf"})
 
 #: The root facts whose refusal is explained in the module docstring.  Checked after
 #: ``compiler.check_keywords``, so a root blocked by a later step's keyword is reported
@@ -188,7 +188,7 @@ ROOT_CONJUNCTS = ("allOf", "properties", "required", "additionalProperties")
 #: because a lowering cannot import a sibling lowering), so there is no second reading
 #: for the two to disagree through.
 #:
-#: ``const`` and ``allOf`` are both in the set for ``ROOT_HANDLED``'s reason, and
+#: ``const`` and ``allOf`` are both in the set for ``ROOT_CLAIMS``'s reason, and
 #: neither because this module lowers one: left out, the keyword screen reports them
 #: first with the generic "a later D2 row does", and an explicit refusal below says
 #: what each actually is.  Attribution is the point of a refusal report.
@@ -216,16 +216,22 @@ ROOT_CONJUNCTS = ("allOf", "properties", "required", "additionalProperties")
 #: ``core/geo-place-type.json#/anyOf/0``.  Left out of this set, both were reported on
 #: ``enum`` with ``DEFERRED_TO_A_LATER_ROW``, because ``compiler.check_keywords`` walks
 #: ``sorted(node)`` and reaches ``enum`` before the ``type`` check below -- the
-#: identical misattribution :data:`ROOT_HANDLED` measured at 55 of 156 and fixed the
+#: identical misattribution :data:`ROOT_CLAIMS` measured at 55 of 156 and fixed the
 #: same way, and a deferral promising a row for a branch shape this module refuses by
 #: design.
-BRANCH_HANDLED = frozenset(
+BRANCH_CLAIMS = frozenset(
     {"type", "properties", "required", "additionalProperties", "const", "enum", "allOf"}
 )
 
 
-#: The two union keywords, in the order a root carrying one is read.
-UNION = ("oneOf", "anyOf")
+#: The two union keywords, in the order a root carrying one is read -- READ OFF the
+#: declaration's descent column rather than named: a union keyword is one whose
+#: subschemas occupy a BRANCH, which is what a union IS.
+UNION = tuple(
+    k
+    for k, p in keywords.descends_at(Position.ROOT).items()
+    if p is Position.BRANCH
+)
 
 
 def keyword(doc: dict) -> str | None:
@@ -574,7 +580,9 @@ def _alias(doc: dict, symbol: str, pointer: str, kw: str, mod: compiler.Module) 
     two disagree.
     """
     applied = {kw: [applied_schema(doc, f"{pointer}/{kw}/{i}") for i in range(len(doc[kw]))]}
-    return compiler.declare_alias(mod, symbol, doc, nested(applied, pointer, symbol, mod))
+    return compiler.declare_alias(
+        mod, symbol, doc, nested(applied, pointer, symbol, mod, Position.ROOT)
+    )
 
 
 def _named(plan: Branch, root: str, doc: dict) -> Branch:
@@ -748,8 +756,10 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
     # shapes, so the union keyword arrives through ``{kw}`` alone and a root carrying
     # BOTH ``oneOf`` and ``anyOf`` still refuses on the second -- which is what the
     # docstring of :func:`keyword` says it does, and the bundle has 0 of them.
-    stated = compiler.rules_at(doc)
-    compiler.check_keywords(doc, pointer, ROOT_HANDLED | {kw} | stated.screen)
+    stated = compiler.rules_at(doc, position=Position.ROOT)
+    compiler.check_keywords(
+        doc, pointer, Position.ROOT, ROOT_CLAIMS | {kw} | stated.screen, mod=mod
+    )
     for name in ROOT_CONJUNCTS:
         if name in doc:
             raise Refusal(
@@ -936,11 +946,12 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
                     plan.inherits.shape.required,
                     decided=plan.inherits.shape.decided,
                 ),
+                Position.BRANCH,
                 bases=(symbol, plan.inherits.symbol),
             )
             continue
         lower = compiler.lower_composition if "allOf" in plan.node else compiler.lower_object
-        lower(plan.node, plan.name, plan.pointer, mod, bases=(symbol,))
+        lower(plan.node, plan.name, plan.pointer, mod, Position.BRANCH, bases=(symbol,))
 
     # The module trailer.  Two statements beside the classes, which is the module writer's
     # own text (§3: no compiler template has a slot for a line beside a class), and they
@@ -968,8 +979,9 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
 #: row draws the same line in the same table: "an annotation sibling -> the sibling's
 #: description wins; a constraining sibling -> refused").  A sibling §6 admits states
 #: nothing about an instance, so there is no fact for the union's type to carry and no
-#: fact for the comparison to miss.  :data:`NESTED_HANDLED` is the set of those, and
-#: ``compiler.ANNOTATIONS`` carries the rest.
+#: fact for the comparison to miss.  The TABLE is the set of those: a sibling whose
+#: cell carries nothing is admitted, and a sibling whose cell lowers is a constraining
+#: one and reaches this refusal.
 _NESTED_SIBLING = (
     "a sibling of a nested oneOf/anyOf is a CONJUNCTION with every branch (draft-07), "
     "and a nested union lowers to one type -- A | B -- which has no slot for a fact of "
@@ -979,41 +991,31 @@ _NESTED_SIBLING = (
     "harness.compare_schema reports as a missing fact at this very pointer"
 )
 
-#: What a NESTED union may carry beside its branch list, over and above
-#: ``compiler.ANNOTATIONS``.
-#:
-#: ``discriminator`` is §6's row -- "Nothing on the class.  It names a branch where that
-#: branch pins more than one ``const``, and separately it CONFIRMS a dispatch key the
-#: branches already state -- it does not establish one" -- and §6's own preamble says
-#: every keyword in that table is "admitted **by name**".  That answer carries no
-#: position split, where the ``title`` and ``description`` rows beside it both give one,
-#: so it is the answer at this position too.
+#: ``discriminator`` beside a NESTED union is admitted by the TABLE, and the decision
+#: is §6's own row -- "Nothing on the class.  It names a branch where that branch pins
+#: more than one ``const``, and separately it CONFIRMS a dispatch key the branches
+#: already state -- it does not establish one" -- whose answer carries no position
+#: split, where the ``title`` and ``description`` rows beside it both give one.  So it
+#: is the answer at this position too, and this module no longer names it.
 #:
 #: Three facts hold here and each was checked rather than assumed:
 #:
 #: * The keyword CONSTRAINS NOTHING, so :data:`_NESTED_SIBLING`'s mechanism does not
-#:   reach it.  :data:`ROOT_HANDLED` already admits it at a root on exactly that reason,
-#:   and the two positions differ in nothing the reason mentions.
-#: * The harness does not look for it.  ``harness.FACTS`` is the list
-#:   ``compare_schema`` iterates -- ``type``, ``enum``, ``const``, ``format``, the six
-#:   numeric bounds, the three string ones, the two array ones, ``uniqueItems``,
-#:   ``required``, ``additionalProperties``, ``default``, ``description`` -- and
-#:   ``discriminator`` is in neither direction of it.  So a model whose node is a bare
-#:   ``anyOf`` reports nothing ``missing`` at that pointer, which is the second half of
-#:   the sentence above and the half that does not hold for this keyword.
+#:   reach it.  The same cell admits it at a root, and the two positions differ in
+#:   nothing the reason mentions.
+#: * The comparison does not look for it: ``keywords.rendered_at`` is the compared set
+#:   and the cell's ``rendered`` is ``False``, so a model whose node is a bare ``anyOf``
+#:   reports nothing ``missing`` at that pointer -- which is the second half of the
+#:   sentence above and the half that does not hold for a constraining sibling.
 #: * It is already READ at this position: :func:`nested` names each branch through
 #:   :func:`branch_identity`, which reads ``discriminator.propertyName`` off the union's
-#:   own node (:func:`_const_pin`).  The keyword was read here and refused here at once.
-#:
-#: ``compiler.BUNDLE_ANNOTATIONS`` is NOT where this belongs, and its own comment says
-#: why it refuses the keyword there: at an arbitrary node ``discriminator`` "COULD
-#: CONSTRAIN AN INSTANCE".  That is a statement about every position at once, and the
-#: set is read by every screen in the generator.  Here the position is named: a union,
-#: where §6 says what the keyword does and where this module already reads it.
-NESTED_HANDLED = frozenset({"discriminator"})
+#:   own node (:func:`_const_pin`).
 
 
-def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> compiler.Decided:
+
+def nested(
+    node: dict, pointer: str, name_hint: str, mod: compiler.Module, position: Position
+) -> compiler.Decided:
     """``A | B`` for a ``oneOf``/``anyOf`` at a pointer that is NOT a document root.
 
     **It is not the root row's shape and must not be.**  A root union emits a base
@@ -1076,8 +1078,8 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
     # promises a later row for something no row can carry here.  Same shape as the
     # ``$ref`` arm's "a sibling of $ref, which draft-07 ignores" -- and the same line
     # that arm draws between an annotation sibling and a constraining one, which is what
-    # :data:`NESTED_HANDLED` carries.
-    compiler.check_keywords(node, pointer, {kw} | NESTED_HANDLED, _NESTED_SIBLING)
+    # the TABLE's cells carry.
+    compiler.check_keywords(node, pointer, position, {kw}, _NESTED_SIBLING, mod=mod)
     branches = node[kw]
     if len(branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
         raise Refusal(
@@ -1094,7 +1096,7 @@ def nested(node: dict, pointer: str, name_hint: str, mod: compiler.Module) -> co
                 kind=Kind.VERDICT,
             )
         hint = branch_identity(branch, name_hint, node) or name_hint
-        decided = compiler.decide(branch, at, hint, mod)
+        decided = compiler.decide(branch, at, hint, mod, Position.BRANCH)
         # **The branch's own bound rides on the branch's own TYPE, never on the field
         # holding the union** (section 5's ``minItems``/``maxItems`` row, and section
         # 2's reasoning for every constraint).  The field holds the other branches too,
@@ -1140,7 +1142,7 @@ def _inherited(branch: dict, pointer: str, root: str, mod: compiler.Module) -> I
     base: §4 "What becomes what" makes a scalar root an ``Annotated`` alias,
     and subclassing one is a ``TypeError`` at import.
     """
-    decided = compiler.decide(branch, pointer, root, mod)
+    decided = compiler.decide(branch, pointer, root, mod, Position.BRANCH)
     symbol = decided.type.path
     shape = mod.shapes.get(symbol)
     if shape is None and not decided.type.local:
@@ -1178,7 +1180,7 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
             f"a branch is {type(branch).__name__}, not a schema",
             kind=Kind.VERDICT,
         )
-    live = {k for k in branch if k not in compiler.ANNOTATIONS and not k.startswith("x-")}
+    live = set(compiler.declaring(branch, Position.BRANCH))
     if live == {"$ref"}:
         # **§4's two bases.**  The branch is a class at its OWN pointer whose bases are
         # the union's base and the ``$ref`` target: the target supplies the fields and
@@ -1198,13 +1200,17 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
     # The branch's own D6 rules: the keywords are admitted here and the TUPLE is
     # written by ``compiler.declare_object``, which ``lower_object`` below reaches.
     compiler.check_keywords(  # the walk's own check
-        branch, pointer, BRANCH_HANDLED | compiler.rules_at(branch).screen
+        branch,
+        pointer,
+        Position.BRANCH,
+        BRANCH_CLAIMS | compiler.rules_at(branch, position=Position.BRANCH).screen,
+        mod=mod,
     )
     # The TYPE first, and the property map after it.  A branch's type decides whether
     # it can be a class AT ALL; whether it declares properties is a question only an
     # object branch has.  The other order reported a scalar branch against
     # ``properties`` -- "constrains only requiredness", of a node that constrains a
-    # value -- which is the same misattribution ``ROOT_HANDLED`` is ordered to avoid.
+    # value -- which is the same misattribution ``ROOT_CLAIMS`` is ordered to avoid.
     if branch.get("type") not in (None, "object"):
         raise Refusal(
             "type",

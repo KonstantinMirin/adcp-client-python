@@ -302,12 +302,11 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
             if (kw := lower_union.keyword(doc := bundle.read(BUNDLE, document)))
             and any(
                 isinstance(branch, dict)
-                and {
-                    k
-                    for k in branch
-                    if k not in __import__("codegen.compiler", fromlist=["x"]).ANNOTATIONS
-                    and not k.startswith("x-")
-                }
+                and set(
+                    __import__("codegen.compiler", fromlist=["x"]).declaring(
+                        branch, __import__("codegen.keywords", fromlist=["x"]).Position.BRANCH
+                    )
+                )
                 == {"$ref"}
                 for branch in doc[kw]
             )
