@@ -683,9 +683,18 @@ attribution.
   Attribution ours.
 - **A union whose branches §4's dispatch cannot separate.** The one UNDERDETERMINED row; §4 states
   it.
-- **A root stating no schema keyword.** §4 states it: a permissive root model, faithful to a
-  document that admits everything, with an upstream attribution carrying what the document
-  should have said.
+- ~~**A root stating no schema keyword.**~~ **Moved to (a) on 2026-10-26: it is faithful and
+  carries no declaration.** This row sat here and its own sentence called the answer "faithful to
+  a document that admits everything", which is group (a)'s definition and not this group's. A
+  permissive root model over a document that constrains nothing DROPS nothing, so there is no
+  fact to declare — and §8's *over-declared* outcome would have reported the declaration this
+  group asked for, which is the mechanism catching the row rather than a reader having to.
+  Measured on `core/asset-group-vocabulary.json`, which declares draft-07 and whose keys
+  (`version`, `lastUpdated`, `vocabulary`) are not schema keywords: `Draft7Validator` accepts
+  `42`, `"x"`, `null`, an object and an array, so the permissive model is exactly as wide as the
+  document. The upstream issue stands — the schema should say more than it does — but **an
+  upstream issue is not an approximation**, and filing one is the issue list's job, not a
+  declaration's.
 
 **(c) Rows that refuse nothing because there is no fact to approximate.** `errorMessage` and the
 registry data keys constrain no instance, so no annotation drops anything for them. They move to

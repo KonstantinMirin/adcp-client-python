@@ -900,10 +900,21 @@ boundaries that are about design: no Pydantic in the walk, no walk in the verifi
 The import graph is acyclic and the arrows point one way: `refusal ← keywords ← ir ← schema ←
 lower ← emit`, `ir ← render ← emit`, `ir ← constraints ← lower`,
 `{keywords, attribution} ← lower`, `keywords ← bundle ← emit`,
-`{keywords, attribution, bundle} ← verify`. `attribution.py` is a leaf like `keywords.py` and
-imports nothing of `codegen/`, which is what lets both the walk and the verifier read it without
-either reading the other. **`refusal` is imported by `bundle` and `emit` and by nothing in
-`lower/`** (2026-10-26): the lowering seam is total, so a handler has no refusal to name.
+`{keywords, attribution, bundle} ← verify`. `attribution.py` is a leaf like `keywords.py`, which
+is what lets both the walk and the verifier read it without either reading the other.
+
+*It imports `codegen.refusal`, and "imports nothing of `codegen/`" was too strong
+(2026-10-26).* §3 requires an attribution entry with no upstream issue to be a `BuildFailure`,
+and that type lives in `refusal.py` — so this module cannot satisfy the ban, the `BuildFailure`
+rule and the `MAY_RAISE` ratchet at once. The row that built it wrote the alternative first, a
+local `MissingIssue`, and that reddened the ratchet, which is how the clash was found rather
+than argued. `refusal.py` imports nothing itself, so a leaf importing a leaf keeps the property
+the ban was protecting: one module reached, and no module of the walk. The rule is therefore
+*imports no module of the walk*, and `refusal` is named as the one thing it may reach.
+
+**`refusal` is imported by `bundle`, `emit` and `attribution`, and by nothing in `lower/`**
+once step 10 lands: the lowering seam is total then, so a handler has no refusal to name. Until
+it does, `lower/` still names `Refusal` at 141 sites, which step 8's own note explains.
 
 Four AST tests hold the graph, where there were three: no
 `pydantic`/`datamodel_code_generator` import outside `render.py` and `verify/`; no
@@ -1217,15 +1228,30 @@ condition, below.
    Add `Rung` and `widens_to` to the cell and retire `Effect.REFUSE`; add `Approximation` and
    `RootModelDecl` to the IR and `approximations` to `Lowering` and `Module`; add
    `codegen/attribution.py` and its no-issue-is-a-`BuildFailure` test; make `render.py` write
-   `__adcp_approximations__`; collapse the lowering seam to `Lowering` and retire
-   `Kind.DEFERRED`, which is what makes every present deferral a compile error until its handler
-   calls `approximate`; add the comparison's *approximated* and *over-declared* outcomes, the
+   `__adcp_approximations__`; add the comparison's *approximated* and *over-declared* outcomes, the
    accepts obligation over a dropped keyword's classes, the UNDERDETERMINED set equality, and the
    report's three figures. Add the fourth import-rule test (§11). *Exit condition: every count
    unchanged — the same documents emit, the same documents refuse — with `APPROXIMATED` 0 and
    `OVER_DECLARED` 0.* The tree changes by one line per module (`__adcp_approximations__ = ()`),
    which is a declared text delta and not a decision. **Nothing else in the directive may land
    before this step passes.**
+
+   *The seam collapse is NOT in this step, corrected 2026-10-26.* This step originally also said
+   "collapse the lowering seam to `Lowering` and retire `Kind.DEFERRED`, which is what makes every
+   present deferral a compile error until its handler calls `approximate`". That cannot hold
+   beside this step's own exit condition, and the row proved it by measurement rather than
+   argument: `approximate` reads the rung off the cell, a `None` rung is a `BuildFailure`, and of
+   the **141 primary refusals exactly 1 sits on an `Effect.REFUSE` cell** — so 140 have no rung
+   yet. A total seam today therefore either widens those cells, which moves the counts this step
+   forbids moving, or crashes the run on 140 documents. The two sentences were written in one
+   step and only one of them can be true at a time.
+
+   So the seam stays a sum type until the last cell has a rung, which is **step 10**, and
+   `Kind.DEFERRED` retires with it. The instrument is complete without the collapse: the rung
+   field, the declaration, the registry, the two outcomes and both equalities all exist and are
+   proved here, and the fourth import-rule test passes unchanged. What the collapse buys —
+   turning every remaining deferral into a compile error — is worth having exactly when there is
+   a rung for each one to reach, and not before.
 
 9. **The faithful rows.** The rows the directive forces to a FAITHFUL answer rather than to an
    approximation, which is the larger half of the refused set and costs no declaration at all:
@@ -1247,8 +1273,19 @@ condition, below.
     predicate no `AtLeastOne` carries; a keyword with no row; a list-valued `items`; a root
     stating no schema keyword. **The upstream issues must be filed before this step lands**, not
     after: `attribution.py` admits no entry without one, so an unfiled issue is a build failure
-    and the step cannot be completed around it. *Exit condition: `refused` is 0 over the
-    portable population, `APPROXIMATED` equals the declared set in both directions, and every
+    and the step cannot be completed around it.
+
+    **The seam collapse lands here, moved from step 8 on 2026-10-26.** Once this step has given
+    every reachable cell a rung, `decide` collapses to `Lowering`, `Refusal` narrows to its one
+    producer in `bundle.record`, and `Kind.DEFERRED` retires — which is what turns any remaining
+    deferral into a compile error rather than a report line. It belongs at the end rather than
+    the beginning for the reason step 8 records: a total seam over cells with no rung is a
+    `BuildFailure` on every one of them, and 140 of 141 primary refusal sites were in that state
+    when the instrument was built. The collapse is the *consequence* of the rungs being complete,
+    not the mechanism that completes them.
+
+    *Exit condition: `refused` is 0 over the portable population, `decide` returns `Lowering`,
+    `Kind.DEFERRED` is gone, `APPROXIMATED` equals the declared set in both directions, and every
     upstream attribution names a live issue.*
 
 **Then the waves, with a changed exit condition and an unknown order.** A wave's exit condition
