@@ -67,6 +67,7 @@ from adcp.types._runtime import Dependencies, RuleBound
 from codegen import bundle, compiler, emit, harness, ir, keywords, render
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
+from codegen.lower import scalars
 from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
 from codegen.lower import union as lower_union
@@ -1476,7 +1477,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     And in both cases the format reaches the model's OWN schema, asserted site by
     site against the document, which is where the schema comparison grades it.
 
-    ``emit.FORMAT_TYPES`` is read rather than restated, so a row added or removed
+    ``lower.scalars.FORMAT_TYPES`` is read rather than restated, so a row added or removed
     moves this test's expectation with it; what is pinned is the population
     (334 sites: ``date-time`` 190, ``uri`` 131, ``date`` 5, ``email`` 5, ``hostname`` 3),
     because that is the denominator the rule is stated over.  Re-measured at
@@ -1491,7 +1492,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     # The two dependencies `pyproject` names are what put these in the draft's
     # own checker; without them the gate below selects no type at all.
     assert {"date-time", "uri"} <= checked, sorted(checked)
-    assert set(emit.FORMAT_TYPES) <= checked, sorted(set(emit.FORMAT_TYPES) - checked)
+    assert set(scalars.FORMAT_TYPES) <= checked, sorted(set(scalars.FORMAT_TYPES) - checked)
 
     seen: dict[str, int] = {}
     #: The format sites the emitter never visits, by format: a position under a
@@ -1568,7 +1569,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             # one path per format would grade only whichever arm it happened to
             # name, and would have passed unchanged while the other arm went
             # unimported.
-            choose = emit.FORMAT_TYPES.get(fmt) if fmt in checked else None
+            choose = scalars.FORMAT_TYPES.get(fmt) if fmt in checked else None
             if choose is None:
                 # **Where no type is selected, section 5's ``format`` row has TWO
                 # answers and the position decides which.**  On a FIELD the format
