@@ -80,6 +80,7 @@ from __future__ import annotations
 from typing import Any
 
 from codegen import bundle, compiler, ir
+from codegen.lower import names
 from codegen.schema import nodes
 from codegen.schema import parse as nodes_parse
 from codegen.keywords import Position
@@ -221,7 +222,7 @@ def _inner(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef
     return compiler.carried(decided, pointer, what, mod)
 
 
-def _contents(node: nodes.Node, symbol: str, what: str, mod: Module) -> ir.TypeRef | Refusal:
+def _contents(node: nodes.Node, what: str, mod: Module) -> ir.TypeRef | Refusal:
     """The type of a container's CONTENTS -- its element, or its mapping's value.
 
     One function for the two, because the two are the same question asked at two
@@ -264,7 +265,7 @@ def _contents(node: nodes.Node, symbol: str, what: str, mod: Module) -> ir.TypeR
     bundle state one.
     """
     pointer = node.pointer
-    decided = compiler.lower_node(node, symbol, mod)
+    decided = compiler.lower_node(node, mod)
     if isinstance(decided, Refusal):
         return decided
     if not decided.type.local and node.description:
@@ -277,7 +278,7 @@ def _contents(node: nodes.Node, symbol: str, what: str, mod: Module) -> ir.TypeR
         # nothing reads.  Measured on ``trusted-match/publisher-tmpx-config.json``,
         # whose described mapping value recorded ``DictMinProperties1MaxProperties2``
         # and then rendered its bound inline under its own name.
-        named = compiler.name_the_node(mod, symbol, pointer, node, decided)
+        named = compiler.name_the_node(mod, pointer, node, decided)
         if isinstance(named, Refusal):
             return named
         return named.type
@@ -287,7 +288,7 @@ def _contents(node: nodes.Node, symbol: str, what: str, mod: Module) -> ir.TypeR
 # --------------------------------------------------------------------------- #
 # the rows
 # --------------------------------------------------------------------------- #
-def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided | Refusal:
+def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
     """``list[X]``, with ``minItems``/``maxItems`` on the LIST and not on ``X``.
 
     The bound comes back in the document's own spelling and rides on the field
@@ -330,7 +331,10 @@ def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided | Refusal:
             kind=Kind.VERDICT,
         )
     else:
-        lowered = _contents(node.element, name_hint + "Item", "the element", mod)
+        # **§4's ELEM rule as a HOP**: ``<Parent>Item``, recorded against the array's
+        # own pointer so ``lower/names.py`` folds it onto whatever the array is called.
+        mod.hops[node.element.pointer] = names.Item(pointer)
+        lowered = _contents(node.element, "the element", mod)
         if isinstance(lowered, Refusal):
             return lowered
         element = lowered
@@ -361,7 +365,7 @@ def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided | Refusal:
     return Decided(ir.TypeRef(container="list", of=(element,)), bounds)
 
 
-def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided | Refusal:
+def mapping(node: nodes.Mapping_, mod: Module) -> Decided | Refusal:
     """``dict[K, V]`` for an object node that declares no property.
 
     The node has no field to hang a class on and no property name to derive a class
@@ -485,7 +489,7 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided | Refu
         patterned = _value(
             node.value,
             f"{pointer}/patternProperties/{bundle.escape_key(expr)}",
-            name_hint,
+            pointer,
             mod,
             keyword="patternProperties",
         )
@@ -508,7 +512,7 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided | Refu
     key = _key(node.key, mod)
     if isinstance(key, Refusal):
         return key
-    value = _value(node.value, f"{pointer}/additionalProperties", name_hint, mod, stated=ap)
+    value = _value(node.value, f"{pointer}/additionalProperties", pointer, mod, stated=ap)
     if isinstance(value, Refusal):
         return value
     return Decided(ir.TypeRef(container="dict", of=(value,), key=key), bounds)
@@ -517,7 +521,7 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided | Refu
 def _value(
     node: nodes.Node | None,
     pointer: str,
-    name_hint: str,
+    parent: str,
     mod: Module,
     *,
     keyword: str = "additionalProperties",
@@ -540,7 +544,11 @@ def _value(
         if stated is True or stated == {} or stated is None:
             return ir.TypeRef("typing.Any")
         return Refusal(keyword, pointer, f"not a schema: {stated!r}", kind=Kind.VERDICT)
-    return _contents(node, name_hint + "Value", "the value", mod)
+    # **§4's MAPV rule as a HOP**: ``<Parent>Value``, against the MAPPING's own pointer --
+    # which for an extras store is the CLASS's, because the parser builds the store at the
+    # class's pointer (§4) and the store therefore shares the class's name entry.
+    mod.hops[node.pointer] = names.Value(parent)
+    return _contents(node, "the value", mod)
 
 
 def _key(node: nodes.Node | None, mod: Module) -> ir.TypeRef | Refusal:
@@ -620,13 +628,18 @@ def _key_type(node: nodes.Node, mod: Module) -> ir.TypeRef | Refusal:
     One expression for the two arms of :func:`_key` that reach the walk -- a ``$ref``
     key and a constrained one -- so the two cannot come to read a refusal differently.
     """
-    decided = compiler.lower_node(node, "", mod)
+    # **The one position §4's nested rule derives NO name for**, and ``names.Unnamed`` is
+    # that statement: ``propertyNames`` constrains a KEY, and §4's rule names a property,
+    # an element or a value.  A declaration that needed a name here would collide with the
+    # other unnamed position and refuse by name.
+    mod.hops[node.pointer] = names.Unnamed()
+    decided = compiler.lower_node(node, mod)
     if isinstance(decided, Refusal):
         return decided
     return _inner(decided, node.pointer, "the key", mod)
 
 
-def multi_type(node: nodes.MultiType, name_hint: str, mod: Module) -> Decided | Refusal:
+def multi_type(node: nodes.MultiType, mod: Module) -> Decided | Refusal:
     """``X | Y`` for a node whose ``type`` is a list, each keyword on its OWN arm.
 
     An arm is the node re-cut to one type, carrying only the keywords that type can
@@ -742,7 +755,10 @@ def multi_type(node: nodes.MultiType, name_hint: str, mod: Module) -> Decided | 
     # document and not the one iteration happened to reach first.
     for kind, member in zip(kinds, node.members, strict=True):
         at = f"{pointer}/type/{kind}"  # not a real pointer; it names the ARM that refused
-        decided = compiler.lower_node(member, name_hint, mod)
+        # No hop: the parser cuts each member at the node's OWN pointer, because it is
+        # the same instance re-read under one of its admissible words (§4), so a member
+        # inherits the name entry the node's own parent recorded.
+        decided = compiler.lower_node(member, mod)
         if isinstance(decided, Refusal):
             return decided
         arm = _inner(decided, at, f"the {kind!r} arm", mod)

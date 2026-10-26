@@ -143,7 +143,7 @@ _BRANCH_OF = ("oneOf", "anyOf")
 
 
 def lower(
-    node: nodes.Enumeration, name_hint: str, mod: Module, *, of_a_root_union: bool = False
+    node: nodes.Enumeration, mod: Module, *, of_a_root_union: bool = False
 ) -> Decided | Refusal:
     """§4's enumeration row: a ``StrEnum``/``IntEnum`` where a name reaches the node, and
     a ``Literal`` of its members where none does.
@@ -179,13 +179,16 @@ def lower(
         return refused
     if resolves_no_name(node, of_a_root_union=of_a_root_union):
         return literal(node)
-    declared = decide(node, name_hint)
+    # **Declared at the node's POINTER, with no name of its own** (§7): the enumeration
+    # the walk builds carries the pointer in its name slot and ``lower/names.py`` binds
+    # §4's derived name onto it in one pass over the finished module.
+    declared = decide(node, node.pointer)
     if isinstance(declared, Refusal):
         return declared
-    collision = mod.declare(name_hint, node.pointer, declared)
+    collision = mod.declare(node.pointer, declared)
     if collision is not None:
         return collision
-    return Decided(ir.TypeRef(name_hint, local=True))
+    return Decided(ir.TypeRef(node.pointer, local=True))
 
 
 def resolves_no_name(node: nodes.Enumeration, *, of_a_root_union: bool = False) -> bool:

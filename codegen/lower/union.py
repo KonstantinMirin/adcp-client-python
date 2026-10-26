@@ -120,6 +120,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from codegen import compiler, ir, keywords
+from codegen.lower import names
 from codegen.schema import nodes
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal, first_refusal
@@ -269,27 +270,11 @@ def keyword(doc: dict) -> str | None:
 # --------------------------------------------------------------------------- #
 # D3: which rule names a branch
 # --------------------------------------------------------------------------- #
-def pins(props: Any) -> dict[str, Any]:
-    """Every property of a property map that is pinned to a ``const``.
-
-    ONE reading, and two things read it: §4 "Names"'s second branch-naming
-    choice -- the ``const`` a branch pins on the discriminating property
-    (:func:`_const_pin`) -- and §4's first dispatch source (:func:`discriminator`).  They
-    are the same question asked of the same map -- "which key does this branch pin, and
-    to what" -- and a second reading is how a class could come to be NAMED after a key
-    the union does not dispatch on.
-
-    A SCALAR pin only.  An object or an array ``const`` is refused by §5's ``const`` row
-    at the property itself, and a value that is not hashable has no place in the
-    distinctness test :func:`discriminator` runs, so it is not a pin here either.
-    """
-    if not isinstance(props, dict):
-        return {}
-    return {
-        k: v["const"]
-        for k, v in props.items()
-        if isinstance(v, dict) and isinstance(v.get("const"), (str, bool, int))
-    }
+# **``pins`` is ``codegen/lower/names.py``'s now** and re-bound here under its own name,
+# because §4 "Names"'s second branch rule moved there with the other two and the two
+# readers of a branch's pin must stay one reading: a class named after a key the union
+# does not dispatch on is exactly what a second reading buys.
+pins = names.pins
 
 
 def dispatch_key(node: "nodes.Union") -> str | None:
@@ -306,88 +291,20 @@ def dispatch_key(node: "nodes.Union") -> str | None:
     return named if isinstance(named, str) else None
 
 
-def _const_pin(props: Any, named: str | None) -> Any:
-    """The ``const`` this branch pins on the discriminating property, or ``None``.
-
-    The property is the root's ``discriminator.propertyName`` where it declares one, and
-    otherwise the branch's single ``const``-pinned property.  Two pins and no
-    ``discriminator`` is ambiguous and falls through to the next rule rather than taking
-    the alphabetically first, which would make a class name a function of spelling.
-
-    ``props`` is the branch's OWN property map, or -- for a bare ``$ref`` branch -- the
-    map it inherits from its target (:class:`Branch`).  A ``$ref`` branch's fields come
-    from the target by §4's own sentence, so its pin does too: read off the branch node
-    instead, every such branch pins nothing and that naming choice would be dead at the
-    exact position §4 names it for.
-    """
-    pinned = pins(props)
-    if named is not None and named in pinned:
-        return pinned[named]
-    return next(iter(pinned.values())) if len(pinned) == 1 else None
-
-
-def branch_identity(branch: Any, root: str, named: str | None, props: Any = None) -> str | None:
-    """D3's three branch rules, or ``None`` where none of them applies.
-
-    Split out of :func:`branch_name` because the two callers need the SAME three rules
-    and differ only in what "no identity" means.  A ROOT union declares one class per
-    branch, so a branch with no identity is a document this emitter cannot name and
-    :func:`branch_name` refuses it.  A NESTED union is a TYPE (:func:`nested`), and a
-    branch that lowers to an annotation -- a scalar, a ``$ref``, an array -- needs no
-    name at all, so refusing one there would refuse a union the walk can lower.
-
-    It is one function and not two copies of the three rules for the ordinary reason:
-    the rules ARE D3, and a second reading of them is how the two positions come to
-    name one branch differently.
-
-    ``props`` and ``required`` default to the branch's OWN, and are passed for a bare
-    ``$ref`` branch as the INHERITED ones: rules 2 and 3 both read a fact about the
-    branch's fields, and §4 says a ``$ref`` branch's fields are the target's.  Rule 1 is
-    unaffected -- a title is the branch node's own annotation and never the target's,
-    because the target's title names the target's class.
-    """
-    if not isinstance(branch, Mapping):
-        return None
-    title = branch.get("title")
-    if isinstance(title, str) and title:
-        return compiler.class_name(title)
-    pin = _const_pin(branch.get("properties") if props is None else props, named)
-    if pin is not None:
-        return root + compiler.class_name(str(pin))
-    required = branch.get("required")
-    if isinstance(required, list) and required:
-        return root + "".join(compiler.class_name(str(k)) for k in sorted(required))
-    return None
-
-
-def branch_name(
-    branch: Any, root: str, pointer: str, named: str | None, props: Any = None
-) -> str | Refusal:
-    """D3's branch rules, in order: title, the discriminator ``const``, the required set,
-    then refuse the document by name and pointer.
-
-    A title names itself.  A ``const`` or a required set is prefixed with the ROOT's name,
-    so a branch named by either shares its base's spelling.  The required-set key is
-    deliberate: it is stable when the spec adds an OPTIONAL field and renames exactly when
-    requiredness changes, which is a semantic change a caller should meet as an
-    ``ImportError`` rather than as a silent repoint.
-
-    **A name is never derived from the neighbourhood.**  The rule a previous generator
-    reached for -- name the sole classed branch after its PARENT -- makes a class name a
-    function of what its siblings happen to be, so adding a branch renames an unrelated
-    class.  D3 has no such rule and this refuses instead.
-    """
-    derived = branch_identity(branch, root, named, props)
-    if derived is not None:
-        return derived
-    return Refusal(
-        "title",
-        pointer,
-        "no title, no discriminator const and no required set: this branch has no "
-        "identity to derive a name from, and D3 refuses rather than naming it after "
-        "its siblings",
-        kind=Kind.VERDICT,
-    )
+# **§4 "Names"'s three branch rules are ``codegen/lower/names.py``'s now** (§14 step 7,
+# and §7's "naming is a pass over the module").  ``branch_identity`` and ``branch_name``
+# read a branch's own DECLARATION -- its title, the ``const`` it pins on the dispatch
+# property, its sorted ``required`` set -- and this row records those inputs as a
+# ``names.Branch`` hop instead of deriving a name from them: the declaration, the
+# dispatch property, the property map the readings range over (the branch's own, or the
+# TARGET's for a bare ``$ref`` branch), and whether a branch with no identity REFUSES
+# (a root union, which declares one class per branch) or falls back to the union's own
+# derived name (a nested union, where a branch that lowers to an annotation needs none).
+#
+# :func:`_const_pin` went with them and ``names._const_pin`` is the one reading of a
+# branch's pin.  What stays here is :func:`pins`, which §4's DISPATCH derivation reads
+# across every branch at once -- a different question from naming one branch, and the
+# one this module owns.
 
 
 # --------------------------------------------------------------------------- #
@@ -423,17 +340,18 @@ class Branch:
     place the difference is read, so nothing downstream asks which kind of branch this
     is in order to find its property map.
 
-    ``name`` is EMPTY out of :func:`_plan` and written by :func:`_named` once every
-    branch is planned, which is a sequencing fact and not a two-phase object for its own
-    sake: §4 "Names"'s ``const`` choice reads the pin and §4's dispatch derivation reads
-    the same pins across every branch, so a root with no derivable dispatch has to be
-    reported on the dispatch -- not on whichever branch happens to be the first with no
-    title.  Measured on ``core/requirements/asset-requirements.json``, whose 12 bare
+    **It carries no name at all now** (§14 step 7).  It had one, written by a ``_named``
+    pass once every branch was planned, and the sequencing that pass existed for is the
+    whole reason naming is a pass over the MODULE: §4 "Names"'s ``const`` choice reads the
+    pin that §4's dispatch derivation also reads, so a root with no derivable dispatch has
+    to be reported on the dispatch -- not on whichever branch happens to be the first with
+    no title.  Measured on ``core/requirements/asset-requirements.json``, whose 12 bare
     ``$ref`` branches have no title and no pin: named first, it refuses on ``title`` at
-    ``/anyOf/0`` with "this branch has no identity", which names the symptom.
+    ``/anyOf/0`` with "this branch has no identity", which names the symptom.  With the
+    names assigned AFTER the walk the ordering holds by construction: this row reports the
+    dispatch and ``lower/names.py`` reports the identity.
     """
 
-    name: str
     pointer: str
     #: The branch's DECLARATION, which is what §4 "Names"'s three rules and §4's dispatch
     #: derivation read -- a title, a ``const`` pin, a ``required`` set
@@ -569,7 +487,7 @@ def declares_a_class(node: "nodes.Union", i: int) -> bool:
     return "properties" in branch or "allOf" in branch
 
 
-def _alias(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str | Refusal:
+def _alias(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
     """D2's module-level alias for a union root whose branches are all annotations.
 
     The root's name binds an ``Annotated`` alias over the branches' own union, and the
@@ -622,28 +540,10 @@ def _alias(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str | Refu
     here would be a second reading of what the walk declares, which is what makes the
     two disagree.
     """
-    decided = _arms(node, symbol, mod)
+    decided = _arms(node, mod)
     if isinstance(decided, Refusal):
         return decided
-    return compiler.declare_alias(mod, symbol, node, decided)
-
-
-def _named(plan: Branch, root: str, named: str | None) -> Branch | Refusal:
-    """§4 "Names"'s branch name, written onto a planned branch, or the refusal
-    that says why not.
-
-    The naming PASS, separate from :func:`_plan` for the reason :class:`Branch` states:
-    the ``const`` choice reads the pin that §4's dispatch derivation also reads, so
-    the dispatch is decided first and a root with none is reported on the dispatch.
-
-    "Or the refusal" is now the TYPE and not only the docstring: a branch with no
-    identity returns one, and a caller that wrote it into a :class:`Branch` without
-    looking would be a type error.
-    """
-    derived = branch_name(plan.node, root, plan.pointer, named, plan.properties)
-    if isinstance(derived, Refusal):
-        return derived
-    return replace(plan, name=derived)
+    return compiler.declare_alias(mod, node.pointer, node, decided)
 
 
 def _why_no_pin(planned: Sequence[Branch]) -> str:
@@ -784,7 +684,7 @@ def overlapping(planned: Sequence[Branch], node: "nodes.Union") -> list[str]:
     ]
 
 
-def lower_union(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str | Refusal:
+def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
     """Emit the base, the branches and the module trailer; return the base's symbol.
 
     **CONVERTED to node fields.**  The combinator is :attr:`nodes.Union.combinator`, the
@@ -843,7 +743,7 @@ def lower_union(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str |
     if states_a_scalar_instance(node) and not any(
         declares_a_class(node, i) for i in range(len(node.branches))
     ):
-        return _alias(node, symbol, mod)
+        return _alias(node, mod)
     if node.word not in (None, "object"):
         return Refusal(
             "type",
@@ -881,7 +781,7 @@ def lower_union(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str |
     # refusal in document order; only the fused one stops at it.
     planned: list[Branch] = []
     for i in range(len(node.branches)):
-        plan = _plan(node, i, symbol, mod)
+        plan = _plan(node, i, mod)
         if isinstance(plan, Refusal):
             return plan
         planned.append(plan)
@@ -953,23 +853,24 @@ def lower_union(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str |
             "is one",
             kind=Kind.DEFERRED,
         )
-    # **The batch form, and here the map IS pure**: ``_named`` reads §4 "Names"'s three
-    # sources off the branch's own declaration and writes a name onto a frozen
-    # :class:`Branch`, touching neither the module nor the run.  So the sequence can be
-    # built before the earliest refusal in it is read, which is :func:`first_refusal` in
-    # the shape §2 wrote it -- and the loop above says what the difference buys.
-    renamed = [_named(p, symbol, named) for p in planned]
-    name_refusal = first_refusal(renamed)
-    if name_refusal is not None:
-        return name_refusal
-    planned = [p for p in renamed if not isinstance(p, Refusal)]
-    names = [p.name for p in planned]
-    if len(set(names)) != len(names):
-        return Refusal(
-            "title",
+    # **§4 "Names"'s branch rules as HOPS, one per branch** (§14 step 7).  The three
+    # inputs the rules read are recorded here -- the branch's own declaration, the
+    # dispatch property the pin is looked for on, and the property map the readings range
+    # over, which for a bare ``$ref`` branch is the TARGET's -- and ``lower/names.py``
+    # derives the name.  ``refuses=True`` because a ROOT union declares one class per
+    # branch: a branch with no identity is a document this emitter cannot name.
+    #
+    # The two refusals that stood here are both that pass's now and both VERDICTS: a
+    # branch with no identity, and two branches deriving one class name (which is the
+    # module-wide check, so it also catches a branch colliding with a class elsewhere in
+    # the document -- strictly wider than the per-union check it replaces).
+    for plan in planned:
+        mod.hops[plan.pointer] = names.Branch(
             pointer,
-            f"two branches derive the same class name: {sorted(n for n in names if names.count(n) > 1)}",
-            kind=Kind.VERDICT,
+            plan.node,
+            discriminator=named,
+            properties=plan.properties,
+            refuses=True,
         )
 
     mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
@@ -984,19 +885,28 @@ def lower_union(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str |
     # combinator is the keyword a refusal has to name.  ``render._union_base_lines``
     # writes all four statements, and the root's own rule -- which every branch inherits
     # -- arrives through ``rules`` like any other class's.
+    # **§7's fourth union-base slot, written here**: the base's BRANCHES as ``TypeRef``s,
+    # built ONCE and passed to both readers -- the base's own declaration and the
+    # :class:`codegen.ir.UnionInstall` below -- so the two cannot come to disagree about
+    # which classes are this base's branches.  Each one names a branch by POINTER until
+    # ``lower/names.py`` binds it (§7).
+    branches = tuple(ir.TypeRef(p.pointer, local=True) for p in planned)
     collision = mod.declare(
-        symbol,
         pointer,
         ir.ClassDecl(
-            name=symbol,
+            name=pointer,
             ref=compiler.schema_ref(mod.document, pointer),
             fields=(),
             description=node.description,
-            bases=("BranchDispatchMixin", "AdCPBaseModel"),
+            bases=(
+                ir.TypeRef("BranchDispatchMixin", local=True),
+                ir.TypeRef("AdCPBaseModel", local=True),
+            ),
             rules=stated.rules,
             root_required=(),
             discriminator=on,
             combinator=kw,
+            branches=branches,
         ),
     )
     if collision is not None:
@@ -1043,7 +953,6 @@ def lower_union(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str |
             inherited = plan.inherits.shape.description
             declared = compiler.declare_object(
                 plan.parsed,
-                plan.name,
                 plan.pointer,
                 mod,
                 (),
@@ -1054,7 +963,10 @@ def lower_union(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str |
                     description=inherited,
                 ),
                 Position.BRANCH,
-                bases=(symbol, plan.inherits.symbol),
+                bases=(
+                    ir.TypeRef(pointer, local=True),
+                    ir.TypeRef(plan.inherits.symbol, local=True),
+                ),
                 description=inherited,
             )
             if isinstance(declared, Refusal):
@@ -1065,11 +977,15 @@ def lower_union(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str |
         # itself (§6) -- and the class rows take the NODE.  ``lower_composition`` still
         # reads a declaration, which is §2's own decision about the conjunct merge.
         if "allOf" in plan.node:
-            composed = compiler.lower_composition(plan.parsed, plan.name, mod, bases=(symbol,))
+            composed = compiler.lower_composition(
+                plan.parsed, mod, bases=(ir.TypeRef(pointer, local=True),)
+            )
             if isinstance(composed, Refusal):
                 return composed
         elif isinstance(plan.parsed, nodes.Object):
-            classed = compiler.lower_object(plan.parsed, plan.name, mod, bases=(symbol,))
+            classed = compiler.lower_object(
+                plan.parsed, mod, bases=(ir.TypeRef(pointer, local=True),)
+            )
             if isinstance(classed, Refusal):
                 return classed
         else:
@@ -1109,8 +1025,8 @@ def lower_union(node: "nodes.Union", symbol: str, mod: compiler.Module) -> str |
     # so the declaration is appended rather than passed through ``Module.declare``.
     # ``render.union_install`` writes them (§7: the union trailer was the fourth text the
     # walk produced).
-    mod.declarations.append(ir.UnionInstall(symbol, tuple(names)))
-    return symbol
+    mod.declarations.append(ir.UnionInstall(ir.TypeRef(pointer, local=True), branches))
+    return pointer
 
 
 # --------------------------------------------------------------------------- #
@@ -1164,9 +1080,7 @@ _NESTED_SIBLING = (
 
 
 
-def lower(
-    node: "nodes.Union", name_hint: str, mod: compiler.Module
-) -> compiler.Decided | Refusal:
+def lower(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refusal:
     """§4's union row, at the node's own POSITION: a base plus one class per branch at a
     document ROOT, and one ``A | B`` type below it.
 
@@ -1183,16 +1097,14 @@ def lower(
     position, which is the parser's classification read by the table.
     """
     if node.position is Position.ROOT:
-        base = lower_union(node, name_hint, mod)
+        base = lower_union(node, mod)
         if isinstance(base, Refusal):
             return base
         return compiler.Decided(ir.TypeRef(base, local=True))
-    return nested(node, name_hint, mod)
+    return nested(node, mod)
 
 
-def nested(
-    node: "nodes.Union", name_hint: str, mod: compiler.Module
-) -> compiler.Decided | Refusal:
+def nested(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refusal:
     """``A | B`` for a ``oneOf``/``anyOf`` at a pointer that is NOT a document root.
 
     **It is not the root row's shape and must not be.**  A root union emits a base
@@ -1259,12 +1171,10 @@ def nested(
     refused = compiler.check_keywords(node, {node.combinator}, _NESTED_SIBLING, mod=mod)
     if refused is not None:
         return refused
-    return _arms(node, name_hint, mod)
+    return _arms(node, mod)
 
 
-def _arms(
-    node: "nodes.Union", name_hint: str, mod: compiler.Module
-) -> compiler.Decided | Refusal:
+def _arms(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refusal:
     """The ``A | B`` itself, with no sibling screen: the two callers differ in that alone.
 
     :func:`nested` screens the node's siblings and :func:`_alias` does not, because a
@@ -1293,7 +1203,10 @@ def _arms(
                 f"a branch is {type(branch).__name__}, not a schema",
                 kind=Kind.VERDICT,
             )
-        hint = branch_identity(branch, name_hint, named) or name_hint
+        # **§4 "Names"'s branch rules as a HOP**, with ``refuses=False``: a nested union
+        # is a TYPE, so a branch that lowers to an annotation needs no name and falls back
+        # to the union's own derived name rather than refusing a union the walk can lower.
+        mod.hops[at] = names.Branch(pointer, branch, discriminator=named)
         # A NESTED union's branch is NOT ``objectish``: §4 makes a branch of a ROOT union
         # a class whatever it states, and a nested union's branch is a member TYPE, so a
         # branch stating ``properties`` with no ``type`` word is refused here exactly as
@@ -1301,7 +1214,6 @@ def _arms(
         # telling is the parser's descent now (:attr:`nodes.Union.branches`).
         decided = compiler.lower_node(
             parsed,
-            hint,
             mod,
             # **§6: the UNION knows its own position and TELLS the branch.**  "An untitled
             # BRANCH of a root union -> a ``Literal`` of the members" is a statement about
@@ -1335,9 +1247,7 @@ def _arms(
     return compiler.Decided(ir.TypeRef(container="union", of=unique))
 
 
-def _inherited(
-    parsed: "nodes.Node", root: str, mod: compiler.Module
-) -> Inherited | Refusal:
+def _inherited(parsed: "nodes.Node", mod: compiler.Module) -> Inherited | Refusal:
     """Resolve a bare ``$ref`` branch's target: the class it subclasses and its fields.
 
     §4: a ``$ref`` branch is a class with TWO BASES, and the target is the one that
@@ -1365,7 +1275,7 @@ def _inherited(
     and subclassing one is a ``TypeError`` at import.
     """
     pointer, uri = parsed.pointer, getattr(parsed, "uri", "")
-    decided = compiler.lower_node(parsed, root, mod)
+    decided = compiler.lower_node(parsed, mod)
     if isinstance(decided, Refusal):
         return decided
     symbol = decided.type.path
@@ -1399,9 +1309,7 @@ def _inherited(
     return Inherited(symbol=symbol, shape=shape)
 
 
-def _plan(
-    node: "nodes.Union", i: int, root: str, mod: compiler.Module
-) -> Branch | Refusal:
+def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal:
     """What one branch becomes, or the refusal that says why it becomes nothing.
 
     The branch's DECLARATION decides which shape it is -- §4 "Names" and §4's dispatch
@@ -1428,11 +1336,10 @@ def _plan(
         # :func:`lower_union` resolves every
         # branch before it names any, so a root with no derivable dispatch is reported
         # on the dispatch rather than on the first branch that has no title.
-        inherits = _inherited(parsed, root, mod)
+        inherits = _inherited(parsed, mod)
         if isinstance(inherits, Refusal):
             return inherits
         return Branch(
-            name="",
             pointer=pointer,
             node=branch,
             parsed=parsed,
@@ -1497,7 +1404,7 @@ def _plan(
         # below sits after this one: a branch whose fields all come from its conjuncts
         # declares none of its own, and ``lower_composition`` reads the conjunct list
         # for them.
-        return Branch(name="", pointer=pointer, node=branch, parsed=parsed)
+        return Branch(pointer=pointer, node=branch, parsed=parsed)
     if "properties" not in branch:
         return Refusal(
             "required" if "required" in branch else "type",
@@ -1506,4 +1413,4 @@ def _plan(
             "on the root's class (D2, D6), not a branch class (step 7's row)",
             kind=Kind.DEFERRED,
         )
-    return Branch(name="", pointer=pointer, node=branch, parsed=parsed)
+    return Branch(pointer=pointer, node=branch, parsed=parsed)
