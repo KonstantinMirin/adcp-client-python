@@ -95,6 +95,26 @@ from conftest import refusal_from
 from nodeset import claimed, partitions, ratchet
 
 REPO = Path(__file__).resolve().parents[1]
+
+#: **The ``PYTHONPATH`` a SUBPROCESS of this suite needs, and why ``REPO`` alone is not
+#: it.**  Two tests below run ``python -m codegen`` as a child process, and a child gets
+#: none of the parent's ``sys.path`` except what this names.  ``REPO`` reaches ``codegen``,
+#: and ``adcp`` is then resolved by the environment's own editable install -- a ``.pth``
+#: naming ONE checkout's ``src``.  In the checkout that owns the install the two agree; in
+#: any other, the child grades ``codegen`` from THIS tree against ``adcp`` from ANOTHER,
+#: and a defect in either is invisible to it.
+#:
+#: Measured: with ``PYTHONPATH=REPO`` a sibling worktree's child imported
+#: ``/srv/ws/adcp-client-python/src/adcp/types/_base.py`` while the in-process suite
+#: imported this tree's, and the first symbol added to that module by a row working in a
+#: worktree turned both tests into an ``ImportError`` traceback -- which each test then
+#: reported as its own subject failing (``"Traceback" not in done.stderr``, and an empty
+#: output set) rather than as a path it had assembled wrong.
+#:
+#: So ``src`` is named FIRST, which is what makes the child's ``adcp`` the same object the
+#: parent's is.  Not a relaxation of either assertion: both still grade the tree this file
+#: sits in, which is the tree they claim to grade.
+SUBPROCESS_PATH = os.pathsep.join((str(REPO / "src"), str(REPO)))
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
 TREE = REPO / emit.TREE
 
@@ -2200,7 +2220,7 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     # because the first row that widens a cell has to move these two numbers TOGETHER, and
     # a check added with the widening could not say whether it was ever able to fail.
     # ``tests/test_approximation.py`` is where each direction is perturbed.
-    census = harness.census(list(zip([pair_of(g) for g in graded()], reports, strict=True)))
+    census = harness.census([(pair_of(g), r) for g, r in graded_reports()])
     assert census.over_declared == [], census.over_declared
     assert census.undeclared_widenings == [], census.undeclared_widenings
     assert census.unattributed == [], census.unattributed
@@ -5779,7 +5799,7 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
     outs = []
     for seed in ("0", "12345"):
         into = Path(tempfile.mkdtemp())
-        env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": str(REPO)}
+        env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": SUBPROCESS_PATH}
         subprocess.run(
             [*cmd, str(into), *population()], check=False, cwd=REPO, env=env, capture_output=True
         )
@@ -5840,7 +5860,7 @@ def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
         ],
         check=False,
         cwd=REPO,
-        env={**os.environ, "PYTHONPATH": str(REPO)},
+        env={**os.environ, "PYTHONPATH": SUBPROCESS_PATH},
         capture_output=True,
         text=True,
     )
