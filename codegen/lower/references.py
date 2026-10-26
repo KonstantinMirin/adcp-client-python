@@ -19,7 +19,7 @@ from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 
 
-def lower(node: nodes.Reference, name_hint: str, mod: Module) -> Decided:
+def lower(node: nodes.Reference, name_hint: str, mod: Module) -> Decided | Refusal:
     """An IMPORT of the target's symbol, or the local entry's own declaration.
 
     **A CONSTRAINING sibling compiles to NOTHING and is REPORTED**, which is §5's ``$ref``
@@ -33,19 +33,21 @@ def lower(node: nodes.Reference, name_hint: str, mod: Module) -> Decided:
     screen.
     """
     compiler.report_inert(node.inert, node.pointer, mod)
-    check_keywords(
+    refused = check_keywords(
         node,
         {"$ref", *node.inert},
         "a sibling of $ref, which draft-07 ignores",
         mod=mod,
     )
+    if refused is not None:
+        return refused
     if node.position is Position.ROOT:
         # **A root that is a bare ``$ref`` has no row in §4's table.**  §5 makes a
         # reference an IMPORT of the target's symbol, and a module whose ROOT symbol is
         # another module's class is a second import path for that class -- which §1
         # refuses by name.  A VERDICT, because the obstruction is the POINTER SPACE: the
         # document names a node that already has a home, and no row is waiting for it.
-        raise Refusal(
+        return Refusal(
             "$ref",
             node.pointer,
             f"a root that is a bare reference to {node.uri!r} would bind this "
@@ -64,6 +66,11 @@ def lower(node: nodes.Reference, name_hint: str, mod: Module) -> Decided:
     if not node.head:
         return compiler.local_reference(mod, node.into, node.pointer)
     target = mod.bind(node.uri, node.pointer)
+    if isinstance(target, Refusal):
+        # The binder's refusal, unchanged (§6).  It is the binder that mints the CHAIN
+        # for a target that refused, because it is the one holding the target's own
+        # refusal to carry ``through=``; this row has nothing to add to it.
+        return target
     mod.imports.add((target.module, target.symbol))
     return Decided(ir.TypeRef(target.symbol, local=True))
 

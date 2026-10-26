@@ -166,7 +166,7 @@ def parse(
     source: Source,
     objectish: bool = False,
     applied: str | None = None,
-) -> nodes.Base:
+) -> nodes.Node:
     """One raw subschema as the node its keys and its type select.
 
     ``position`` is the node's own, assigned by the CALLER because it is a structural
@@ -385,7 +385,7 @@ def _object(
     the key schema is parsed ONCE however many fields read it.
     """
     props = raw.get("properties")
-    children: dict[str, nodes.Base] = {}
+    children: dict[str, nodes.Node] = {}
     if isinstance(props, Mapping):
         children = {
             key: parse(
@@ -411,7 +411,7 @@ def _object(
 
 def extras_store(
     raw: Mapping[str, Any], pointer: str, position: Position, source: Source
-) -> nodes.Base | None:
+) -> nodes.Node | None:
     """The extras STORE of a class with a typed ``additionalProperties``: §2's SECOND
     node rewrite, retired.
 
@@ -629,7 +629,7 @@ def _composition(raw: Mapping[str, Any], common: dict, pointer: str) -> nodes.Co
 # --------------------------------------------------------------------------- #
 # the two readings a container's contents take
 # --------------------------------------------------------------------------- #
-def _value(raw: Any, pointer: str, source: Source) -> nodes.Base | None:
+def _value(raw: Any, pointer: str, source: Source) -> nodes.Node | None:
     """A mapping's VALUE schema, parsed at MAPV; ``None`` for ``true`` and for ``{}``.
 
     §5: "The empty schema ``{}`` IS ``true`` and is read as ``true`` everywhere below,
@@ -641,7 +641,7 @@ def _value(raw: Any, pointer: str, source: Source) -> nodes.Base | None:
     return parse(raw, pointer=pointer, position=Position.MAPV, source=source)
 
 
-def _key(raw: Any, pointer: str, source: Source) -> nodes.Base | None:
+def _key(raw: Any, pointer: str, source: Source) -> nodes.Node | None:
     """A mapping's KEY schema, parsed at KEY, with the type word supplied.
 
     **§2's first node rewrite, retired.**  ``propertyNames`` applies to a key and a JSON

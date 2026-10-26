@@ -120,7 +120,9 @@ CLAIMS = frozenset({"type", "const"})
 LITERALS = (bool, int, str)
 
 
-def lower(node: nodes.Constant, name_hint: str, mod: compiler.Module) -> compiler.Decided:
+def lower(
+    node: nodes.Constant, name_hint: str, mod: compiler.Module
+) -> compiler.Decided | Refusal:
     """What one ``const`` node IS: the value it pins.
 
     The ``Literal`` TEXT is the RENDERER's -- ``ir.TypeRef.literals`` carries the
@@ -130,10 +132,12 @@ def lower(node: nodes.Constant, name_hint: str, mod: compiler.Module) -> compile
     :attr:`codegen.ir.TypeRef.literals`.
     """
     pointer = node.pointer
-    compiler.check_keywords(node, CLAIMS, mod=mod)
+    refused = compiler.check_keywords(node, CLAIMS, mod=mod)
+    if refused is not None:
+        return refused
     value = node.value
     if not isinstance(value, LITERALS):
-        raise Refusal(
+        return Refusal(
             "const",
             pointer,
             f"a const of {type(value).__name__} has no Literal: the compiler's own slot "
@@ -149,7 +153,7 @@ def lower(node: nodes.Constant, name_hint: str, mod: compiler.Module) -> compile
     if not jsonschema.Draft7Validator(
         {"type": node.word} if node.word is not None else {}
     ).is_valid(value):
-        raise Refusal(
+        return Refusal(
             "const",
             pointer,
             f"const {value!r} is not a {node.word!r}: the node admits nothing",
