@@ -340,27 +340,27 @@ def decide(
     objectish: bool = False,
     of_a_root_union: bool = False,
 ) -> Decided:
-    """PARSE one raw subschema, then dispatch on the kind the parser decided.
+    """PARSE one raw subschema at a position, then dispatch on the kind the parser decided.
 
-    **The one entry a not-yet-converted descent site uses**, and the reason it still
-    takes a raw mapping is §14 step 5's staging: a kind whose handler reads its children
-    off node fields never comes here, and a kind that has not converted yet reaches a
-    child through this function -- which PARSES it.  So every raw mapping is read by
-    ``codegen/schema/parse.py`` and by nothing else at every rung, and the last
-    conversion deletes this entry along with the carrier.
+    **ONE caller is left and it is the one re-entry §5 names**: :func:`local_reference`,
+    for a ``definitions`` / ``$defs`` entry at DEF.  §5 of the semantics document makes
+    that section "nothing by itself: a bag of named subschemas.  Each entry is declared on
+    demand when a ``$ref`` names it", and "an entry nothing references is not declared"
+    means the parser does not descend one -- so an entry is parsed when a reference asks
+    for it, which is a re-entry at a position and not a second traversal of one mapping.
+
+    Every other caller was a descent §14 step 5 staged, and all of them are gone with the
+    carrier: a handler takes its children off node fields.
 
     ``position`` is the node's own, passed by the caller because it is a structural fact
-    of the caller -- a property's value is at PROP, an array's element at ELEM, a branch
-    at BRANCH, a ``definitions`` entry at DEF -- and never recovered from the pointer
-    string, which cannot tell a RULE reference from a PROP one.
+    of the caller -- a ``definitions`` entry is at DEF -- and never recovered from the
+    pointer string, which cannot tell a RULE reference from a PROP one.
 
     ``objectish`` is §6's "a child never reconstructs its parent": a branch of a ROOT
     union is a class whatever it states, because §4 of the semantics document emits one
     class per branch, and the UNION is what knows that about itself and tells the branch.
-
-    The import is function-scope because ``decide`` is ``emit``'s wrapper over the
-    dispatch -- the content memo and the naming of a node a ``$ref`` elsewhere names --
-    and §14 step 7 moves both into ``lower/names.py`` as a pass over the finished module.
+    It is the parser's descent now (:attr:`nodes.Union.branches`) and survives here for
+    the signature, which a DEF entry does not use.
     """
     return lower_node(
         schema.parse(
@@ -1214,8 +1214,10 @@ def lower_object(
     :attr:`nodes.Object.extras`; ``propertyNames`` is :attr:`nodes.Object.key`; the type
     word is :attr:`nodes.Object.word` and the word an enclosing node applies to the same
     instance is :attr:`nodes.Base.applied`, which is what ``mod.object_constrained`` was
-    read as per node.  The ADMISSION SCREEN and the two shape validations still read
-    :attr:`nodes.Base.raw`, which is §14 step 5's carrier and the next conversion.
+    read as per node.  The ADMISSION SCREEN is :attr:`nodes.Base.declares` at the node's
+    own position and the ``required`` shape is :attr:`nodes.Base.faults`, which §4 makes
+    the parser's; :class:`Shape` takes :attr:`nodes.Base.declared`, the property
+    DECLARATIONS, because that is what §2's intersection rule merges.
 
     ``bases`` is what a COMPOSITION and a union BRANCH need and a leaf object does not,
     and it defaults to the leaf's answer -- no base, so the base is ``AdCPBaseModel`` --
@@ -1737,7 +1739,7 @@ def lower_composition(
         # Screened by the conjunct's OWN ``screen`` at its OWN pointer, so a conjunct
         # carrying a combinator of SHAPES is not admitted here and refuses below --
         # rather than being emitted with the combinator dropped.
-        screen = _declaration_screen(conjunct, Position.CONJ)
+        screen = frozenset(declaration_rule_sources(conjunct, Position.CONJ))
         if keys <= INLINE | screen | CONJ_COMPOSES:
             # ``foreign`` is handed to the screen as CLAIMED, because this arm has
             # already decided what happens to it: it is dropped and reported.  Left
@@ -2109,19 +2111,27 @@ def lower_composition(
     )
 
 
-def _declaration_screen(declaration: Mapping[str, Any], position: Position) -> frozenset[str]:
-    """The rule sources a raw DECLARATION states, which is :attr:`Rules.screen` for one.
+def declaration_rule_sources(
+    declaration: Mapping[str, Any], position: Position
+) -> dict[str, Any]:
+    """The rule sources a raw DECLARATION states: ``schema.parse._rule_sources``, asked
+    of a declaration.
 
-    An ``allOf`` conjunct is a declaration by §2's own decision, so its screen is read
-    the way the parser reads a node's: the table at the conjunct's own position, plus the
-    two combinators where every branch is ``required``-only.
+    An ``allOf`` conjunct is a declaration by §2's own decision, so its rule sources are
+    read the way the parser reads a node's -- the table at the conjunct's own position,
+    plus the two combinators where every branch states only which keys are present, which
+    is a CO-OCCURRENCE the cell cannot answer.  **ONE reading, and two things read it**:
+    :func:`lower_composition`'s conjunct screen, which wants the key SET, and
+    ``lower.rules.lower_declaration``, which wants the values -- so a conjunct's screen
+    and a conjunct's rule tuple cannot come to disagree about which keywords are rules
+    there, which is the second copy of a keyword decision §3 forbids.
     """
     from codegen.lower import rules
 
     sources = rule_sources(position)
     if rules.presence_only(declaration):
         sources |= combinators(position)
-    return frozenset(k for k in declaration if k in sources)
+    return {k: v for k, v in declaration.items() if k in sources}
 
 
 def _required(node: Mapping[str, Any], pointer: str) -> list[str]:

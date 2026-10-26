@@ -614,3 +614,242 @@ def test_the_python_text_rule_catches_the_four_texts_it_replaced(tmp_path: Path)
     for source in prose:
         probe.write_text(source + "\n")
         assert _python_text(probe) == [], source
+
+
+# --------------------------------------------------------------------------- #
+# §4's one reading, and §14 step 5's carrier, held by name
+# --------------------------------------------------------------------------- #
+#: Where a raw mapping may be read, and what forces each one.  ``docs/plan/architecture.md``
+#: §4: "``codegen/schema/parse.py`` is the one function that reads a raw mapping", and §6:
+#: "the parser walks the raw document once and builds the whole tree; after it, no layer
+#: walks a mapping."  Two readers stay at the DECLARATION level and the design decides
+#: both by name, so neither is an exemption:
+#:
+#: * ``codegen/lower/rules.py`` -- §4 keeps a node at RULE as a rule SOURCE on the
+#:   enclosing node (``nodes.Base.rules``) and names this module its only reader;
+#: * ``codegen/lower/union.py`` -- §4 "Names"'s three branch rules and §4's dispatch
+#:   derivation are readings of a branch's own DECLARATION (its title, its ``const`` pin,
+#:   its ``required`` set), which ``nodes.Union.branch_raw`` is the carrier for;
+#: * ``codegen/emit.py`` -- ``_composed_nodes``, which is the pointers a document's root
+#:   ``allOf`` NAMES.  That is a fact about the bundle's reference GRAPH and §11 puts it
+#:   in the source layer; the function's own docstring says so and names the move
+#:   (merging it with ``bundle.named_nodes``'s pass), so this entry SHRINKS when that
+#:   lands.  Nothing of the walk reads it: ``emit.lower_document`` reads the module's
+#:   symbol off ``nodes.Base.title`` now;
+#: * ``codegen/compiler.py`` -- §6 keeps ``restatement``, ``intersection`` and
+#:   ``at_least_as_tight`` as pure functions over DECLARATIONS, because §2's intersection
+#:   rule merges two declarations of one property and hands the merged one back to
+#:   ``parse``.  ``nodes.Conjunct.raw``, ``nodes.Base.declared`` and
+#:   ``nodes.Union.branch_raw`` are the three typed carriers that reading is given.
+MAY_READ_A_DECLARATION = frozenset(
+    {
+        "schema/parse.py",
+        "lower/rules.py",
+        "lower/union.py",
+        "compiler.py",
+        "emit.py",
+    }
+)
+
+#: The field name §14 step 5 allowed on a node DURING the conversion and deleted at the
+#: end of it: "during this step a node may carry its originating mapping ... **the step is
+#: not complete until that carrier is deleted**, and its deletion is the step's last
+#: commit: a tree that still has it has not finished step 5, and no later step may read
+#: it."
+CARRIER = "raw"
+
+
+def test_no_node_carries_the_mapping_it_was_parsed_from() -> None:
+    """§14 step 5's exit condition, asserted on the kinds rather than reviewed.
+
+    The carrier was ``nodes.Base.raw`` and the step's own sentence is that no later step
+    may read it.  A field is the only way one could: a handler holding a node cannot
+    reach the document otherwise, because ``parse`` is handed the mapping and returns
+    nodes.  So the assertion is that no kind of §4's table declares one -- which also
+    reddens if a later row reintroduces it under the same name to get a reading done
+    quickly.
+
+    ``nodes.Conjunct`` is the ONE declaration in this module that does carry ``raw``, and
+    it is not a node: §2's intersection rule merges two DECLARATIONS of one property and
+    hands the merged one back to ``parse``, so a conjunct is read as a declaration and
+    the node it becomes is the composed node.  It is asserted PRESENT, so the clause
+    above cannot be satisfied by deleting the sanctioned carrier too.
+    """
+    from dataclasses import fields as dataclass_fields
+
+    from codegen.schema import nodes
+
+    kinds = [
+        value
+        for value in vars(nodes).values()
+        if isinstance(value, type) and issubclass(value, nodes.Base)
+    ]
+    # §4's table, BY NAME and not by count: the kinds are closed (draft-07 fixes them and
+    # the table lists every one), so the population this clause ranges over is a
+    # declaration rather than a census of today's module.
+    assert {k.__name__ for k in kinds} == {
+        "Base",
+        "Reference",
+        "Enumeration",
+        "Constant",
+        "Composition",
+        "Union",
+        "Object",
+        "Mapping_",
+        "Array",
+        "Scalar",
+        "MultiType",
+        "Null",
+        "Typeless",
+    }, sorted(k.__name__ for k in kinds)
+    carrying = {
+        kind.__name__
+        for kind in kinds
+        if CARRIER in {f.name for f in dataclass_fields(kind)}
+    }
+    assert carrying == set(), (
+        f"{sorted(carrying)} carry {CARRIER!r}: §14 step 5's migration carrier is deleted "
+        "and no later step may read it -- a handler reads node fields, and a declaration "
+        "a reading genuinely needs gets a carrier nodes.py names (Conjunct.raw, "
+        "Base.rules, Base.declared, Union.branch_raw)"
+    )
+    assert CARRIER in {f.name for f in dataclass_fields(nodes.Conjunct)}, (
+        "nodes.Conjunct is a DECLARATION and not a node, and §2's intersection rule is "
+        "why it carries one; the clause above must not be green because this went too"
+    )
+
+
+def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
+    """§4's "one function that reads a raw mapping", read through the call graph.
+
+    Asserted as the set of MODULES that call ``codegen.schema.parse.parse``, because the
+    entry is what a second traversal would have to come through: every other module takes
+    a node and reads its fields.  Three callers and each is a position ``parse`` is
+    re-entered at rather than a second walk of one mapping:
+
+    * ``codegen/emit.py`` -- the document ROOT, once per document (``lower_document``);
+    * ``codegen/compiler.py`` -- a ``definitions`` entry at DEF, parsed on demand when a
+      ``$ref`` names it (§5: "an entry nothing references is not declared"), and the
+      MERGED declaration §2's intersection rule hands back (``_parsed_property``).
+
+    Named BY SITE and not by count: the set is ``{module, enclosing function}``, so a
+    fourth entry has to be added here with the sentence that re-enters the parser for it.
+
+    Resolved by AST, for the module docstring's reasons: a lazy import inside a function
+    body and a relative ``from ..schema import parse`` are both invisible to a grep.
+    """
+    sites: set[tuple[str, str]] = set()
+    for path in _modules():
+        rel = _rel(path)
+        if rel.startswith("schema/"):
+            continue  # the parser's own recursion is the one traversal
+        tree = ast.parse(path.read_text())
+        for holder in ast.walk(tree):
+            if not isinstance(holder, ast.FunctionDef):
+                continue
+            for node in ast.walk(holder):
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "parse"
+                    and isinstance(node.func.value, ast.Name)
+                    and node.func.value.id in {"schema", "parse", "schema_parse", "nodes_parse"}
+                ):
+                    sites.add((rel, holder.name))
+    assert sites == {
+        # the document ROOT, once per document (§5's one path)
+        ("emit.py", "lower_document"),
+        # a ``definitions`` entry at DEF, parsed when a ``$ref`` names it (§5)
+        ("compiler.py", "decide"),
+        # the MERGED declaration §2's intersection rule hands back (§6)
+        ("compiler.py", "_parsed_property"),
+    }, sorted(sites)
+
+
+#: The identifiers a RAW MAPPING is read through in this package, so the guard below can
+#: tell one from a node's own field: ``node.annotations[...]`` is a field and
+#: ``conjunct.get(...)`` is a declaration.  A name and not a type, because the type is what
+#: a static check cannot have -- and that is the point: the rule is about WHICH MODULE may
+#: hold a mapping at all, not about which line reads it.
+A_MAPPING = frozenset({"doc", "declaration", "conjunct", "branch", "sub", "raw", "node", "child"})
+
+#: The decision layer, which is where §4's rule bites.  ``bundle.py`` owns every file read
+#: and every fact derived from a document (§4), and ``harness.py`` reads the document of
+#: record because that is what a verifier does (§9), so neither is in scope here.
+DECIDES = ("compiler.py", "emit.py", "lower/", "schema/")
+
+
+def _declaration_reads(path: Path) -> set[str]:
+    """Every subscript or ``.get`` this module performs on a raw mapping."""
+    tree = ast.parse(path.read_text())
+    out: set[str] = set()
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "get"
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id in A_MAPPING
+        ):
+            out.add(f"{node.func.value.id}.get")
+        if (
+            isinstance(node, ast.Subscript)
+            and isinstance(node.value, ast.Name)
+            and node.value.id in A_MAPPING
+        ):
+            out.add(f"{node.value.id}[...]")
+    return out
+
+
+@pytest.mark.parametrize(
+    "path",
+    [p for p in _modules() if _rel(p).startswith(DECIDES)],
+    ids=_rel,
+)
+def test_only_the_named_modules_read_a_declaration(path: Path) -> None:
+    """The other half of §4's rule: which modules of the DECISION layer may hold a mapping.
+
+    Whether one line reads a declaration or a node's own mapping-valued field is not
+    decidable from the syntax -- ``annotations``, ``rules`` and ``declared`` are mappings
+    and are read with a subscript like anything else.  What IS decidable is which modules
+    do it at all, and :data:`MAY_READ_A_DECLARATION` is that set with the sentence forcing
+    each entry.  So this is a RATCHET on the set: a module outside it that acquires one
+    has to be added here, in front of a reader, with the sentence that permits it.
+
+    ``lower/union.py`` is the entry §14 step 5 removed, and it is the measurement that
+    makes this check non-vacuous: the row found it reading a branch list, a root's
+    ``type``, a root's four conjunct-ish siblings and a mapping per branch off the
+    document, and all four are fields now (``nodes.Union``).  What it reads is
+    ``branch_raw``, a carrier ``nodes.py`` names -- so it is still in the set below, for
+    §4 "Names"'s declaration-level reading and for nothing else.
+
+    ``emit.py`` left the set in the same commit: it read the document's ``title`` to
+    derive the module symbol before the parse, and ``nodes.Base.title`` is that reading
+    now.
+    """
+    reads = _declaration_reads(path)
+    assert not reads or _rel(path) in MAY_READ_A_DECLARATION, (
+        f"{_rel(path)} reads {sorted(reads)} off a raw mapping; §4 makes "
+        "codegen/schema/parse.py the one function that reads one, and the "
+        f"declaration-level readers the design names are "
+        f"{sorted(MAY_READ_A_DECLARATION - {'schema/parse.py'})}"
+    )
+
+
+def test_the_declaration_rule_is_not_vacuous() -> None:
+    """The control: the modules the rule PERMITS really do read a mapping.
+
+    A guard whose detector finds nothing is green for free, which is the defect this
+    file's own module docstring names about a grep.  So each permitted entry is asserted
+    to have at least one read -- the parser's own ``raw``, the rule lowering's rule
+    sources, and the intersection rule's conjuncts -- and the decision layer's other
+    modules are asserted to have none, which is the state §14 step 5 leaves.
+    """
+    found = {
+        _rel(p): _declaration_reads(p)
+        for p in _modules()
+        if _rel(p).startswith(DECIDES) and _declaration_reads(p)
+    }
+    assert set(found) == set(MAY_READ_A_DECLARATION), sorted(found)
+    for rel in sorted(MAY_READ_A_DECLARATION):
+        assert found[rel], rel

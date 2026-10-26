@@ -190,7 +190,7 @@ def the_same_node(mod: Module, node: nodes.Base) -> str | None:
     """The symbol an EQUAL node already declared in this module, or ``None``.
 
     **D3's content dedup, read off the type system.**  §14 step 5 deletes
-    ``content_key`` -- ``json.dumps([node.raw, node.applied])`` -- and §4 says what
+    ``content_key`` -- ``json.dumps([the node's own mapping, node.applied])`` -- and §4 says what
     replaces it: "two nodes are equal exactly when they state the same thing about an
     instance, which is §4's content dedup read off the type system rather than off a
     JSON serialisation with a position bit appended."  ``pointer`` and ``position`` are
@@ -471,25 +471,8 @@ def lower_document(
     bind: Callable[[str, str], Target] = _no_binder,
     named: frozenset[str] = frozenset(),
 ) -> tuple[Module, str]:
-    title = doc.get("title")
-    if not isinstance(title, str) or not title:
-        raise Refusal(
-            "title",
-            "",
-            "the document declares no title to derive a name from",
-            kind=Kind.VERDICT,
-        )
-    symbol = class_name(title)
-    if not symbol.isidentifier():
-        raise Refusal(
-            "title",
-            "",
-            f"the title {title!r} derives {symbol!r}, not an identifier",
-            kind=Kind.VERDICT,
-        )
     mod = Module(
         document=document,
-        root=symbol,
         bind=bind,
         asserted=asserted_formats(doc),
         named=named,
@@ -521,6 +504,30 @@ def lower_document(
     from codegen.lower.decide import decide
 
     root = schema.parse(doc, pointer="", position=Position.ROOT, source=mod.source)
+    # **The module's SYMBOL is read off the root NODE**, and that is the last reading this
+    # function made of the raw mapping: §4 makes ``codegen/schema/parse.py`` the one
+    # function that reads one, and ``title`` at ROOT is a NAME cell, so the parser puts it
+    # in :attr:`nodes.Base.annotations` and :attr:`nodes.Base.title` is the reading.  The
+    # module is therefore built before the symbol is known and ``mod.root`` is written
+    # after it: nothing between the two reads it -- ``parse`` does not, and
+    # ``compiler.local_reference``, which does, runs inside ``decide`` below.
+    title = root.title
+    if title is None:
+        raise Refusal(
+            "title",
+            "",
+            "the document declares no title to derive a name from",
+            kind=Kind.VERDICT,
+        )
+    symbol = class_name(title)
+    if not symbol.isidentifier():
+        raise Refusal(
+            "title",
+            "",
+            f"the title {title!r} derives {symbol!r}, not an identifier",
+            kind=Kind.VERDICT,
+        )
+    mod.root = symbol
     decided = decide(root, symbol, mod)
 
     # **THE MODULE WRAPPER, which is the only thing ROOT adds** (§5).  A class carries
