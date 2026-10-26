@@ -99,10 +99,19 @@ NOW_EMITTED = (
 #: pinning it here means a step that closes one of them shows up as this going stale
 #: rather than as a silent change of population.  It held 8, then 5, and holds 1 at
 #: 16052ffb0: the four ``$ref`` rows left because each one's target emits now.
+#:
+#: **RE-MEASURED at ``adcp-client-python-10l.20``, and the one entry moved rather than
+#: left.**  §5's ``format`` row's own fallback keeps a ``uri`` beside a bound -- the type
+#: is the constrained ``str`` and the format rides as ``json_schema_extra`` -- so this
+#: document's ``maxLength`` verdict at ``/oneOf/0/properties/attempted_agent_origin``
+#: cleared.  What is left is a CHAIN: its ``/oneOf/0/properties/accepted_governance_agents``
+#: references ``governance/accepted-governance-agents.json``, whose own obstruction is a
+#: sibling of a NESTED union -- §14 step 10's ground, not step 9's.  That is the entry
+#: going stale in the honest direction, which is what this set is pinned for.
 STILL_REFUSED = {
     "error-details/governance-agent-not-accepted.json": (
-        "maxLength",
-        "/oneOf/0/properties/attempted_agent_origin",
+        "$ref",
+        "/oneOf/0/properties/accepted_governance_agents",
     ),
 }
 

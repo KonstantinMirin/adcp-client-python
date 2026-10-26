@@ -31,7 +31,7 @@ import re
 import pytest
 
 from codegen import keywords
-from codegen.keywords import ADMITTED, GRIDS, REFUSED, Cell, Effect, Position, cell
+from codegen.keywords import ADMITTED, GRIDS, REFUSED, Cell, Effect, Position, cell, lowers
 from tests.nodeset import claimed
 
 PLAN = pathlib.Path(__file__).resolve().parents[1] / "docs" / "plan" / "rebuild-plan.md"
@@ -279,7 +279,15 @@ def test_a_refusals_kind_comes_from_the_cell_and_not_from_a_raise_site() -> None
     from codegen import compiler, refusal
 
     assert compiler.kind_for("errorMessage", Position.ROOT) is refusal.Kind.VERDICT
-    assert compiler.kind_for("version", Position.ROOT) is refusal.Kind.VERDICT
+    # **``version`` LEFT this assertion at ``adcp-client-python-10l.20``, and the reason
+    # is the third answer rather than a looser second one.**  The registry data keys are
+    # NOTHING at every position now (section 6 of the semantics document, section 3 of the
+    # architecture document), so they mint NOTHING -- which is this docstring's own third
+    # case -- and asking for a kind is asking a question no site asks: a NOTHING key is
+    # ADMITTED by the screen and never reaches a refusal.  Asserted as the admission,
+    # which is the fact that replaced the kind.
+    assert cell("version", Position.ROOT).effect is Effect.NOTHING
+    assert not lowers(cell("version", Position.ROOT))
     # No row at all: a keyword the bundle did not use before, which is the document's
     # own property and so a verdict.
     assert compiler.kind_for("nosuchkeyword", Position.ROOT) is refusal.Kind.VERDICT

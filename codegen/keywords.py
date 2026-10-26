@@ -260,13 +260,16 @@ _X_COMPILES = "Nothing, and **still listed by name** — see below."
 #: column, so the label is the line's and the sentence is every row's.
 _REGISTRY_LABEL = "`version`, `lastUpdated`, `vocabulary`, and the registry payload keys"
 _REGISTRY_COMPILES = (
-    "A registry's own instance data sitting at a schema root: `_generated`, "
+    "Nothing. A registry's own instance data sitting at a schema root: `_generated`, "
     "`_generatedAt`, `adcp_version`, `architecture`, `asset_types`, `baseUrl`, "
     "`extensions`, `governance`, `last_updated`, `mappings`, `prerelease`, "
     "`protocol_layers`, `published_version`, `stability`, `usage_notes`, "
-    "`versioning`. Not annotations and not schema keywords, so admitting them by "
-    "name would be admitting data as vocabulary. The documents carrying them are "
-    "registries rather than schemas, and refusing them is how that shows up."
+    "`versioning`. None of them constrains an instance, and draft-07 says the same "
+    "thing by ignoring an unknown key, so an annotation that omits one omits no fact "
+    "and admitting it by name says only what is true of instance data. A root stating "
+    "only these keys is the empty schema and emits as a permissive root model; a "
+    "document stating them BESIDE a real schema emits normally, with the data keys "
+    "compiling to nothing."
 )
 
 
@@ -1276,9 +1279,29 @@ _REFUSED: dict[str, Row] = {
         )
     )
 }
+# **The registry data keys are NOTHING at every position** (section 6 of the semantics
+# document, and section 3 of the architecture document: "`errorMessage` and the registry
+# data keys move into section 6's projection, where they always belonged: each is NOTHING
+# at every position").  Section 7 says why the REFUSE cell was never a statement about the
+# document's accepted set: "the first half was answering a question nobody asked --
+# admitting a key by name says it carries no acceptance meaning, which for instance data is
+# simply true, and draft-07 says the same thing by ignoring it. The second half was real --
+# the refusal was a SIGNAL about the document, not a statement about its accepted set --
+# and a refusal is the wrong instrument for a signal, because it costs the document its
+# type to carry it."
+#
+# The signal survives where section 7 puts it: a root stating only these keys emits as a
+# permissive root model (section 4's last table row), which is a document whose whole type
+# is `Any` -- as visible in the emitted module as a refusal was in the report -- and the
+# upstream request, that the registry either drop its `$schema` or declare a schema, is the
+# issue list's and not a declaration's (section 5(b), corrected 2026-10-26).
+#
+# They stay in `_REFUSED` as the dict this file builds the table from and leave section 7's
+# PROJECTION, because `grid_of` reads the EFFECT and not the dict: a row NOTHING at every
+# position projects into section 6.
 for _name in _REGISTRY_KEYS:
     _REFUSED[_name] = Row(
-        Cell(Effect.REFUSE, False, None, _REGISTRY_COMPILES), label=_REGISTRY_LABEL
+        Cell(Effect.NOTHING, False, None, _REGISTRY_COMPILES), label=_REGISTRY_LABEL
     )
 
 
