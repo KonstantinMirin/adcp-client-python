@@ -44,6 +44,7 @@ from codegen.harness import (
     compared_facts,
 )
 from codegen.lower import enum as lower_enum
+from codegen.lower import names
 from codegen.schema import nodes as schema_nodes
 from codegen.schema import parse as schema_parse
 from codegen import refusal as refusal_module
@@ -535,7 +536,7 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
             target = bundle.document_for(sub["$ref"], known)
             if target not in roots:
                 continue
-            name = compiler.field_name(key)
+            name = names.field_name(key, render.RESERVED)
             field = g.model.model_fields[name]
             bound = [
                 a for a in getattr(field.annotation, "__args__", (field.annotation,))
