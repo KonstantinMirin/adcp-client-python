@@ -961,6 +961,26 @@ instance the branch describes, so a field the branch inherits from the base is a
 states and not one it added. A pair the payload generator cannot draw for still has to pass the
 comparison, and names the shape that blocked the draw.
 
+**The dual of that rule, for a node whose `type` is a LIST (added 2026-10-26).** A class cut
+out of a type list is paired with its node read at **its own type word**, not at the whole list.
+The union-branch rule above adds the root's siblings because the branch describes the same
+instance the root does; this one subtracts the list's other words for the mirror reason — the
+class describes one member of the union and the other members are carried by the field holding
+it, not by this class.
+
+Without it the same fact is counted twice and reported as a defect once. `core/delivery-metrics.json`
+is the measured case: `/properties/quartile_data` states `type: ["object", "null"]`, the field
+renders `DeliveryMetricsQuartileData | None`, and the ROOT pair passes because `_normalize`
+folds the model's `anyOf: [{$ref}, {"type": "null"}]` back into the document's own list. The
+nested class is then paired with the same node and reports `differs /type` — `object` against
+`["object", "null"]` — for a fact the parent already carries and the comparison already graded.
+The model is faithful at both pointers; only the pairing was wrong.
+
+So a `null` member of a type list is the FIELD's fact, graded where the field is, and a member
+class is graded against the shape it actually describes. Row `.20` found this by emitting new
+documents into the three checks, reported it, and declined to invent the rule — which is why it
+is here and not in a handler.
+
 A check is exhaustive over the set of nodes it claims, or it does not exist. A check that
 enumerates a subset reports on that subset only, and says so.
 
