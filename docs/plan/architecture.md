@@ -30,7 +30,8 @@ schema/parse.py    ONE parser: keys and type select the node kind; position is a
     │  Node (typed, positioned, immutable)
 lower/decide.py    ONE dispatch: an exhaustive match over the node kinds
 lower/<kind>.py    one handler per kind, reading keywords.py for every keyword it meets
-    │  Lowering  =  a TypeRef plus the declarations, imports and reports it needed
+    │  Lowering  =  a TypeRef plus the declarations, imports, approximations and
+    │               reports it needed — and ONLY a Lowering: this seam is total
 lower/names.py     symbols assigned over the whole module, content dedup included
     │  Module (the intermediate representation, no text in it)
 render.py          the one module that knows pydantic and the model layer it renders through
@@ -38,12 +39,20 @@ render.py          the one module that knows pydantic and the model layer it ren
 emit.py            the run: dependency order, files, the report
 ```
 
-Beside the pipeline, two modules every layer reads and none of them writes:
+Beside the pipeline, three modules every layer reads and none of them writes:
 
 - `codegen/keywords.py` — the declaration §8 of the semantics document calls for: every
   keyword, at every position, with what it compiles to, whether the model renders it as a
-  fact, and which structural keywords descend into which position.
-- `codegen/refusal.py` — the one refusal type, a value and not an exception.
+  fact, which structural keywords descend into which position, and **which rung of §2's ladder
+  the keyword widens to where the handler cannot render it**.
+- `codegen/attribution.py` — **new (2026-10-26)**: the one registry of site-level upstream
+  issues, keyed by document, pointer and keyword. A second declaration module beside
+  `keywords.py` and a leaf like it, read by `lower/` to attribute an approximation and by
+  `verify/` to grade one. It is a declaration and not a verifier artifact, which is why it is
+  here and not under `verify/`: a keyword-level decision lives in a cell, a site-level one lives
+  here, and nothing else holds either.
+- `codegen/refusal.py` — the one refusal type, a value and not an exception, **now minted only
+  by `bundle.record`**.
 
 And one package that reads the output and the record but never the walk:
 `codegen/verify/`, which is today's `harness.py` and `dump_exemptions.py`.
@@ -76,16 +85,29 @@ Four rules follow, and each is held strictly:
   The three places the walk rewrites a node today — the key schema given a `type` word, the
   extras store rebuilt as a mapping, a multi-type node cut into one member per type — are
   readings the parser makes once, at the position that implies them (§4).
-- **Total functions from node to decision.** `decide(node, ctx)` returns `Lowering | Refusal`.
-  Every handler has that signature. A refusal is a VALUE a parent returns upward unchanged;
-  nothing raises one and nothing catches one. The type checker therefore refuses a caller that
-  reads a `Lowering` field off a result without handling the `Refusal` branch, which is the
-  mechanical form of the semantics document's §9 rule that a crash is not an outcome.
+- **Total functions from node to decision.** `decide(node, ctx)` returns `Lowering`, and
+  nothing else. *This was `Lowering | Refusal` and the semantics document's §2 collapsed it on
+  2026-10-26:* a keyword a handler cannot render widens the annotation and declares an
+  approximation, so no node is ever without a lowering and the union has one inhabitant left.
+  **What that costs is a type-system guarantee, and it has to be replaced rather than mourned.**
+  The sum type used to make a caller that read a `Lowering` field without handling the other
+  branch a type error, which was the mechanical form of §9's "a crash is not an outcome". With
+  one inhabitant there is no branch to force, so the obligation moves into each handler: a
+  handler's match over the shapes of its own node is total, its final arm calls
+  `approximate(node, keyword)`, and **no handler raises**. The import-rule tests gain the third
+  boundary that holds it (§11), and §8 of the semantics document gains the two equalities that
+  catch a widening nobody declared. A guarantee the type checker held is now held by a test, and
+  saying so is better than pretending the trade did not happen.
 - **Composition by explicit combinators.** `Lowering` composes with `+`: a parent's declarations
-  are its own followed by its children's, its imports the union, its reports the concatenation.
-  `first_refusal(results)` is the one combinator over a sequence of child results, and it
-  returns the earliest refusal in document order so a refusal names the innermost node that
-  carried the keyword.
+  are its own followed by its children's, its imports the union, its approximations and its
+  reports the concatenation. **The algebra changed with the seam.** A refusal was an ABSORBING
+  element — anything composed with one was that one, which is how a child's refusal killed a
+  document — and an approximation is an ADDITIVE one: composition is total, the parent always
+  gets a `Lowering`, and what travels upward is accumulated rather than propagated. So
+  `first_refusal(results)` loses every caller in `lower/` and keeps exactly one, in
+  `bundle.record`, where it still returns the earliest refusal in document order over the
+  references the inliner could not resolve. Its contract is unchanged; its subject is now the
+  record and not the walk.
 - **Effects at the two ends.** `bundle.py` reads files. `emit.py` writes files and prints the
   report. Nothing between them touches a file, an environment variable, a clock or a global.
   The run's own state — which documents are lowered, which refused — is a fold in `emit.py`
@@ -93,29 +115,62 @@ Four rules follow, and each is held strictly:
   calls back into the run.
 
 **What becomes of the exception-based refusal.** `Refusal` stays in `codegen/refusal.py` and
-stops subclassing `Exception`. Its constructors are the only place a kind is decided (§5). The
-one `try` left in the compiler is around nothing: a defect in the compiler itself — two
-selectors claiming one node, two constraints deriving one alias name — stays an exception
-(`BuildFailure`) that no layer catches, because it is not an outcome of any document and the
-run must stop on it.
+stops subclassing `Exception`. The one `try` left in the compiler is around nothing: a defect in
+the compiler itself — two selectors claiming one node, two constraints deriving one alias name —
+stays an exception (`BuildFailure`) that no layer catches, because it is not an outcome of any
+document and the run must stop on it.
+
+**What becomes of the refusal itself, 2026-10-26.** The directive narrows `Refusal` to one
+producer and one meaning: `bundle.record` could not build a document of record, because a
+`$ref`'s target is not a bundle document or because two documents reference each other in a
+cycle. `emit` is its only reader. Three consequences, each mechanical:
+
+- **`Kind.DEFERRED` retires.** It meant "the lowering for this position has not been written",
+  and under the directive unwritten code produces an approximation and not a refusal, so the
+  kind has no instance left to name. The semantics document's §9 rule that minted it is replaced
+  there, and `is_a_verdict` becomes a question with one answer.
+- **`Kind.CHAINED` survives, and moves.** A document whose reference target has no record has no
+  record either, so the inliner refuses CHAINED `through=` the target's refusal and
+  `Refusal.resolved` keeps its meaning. What changes is where it is minted: inside
+  `bundle.record`, not at the reference's lowering, because a reference the walk can see is one
+  the record already inlined.
+- **`Kind.VERDICT` is the only resolved kind.** With DEFERRED gone and CHAINED delegating,
+  `RESOLVED_KINDS` has one member, and the figure the exit condition reads is just the count of
+  refused documents. The enum stays an enum rather than collapsing into a boolean: a bundle that
+  grows a shape neither kind covers needs somewhere to put it, and the cost of keeping the type
+  is nothing.
+
+**The handler's own obligation.** `approximate(node, keyword)` is to an approximation what
+`Refusal`'s constructors were to a kind: the ONE place a widening is minted, reading the rung off
+the cell (§3). A handler never chooses a rung and never writes an attribution, for the reason the
+reviews recorded for refusal kinds — a decision made at the site that needs it is a decision
+nobody can audit against the table that was supposed to hold it.
 
 ---
 
-## 3. The declaration: `codegen/keywords.py`
+## 3. The declarations: `codegen/keywords.py`, and `codegen/attribution.py` beside it
 
 The semantics document's §5, §6 and §7 are a table of keyword × position. The code carries that
 table once, as data, and four readers derive from it. Nothing else in `codegen/` names a
-keyword in a set literal.
+keyword in a set literal. **A keyword-level decision lives in a cell of that table; a
+site-level one — the upstream issue a widening at one document, pointer and keyword is
+attributed to — lives in `attribution.py`, and nothing holds either twice.**
 
 ```python
 class Position(StrEnum):
     ROOT, PROP, ELEM, MAPV, KEY, BRANCH, CONJ, RULE, DEF   # the positions §3 names
 
 class Cell(NamedTuple):
-    effect: Effect          # TYPE | FIELD | RULE | NAME | ANNOTATION | NOTHING | REFUSE
+    effect: Effect          # TYPE | FIELD | RULE | NAME | ANNOTATION | NOTHING
     rendered: bool          # does a faithful model state this keyword in model_json_schema()
     descends: Position | None   # the position of the subschema(s) this keyword holds, if any
+    widens_to: Rung | None  # the rung §2 of the semantics document drops to, where the
+                            # handler cannot render this keyword here; None where the
+                            # keyword states no fact and there is nothing to drop
     compiles: str           # the sentence the grid states for this keyword here
+
+class Rung(StrEnum):        # §2's ladder, lowest first; TOP always terminates
+    KEYWORD, TYPE, JOIN, CONTAINER, TOP
 
 class Row(NamedTuple):
     default: Cell
@@ -128,6 +183,35 @@ def cell(keyword: str, position: Position) -> Cell | None   # None: no row, whic
 A row is written per keyword with a default cell and an override per position that differs,
 because that is the shape of the semantics document's own tables: most rows give one answer
 and name the positions that depart from it.
+
+**`Effect.REFUSE` leaves the enum and `widens_to` enters the cell (2026-10-26).** Both follow
+from the semantics document's §2: no keyword's presence refuses a document, so there is no
+effect for refusing; and a keyword the handler cannot render has to drop to one rung rather than
+another, so something must say which.
+
+*Why `widens_to` is a FIELD and not derived.* `effect`, `rendered` and `descends` do not
+determine it. `uniqueItems` is RULE, rendered, non-descending and drops its keyword (KEYWORD);
+a list-valued `items` is TYPE, rendered, descends to ELEM and drops to the union of its members
+(JOIN); an unrowed key has no row at all and drops the node's whole type (TOP). Cells whose
+other three fields agree take different rungs, which is the test of whether a field is needed.
+It is `None` for a keyword that states no fact about an instance — `$comment`, `title`,
+`errorMessage`, the registry data keys — because there is nothing to drop and a rung would be a
+decision about a non-decision.
+
+*Why the ATTRIBUTION of an `Ours` widening is derived and not a field.* The attribution of a
+widening the design decided is "the row that decided it", and the cell IS that row: the
+generator already knows a cell's section and keyword, because it writes the grid from them. A
+field holding it would be a second copy of the cell's own address. The attribution that cannot
+be derived is the upstream one, and it is not a keyword fact at all — the same keyword widens by
+our decision at one pointer and by an upstream defect at another — so it lives in
+`codegen/attribution.py`, keyed by document, pointer and keyword. **A cell holds what is true of
+a keyword; the registry holds what is true of a site.** An entry in the registry with no issue
+reference is a `BuildFailure` and not a missing field, which is the semantics document's §9 rule
+("an exemption names an upstream issue, or it is this SDK's own decision") made mechanical.
+
+The widening clause also belongs in the cell's `compiles` SENTENCE, for the reason the rest of
+the sentence is there: the grid is the sentence's rendering, and a widening stated beside the
+grid instead of in it is the second copy of the what that generation exists to remove.
 
 **`compiles` is why generation is possible at all.** The grid's "compiles to" column is
 English, and `effect`, `rendered` and `descends` do not determine it: no triple of them writes
@@ -147,9 +231,12 @@ them. A co-occurrence that is not a position (`pattern` beside `format: uri`, an
 `type`) belongs to the sentence of the cell it qualifies, because the table is keyed by position
 and a co-occurrence is not one.
 
-§6 and §7's grids are membership projections and need no join: a row NOTHING or ANNOTATION at
-every position renders its `compiles` as §6's "what it does, or why nothing", and a REFUSE row
-renders it as §7's "why".
+§6's grid is a membership projection and needs no join: a row NOTHING or ANNOTATION at every
+position renders its `compiles` as §6's "what it does, or why nothing". **§7's projection is now
+the empty one**, because `Effect.REFUSE` is gone and no row can be in it; the generator still
+writes the region, and the region being empty is what makes "no keyword refuses" a fact the
+document holds rather than a claim its prose makes. `errorMessage` and the registry data keys
+move into §6's projection, where they always belonged: each is NOTHING at every position.
 
 The table also carries the `x-` namespace rule
 (§6 of the semantics document): a key with the prefix is admitted, and every such key the
@@ -159,10 +246,10 @@ bundle carries is also a row, so a prefixed key with no row is admitted and REPO
 
 | reader | module | what it derives |
 | --- | --- | --- |
-| admission | `schema/parse.py` | at every node, every key is looked up at the node's position: NOTHING is admitted and carried nowhere; REFUSE refuses the document as a VERDICT; a key with no row refuses the document as a VERDICT naming a keyword the bundle did not use before; any other effect is a fact the node's kind consumes |
+| admission | `schema/parse.py` | at every node, every key is looked up at the node's position: NOTHING is admitted and carried nowhere; a key with no row is admitted and marks the node for the TOP rung, naming a keyword the bundle did not use before; any other effect is a fact the node's kind consumes |
 | descent | `schema/parse.py`, `bundle.py`, `verify/record.py` | the structural keywords and the position each one's subschema occupies — the one descent table, where today there are three |
-| lowering | `lower/*` | a handler asks the table which of the keywords on its node are TYPE facts, which are RULE sources, which are annotations it carries, so no handler holds a set of keyword names |
-| grading | `verify/compare.py` | the compared set is `{k for k in TABLE if cell(k, p).rendered}`; a keyword whose effect is RULE is graded against the class's rule tuple, as §8 of the semantics document says |
+| lowering | `lower/*` | a handler asks the table which of the keywords on its node are TYPE facts, which are RULE sources, which are annotations it carries, and — through `approximate` — which rung a keyword it cannot render drops to, so no handler holds a set of keyword names and none chooses a rung |
+| grading | `verify/compare.py` | the compared set is `{k for k in TABLE if cell(k, p).rendered}`; a keyword whose effect is RULE is graded against the class's rule tuple, as §8 of the semantics document says; a compared fact the model does not state is *approximated* where the class's declaration carries it and *missing* where it does not |
 
 **The table is the source of §5, §6 and §7's grids.** Those grids are GENERATED from
 `keywords.py`; `tests/test_keywords.py` asserts the committed document matches what the table
@@ -170,8 +257,8 @@ generates, so a change to a cell that is not written through to the document fai
 rather than a diff, because a diff can only compare what it can parse back out of a table: a
 cell deciding one thing where the sentence beside it says another passes a membership diff and
 cannot pass generation, which writes the cell. §6 is the table's rows that are NOTHING or
-ANNOTATION at every position and §7 its REFUSE rows, so each section is a projection and not a
-second list.
+ANNOTATION at every position, and §7 is the rows that refuse — the EMPTY projection since
+2026-10-26 — so each section is a projection and not a second list.
 
 The reasoning paragraphs in those sections are written by hand and are what generation cannot
 produce. A cell decides WHAT; the sentence beside it says WHY, and a reader still has to keep
@@ -209,23 +296,34 @@ between the markers. Editing a cell's MEANING — a grid line outside what the t
 or a reasoning paragraph — is a change to a decision, which §13's rule covers: the row reports
 it and stops.
 
-**Where the kind of a refusal comes from.** A refusal's kind is derived from the cell and never
-chosen at a raise site:
+**Where the RUNG of a widening comes from.** *This subsection said "where the kind of a refusal
+comes from" and the directive rewrote its subject on 2026-10-26.* The question the table answers
+is no longer which of two kinds a refusal is — §2 leaves one kind, and `bundle.record` is its
+only producer — but which rung a keyword the handler cannot render drops to. The mechanism is
+unchanged and so is its reason:
 
-- a key whose cell is REFUSE, or a document that contradicts itself (a `const` its own `type`
-  refuses, a `required` name no property declares, a title that derives no identifier) is a
-  VERDICT: the obstruction belongs to the document;
-- a key whose cell is a lowering effect and whose handler has no code for this shape yet is a
-  DEFERRAL: `Refusal.unwritten(node, keyword)` is the one constructor for it, and it asserts
-  the cell is not REFUSE;
-- a reference whose target refused is CHAINED and carries the target's refusal;
-- UNRESOLVED disappears. It named a reference the delegated resolver did not reach, and the
-  resolver in §4 reaches every position.
+- the rung is `cell(keyword, node.position).widens_to`, read by `approximate` and by nothing
+  else;
+- a cell whose `widens_to` is `None` cannot be approximated, and a handler that asks for one is
+  a `BuildFailure` — the keyword states no fact, so a widening against it would be a declaration
+  with nothing to declare, and §8 would report it as *over-declared* forever;
+- a key with no row takes TOP, because an unrowed keyword's reach is unknown and TOP is the one
+  rung that is safe without knowing it (the semantics document's §7);
+- the attribution is `Ours` at the cell's own address unless `attribution.py` holds an entry for
+  this document, pointer and keyword, in which case it is that entry's issue. One lookup, no
+  precedence to get wrong: a site-level entry is more specific than a keyword-level one.
 
-*Why derived.* The reviews record the two kinds assigned by hand at a raise site and the
+*Why derived.* The reviews record the two refusal kinds assigned by hand at a raise site and the
 assignment coming out inverted in bulk: a cell the semantics document decides, written up as a
-verdict against the document. A kind read off the table cannot say that, because the table is
-where the decision that the keyword compiles was made.
+verdict against the document. The rung is the same hazard one step further on — a handler that
+chose its own rung would choose the one that makes its own output look best, and nothing could
+audit it against the table that was supposed to hold the decision. A rung read off the table
+cannot say that, because the table is where the decision that the keyword compiles was made.
+
+**What is left of the refusal's kind.** `bundle.record` mints VERDICT where a reference's target
+is not a bundle document, and CHAINED `through=` the target's refusal where the target has no
+record of its own. `Kind.DEFERRED` retires with the outcome it named (§2). Nothing in `lower/`
+imports `codegen.refusal` any more, which is the import-graph half of the seam going total.
 
 ---
 
@@ -249,6 +347,23 @@ reference whose target is not a bundle document, and a cross-document cycle, mak
 undefined for that document, and `record` returns a `Refusal` (VERDICT) rather than a mapping.
 The payload generator's resolver (`hypothesis_jsonschema`) is confined to drawing payloads in
 `verify/accepts.py` and never writes a document anything else reads.
+
+**This is the one refusal the compiler mints (2026-10-26, §2 of the semantics document).** The
+principle that unifies its shapes is that **the document has no defined accepted set**: there is
+no schema half for `strict_validate` to run and nothing for §8 to grade against, which is the
+one place the partial-model objection still bites. Three shapes reach it — a reference whose
+target is not a bundle document, a cross-document cycle, and a document that **fails its own
+declared draft's meta-schema** (the shape failures `parse` validates for below, which were
+VERDICT refusals of their own and are this class rather than a second one, since a document that
+is not a schema under its own draft has no accepted set to be faithful to). Measured over bundle
+3.2's 1,054 portable documents, all three are **empty**: 0 undefined records, 0 meta-schema
+failures. That measurement is why "zero refusals" is reachable for this bundle rather than
+aspirational, and the class stays in the compiler so a bundle that grows one reports it instead
+of crashing on it.
+
+A **local** `$ref` cycle is not in this class: it is never inlined, and it renders as a forward
+reference under a string annotation with a `model_rebuild()` after the module's declarations
+(§6). The difference between the two cycles is the record and not the type.
 
 *Why our own.* The record is what `strict_validate` validates against and what the comparison
 grades against. A resolver that canonicalises while it inlines writes a document the bundle
@@ -287,8 +402,15 @@ read off the type system rather than off a JSON serialisation with a position bi
 
 ```python
 def parse(raw: Mapping, *, document: str, pointer: str, position: Position,
-          applied: str | None) -> Node | Refusal
+          applied: str | None) -> Node
 ```
+
+**`parse` is total too (2026-10-26).** It returned `Node | Refusal` and the refusals it minted
+were the shape failures below. A document that fails its own meta-schema has no accepted set and
+is `bundle.record`'s refusal before `parse` is ever called, so by the time a mapping reaches
+`parse` its shape is a draft-07 schema's and a failure here is the compiler disagreeing with the
+meta-schema — a `BuildFailure`, not a document outcome. The checks stay; what changes is who they
+blame.
 
 It does four things at every node. It screens every key against the table at
 `position` (§3's admission reader). It classifies the node: the kind-determining keywords
@@ -300,16 +422,21 @@ composition with fields of its own; a combinator whose every branch is `required
 here); a `type: object` beside `oneOf` is a union whose branches inherit the applied word. It
 descends by the table's descent column, assigning each child its position and the applied
 word for a same-instance hop. And it validates shape: `required` is a list of names,
-`properties` is a mapping of schemas, `items` is one schema and not a list, and so on, each
-failure a VERDICT refusal because a malformed document is a property of the document.
+`properties` is a mapping of schemas, and so on, each failure a `BuildFailure` by the paragraph
+above. **`items` is no longer among them**: a list-valued `items` is draft-07's tuple validation,
+and the semantics document's §5 now lowers it to `list[A | B | …]` at the JOIN rung rather than
+refusing it, so the parser builds an `Array` whose element is the join and records the
+approximation. Unexercised in bundle 3.2, which states no list-valued `items`.
 
 *The screen and the classification INTERLEAVE, and this said "in this order" (2026-10-26).*
 They cannot be strictly sequenced, because the admission arms do not all answer from the cell
-alone. Three of them do — a key with no row, a REFUSE cell, and a NOTHING cell are decided by
+alone. Two of them do — a key with no row and a NOTHING cell are decided by
 `cell(keyword, position)` and nothing else, so they run before anything is classified. The
-fourth does not: §3's reader ends "any other effect is a fact the node's kind consumes", and
-whether a lowering effect is CLAIMED or is a DEFERRAL is a question about which kind owns the
-node. So that arm runs after the classification it depends on.
+third does not: §3's reader ends "any other effect is a fact the node's kind consumes", and
+whether a lowering effect is CLAIMED or is WIDENED is a question about which kind owns the
+node. So that arm runs after the classification it depends on. *(The REFUSE arm was a third
+cell-only one and retired with `Effect.REFUSE` on 2026-10-26; the dependency this paragraph
+settles is unchanged, since it was never that arm's.)*
 
 The four jobs and their contents stand; what is wrong is the claim that they are four sequential
 passes. A node is classified once and screened once, and the dependency runs one way: admission
@@ -336,7 +463,7 @@ what that handler's answer is where the semantics document gives a position-depe
 The kind is decided in `parse` (§4). The dispatch on it is `codegen/lower/decide.py`:
 
 ```python
-def decide(node: Node, ctx: Context) -> Lowering | Refusal:
+def decide(node: Node, ctx: Context) -> Lowering:
     match node:
         case Reference():    return references.lower(node, ctx)
         case Enumeration():  return enums.lower(node, ctx)
@@ -355,8 +482,12 @@ def decide(node: Node, ctx: Context) -> Lowering | Refusal:
 
 This is the one place a node's kind is routed, it contains no decision beyond the route, and
 `assert_never` makes the type checker refuse a kind the match does not cover. A handler takes
-its node and the context and returns a `Lowering` or a `Refusal`. It reads the table for every
-keyword on its node and consults the position through `node.position`.
+its node and the context and returns a `Lowering` — always, by §2. It reads the table for every
+keyword on its node, consults the position through `node.position`, and where it meets a shape
+of its own kind it has no rendering for, its final arm calls `approximate(node, keyword)` and
+composes the result like any other child. **A handler has no second return type and no raise**,
+so there is one shape of answer at this seam and `assert_never` is the only exhaustiveness the
+type checker still proves here.
 
 **The form, against the alternatives.**
 
@@ -432,30 +563,57 @@ class Lowering:
     declarations: tuple[Declaration, ...] = ()
     imports: frozenset[Import] = frozenset()
     aliases: frozenset[ConstraintShape] = frozenset()   # for adcp.types.constraints
+    approximations: tuple[Approximation, ...] = ()      # §2's widenings, accumulated
     reports: tuple[Report, ...] = ()    # a dropped default, a name the class carries nothing for
 ```
 
 A parent takes `child.type` for its field, element, value or branch, and adds the rest to its
-own. An object handler, for instance, is `first_refusal(children) or Lowering(type=Local(pointer),
-declarations=(ClassDecl(...), *children_declarations), ...)`.
+own. An object handler, for instance, is `Lowering(type=Local(pointer),
+declarations=(ClassDecl(...), *children_declarations), ...)` — with no guard before it, because
+every child answered.
 
-**What a refusal does to the walk.** A handler that receives a `Refusal` from a child returns
-it, unchanged, immediately. The parent of that parent does the same, so the refusal reaches
+**What an approximation does to the walk, 2026-10-26.** *This said "what a refusal does to the
+walk" and the directive replaces the whole mechanism.* It said: a handler that receives a
+`Refusal` from a child returns it unchanged and immediately, the refusal reaches
 `lower_document` naming the innermost pointer and keyword that produced it, and the document
-produces no declarations at all — the partial model §2 of the semantics document forbids is
-unrepresentable, because a `Lowering` and a `Refusal` are different types and nothing holds
-both. A document refused by a child's refusal is refused once, on the earliest refusal in
-document order, which keeps the report a function of the document and not of the walk's
-iteration.
+produces no declarations at all.
 
-**References.** A cross-document `Reference` lowers to an import: `ctx.targets[document]`
-holds the target's `Module`, whose symbol table answers the pointer half; a pointer the target
-declared no symbol at is a DEFERRAL naming the fragment, and a target that is itself a
-`Refusal` makes this one CHAINED. A local `Reference` (`#/definitions/x`) lowers to the
-declaration of that `definitions` entry: the entry was parsed at DEF, `decide` is called on it
-with `ctx.resolving` extended, a pointer already in `resolving` is a cycle and a VERDICT, and
-the entry's own lowering is the symbol. An entry nothing references is never decided, which is
-the §5 rule that a `definitions` section is nothing by itself.
+An approximation does the opposite at every step. It is **local** — it belongs to the node that
+could not render a keyword and says nothing about the node above it — so a parent composes it
+like any other part of a child's lowering and keeps building. The document emits. What reaches
+`lower_document` is therefore not one approximation but all of them, in document order, because
+`+` concatenates and the children were lowered in the order the document states them. The
+report is still a function of the document and not of the walk's iteration, by the same
+property that made `first_refusal`'s answer one: the parser built each node's children in
+document order, and concatenation preserves it.
+
+**The partial model is still unrepresentable, and for a better reason than before.** It used to
+be unrepresentable because a `Lowering` and a `Refusal` are different types; now it is
+unrepresentable because there is no partial model to represent — a document either has no
+accepted set at all (§4's one refusal, and then it has no module) or it emits a complete
+module for every node of itself, some of whose annotations say less than their document does and
+each of those declared.
+
+**References.** A cross-document `Reference` lowers to an import: `ctx.targets[document]` holds
+the target's `Module`, whose symbol table answers the pointer half. **A pointer the target
+declared no symbol at widens**, to the target's own root symbol where the fragment is reachable
+under it and to TOP otherwise, and declares the approximation naming the fragment — it was a
+DEFERRAL. A target with no record of its own is not reached at all: the run never lowers a
+document whose record is undefined, and a document referencing one has no record either (§4).
+
+A local `Reference` (`#/definitions/x`) lowers to the declaration of that `definitions` entry:
+the entry was parsed at DEF, `decide` is called on it with `ctx.resolving` extended, and the
+entry's own lowering is the symbol. **A pointer already in `resolving` is a cycle, and a cycle
+is a forward reference, not a refusal (2026-10-26).** The declaration takes the entry's symbol
+as a string annotation and the module calls `model_rebuild()` after its declarations — the
+mechanism §4 of the semantics document already uses for union branches, which do not exist while
+their base is built. So `ctx.resolving` stops being a refusal trigger and becomes what it always
+described: the pointers in flight, which is how the lowering knows to write a forward reference
+rather than recurse. Unexercised in bundle 3.2, which states no local cycle; the row is decided
+before one arrives rather than after.
+
+An entry nothing references is never decided, which is the §5 rule that a `definitions` section
+is nothing by itself.
 
 **Composition.** A `Composition` handler lowers each `$ref` conjunct to a base — the target's
 `ClassDecl` is read off `ctx.targets` for its field shape — and merges inline conjuncts' fields
@@ -464,11 +622,23 @@ and rule sources into its own by the intersection rule, which moves from `compil
 `at_least_as_tight` are pure functions over two nodes and stay so. A conjunct carrying its own
 `allOf` is a `Composition` node at CONJ and the handler recurses.
 
-**Unions.** A `Union` at ROOT lowers to a base `ClassDecl` carrying the branch-dispatch facts
-and one `ClassDecl` per branch, each branch a class with the base first among its bases; the
-root's siblings compile onto the base as §5 of the semantics document says. A `Union` below the
-root lowers to a `TypeRef.union` of its branches' types, each branch's bound carried on the
-branch's own named type.
+**Unions.** A `Union` at ROOT whose branches are all shapes lowers to a base `ClassDecl` carrying
+the branch-dispatch facts and one `ClassDecl` per branch, each branch a class with the base first
+among its bases; the root's siblings compile onto the base as §5 of the semantics document says.
+A `Union` at ROOT whose branches are all scalars lowers to an `AliasDecl` and a `RootBinding`.
+**A `Union` at ROOT mixing the two lowers to a `RootModelDecl`** over the union of the branches'
+types, with the class branches declared beside it and the dispatch facts on the root model —
+§4 of the semantics document's new row, which replaces a refusal and costs no approximation,
+because the union admits exactly what the document admits. A `Union` below the root lowers to a
+`TypeRef.union` of its branches' types, each branch's bound carried on the branch's own named
+type.
+
+A union whose branches §4 of the semantics document cannot separate lowers the same way it
+would if they were separable, and declares an UNDERDETERMINED `Approximation` at the union's own
+pointer. **That is the one approximation the comparison cannot see**, so it is the one whose
+check is a set equality against a derivation rather than against the document: the unions
+declaring one are exactly the unions the disjointness derivation fails on, in both directions
+(§9).
 
 ---
 
@@ -485,8 +655,31 @@ There is an IR between a decided node and emitted text, and it is complete: noth
 | `EnumDecl` | pointer, base word, members with descriptions, description |
 | `AliasDecl` | pointer, `TypeRef`, description, format — a node another document names, or a root that is not a class |
 | `RootBinding` | the `SchemaRef` and the symbol a module-level `strict_validate` binds, for a root that is an alias or an enumeration |
+| `RootModelDecl` | pointer, `SchemaRef`, the root `TypeRef`, description, rules, and for a mixed root union the dispatch facts — a root that is an array, a mixed union, or a document stating no schema keyword |
 | `UnionInstall` | the base and its branches, which the renderer writes as the `_branch_models` assignment and the rebuild |
-| `Module` | document, root symbol, declarations in declaration order, imports, the symbol table pointer → name, the adoption table pointer → declaring pointer |
+| `Approximation` | document, pointer, keyword, kind (WIDENED / UNDERDETERMINED), rung, the fact the annotation does not carry in the document's own spelling, and the attribution |
+| `Module` | document, root symbol, declarations in declaration order, imports, approximations, the symbol table pointer → name, the adoption table pointer → declaring pointer |
+
+**An approximation is a DECLARATION and not a report, and it is written into the emitted
+module (2026-10-26).** A `Report` is a line the run prints and nothing reads — a dropped default,
+a key that carries nothing. An approximation is read by the GRADER, and §9 forbids the verifier
+reading the walk, so there are only two ways for it to get there: a side channel the run hands
+the verifier, or the emitted artifact. It is the artifact: `render.py` writes
+`__adcp_approximations__` onto the class, the root model or the enumeration, and beside the
+module for an alias — exactly the split §4 of the semantics document already makes for
+`strict_validate` — and `verify/` reads it as a consumer reads any other class attribute.
+
+*Why the artifact and not a side channel.* `__adcp_schema__` is already there for the same
+reason, and the review that put it there recorded it: a verifier handed its facts by the run
+grades the run's account of the output instead of the output. A side channel also makes a
+one-document run and a whole-bundle run disagree about what the verifier can see, which the
+semantics document's §9 forbids for names and shapes and which has no better claim here.
+
+*Where it must NOT go.* Not into `Field(json_schema_extra=…)`. That would put the approximation
+into `model_json_schema()`, where §8 of the semantics document would read it as a fact the model
+states and the document does not — *added*, a defect. The declaration is a class attribute
+precisely because it has to be invisible to the comparison's own subject and visible to the
+comparison.
 
 **Rules are the runtime's own dataclasses.** A `ClassDecl.rules` tuple holds instances of
 `adcp.types._runtime.RequiredGroups`, `ConditionalRequired`, `Dependencies`, `PropertyCount`,
@@ -550,9 +743,22 @@ is, and only `render.py` does it. `codegen/constraints.py` keeps its naming rule
 function from a constraint shape to a `TypeRef` — and stops importing the renderer.
 
 The runtime package `src/adcp/types/_base.py` and `_runtime.py` is the other side of the
-boundary and is unchanged by this document: `SchemaRef`, `applied_schema`, `strict_validate`,
-`strict_alias`, `BranchDispatchMixin` and the rule validator are correct and the semantics
-document's §4 pins them. The one extension §13 asks for is in `applied_schema`.
+boundary: `SchemaRef`, `applied_schema`, `strict_validate`, `strict_alias`,
+`BranchDispatchMixin` and the rule validator are correct and the semantics document's §4 pins
+them. Two extensions, and no replacement.
+
+**`applied_schema`** gains the same-instance keywords §13 item 3 names.
+
+**`AdCPRootModel`, new on 2026-10-26.** The semantics document's §4 now gives three shapes to a
+root model — an array, a union mixing a scalar branch with a class branch, and a document stating
+no schema keyword — and each must carry `__adcp_schema__`, `strict_validate` and a rule tuple
+exactly as a class does, or a root model and a class disagree about what their document accepts.
+So `class AdCPRootModel(RootModel, RuleBound)` joins `AdCPBaseModel`, and **`strict_validate` and
+`__adcp_schema__` factor out of `AdCPBaseModel` into a mixin both take** — one body, for the
+reason `strict_alias` exists: a second implementation of the schema half is a second answer to
+the one question. Measured on the committed runtime: that MRO resolves, the rule validator fires
+on a root model, and `model_json_schema()` renders the root type's own schema, so the comparison
+pairs a root model as it pairs a class.
 
 ---
 
@@ -560,10 +766,17 @@ document's §4 pins them. The one extension §13 asks for is in `applied_schema`
 
 The verifier grades an emitted class against the document it names, and it does so without
 reading the walk. Its import set is the whole of that rule, and `tests/test_import_rule.py`
-asserts it: `codegen.keywords` (for the compared set), `codegen.bundle` (for the record and
-the document set), `adcp.types` (the emitted package, reached as a consumer reaches it),
-`codegen.refusal` (to read a refusal the run recorded), and its libraries. Never
-`codegen.schema`, `codegen.lower`, `codegen.ir`, `codegen.render`, `codegen.emit`.
+asserts it: `codegen.keywords` (for the compared set and the rungs), `codegen.attribution` (to
+grade an approximation's issue reference), `codegen.bundle` (for the record and the document
+set), `adcp.types` (the emitted package, reached as a consumer reaches it), `codegen.refusal`
+(to read a refusal the run recorded), and its libraries. Never `codegen.schema`,
+`codegen.lower`, `codegen.ir`, `codegen.render`, `codegen.emit`.
+
+**`codegen.attribution` joins the set and `codegen.ir` does not**, which is the whole of why the
+approximation is written into the emitted module (§7). The verifier reads the DECLARATION off the
+class, as a consumer; it reads the registry to check the declaration's issue exists; it never
+reads the value the walk built. Sharing the registry is sharing DATA, which is the same division
+that already lets both halves read the keyword table.
 
 *Why.* One body of code deciding what the model states and what the document states agrees
 with itself by construction, so a defect in it is green on both sides. The verifier's reading
@@ -583,10 +796,28 @@ same-title lift. What remains of normalisation is the readings this pipeline's o
 forces — a nested class hoisted to `$defs`, D4's `| None` for an optional property, a type list
 rendered as a union — and each is applied to both sides.
 
-**Pairing.** Every class is paired with the node its `__adcp_schema__` names, read through
-`applied_schema`, so a branch class is graded against its branch node under the root's
-same-instance keywords. That is the semantics document's §8 pairing rule and it is also what
-`strict_validate` validates against, so the two cannot disagree.
+**The approximation's three graders, 2026-10-26.** The semantics document's §8 adds two
+comparison outcomes and two set equalities, and each lands in one module here. Nothing new is
+built: each is an existing check gaining a subject.
+
+| what is checked | where | how it fails |
+| --- | --- | --- |
+| a compared fact the model does not state is *approximated* where `__adcp_approximations__` carries it and *missing* where it does not | `compare.py` | *missing* is a defect, pinned at 0 |
+| a declaration at a pointer and keyword the model DOES state is *over-declared* | `compare.py` | a defect, pinned at 0; this is the equality's second direction |
+| an approximation's claim that the model is WIDER there | `accepts.py` | the draw takes the classes the dropped keyword distinguishes; a value the document admits and the class refuses is a narrowing wearing a declaration |
+| an UNDERDETERMINED declaration | `compare.py`, against §4's disjointness derivation | the declared set and the inseparable set are equal in both directions; no other check can see one |
+| an upstream attribution's issue | `attribution.py`'s own test | an entry with no issue is a `BuildFailure` |
+
+The two equalities are what keep "approximated" from being an allowlist, and the reason they are
+equalities rather than membership tests is the one §3 already gives for generation over diffing:
+a set checked in one direction is complete with respect to itself, and what it omits passes.
+
+**Pairing.** Every class, root model and alias is paired with the node its `__adcp_schema__`
+names, read through `applied_schema`, so a branch class is graded against its branch node under
+the root's same-instance keywords. That is the semantics document's §8 pairing rule and it is
+also what `strict_validate` validates against, so the two cannot disagree. **The population is
+every portable document**, and under §2 every one of them is in the pairing, so a document
+absent from it is a defect in the run rather than a refusal with a reason.
 
 **The record is read by the verifier's own walk**, `verify/record.py`, over the descent column
 of the table. The verifier never calls `schema.parse`; it reads the document of record as a
@@ -607,10 +838,31 @@ a function of the bundle and not of the run's document set, so one document's mo
 same text whether it is emitted alone or with the whole bundle.
 
 `write` writes the modules, the records beside them, the package `__init__` files and the
-constraints module, and prunes stale emitted files on a whole-bundle run, as today. The report
-prints refusals by kind, drops and carries-nothing lines, as today. `main` lives in
-`codegen/__main__.py`, so `python -m codegen` is the command and no module of the compiler is
+constraints module, and prunes stale emitted files on a whole-bundle run, as today. `main` lives
+in `codegen/__main__.py`, so `python -m codegen` is the command and no module of the compiler is
 ever bound as `__main__`.
+
+**What the report prints, 2026-10-26.** It printed `emitted N / refused M (deferred …, verdict
+…)`, and the directive retires that pair: `M` goes to zero over this bundle and the pair stops
+partitioning anything. Three figures replace it, each over its own denominator and never summed,
+by the semantics document's §2:
+
+- **`emitted N / population N`** — a partition. Its complement is §4's one refusal, printed with
+  its documents when it has any.
+- **the defect counts** — *missing*, *differs*, *added*, *over-declared* — each pinned at zero,
+  printed whether or not they are zero so a reader sees the pin being met rather than inferring
+  it from silence.
+- **`approximated K facts in D documents`**, split by kind (WIDENED / UNDERDETERMINED) and by
+  attribution (ours / upstream), with the upstream half listing its issues. `K` and `D` are
+  different counts over different denominators and the report never adds them. Neither is
+  pinned: both rise when a document starts emitting, and the semantics document's §9 forbids
+  pinning a figure that moves with emission. The **ours** half is the one that ratchets down,
+  and it is the figure a wave's exit condition reads (§14).
+
+The drops and carries-nothing lines stay as today. An approximation is NOT one of them: a
+carries-nothing line says a keyword constrained nothing, and an approximation says a keyword
+constrained something the annotation does not carry. Printing them in one list would sum two
+different things.
 
 *Why the entry-point module matters structurally.* The double binding under `runpy` is the one
 reason the present code carries `decide`, `bind` and `name_constraint` as callables on a
@@ -625,21 +877,32 @@ boundaries that are about design: no Pydantic in the walk, no walk in the verifi
 
 | layer | modules | knows | may not know | crosses outward as |
 | --- | --- | --- | --- | --- |
-| declaration | `keywords.py` | positions, keywords, cells, descent | nodes, documents, types, text | `Cell` |
-| refusal | `refusal.py` | the kinds and the constructors that derive them | everything else | `Refusal` |
+| declaration | `keywords.py`, `attribution.py` | positions, keywords, cells, descent, rungs; the upstream issue at a document, pointer and keyword | nodes, documents, types, text | `Cell`, `Issue` |
+| refusal | `refusal.py` | the kinds, and that a document may have no accepted set | everything else | `Refusal` |
 | source | `bundle.py` | files, paths, `$ref` URIs, edges, the record | kinds, cells' effects, types | raw mapping, `edges`, `record` |
 | reading | `schema/nodes.py`, `schema/parse.py` | raw mapping → `Node`; admission; applied type; positions; pointers | the IR, Python types, text, the run | `Node` |
-| decision | `lower/decide.py`, `lower/<kind>.py`, `lower/rules.py`, `lower/names.py`, `constraints.py` | `Node` → `Lowering`; the table's cells; naming; the runtime's rule classes | mappings, text, the renderer, files, the run | `Module` |
+| decision | `lower/decide.py`, `lower/<kind>.py`, `lower/rules.py`, `lower/names.py`, `constraints.py` | `Node` → `Lowering`; the table's cells and rungs; the attributions; naming; the runtime's rule classes | mappings, text, the renderer, files, the run | `Module` |
 | representation | `ir.py` | the declarations and `TypeRef` | text, pydantic, nodes | — |
 | render | `render.py` | `Module` → text through the pinned model layer | `Node`, mappings, the table | text |
 | run | `emit.py`, `__main__.py` | order, closure, files, the report | kinds, cells, nodes | files |
 | verify | `verify/*` | emitted classes, the record, the rendered column | the walk, the IR, the renderer | reports |
 
 The import graph is acyclic and the arrows point one way: `refusal ← keywords ← ir ← schema ←
-lower ← emit`, `ir ← render ← emit`, `ir ← constraints ← lower`, `keywords ← bundle ← emit`,
-`{keywords, bundle} ← verify`. Three AST tests hold it: no `pydantic`/`datamodel_code_generator`
-import outside `render.py` and `verify/`; no `codegen.{schema,lower,ir,render,emit}` import
-inside `verify/`; no `codegen.{render,emit,verify}` import inside `schema/` or `lower/`.
+lower ← emit`, `ir ← render ← emit`, `ir ← constraints ← lower`,
+`{keywords, attribution} ← lower`, `keywords ← bundle ← emit`,
+`{keywords, attribution, bundle} ← verify`. `attribution.py` is a leaf like `keywords.py` and
+imports nothing of `codegen/`, which is what lets both the walk and the verifier read it without
+either reading the other. **`refusal` is imported by `bundle` and `emit` and by nothing in
+`lower/`** (2026-10-26): the lowering seam is total, so a handler has no refusal to name.
+
+Four AST tests hold the graph, where there were three: no
+`pydantic`/`datamodel_code_generator` import outside `render.py` and `verify/`; no
+`codegen.{schema,lower,ir,render,emit}` import inside `verify/`; no
+`codegen.{render,emit,verify}` import inside `schema/` or `lower/`; and **no `raise` of anything
+but `BuildFailure` inside `schema/` or `lower/`**. The fourth is new and it is the test that
+replaces the type-system guarantee §2 gave up: with one inhabitant at the seam the type checker
+can no longer force a handler to answer for the other branch, so the thing it was preventing — a
+node reaching no outcome — is prevented by banning the only other way out.
 
 **Nothing repeats: where each of today's repetitions has one owner.**
 
@@ -654,8 +917,11 @@ inside `verify/`; no `codegen.{render,emit,verify}` import inside `schema/` or `
 | name derivation at six call sites | `lower/names.py` |
 | text produced in the walk (rule tuples, body lines, union trailers, root bindings) | `ir.py` declarations, written by `render.py` |
 | the compared set in the verifier beside the handled sets in the walk | the table's `rendered` column |
-| the kind of a refusal at every raise site | `Refusal`'s constructors, from the cell |
+| the kind of a refusal at every raise site | `Refusal`'s constructors, and `bundle.record` is the one site |
 | the resolver's canonicalisation and its inverse folds | `bundle.record`, with no inverse |
+| the rung a handler widens to, chosen where it widens | the cell's `widens_to`, read by `approximate` |
+| the upstream issue for a widening, written as prose in a comment | `attribution.py`, keyed by document, pointer and keyword |
+| the exempted facts listed once per check that strikes them | still two lists, and deliberately: `attribution.py` holds why a MODEL says less than its document, `verify/exemptions.py` holds which DUMP facts a check strikes. One registry for both would sum two different things |
 
 What stays two by design: the intersection rule, once in `lower/composition.py` for the model
 and once in `verify/compare.py` for the document (§9 says why); the `applied_schema` rule,
@@ -691,6 +957,17 @@ renderer (§7, §8). The import graph following the entry point's double binding
 `codegen/__main__.py` and a context that carries data (§10). The delegated resolver and its
 inverse folds are answered by `bundle.record` (§4, §9). The kind of a refusal chosen at the
 raise site is answered by deriving it from the cell (§3).
+
+**Replaced by the owner's directive of 2026-10-26, which is a change of PRODUCT and not of
+evidence.** The refusal as the outcome of a keyword nobody has compiled is replaced by the
+widening and the approximation declaration (§2, §3, §6, §7). The sum type at the lowering seam
+collapses to one inhabitant and the guarantee it carried moves to an import-rule test (§2, §11).
+`Effect.REFUSE` and `Kind.DEFERRED` retire (§3). The verifier gains two comparison outcomes and
+two set equalities, and reads a declaration off the emitted class rather than off the walk (§7,
+§9). The report's `emitted / refused` pair becomes three figures over three denominators (§10).
+None of this is answering a review finding; it is answering a decision, and the reviews' own
+findings are unaffected by it — which is worth saying, because a restructure and a product change
+landing in one document is how each gets blamed for the other's cost.
 
 This is a restructure of `codegen/` rather than an adjustment of it: `compiler.py` and
 `emit.py` dissolve into `schema/`, `lower/`, `ir.py`, `render.py`, `emit.py` and
@@ -746,11 +1023,23 @@ decides instead. The owner of the semantics document decides each.
    The structure returns a refusal and never raises one (§2). The sentence's reason — one
    module, one class, no import cycle — holds unchanged; "raise" becomes "return".
 
+   **Settled and then superseded, 2026-10-26.** No lowering imports `Refusal` at all now: the
+   seam is total and the only producer is `bundle.record`. The semantics document's §3 says so
+   directly, so this item is closed — not by the owner conceding the wording, but by the
+   directive removing the thing the wording was about.
+
 5. **§2's refusal kinds, counted separately.** The semantics document names two kinds and
    describes a third in §9 (a chained target). The structure derives the kind from the table's
    cell rather than taking it as an argument, which the document does not forbid and does not
    state. UNRESOLVED, which the code carries today, is not in the document and is retired by
    the resolver in §4.
+
+   **Closed 2026-10-26.** The directive leaves one resolved kind — VERDICT, for a document with
+   no accepted set — and CHAINED delegating to it from `bundle.record`. DEFERRED retires with
+   the outcome it named, and the semantics document's §9 states the replacement rule ("code
+   nobody has written is an APPROXIMATION, never a refusal"). There are no longer two kinds to
+   count separately, so the item has nothing left to disagree about; what the rule became is
+   that the three APPROXIMATION figures are never summed (§10).
 
 6. **§8's diff test is replaced by generation, and §8 now says so.** Markdown is not a machine
    source for a cell's meaning, and a membership diff admits a cell that decides one thing beside
@@ -762,6 +1051,13 @@ decides instead. The owner of the semantics document decides each.
    this document keeps that, since §4 gives no fourth rule. The untitled `enum` branch of a root
    union whose only other branch is a constrained string is the case that reaches it, and it
    needs a naming rule in §4 or stays refused.
+
+   **Closed 2026-10-26: §4 now has the fourth rule.** A branch with no title, no pinned `const`
+   and no `required` set takes its index among the branches, `<Base>Branch<i>`. A name is not an
+   acceptance fact, so the fallback neither widens nor narrows and costs no approximation, and
+   the index is a function of document order, so it does not depend on which documents the run
+   includes. The same reasoning gives a missing or non-identifier root title the document's own
+   file stem, which closes the other half of the refusal.
 
 ---
 
@@ -786,6 +1082,18 @@ meets `enum.decide` reading `enumDescriptions` alone while §6 of the semantics 
 "two spellings of one keyword; both are read", so `enums/signal-value-type.json` emits with no
 member docstrings. That is a defect against a decided sentence, the fix changes one module where
 a document emitted before, and the fix wins. A gate that forbade it would be pinning the defect.
+
+**What the owner's directive does to this sequence (2026-10-26).** It does not reorder steps 1
+to 7, which are relocations the directive does not touch, and step 7 stays next because every
+step after it needs the module pass and the dependency order. It **splits step 8 into three**,
+and the split is forced rather than tidy: *the instrument has to exist before the first cell
+widens.* A cell that widens while the comparison still reads every unexpressed fact as *missing*
+produces a flood the pin cannot survive, and the project then either abandons the pin or stops
+believing the grader — which is the semantics document's §8 failure mode, reached on the first
+commit. So step 8 becomes the approximation end to end with **no cell widened**, step 9 is the
+rows the directive makes FAITHFUL (which need no approximation at all and are the larger half),
+and step 10 is the rows that genuinely widen. The waves then follow with a changed exit
+condition, below.
 
 1. **`codegen/__main__.py`.** Move `main` there; `python -m codegen` is the command. Delete the
    `__main__` re-entry in `emit.py`, the `decide`/`bind`/`name_constraint` callables on
@@ -865,16 +1173,63 @@ a document emitted before, and the fix wins. A gate that forbade it would be pin
    `lower_document` returns a value to the run. The type checker is the test. *No change in
    outcomes.* Unblocks §2's totality.
 
+   *Done, and step 8 takes the second half of it (2026-10-26).* This step made the seam a sum
+   type, which is what made the next move possible: a seam that raises cannot be collapsed,
+   because there is no inhabitant to collapse to. Step 8 collapses the sum to `Lowering` alone.
+   The intermediate state is not wasted work — the sum type is what turns every present
+   deferral into a compile error the moment `Refusal` leaves the seam, which is how step 8
+   finds them all.
+
 7. **`lower/names.py` and the dependency-ordered run.** Move naming and dedup into the pass
    over the module; compute `edges`, the closure and the order in `emit.py` and pass `targets`
    through the context; delete the binder closure, `inflight`, `resolving` on `Module`. *Bytes*
    for the modules; the report's refusal order may change and must stay sorted by document.
    Completes §6, §7 and §10.
 
-8. **The cells.** With the slots in place, each unwritten cell the reviews list is a handler
-   edit against an existing declaration: root siblings onto a union base (and the
-   `applied_schema` extension of §13, item 3); a scalar or alias target as the type of a
-   composing node; the type-bound validators for `uniqueItems`, `contains` and `not` where no
-   class holds the value; a union whose branches differ only in their pinned values as one
-   class and one rule; the manifest dispatch source. Each one moves refusals to emissions and
-   is graded by the verifier at the pairs it unblocks.
+8. **The approximation, end to end, with no cell widened.** The instrument before the change.
+   Add `Rung` and `widens_to` to the cell and retire `Effect.REFUSE`; add `Approximation` and
+   `RootModelDecl` to the IR and `approximations` to `Lowering` and `Module`; add
+   `codegen/attribution.py` and its no-issue-is-a-`BuildFailure` test; make `render.py` write
+   `__adcp_approximations__`; collapse the lowering seam to `Lowering` and retire
+   `Kind.DEFERRED`, which is what makes every present deferral a compile error until its handler
+   calls `approximate`; add the comparison's *approximated* and *over-declared* outcomes, the
+   accepts obligation over a dropped keyword's classes, the UNDERDETERMINED set equality, and the
+   report's three figures. Add the fourth import-rule test (§11). *Exit condition: every count
+   unchanged — the same documents emit, the same documents refuse — with `APPROXIMATED` 0 and
+   `OVER_DECLARED` 0.* The tree changes by one line per module (`__adcp_approximations__ = ()`),
+   which is a declared text delta and not a decision. **Nothing else in the directive may land
+   before this step passes.**
+
+9. **The faithful rows.** The rows the directive forces to a FAITHFUL answer rather than to an
+   approximation, which is the larger half of the refused set and costs no declaration at all:
+   root siblings onto a union base (and the `applied_schema` extension of §13 item 3); a scalar,
+   enum, container or union target as the type of a composing node; the root model, which brings
+   root arrays, `uniqueItems` and `contains` at a root array, and the mixed root union; a
+   `Literal` or `StrEnum` key for `propertyNames`/`enum` at KEY; `format` beside a string
+   constraint keeping both halves; a local `$ref` cycle as a forward reference; a bare-`$ref`
+   root as a subclass or an identity binding; a root stating only `if`/`then` as a root model
+   with the conditional as a rule; the fallback names for a missing title and an identity-less
+   branch; a union whose branches differ only in their pinned values as one class and one rule;
+   the manifest dispatch source. *Exit condition: `APPROXIMATED` still 0, the four defect counts
+   still 0, and the refused set down to the rows step 10 owns.* Each one moves refusals to
+   emissions and is graded by the verifier at the pairs it unblocks.
+
+10. **The widened rows.** What is left, each with the rung and attribution the semantics
+    document's §5 states: an `allOf` restatement whose intersection is not computable; an empty
+    intersection; a union whose branches cannot be separated (UNDERDETERMINED); a `contains`
+    predicate no `AtLeastOne` carries; a keyword with no row; a list-valued `items`; a root
+    stating no schema keyword. **The upstream issues must be filed before this step lands**, not
+    after: `attribution.py` admits no entry without one, so an unfiled issue is a build failure
+    and the step cannot be completed around it. *Exit condition: `refused` is 0 over the
+    portable population, `APPROXIMATED` equals the declared set in both directions, and every
+    upstream attribution names a live issue.*
+
+**Then the waves, with a changed exit condition and an unknown order.** A wave's exit condition
+was "these keywords stop refusing documents". After step 10 no keyword refuses anything, so the
+condition becomes **"these keywords' OURS approximations reach 0"** — the upstream half is not a
+wave's to close. And the wave ORDER has to be re-measured, not carried over: the waves were
+ordered by how many documents each keyword set *completes*, and after step 10 every document is
+complete, so the ordering quantity no longer exists. The new quantity is how many *approximated
+facts* a wave's keywords close, which is a different number over a different denominator and
+will not produce the same order. The upstream half is not a wave at all; it is the issue list,
+and it closes when upstream closes.
