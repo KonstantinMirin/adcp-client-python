@@ -1343,7 +1343,7 @@ def _inherited(
     §4: a ``$ref`` branch is a class with TWO BASES, and the target is the one that
     supplies the fields.  So the target has to be a CLASS, and the two things this needs
     off it -- the symbol and the :class:`compiler.Shape` -- are the two things a ``$ref``
-    conjunct's base already takes from ``mod.bind`` in ``compiler.lower_composition``.
+    conjunct's base already takes from ``mod.target`` in ``compiler.lower_composition``.
 
     **``compiler.lower_node`` is what reads the reference**, and it is read ONCE here,
     because
@@ -1358,8 +1358,8 @@ def _inherited(
 
     The SHAPE is then whichever side declared the class: ``mod.shapes`` for a local
     target, which ``compiler.declare_object`` wrote while ``local_reference`` was
-    declaring it, and ``mod.bind`` for one in another document, which is the same call
-    and the same memo the walk already made.  A target that is not a class has no shape
+    declaring it, and ``mod.target`` for one in another document, which is the same lookup
+    the run resolved before this document was parsed.  A target that is not a class has no shape
     on either side and refuses here, for the reason a ``$ref`` conjunct refuses as a
     base: §4 "What becomes what" makes a scalar root an ``Annotated`` alias,
     and subclassing one is a ``TypeError`` at import.
@@ -1372,7 +1372,7 @@ def _inherited(
     shape = mod.shapes.get(symbol)
     if shape is None and not decided.type.local:
         # Not a symbol at all -- a scalar, a container or a literal -- so there is no
-        # class and :meth:`compiler.Module.bind` would be asked about a reference whose
+        # class and :meth:`compiler.Module.target` would be asked about a reference whose
         # target this very call already resolved.
         return Refusal(
             "$ref",
@@ -1384,7 +1384,7 @@ def _inherited(
             kind=Kind.VERDICT,
         )
     if shape is None:
-        bound = mod.bind(uri, pointer)
+        bound = mod.target(uri, pointer)
         if isinstance(bound, Refusal):
             return bound
         shape = bound.shape

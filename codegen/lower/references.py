@@ -65,10 +65,10 @@ def lower(node: nodes.Reference, name_hint: str, mod: Module) -> Decided | Refus
     # declares the entry if the walk has not reached it yet.
     if not node.head:
         return compiler.local_reference(mod, node.into, node.pointer)
-    target = mod.bind(node.uri, node.pointer)
+    target = mod.target(node.uri, node.pointer)
     if isinstance(target, Refusal):
-        # The binder's refusal, unchanged (§6).  It is the binder that mints the CHAIN
-        # for a target that refused, because it is the one holding the target's own
+        # The RUN's refusal for this site, unchanged (§6).  It is the run that mints the
+        # CHAIN for a target that refused, because it is the one holding the target's own
         # refusal to carry ``through=``; this row has nothing to add to it.
         return target
     mod.imports.add((target.module, target.symbol))
