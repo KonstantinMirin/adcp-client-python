@@ -2889,6 +2889,60 @@ def bind_without_a_model(
     return pointer
 
 
+def declare_root_model(
+    mod: Module,
+    pointer: str,
+    node: nodes.Base,
+    decided: ir.TypeRef,
+    rules: tuple[Rule, ...] = (),
+) -> Decided | Refusal:
+    """§4's THIRD root shape: a root that is neither a class nor an alias.
+
+    ``docs/plan/rebuild-plan.md`` §4's table gives three rows to one: "an array at a
+    root -> ``RootModel[list[X]]``", "a ``oneOf``/``anyOf`` at a root mixing a scalar
+    branch with a class branch -> a root model over the union of the branches' types",
+    and "a root stating no schema keyword at all -> a permissive root model".  §7 of the
+    architecture document gives them one declaration, :class:`codegen.ir.RootModelDecl`,
+    and §8 gives them one runtime base, ``AdCPRootModel``.
+
+    **One function for the three, which is :func:`bind_without_a_model`'s own reason
+    read at a different shape.**  That one binds the two module-level statements a root
+    with NO class takes; this one declares the class a root model IS, so the schema half
+    arrives by inheritance from ``AdCPRootModel`` exactly as it does for a class.  A
+    class, a root model, an alias and an enumeration therefore cannot come to answer
+    differently about what their own document accepts, which is §8's requirement in
+    those words: "each must carry ``__adcp_schema__``, ``strict_validate`` and a rule
+    tuple exactly as a class does."
+
+    ``rules`` is §2's "where a rule hangs" at a root that is not a class: "where no class
+    sits above the value -- a root array, a mapping value, a ``definitions`` entry, a
+    union branch -- the rule hangs off the value's own annotated type."  A root model IS
+    the value's own type, and it carries a rule tuple, so the rule reaches it -- measured
+    on the runtime: ``_runtime.supplied`` reads ``__pydantic_fields_set__``, a root
+    model's one field is ``root``, and a rule keyed on ``"root"`` is evaluated exactly as
+    a class's rule keyed on a property is (``AdCPRootModel``'s docstring carries the
+    three MRO measurements).
+
+    It returns a :class:`Decided` and not a pointer, because the three callers each want
+    the node's TYPE back: the root model is a local symbol like any class the walk
+    declares, and ``lower/names.py`` binds the pointer to it.
+    """
+    collision = mod.declare(
+        pointer,
+        ir.RootModelDecl(
+            # The POINTER in the name slot until ``names.assign`` binds it (§7).
+            name=pointer,
+            ref=schema_ref(mod.document, pointer),
+            type=decided,
+            description=node.description,
+            rules=rules,
+        ),
+    )
+    if collision is not None:
+        return collision
+    return Decided(ir.TypeRef(pointer, local=True))
+
+
 def _alias_for(pointer: str, node: nodes.Base, decided: Decided) -> ir.AliasDecl:
     """One node's own decision, as the alias that names it.
 

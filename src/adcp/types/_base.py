@@ -79,7 +79,7 @@ from importlib import resources
 from typing import Annotated, Any, ClassVar, Literal, NamedTuple, TypeVar, Union
 
 import jsonschema
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter
 from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError, core_schema
 
 from adcp.types._runtime import RuleBound, refuse
@@ -91,7 +91,7 @@ from adcp.types._runtime import RuleBound, refuse
 #: path) is a build-time input and cannot be the runtime source.
 PACKAGE = "adcp.types._schemas"
 
-ModelT = TypeVar("ModelT", bound="AdCPBaseModel")
+ModelT = TypeVar("ModelT", bound="SchemaBound")
 
 #: The engine every ``pattern`` in this package is compiled with, named once
 #: because a class reads it off ``AdCPBaseModel`` and an alias has to be handed
@@ -453,21 +453,36 @@ def strict_alias(ref: SchemaRef, symbol: str, alias: Any) -> Callable[[Any], Any
     return strict_validate
 
 
-class AdCPBaseModel(RuleBound):
-    """The base every emitted class inherits.
+class SchemaBound(RuleBound):
+    """The schema half, in ONE body, for every emitted shape that has a class.
 
-    ``RuleBound`` rather than ``BaseModel`` directly: it carries the one
-    ``model_validator(mode="after")`` that evaluates ``_adcp_rules``, so a class
-    the emitter writes a rule tuple onto needs no validator of its own and a class
-    with no rule inherits the empty tuple and pays one attribute lookup (D6).
+    ``docs/plan/architecture.md`` §8: "``strict_validate`` and ``__adcp_schema__``
+    factor out of ``AdCPBaseModel`` into a mixin both take -- one body, for the
+    reason ``strict_alias`` exists: a second implementation of the schema half is a
+    second answer to the one question."  The two takers are
+    :class:`AdCPBaseModel`, the base of every emitted class, and
+    :class:`AdCPRootModel`, the base of every emitted ROOT MODEL -- and §8's
+    requirement is that the two cannot disagree: "each must carry
+    ``__adcp_schema__``, ``strict_validate`` and a rule tuple exactly as a class
+    does, or a root model and a class disagree about what their document accepts."
+
+    ``RuleBound`` and not ``BaseModel`` directly: it carries the one
+    ``model_validator(mode="after")`` that evaluates ``_adcp_rules``, so a shape the
+    emitter writes a rule tuple onto needs no validator of its own and a shape with
+    no rule inherits the empty tuple and pays one attribute lookup (§2's "rules are
+    after-validators, written once").  Carried HERE rather than on each taker,
+    because the rule tuple is the third of the three things §8 requires both to have.
+
+    It declares no ``model_config``: ``extra`` is meaningful for a class and pydantic
+    REFUSES it on a ``RootModel`` ("``RootModel`` does not support setting
+    ``model_config['extra']``"), so the two takers configure themselves and share the
+    part that is one question.
     """
 
-    model_config = ConfigDict(extra="ignore", regex_engine=REGEX_ENGINE)
-
-    #: Declared and not assigned: every emitted class writes its own, and a
-    #: subclass of this base that writes none has no schema to be validated
-    #: against, so reading it is an ``AttributeError`` at the one call below
-    #: rather than a silent fall back to ``model_validate``.
+    #: Declared and not assigned: every emitted class and every emitted root model
+    #: writes its own, and a subclass that writes none has no schema to be validated
+    #: against, so reading it is an ``AttributeError`` at the one call below rather
+    #: than a silent fall back to ``model_validate``.
     __adcp_schema__: ClassVar[SchemaRef]
 
     @classmethod
@@ -483,9 +498,79 @@ class AdCPBaseModel(RuleBound):
 
         The schema is the one this class names.  There is no lookup to get wrong
         and no second place to read one from.
+
+        **``model_validate`` is the construction half for BOTH takers**, which is
+        what makes one body enough: a ``RootModel`` validates its own root type
+        through it, so a root model's accepted set is its document's exactly as a
+        class's is, and a consumer writes ``X.strict_validate(payload)`` without
+        knowing which of the two shapes ``X`` turned out to be.
         """
         _refuse_at(cls.__adcp_schema__, payload, cls.__name__)
         return cls.model_validate(payload)
+
+
+class AdCPBaseModel(SchemaBound):
+    """The base every emitted CLASS inherits.
+
+    What is left here is the one thing that is a class's and not a root model's: the
+    ``extra`` policy §2 of the semantics document derives from
+    ``additionalProperties`` ("absent -> ``ignore``").  The schema half and the rule
+    tuple are :class:`SchemaBound`'s, which §8 shares between this and
+    :class:`AdCPRootModel`.
+    """
+
+    model_config = ConfigDict(extra="ignore", regex_engine=REGEX_ENGINE)
+
+
+class AdCPRootModel(SchemaBound, RootModel[Any]):
+    """§4's third root shape: a root that is neither a class nor an alias.
+
+    ``docs/plan/architecture.md`` §8 declares it: "The semantics document's §4 now
+    gives three shapes to a root model -- an array, a union mixing a scalar branch
+    with a class branch, and a document stating no schema keyword -- and each must
+    carry ``__adcp_schema__``, ``strict_validate`` and a rule tuple exactly as a
+    class does, or a root model and a class disagree about what their document
+    accepts.  So ``class AdCPRootModel(RootModel, RuleBound)`` joins
+    ``AdCPBaseModel``."
+
+    **Why a root model and not an alias for these three.**  §4 gives a root SCALAR a
+    module-level ``Annotated`` alias, which has no class and so carries
+    ``strict_validate`` as a module-level function (``strict_alias``).  That answer
+    does not reach these three, and each for its own reason: a root ARRAY carries
+    ``uniqueItems`` and ``contains``, which §2 hangs as RULES where no class sits
+    above the value and an alias has no rule tuple; a MIXED root union has a class
+    branch, and an alias cannot be a base for one; and a root stating no schema
+    keyword at all admits every instance, which is a value and not an annotation a
+    field can hold.  A root model carries all three, and it inherits the rule
+    validator through :class:`SchemaBound`.
+
+    ``RootModel[Any]`` and not bare ``RootModel``: a generic left unparameterised
+    binds ``root`` to the type variable itself, and every emitted root model
+    re-annotates ``root`` with the type its own document decides, which is what the
+    renderer writes.  ``Any`` is what an unannotated root would admit anyway, so the
+    parameter costs no accepted set and makes the base importable on its own -- which
+    is what lets a document stating no schema keyword subclass it with no annotation
+    of its own at all and still admit everything (§4's permissive root model).
+
+    **Three facts about the MRO, each measured on the pinned pydantic rather than
+    reasoned about**: the linearisation resolves with :class:`SchemaBound` first, so
+    ``strict_validate`` is this class's and ``RootModel``'s construction half is
+    reached through ``model_validate``; the rule validator FIRES, because
+    ``_runtime.supplied`` reads ``__pydantic_fields_set__`` and a root model's one
+    field is ``root`` -- so a rule keyed on ``"root"`` is evaluated exactly as a
+    class's rule keyed on a property is; and ``model_json_schema()`` renders the ROOT
+    TYPE's own schema with no wrapper object, so §8 of the semantics document pairs a
+    root model against its document's node exactly as it pairs a class.
+    ``tests/test_root_model.py`` is where each of the three is asserted.
+
+    It declares ``regex_engine`` and not ``extra``: pydantic refuses an ``extra`` on
+    a ``RootModel`` subclass, and a root model has no declared properties for the
+    policy to be about -- while a ``pattern`` inside its root type needs the same
+    engine every class and every alias uses, or this one shape's accepted set differs
+    from its document's (:data:`REGEX_ENGINE`).
+    """
+
+    model_config = ConfigDict(regex_engine=REGEX_ENGINE)
 
 
 #: The two errors a DISCRIMINATED union raises about the discriminating KEY rather than

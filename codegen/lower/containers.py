@@ -79,6 +79,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from adcp.types._runtime import UniqueItems
 from codegen import bundle, compiler, ir
 from codegen.lower import names
 from codegen.schema import nodes
@@ -300,7 +301,19 @@ def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
     refused = compiler.check_keywords(node, _ARRAY_CLAIMS, mod=mod)  # the walk's own check
     if refused is not None:
         return refused
-    if node.distinct and position is not Position.PROP:
+    if node.distinct and position is Position.ROOT:
+        # **§5's ``uniqueItems`` row where no CLASS holds the array and a ROOT MODEL
+        # does** (§14 step 9, and §5's group (a): "A root array is a root model, and a
+        # root model carries a rule tuple exactly as a class does, so ``Distinct`` and
+        # ``AtLeastOne`` reach it.  The keyword is enforced, not dropped.")
+        #
+        # So the position is checked for ROOT *before* the refusal below, and what the
+        # refusal is left with is the three positions that have neither a class nor a
+        # root model: a mapping value, a ``definitions`` entry and a combinator branch.
+        # Those are the ones §7's ``ir.TypeRef.validators`` slot answers and no row has
+        # written; this arm is the one of the four §14 step 9 names.
+        pass
+    elif node.distinct and position is not Position.PROP:
         # AFTER the screen, so an array carrying BOTH this and a keyword no row lowers
         # is reported on the other one: this refusal is final and that one may not be.
         #
@@ -339,28 +352,38 @@ def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
             return lowered
         element = lowered
     if position is Position.ROOT:
-        # **D2's root-array ``RootModel[list[X]]`` row, refused AT THE POSITION.**
+        # **§4's root-array row, WRITTEN** (§14 step 9): "an array at a root ->
+        # ``RootModel[list[X]]``".
         #
         # It was ``containers.root``, reached through a selector
         # (``bundle``'s deleted ``is_container_root``) and a dispatch table (``emit.ROWS``) §5
         # retires: "root and non-root are one path", so what ROOT changes is this arm's
         # ANSWER and not which arm answers.  The element is lowered FIRST -- the code
-        # above, unchanged -- so the refusal names the element type the row would have
-        # wrapped rather than just the shape.
+        # above, unchanged -- so the root model wraps the element type this row decided.
         #
-        # The row is unimplemented because all five root arrays of this bundle refuse on
-        # a keyword of a later step: 4 carry ``uniqueItems: true`` at the root (D6's
-        # rule, step 7) and ``media-buy/product-refinement.json`` refuses inside its
-        # ``items``.  So a ``RootModel`` base would be a class no document reaches and no
-        # pair grades -- a DEFERRAL, since the obstruction is unwritten code.
-        return Refusal(
-            "type",
+        # **The BOUND and the ``uniqueItems`` go onto the root model's own TYPE and its
+        # own RULE TUPLE**, which is §2's two halves at a position with no field: a
+        # ``minItems``/``maxItems`` is a constraint of the list and rides in
+        # :attr:`codegen.ir.TypeRef.facts` exactly as it does on a property's type, and
+        # ``uniqueItems`` is a RULE, which a root model carries because §8 gives it one
+        # tuple ("a rule tuple exactly as a class does").  The rule is keyed on
+        # ``"root"`` -- a root model's one pydantic field, which is where
+        # ``_runtime.supplied`` finds the value -- and ``render.root_model`` derives the
+        # ``json_schema_extra`` half from that same rule rather than from a second flag,
+        # so the strip and the rendered fact are one claim (``ir.Field.distinct``'s own
+        # reasoning at a root).
+        #
+        # The old refusal's measurement is what this arm clears: "all five root arrays of
+        # this bundle refuse on a keyword of a later step: 4 carry ``uniqueItems: true``
+        # at the root and ``media-buy/product-refinement.json`` refuses inside its
+        # ``items``".  Those 4 are this arm's population and the 5th still refuses inside
+        # its element, where the obstruction is.
+        return compiler.declare_root_model(
+            mod,
             pointer,
-            f"a root array is D2's RootModel[list[X]] row and {element.path or '<a class>'}"
-            " is the element type it would wrap; the row is unimplemented because all "
-            "five root arrays of this bundle refuse on a keyword of a later step, so no "
-            "document would grade it",
-            kind=Kind.DEFERRED,
+            node,
+            ir.TypeRef(container="list", of=(element,), facts=bounds),
+            rules=(UniqueItems(ir.ROOT_FIELD),) if node.distinct else (),
         )
     return Decided(ir.TypeRef(container="list", of=(element,)), bounds)
 
