@@ -57,13 +57,15 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter, Valid
 
 from adcp.types._base import (
     AdCPBaseModel,
+    AdCPRootModel,
+    SchemaBound,
     applied_schema,
     BranchDispatchMixin,
     REGEX_ENGINE,
     SchemaRef,
     schema_at,
 )
-from adcp.types._runtime import Dependencies, RuleBound
+from adcp.types._runtime import Dependencies, Rule, RuleBound, UniqueItems, bound_rules
 from codegen import bundle, compiler, emit, harness, ir, keywords, render
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
@@ -294,7 +296,24 @@ def graded() -> list[Graded]:
         for value in vars(module).values():
             if (
                 isinstance(value, type)
-                and issubclass(value, AdCPBaseModel)
+                # **``SchemaBound`` and not ``AdCPBaseModel``, because §8 of the
+                # architecture document requires a ROOT MODEL to be paired exactly as a
+                # class is**: "each must carry ``__adcp_schema__``, ``strict_validate``
+                # and a rule tuple exactly as a class does, or a root model and a class
+                # disagree about what their document accepts."  ``SchemaBound`` is the
+                # mixin that carries those two, so it is the predicate that says "this
+                # object is a pair"; ``AdCPBaseModel`` says "this object is a class",
+                # which is a narrower question and the wrong one here.  Measured at §14
+                # step 9: the six root models the step's three producers declare --
+                # ``core/acceptance-policy-profile-ids.json``,
+                # ``core/forecast-point-dimensions.json``,
+                # ``core/reporting-verification-profile-set.json``,
+                # ``media-buy/product-fields.json`` and the two
+                # ``core/targeting-*-age-*-constraint.json`` -- emitted into the tree
+                # and reached NO pair, which
+                # ``test_the_pairing_is_intrinsic_to_every_class_the_tree_carries``
+                # reports as a document that emits and is not graded.
+                and issubclass(value, SchemaBound)
                 and "__adcp_schema__" in value.__dict__
                 and value.__module__ == info.name
                 and id(value) not in taken
@@ -1026,9 +1045,23 @@ NON_PASS_PAIRS: dict[str, list[str]] = {
 #: after it, 38 after D2's Literal amendment -- and the reason it never moved is that
 #: no row had yet added a base, not that an addition would be wrong.
 UNION_BASE_FLOOR = 38
+#: **The two PERMISSIVE root models join at ``adcp-client-python-10l.20``, and they are
+#: the one shape for which "no payload" is the DOCUMENT'S answer rather than the
+#: generator's reach.**  §4's last table row makes a root stating no schema keyword a
+#: permissive root model, and §5(b)'s measurement of what that is faithful TO is exactly
+#: why there is no payload to derive: "``Draft7Validator`` accepts ``42``, ``"x"``,
+#: ``null``, an object and an array, so the permissive model is exactly as wide as the
+#: document."  A document that REFUSES NOTHING has no refusable instance, so the liveness
+#: check has nothing to offer the pair -- which is a fact about the document and not a
+#: gap in the draw.  The two are the roots stating only ``if``/``then``, whose ``then``
+#: narrows a VALUE and so states nothing a payload can violate at the root
+#: (§5's ``then``/``else`` row: "Its ``properties`` -> nothing on the model; the schema
+#: half narrows the value").
 NO_PAYLOAD_PAIRS: tuple[str, ...] = (
     "core/reference-renderer.json#",
     "core/reference-renderer.json#/properties/provenance",
+    "core/targeting-unknown-age-eligibility-constraint.json#",
+    "core/targeting-verified-age-basis-constraint.json#",
 )
 
 
@@ -1073,15 +1106,49 @@ def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for()
         f"{g.ref.document}{g.ref.pointer}" for g, r in reports if r.liveness.outcome == "no_payload"
     )
     assert excused == sorted(NO_PAYLOAD_PAIRS), excused
-    # Read off the reports rather than off the list: each one is a pair whose accepts
-    # check could not DRAW, and the liveness result says exactly that.
+    # **Read off the reports rather than off the list, and there are TWO CAUSES since
+    # ``adcp-client-python-10l.20``.**  :data:`NO_PAYLOAD_PAIRS`' own comment forecast the
+    # split -- "'the accepts check drew no instance' and 'the pair's verdict is
+    # ``no_instrument``' are two statements about one cause, and a row that separates them
+    # should redden in one place and not both" -- and §4's permissive root model is what
+    # separates them.  For that shape the draw SUCCEEDS, because the document admits every
+    # instance; what has no payload is the REFUSAL, because the document refuses nothing.
+    # So the cause is asserted per pair and the two are partitioned by name below rather
+    # than collapsed into one sentence.
+    #
+    # Last paragraph of this docstring, inverted by that same row: "A document refusing
+    # NOTHING would have to state no root type at all, and this bundle has none" -- it has
+    # five, and two of them emit here (the other three are the registry documents, still
+    # refused on a data key's cell).
+    causes: dict[str, set[str]] = {"drew_no_instance": set(), "refuses_nothing": set()}
     for g, r in reports:
-        if r.liveness.outcome == "no_payload":
-            assert r.accepts.outcome == "strategy_error", (g.ref, r.accepts.outcome)
-            assert r.liveness.detail == "the accepts check drew no instance", r.liveness.detail
-            assert r.liveness.how == "", r.liveness.how
-        else:
+        if r.liveness.outcome != "no_payload":
             assert r.liveness.how, (g.ref, r.liveness.outcome)
+            continue
+        name = f"{g.ref.document}{g.ref.pointer}"
+        assert r.liveness.how == "", (g.ref, r.liveness.how)
+        if r.accepts.outcome == "strategy_error":
+            assert r.liveness.detail == "the accepts check drew no instance", r.liveness.detail
+            causes["drew_no_instance"].add(name)
+            continue
+        # The other cause, asserted as the SHAPE it is rather than as a name: the pair's
+        # document is the empty schema, so every value is admissible and no value is
+        # refusable.  Both halves are checked against the document itself.
+        assert r.accepts.outcome == "pass", (g.ref, r.accepts.outcome)
+        # The DOCUMENT's own answer and not a predicate of ours: draft-07 is what
+        # decides that the empty schema admits everything, so the check is that its own
+        # validator admits a value of every JSON type.
+        node = schema_at(g.ref)
+        validator = jsonschema.Draft7Validator(node)
+        assert all(
+            validator.is_valid(value) for value in (42, "x", None, True, {}, [])
+        ), (g.ref, node)
+        causes["refuses_nothing"].add(name)
+    partitions(set(NO_PAYLOAD_PAIRS), **{k: v for k, v in causes.items()})
+    assert causes["refuses_nothing"] == {
+        "core/targeting-unknown-age-eligibility-constraint.json#",
+        "core/targeting-verified-age-basis-constraint.json#",
+    }, sorted(causes["refuses_nothing"])
     # The two mapping roots this test's own premise got wrong, asserted the right way
     # round: they state a root type, so the replacement IS refused and they ARE graded.
     for name in ("core/context.json#", "core/ext.json#"):
@@ -1666,6 +1733,30 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             # name, and would have passed unchanged while the other arm went
             # unimported.
             choose = scalars.FORMAT_TYPES.get(fmt) if fmt in checked else None
+            # **A URL format beside another string constraint takes the row's own
+            # FALLBACK and selects no type** (§5's group (a), landed at
+            # ``adcp-client-python-10l.20``): "the type is the constrained `str` and the
+            # `format` rides as `json_schema_extra={"format": "uri"}`.  Both facts are
+            # kept and neither half narrows."  So there is no URL type to import, and the
+            # carrier is whichever of the two arms below the position has -- which is
+            # what the ``choose is None`` branch already grades for every other
+            # unselected format.
+            #
+            # ``scalars.selects_a_url_type`` is the PRODUCTION reading, asked here rather
+            # than restated, for the reason the alias NAME is asked of the production
+            # function below: a second reading of "is a type selected here" is how a
+            # check comes to grade a document against a compiler nobody runs.  Measured:
+            # 1 site, ``core/reporting-delivery-capabilities.json`` at
+            # ``/properties/operations_contact/properties/url``, a ``format: uri`` beside
+            # a ``maxLength``.
+            if (
+                choose is not None
+                and fmt in scalars.URL_FORMATS
+                and not scalars.selects_a_url_type(
+                    fmt, {k: node[k] for k in ir.FACTS if k in node}
+                )
+            ):
+                choose = None
             if choose is None:
                 # **Where no type is selected, section 5's ``format`` row has TWO
                 # answers and the position decides which.**  On a FIELD the format
@@ -3767,7 +3858,6 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "content-standards/update-content-standards-response.json": "allOf",
     "content-standards/validate-content-delivery-response.json": "allOf",
     "core/account-identity-change-preview.json": "$ref",
-    "core/agent-reporting-destination.json": "$ref",
     "core/assets/asset-union.json": "$ref",
     "core/assets/daast-asset.json": "properties",
     "core/assets/display-tag-asset.json": "properties",
@@ -3775,7 +3865,7 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "core/async-response-data.json": "$ref",
     "core/audience-characteristic.json": "allOf",
     "core/brand-response-authorization-result.json": "properties",
-    "core/budget-allocation.json": "$ref",
+    "core/budget-allocation.json": "allOf",
     "core/canonical-placement.json": "properties",
     "core/catchment.json": "properties",
     "core/creative-asset.json": "allOf",
@@ -3785,13 +3875,24 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "core/format-option-ref.json": "additionalProperties",
     "core/frequency-cap-impression-constraints.json": "properties",
     "core/frequency-cap-interval-constraints.json": "properties",
-    "core/optimization-goal.json": "allOf",
     "core/postal-area.json": "$ref",
     "core/postal-country-system.json": "properties",
-    "core/pricing-option.json": "$ref",
     "core/product-format-declaration.json": "allOf",
     "core/registry-event.json": "properties",
     "core/requirements/asset-requirements.json": "$ref",
+    # **THREE LEFT THIS MAP AND ONE MOVED AT ``adcp-client-python-10l.20``, all four
+    # because §5's ``$ref`` row at CONJ now makes a non-class target the composing node's
+    # own TYPE.**  ``core/agent-reporting-destination.json``, ``core/optimization-goal.json``
+    # and ``core/pricing-option.json`` EMIT: each refused on a conjunct whose ``$ref``
+    # resolves to an alias or an enumeration, directly or through a chain, and the row
+    # that answers it is §14 step 9's.  ``core/budget-allocation.json`` moved ``$ref`` ->
+    # ``allOf``: its chain through ``core/optimization-goal.json`` cleared, so the walk
+    # reached its OWN conjunct at
+    # ``/oneOf/1/properties/optimization_goals/items/allOf/0``, where the target is a
+    # class and the node also declares fields -- the one shape §5's clause does not
+    # reach, reported on ``allOf`` by name.  That is the attribution moving in the honest
+    # direction, which is what this profile is for.
+    #
     # ``core/requirements/catalog-field-binding.json`` LEFT THIS MAP AT ROW .3 and is
     # the row's whole emission delta: 747 -> 748.  Its last refusal was ``$ref`` at
     # ``#/definitions/ScalarBinding/properties/ext``, resolution UNRESOLVED, because the
@@ -3804,7 +3905,11 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "creative/get-creative-features-response.json": "allOf",
     "creative/preview-creative-response.json": "allOf",
     "creative/sync-creatives-response.json": "allOf",
-    "error-details/governance-agent-not-accepted.json": "maxLength",
+    # ``maxLength`` -> ``$ref`` at ``adcp-client-python-10l.20``: §5's ``format`` row's
+    # own fallback keeps a ``uri`` beside a bound, so this document's own verdict cleared
+    # and what is left is a CHAIN through ``governance/accepted-governance-agents.json``,
+    # whose obstruction is a sibling of a NESTED union.
+    "error-details/governance-agent-not-accepted.json": "$ref",
     "error-details/vast-version-mismatch.json": "properties",
     "media-buy/build-creative-response.json": "allOf",
     "media-buy/buy-products-request.json": "allOf",
@@ -4306,8 +4411,28 @@ def test_every_root_reaches_one_arm_and_the_populations_partition_the_bundle() -
 
     uncounted = claimed("roots no population counts", by_count[0], inside=documents)
     out = emit.emit(BUNDLE, sorted(uncounted))
-    for document in sorted(uncounted):
-        assert document in out.refusals, document
+    # **The arm ANSWERS, and an answer is an emission or a refusal** --
+    # ``adcp-client-python-10l.20`` is what makes the first half live.  §4's table gives
+    # a root stating no schema keyword a PERMISSIVE ROOT MODEL and §5's group (a) gives a
+    # root stating only ``if``/``then`` the same shape with the conditional as a rule, so
+    # two of the three shapes this loop found refusing now emit.  Both halves are graded
+    # here by name, because "every root reaches an arm" is the property and "the arm
+    # refuses" was only ever how it was observed.
+    emitted_here = claimed(
+        "uncounted roots that emit",
+        {d for d in uncounted if d not in out.refusals},
+        inside=uncounted,
+    )
+    for document in sorted(emitted_here):
+        # Each one is §4's third root shape, so the module declares a ``RootModelDecl``
+        # and nothing else answers for the root.
+        built = emit.lower_document(document, bundle.read(BUNDLE, document))
+        assert not isinstance(built, Refusal), (document, built)
+        module, _ = built
+        assert any(
+            isinstance(d, ir.RootModelDecl) for d in module.declarations
+        ), (document, [type(d).__name__ for d in module.declarations])
+    for document in sorted(uncounted - emitted_here):
         where = out.refusals[document]
         assert where["pointer"] == "/", (document, where)
         # The keyword is one the DOCUMENT states, or ``type`` where the root states no
@@ -4472,33 +4597,61 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     # key emits now, so the walk descends into that mapping's VALUE and meets an
     # array with no class above it -- a mapping value, which is one of the four
     # positions this list is about.
+    #
+    # **The four ROOT sites LEFT at ``adcp-client-python-10l.20``, and the three that
+    # stay are the positions §7's ``ir.TypeRef.validators`` slot owns.**  §5's group (a)
+    # decides the root: "A root array is a root model, and a root model carries a rule
+    # tuple exactly as a class does, so ``Distinct`` and ``AtLeastOne`` reach it.  The
+    # keyword is enforced, not dropped."  So ``core/acceptance-policy-profile-ids.json``,
+    # ``core/forecast-point-dimensions.json``,
+    # ``core/reporting-verification-profile-set.json`` and
+    # ``media-buy/product-fields.json`` each emit a root model carrying
+    # ``UniqueItems('root')`` -- the key being a root model's one pydantic field, which
+    # is where ``_runtime.supplied`` finds the value.
+    #
+    # What is left is a mapping VALUE, a ``definitions`` entry and a combinator BRANCH,
+    # and none of the three has a class or a root model: §2 hangs the rule off "the
+    # value's own annotated type", which is the ``validators`` slot §7 declares and no
+    # row has written.  So this list is now exactly the positions that slot answers,
+    # which is the honest reading of the refusal it keeps.
     out = emit.emit(BUNDLE, population())
     blocked = {d: out.refusals[d]["pointer"] for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
     claimed("documents refused on uniqueItems", blocked)
     assert blocked == {
-        "core/acceptance-policy-profile-ids.json": "/",
         "core/account-authorization.json": "/properties/field_scopes/additionalProperties",
         "core/daast-tracker-constraints.json": "/definitions/daast_versions",
-        "core/forecast-point-dimensions.json": "/",
-        "core/reporting-verification-profile-set.json": "/",
         "core/vast-tracker-constraints.json": "/definitions/vast_versions",
         "error-details/requote-required.json": "/properties/envelope_field/oneOf/1",
         "media-buy/acceptance-policy-profile.json": "/properties/region_aliases/additionalProperties",
-        "media-buy/product-fields.json": "/",
     }, blocked
+    assert all(p != "/" for p in blocked.values()), blocked
 
 
-def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrapped() -> None:
-    """D2's ``RootModel[list[X]]`` row, and why it is a refusal rather than a class.
+def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rule() -> None:
+    """§4's root-array row, WRITTEN at ``adcp-client-python-10l.20``.
 
-    All five root arrays of the bundle refuse on a keyword of a later step, so a
-    ``RootModel`` base would be a class no document reaches and no pair grades.  The
-    row therefore refuses -- and it lowers the ELEMENT first, so a real document
-    reports its own blocker rather than the shape.
+    §4's table: "an array at a root -> ``RootModel[list[X]]``".  The row was refused by
+    name on the ground that "all five root arrays of this bundle refuse on a keyword of
+    a later step, so a ``RootModel`` base would be a class no document reaches and no
+    pair grades" -- and the keyword in question was this row's own ``uniqueItems``,
+    which §5's group (a) answers with the root model's rule tuple.  So the two halves
+    land together and the measurement is the partition below: four of the five root
+    arrays EMIT, and the fifth refuses inside its own ``items``, where its obstruction
+    is.
 
-    Asserted on all five by name, with the keyword each one actually refuses on read
-    off the run.  The shape refusal underneath is reached only by a document built to
-    have nothing else wrong with it, which is the second half.
+    Three facts per emitted root array, each the half the old refusal was paying for:
+
+    * the symbol is an ``AdCPRootModel`` and carries ``__adcp_schema__``, so it is a
+      PAIR and the three checks reach it (§8 of the architecture document: "each must
+      carry ``__adcp_schema__``, ``strict_validate`` and a rule tuple exactly as a class
+      does");
+    * ``uniqueItems`` is RENDERED in ``model_json_schema()``, through the
+      ``json_schema_extra`` channel ``ir.Field.distinct`` names -- pydantic v2 removed
+      ``unique_items``, so nothing else reaches the model's schema and §8 of the
+      semantics document would read the document's own keyword as *missing*;
+    * the rule FIRES: a duplicate is refused by the one validator ``RuleBound``
+      installs, which is what makes "the keyword is enforced, not dropped" true rather
+      than claimed.
     """
     out = emit.emit(BUNDLE, population())
     roots = claimed(
@@ -4506,30 +4659,76 @@ def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrappe
         [d for d in bundle.portable(BUNDLE) if bundle.read(BUNDLE, d).get("type") == "array"],
         inside=bundle.portable(BUNDLE),
     )
-    assert all(d in out.refusals for d in roots), [d for d in roots if d not in out.refusals]
-    # The two keywords they refuse on, and the PARTITION of the roots between them by
-    # name: the one that refuses inside its own ``items`` is the odd one and is named
-    # below, so a count of the other group says nothing the partition does not.
-    #
-    # The odd one read ``discriminator`` until ``salesagent-j3k2l.67`` admitted that
-    # keyword beside a nested union (§6's row), and now reads ``type`` -- the same
-    # sibling screen at the same pointer, one keyword further along ``sorted(node)``.
-    assert {out.refusals[d]["keyword"] for d in roots} == {"uniqueItems", "type"}
     partitions(
-        roots,
-        at_the_root={d for d in roots if out.refusals[d]["keyword"] == "uniqueItems"},
-        inside_its_items={d for d in roots if out.refusals[d]["keyword"] != "uniqueItems"},
+        set(roots),
+        emitted_as_a_root_model={d for d in roots if d not in out.refusals},
+        refused_inside_its_items={d for d in roots if d in out.refusals},
     )
-    (odd,) = [d for d in roots if out.refusals[d]["keyword"] != "uniqueItems"]
+    # The odd one out is named, and the refusal is INSIDE its element rather than at the
+    # shape: the row lowers the element first, so a document whose own element is
+    # unlowerable reports its own blocker and not the root array shape.
+    (odd,) = [d for d in roots if d in out.refusals]
     assert odd == "media-buy/product-refinement.json"
     assert out.refusals[odd]["pointer"].startswith("/items"), out.refusals[odd]
 
-    caught = refusal_from(emit.lower_document(
+    # The hand-built control: nothing else wrong with it, so it reaches the shape.
+    built = emit.lower_document(
         "r.json", {"title": "R", "type": "array", "items": {"type": "string"}}
-    ))
-    assert (caught.keyword, caught.pointer) == ("type", "/")
-    assert "RootModel[list[X]]" in caught.detail
-    assert "str is the element type" in caught.detail
+    )
+    assert not isinstance(built, Refusal), built
+    module, symbol = built
+    (declared,) = [d for d in module.declarations if isinstance(d, ir.RootModelDecl)]
+    assert declared.type.container == "list", declared
+    assert [of.path for of in declared.type.of] == ["str"], declared
+
+    # And on the tree, which is the half a hand-built declaration cannot answer.
+    rows = {g.ref.document: g for g in graded() if g.ref.pointer == "#"}
+    emitted_roots = claimed(
+        "root arrays that emit", {d for d in roots if d not in out.refusals}, inside=set(roots)
+    )
+    # **The two groups are NAMED and not counted**, which is
+    # ``test_every_check_names_its_set``'s rule 1: how many root arrays state
+    # ``uniqueItems`` is a census over the bundle, so an equality on it is a quantity
+    # every emitting row moves and no row can agree with.  The PARTITION says the same
+    # thing by name, so a root array that starts or stops stating the keyword is read as
+    # the document it is.
+    partitions(
+        emitted_roots,
+        states_uniqueItems={
+            d for d in emitted_roots if bundle.read(BUNDLE, d).get("uniqueItems") is True
+        },
+        states_no_uniqueItems={
+            d for d in emitted_roots if bundle.read(BUNDLE, d).get("uniqueItems") is not True
+        },
+    )
+    for document in sorted(emitted_roots):
+        model = rows[document].model
+        assert issubclass(model, AdCPRootModel), (document, model.__mro__)
+        rendered = model.model_json_schema()
+        assert rendered["type"] == "array", (document, rendered)
+        if bundle.read(BUNDLE, document).get("uniqueItems") is not True:
+            # The other half of the partition, asserted the other way round: no rule and
+            # no rendered fact where the document states none, so the loop cannot pass by
+            # writing the keyword onto every root array.
+            assert "uniqueItems" not in rendered, (document, rendered)
+            assert not any(
+                isinstance(rule, UniqueItems) for rule in bound_rules(model)
+            ), (document, bound_rules(model))
+            continue
+        # The fact, rendered where §8 of the semantics document reads it.
+        assert rendered.get("uniqueItems") is True, (document, rendered)
+        # The rule, keyed on the root model's one field and FIRING.
+        assert UniqueItems(ir.ROOT_FIELD) in bound_rules(model), (document, model)
+
+    class Distinctly(AdCPRootModel):
+        root: list[str]
+        __adcp_schema__: ClassVar[SchemaRef] = SchemaRef("r.json", "#")
+        _adcp_rules: ClassVar[tuple[Rule, ...]] = (UniqueItems(ir.ROOT_FIELD),)
+
+    assert Distinctly.model_validate(["a", "b"]).root == ["a", "b"]
+    with pytest.raises(ValidationError) as refused_duplicate:
+        Distinctly.model_validate(["a", "a"])
+    assert refused_duplicate.value.errors()[0]["type"] == "uniqueItems"
 
 
 def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
@@ -4785,9 +4984,15 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     ))
     assert caught.keyword == "patternProperties", caught.keyword
 
-    # A closed key set is a MODEL and not a mapping (D5), and its one type-position
-    # site in this bundle sits in a document that refuses on `enum` first.
-    caught = refusal_from(emit.lower_document(
+    # **A closed key set is the mapping's KEY TYPE, and the refusal that stood here is
+    # retired at ``adcp-client-python-10l.20``** (§5's group (a): "A `Literal` of the
+    # members is the key type, and Pydantic renders `dict[Literal[…], V]` back as
+    # `propertyNames: {enum: […]}` -- the document's own keyword, rendered and gradable.
+    # Faithful, not wide.").  The reading that refused -- a closed key set is a MODEL
+    # whose keys are its fields -- would have had to invent a `properties` map the
+    # document does not state, one optional field per member, because `propertyNames`
+    # closes the key set without requiring any of it.
+    built = emit.lower_document(
         "e.json",
         {
             "title": "E",
@@ -4796,15 +5001,22 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
                 "m": {"type": "object", "propertyNames": {"enum": ["mon", "tue"]}}
             },
         },
-    ))
-    assert caught.keyword == "enum"
-    assert "MODEL whose keys are its fields" in caught.detail
+    )
+    assert not isinstance(built, Refusal), built
+    keyed, _ = built
+    (field,) = keyed.at[""].fields
+    assert field.type.container == "dict", field.type
+    assert field.type.key == ir.TypeRef(literals=("mon", "tue")), field.type.key
+
+    # And the bundle's one type-position site, which is still refused -- through a chain
+    # and not on its own key set.  Named, because the arm above is now graded on a
+    # constructed document and this is what says WHY: the site's document is behind
+    # another row, so the emitted population does not reach the arm yet.
     hours = bundle.read(BUNDLE, "core/store-item.json")
     assert "enum" in hours["properties"]["hours"]["propertyNames"]
-    # The document is refused, and on an even earlier blocker than its key set -- a
-    # ``$ref`` whose target carries an ``enum``.  Which keyword fires first is not the
-    # claim; that no document reaches the closed-key-set row is.
-    assert "core/store-item.json" in emit.emit(BUNDLE, ["core/store-item.json"]).refusals
+    refused_site = emit.emit(BUNDLE, ["core/store-item.json"]).refusals["core/store-item.json"]
+    assert refused_site["kind"] == refusal_module.Kind.CHAINED, refused_site
+    assert refused_site["keyword"] == "$ref", refused_site
 
 
 def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() -> None:
@@ -4819,9 +5031,14 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
     **The second half is what the test is for.**  "Not refused" is free -- a keyword
     nothing reads is not refused either -- so the claim is checked against the one
     thing that distinguishes silence from a drop: the SAME key schema at a TYPE
-    position is read, and a closed key set there refuses by name (§5: a closed key
-    set is a MODEL whose keys are its fields).  One keyword, two positions, two
-    answers, and the position is what decides.
+    position is READ, and there it is the mapping's key type.  One keyword, two
+    positions, two answers, and the position is what decides.
+
+    *The type position used to REFUSE and ``adcp-client-python-10l.20`` retired that*
+    (§5's group (a)), so the contrast is now between stating nothing and stating the
+    key rather than between stating nothing and refusing -- which is a stronger
+    contrast for this test's own purpose: both halves now produce a module, and the
+    difference is what the module says.
 
     Measured over the 1,054 portable documents: 3 of the bundle's 4 ``enum`` key
     schemas sit at a rule position, and 2 of their documents EMIT -- so the position
@@ -4854,7 +5071,11 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
 
     # And the probe, both positions, one key schema.  The rule position lowers and
     # states only the conditional the ``if``/``then`` pair is about...
-    key = {"enum": ["s"]}
+    # TWO members, not one: pydantic renders a one-member ``Literal`` back as
+    # ``propertyNames: {const: …}``, which is draft-07's own equivalent spelling and a
+    # different keyword from the one the assertion below is about.  The bundle's own site
+    # has seven, so two is the smaller end of the real shape rather than a special case.
+    key = {"enum": ["s", "t"]}
     mod, symbol = emit.lower_document(
         "r.json",
         {
@@ -4873,18 +5094,45 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
     assert symbol == "R"
     assert "ConditionalRequired" in text, text
     assert "propertyNames" not in text and "s" in text, text
-    # ... while the same key schema at a TYPE position is READ, and a closed key set
-    # there refuses by name with the key set in the detail.
-    caught = refusal_from(emit.lower_document(
+    # ... while the same key schema at a TYPE position is READ, and it is a `Literal`
+    # of the members: §5's group (a), implemented at ``adcp-client-python-10l.20``.
+    #
+    # **The refusal that stood here is retired, and this is the half that proves the
+    # replacement is FAITHFUL rather than a substitution.**  §5's group (a): "A
+    # `Literal` of the members is the key type, and Pydantic renders
+    # `dict[Literal[…], V]` back as `propertyNames: {enum: […]}` -- the document's own
+    # keyword, rendered and gradable.  Faithful, not wide."  Three things are asserted
+    # and the second and third are what "faithful" means:
+    #
+    # * the KEY TYPE is the `Literal`, read off the rendered text;
+    # * the model's own schema states the document's own keyword back, so §8 compares
+    #   the fact rather than excusing it;
+    # * the key set is ENFORCED -- an undeclared key is refused -- so nothing widened.
+    #
+    # One keyword, two positions, two answers, and the position is still what decides:
+    # the rule position states nothing (above) and the type position states the key.
+    built = emit.lower_document(
         "t.json",
         {
             "title": "T",
             "type": "object",
-            "properties": {"m": {"type": "object", "propertyNames": key}},
+            "properties": {"m": {"type": "object", "propertyNames": key,
+                                 "additionalProperties": {"type": "string"}}},
         },
-    ))
-    assert caught.keyword == "enum", caught
-    assert "MODEL whose keys are its fields" in caught.detail, caught.detail
+    )
+    assert not isinstance(built, Refusal), built
+    keyed, _ = built
+    keyed_text = "\n".join(one.text for one in render.blocks(_assigned(keyed).declarations))
+    assert "dict[Literal['s', 't'], str]" in keyed_text, keyed_text
+
+    # Rendered back under the document's own keyword, and enforcing.  Asserted on the
+    # TYPE rather than on the emitted module, because a constructed document is not in
+    # the shipped package and so has no ``strict_validate`` to reach (``_constructed``).
+    adapter = TypeAdapter(dict[Literal["s", "t"], str])
+    assert adapter.json_schema()["propertyNames"] == {"enum": ["s", "t"]}, adapter.json_schema()
+    assert adapter.validate_python({"s": "v"}) == {"s": "v"}
+    with pytest.raises(ValidationError):
+        adapter.validate_python({"u": "v"})
 
 
 def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
@@ -4973,6 +5221,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     assert emitted_typed == [
         "a2ui/component.json",
         "collection/get-collection-list-response.json",
+        "core/account-change.json",
         "core/canonical-media-buy-features.json",
         "core/geo-place-area.json",
         "core/geo-region-support.json",
@@ -4988,6 +5237,10 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         "trusted-match/publisher-targeting-kv-config.json",
         "trusted-match/publisher-tmpx-config.json",
     ], emitted_typed
+    # ``core/account-change.json`` JOINED at ``adcp-client-python-10l.20``: §5's ``$ref``
+    # row at CONJ made a non-class target the composing node's own TYPE, which cleared
+    # its ``/properties/ext/allOf/0`` conjunct, and the document declares a typed
+    # ``additionalProperties`` of its own.  Named in the list above rather than counted.
     store = [
         (d, pointer or "/")
         for d in bundle.portable(BUNDLE)
@@ -5080,7 +5333,17 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         # ``test_a_declared_null_is_never_read_as_absence`` grades.  So the branch set
         # is compared against the document's own list, and the presence branch is
         # dropped only where the document declares no null to account for it.
-        branches = [b["type"] for b in node["anyOf"]]
+        # **A branch that is a ``$ref`` is the arm that became a CLASS, and a class is an
+        # object.**  §4's table makes "an object with ``properties``" a model class
+        # whatever else its node says, so a ``type`` LIST naming ``object`` beside a
+        # property map renders one arm as the nested class pydantic hoists into
+        # ``$defs`` -- the "nested class hoisted to ``$defs``" reading ``harness._normalize``
+        # already takes on both sides.  Read as a branch with no ``type`` this raised
+        # ``KeyError``, which names no document and is §9's "a crash is not an outcome".
+        # Measured at ``adcp-client-python-10l.20``: one site, and it arrived with
+        # ``core/delivery-metrics.json`` --
+        # ``/properties/quartile_data``, ``["object", "null"]`` beside ``properties``.
+        branches = ["object" if "$ref" in b else b["type"] for b in node["anyOf"]]
         if "null" not in declared:
             branches = [b for b in branches if b != "null"]
         assert sorted(branches) == sorted(declared), (ref, key, node)
@@ -6342,6 +6605,16 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
             and declaration.get("type") == "array"
             and declaration.get("uniqueItems") is True
         )
+        # **A ROOT MODEL's array is the ROOT and not a property**, which is §5's group
+        # (a) at the position §2 gives it: "A root array is a root model, and a root
+        # model carries a rule tuple exactly as a class does, so `Distinct` and
+        # `AtLeastOne` reach it.  The keyword is enforced, not dropped."  So the
+        # document's own node IS the array, the rule is keyed on the root model's one
+        # pydantic field, and ``want`` is read off that node rather than off a
+        # ``properties`` map the document does not have there.  Landed at
+        # ``adcp-client-python-10l.20``; 4 pairs over the committed tree.
+        if node.get("type") == "array":
+            want = [ir.ROOT_FIELD] if node.get("uniqueItems") is True else []
         got = sorted(
             r.key
             for r in g.model.__dict__.get("_adcp_rules", ())
@@ -7127,7 +7400,22 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # conjunct whose target is not a class is §5's own CONJ case and §14 step 8's
     # unwritten cell, so ``kind_for`` answers DEFERRED where the site passed VERDICT,
     # and the 1 direct refusal that re-minted carried its chains with it.
-    assert len(chained) >= 144, len(chained)
+    #
+    # **144 -> 127 AT ``adcp-client-python-10l.20``, AND THE MOVE IS EMISSION.**  Three
+    # of §14 step 9's rows landed -- a non-class target as a composing node's own TYPE,
+    # a root ARRAY as a root model, and a root stating no schema keyword (or only a
+    # conditional) as a permissive root model -- and 29 documents left the refusal set
+    # (769 -> 798 over the portable population).  14 of the 29 were reached only through
+    # a chain, so 14 chains left with them, and three more chains re-rooted onto their
+    # own documents' obstructions.
+    #
+    # A FLOOR and not an equality, which is the shape this assertion has always had: a
+    # chain count falls whenever a target emits, so an equality would oblige every later
+    # emitting row to loosen it -- §9's "a pin with no denominator is not a ratchet",
+    # read at the one quantity in this test that moves with emission.  The floor is
+    # therefore re-measured on the tree, and what it still catches is the defect it was
+    # written for: a run that stops minting CHAINED at all, which would read 0.
+    assert len(chained) >= 127, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
     assert split[refusal_module.Kind.VERDICT] >= 50, dict(split)
     assert split[refusal_module.Kind.DEFERRED] >= 1, dict(split)
@@ -7652,10 +7940,18 @@ CONJUNCT_PARTS = (
 #: with no constraining key at all is ``creative/sync-creatives-response.json`` at
 #: ``/oneOf/0/properties/creatives/items/allOf/2``, an ``x-adcp-validation`` extension,
 #: and that node is not one the emitted tree declares a class at.
+#: **``fields+required`` LEFT at ``adcp-client-python-10l.20``**, which is the direction
+#: this tuple exists for: "a part with no member today is the one the next cleared
+#: document arrives in".  §5's ``$ref`` row at CONJ made a non-class target the composing
+#: node's own TYPE, which cleared ``core/delivery-metrics.json`` and 20 documents with it
+#: -- and 14 of them state a conjunct declaring ``properties`` AND ``required`` together
+#: (the ``core/*-delivery-metrics.json`` family's ``/allOf/1``, plus
+#: ``core/frequency-cap.json``).  The reader handled that part already; what it had no
+#: SITE for was the pairing, and now it does.
+#: **``required+rule`` left with it**, one site: ``core/media-buy-frequency-cap.json``
+#: at ``/allOf/1``, which states ``required`` beside a rule keyword and nothing else.
 CONJUNCT_PARTS_WITH_NO_SITE = (
     "nothing",
-    "fields+required",
-    "required+rule",
     "fields+required+rule",
 )
 

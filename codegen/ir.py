@@ -75,6 +75,16 @@ MISSING = object()
 BASE_MODULE = "adcp.types._base"
 RUNTIME_MODULE = "adcp.types._runtime"
 
+#: **The one field a ``RootModel`` has**, which is pydantic's name and not ours.  Named
+#: here for the reason the two module paths above are: two readers spell it and a second
+#: spelling is how they come apart.  ``render.root_model`` writes the ``root:``
+#: annotation, and ``lower/containers.py`` keys a root array's ``UniqueItems`` rule on it
+#: -- because ``_runtime.supplied`` reads ``__pydantic_fields_set__``, and a root model
+#: supplies exactly this name.  A rule keyed on anything else would be a rule that never
+#: fires, which §8 of the semantics document cannot see: a rule renders nothing in a
+#: model's schema.
+ROOT_FIELD = "root"
+
 #: **The keywords a :attr:`TypeRef.facts` carries: a constraint of the VALUE, in the
 #: document's own spelling.**  Everything else a document can say about a value is a type
 #: (and so part of the decided :class:`TypeRef`), an annotation (and so a field's

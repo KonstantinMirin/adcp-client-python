@@ -29,6 +29,11 @@ def lower(node: nodes.Composition, mod: Module) -> Decided | Refusal:
     pointer rather than this node's.
     """
     declared = compiler.lower_composition(node, mod)
-    if isinstance(declared, Refusal):
+    if isinstance(declared, (Refusal, Decided)):
+        # A :class:`Decided` is §5's ``$ref`` row at CONJ where the target is not a class
+        # (§14 step 9): the node declares no fields, so there is no class to declare and
+        # the target is the node's own TYPE.  It is returned unchanged -- this row's job
+        # is to turn a declared class's POINTER into a type, and that answer already is
+        # one.
         return declared
     return Decided(ir.TypeRef(declared, local=True))

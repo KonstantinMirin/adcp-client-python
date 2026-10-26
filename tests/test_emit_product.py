@@ -399,6 +399,15 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # names and not as the difference of two counts.
     assert sorted(cleared - set(composing())) == [
         "core/catalog.json",
+        # **One more since ``adcp-client-python-10l.20``, and it is a RELEASE of the same
+        # kind.**  ``core/forecast-point-dimensions.json`` is a root ARRAY and composes
+        # nothing at its own root, so it is not in ``composing()``.  Its own blocker was
+        # ``uniqueItems`` at ``/`` -- §5's group (a), which step 9 answers with the root
+        # model's rule tuple -- and once that cleared, what it still needs is THIS row:
+        # its element references a composing document, so with the root ``allOf`` arm
+        # stubbed out it chains and refuses.  Named here rather than counted, which keeps
+        # this row's own credit separate from the release step 9 handed it.
+        "core/forecast-point-dimensions.json",
         # Two more since ``salesagent-j3k2l.43``, and both are RELEASED rather than
         # claimed: neither composes at its own root, so neither is in ``composing()``;
         # each one's only blocker was a ``$ref`` into a document whose conjunct that row
@@ -1091,12 +1100,19 @@ def test_the_accepts_and_liveness_checks_are_green_with_a_denominator(
 # --------------------------------------------------------------------------- #
 # what refuses, by name, pointer and keyword
 # --------------------------------------------------------------------------- #
-def _lower(doc: dict, targets: dict | None = None) -> str | Refusal:
+def _lower(
+    doc: dict, targets: dict | None = None
+) -> str | compiler.Decided | Refusal:
     """One hand-written composing declaration, lowered as the walk lowers it.
 
     §14 step 5 makes a handler take its node, so the declaration goes through
     ``codegen.schema.parse.parse`` at the position it is written for -- the production
     parse, so the node graded here is a node a document can produce.
+
+    ``Decided`` joins the return type at ``adcp-client-python-10l.20``, because
+    ``lower_composition`` answers with one where §5's ``$ref`` row at CONJ makes a
+    non-class target the composing node's own TYPE: a pointer where it declared a class,
+    a type where the section says the node has one.
     """
     mod = emit.Module(document="probe.json", targets=targets or {})
     return compiler.lower_composition(_probe_node(doc, mod), mod)
@@ -1246,20 +1262,48 @@ def test_a_constraining_sibling_of_a_ref_conjunct_compiles_to_nothing_and_is_rep
     assert "/allOf/0: minimum" in mod.carries_nothing[0], mod.carries_nothing
 
 
-def test_a_scalar_root_cannot_be_a_base_and_refuses_rather_than_writing_the_module() -> None:
-    """D2 makes a scalar root an ``Annotated`` alias, and subclassing an alias is
-    a ``TypeError`` at import.
+def test_a_scalar_root_is_the_composing_nodes_own_type_and_not_a_base() -> None:
+    """§5's ``$ref`` row at CONJ, both halves, at ``adcp-client-python-10l.20``.
 
-    ``Target.shape`` is ``None`` for a target that is not a class, which is the
-    whole of the test: the binder answers with the shape it wrote, so a lowering
-    cannot mistake an alias for a class.
+    §4 makes a scalar root an ``Annotated`` alias and subclassing an alias is a
+    ``TypeError`` at import, so the target cannot be a BASE -- that half is unchanged and
+    is what ``Target.shape is None`` carries: the binder answers with the shape it wrote,
+    so a lowering cannot mistake an alias for a class.
+
+    What changed is the ANSWER.  The row's own sentence continues past the base: "Where it
+    is not -- a scalar, an enum, a container, or a union root, whose instance is one of its
+    branches -- it is not a class a model can extend: the target is this node's own TYPE,
+    and the other conjuncts and the ``allOf``'s siblings constrain it, which is §2's
+    intersection at a node that declares no fields of its own."  So a node declaring no
+    fields DECIDES to the target's own symbol, and a node that declares one refuses by
+    name -- which is the clause's last phrase, graded both ways here.
+
+    This test asserted the refusal alone and so pinned the unwritten half of a decided
+    sentence.  Both arms are now asserted, and the refusal is the one the clause really
+    makes.
     """
-    doc = {"title": "Probe", "type": "object", "allOf": [{"$ref": "x"}]}
+    target = {("x", "/allOf/0"): emit.Target("..core.brand_id", "BrandID", None)}
+    # No fields of its own: the node IS the target.
+    decided = _lower({"title": "Probe", "type": "object", "allOf": [{"$ref": "x"}]}, target)
+    assert not isinstance(decided, Refusal), decided
+    assert decided.type == ir.TypeRef("BrandID", local=True), decided
+
+    # Fields of its own: the instance must be the target AND carry a property, and a
+    # Python type that IS the target has no slot for one.
     caught = refusal_from(
-        _lower(doc, {("x", "/allOf/0"): emit.Target("..core.brand_id", "BrandID", None)})
+        _lower(
+            {
+                "title": "Probe",
+                "type": "object",
+                "allOf": [{"$ref": "x"}],
+                "properties": {"a": {"type": "string"}},
+            },
+            target,
+        )
     )
     assert caught.keyword == "allOf"
-    assert "cannot be a base" in caught.detail
+    assert "declaring no fields of its own" in caught.detail, caught.detail
+    assert "['a']" in caught.detail, caught.detail
 
 
 def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:

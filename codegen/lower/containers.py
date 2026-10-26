@@ -79,6 +79,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from adcp.types._runtime import UniqueItems
 from codegen import bundle, compiler, ir
 from codegen.lower import names
 from codegen.schema import nodes
@@ -300,7 +301,19 @@ def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
     refused = compiler.check_keywords(node, _ARRAY_CLAIMS, mod=mod)  # the walk's own check
     if refused is not None:
         return refused
-    if node.distinct and position is not Position.PROP:
+    if node.distinct and position is Position.ROOT:
+        # **§5's ``uniqueItems`` row where no CLASS holds the array and a ROOT MODEL
+        # does** (§14 step 9, and §5's group (a): "A root array is a root model, and a
+        # root model carries a rule tuple exactly as a class does, so ``Distinct`` and
+        # ``AtLeastOne`` reach it.  The keyword is enforced, not dropped.")
+        #
+        # So the position is checked for ROOT *before* the refusal below, and what the
+        # refusal is left with is the three positions that have neither a class nor a
+        # root model: a mapping value, a ``definitions`` entry and a combinator branch.
+        # Those are the ones §7's ``ir.TypeRef.validators`` slot answers and no row has
+        # written; this arm is the one of the four §14 step 9 names.
+        pass
+    elif node.distinct and position is not Position.PROP:
         # AFTER the screen, so an array carrying BOTH this and a keyword no row lowers
         # is reported on the other one: this refusal is final and that one may not be.
         #
@@ -339,28 +352,38 @@ def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
             return lowered
         element = lowered
     if position is Position.ROOT:
-        # **D2's root-array ``RootModel[list[X]]`` row, refused AT THE POSITION.**
+        # **§4's root-array row, WRITTEN** (§14 step 9): "an array at a root ->
+        # ``RootModel[list[X]]``".
         #
         # It was ``containers.root``, reached through a selector
         # (``bundle``'s deleted ``is_container_root``) and a dispatch table (``emit.ROWS``) §5
         # retires: "root and non-root are one path", so what ROOT changes is this arm's
         # ANSWER and not which arm answers.  The element is lowered FIRST -- the code
-        # above, unchanged -- so the refusal names the element type the row would have
-        # wrapped rather than just the shape.
+        # above, unchanged -- so the root model wraps the element type this row decided.
         #
-        # The row is unimplemented because all five root arrays of this bundle refuse on
-        # a keyword of a later step: 4 carry ``uniqueItems: true`` at the root (D6's
-        # rule, step 7) and ``media-buy/product-refinement.json`` refuses inside its
-        # ``items``.  So a ``RootModel`` base would be a class no document reaches and no
-        # pair grades -- a DEFERRAL, since the obstruction is unwritten code.
-        return Refusal(
-            "type",
+        # **The BOUND and the ``uniqueItems`` go onto the root model's own TYPE and its
+        # own RULE TUPLE**, which is §2's two halves at a position with no field: a
+        # ``minItems``/``maxItems`` is a constraint of the list and rides in
+        # :attr:`codegen.ir.TypeRef.facts` exactly as it does on a property's type, and
+        # ``uniqueItems`` is a RULE, which a root model carries because §8 gives it one
+        # tuple ("a rule tuple exactly as a class does").  The rule is keyed on
+        # ``"root"`` -- a root model's one pydantic field, which is where
+        # ``_runtime.supplied`` finds the value -- and ``render.root_model`` derives the
+        # ``json_schema_extra`` half from that same rule rather than from a second flag,
+        # so the strip and the rendered fact are one claim (``ir.Field.distinct``'s own
+        # reasoning at a root).
+        #
+        # The old refusal's measurement is what this arm clears: "all five root arrays of
+        # this bundle refuse on a keyword of a later step: 4 carry ``uniqueItems: true``
+        # at the root and ``media-buy/product-refinement.json`` refuses inside its
+        # ``items``".  Those 4 are this arm's population and the 5th still refuses inside
+        # its element, where the obstruction is.
+        return compiler.declare_root_model(
+            mod,
             pointer,
-            f"a root array is D2's RootModel[list[X]] row and {element.path or '<a class>'}"
-            " is the element type it would wrap; the row is unimplemented because all "
-            "five root arrays of this bundle refuse on a keyword of a later step, so no "
-            "document would grade it",
-            kind=Kind.DEFERRED,
+            node,
+            ir.TypeRef(container="list", of=(element,), facts=bounds),
+            rules=(UniqueItems(ir.ROOT_FIELD),) if node.distinct else (),
         )
     return Decided(ir.TypeRef(container="list", of=(element,)), bounds)
 
@@ -597,16 +620,27 @@ def _key(node: nodes.Node | None, mod: Module) -> ir.TypeRef | Refusal:
         # The one key kind that needs no alias: the bundle already names the type, so
         # P2 applies unchanged -- an import, and no constraint of the target copied.
         return _key_type(node, mod)
-    if isinstance(node, nodes.Enumeration):
-        return Refusal(
-            "enum",
-            pointer,
-            f"propertyNames closes the key set to {sorted(map(repr, node.members))}, which "
-            "D5 reads as a MODEL whose keys are its fields rather than a mapping; its one "
-            "type-position site in this bundle is core/store-item.json#/properties/hours, "
-            "whose document refuses on enum, so the model would reach no document",
-            kind=Kind.VERDICT,
-        )
+    # **An ``enum`` KEY goes through the walk like every other key, and the arm that
+    # refused it is retired** (§14 step 9).  §5's group (a): "`propertyNames` with an
+    # `enum`, and `enum` at KEY.  Both rows refuse 'by name with the key set'.  A
+    # `Literal` of the members is the key type, and Pydantic renders `dict[Literal[…],
+    # V]` back as `propertyNames: {enum: […]}` -- the document's own keyword, rendered
+    # and gradable.  Faithful, not wide."
+    #
+    # The refusal that stood here read the closed key set as a MODEL whose keys are its
+    # fields.  That reading is not wrong about what the document means and it is not the
+    # one §4's table gives: a node without ``properties`` is ``dict[K, V]``, and
+    # ``propertyNames`` types the K.  A model would have to invent a field per member --
+    # each one optional, since ``propertyNames`` closes the key set without requiring any
+    # of it -- which states a ``properties`` map the document does not.  The ``Literal``
+    # key states exactly the keyword the document states, and pydantic renders it back
+    # under that name, which is the whole of why this is faithful rather than a
+    # substitution.
+    #
+    # Nothing is special-cased here: the enum node is lowered by the same walk as a
+    # ``$ref`` key and a constrained one, and ``lower.enum.resolves_no_name`` is what
+    # makes an untitled one a ``Literal`` -- because KEY supplies no name, which
+    # :func:`_key_type` already states as ``names.Unnamed()``.
     # Through the walk, so the key is D5's named shape and this row spells nothing: a
     # length-bounded key resolves to ``constraints.StrMinLen1`` and is recorded there,
     # and a key the alias module has no spelling for comes back with its constraints
