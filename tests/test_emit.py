@@ -4659,22 +4659,42 @@ def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rul
 
     # And on the tree, which is the half a hand-built declaration cannot answer.
     rows = {g.ref.document: g for g in graded() if g.ref.pointer == "#"}
-    emitted_roots = sorted(d for d in roots if d not in out.refusals)
-    assert emitted_roots, roots
-    distinct = 0
-    for document in emitted_roots:
+    emitted_roots = claimed(
+        "root arrays that emit", {d for d in roots if d not in out.refusals}, inside=set(roots)
+    )
+    # **The two groups are NAMED and not counted**, which is
+    # ``test_every_check_names_its_set``'s rule 1: how many root arrays state
+    # ``uniqueItems`` is a census over the bundle, so an equality on it is a quantity
+    # every emitting row moves and no row can agree with.  The PARTITION says the same
+    # thing by name, so a root array that starts or stops stating the keyword is read as
+    # the document it is.
+    partitions(
+        emitted_roots,
+        states_uniqueItems={
+            d for d in emitted_roots if bundle.read(BUNDLE, d).get("uniqueItems") is True
+        },
+        states_no_uniqueItems={
+            d for d in emitted_roots if bundle.read(BUNDLE, d).get("uniqueItems") is not True
+        },
+    )
+    for document in sorted(emitted_roots):
         model = rows[document].model
         assert issubclass(model, AdCPRootModel), (document, model.__mro__)
         rendered = model.model_json_schema()
         assert rendered["type"] == "array", (document, rendered)
         if bundle.read(BUNDLE, document).get("uniqueItems") is not True:
+            # The other half of the partition, asserted the other way round: no rule and
+            # no rendered fact where the document states none, so the loop cannot pass by
+            # writing the keyword onto every root array.
+            assert "uniqueItems" not in rendered, (document, rendered)
+            assert not any(
+                isinstance(rule, UniqueItems) for rule in bound_rules(model)
+            ), (document, bound_rules(model))
             continue
-        distinct += 1
         # The fact, rendered where §8 of the semantics document reads it.
         assert rendered.get("uniqueItems") is True, (document, rendered)
         # The rule, keyed on the root model's one field and FIRING.
         assert UniqueItems(ir.ROOT_FIELD) in bound_rules(model), (document, model)
-    assert distinct == 4, emitted_roots
 
     class Distinctly(AdCPRootModel):
         root: list[str]

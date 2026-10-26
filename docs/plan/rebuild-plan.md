@@ -729,6 +729,7 @@ what refusing them was buying and where that now shows up.
 | `notes` | Nothing: English sentences for a reader. |
 | `discriminator` | Nothing on the class. It names a branch where that branch pins more than one `const`, and separately it **confirms** a dispatch key the branches already state — it does not establish one. A union whose branches pin a distinct const dispatches on that property whether or not the keyword is present, and a declared keyword the branches do not confirm is not a dispatch source. |
 | the `x-` namespace | Nothing, and **still listed by name** — see below. |
+| `version`, `lastUpdated`, `vocabulary`, and the registry payload keys | Nothing. A registry's own instance data sitting at a schema root: `_generated`, `_generatedAt`, `adcp_version`, `architecture`, `asset_types`, `baseUrl`, `extensions`, `governance`, `last_updated`, `mappings`, `prerelease`, `protocol_layers`, `published_version`, `stability`, `usage_notes`, `versioning`. None of them constrains an instance, and draft-07 says the same thing by ignoring an unknown key, so an annotation that omits one omits no fact and admitting it by name says only what is true of instance data. A root stating only these keys is the empty schema and emits as a permissive root model; a document stating them BESIDE a real schema emits normally, with the data keys compiling to nothing. |
 <!-- end generated -->
 
 ### The `x-` namespace is admitted by prefix AND listed by name
@@ -816,7 +817,6 @@ it (§9).
 | keyword | why |
 | --- | --- |
 | `errorMessage` | An `ajv-errors` extension customising a validator's message. It has no Pydantic rendering, and a conjunct carrying one contributes nothing, so the drop is reported rather than silent. |
-| `version`, `lastUpdated`, `vocabulary`, and the registry payload keys | A registry's own instance data sitting at a schema root: `_generated`, `_generatedAt`, `adcp_version`, `architecture`, `asset_types`, `baseUrl`, `extensions`, `governance`, `last_updated`, `mappings`, `prerelease`, `protocol_layers`, `published_version`, `stability`, `usage_notes`, `versioning`. Not annotations and not schema keywords, so admitting them by name would be admitting data as vocabulary. The documents carrying them are registries rather than schemas, and refusing them is how that shows up. |
 <!-- end generated -->
 
 The grid above is generated and still carries both rows; the cells move when §6's do.

@@ -179,12 +179,18 @@ RELEASED: dict[str, tuple[str, ...]] = {
 #: that keyword.  Named so that a later row clearing one of these moves a name out of
 #: this map rather than changing a number -- and so that a document whose FIRST
 #: refusal came back is read here as a regression rather than as a count going up.
+#: **RE-MEASURED at ``adcp-client-python-10l.20``**, where one entry moved and none left:
+#: ``core/media-buy.json`` was ``allOf`` at ``/properties/health/allOf/0``, whose target
+#: ``MediaBuyHealth`` is not a class -- §5's ``$ref`` row at CONJ, which step 9 writes --
+#: and it is now ``$ref`` at ``/properties/budget_allocation/allOf/0``, a CHAIN through
+#: ``core/budget-allocation.json``.  The document got FURTHER and named its next
+#: obstruction, which is the direction this map is pinned for.
 STILL_REFUSED: dict[str, str] = {
     "account/list-accounts-response.json": "$ref",
     "core/account-with-authorization.json": "$ref",
     "core/assets/pixel-tracker-asset.json": "additionalProperties",
     "core/assets/url-asset.json": "additionalProperties",
-    "core/media-buy.json": "allOf",
+    "core/media-buy.json": "$ref",
     "core/product-card-reference-asset.json": "$ref",
     "governance/get-plan-audit-logs-response.json": "$ref",
 }
