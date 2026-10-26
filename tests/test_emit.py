@@ -68,7 +68,7 @@ from codegen import bundle, compiler, emit, harness, ir, keywords, render
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.lower import scalars
-from codegen.schema import parse as schema_parse
+from codegen.schema import nodes, parse as schema_parse
 from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
 from codegen.lower import union as lower_union
@@ -2880,6 +2880,28 @@ def emitted_unions() -> list[str]:
     return sorted({g.ref.document for g in graded()} & set(union_roots()))
 
 
+def union_root_node(document: str) -> Any:
+    """One union root as the NODE the walk builds for it, through the production parse.
+
+    §14 step 5 makes the union row read node fields, so the two shape predicates below
+    take a ``nodes.Union`` -- which is also what carries the ``type`` word the document
+    applies to a branch stating none (``nodes.Union.word``, handed down at the hop).
+    Parsed at ROOT with the document's own applied-object set, which is exactly what
+    ``emit.lower_document`` passes.
+    """
+    doc = bundle.read(BUNDLE, document)
+    node = schema_parse.parse(
+        doc,
+        pointer="",
+        position=keywords.Position.ROOT,
+        source=schema_parse.Source(
+            document=document, applied_at=bundle.constrained_to_object(doc)
+        ),
+    )
+    assert isinstance(node, nodes.Union), (document, type(node).__name__)
+    return node
+
+
 def _alias_shaped(document: str) -> bool:
     """Which of D2's two union shapes this root takes.
 
@@ -2890,12 +2912,9 @@ def _alias_shaped(document: str) -> bool:
     of each half, as a literal, in
     :func:`test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which`.
     """
-    doc = bundle.read(BUNDLE, document)
-    kw = lower_union.keyword(doc)
-    assert kw is not None, document
-    return lower_union.states_a_scalar_instance(doc, "", kw) and not any(
-        lower_union.declares_a_class(branch, doc, "", kw, i)
-        for i, branch in enumerate(doc[kw])
+    node = union_root_node(document)
+    return lower_union.states_a_scalar_instance(node) and not any(
+        lower_union.declares_a_class(node, i) for i in range(len(node.branches))
     )
 
 
@@ -2978,14 +2997,10 @@ def test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which() -> 
 
     scalar_instance, with_a_class_branch, mixed = [], [], []
     for document in roots:
-        doc = bundle.read(BUNDLE, document)
-        kw = lower_union.keyword(doc)
-        assert kw is not None, document
-        scalar = lower_union.states_a_scalar_instance(doc, "", kw)
+        node = union_root_node(document)
+        scalar = lower_union.states_a_scalar_instance(node)
         classed = [
-            i
-            for i, branch in enumerate(doc[kw])
-            if lower_union.declares_a_class(branch, doc, "", kw, i)
+            i for i in range(len(node.branches)) if lower_union.declares_a_class(node, i)
         ]
         (mixed if scalar and classed else scalar_instance if scalar else with_a_class_branch).append(
             document
@@ -5873,7 +5888,7 @@ def test_every_rule_kind_is_written_from_a_real_bundle_node() -> None:
         for _pointer, node in bundle.nodes(doc):
             if not isinstance(node, dict):
                 continue
-            for source in rules.lower(node).rules:
+            for source in rules.lower_declaration(node, keywords.Position.ROOT).rules:
                 # The kind is the runtime dataclass's own name, read off the INSTANCE:
                 # ``rules.lower`` composes values now and ``codegen.render`` writes the
                 # constructor expression (architecture §7), so a kind cannot be read out
@@ -5995,18 +6010,18 @@ def test_a_conditional_that_narrows_a_value_is_the_schemas_and_not_a_rules() -> 
     # The root's own rules are the dependency and nothing else: the conditional
     # sits at /properties/region/allOf/0 and says `x.maximum = 100`, which is a
     # statement about a VALUE and so reduces to no rule at all.
-    assert rules.lower(schema).rules == [
+    assert rules.lower_declaration(schema, keywords.Position.ROOT).rules == [
         Dependencies("breakpoint_id", ("state_id",))
-    ], rules.lower(schema).rules
+    ], rules.lower_declaration(schema, keywords.Position.ROOT).rules
     # And the expression the renderer writes for it, so the SPELLING of the constructor
     # is graded here too: the kinds are frozen dataclasses declared in the runtime
     # (architecture §7) and the call is ``codegen.render``'s.
-    assert render._rule(rules.lower(schema).rules[0]) == (
+    assert render._rule(rules.lower_declaration(schema, keywords.Position.ROOT).rules[0]) == (
         "Dependencies('breakpoint_id', ('state_id',))"
     )
     region = schema["properties"]["region"]
     assert isinstance(region["allOf"][0]["if"], dict)
-    assert rules.lower(region).rules == [], rules.lower(region).rules
+    assert rules.lower_declaration(region, keywords.Position.ROOT).rules == [], region
     # **THE DOCUMENT EMITS NOW, so the claim is graded on a CLASS.**  This line
     # asserted the document was refused -- "so the pair above is a harness control
     # rather than a class: it refuses on `enum`, which is step 3's row" -- and step
@@ -6480,12 +6495,13 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     **The population is read off the walk's own two records**, ``Emitted.declared`` and
     ``Emitted.adopted``, rather than off the emitted text: a module's text has two class
     statements and no way to say which node each one lowered, which is why the defect
-    this grades survived a suite that reads the tree.  The content key is
-    ``emit.content_key``, the function the collapse itself is keyed on, so the check and
-    the collapse cannot come to disagree about what identical means -- and §9's open
-    question is about exactly that disagreement between two instruments.  The one thing
-    read off the TREE is the identity in clause 2, because identity is a property of the
-    imported module and of nothing else.
+    this grades survived a suite that reads the tree.  The groups are built by §4's own
+    equality over the parsed nodes, which is what the collapse is keyed on since §14
+    step 5 deleted ``emit.content_key`` -- so the check and the collapse cannot come to
+    disagree about what identical means, and §9's open question is about exactly that
+    disagreement between two instruments.  The one thing read off the TREE is the
+    identity in clause 2, because identity is a property of the imported module and of
+    nothing else.
 
     **The nodes are PARSED, and clause 3 now states §4's own sentence.**  §4: two nodes
     "are equal exactly when they state the same thing about an instance -- which is §4's
@@ -6494,11 +6510,10 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     :class:`codegen.schema.nodes.Base`'s equality buys and what ``applied`` being COMPARED
     is.  So clause 3 asserts all three and keeps the two it had: the two declarations are
     equal, the one position fact the decision reads is equal, and **the two parsed NODES
-    are equal**.  The third is the §4 reading and it is strictly stronger than the first
-    two taken together; adding rather than replacing is what keeps the clause graded while
-    ``emit.content_key`` is still keyed on the declaration (§14 step 7 is where the memo
-    becomes the node's own equality, because a node carrying mappings is not hashable and
-    the memo needs a key).
+    are equal**.  The third is the §4 reading, it is strictly stronger than the first two
+    taken together, and it is now what the MEMO itself is keyed on -- the other two are
+    kept because each names the fact the deleted key read, so a collapse that stopped
+    reading one reddens by name rather than only through the node comparison.
 
     The walk is ``bundle.nodes_at``, which carries the POSITION the descent column assigns
     -- so each node is parsed AT ITS OWN POSITION rather than at an invented one, and the
@@ -6521,8 +6536,8 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     unverifiable: set[str] = set()
     for document in sorted(out.emitted):
         doc = bundle.read(BUNDLE, document)
-        # The per-pointer facts ``content_key`` reads, built the way ``lower_document``
-        # builds them, so the key here is the production key.
+        # The per-pointer facts the memo reads, built the way ``lower_document`` builds
+        # them, so the nodes compared here are the nodes the walk compares.
         source = schema_parse.Source(
             document=document, applied_at=bundle.constrained_to_object(doc)
         )
@@ -6537,9 +6552,22 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
             )
             for pointer, node, position in walked
         }
-        by_content: dict[str, list[str]] = {}
+        # The groups the memo's own equality induces, which is §4's: two nodes are equal
+        # exactly when they state the same thing about an instance.  ``emit.content_key``
+        # -- ``json.dumps([the mapping, applied])`` -- is DELETED with §14 step 5's
+        # carrier, and ``emit.the_same_node`` is the production reading of what replaces
+        # it; the groups are built here by the same linear scan it makes, in walk order,
+        # because a node carrying mappings is not hashable.
+        groups_here: list[tuple[Any, list[str]]] = []
         for pointer in at:
-            by_content.setdefault(emit.content_key(parsed[pointer]), []).append(pointer)
+            node = parsed[pointer]
+            for other, members in groups_here:
+                if other == node:
+                    members.append(pointer)
+                    break
+            else:
+                groups_here.append((node, [pointer]))
+        by_content = {str(i): members for i, (_, members) in enumerate(groups_here)}
 
         here = out.declared[document]
         declared |= {(document, pointer) for pointer in here}
@@ -6558,12 +6586,11 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
             declaring = [p for p, s in here.items() if s == symbol]
             assert len(declaring) == 1, (document, symbol, declaring)
             # Clause 3: the adopting node and the node whose CLASS it took are the same
-            # node, and asserted on the NODES rather than on ``content_key``.  The key is
-            # the production function, so a key weakened to collapse two different nodes
-            # would weaken this comparison in step and the clause would pass vacuously --
-            # which is this file's own rule about a fixture derived from the thing it
-            # grades.  Python's own equality over the two parsed nodes, plus the one
-            # position fact the decision reads, is what the key is supposed to encode.
+            # node.  The equality is the production one, so an equality weakened to
+            # collapse two different nodes would weaken this comparison in step and the
+            # clause would pass vacuously -- which is this file's own rule about a fixture
+            # derived from the thing it grades.  The two clauses below it name the facts
+            # the deleted string key read, so neither can go quietly.
             assert at[pointer] == at[declaring[0]], (document, pointer, declaring[0])
             assert parsed[pointer].applied == parsed[declaring[0]].applied, (
                 document,
@@ -6583,11 +6610,11 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
             groups.add((document, key))
             # Clause 1: one name per position, all distinct.
             symbols = [here[p] for p in reached]
-            assert len(set(symbols)) == len(symbols), (document, key[:120], symbols)
+            assert len(set(symbols)) == len(symbols), (document, pointers, symbols)
             # Clause 4: exactly one of them declares the CLASS -- the rest adopted it --
             # and it is the first of the group in the document's own key order.
             owning = [p for p in reached if p not in out.adopted[document]]
-            assert len(owning) == 1, (document, key[:120], owning)
+            assert len(owning) == 1, (document, pointers, owning)
             assert order[owning[0]] == min(order[p] for p in reached), (document, owning)
             # Clause 2: every one of those names is the SAME OBJECT.  Read off the
             # imported module, because identity is a property of the module and of
@@ -7595,7 +7622,9 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                         required_names += 1
                         field = cls.model_fields[compiler.field_name(key)]
                         assert field.is_required(), (document, where, key)
-                if keys & compiler.rules_at(conjunct).screen:
+                if keys & frozenset(
+                    compiler.declaration_rule_sources(conjunct, keywords.Position.CONJ)
+                ):
                     named.append("rule")
                 if keys:
                     rule_nodes.append(conjunct)
@@ -7606,7 +7635,13 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
             # which is what makes a DROPPED conjunct the only thing this can catch -- and
             # that is the defect, since a reduction that renders nothing is D4's answer
             # and not a contribution.
-            sources = [src for one in rule_nodes for src in rules_lowering.lower(one).rules]
+            sources = [
+                src
+                for one in rule_nodes
+                for src in rules_lowering.lower_declaration(
+                    one, keywords.Position.CONJ
+                ).rules
+            ]
             # ``cls.__dict__`` and not ``getattr``: ``_adcp_rules`` is a ``ClassVar``, so
             # a subclass that declares none reads its BASE's tuple and the clause would
             # grade the base's rules against this node's sources.  Measured on

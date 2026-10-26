@@ -172,7 +172,7 @@ def lower(node: nodes.Enumeration, name_hint: str, mod: Module, *, of_a_root_uni
     # emitting a keyword no section names, which is §9's "a keyword handled in code but
     # named in none of §5, §6 or §7 is an invented rule" arriving through a screen that
     # was not there.
-    compiler.check_keywords(node.raw, node.pointer, node.position, CLAIMS, mod=mod)
+    compiler.check_keywords(node, CLAIMS, mod=mod)
     if resolves_no_name(node, of_a_root_union=of_a_root_union):
         return literal(node)
     declared = decide(node, name_hint)
@@ -259,7 +259,10 @@ def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl:
     """
     pointer = node.pointer
     values = list(node.members)
-    if not isinstance(node.raw.get("enum"), list) or not values:
+    # :attr:`nodes.Enumeration.members` is empty for BOTH shapes the refusal names -- an
+    # ``enum`` that is not a list at all, and one that is the empty list -- because
+    # neither enumerates a value.
+    if not values:
         raise Refusal(
             "enum",
             pointer,

@@ -291,9 +291,7 @@ def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided:
     not, which is exactly why the two are decided here and spelled by the compiler.
     """
     pointer, position = node.pointer, node.position
-    compiler.check_keywords(  # the walk's own check
-        node.raw, pointer, position, _ARRAY_CLAIMS, mod=mod
-    )
+    compiler.check_keywords(node, _ARRAY_CLAIMS, mod=mod)  # the walk's own check
     if node.distinct and position is not Position.PROP:
         # AFTER the screen, so an array carrying BOTH this and a keyword no row lowers
         # is reported on the other one: this refusal is final and that one may not be.
@@ -311,13 +309,12 @@ def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided:
         # ``definitions``/``$defs`` entry.
         raise Refusal("uniqueItems", pointer, _DISTINCT_HAS_NOWHERE_TO_LIVE, kind=Kind.VERDICT)
     bounds = dict(node.bounds)
-    items = node.raw.get("items")
-    if items is None:
+    if "items" not in node.declares:
         # ``{"type": "array"}`` admits a list of anything, and ``Any`` is that set --
         # the same reading D2 gives a typeless node.  A bound on the list is still
         # the list's, so it is carried.
         element = ir.TypeRef("typing.Any")
-    elif not isinstance(items, dict):
+    elif node.element is None:
         raise Refusal(
             "items",
             pointer,
@@ -369,25 +366,26 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided:
     """
     pointer, position = node.pointer, node.position
     compiler.check_keywords(  # the walk's own check
-        node.raw,
-        pointer,
-        position,
+        node,
         {"type", "additionalProperties", "patternProperties", "propertyNames", *KEY_BOUNDS},
         mod=mod,
     )
     bounds = dict(node.bounds)
-    patterned = node.raw.get("patternProperties")
-    if patterned is not None:
-        if not isinstance(patterned, dict) or len(patterned) != 1:
+    if node.patterns is not None:
+        if node.patterns != 1:
             raise Refusal(
                 "patternProperties",
                 pointer,
-                f"{len(patterned) if isinstance(patterned, dict) else '?'} patterns, and a "
+                f"{node.patterns if node.patterns >= 0 else '?'} patterns, and a "
                 "mapping has one key type: two patterns are a union of key types whose "
                 "value types differ per branch, which is a rule and not a dict[K, V]",
                 kind=Kind.VERDICT,
             )
-        if node.raw.get("additionalProperties", True) is not False:
+        # ``additionalProperties`` ABSENT is draft-07's ``true``, which is what
+        # :attr:`nodes.Base.extra` being ``None`` means (§2: absent and ``true`` are
+        # different statements, and this refusal is the one place they say the same).
+        stated_extra = True if node.extra is None else node.extra
+        if stated_extra is not False:
             # TWO DOCUMENT SHAPES, ONE REFUSAL, and the second arm was dead until
             # this row made the ``patternProperties`` node lower at all.  §5 refuses
             # a non-``false`` ``additionalProperties`` beside ``patternProperties``,
@@ -410,13 +408,13 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided:
             raise Refusal(
                 "additionalProperties",
                 pointer,
-                f"{node.raw.get('additionalProperties', True)!r} beside patternProperties: a "
+                f"{stated_extra!r} beside patternProperties: a "
                 "typed one leaves two value schemas for one mapping value type, and a true "
                 "or absent one admits every key the pattern does not match, which a typed "
                 "key refuses -- the model would be narrower than its document",
                 kind=Kind.VERDICT,
             )
-        if "propertyNames" in node.raw:
+        if "propertyNames" in node.declares:
             # Two statements about ONE key type, and the dict carries one.  Not in the
             # bundle at any node, and refused rather than left out: this row reads the
             # ``patternProperties`` expression AS the key (below), so a
@@ -446,7 +444,7 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided:
         # the ones the pattern matches, which is what a typed key already says -- and
         # ``harness`` reads both sides into that one shape so the value schema and the
         # key expression are each GRADED rather than excused.
-        expr, _inner_raw = next(iter(patterned.items()))
+        expr = node.pattern
         # ``bundle.escape_key``: §11 puts a pointer segment speller in the SOURCE
         # layer, and §14 step 5 moved it there out of ``compiler.py``.  The ONE
         # pointer this module spells, and the parser §4 declares is what retires it --
@@ -469,7 +467,7 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided:
             bounds,
         )
 
-    ap = node.raw.get("additionalProperties", True)
+    ap = True if node.extra is None else node.extra
     if ap is False:
         raise Refusal(
             "additionalProperties",
@@ -623,7 +621,7 @@ def multi_type(node: nodes.MultiType, name_hint: str, mod: Module) -> Decided:
     ``["string", "null"]`` is ``str | None``, the most ordinary thing pydantic has.
     """
     pointer, position = node.pointer, node.position
-    kinds = node.raw["type"]
+    kinds = list(node.words)
     if not kinds or len(set(kinds)) != len(kinds) or not all(isinstance(k, str) for k in kinds):
         raise Refusal("type", pointer, f"not a set of type names: {kinds!r}", kind=Kind.VERDICT)
     unknown = sorted(set(kinds) - set(ARM))
@@ -631,9 +629,7 @@ def multi_type(node: nodes.MultiType, name_hint: str, mod: Module) -> Decided:
         raise Refusal("type", pointer, f"unknown type(s) {unknown}", kind=Kind.VERDICT)
     carried = frozenset().union(*(ARM[k] for k in kinds))
     compiler.check_keywords(  # the walk's own check
-        node.raw,
-        pointer,
-        position,
+        node,
         {"type", *carried},
         f"no arm of {sorted(kinds)} can carry it, so it constrains nothing",
         mod=mod,

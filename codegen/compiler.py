@@ -340,27 +340,27 @@ def decide(
     objectish: bool = False,
     of_a_root_union: bool = False,
 ) -> Decided:
-    """PARSE one raw subschema, then dispatch on the kind the parser decided.
+    """PARSE one raw subschema at a position, then dispatch on the kind the parser decided.
 
-    **The one entry a not-yet-converted descent site uses**, and the reason it still
-    takes a raw mapping is §14 step 5's staging: a kind whose handler reads its children
-    off node fields never comes here, and a kind that has not converted yet reaches a
-    child through this function -- which PARSES it.  So every raw mapping is read by
-    ``codegen/schema/parse.py`` and by nothing else at every rung, and the last
-    conversion deletes this entry along with the carrier.
+    **ONE caller is left and it is the one re-entry §5 names**: :func:`local_reference`,
+    for a ``definitions`` / ``$defs`` entry at DEF.  §5 of the semantics document makes
+    that section "nothing by itself: a bag of named subschemas.  Each entry is declared on
+    demand when a ``$ref`` names it", and "an entry nothing references is not declared"
+    means the parser does not descend one -- so an entry is parsed when a reference asks
+    for it, which is a re-entry at a position and not a second traversal of one mapping.
+
+    Every other caller was a descent §14 step 5 staged, and all of them are gone with the
+    carrier: a handler takes its children off node fields.
 
     ``position`` is the node's own, passed by the caller because it is a structural fact
-    of the caller -- a property's value is at PROP, an array's element at ELEM, a branch
-    at BRANCH, a ``definitions`` entry at DEF -- and never recovered from the pointer
-    string, which cannot tell a RULE reference from a PROP one.
+    of the caller -- a ``definitions`` entry is at DEF -- and never recovered from the
+    pointer string, which cannot tell a RULE reference from a PROP one.
 
     ``objectish`` is §6's "a child never reconstructs its parent": a branch of a ROOT
     union is a class whatever it states, because §4 of the semantics document emits one
     class per branch, and the UNION is what knows that about itself and tells the branch.
-
-    The import is function-scope because ``decide`` is ``emit``'s wrapper over the
-    dispatch -- the content memo and the naming of a node a ``$ref`` elsewhere names --
-    and §14 step 7 moves both into ``lower/names.py`` as a pass over the finished module.
+    It is the parser's descent now (:attr:`nodes.Union.branches`) and survives here for
+    the signature, which a DEF entry does not use.
     """
     return lower_node(
         schema.parse(
@@ -458,18 +458,39 @@ class Module:
     #: record of its own: a node declared because the walk reached it and a node
     #: declared because a local reference asked for it are one entry here.
     declared: dict[str, str] = field(default_factory=dict)
-    #: D3's content dedup: ``the key of a node's content -> the symbol declared for the
-    #: FIRST node with that content``.  Two nodes with identical content are ONE node, so
-    #: the second occurrence decides to the symbol the first declared rather than
-    #: declaring a second class for it.  Written and read by ``emit.decide_type``, which
-    #: is the one per-node walk, and keyed by ``emit.content_key`` -- which is where the
-    #: equality, and the place it cuts a reference cycle, is stated.
+    #: D3's content dedup: ``(the node, the symbol declared for the FIRST node equal to
+    #: it)``, in the order the walk declared them.  Two nodes with identical content are
+    #: ONE node, so the second occurrence decides to the symbol the first declared rather
+    #: than declaring a second class for it.  Written and read by ``emit.decide_type``,
+    #: which is the one per-node walk.
+    #:
+    #: **The equality is §4's own**, and that is what §14 step 5 deletes
+    #: ``emit.content_key`` for: "two nodes are equal exactly when they state the same
+    #: thing about an instance -- which is §4's content dedup read off the type system
+    #: rather than off a JSON serialisation with a position bit appended".  So the memo is
+    #: a SEQUENCE and not a mapping: a node carries mappings and is not hashable, and the
+    #: alternative is a second spelling of what identical means, which is §9's own open
+    #: question about two instruments disagreeing about identity.  §14 step 7 is where the
+    #: memo becomes a pass over the finished module (``lower/names.py``) and the linear
+    #: scan goes with it; it is per MODULE, so the sequence is tens of entries long.
+    #:
+    #: **A ``$ref`` is compared as a STRING and never followed, which is the CUT** §9 says
+    #: the comparison has to state: :class:`codegen.schema.nodes.Reference` carries the
+    #: URI and its two halves and no target, so a cycle through a reference is cut at the
+    #: reference, at depth 0, on every node and not only on a cyclic one.  The cost is a
+    #: measured population: two nodes naming ONE target through two spellings of the same
+    #: reference are not equal, and the bundle has 17 such targets -- 968 distinct
+    #: reference strings over 4,200 sites, 0 of them relative, 17 ``(document, pointer)``
+    #: pairs reached both by a local ``#/definitions/x`` and by the document's own
+    #: absolute URI carrying the same fragment.  Not collapsing them is the conservative
+    #: direction: two classes where one would do, never one class where the document
+    #: means two.
     #:
     #: Per MODULE, which is per document (D1).  Two documents that inline identical
     #: content keep a class each: collapsing them would need a rule for which module owns
     #: the survivor, D1 gives a node exactly one home, and 0 of the bundle's 1,271
     #: identical-content groups have a ROOT carrying that content for a ``$ref`` to reach.
-    collapsed: dict[str, str] = field(default_factory=dict)
+    collapsed: list[tuple["nodes.Base", str]] = field(default_factory=list)
     #: The other half of that record, and the half a check can read: ``pointer -> the
     #: symbol the node at it ADOPTED`` because an earlier node of identical content had
     #: already declared one.  ``collapsed`` is keyed by content, which says what was
@@ -641,7 +662,9 @@ class Rules:
     distinct: tuple[str, ...]
 
 
-def rules_at(node: dict, *also: dict, position: Position = Position.ROOT) -> Rules:
+def rules_at(
+    node: "nodes.Base", *also: Mapping[str, Any], position: Position = Position.ROOT
+) -> Rules:
     """D6's reading of a node, for a lowering that cannot import the rules module.
 
     Imported on use, because ``codegen.lower.rules`` imports this module for
@@ -666,18 +689,29 @@ def rules_at(node: dict, *also: dict, position: Position = Position.ROOT) -> Rul
     ``screen`` is ``node``'s alone and deliberately not merged: a keyword screen is
     asked about one node, and each conjunct is screened by its own call at its own
     pointer, which is what keeps a refusal pointing at the node that caused it.
+
+    **Converted to node fields.**  The node's own reading is :attr:`nodes.Base.rules`
+    (the rule sources, which the parser classified from the table at this position),
+    :attr:`nodes.Base.declared` (``uniqueItems`` sits one level down, on the array a
+    property holds) and whether it states ``additionalProperties`` (the ``minProperties``
+    gate) -- and ``screen`` is the rule sources the node STATES, which is what a screen
+    asks: the only keys a screen can admit are keys the node carries, and a rule source
+    the node carries is in that mapping exactly when the table and ``presence_only``
+    admit it here.  ``also`` stays raw, because an ``allOf`` conjunct is a DECLARATION by
+    §2's own decision.
     """
     from codegen.lower import rules
 
-    lowered = [rules.lower(n) for n in (node, *also)]
-    screen = rule_sources(position)
-    if rules.presence_only(node):
-        screen |= combinators(position)
+    lowered = [
+        rules.lower(node.rules, node.declared, "additionalProperties" in node.declares),
+        *(rules.lower_declaration(c, position) for c in also),
+    ]
+    screen = frozenset(node.rules)
     distinct: list[str] = []
     for one in lowered:
         distinct += [key for key in one.distinct if key not in distinct]
     return Rules(
-        screen=frozenset(screen),
+        screen=screen,
         rules=tuple(rule for one in lowered for rule in one.rules),
         distinct=tuple(distinct),
     )
@@ -775,21 +809,27 @@ def carried(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRe
 
 
 def check_keywords(
-    node: Mapping[str, Any],
-    pointer: str,
-    position: Position,
+    node: nodes.Base,
     handled: Collection[str] = (),
     why: str | None = None,
     mod: "Module | None" = None,
 ) -> None:
-    """Refuse the first keyword at this node the TABLE does not admit here.
+    """Refuse the first keyword this NODE states that the TABLE does not admit here.
 
-    **The screen is a reader of ``codegen.keywords`` and holds no keyword set of its
-    own.**  Every key is looked up at the node's POSITION, which the caller passes
-    because it is a structural fact of the caller -- a property's value is at PROP, an
-    array's element at ELEM, a branch at BRANCH -- and never recovered from the pointer
-    string, which cannot tell a RULE reference from a PROP one.  The cell then decides,
-    and ``docs/plan/architecture.md`` §3's admission reader is exactly these arms:
+    **Converted to node fields.**  :attr:`nodes.Base.declares` is the set §3's admission
+    reader can refuse on -- ``keywords.declares`` at the node's own position, computed
+    once by the parser -- and :attr:`nodes.Base.extensions` is the ``x-`` keys it
+    reports.  The two are walked in one sorted pass, which is the order the raw mapping's
+    keys were walked in, so the keyword a document is refused on does not move.  The
+    POSITION is the node's own field (§6: "the parser assigned it from the structural
+    keyword it descended through"), and ``handled`` stays the CALLER's: §3 gives the
+    lowering reader "the cells this handler writes", and §14 step 8 is what closes it.
+
+    :func:`check_declaration` is the same screen asked of a raw DECLARATION, for the one
+    reader §2 keeps at that level -- an ``allOf`` conjunct, which the intersection rule
+    merges as a declaration.
+
+    ``docs/plan/architecture.md`` §3's admission reader is exactly these arms:
 
     * a cell that carries NOTHING, ANNOTATES or names (``NAME``) is admitted and
       carried nowhere by the screen;
@@ -815,7 +855,45 @@ def check_keywords(
     sentence and a kind decided together at one raise site is how a cell the semantics
     document decides came to be written up as a verdict against the document.
     """
-    for key in sorted(node):
+    _screen(
+        sorted((*node.declares, *node.extensions)),
+        node.pointer,
+        node.position,
+        handled,
+        why,
+        mod,
+    )
+
+
+def check_declaration(
+    declaration: Mapping[str, Any],
+    pointer: str,
+    position: Position,
+    handled: Collection[str] = (),
+    why: str | None = None,
+    mod: "Module | None" = None,
+) -> None:
+    """:func:`check_keywords`, asked of a raw DECLARATION rather than of a node.
+
+    The one reader at that level is §2's intersection rule, which merges two declarations
+    of one property and hands the merged one back to the parser, so an ``allOf`` conjunct
+    is a :class:`codegen.schema.nodes.Conjunct` and not a node -- and a conjunct is
+    screened at its own pointer and at CONJ.  Nothing else calls this, and
+    ``tests/test_import_rule.py`` is where that is held.
+    """
+    _screen(sorted(declaration), pointer, position, handled, why, mod)
+
+
+def _screen(
+    keys: "Collection[str]",
+    pointer: str,
+    position: Position,
+    handled: Collection[str],
+    why: str | None,
+    mod: "Module | None",
+) -> None:
+    """The admission reader itself, over keys already in the order the report wants."""
+    for key in keys:
         # **``handled`` is asked FIRST**, before the cell, because a caller that claims
         # a key has already decided what happens to it -- including a key the table
         # REFUSES: ``lower_composition`` hands its ``foreign`` set here precisely so
@@ -999,7 +1077,7 @@ def fields(
 
 
 def declare_object(
-    node: dict,
+    node: "nodes.Base",
     name: str,
     pointer: str,
     mod: Module,
@@ -1009,7 +1087,8 @@ def declare_object(
     *,
     extras: nodes.Base | None = None,
     bases: tuple[str, ...] = (),
-    rule_nodes: Sequence[dict] = (),
+    rule_nodes: Sequence[Mapping[str, Any]] = (),
+    description: str | None = None,
     root_required: tuple[str, ...] | None = None,
     discriminator: str | None = None,
     combinator: str | None = None,
@@ -1048,6 +1127,13 @@ def declare_object(
     the union row.  They are declared on the class rather than formatted into a body
     line, which is §7's gate at this seam: ``render._union_base_lines`` writes the four
     statements and nothing before it holds one.
+
+    ``description`` is §6's description-authority rule clause 3, handed DOWN by the two
+    rows that compose: a class whose own node states none states the one its base does,
+    which the composed document states at this pointer.  Passed rather than merged into a
+    declaration, because the node is a node now and §6 makes silence the enclosing
+    reading rather than a rewritten mapping (``lower_composition`` and the union's
+    ``$ref`` branch, which is a composition of the union base and the target).
     """
     stated = rules_at(node, *rule_nodes, position=position)
     # D8's typed row: a property the class does not DECLARE is validated against
@@ -1059,7 +1145,7 @@ def declare_object(
     # two different ways.  :func:`decide` rather than an import of the container row,
     # because the per-node dispatch is one function and a second entrance to the
     # container row would be a second reading of which row a node belongs to.
-    ap = node.get("additionalProperties")
+    ap = node.extra
     # **§2's SECOND node rewrite, retired.**  This built a synthetic
     # ``{"type": "object", "additionalProperties": ap, "propertyNames": ...}`` and handed
     # it to the dispatch -- a node the document does not have.  The extras STORE is now a
@@ -1068,12 +1154,12 @@ def declare_object(
     # mapping cannot come to read ``additionalProperties`` two different ways because
     # there is one reading of it and the parser makes it.
     extra_type = None if extras is None else lower_node(extras, name, mod).type
-    description = node.get("description")
+    described = node.description if node.description is not None else description
     declaration = ir.ClassDecl(
         name=name,
         ref=schema_ref(mod.document, pointer),
         fields=tuple(props),
-        description=description if isinstance(description, str) and description else None,
+        description=described,
         # D8; absent leaves the base's default in place.  A TYPED
         # ``additionalProperties`` is ``allow`` with the type beside it: the
         # properties are part of the document, so they are retained, and
@@ -1095,7 +1181,7 @@ def declare_object(
         shape,
         decided={**shape.decided, **{p.wire: p for p in props}},
         declares=frozenset(mod.declared.values()) | {name},
-        description=description if isinstance(description, str) and description else None,
+        description=described,
     )
     mod.declare(name, pointer, declaration)
     return name
@@ -1128,8 +1214,10 @@ def lower_object(
     :attr:`nodes.Object.extras`; ``propertyNames`` is :attr:`nodes.Object.key`; the type
     word is :attr:`nodes.Object.word` and the word an enclosing node applies to the same
     instance is :attr:`nodes.Base.applied`, which is what ``mod.object_constrained`` was
-    read as per node.  The ADMISSION SCREEN and the two shape validations still read
-    :attr:`nodes.Base.raw`, which is §14 step 5's carrier and the next conversion.
+    read as per node.  The ADMISSION SCREEN is :attr:`nodes.Base.declares` at the node's
+    own position and the ``required`` shape is :attr:`nodes.Base.faults`, which §4 makes
+    the parser's; :class:`Shape` takes :attr:`nodes.Base.declared`, the property
+    DECLARATIONS, because that is what §2's intersection rule merges.
 
     ``bases`` is what a COMPOSITION and a union BRANCH need and a leaf object does not,
     and it defaults to the leaf's answer -- no base, so the base is ``AdCPBaseModel`` --
@@ -1145,11 +1233,9 @@ def lower_object(
     # (:func:`declare_object`) -- so this row and the ``allOf`` row and a union branch
     # all admit the same keywords and all write the same rule.
     pointer, position = node.pointer, node.position
-    stated = rules_at(node.raw, position=position)
+    stated = rules_at(node, position=position)
     check_keywords(
-        node.raw,
-        pointer,
-        position,
+        node,
         # The cells an OBJECT node consumes, which is what is left of a ``handled``
         # set once the table admits everything it used to carry for admission alone.
         {
@@ -1208,22 +1294,20 @@ def lower_object(
             "an object node with no property declared",
             kind=Kind.VERDICT,
         )
-    required = node.raw.get("required", [])
-    if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
-        raise Refusal(
-            "required",
-            pointer,
-            f"required is {required!r}, not a list of names",
-            kind=Kind.VERDICT,
-        )
+    if "required" in node.faults:
+        raise Refusal("required", pointer, node.faults["required"], kind=Kind.VERDICT)
+    required = node.required
     built = fields(node.properties, required, pointer, name, mod, distinct=stated.distinct)
     return declare_object(
-        node.raw,
+        node,
         name,
         pointer,
         mod,
         built,
-        Shape(node.raw["properties"], frozenset(required)),
+        # :attr:`nodes.Base.declared` is the property DECLARATIONS, which is what a
+        # :class:`Shape` is: §2's intersection rule merges declarations of one property
+        # and §4 "Names" reads a branch's own ``const`` pin off one.
+        Shape(node.declared, frozenset(required)),
         position,
         extras=node.extras,
         bases=bases,
@@ -1276,7 +1360,7 @@ COMPOSING = frozenset({"type", "allOf", "properties", "required", "additionalPro
 _COMBINATORS = ("oneOf", "anyOf")
 
 
-def _refuse_a_combinator_of_shapes(doc: dict, pointer: str, screen: frozenset[str]) -> None:
+def _refuse_a_combinator_of_shapes(node: "nodes.Base", screen: frozenset[str]) -> None:
     """A node that COMPOSES and also carries a combinator of SHAPES.
 
     Both halves are conjunctions with the same instance in draft-07 -- that is D7's own
@@ -1306,10 +1390,10 @@ def _refuse_a_combinator_of_shapes(doc: dict, pointer: str, screen: frozenset[st
     row's selector, so it is a change to a population and not to this row.
     """
     for keyword in _COMBINATORS:
-        if isinstance(doc.get(keyword), list) and keyword not in screen:
+        if keyword in node.declares and keyword not in screen:
             raise Refusal(
                 keyword,
-                pointer,
+                node.pointer,
                 f"this node composes AND carries a {keyword} whose branches are shapes "
                 "rather than presence groups (rules.presence_only), and both are "
                 "conjunctions with the same instance: a class carries the conjuncts as "
@@ -1322,25 +1406,23 @@ def _refuse_a_combinator_of_shapes(doc: dict, pointer: str, screen: frozenset[st
 
 
 def lower_composition(
-    node: "nodes.Composition | Mapping[str, Any]",
+    node: "nodes.Base",
     name: str,
     mod: Module,
-    pointer: str | None = None,
-    position: Position | None = None,
     *,
     bases: tuple[str, ...] = (),
 ) -> str:
     """Append the class for an ``allOf`` node and return its name.
 
-    **This row still reads the CARRIER**, and ``schema/nodes.py`` says which half of that
-    is permanent: §6 keeps ``restatement``, ``intersection`` and ``at_least_as_tight`` as
-    pure functions over DECLARATIONS, because the merge of two declarations of one
-    property has to be parsed as one node and not composed out of two decided ones -- so
-    a :class:`nodes.Conjunct` is a declaration by the design's own decision.  What is
-    still §14 step 5's to convert here is the node's OWN facts: its screen, its
-    ``properties`` and ``required``, its ``additionalProperties``.  A union BRANCH reaches
-    this row with a raw declaration too, which is why the first argument takes either and
-    the pointer and the position are read off the node when it is one.
+    **CONVERTED to node fields, and ``schema/nodes.py`` says which half of this row stays
+    at the DECLARATION level and why**: §6 keeps ``restatement``, ``intersection`` and
+    ``at_least_as_tight`` as pure functions over DECLARATIONS, because the merge of two
+    declarations of one property has to be parsed as one node and not composed out of two
+    decided ones -- so a :class:`nodes.Conjunct` is a declaration by the design's own
+    decision, and so is :attr:`nodes.Base.declared`, this node's own property map.  The
+    node's OWN facts are fields: :attr:`nodes.Composition.word`,
+    :attr:`nodes.Composition.required`, :attr:`nodes.Base.extra`,
+    :attr:`nodes.Base.rules`, and :attr:`nodes.Base.declares` for the screen.
 
     The reference conjuncts become BASES, and the rest becomes fields of the node
     itself.  D2's product row, and **shared machinery rather than a lowering**: a
@@ -1423,15 +1505,21 @@ def lower_composition(
     reason :class:`Rules` states: a rule naming a key the class has no field for
     refuses a payload the document admits.
     """
-    # A NODE carries its own pointer and position; a raw declaration is a union BRANCH's,
-    # which this row still meets as a declaration (§14 step 5's staging).  Any kind may
-    # arrive -- a hand-written probe states ``allOf`` beside a combinator and the parser
-    # classifies it a ``Union``, which is §5's own arm order -- so the test is on
-    # ``nodes.Base`` and not on the one kind this row is dispatched for.
-    if isinstance(node, nodes.Base):
-        doc, pointer, position = node.raw, node.pointer, node.position
-    else:
-        doc, pointer, position = node, pointer or "", position or Position.ROOT
+    # Any kind may arrive -- a hand-written probe states ``allOf`` beside a combinator and
+    # the parser classifies it a ``Union``, which is §5's own arm order -- so the fields
+    # read below are ``nodes.Base``'s and not the one kind this row is dispatched for.
+    pointer, position = node.pointer, node.position
+    conjuncts: tuple[nodes.Conjunct, ...] | None = getattr(node, "conjuncts", None)
+    if conjuncts is None:
+        # §5's ``allOf`` row BESIDE A UNION: "the same, onto the base".  A node stating
+        # both is a :class:`nodes.Union` by §5's own arm order, so its conjunct list is a
+        # sibling (:attr:`nodes.Union.siblings`) rather than its kind -- and a conjunct is
+        # read at its own CONJ pointer either way, so there is one reading of what a
+        # conjunct list contributes and not one per kind that can state one.
+        conjuncts = tuple(
+            nodes.Conjunct(pointer=f"{node.pointer}/allOf/{i}", raw=c)
+            for i, c in enumerate(getattr(node, "siblings", {}).get("allOf") or ())
+        )
     # **The TYPE first, BEFORE the keyword screen**, and the order is measured rather
     # than preferred: a node stating a non-object ``type`` composes no object whatever
     # else it states, so the type is the reason and a keyword it carries is not.  It sat
@@ -1443,16 +1531,17 @@ def lower_composition(
     # Measured over every node of every portable document: **4 composing nodes state a
     # non-object type and all 4 state ``array``**; all 4 already refused here, so the
     # order moves no document and changes the reported keyword for one.
-    if doc.get("type") not in (None, "object"):
+    word = getattr(node, "word", None)
+    if word not in (None, "object"):
         raise Refusal(
             "type",
             pointer,
-            f"an allOf of type {doc['type']!r} composes no object",
+            f"an allOf of type {word!r} composes no object",
             kind=Kind.VERDICT,
         )
-    stated = rules_at(doc, position=position)
-    _refuse_a_combinator_of_shapes(doc, pointer, stated.screen)
-    check_keywords(doc, pointer, position, COMPOSING | stated.screen, mod=mod)
+    stated = rules_at(node, position=position)
+    _refuse_a_combinator_of_shapes(node, stated.screen)
+    check_keywords(node, COMPOSING | stated.screen, mod=mod)
 
     conjunct_bases: list[str] = []
     inherited: dict[str, dict] = {}
@@ -1467,7 +1556,9 @@ def lower_composition(
     #: because draft-07 applies both to the same instance.
     local: dict[str, dict] = {}
     at: dict[str, str] = {}
-    required: set[str] = set(_required(doc, pointer))
+    if "required" in node.faults:
+        raise Refusal("required", pointer, node.faults["required"], kind=Kind.VERDICT)
+    required: set[str] = set(getattr(node, "required", ()))
     #: The conjuncts that state a RULE of this node rather than a base or fields.
     conjunct_rules: list[dict] = []
     #: The description the FIRST base that states one states, for a composing node that
@@ -1505,7 +1596,7 @@ def lower_composition(
                 kind=Kind.VERDICT,
             )
 
-    for key, sub in (doc.get("properties") or {}).items():
+    for key, sub in node.declared.items():
         declare(key, sub, f"{pointer}/properties/{key}")
 
     #: The conjuncts still to read, each with the pointer it sits at.  A WORKLIST
@@ -1514,9 +1605,7 @@ def lower_composition(
     #: reads every depth, the keyword screen is asked once per node, and a refusal
     #: points at the pointer that carried the keyword rather than at the outermost
     #: conjunct.  Breadth-first, which is document order within each depth.
-    unread: list[tuple[str, Any]] = [
-        (f"{pointer}/allOf/{i}", c) for i, c in enumerate(doc["allOf"])
-    ]
+    unread: list[tuple[str, Any]] = [(c.pointer, c.raw) for c in conjuncts]
     while unread:
         where, conjunct = unread.pop(0)
         if not isinstance(conjunct, dict):
@@ -1650,7 +1739,7 @@ def lower_composition(
         # Screened by the conjunct's OWN ``screen`` at its OWN pointer, so a conjunct
         # carrying a combinator of SHAPES is not admitted here and refuses below --
         # rather than being emitted with the combinator dropped.
-        screen = rules_at(conjunct, position=Position.CONJ).screen
+        screen = frozenset(declaration_rule_sources(conjunct, Position.CONJ))
         if keys <= INLINE | screen | CONJ_COMPOSES:
             # ``foreign`` is handed to the screen as CLAIMED, because this arm has
             # already decided what happens to it: it is dropped and reported.  Left
@@ -1658,7 +1747,7 @@ def lower_composition(
             # name the drop above accounted for, which loses the document and leaves
             # the drop record unwritten -- measured on
             # ``media-buy/sync-catalogs-request.json``.
-            check_keywords(
+            check_declaration(
                 conjunct,
                 where,
                 Position.CONJ,
@@ -1780,7 +1869,7 @@ def lower_composition(
             kind=Kind.DEFERRED,
         )
 
-    stated = rules_at(doc, *conjunct_rules, position=position)
+    stated = rules_at(node, *conjunct_rules, position=position)
 
     own: dict[str, dict] = {}
     #: The keys whose field is the inherited one wearing this document's annotations.
@@ -1799,18 +1888,18 @@ def lower_composition(
     #: then decided FRESH -- so the keyword reached the array row and refused the
     #: document on a fact its base already states as a rule.
     inherited_distinct: set[str] = set()
-    for key, node in local.items():
+    for key, stating in local.items():
         if key not in inherited:
-            own[key] = node
+            own[key] = stating
             continue
-        verdict = _restatement(node, inherited[key], mod.resolve_node)
+        verdict = _restatement(stating, inherited[key], mod.resolve_node)
         if verdict is None:
             raise Refusal(
-                _disagreeing(node, inherited[key]),
+                _disagreeing(stating, inherited[key]),
                 at[key],
                 f"the restatement of {key!r} neither matches nor narrows the "
                 f"inherited declaration: inherited states {sorted(_constraining(inherited[key]))}, "
-                f"this states {sorted(_constraining(node))}",
+                f"this states {sorted(_constraining(stating))}",
                 kind=Kind.VERDICT,
             )
         if verdict or (key in required and key not in inherited_required):
@@ -1831,13 +1920,13 @@ def lower_composition(
             # itself where only the requiredness moved: there the content is the base's
             # already, so there is nothing of the base's to merge back in.
             own[key] = (
-                _intersection(node, inherited[key], mod.resolve_node) if verdict else node
+                _intersection(stating, inherited[key], mod.resolve_node) if verdict else stating
             )
             if _constraining(own[key]).get("uniqueItems") is True and not _constraining(
-                node
+                stating
             ).get("uniqueItems"):
                 inherited_distinct.add(key)
-        elif _annotates_differently(node, inherited[key]):
+        elif _annotates_differently(stating, inherited[key]):
             # **It states the same thing about the INSTANCE and a different thing to the
             # READER**, so the subclass states the field: a document's own declaration
             # governs the annotation at its own pointer (the description-authority rule,
@@ -1893,8 +1982,8 @@ def lower_composition(
             # to make unspellable.  The intersection is the base's content wearing this
             # document's annotations, and it is the same expression the EMPTY case used,
             # so there is one answer for both.
-            own[key] = _intersection(node, inherited[key], mod.resolve_node)
-            if not _constraining(node):
+            own[key] = _intersection(stating, inherited[key], mod.resolve_node)
+            if not _constraining(stating):
                 # The node has no type of ITS OWN, so the field is the base's DECIDED
                 # field: re-deciding declares the nested classes again, in this module,
                 # at a pointer this document does not have (:attr:`Shape.decided`).
@@ -1993,15 +2082,7 @@ def lower_composition(
         reuse=reuse,
     )
     return declare_object(
-        # §6's description-authority rule, clause 3, at a CLASS: this node's own
-        # description where it states one, and the base's where it is silent.  The
-        # composed document states the base's at this pointer -- ``harness._composed``
-        # folds it in -- and pydantic will not supply it, because ``cls.__doc__`` is
-        # ``None`` for a subclass with no docstring.  Measured: 5 ``missing`` facts over
-        # 4 pairs, every one a bare ``/description`` at a composing node whose own
-        # declaration has none (``core/collection-selection.json``'s items and
-        # ``core/canonical-media-buy-action.json``'s three branches).
-        doc if doc.get("description") or inherited_description is None else {**doc, "description": inherited_description},
+        node,
         name,
         pointer,
         mod,
@@ -2018,10 +2099,42 @@ def lower_composition(
         position,
         bases=(*bases, *conjunct_bases),
         rule_nodes=conjunct_rules,
+        # §6's description-authority rule, clause 3, at a CLASS: this node's own
+        # description where it states one, and the base's where it is silent.  The
+        # composed document states the base's at this pointer -- ``harness._composed``
+        # folds it in -- and pydantic will not supply it, because ``cls.__doc__`` is
+        # ``None`` for a subclass with no docstring.  Measured: 5 ``missing`` facts over
+        # 4 pairs, every one a bare ``/description`` at a composing node whose own
+        # declaration has none (``core/collection-selection.json``'s items and
+        # ``core/canonical-media-buy-action.json``'s three branches).
+        description=inherited_description,
     )
 
 
-def _required(node: dict, pointer: str) -> list[str]:
+def declaration_rule_sources(
+    declaration: Mapping[str, Any], position: Position
+) -> dict[str, Any]:
+    """The rule sources a raw DECLARATION states: ``schema.parse._rule_sources``, asked
+    of a declaration.
+
+    An ``allOf`` conjunct is a declaration by §2's own decision, so its rule sources are
+    read the way the parser reads a node's -- the table at the conjunct's own position,
+    plus the two combinators where every branch states only which keys are present, which
+    is a CO-OCCURRENCE the cell cannot answer.  **ONE reading, and two things read it**:
+    :func:`lower_composition`'s conjunct screen, which wants the key SET, and
+    ``lower.rules.lower_declaration``, which wants the values -- so a conjunct's screen
+    and a conjunct's rule tuple cannot come to disagree about which keywords are rules
+    there, which is the second copy of a keyword decision §3 forbids.
+    """
+    from codegen.lower import rules
+
+    sources = rule_sources(position)
+    if rules.presence_only(declaration):
+        sources |= combinators(position)
+    return {k: v for k, v in declaration.items() if k in sources}
+
+
+def _required(node: Mapping[str, Any], pointer: str) -> list[str]:
     req = node.get("required", [])
     if not isinstance(req, list) or not all(isinstance(r, str) for r in req):
         raise Refusal(

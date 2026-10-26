@@ -34,9 +34,7 @@ def lower(node: nodes.Reference, name_hint: str, mod: Module) -> Decided:
     """
     compiler.report_inert(node.inert, node.pointer, mod)
     check_keywords(
-        node.raw,
-        node.pointer,
-        node.position,
+        node,
         {"$ref", *node.inert},
         "a sibling of $ref, which draft-07 ignores",
         mod=mod,
