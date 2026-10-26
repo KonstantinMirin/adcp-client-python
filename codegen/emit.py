@@ -19,20 +19,24 @@ A document this command does not name is still emitted when a named one
 REFERENCES it: a module cannot import a symbol from a module no run wrote, so
 ``emit`` walks ``$ref`` transitively and the run emits the closure.
 
-**This module is the walk, and it decides; it writes no annotation text.**
+**This module is the walk, and it decides; it writes no text at all.**
 ``docs/plan/rebuild-plan.md`` §1 puts the seam at the decision: the walk reads the
 schema and decides what a node IS -- a class, a type, a field, a constraint, a
-default, a name, what ``extra`` is -- and ``codegen.compiler`` hands that decision
-to ``datamodel-code-generator``'s pydantic-v2 model layer, which writes the
-Python.  dmcg's parser never runs.
+default, a name, what ``extra`` is -- and ``codegen.render`` takes that decision,
+as ``codegen.ir``'s declarations, and hands it to ``datamodel-code-generator``'s
+pydantic-v2 model layer, which writes the Python.  The generator's parser never runs.
 
 **D13 divides the walk between this module and ``codegen.compiler``**, and the cut
-is the layering rather than a taxonomy.  What is HERE is the module writer (the
-header, the import block, the ``__all__``), :func:`decide_type` -- the per-node
-dispatch, because the answer for an array, a mapping or a multi-type node lives in
-a lowering -- and :data:`ROWS`, the dispatch table.  What is in ``compiler`` is
-everything a lowering is handed: the field builder, the class declarer, the alias
-declarer, the keyword screen, D3's name rules and the carriers.
+is the layering rather than a taxonomy.  What is HERE is the RUN -- the dependency
+closure, the per-document fold, the files and the report -- plus
+:func:`decide_type`, the per-node dispatch, because the answer for an array, a
+mapping or a multi-type node lives in a lowering, and :data:`ROWS`, the dispatch
+table.  What is in ``compiler`` is everything a lowering is handed: the field
+builder, the class declarer, the alias declarer, the keyword screen, D3's name rules
+and the carriers.  The module TEXT -- the header, the import block, the ``__all__``
+-- is ``render.module``'s, because it is text (``docs/plan/architecture.md`` §7);
+:func:`exported` stays here, because which names another module may ask for is a
+decision about the bundle.
 
 **The per-node decision used to be unreachable BY NAME from either of them, and
 the entry-point module is what changed that.**  ``python -m codegen.emit`` executed
@@ -91,12 +95,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from codegen import bundle, compiler, harness
+from codegen import bundle, compiler, harness, ir, render
 from codegen.keywords import Position
 from codegen import constraints as constraints_module
+from codegen.ir import FACTS
 from codegen.compiler import (
-    BASE_MODULE,
-    CONSTRAINTS,
     SCALAR,
     Decided,
     Module,
@@ -337,9 +340,9 @@ def bind_the_same_node(mod: Module, symbol: str, pointer: str, declared: str) ->
     ``WholesaleFeedEvent9`` among them -- and the answer to that is one class aliased,
     not one class renamed.
 
-    **The RENDERING is ``compiler.render_alias``'s, the same statement D2's root-scalar
+    **The DECLARATION is an ``ir.AliasDecl``, the same statement D2's root-scalar
     row emits**, so there is one alias spelling in the emitter and not a second one here.
-    It is called with no constraints, no description and no format on purpose: the node
+    It carries no constraints, no description and no format on purpose: the node
     is byte-identical to the one the class already lowered, so every fact about it is
     already stated on the class, and a ``Field(description=...)`` wrapper here would both
     restate it and make the alias an ``Annotated`` object rather than the class itself --
@@ -355,13 +358,12 @@ def bind_the_same_node(mod: Module, symbol: str, pointer: str, declared: str) ->
 
     This lives beside :func:`decide_type`, its one caller, rather than in
     ``codegen/compiler.py`` beside :func:`compiler.name_the_node` -- which it otherwise
-    mirrors -- because D13 puts a lowering only one row reads in the module that reads it,
-    and because the compiler's half of this is ``render_alias``, which is already there.
+    mirrors -- because D13 puts a lowering only one row reads in the module that reads it.
     """
     if not symbol or symbol == declared:
-        return Decided(compiler.Type(declared, local=True))
-    mod.add(symbol, pointer, compiler.render_alias(symbol, compiler.Type(declared, local=True), {}))
-    return Decided(compiler.Type(symbol, local=True))
+        return Decided(ir.TypeRef(declared, local=True))
+    mod.declare(symbol, pointer, ir.AliasDecl(symbol, ir.TypeRef(declared, local=True)))
+    return Decided(ir.TypeRef(symbol, local=True))
 
 
 def decide_type(
@@ -449,7 +451,7 @@ def _decide(
     ``AdCPBaseModel.strict_validate`` asks the document about that.
 
     The constraints come back in the DOCUMENT'S spelling and are passed through
-    unchanged: ``compiler.CONSTRAINTS`` gate 1 is that the compiler's
+    unchanged: ``codegen.render``'s gate 1 is that the renderer's
     ``Constraints`` reads JSON Schema names and silently ignores pydantic ones.
     """
     if "$ref" in node:
@@ -490,7 +492,7 @@ def _decide(
             return compiler.local_reference(mod, into, pointer)
         target = mod.bind(node["$ref"], pointer)
         mod.imports.add((target.module, target.symbol))
-        return Decided(compiler.Type(target.symbol, local=True))
+        return Decided(ir.TypeRef(target.symbol, local=True))
 
     if "enum" in node:
         # D2's enumeration row, reached before ``type`` is read at all: the base
@@ -508,8 +510,8 @@ def _decide(
         if lower_enum.resolves_no_name(node, pointer):
             return lower_enum.literal(node, pointer)
         decided = lower_enum.decide(node, name_hint, pointer)
-        mod.add(name_hint, pointer, compiler.render_enum(decided))
-        return Decided(compiler.Type(name_hint, local=True))
+        mod.declare(name_hint, pointer, decided)
+        return Decided(ir.TypeRef(name_hint, local=True))
 
     if "const" in node:
         # D2's ``const`` row, IN FULL, and reached before ``type`` is read for the
@@ -558,7 +560,7 @@ def _decide(
         # whose pointer crosses a branch two instances up and whose own node is an
         # array element.
         return Decided(
-            compiler.Type(
+            ir.TypeRef(
                 lower_composition(node, name_hint, pointer, mod, position), local=True
             )
         )
@@ -620,24 +622,24 @@ def _decide(
         # ``not: {"const": ...}`` here would be the same keyword read two ways by the
         # presence of a word that changes nothing about it.
         check_keywords(node, pointer, position, {*lower_rules.ON_A_VALUE}, mod=mod)
-        if set(node) & set(CONSTRAINTS):
+        if set(node) & set(FACTS):
             raise Refusal(
                 "type", pointer, "a typeless node carrying a constraint has nothing to apply it to"
             , kind=Kind.VERDICT)
-        return Decided(compiler.Type("typing.Any"))  # D2's typeless row
+        return Decided(ir.TypeRef("typing.Any"))  # D2's typeless row
 
     if isinstance(kind, list):
         return lower_containers.multi_type(node, pointer, name_hint, mod, position)
 
     if kind == "null":
         check_keywords(node, pointer, position, {"type"}, mod=mod)
-        return Decided(compiler.Type("None"))
+        return Decided(ir.TypeRef("None"))
 
     if kind == "object":
         if "properties" not in node:
             return lower_containers.mapping(node, pointer, name_hint, mod, position)
         return Decided(
-            compiler.Type(lower_object(node, name_hint, pointer, mod, position), local=True)
+            ir.TypeRef(lower_object(node, name_hint, pointer, mod, position), local=True)
         )
 
     if kind == "array":
@@ -651,9 +653,9 @@ def _decide(
     # excluded VALUE, which D4 leaves to the schema half exactly as it leaves a
     # conditional that narrows one.  Carrying it is not refusing it.
     check_keywords(
-        node, pointer, position, {"type", "format", *CONSTRAINTS, *lower_rules.ON_A_VALUE}, mod=mod
+        node, pointer, position, {"type", "format", *FACTS, *lower_rules.ON_A_VALUE}, mod=mod
     )
-    constraints = {k: node[k] for k in CONSTRAINTS if k in node}
+    constraints = {k: node[k] for k in FACTS if k in node}
     fmt = node.get("format") if isinstance(node.get("format"), str) else None
     # A format SELECTS a type where one is named for it and the document's own
     # draft can decide it (D5, and the comment above FORMAT_TYPES).  The type
@@ -700,8 +702,8 @@ def _decide(
                     "would go missing or differ ungraded",
                     kind=Kind.VERDICT,
                 )
-            return Decided(compiler.Type(selected))
-        return Decided(compiler.Type(selected), constraints)
+            return Decided(ir.TypeRef(selected))
+        return Decided(ir.TypeRef(selected), constraints)
     # D5: **a constrained type is NAMED once and referenced.**  The name is a pure
     # function of (the document's type word, its constraints) -- rung 2 where a
     # pydantic type qualifies on both halves, rung 3 otherwise -- so the same shape
@@ -717,7 +719,7 @@ def _decide(
     path = constraints_module.resolve(kind, constraints)
     if path is not None:
         return Decided(_named_alias(path, kind, constraints, mod), format=fmt)
-    return Decided(compiler.Type(SCALAR[kind]), constraints, format=fmt)
+    return Decided(ir.TypeRef(SCALAR[kind]), constraints, format=fmt)
 
 
 def _named_alias(
@@ -726,8 +728,8 @@ def _named_alias(
     constraints: Mapping[str, Any],
     mod: compiler.Module,
     fmt: str | None = None,
-) -> compiler.Type:
-    """One resolved shape's :class:`compiler.Type`, with the alias recorded.
+) -> ir.TypeRef:
+    """One resolved shape's :class:`ir.TypeRef`, with the alias recorded.
 
     The record and the type go together or they do not go: an alias referenced and not
     recorded is an ``ImportError`` in the written tree, and one recorded and not
@@ -741,14 +743,14 @@ def _named_alias(
 
     A CONTAINER alias is generic, so its arguments come with it
     (``NonEmptyList[MediaBuyStatus]``): ``of`` carries the decided types and
-    ``compiler.Type``'s ``alias`` container writes the subscript.
+    ``ir.TypeRef``'s ``alias`` container writes the subscript.
     """
     if path.startswith(f"{constraints_module.MODULE}."):
         constraints_module.record(mod.aliases, path.rsplit(".", 1)[1], kind, constraints, format=fmt)
-    return compiler.Type(path)
+    return ir.TypeRef(path)
 
 
-def name_the_constraint(decided: Decided, mod: compiler.Module) -> compiler.Type | None:
+def name_the_constraint(decided: Decided, mod: compiler.Module) -> ir.TypeRef | None:
     """Section 2's NAMED carrier for a decided node whose position has no field.
 
     ``compiler.carried`` asks this at the three positions that cannot hold a fact on a
@@ -788,7 +790,7 @@ def name_the_constraint(decided: Decided, mod: compiler.Module) -> compiler.Type
     if kind not in constraints_module.CONTAINER:
         return inner
     args = decided.type.of if decided.type.key is None else (decided.type.key, *decided.type.of)
-    return compiler.Type(path=inner.path, container="alias", of=args)
+    return ir.TypeRef(path=inner.path, container="alias", of=args)
 
 
 #: The document's own type word for each container ``Type.container`` names, and for
@@ -801,24 +803,10 @@ _CONTAINER_WORD = {"list": "array", "dict": "object"}
 _SCALAR_WORD = {path: word for word, path in SCALAR.items()}
 
 
-# --------------------------------------------------------------------------- #
-# the module text (D8: the emitter owns its layout)
-# --------------------------------------------------------------------------- #
-def _import_rank(module: str) -> int:
-    """stdlib, the third-party library, this package's own hand-written modules,
-    then a sibling module of this tree (always relative, so always
-    ``.``-prefixed)."""
-    if module.startswith("."):
-        return 3
-    if module in (BASE_MODULE, lower_rules.RUNTIME_MODULE, constraints_module.MODULE):
-        return 2
-    return 1 if module == "pydantic" else 0
-
-
-def _local_symbols(t: compiler.Type) -> set[str]:
+def _local_symbols(t: ir.TypeRef) -> set[str]:
     """Every symbol of the DECLARING module that one decided type names.
 
-    A local bare symbol is this pipeline's own class or alias (``compiler.Type``), and
+    A local bare symbol is this pipeline's own class or alias (``ir.TypeRef``), and
     a container carries its members in ``of`` with a mapping's key beside them -- so
     ``list[CanonicalFormatBaseSlotsItem] | None`` reaches the item through two levels
     and neither can be read off ``path``.
@@ -895,27 +883,6 @@ def exported(mod: Module, symbol: str, composed: frozenset[str] = frozenset()) -
     return [symbol, *sorted(rest - {symbol})]
 
 
-def render(mod: Module, symbol: str, composed: frozenset[str] = frozenset()) -> str:
-    groups: list[list[str]] = [[], [], [], []]
-    by_module: dict[str, set[str]] = {}
-    for module, name in mod.imports:
-        by_module.setdefault(module, set()).add(name)
-    for module in sorted(by_module):
-        names = ", ".join(sorted(by_module[module]))
-        groups[_import_rank(module)].append(f"from {module} import {names}")
-    out = [
-        f"# Generated by codegen.emit from {mod.document}. Do not edit.",
-        "from __future__ import annotations",
-        "",
-    ]
-    for g in groups:
-        if g:
-            out += [*g, ""]
-    classes = "\n\n\n".join(mod.blocks)
-    names = ", ".join(f'"{n}"' for n in exported(mod, symbol, composed))
-    return "\n".join([*out, "", classes, "", "", f"__all__ = [{names}]", ""])
-
-
 # --------------------------------------------------------------------------- #
 # the dispatch table (D13, and §5 Layout)
 # --------------------------------------------------------------------------- #
@@ -947,7 +914,7 @@ def _enum_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
     """
     check_keywords(doc, pointer, Position.ROOT, lower_enum.CLAIMS, mod=mod)
     return compiler.bind_without_a_model(
-        mod, name, compiler.render_enum(lower_enum.decide(doc, name, pointer))
+        mod, name, lower_enum.decide(doc, name, pointer)
     )
 
 
@@ -1445,7 +1412,9 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     for document in sorted(lowered):
         mod, symbol, doc = lowered[document]
         rel = module_path(document)
-        out.files[f"{rel}.py"] = render(mod, symbol, composed.get(document, frozenset()))
+        out.files[f"{rel}.py"] = render.module(
+            mod, exported(mod, symbol, composed.get(document, frozenset()))
+        )
         out.emitted[document] = f"{PACKAGE}.{rel.replace('/', '.')}"
         out.declared[document] = dict(mod.declared)
         out.adopted[document] = dict(mod.adopted)
@@ -1505,7 +1474,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     for document in sorted(lowered):
         for name, (kind, cons, fmt) in lowered[document][0].aliases.items():
             constraints_module.record(aliases, name, kind, cons, format=fmt)
-    out.beside[f"{constraints_module.MODULE.rsplit('.', 1)[1]}.py"] = constraints_module.declare(
+    out.beside[f"{constraints_module.MODULE.rsplit('.', 1)[1]}.py"] = render.constraints_module(
         aliases
     )
     # The refusal REPORT is not a file in the tree.  It was, and the documented

@@ -51,7 +51,7 @@ sites repeat at 2+ and 28 occur once.
 
 **A constrained CONTAINER is here too, and it is GENERIC, which is what makes it
 nameable.**  A bound on a list is a bound on the FIELD holding it wherever there IS
-a field (``codegen.lower.containers``, and ``compiler.Type`` carries no constraints
+a field (``codegen.lower.containers``, and ``ir.TypeRef`` carries no constraints
 for a container), so ``Annotated[list[str], Field(min_length=1)]`` is already the
 correct form at a PROPERTY: measured on the tree this lands on, 21 such shapes over
 30 sites, 2 of them repeating (``list[str]`` at 8 sites and ``list[RightUse]`` at
@@ -74,10 +74,10 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import Any
 
-from codegen import compiler
-from codegen.compiler import Rendered
+from codegen import compiler, ir
 
 #: The module an emitted alias is reachable at, and the only path to one: there is
 #: no flat root and no second spelling.  PUBLIC, unlike ``adcp.types._schemas``,
@@ -89,9 +89,9 @@ MODULE = "adcp.types.constraints"
 #: One resolved shape, as this module records and declares it: the document's own type
 #: word, its constraint keywords in the document's spelling, and its ``format`` where
 #: one is part of the shape.  The ``format`` is a THIRD member rather than a key in the
-#: constraints, because ``compiler.render_alias`` takes it in its own parameter -- it
-#: becomes ``json_schema_extra`` and not a ``Field`` bound -- and folding it in would
-#: make every reader of a shape unfold it again.
+#: constraints, because an ``ir.TypeRef`` carries it in its own slot -- it becomes
+#: ``json_schema_extra`` and not a ``Field`` bound -- and folding it in would make every
+#: reader of a shape unfold it again.
 Shape = tuple[str, dict[str, Any], str | None]
 
 #: **A ``format: uri`` field's type FOLLOWS THE DOCUMENT'S OWN PATTERN** (D5), so
@@ -102,8 +102,9 @@ Shape = tuple[str, dict[str, Any], str | None]
 #: named for provenance rather than after a standard, because pydantic exports 22
 #: URL types and none is https-only -- a name like ``HttpsUrl`` would read as an
 #: upstream export a reader cannot find.
+#: The STATEMENT it declares is ``render.URL_LINE``: a line of Python is text, and §7
+#: puts every one of those behind ``render.py``.
 URL = "AdCPUrl"
-URL_LINE = f'{URL} = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]'
 
 #: ``HttpUrl`` is pydantic's own, RE-EXPORTED here rather than imported from
 #: ``pydantic`` at each site.  The import is the declaration: no assignment, so
@@ -112,13 +113,6 @@ URL_LINE = f'{URL} = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])
 #: consumer reading a module that declared only ``AdCPUrl`` would read the
 #: https-only arm as the whole rule.  One place names both arms.
 HTTP_URL = "HttpUrl"
-
-URL_IMPORTS = {
-    ("typing", "Annotated"),
-    ("pydantic", "AnyUrl"),
-    ("pydantic", "UrlConstraints"),
-    ("pydantic", HTTP_URL),
-}
 
 #: The one pattern that restricts a ``uri`` node's SCHEME to https and says nothing
 #: else, which is the gate D5 states and the one it counts: ``^https://`` at **47
@@ -198,7 +192,7 @@ CONTAINER: dict[str, tuple[str, tuple[str, ...]]] = {
 #: A hand-written row beside a derivation, which is the same arrangement :func:`standard`
 #: already is -- rung 2 is a named type for a shape where one says exactly this, and
 #: this is that one level up.  It is a DECISION and so is declared whatever the run met,
-#: for :data:`URL_LINE`'s reason: the plan names it, and a consumer annotating their own
+#: for ``render.URL_LINE``'s reason: the plan names it, and a consumer annotating their own
 #: non-empty list imports it from here.  Keyed by the constraint, so the name is still a
 #: function of the constraint alone.
 NAMED_CONTAINERS: dict[tuple[str, tuple[tuple[str, Any], ...]], str] = {
@@ -415,140 +409,63 @@ def record(
     into[name] = shape
 
 
-def _annotation(kind: str, constraints: Mapping[str, Any]) -> compiler.Type:
+def _annotation(kind: str, constraints: Mapping[str, Any]) -> ir.TypeRef:
     """The type an alias's annotation wraps: a scalar, or a container over its
     PARAMETERS.
 
     A container alias is generic (see :data:`CONTAINER`), so what goes inside
     ``list[...]`` / ``dict[..., ...]`` is the type variable and not a decided type.  It
-    is a :class:`compiler.Type` like any other -- ``local`` because the variable is a
-    name this module declares, so the compiler adds no import for it -- which is what
-    keeps the annotation the compiler's on this path too.
+    is an :class:`codegen.ir.TypeRef` like any other -- ``local`` because the variable is
+    a name this module declares, so the renderer adds no import for it -- which is what
+    keeps the annotation the renderer's on this path too.
     """
     if kind not in CONTAINER:
-        return compiler.Type(SCALAR_PATH[kind])
-    params = [compiler.Type(p, local=True) for p in CONTAINER[kind][1]]
+        return ir.TypeRef(SCALAR_PATH[kind])
+    params = [ir.TypeRef(p, local=True) for p in CONTAINER[kind][1]]
     if kind == "array":
-        return compiler.Type(container="list", of=tuple(params))
-    return compiler.Type(container="dict", of=(params[1],), key=params[0])
+        return ir.TypeRef(container="list", of=tuple(params))
+    return ir.TypeRef(container="dict", of=(params[1],), key=params[0])
 
 
-def declare(shapes: Mapping[str, Shape]) -> str:
-    """The text of ``adcp/types/constraints.py``, for the shapes a run met.
+def declarations(shapes: Mapping[str, Shape]) -> tuple[dict[str, ir.AliasDecl], list[str]]:
+    """The alias DECLARATIONS a run's shapes come to, and the type variables they need.
 
-    :data:`URL` is declared whatever the run met, because it is a DECISION rather
-    than a derivation -- D5 names it, ``emit.FORMAT_TYPES`` points every
-    ``format: uri`` field at it, and a consumer who wants to parse a URL of their
-    own imports it from here.  :data:`NAMED_CONTAINERS` is declared for the same
-    reason: section 5 names ``NonEmptyList[T]`` and a consumer annotating a non-empty
-    list of their own imports it from here.  The derived aliases are exactly the
-    shapes the run resolved, sorted, so the module is a function of the run and holds
-    no alias nothing names.
+    :data:`NAMED_CONTAINERS` is declared whatever the run met, because it is a DECISION
+    rather than a derivation: section 5 names ``NonEmptyList[T]`` and a consumer
+    annotating a non-empty list of their own imports it from here.  The derived aliases
+    are exactly the shapes the run resolved, so the module is a function of the run and
+    holds no alias nothing names.  (:data:`URL` is the other such decision and its
+    statement is ``render.URL_LINE``, because the type it wraps is pydantic's own and has
+    no shape to derive.)
 
-    A generic alias needs its type VARIABLES declared, and exactly the ones the lines
-    use are: ``T`` is always one, because ``NonEmptyList`` is always declared, and
-    ``K``/``V`` arrive with the first bounded mapping.  Derived rather than always
-    written, so the module holds no name nothing in it reads.
+    A generic alias needs its type VARIABLES declared, and exactly the ones its lines use
+    are: ``T`` is always one, because ``NonEmptyList`` is always declared, and ``K``/``V``
+    arrive with the first bounded mapping.  Derived rather than always written, so the
+    module holds no name nothing in it reads.
 
-    **The ANNOTATION is the compiler's**, read off the same ``DataModelField`` a
-    class property gets (``compiler.render_alias``), so a ``minLength`` on an
-    alias here and a ``minLength`` on a property there cannot come to be spelled
-    two different ways.  What is this function's is the module around them.
-    ``render_alias`` also reports the ``SchemaRef`` import a ROOT alias module
-    needs; these aliases carry no schema reference -- an alias has no document --
-    so that one import is dropped here by name.
+    **The bound and the format ride on the alias's own TYPE** (section 2, and
+    ``ir.TypeRef.facts``), which is the same carrier a class property's type is, so a
+    ``minLength`` on an alias here and a ``minLength`` on a property there cannot come to
+    be spelled two different ways.  ``render.constraints_module`` writes the module around
+    them; nothing here is text.
     """
-    declared: dict[str, Shape] = {
+    shaped: dict[str, Shape] = {
         **{name: (kind, dict(cons), None) for (kind, cons), name in NAMED_CONTAINERS.items()},
         **shapes,
     }
-    imports: set[tuple[str, str]] = set(URL_IMPORTS)
-    lines: list[str] = [URL_LINE]
+    declared: dict[str, ir.AliasDecl] = {}
     variables: list[str] = []
-    for name in sorted(declared):
-        kind, cons, fmt = declared[name]
+    for name in sorted(shaped):
+        kind, cons, fmt = shaped[name]
         variables += [p for p in CONTAINER.get(kind, ("", ()))[1] if p not in variables]
-        rendered: Rendered = compiler.render_alias(
-            name, _annotation(kind, cons), cons, format=fmt
+        declared[name] = ir.AliasDecl(
+            name,
+            replace(_annotation(kind, cons), facts=dict(cons), format=fmt),
         )
-        lines.append(rendered.text)
-        imports |= {i for i in rendered.imports if i != ("adcp.types._base", "SchemaRef")}
-    if variables:
-        imports.add(("typing", "TypeVar"))
-        lines = [f'{p} = TypeVar("{p}")' for p in sorted(variables)] + ["", *lines]
-    by_module: dict[str, set[str]] = {}
-    for module, item in imports:
-        by_module.setdefault(module, set()).add(item)
-    # The emitted modules' own layout (``emit.render``): stdlib, then the library,
-    # one blank line between the groups.  Spelled here rather than shared, because
-    # ``emit.render`` writes a MODULE OF CLASSES and takes a ``compiler.Module``
-    # this file has none of -- and two of its four ranks (``_base``, a sibling
-    # schema module) cannot occur here at all: an alias imports nothing but the
-    # annotation machinery.
-    groups = [
-        [f"from {m} import {', '.join(sorted(by_module[m]))}" for m in sorted(by_module) if keep(m)]
-        for keep in (lambda m: m != "pydantic", lambda m: m == "pydantic")
-    ]
-    head: list[str] = []
-    for group in groups:
-        if group:
-            head += ["", *group]
-    return "\n".join(
-        [HEADER, DOCSTRING, "", "from __future__ import annotations", *head, "", "", *lines, ""]
-    )
-
-
-#: The same first line every emitted module carries, less the document name: this
-#: module is the one output that belongs to no document.
-HEADER = "# Generated by codegen.emit. Do not edit."
+    return declared, sorted(variables)
 
 
 #: ``compiler.SCALAR`` keyed by the document's own word, which is what this module
 #: is handed.  Named here rather than inverted at the call site so the two
 #: spellings of a scalar type have one mapping between them.
 SCALAR_PATH = {"string": "str", "integer": "int", "number": "float"}
-
-DOCSTRING = '''"""Constrained types, each named for the constraint it carries.
-
-GENERATED by ``codegen.emit``; see ``codegen/constraints.py``.  Edit neither --
-the tree is ``f(bundle, emitter, pinned compiler)`` and a hand edit here is a
-fact no input states (P10).
-
-Every other type this SDK emits is reachable at ``adcp.types.<domain>.<Name>``,
-where the domain is the schema document's own path.  A type derived from a
-CONSTRAINT belongs to no document, so it has no domain and lives here instead.
-Its name is derived from the constraint and from nothing else -- never from a
-property key and never from a domain word, because two fields sharing a bound
-are not thereby the same idea.  A ``pattern`` has no readable name that is not a
-concept, so it contributes eight hex digits of its own SHA-256.  Two distinct
-constraints deriving one name is a build failure rather than a shared alias.
-
-A bound on a CONTAINER is named here too, and such an alias is GENERIC: the bound is
-the alias and the contents are its parameter, so ``NonEmptyList[MediaBuyStatus]`` is a
-list of statuses with at least one member and ``NonEmptyList`` names the bound once for
-every content type.  ``NonEmptyList[T]`` is declared whatever a run met, because the
-design names it and a consumer annotating a non-empty list of their own imports it from
-here.
-
-Two names here are DECISIONS rather than derivations, and together they are this
-SDK's whole answer for ``format: uri``: a field's type FOLLOWS THE DOCUMENT'S OWN
-PATTERN.
-
-``AdCPUrl`` annotates a field whose document restricts the scheme to https
-(``pattern: ^https://``, 47 of the bundle's 300 ``uri`` positions).  There the type
-and the document agree.
-
-``HttpUrl`` -- pydantic's own, re-exported here so that both arms are named in one
-place -- annotates every other ``uri`` field.  ``AdCPUrl`` everywhere was tried and
-withdrawn: ``format: uri`` is RFC 3986, so a document stating only
-``{"type": "string", "format": "uri"}`` admits ``http://``, ``urn:`` and
-``file:///`` as well, and refusing those made the SDK stricter than the spec it
-implements -- at 228 of 300 positions.  ``HttpUrl`` still refuses ``urn:`` and
-``file:``, which is a named ceiling rather than an oversight.
-
-Either way the document's own ``pattern`` stays with the schema half: the bundle
-states eight distinct ones across 73 of its 300 ``uri`` uses, and no URL type can
-carry a ``pattern`` at all -- pydantic refuses to build one.  ``strict_validate``
-applies the document before the constructor ever runs, so the accepted set at the
-entry point is the document's.
-"""'''

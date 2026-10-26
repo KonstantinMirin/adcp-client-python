@@ -5,7 +5,7 @@ with the reason written beside it -- it constrains nothing, so ignoring it canno
 the model wider than its document, and it is READ there as the property §4 "Names" takes
 a branch's name from.  ``union.nested``'s screen refused it, on a sentence whose stated
 mechanism is a CONSTRAINING sibling's: the fact has nowhere to go on a
-``compiler.Type``, and dropping it is reported ``missing`` by the comparison.
+``ir.TypeRef``, and dropping it is reported ``missing`` by the comparison.
 
 That mechanism does not reach this keyword, and both halves are graded here:
 
@@ -151,7 +151,7 @@ def test_a_constraining_sibling_of_a_nested_union_still_refuses() -> None:
     """The perturbation: the screen was narrowed by ONE NAME.
 
     The same node with a ``minLength`` beside the union states a fact about the instance
-    with nowhere to go on a ``compiler.Type``, so it refuses on
+    with nowhere to go on an ``ir.TypeRef``, so it refuses on
     :data:`union._NESTED_SIBLING` -- and it refuses on THAT keyword, not on the
     ``discriminator`` beside it, which is the attribution a refusal report is for.
     """
