@@ -67,7 +67,7 @@ from adcp.types._runtime import Dependencies, RuleBound
 from codegen import bundle, compiler, emit, harness, ir, keywords, render
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
-from codegen.lower import scalars
+from codegen.lower import names, scalars
 from codegen.schema import nodes, parse as schema_parse
 from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
@@ -1703,7 +1703,7 @@ def _rendered(emitted: dict, key: str, model: Any) -> dict:
     Python name cannot be the document's key is carried under an ALIAS that IS
     the document's key (``compiler.field_name``'s own contract: "a key is carried
     as-is or it is carried under an ALIAS, never dropped").  Indexing by
-    ``compiler.field_name(key)`` -- the PYTHON name -- is what both callers used
+    ``names.field_name(key, render.RESERVED)`` -- the PYTHON name -- is what both callers used
     to do, and it raised ``KeyError`` the moment an aliased property entered the
     graded population: ``trusted-match/identity-match-request.json#``'s
     ``$schema`` is ``schema_`` in Python and ``$schema`` on the wire, and it
@@ -1715,7 +1715,7 @@ def _rendered(emitted: dict, key: str, model: Any) -> dict:
     -- a model that rendered the Python name would be carrying a key its document
     does not state, which is the defect this spelling would otherwise hide.
     """
-    python_name = compiler.field_name(key)
+    python_name = names.field_name(key, render.RESERVED)
     if python_name != key:
         field = getattr(model, "model_fields", {}).get(python_name)
         assert field is not None, (key, python_name, "no field under the Python name")
@@ -2835,7 +2835,7 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
             symbol = _symbol(target)
             module = emit.relative_module(document, target)
             assert (module, symbol) in imported, (document, key, module, symbol)
-            got = annotated[compiler.field_name(key)]
+            got = annotated[names.field_name(key, render.RESERVED)]
             named = {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}
             assert symbol in named, (document, key, ast.unparse(got))
             carried = {
@@ -4063,6 +4063,18 @@ def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
 # --------------------------------------------------------------------------- #
 # step 6: containers and mappings
 # --------------------------------------------------------------------------- #
+def _assigned(mod: compiler.Module) -> ir.Module:
+    """One walked module with §4's symbols assigned, which is what the renderer takes.
+
+    §14 step 7: the walk declares at a POINTER and ``codegen/lower/names.py`` assigns
+    every name in one pass, so a test that renders a hand-lowered module runs the pass
+    exactly as ``emit.decidable`` does rather than reading a name off the walk.
+    """
+    bound = names.assign(mod)
+    assert not isinstance(bound, Refusal), bound
+    return bound
+
+
 def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any, str]:
     """Lower a document written HERE, and return its model and the module text.
 
@@ -4077,20 +4089,32 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
     The import the walk emits names a sibling MODULE, which does not exist here, so
     the symbol is pre-bound in the namespace instead -- the import itself is asserted
     separately, off ``mod.imports``.
-    """
-    targets = binds or {}
 
-    def bind(uri: str, pointer: str) -> compiler.Target:
-        for path, (name, _type) in targets.items():
+    **The targets are DATA now** (§14 step 7): the run resolves every reference site
+    before the document is parsed, so the fixture states the answers rather than a
+    binder, keyed by the SITE ``(uri, pointer)`` the way ``emit.resolve`` keys them.  And
+    the NAMES are assigned after the walk, so the text is rendered from what
+    ``lower/names.py`` returns.
+    """
+    held = binds or {}
+    sites: dict[tuple[str, str], compiler.Target] = {}
+    for pointer, uri, _ in bundle.references(doc):
+        for path, (name, _type) in held.items():
             if uri.endswith(path):
                 module = f".{path.rsplit('/', 1)[-1].removesuffix('.json')}"
-                return compiler.Target(module, name)
-        raise AssertionError(f"the fixture binds no target for {uri}")
+                sites[(uri, pointer)] = compiler.Target(module, name)
+                break
+        else:
+            raise AssertionError(f"the fixture binds no target for {uri}")
 
-    mod, symbol = emit.lower_document("constructed.json", doc, bind)
-    text = render.module(mod, emit.exported(mod, symbol))
+    mod, _ = emit.lower_document(
+        "constructed.json", doc, sites, reserved=render.RESERVED
+    )
+    bound = names.assign(mod)
+    assert not isinstance(bound, Refusal), bound
+    text = render.module(bound, emit.exported(mod, bound))
     module = types.ModuleType("_constructed_fixture")
-    module.__dict__.update({name: type_ for name, type_ in targets.values()})
+    module.__dict__.update({name: type_ for name, type_ in held.values()})
     # D5's aliases are reached by an ABSOLUTE import, so they survive the strip
     # below -- and a constructed document can derive a shape the INSTALLED module
     # has no site for, which is an ``ImportError`` here rather than a test failure
@@ -4116,7 +4140,7 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
         )
     finally:
         del sys.modules[module.__name__]
-    return module.__dict__[symbol], text
+    return module.__dict__[bound.root], text
 
 
 def _accept_of(doc: dict, model: Any) -> Any:
@@ -4292,8 +4316,9 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
         "type": "object",
         "properties": {"a": {"type": "array", "items": {"type": "string"}, "uniqueItems": True}},
     }
-    mod, symbol = emit.lower_document("u.json", held)
-    text = render.module(mod, emit.exported(mod, symbol))
+    mod, _ = emit.lower_document("u.json", held, reserved=render.RESERVED)
+    bound = _assigned(mod)
+    text = render.module(bound, emit.exported(mod, bound))
     assert "UniqueItems('a')" in text, text
     assert "json_schema_extra={'uniqueItems': True}" in text, text
 
@@ -4509,7 +4534,12 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     model, text = _constructed(doc, binds={"core/tag.json": ("Tag", Tag)})
     assert "dict[Tag, int]" in text, text
     mod, _ = emit.lower_document(
-        "constructed.json", doc, lambda *_: compiler.Target(".tag", "Tag")
+        "constructed.json",
+        doc,
+        {
+            (uri, pointer): compiler.Target(".tag", "Tag")
+            for pointer, uri, _ in bundle.references(doc)
+        },
     )
     assert (".tag", "Tag") in mod.imports
     model.model_validate({"m": {"abc": 1}})  # the key type admits it
@@ -4734,7 +4764,7 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
             ],
         },
     )
-    text = "\n".join(one.text for one in render.blocks(mod.declarations))
+    text = "\n".join(one.text for one in render.blocks(_assigned(mod).declarations))
     assert symbol == "R"
     assert "ConditionalRequired" in text, text
     assert "propertyNames" not in text and "s" in text, text
@@ -5075,7 +5105,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     )
     assert symbol == "MN"
     assert "v: str | None" in "\n".join(
-        one.text for one in render.blocks(mod.declarations)
+        one.text for one in render.blocks(_assigned(mod).declarations)
     ), mod.declarations
 
     # A keyword no arm can carry constrains nothing, so it refuses by name.
@@ -5304,6 +5334,72 @@ def test_a_constraint_inside_a_container_is_named_and_nothing_is_left_refused() 
 # --------------------------------------------------------------------------- #
 # the run itself
 # --------------------------------------------------------------------------- #
+def test_one_documents_module_is_the_same_text_alone_as_with_the_whole_bundle() -> None:
+    """§10's one-document property, asserted DIRECTLY: "one document's module is the
+    same text whether it is emitted alone or with the whole bundle, because the
+    per-document ``named`` set is ``bundle.named(edges)``, a function of the bundle and
+    not of the run's document set."
+
+    It is the stronger half of §14 step 7's check and it is that step's own: a byte
+    compare proves the tree did not move, and this proves no part of a module can move
+    with the run's document SET -- which is the coupling §9 forbids ("do not decide one
+    document's output by a census over the run: a name, a shape or an import that depends
+    on which other documents the run includes makes a one-document emission and a
+    whole-bundle emission disagree about the same document").
+
+    **The document is chosen to be a REAL test and not a leaf**, and the three things
+    that make it one are asserted here rather than assumed:
+
+    * it CONTENT-DEDUPS, and in the shape §4's own sentence describes: three pointers
+      adopt a class an earlier position declared, each under the name ITS OWN position
+      derives -- ``/oneOf/1/properties/dimensions`` binds ``PreviewRenderUrlDimensions``
+      and is declared as ``PreviewRenderHtmlDimensions``, which is "every later position
+      binding its own derived name to that class by identity";
+    * it IMPORTS ACROSS DOCUMENTS, so the module's import block is derived from two
+      document paths and the target had to be lowered and NAMED first -- which is what
+      the dependency order §10 computes is for;
+    * it declares more than its root, so the symbol table has nested names in it.
+
+    A leaf scalar would satisfy the property for free.
+    """
+    document = "creative/preview-render.json"
+    rel = emit.module_path(document) + ".py"
+    whole = emit.emit(BUNDLE, population())
+    assert document in whole.emitted, sorted(whole.refusals)[:5]
+    # The three facts that make this document a real test of the property, each read as
+    # the names themselves rather than as a count: a pinned count is not a ratchet.
+    assert whole.adopted[document] == {
+        "/oneOf/1/properties/dimensions": "PreviewRenderUrlDimensions",
+        "/oneOf/2/properties/dimensions": "PreviewRenderUrlDimensions",
+        "/oneOf/2/properties/embedding": "PreviewRenderUrlEmbedding",
+    }, whole.adopted[document]
+    assert whole.declared[document] == {
+        "": "PreviewRender",
+        "/oneOf/0": "PreviewRenderUrl",
+        "/oneOf/0/properties/dimensions": "PreviewRenderUrlDimensions",
+        "/oneOf/0/properties/embedding": "PreviewRenderUrlEmbedding",
+        "/oneOf/1": "PreviewRenderHtml",
+        "/oneOf/1/properties/dimensions": "PreviewRenderHtmlDimensions",
+        "/oneOf/1/properties/embedding": "PreviewRenderHtmlEmbedding",
+        "/oneOf/2": "PreviewRenderBoth",
+        "/oneOf/2/properties/dimensions": "PreviewRenderBothDimensions",
+        "/oneOf/2/properties/embedding": "PreviewRenderBothEmbedding",
+    }, whole.declared[document]
+    imported = [
+        line for line in whole.files[rel].splitlines() if line.startswith("from ..")
+    ]
+    assert imported == [
+        "from ..core.preview_renderer_metadata import PreviewRendererMetadata"
+    ], imported
+
+    alone = emit.emit(BUNDLE, [document])
+    assert alone.files[rel] == whole.files[rel]
+    # And the two tables the naming pass produces are the same, which says the text
+    # agreeing is not two different symbol tables rendering alike.
+    assert alone.declared[document] == whole.declared[document]
+    assert alone.adopted[document] == whole.adopted[document]
+
+
 def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     """P10, and D8's compare: the tree equals f(bundle, emitter, pinned compiler),
     so a defect is fixed in one of those and nothing rewrites the output.
@@ -7400,7 +7496,7 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
     # the same claim read off the artifact rather than off a refusal.
     module = emit.lower_document("core/start-timing.json", bundle.read(BUNDLE, "core/start-timing.json"))[0]
     assert "Literal['asap']" in "\n".join(
-        one.text for one in render.blocks(module.declarations)
+        one.text for one in render.blocks(_assigned(module).declarations)
     ), module.declarations
 
 
@@ -7659,7 +7755,7 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                         line.startswith(f"{where}: {name}:")
                         for line in out.carries_nothing.get(document, [])
                     ), (document, where, name, out.carries_nothing.get(document))
-                    assert compiler.field_name(name) not in cls.model_fields, (document, where)
+                    assert names.field_name(name, render.RESERVED) not in cls.model_fields, (document, where)
                 keys -= refused
                 if keys == {"$ref"}:
                     # Clause 1.
@@ -7680,7 +7776,7 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                     named.append("fields")
                     for key in conjunct["properties"]:
                         field_keys += 1
-                        assert compiler.field_name(key) in cls.model_fields, (
+                        assert names.field_name(key, render.RESERVED) in cls.model_fields, (
                             document,
                             where,
                             key,
@@ -7691,7 +7787,7 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                     named.append("required")
                     for key in conjunct["required"]:
                         required_names += 1
-                        field = cls.model_fields[compiler.field_name(key)]
+                        field = cls.model_fields[names.field_name(key, render.RESERVED)]
                         assert field.is_required(), (document, where, key)
                 if keys & frozenset(
                     compiler.declaration_rule_sources(conjunct, keywords.Position.CONJ)

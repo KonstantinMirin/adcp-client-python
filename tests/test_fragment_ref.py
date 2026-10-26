@@ -719,19 +719,39 @@ def test_two_symbols_at_one_pointer_is_refused_rather_than_ordered() -> None:
     reference import whichever the walk declared last.
 
     Measured 0 times over the whole population, so this grades the guard on a
-    ``Module`` directly -- the symmetric case to the duplicate-NAME refusal beside it,
-    which the same method raises.
+    ``Module`` directly -- the symmetric case to the duplicate-NAME refusal beside it.
+
+    **The two halves are checked in two places now, because §14 step 7 split them.**
+    ``Module.declare`` keeps the POINTER check, which is a fact about the walk; the
+    duplicate-SYMBOL check is ``lower/names.py``'s, because the walk computes no symbol
+    and "two nodes in this document derive the class name X" is a statement about §4's
+    rules.  Both are VERDICTS and both name the pointer that collided.
     """
+    from codegen import ir
     from codegen.compiler import Module
+    from codegen.lower import names
 
     mod = Module(document="x.json")
-    mod.declare("A", "/properties/a", "A = int")
-    first = refusal_from(mod.declare("B", "/properties/a", "B = str"))
+    one = ir.AliasDecl("/properties/a", ir.TypeRef("int"))
+    assert mod.declare("/properties/a", one) is None
+    first = refusal_from(
+        mod.declare("/properties/a", ir.AliasDecl("/properties/a", ir.TypeRef("str")))
+    )
     assert first.keyword == "$ref"
     assert first.pointer == "/properties/a"
-    assert "'A'" in first.detail and "'B'" in first.detail
-    second = refusal_from(mod.declare("A", "/properties/b", "A = str"))
+    assert "AliasDecl" in first.detail
+
+    # The SYMBOL half: two pointers whose hops derive one name.
+    other = Module(document="x.json")
+    assert other.declare("/properties/a", ir.AliasDecl("/properties/a", ir.TypeRef("int"))) is None
+    assert other.declare("/properties/b", ir.AliasDecl("/properties/b", ir.TypeRef("str"))) is None
+    other.hops[""] = names.Root("X")
+    other.hops["/properties/a"] = names.Property("", "same")
+    other.hops["/properties/b"] = names.Property("", "same")
+    second = refusal_from(names.assign(other))
     assert second.keyword == "title"
+    assert second.pointer == "/properties/b"
+    assert "derive the class name 'XSame'" in second.detail, second.detail
 
 
 def test_no_document_of_the_bundle_declares_two_symbols_at_one_pointer() -> None:

@@ -209,7 +209,7 @@ _SCALAR_WORD = {path: word for word, path in SCALAR.items()}
 # --------------------------------------------------------------------------- #
 # the three rows
 # --------------------------------------------------------------------------- #
-def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided | Refusal:
+def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
     """One scalar type word: the constraint facts on the TYPE, and the format.
 
     §2: **constraints bind to the type, not the field.**  A constrained scalar is
@@ -268,7 +268,7 @@ def lower(node: nodes.Scalar, name_hint: str, mod: Module) -> Decided | Refusal:
     return Decided(ir.TypeRef(SCALAR[word]), constraints, format=fmt)
 
 
-def null(node: nodes.Null, name_hint: str, mod: Module) -> Decided | Refusal:
+def null(node: nodes.Null, mod: Module) -> Decided | Refusal:
     """``type: null``: nothing, which is ``None``."""
     refused = check_keywords(node, {"type"}, mod=mod)
     if refused is not None:
@@ -276,7 +276,7 @@ def null(node: nodes.Null, name_hint: str, mod: Module) -> Decided | Refusal:
     return Decided(ir.TypeRef("None"))
 
 
-def typeless(node: nodes.Typeless, name_hint: str, mod: Module) -> Decided | Refusal:
+def typeless(node: nodes.Typeless, mod: Module) -> Decided | Refusal:
     """No type and no kind keyword: a ``not`` over a value, or nothing.
 
     At ROOT there are two shapes and §4's table has a row for neither, so the keyword a

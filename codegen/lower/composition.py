@@ -22,13 +22,13 @@ from codegen.refusal import Refusal
 from codegen.schema import nodes
 
 
-def lower(node: nodes.Composition, name_hint: str, mod: Module) -> Decided | Refusal:
-    """The composed class, declared under this position's name, as a local type.
+def lower(node: nodes.Composition, mod: Module) -> Decided | Refusal:
+    """The composed class, declared at this node's POINTER, as a local type.
 
     A conjunct's refusal is returned upward unchanged (§6), naming the conjunct's own
     pointer rather than this node's.
     """
-    declared = compiler.lower_composition(node, name_hint, mod)
+    declared = compiler.lower_composition(node, mod)
     if isinstance(declared, Refusal):
         return declared
     return Decided(ir.TypeRef(declared, local=True))

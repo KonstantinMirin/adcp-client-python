@@ -61,7 +61,6 @@ def _branch(**node: Any) -> lower_union.Branch:
     """
     declaration = dict(node)
     return lower_union.Branch(
-        name="",
         pointer="/oneOf/0",
         node=declaration,
         parsed=schema_parse.parse(

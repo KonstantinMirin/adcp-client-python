@@ -395,6 +395,146 @@ def document_for(document_uri: str, documents: Collection[str]) -> str | None:
     return max(found, key=len) if found else None
 
 
+class Edge(NamedTuple):
+    """One ``$ref``: where it is written, and what it names.
+
+    ``docs/plan/architecture.md`` §4 names this the source layer's own export -- "the
+    reference graph over the bundle (``edges``: every ``(document, pointer, target
+    document, target pointer)``, read off the raw mappings by the table's descent
+    column)" -- and §10 is what asks for it: the run "reads the reference edges off the
+    bundle (``bundle.edges``), takes the transitive closure of the named documents over
+    them ... orders the closure so every document follows the documents it references".
+
+    **ONE SCAN of the bundle, and three readings of it.**  :func:`named` is §10's
+    per-document ``named`` set, :func:`composed` is the pointers another document's root
+    ``allOf`` composes, and the run derives the graph from the same tuples.  The three
+    were two scans and a closure walked lazily through a binder, and each read its own
+    answer off the bundle; a scan per question is how two of them come to disagree about
+    which ``$ref`` is a reference at all (§11's descent-table row).
+
+    :attr:`position` is the descent column's own answer and is never recovered from the
+    pointer string (§6), and :attr:`conjunct_of_root` is the same fact one hop up: the
+    referring node is an entry of the DOCUMENT ROOT's ``allOf`` list, which
+    :func:`subschemas` is what says.  A reader asking either from the spelling of
+    ``pointer`` would be the reading §6 removed.
+    """
+
+    #: The referring document, bundle-relative.
+    document: str
+    #: The referring node's JSON Pointer inside :attr:`document`.
+    pointer: str
+    #: The position the referring node sits at.
+    position: keywords.Position
+    #: The ``$ref`` exactly as the document writes it.
+    uri: str
+    #: ``True`` where the document half is empty: a pointer into :attr:`document`
+    #: itself, which resolves against the referrer and names no other document.
+    local: bool
+    #: The bundle document the URI's document half names, or ``None`` where it names
+    #: none.  ``None`` for a local reference too, whose target IS :attr:`document`.
+    target: str | None
+    #: The pointer half, ``""`` for a reference naming a root.
+    into: str
+    #: The referring node is an entry of the document ROOT's ``allOf`` list.
+    conjunct_of_root: bool
+
+
+def edges(bundle_dir: Path) -> tuple[Edge, ...]:
+    """Every reference in the bundle, in (document, document-order) order.
+
+    Reads every portable document ONCE.  Sorted by document, like :func:`portable` (P7),
+    and in each document's own order, because :func:`references` states its result is in
+    document order and the run reads the first of them by name.
+    """
+    known = set(portable(bundle_dir))
+    out: list[Edge] = []
+    for document in sorted(known):
+        doc = read(bundle_dir, document)
+        # The root's own ``allOf`` entries, by the descent step and not by the spelling
+        # of a pointer: :func:`composed` asks which nodes another document's ROOT
+        # composes, and "of the root" is one hop of :func:`subschemas`.
+        conjuncts = {
+            suffix
+            for keyword, suffix, _, _ in subschemas(doc)
+            if keyword == "allOf"
+        }
+        for pointer, uri, position in references(doc):
+            head, into = split_ref(uri)
+            out.append(
+                Edge(
+                    document=document,
+                    pointer=pointer,
+                    position=position,
+                    uri=uri,
+                    local=not head,
+                    target=document_for(head, known) if head else None,
+                    into=into,
+                    conjunct_of_root=pointer in conjuncts,
+                )
+            )
+    return tuple(out)
+
+
+def named(found: Collection[Edge]) -> dict[str, frozenset[str]]:
+    """§10's per-document ``named`` set: the pointers of a document's nodes that a
+    ``$ref`` NAMES, keyed by the document the reference RESOLVES AGAINST.
+
+    :func:`named_nodes`' rule, read off :func:`edges` rather than off a scan of its own.
+    """
+    out: dict[str, set[str]] = {}
+    for edge in found:
+        if not edge.into:
+            continue
+        # An absolute fragment reference asks of the document its own half names; a
+        # LOCAL one asks of the REFERRING document, because that is what a pointer with
+        # no document half means.
+        document = edge.document if edge.local else edge.target
+        if document is not None:
+            out.setdefault(document, set()).add(edge.into)
+    return {d: frozenset(p) for d, p in out.items()}
+
+
+def composed(found: Collection[Edge]) -> dict[str, frozenset[str]]:
+    """For each document, the pointers of its nodes that another document's root
+    ``allOf`` COMPOSES.
+
+    The companion to :func:`named`, and the same kind of fact: a function of the BUNDLE
+    and not of the run's document set, so a module's ``__all__`` does not depend on who
+    else was emitted (P7) and the one-document command writes the bytes the
+    whole-population run writes.  ``emit.exported`` says what it is for -- a composing
+    subclass re-uses the base's decided field, so the base's field types cross the
+    module boundary while no ``$ref`` fragment names them.
+
+    A bare conjunct composes the target's ROOT, whose pointer is ``""``; the one
+    conjunct in this bundle that carries a fragment
+    (``core/package-delivery-metric-value.json`` -> ``core/delivery-metric-aggregate.json#/oneOf/0``)
+    composes that node, and it is recorded at its own pointer rather than folded into the
+    root -- a branch's fields are not the union base's.  A LOCAL conjunct composes a node
+    of its own document, whose symbol that module declares and never imports, so it is
+    that document's own entry -- the same reason :func:`named` keys a local reference
+    against the referring document.
+
+    **It was ``emit._composed_nodes`` and §11 puts it here**, in the layer that knows
+    "files, paths, ``$ref`` URIs, edges, the record".  It read every portable document a
+    SECOND time, after the ``named_nodes`` pass -- ~2 s on the 3.2 bundle -- and the
+    merge of the two scans its docstring named as the upgrade path is :func:`edges`:
+    both readings are now projections of one scan.  The clause the predicate it asked
+    before carried -- "a root ``allOf`` and no union beside it" -- is empty for this
+    question: measured over the 1,054 portable documents, the pairs a root ``allOf``
+    names are the same 27 either way, because ``union.ROOT_CONJUNCTS`` refuses a union
+    root carrying ``allOf``, so such a root never composes and its conjuncts' fields
+    never cross a module boundary.
+    """
+    out: dict[str, set[str]] = {}
+    for edge in found:
+        if not edge.conjunct_of_root:
+            continue
+        document = edge.document if edge.local else edge.target
+        if document is not None:
+            out.setdefault(document, set()).add(edge.into)
+    return {d: frozenset(p) for d, p in out.items()}
+
+
 def named_nodes(bundle_dir: Path) -> dict[str, frozenset[str]]:
     """For each document, the pointers of its nodes that a ``$ref`` NAMES.
 
@@ -432,21 +572,12 @@ def named_nodes(bundle_dir: Path) -> dict[str, frozenset[str]]:
     naming a document root or a node that is not an entry.  **216 pointers across 54
     documents in all, and not 233**: 10 documents are named by both kinds and 17 of
     their pointers by both, which the set union is what absorbs.
+
+    **:func:`named` is the rule and this is the scan**, kept as the one-argument
+    spelling for a caller that holds a bundle directory and not an edge list.  §10 reads
+    it as ``bundle.named(edges)``, so the run scans once and this does not run inside it.
     """
-    known = set(portable(bundle_dir))
-    out: dict[str, set[str]] = {}
-    for document in sorted(known):  # sorted, like ``portable``: P7
-        for _, uri, _ in references(read(bundle_dir, document)):
-            head, pointer = split_ref(uri)
-            if not pointer:
-                continue
-            if not head:
-                out.setdefault(document, set()).add(pointer)
-                continue
-            target = document_for(head, known)
-            if target is not None:
-                out.setdefault(target, set()).add(pointer)
-    return {d: frozenset(p) for d, p in out.items()}
+    return named(edges(bundle_dir))
 
 
 def constrained_to_object(doc: dict) -> frozenset[str]:

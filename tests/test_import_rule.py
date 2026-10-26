@@ -101,25 +101,20 @@ RENDERER = frozenset({"render.py"})
 #: and the prefix already resolves it.
 SECTION_8_BANS = ("lower/", "schema/", "ir.py", "keywords.py", "bundle.py")
 
-#: The ONE module outside :data:`RENDERER` that still names the model layer, with what
-#: forces it.  ``compiler.field_name`` asks what pydantic's ``BaseModel`` carries, because
-#: a document key that spells an attribute of it is no field at all -- measured on
+#: **EMPTY, and §14 step 7 is the row that emptied it.**  It held one entry:
+#: ``compiler.field_name`` asked what pydantic's ``BaseModel`` carries, because a document
+#: key that spells an attribute of it is no field at all -- measured on
 #: ``core/truncation-sentinel.json``'s ``_truncation``, which was silently absent from the
-#: model -- and the answer is a fact about pydantic, not about the bundle.
+#: model -- and the answer is a fact about pydantic rather than about the bundle.
 #:
-#: §8's own ban list does not name ``compiler.py``: the section bans the model layer in
-#: ``schema/``, ``lower/``, ``ir.py``, ``keywords.py`` and ``bundle.py``, which is where
-#: §14 steps 5 and 7 distribute this module's contents.  **Step 7 is the row that retires
-#: this entry**, by moving D3's name rules into ``codegen/lower/names.py`` -- a path §8
-#: DOES ban -- so the reading has to become data the naming pass reads rather than an
-#: import the walk makes.  A hand-written entry names itself and can be audited; this
-#: mapping may SHRINK and may not grow.
-MODEL_LAYER_EXCEPTIONS = {
-    "compiler.py": (
-        "field_name reads what pydantic's BaseModel carries; §14 step 7 moves D3's name "
-        "rules into lower/names.py, where §8's ban applies, and has to answer it"
-    ),
-}
+#: The entry said step 7 "has to answer it", by moving §4's name rules into
+#: ``codegen/lower/names.py`` -- a path §8 DOES ban.  It is answered by moving the READING
+#: the other way: ``render.RESERVED`` derives the set in the one module §8 allows to know
+#: the model layer, the run hands it to the walk as data, and ``names.field_name`` takes
+#: it as an argument.  So no module outside :data:`RENDERER` and :data:`VERIFIER` names
+#: the model layer at all.  A hand-written entry names itself and can be audited; this
+#: mapping may SHRINK and may not grow, and there is nothing left in it to shrink.
+MODEL_LAYER_EXCEPTIONS: dict[str, str] = {}
 
 #: The VERIFIER, by path under ``codegen/``.  It grades an emitted class, so it reads
 #: the emitted package and therefore pydantic: §8 exempts ``verify/`` by name, and
@@ -630,24 +625,23 @@ def test_the_python_text_rule_catches_the_four_texts_it_replaced(tmp_path: Path)
 #: * ``codegen/lower/union.py`` -- §4 "Names"'s three branch rules and §4's dispatch
 #:   derivation are readings of a branch's own DECLARATION (its title, its ``const`` pin,
 #:   its ``required`` set), which ``nodes.Union.branch_raw`` is the carrier for;
-#: * ``codegen/emit.py`` -- ``_composed_nodes``, which is the pointers a document's root
-#:   ``allOf`` NAMES.  That is a fact about the bundle's reference GRAPH and §11 puts it
-#:   in the source layer; the function's own docstring says so and names the move
-#:   (merging it with ``bundle.named_nodes``'s pass), so this entry SHRINKS when that
-#:   lands.  Nothing of the walk reads it: ``emit.lower_document`` reads the module's
-#:   symbol off ``nodes.Base.title`` now;
 #: * ``codegen/compiler.py`` -- §6 keeps ``restatement``, ``intersection`` and
 #:   ``at_least_as_tight`` as pure functions over DECLARATIONS, because §2's intersection
 #:   rule merges two declarations of one property and hands the merged one back to
 #:   ``parse``.  ``nodes.Conjunct.raw``, ``nodes.Base.declared`` and
 #:   ``nodes.Union.branch_raw`` are the three typed carriers that reading is given.
+#: ``codegen/emit.py`` is NOT in this set and §14 step 7 is what removed it.  It held
+#: ``_composed_nodes``, the pointers a document's root ``allOf`` NAMES -- a fact about the
+#: bundle's reference GRAPH, which §11 puts in the source layer.  It is ``bundle.composed``
+#: now, a projection of ``bundle.edges``'s one scan, which is also the merge of two passes
+#: over the bundle that function's own docstring named as its upgrade path.  This set may
+#: SHRINK and may not grow.
 MAY_READ_A_DECLARATION = frozenset(
     {
         "schema/parse.py",
         "lower/rules.py",
         "lower/union.py",
         "compiler.py",
-        "emit.py",
     }
 )
 

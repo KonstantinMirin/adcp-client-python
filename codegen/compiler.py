@@ -55,13 +55,12 @@ from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from pydantic import BaseModel as PydanticBaseModel
-
 from adcp.types._base import SchemaRef
 from adcp.types._runtime import Rule
 from codegen import ir, keywords, refusal
 from codegen.ir import MISSING
 from codegen.keywords import Position
+from codegen.lower import names
 from codegen.refusal import Kind, Refusal, first_refusal
 from codegen.schema import nodes, parse as schema
 
@@ -159,49 +158,18 @@ def report_inert(inert: "Collection[str]", pointer: str, mod: "Module") -> None:
 
 
 # --------------------------------------------------------------------------- #
-# names (D3)
+# names (D3) are ``codegen/lower/names.py``'s now
 # --------------------------------------------------------------------------- #
-def class_name(title: str) -> str:
-    """``pascal_case`` that keeps an acronym: only the first letter of a word is
-    touched, so ``TMPX Chunk`` stays ``TMPXChunk`` and does not become
-    ``TmpxChunk``."""
-    words: list[str] = []
-    cur = ""
-    for ch in title:
-        if ch.isalnum():
-            cur += ch
-        elif cur:
-            words.append(cur)
-            cur = ""
-    if cur:
-        words.append(cur)
-    return "".join(w[:1].upper() + w[1:] for w in words)
-
-
-def field_name(key: str) -> str:
-    """The Python field name for a property key, which is the key itself unless
-    pydantic cannot carry a field under that name.
-
-    A key is carried as-is or it is carried under an ALIAS, never dropped.  The
-    bundle has keys a Python attribute cannot spell (``$schema``) and keys
-    pydantic reads as something other than a field: a leading underscore makes a
-    private attribute and no field at all, so
-    ``core/truncation-sentinel.json``'s required ``_truncation`` was silently
-    absent from the model -- the model refused the document's own instance AND
-    accepted an instance omitting the required key, in the same class.
-
-    The alias is the ONLY accepted spelling (no ``populate_by_name``), so the
-    model's accepted set stays the document's: the wire name is accepted and the
-    Python name is not a second way in.
-    """
-    name = "".join(c if c.isalnum() or c == "_" else "_" for c in key).lstrip("_")
-    if not name or name[0].isdigit():
-        name = f"f_{name}"
-    while (
-        keyword.iskeyword(name) or name.startswith("model_") or hasattr(PydanticBaseModel, name)
-    ):
-        name += "_"
-    return name
+# **``class_name`` and ``field_name`` moved with §4's name rules** (§14 step 7, and §7's
+# "naming is a pass over the module, not a thread through the walk").  Re-bound here
+# under their own names so that every existing reader keeps one spelling, the way
+# ``rule_sources`` and ``declares`` are -- and ``field_name`` takes the reserved set as
+# an argument now, which is how the one model-layer import left outside
+# ``codegen/render.py`` was answered: the set is DERIVED in the renderer
+# (``render.RESERVED``) and the run hands it to the walk, so no module under ``lower/``
+# names pydantic and ``tests/test_import_rule.py``'s exception set shrinks to nothing.
+class_name = names.class_name
+field_name = names.field_name
 
 
 def schema_ref(document: str, pointer: str) -> SchemaRef:
@@ -262,7 +230,12 @@ class Shape:
     #: ``key -> ir.Field``; see above.  Overlaid by :func:`declare_object` with the
     #: props it is handed, so every declaring row records it in one place.
     decided: Mapping[str, ir.Field] = field(default_factory=dict)
-    #: The symbols the declaring module had declared; see above.
+    #: The symbols the declaring module had declared; see above.  **POINTERS while the
+    #: declaring module is being walked and SYMBOLS once it is named**: a shape only
+    #: crosses a module boundary through a :class:`Target`, and ``emit.resolve`` binds
+    #: the pointers through the target module's own symbol table before handing it over
+    #: (§7's "naming is a pass over the module").  Within one module nothing reads it,
+    #: because a local base's symbols are this module's own by construction.
     declares: frozenset[str] = frozenset()
     #: The class's own ``description``, which is the description its NODE states.
     #: Written by :func:`declare_object` beside :attr:`decided`, for the reason that
@@ -291,13 +264,12 @@ class Target:
     module: str
     symbol: str
     shape: Shape | None = None
-    #: The target's own ROOT NODE, for the ONE reader that needs the schema rather than
-    #: the symbol: section 2's intersection rule asked of two declarations that are each a bare
-    #: ``$ref`` (:func:`Module.resolve_node`).  ``None`` for a reference carrying a
-    #: FRAGMENT, which is the scope rather than an omission -- the binder has already
-    #: looked the fragment's SYMBOL up and a node navigator here would be a second
-    #: pointer walk -- so such a pair stays undecidable and refuses.
-    node: dict | None = None
+
+    # **The target's own ROOT NODE is not here and is ``Module.roots``'s now.**  §2's
+    # intersection rule asked of two declarations that are each a bare ``$ref`` is the
+    # one reader that needs the target's schema rather than its symbol, and it holds a
+    # DECLARATION and not a node -- so it has no pointer to ask a site with, and the
+    # run keys that one answer by the URI alone (:func:`Module.resolve_node`).
 
 
 @dataclass(frozen=True)
@@ -315,25 +287,32 @@ class Decided:
     format: str | None = None
 
 
-def _no_binder(uri: str, pointer: str) -> Target | Refusal:
-    """The default binder: a document lowered on its own resolves no reference.
+#: What a reference site answers when the run resolved none: a document lowered on its
+#: own resolves no reference.  A SENTENCE and not a refusal, because the site's own
+#: pointer is what a refusal has to name and only the asking node holds it -- so the
+#: reading is :func:`unresolved`, below, and this is the text it carries.
+NO_TARGET = (
+    "the run resolved no target for this reference, so there is no module to import a "
+    "symbol from: a reference is an IMPORT of the target's symbol (section 2's rule), "
+    "and a document lowered outside a run has no other document to import from"
+)
 
-    ``emit`` supplies the real one, which owns the walk.  Lowering a document
-    without it refuses its references by name rather than inventing an import, so
+
+def unresolved(uri: str, pointer: str) -> Refusal:
+    """The answer at a reference site the run supplied no target for.
+
+    ``emit`` builds :attr:`Module.targets` from ``bundle.edges`` -- the same descent the
+    parser reads the reference off -- so every site the walk reaches has an entry, and a
+    site with none is a document lowered outside a run.  That is the shape the refusing
+    default binder had, and it is a refusal by name rather than an invented import, so
     there is no path on which a reference is silently dropped.
     """
-    return Refusal(
-        "$ref",
-        pointer,
-        f"no reference binder: {uri} cannot be resolved to a module",
-        kind=Kind.VERDICT,
-    )
+    return Refusal("$ref", pointer, f"{NO_TARGET} -- {uri}", kind=Kind.VERDICT)
 
 
 def decide(
     raw: Any,
     pointer: str,
-    name_hint: str,
     mod: "Module",
     position: Position,
     *,
@@ -366,14 +345,13 @@ def decide(
         schema.parse(
             raw, pointer=pointer, position=position, source=mod.source, objectish=objectish
         ),
-        name_hint,
         mod,
         of_a_root_union=of_a_root_union,
     )
 
 
 def lower_node(
-    node: nodes.Node, name_hint: str, mod: "Module", *, of_a_root_union: bool = False
+    node: nodes.Node, mod: "Module", *, of_a_root_union: bool = False
 ) -> Decided | Refusal:
     """What one PARSED node is: ``emit.decide_type``, reached by name.
 
@@ -386,7 +364,7 @@ def lower_node(
     """
     from codegen.emit import decide_type
 
-    return decide_type(node, name_hint, mod, of_a_root_union=of_a_root_union)
+    return decide_type(node, mod, of_a_root_union=of_a_root_union)
 
 
 @dataclass
@@ -399,14 +377,46 @@ class Module:
     #: outside it derives a bare, unqualified name rather than one naming a root that
     #: is not there -- the same shape as ``asserted`` and ``named`` being empty.
     root: str = ""
-    #: ``(uri, pointer) -> Target``; see ``emit.emit``.  The last callable carried
-    #: here, and the one the entry-point module does not retire: it is a CLOSURE over
+    #: **§5's ``targets``: every document this one references, already lowered by the
+    #: run in dependency order, so a cross-document reference is a LOOKUP and never a
+    #: callback.**  This was ``bind``, the last CALLABLE carried here -- a closure over
     #: the run's lowered/refused/in-flight documents and over ``emit.lower``'s own
-    #: recursion, so there is no module-level function to reach by name in its place.
-    #: ``docs/plan/architecture.md`` §14 step 7 is where it goes, by computing the
-    #: reference closure and the dependency order up front and passing ``targets``
-    #: through this context as data.
-    bind: Callable[[str, str], Target | Refusal] = _no_binder
+    #: recursion -- and §14 step 7 is what retires it: ``emit`` computes the reference
+    #: closure and the dependency order up front, so a target is finished before the
+    #: document referencing it is parsed and the answer is data.
+    #:
+    #: **Keyed by the reference SITE, ``(uri, pointer)``, and not by the target
+    #: document**, which is §5's table read for its content rather than for its key.
+    #: Two things follow and both are the reason: no lowering reads a ``#`` or a bundle
+    #: path, so ``bundle.split_ref`` and ``document_for`` stay in the source layer where
+    #: §11 puts them; and the refusal a site earns -- a URI naming no document of this
+    #: bundle, a target that refused, a fragment the target declares no symbol at --
+    #: names THAT SITE's pointer, which only the site identifies.  The sites are
+    #: ``bundle.edges``, the same descent the parser reads the reference off, so a site
+    #: the walk reaches and this map has no entry for is a document lowered outside a
+    #: run (:func:`unresolved`).
+    targets: Mapping[tuple[str, str], Target | Refusal] = field(default_factory=dict)
+    #: **The reference sites this document's walk ASKED about**, written by
+    #: :meth:`target` and read by the run.  It is what decides which documents the run
+    #: WRITES, and §10's own sentence is the reason: "a module cannot import from a
+    #: module no run wrote", so the documents a run owes are the ones some module it
+    #: attempted actually referenced.
+    #:
+    #: The closure and the dependency order range over a STATIC reading
+    #: (``bundle.lowered_references``), which is what lets a target be a finished module
+    #: before its referrer is parsed -- and that reading is an over-approximation of what
+    #: the walk reaches, because a document that refuses stops before its later sites.
+    #: Measured on the suite's population of 991: taking the order's visit set as the
+    #: output writes 11 modules nothing imports and nobody named.  A set rather than a
+    #: count, because the fixed point the run takes is over the TARGETS.
+    asked: set[tuple[str, str]] = field(default_factory=set)
+    #: ``$ref`` URI -> the ROOT NODE of the document it names, for the one reader that
+    #: needs the target's schema rather than its symbol: §2's intersection rule asked of
+    #: two declarations that are each a bare ``$ref`` (:func:`Module.resolve_node`).
+    #: Keyed by the URI alone, because that reader holds a declaration and not a node and
+    #: so has no pointer to ask with; populated only for a reference with NO fragment,
+    #: which is that rule's own scope.
+    roots: Mapping[str, dict] = field(default_factory=dict)
     #: The formats this document's own draft asserts; see ``emit.asserted_formats``.
     #: Empty by default, so a node lowered outside ``lower_document`` selects no
     #: format-derived type rather than one nothing checks.
@@ -436,6 +446,14 @@ class Module:
     #: ``lower_document`` states its own ``type`` or is refused, which is exactly what
     #: :func:`lower_object` did before this set existed.
     object_constrained: frozenset[str] = frozenset()
+    #: **What the MODEL LAYER carries**, so a property key spelling one of pydantic's
+    #: own attributes is carried under an alias rather than shadowing it
+    #: (``lower.names.field_name``).  DERIVED in ``codegen/render.py`` (``RESERVED``) and
+    #: handed in by the run, because §8 makes that the one module allowed to read the
+    #: model layer and §14 step 7 moved §4's name rules into ``lower/``, which the same
+    #: section bans ``pydantic`` from.  Empty by default, which spells a key under its
+    #: own name unless Python's own keyword list refuses it.
+    reserved: frozenset[str] = frozenset()
     imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
     #: **Every declaration this module holds, in DECLARATION ORDER**
     #: (``docs/plan/architecture.md`` §7).  This was a list of rendered text BLOCKS, and
@@ -447,17 +465,30 @@ class Module:
     #: -- :class:`codegen.ir.UnionInstall`, whose two statements are about symbols the
     #: module already declares -- is appended here directly.
     declarations: list[ir.Declaration] = field(default_factory=list)
-    names: set[str] = field(default_factory=set)
-    #: class name -> its :class:`Shape`, for a class declared in THIS module.
+    #: JSON Pointer -> its :class:`Shape`, for a class declared in THIS module.
+    #: Keyed by POINTER and not by class name, because a name is not computed until
+    #: ``lower/names.py`` runs (§7).
     shapes: dict[str, Shape] = field(default_factory=dict)
-    #: JSON Pointer -> the symbol declared for the node at it.  Written by
-    #: :meth:`declare`, which EVERY declaration passes through, so a fragment
-    #: reference reads one map rather than a second record something could forget to
-    #: write.  This is how a ``$ref`` carrying a pointer finds the symbol to import.
-    #: It is also :func:`local_reference`'s MEMO, which is why that function needs no
-    #: record of its own: a node declared because the walk reached it and a node
-    #: declared because a local reference asked for it are one entry here.
-    declared: dict[str, str] = field(default_factory=dict)
+    #: JSON Pointer -> the declaration made for the node at it.  Written by
+    #: :meth:`declare`, which EVERY declaration passes through, so a fragment reference
+    #: reads one map rather than a second record something could forget to write.  It is
+    #: also :func:`local_reference`'s MEMO, which is why that function needs no record of
+    #: its own: a node declared because the walk reached it and a node declared because a
+    #: local reference asked for it are one entry here.
+    #:
+    #: **It held the SYMBOL and now holds the declaration**, because the walk computes no
+    #: symbol: ``lower/names.py`` turns this map's keys into §7's symbol table in one pass
+    #: over the finished module, and until then the IR's own name slots hold pointers.
+    at: dict[str, ir.Declaration] = field(default_factory=dict)
+    #: JSON Pointer -> the HOP §4's nested rule derives this node's name through:
+    #: ``<Parent><Property>`` at PROP, ``<Parent>Item`` at ELEM, ``<Parent>Value`` at
+    #: MAPV, ``<Root><Key>`` at DEF, §4 "Names"'s three rules at BRANCH.  **The hop is
+    #: what the walk records INSTEAD of a name** (§7): a handler states the structural
+    #: fact -- which node this one hangs off, and through which keyword -- and
+    #: ``lower/names.py`` folds the hops to the root.  A child the parser builds at its
+    #: PARENT's own pointer (a ``type``-list member, an extras store) records none and
+    #: inherits the entry already there, which is what keeps one name per pointer.
+    hops: dict[str, names.Hop] = field(default_factory=dict)
     #: D3's content dedup: ``(the node, the symbol declared for the FIRST node equal to
     #: it)``, in the order the walk declared them.  Two nodes with identical content are
     #: ONE node, so the second occurrence decides to the symbol the first declared rather
@@ -497,8 +528,11 @@ class Module:
     #: collapsed and not WHERE, and "where" is the only thing a grader can compare a
     #: node against -- so the dedup is graded by asking, of every adoption, whether the
     #: adopting pointer's content really equals the declaring pointer's.  Written by
-    #: ``emit.decide_type`` on the same line that returns the adopted symbol, so an
-    #: adoption that went unrecorded is an adoption that did not happen.
+    #: ``emit.decide_type`` on the same line that returns the adopted type, so an
+    #: adoption that went unrecorded is an adoption that did not happen.  It held the
+    #: SYMBOL and holds the DECLARING POINTER, which is §7's own spelling of the table
+    #: ("the adoption table pointer -> declaring pointer") and what lets the naming pass
+    #: decide both names.
     adopted: dict[str, str] = field(default_factory=dict)
     #: The pointers :func:`local_reference` is in the middle of declaring, innermost last.
     #: A pointer meeting itself here is a local reference CYCLE, which refuses by name
@@ -582,35 +616,47 @@ class Module:
         refusal now, so "undecidable" is an ``isinstance`` arm rather than a caught
         exception.  Nothing about the reading changed -- a refused target was ``None``
         before and is ``None`` here -- which is what makes it a relocation.
-        """
-        bound = self.bind(uri, "")
-        if isinstance(bound, Refusal):
-            return None
-        return bound.node
 
-    def declare(self, name: str, pointer: str, declaration: ir.Declaration) -> Refusal | None:
-        """Record one declaration under its symbol and its pointer, or say why not.
+        **And the binder itself is gone** (§14 step 7): :attr:`roots` is the same two
+        answers as DATA, built by the run from the documents it has already lowered, so
+        a missing entry is every one of the undecidable cases at once -- a local
+        reference, a fragment, a target that refuses, a URI naming no document -- and
+        the caller treats the pair as unordered and refuses, which is the safe direction.
+        """
+        return self.roots.get(uri)
+
+    def target(self, uri: str, pointer: str) -> Target | Refusal:
+        """What the run resolved the reference at ``pointer`` to.
+
+        The lookup that replaced ``bind``'s call (§14 step 7): the answer was computed
+        before this document was parsed, so there is no recursion to re-enter and no
+        in-flight stack to consult.  A site with no entry is a document lowered outside
+        a run (:func:`unresolved`), which is the refusing default the binder had.
+        """
+        self.asked.add((uri, pointer))
+        return self.targets.get((uri, pointer)) or unresolved(uri, pointer)
+
+    def declare(self, pointer: str, declaration: ir.Declaration) -> Refusal | None:
+        """Record one declaration at its POINTER, or say why not.
 
         ``None`` is the success answer and a :class:`Refusal` is the other, which is the
         shape §2 gives every total function of this walk: a caller that ignores the
         result is declaring a collision cannot happen, and a caller that returns it is
         refusing the document the collision belongs to.
 
-        The two names a module can collide on are checked here, and nowhere else: a
-        SYMBOL already declared, and a POINTER already declared.  Taking the declaration
-        rather than its text is the whole of §7's gate at this seam -- the imports a
-        declaration needs are reported by ``render.declaration`` when the module is
-        written, so a caller cannot declare a block and forget to merge its imports
-        because there is no block to declare.
+        **It took a SYMBOL as well and checked both** (§14 step 7): a symbol already
+        declared, and a pointer already declared.  The first check is
+        ``lower/names.py``'s now, because the walk computes no symbol -- two POINTERS
+        deriving one name is the same refusal with the same sentence, made where the
+        names are.  What is left here is the pointer, which is a fact about the walk and
+        not about §4's rules.
+
+        Taking the declaration rather than its text is the whole of §7's gate at this
+        seam -- the imports a declaration needs are reported by ``render.declaration``
+        when the module is written, so a caller cannot declare a block and forget to
+        merge its imports because there is no block to declare.
         """
-        if name in self.names:
-            return Refusal(
-                "title",
-                pointer,
-                f"two nodes in this document derive the class name {name!r}",
-                kind=Kind.VERDICT,
-            )
-        if pointer in self.declared:
+        if pointer in self.at:
             # The symmetric failure to the one above, and the same kind of thing: a
             # pointer names ONE node of a document, so two symbols at one pointer
             # means a fragment reference to it would import whichever the walk
@@ -621,12 +667,12 @@ class Module:
             return Refusal(
                 "$ref",
                 pointer,
-                f"two nodes are declared at this pointer: {self.declared[pointer]!r} "
-                f"and {name!r}, so a reference to it would import whichever came last",
+                "two nodes are declared at this pointer: "
+                f"{type(self.at[pointer]).__name__} and {type(declaration).__name__}, so "
+                "a reference to it would import whichever came last",
                 kind=Kind.VERDICT,
             )
-        self.names.add(name)
-        self.declared[pointer] = name
+        self.at[pointer] = declaration
         self.declarations.append(declaration)
         return None
 
@@ -952,7 +998,6 @@ def fields(
     props: Mapping[str, nodes.Node],
     required: Collection[str],
     pointer: str,
-    name: str,
     mod: Module,
     *,
     inherited: Collection[str] = (),
@@ -1034,7 +1079,7 @@ def fields(
     # so a batch of results would record drops for properties after the refusing one.
     for key, child in props.items():
         at = where.get(key, f"{pointer}/properties/{key}")
-        fname = field_name(key)
+        fname = names.field_name(key, mod.reserved)
         if fname in spelled:
             return Refusal(
                 "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
@@ -1050,7 +1095,14 @@ def fields(
             field_type = held.type
             is_distinct = held.distinct
         else:
-            decided_type = lower_node(child, name + class_name(key), mod)
+            # **§4's nested name rule as a HOP and not as a name** (§7): what this
+            # records is the structural fact -- this child hangs off the class at
+            # ``pointer`` through the property ``key`` -- and ``lower/names.py`` is what
+            # turns it into ``<Parent><Property>``.  The child's own pointer is the key,
+            # which for a key that came from an ``allOf`` conjunct is the conjunct's
+            # (``declared_at``) and never this node's.
+            mod.hops[child.pointer] = names.Property(pointer, key)
+            decided_type = lower_node(child, mod)
             if isinstance(decided_type, Refusal):
                 return decided_type
             # §2: **constraints bind to the TYPE, not the field.**  A :class:`Decided`
@@ -1107,7 +1159,6 @@ def fields(
 
 def declare_object(
     node: "nodes.Base",
-    name: str,
     pointer: str,
     mod: Module,
     props: Sequence[ir.Field],
@@ -1115,7 +1166,8 @@ def declare_object(
     position: Position = Position.ROOT,
     *,
     extras: nodes.Node | None = None,
-    bases: tuple[str, ...] = (),
+    bases: tuple[ir.TypeRef, ...] = (),
+    branches: tuple[ir.TypeRef, ...] | None = None,
     rule_nodes: Sequence[Mapping[str, Any]] = (),
     description: str | None = None,
     root_required: tuple[str, ...] | None = None,
@@ -1184,13 +1236,20 @@ def declare_object(
     # there is one reading of it and the parser makes it.
     extra_type = None
     if extras is not None:
-        store = lower_node(extras, name, mod)
+        # No hop: the parser builds the extras store at the CLASS's own pointer, because
+        # it is the same instance re-read (§4), so it inherits the class's own name entry
+        # and its VALUE hangs off that pointer like any mapping's.
+        store = lower_node(extras, mod)
         if isinstance(store, Refusal):
             return store
         extra_type = store.type
     described = node.description if node.description is not None else description
     declaration = ir.ClassDecl(
-        name=name,
+        # **The POINTER in the name slot, until the pass runs** (§7, and
+        # ``lower/names.py``'s own docstring): the walk computes no symbol, so what a
+        # declaration carries is where it sits and ``names.assign`` binds the name §4
+        # derives for it.
+        name=pointer,
         ref=schema_ref(mod.document, pointer),
         fields=tuple(props),
         description=described,
@@ -1205,22 +1264,23 @@ def declare_object(
         root_required=root_required,
         discriminator=discriminator,
         combinator=combinator,
+        branches=branches,
     )
     # :attr:`Shape.decided` and :attr:`Shape.declares` are written HERE and by no
     # caller, for the reason the rule tuple above is: this is the one funnel a class
     # with fields passes through, so a row cannot forget to record what it decided.
     # The caller's own ``decided`` is what the class INHERITS (a composing row passes
     # its bases'), and the props it is handed are this class's own and win the key.
-    mod.shapes[name] = replace(
+    mod.shapes[pointer] = replace(
         shape,
         decided={**shape.decided, **{p.wire: p for p in props}},
-        declares=frozenset(mod.declared.values()) | {name},
+        declares=frozenset(mod.at) | {pointer},
         description=described,
     )
-    collision = mod.declare(name, pointer, declaration)
+    collision = mod.declare(pointer, declaration)
     if collision is not None:
         return collision
-    return name
+    return pointer
 
 
 def _parsed_property(declaration: Any, at: str, mod: Module) -> nodes.Node | Refusal:
@@ -1238,12 +1298,11 @@ def _parsed_property(declaration: Any, at: str, mod: Module) -> nodes.Node | Ref
 
 def lower_object(
     node: nodes.Object,
-    name: str,
     mod: Module,
     *,
-    bases: tuple[str, ...] = (),
+    bases: tuple[ir.TypeRef, ...] = (),
 ) -> str | Refusal:
-    """Append the class for an object NODE, children first, and return its name.
+    """Append the class for an object NODE, children first, and return its POINTER.
 
     **Converted to node fields** for everything structural: the properties are the child
     nodes the parser built at PROP, in the document's own key order; the extras store is
@@ -1335,12 +1394,11 @@ def lower_object(
     if "required" in node.faults:
         return Refusal("required", pointer, node.faults["required"], kind=Kind.VERDICT)
     required = node.required
-    built = fields(node.properties, required, pointer, name, mod, distinct=stated.distinct)
+    built = fields(node.properties, required, pointer, mod, distinct=stated.distinct)
     if isinstance(built, Refusal):
         return built
     return declare_object(
         node,
-        name,
         pointer,
         mod,
         built,
@@ -1450,12 +1508,11 @@ def _refuse_a_combinator_of_shapes(
 
 def lower_composition(
     node: "nodes.Base",
-    name: str,
     mod: Module,
     *,
-    bases: tuple[str, ...] = (),
+    bases: tuple[ir.TypeRef, ...] = (),
 ) -> str | Refusal:
-    """Append the class for an ``allOf`` node and return its name.
+    """Append the class for an ``allOf`` node and return its POINTER.
 
     **CONVERTED to node fields, and ``schema/nodes.py`` says which half of this row stays
     at the DECLARATION level and why**: §6 keeps ``restatement``, ``intersection`` and
@@ -1590,7 +1647,7 @@ def lower_composition(
     if screened is not None:
         return screened
 
-    conjunct_bases: list[str] = []
+    conjunct_bases: list[ir.TypeRef] = []
     inherited: dict[str, dict] = {}
     inherited_required: set[str] = set()
     #: The FIELD each inherited key came out as on the base that declares it, and the
@@ -1721,11 +1778,11 @@ def lower_composition(
                 )
             keys = {"$ref"}
         if keys == {"$ref"}:
-            target = mod.bind(conjunct["$ref"], where)
+            target = mod.target(conjunct["$ref"], where)
             if isinstance(target, Refusal):
-                # The binder's own answer, returned upward unchanged (§6): a target that
+                # The RUN's own answer, returned upward unchanged (§6): a target that
                 # refuses makes this conjunct's base undecidable, and the CHAIN is the
-                # binder's to mint because it is the one that knows the target's refusal.
+                # run's to mint because it is the one that knows the target's refusal.
                 return target
             if target.shape is None:
                 # **The KIND is read off the cell and is a DEFERRAL, not a verdict.**
@@ -1751,7 +1808,10 @@ def lower_composition(
                     kind=kind_for("allOf", Position.CONJ),
                 )
             mod.imports.add((target.module, target.symbol))
-            conjunct_bases.append(target.symbol)
+            # A base another MODULE declares, carried as the symbol the module writer
+            # imported: §7 makes ``bases`` ``TypeRef``s so one slot holds that beside a
+            # base this module declares, which travels by pointer until the pass runs.
+            conjunct_bases.append(ir.TypeRef(target.symbol, local=True))
             inherited.update(target.shape.properties)
             inherited_fields.update(target.shape.decided)
             inherited_from.update(dict.fromkeys(target.shape.properties, target))
@@ -2150,7 +2210,6 @@ def lower_composition(
         own_nodes,
         required | (inherited_required & set(own)),
         pointer,
-        name,
         mod,
         inherited=set(inherited),
         declared_at=at,
@@ -2164,7 +2223,6 @@ def lower_composition(
         return decided
     return declare_object(
         node,
-        name,
         pointer,
         mod,
         decided,
@@ -2683,7 +2741,7 @@ def _disagreeing(child: dict, base: dict) -> str:
 
 
 def bind_without_a_model(
-    mod: Module, symbol: str, declaration: ir.AliasDecl | ir.EnumDecl
+    mod: Module, pointer: str, declaration: ir.AliasDecl | ir.EnumDecl
 ) -> str | Refusal:
     """The module-level half of a root that is not an ``AdCPBaseModel``.
 
@@ -2702,16 +2760,15 @@ def bind_without_a_model(
     sitting beside it.  ``tests/test_emit.py`` reads the pairing off the module for both.
     """
     collision = mod.declare(
-        symbol,
-        "",
-        ir.RootBinding(schema_ref(mod.document, ""), symbol, declaration),
+        pointer,
+        ir.RootBinding(schema_ref(mod.document, pointer), pointer, declaration),
     )
     if collision is not None:
         return collision
-    return symbol
+    return pointer
 
 
-def _alias_for(symbol: str, node: nodes.Base, decided: Decided) -> ir.AliasDecl:
+def _alias_for(pointer: str, node: nodes.Base, decided: Decided) -> ir.AliasDecl:
     """One node's own decision, as the alias that names it.
 
     Shared by the TWO rows that declare an alias -- a root (:func:`declare_alias`) and
@@ -2726,14 +2783,15 @@ def _alias_for(symbol: str, node: nodes.Base, decided: Decided) -> ir.AliasDecl:
     cannot come to spell one ``minLength`` two ways.
     """
     return ir.AliasDecl(
-        symbol,
+        # The POINTER in the name slot until ``names.assign`` binds it (§7).
+        pointer,
         replace(decided.type, facts=decided.constraints, format=decided.format),
         description=node.description,
     )
 
 
 def name_the_node(
-    mod: Module, symbol: str, pointer: str, node: nodes.Base, decided: Decided
+    mod: Module, pointer: str, node: nodes.Base, decided: Decided
 ) -> Decided | Refusal:
     """Give a node a SYMBOL in its own module, because a ``$ref`` elsewhere names it.
 
@@ -2759,14 +2817,15 @@ def name_the_node(
     names the whole document, and inside its referrer's, whose resolved schema inlines
     this very node at the pointer the reference carries.
 
-    The name is the walk's own ``name_hint``, which is D3's nested rule (parent +
-    ``pascal_case(property)``) already computed at the call site.  D3 says a name is an
-    input to a lowering and is never computed inside one, so none is computed here.
+    **No name is computed here and none is passed in** (§7, and §14 step 7): the
+    declaration is made at the node's own POINTER, and ``lower/names.py`` binds it to
+    the name §4's nested rule derives for that position -- which is the hop the node's
+    parent recorded when it lowered this child.
     """
-    collision = mod.declare(symbol, pointer, _alias_for(symbol, node, decided))
+    collision = mod.declare(pointer, _alias_for(pointer, node, decided))
     if collision is not None:
         return collision
-    return Decided(ir.TypeRef(symbol, local=True))
+    return Decided(ir.TypeRef(pointer, local=True))
 
 
 def local_reference(mod: Module, pointer: str, at: str) -> Decided | Refusal:
@@ -2834,8 +2893,8 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided | Refusal:
     whose characters are all non-alphanumeric, which derives the root's own name.
     Measured spellable for all 163 of the bundle's entry keys.
     """
-    if pointer in mod.declared:
-        return Decided(ir.TypeRef(mod.declared[pointer], local=True))
+    if pointer in mod.at:
+        return Decided(ir.TypeRef(pointer, local=True))
     if pointer in mod.resolving:
         return Refusal(
             "$ref",
@@ -2848,8 +2907,10 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided | Refusal:
         return Refusal(
             "$ref", at, f"#{pointer} names no node of this document", kind=Kind.VERDICT
         )
-    key = pointer.rsplit("/", 1)[-1].replace("~1", "/").replace("~0", "~")
-    symbol = mod.root + class_name(key)
+    # **§4's DEF rule as a HOP**: ``<Root><Key>``, the key being the entry's own, which
+    # ``names.entry_key`` reads off the pointer's last segment because the pointer IS
+    # that key.  The NAME is ``lower/names.py``'s, so nothing here concatenates one.
+    mod.hops[pointer] = names.Entry(names.entry_key(pointer))
     # **The ``try``/``finally`` is gone with the raise**, and that is the second half of
     # §2's "the one ``try`` left in the compiler is around nothing": the stack had to be
     # unwound on an exception as well as on a return, and now there is no exception to
@@ -2857,13 +2918,13 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided | Refusal:
     # :class:`codegen.refusal.BuildFailure` stops the run rather than being recovered
     # from, so nothing observes the stack after one.
     mod.resolving.append(pointer)
-    decided = decide(node, pointer, symbol, mod, Position.DEF)
+    decided = decide(node, pointer, mod, Position.DEF)
     mod.resolving.pop()
     return decided
 
 
 def declare_alias(
-    mod: Module, symbol: str, doc: nodes.Base, decided: Decided
+    mod: Module, pointer: str, doc: nodes.Base, decided: Decided
 ) -> str | Refusal:
     """Declare the module for a root D2 makes an ALIAS rather than a class.
 
@@ -2891,4 +2952,4 @@ def declare_alias(
     one: either refuse such a document by name, or wrap the alias in a
     ``RootModel`` that has a config slot.
     """
-    return bind_without_a_model(mod, symbol, _alias_for(symbol, doc, decided))
+    return bind_without_a_model(mod, pointer, _alias_for(pointer, doc, decided))
