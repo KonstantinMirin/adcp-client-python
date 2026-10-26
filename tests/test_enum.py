@@ -220,7 +220,9 @@ def test_the_root_populations_are_disjoint_because_a_root_is_exactly_one_kind() 
     assert claimed("documents the scalar row would also claim", overlap) == set(root_enums())
 
     # A row cannot claim a document its step does not count.
-    assert [d for d in documents if populations.is_enum_root(d) and not bundle.carries_an_enum(d)] == []
+    assert [
+        d for d in documents if populations.is_enum_root(d) and not bundle.carries_an_enum(d)
+    ] == []
 
 
 def test_a_root_stating_two_kinds_reaches_one_arm_and_the_enum_wins_by_position() -> None:

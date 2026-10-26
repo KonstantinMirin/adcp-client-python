@@ -367,19 +367,21 @@ def decide(
     This used to be a callable carried on :attr:`Module.decide`, because reaching
     ``emit`` by name was forbidden: ``python -m codegen.emit`` executed that file as
     ``__main__`` under ``runpy``, so an importer of ``codegen.emit`` held a SECOND
-    module object with a second :data:`emit.ROWS` and a second decider.
+    module object with a second dispatch table and a second decider.
     ``codegen/__main__.py`` is the fix -- no module of this compiler is ever bound as
     ``__main__`` -- so the decision is a function with one name again and the
     :class:`Module` carries data rather than functions.
 
-    **The import is function-scope, and that is forced rather than cosmetic.**
-    ``emit.ROWS`` reads ``bundle``'s root selectors at MODULE level and ``bundle``
-    imports the lowerings, so a module-level import of ``emit`` from anywhere the
-    lowerings reach makes ``import codegen.bundle`` an ``AttributeError`` on a
-    partially initialised ``bundle`` -- measured, not theorised.  ``docs/plan``'s §14
-    step 5 moves ``decide`` and the dispatch table into ``lower/`` together, which is
-    what retires this shim; until then the one deferred import is here rather than at
-    each of its call sites.
+    **The import is function-scope, and the cycle that forced it is GONE.**
+    ``emit.ROWS`` read ``bundle``'s root selectors at MODULE level and ``bundle``
+    imported the lowerings for two of them, so a module-level import of ``emit`` from
+    anywhere the lowerings reach made ``import codegen.bundle`` an ``AttributeError`` on
+    a partially initialised ``bundle`` -- measured, not theorised.  §14 step 5 deleted
+    the table and moved those two predicates to ``tests/populations.py``, so ``bundle``
+    imports nothing of ``lower`` and nothing of ``emit``.  What still retires the shim
+    is the other half of that step: ``decide`` becomes ``lower/decide.py``'s exhaustive
+    ``match`` over ``schema/nodes.py``'s kinds, and a lowering then imports it directly.
+    Until then the one deferred import is here rather than at each of its call sites.
     """
     from codegen.emit import decide_type
 
@@ -1313,15 +1315,15 @@ def lower_composition(
     ``isinstance`` depends on FIRST and gains whatever it composes after it.
 
     **The node need not be a root**, and this never asked that it be one: it takes
-    ``(node, name, pointer, module)`` like every other row (D13), reads the pointer
-    it is handed, and ``declare_object`` names
-    whatever node that is.  A document ROOT reaches it through ``emit.ROWS``; a
-    composition at a property or deeper reaches it through ``emit._decide``'s own branch,
-    because ``ROWS`` dispatches on ROOT KIND and a node that is not a root has no row
-    to be and no selector to select it.  Measured over the 3.2 bundle: of the 67
-    documents whose composition this step was deferring, 41 carry it at a root -- all
-    41 claimed by ``union_root``, not by this step's selector -- 10 at a property and
-    16 deeper.
+    ``(node, name, pointer, module)`` like every other lowering (D13), reads the pointer
+    it is handed, and ``declare_object`` names whatever node that is.  A document ROOT
+    and a composition at a property or deeper reach it through the SAME arm of
+    ``emit._decide``, which is §5's "root and non-root are one path": there was a table
+    of root selectors above this and §14 step 5 deleted it, because dispatching on a
+    root's KIND is the second reading of the one the walk makes per node (§11).
+    Measured over the 3.2 bundle: of the 67 documents whose composition this step was
+    deferring, 41 carry it at a root -- all 41 counted by step 5's population and not by
+    this step's -- 10 at a property and 16 deeper.
 
     Two things come out of one conjunct list, and a third is deliberately absent:
 

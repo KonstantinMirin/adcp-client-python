@@ -27,20 +27,22 @@ pydantic-v2 model layer, which writes the Python.  The generator's parser never 
 **D13 divides the walk between this module and ``codegen.compiler``**, and the cut
 is the layering rather than a taxonomy.  What is HERE is the RUN -- the dependency
 closure, the per-document fold, the files and the report -- plus
-:func:`decide_type`, the per-node dispatch, because the answer for an array, a
-mapping or a multi-type node lives in a lowering, and :data:`ROWS`, the dispatch
-table.  What is in ``compiler`` is everything a lowering is handed: the field
-builder, the class declarer, the alias declarer, the keyword screen, D3's name rules
-and the carriers.  The module TEXT -- the header, the import block, the ``__all__``
--- is ``render.module``'s, because it is text (``docs/plan/architecture.md`` §7);
+:func:`_decide`, the ONE per-node dispatch, because the answer for an array, a
+mapping or a multi-type node lives in a lowering.  There was a second dispatch beside
+it, ``ROWS``, over a document's root KIND; ``docs/plan/architecture.md`` §14 step 5
+deletes it, so a document is :func:`_decide` at ROOT and :func:`lower_document` adds
+the module wrapper and nothing else (§5).  What is in ``compiler`` is everything a
+lowering is handed: the field builder, the class declarer, the alias declarer, the
+keyword screen, D3's name rules and the carriers.  The module TEXT -- the header, the
+import block, the ``__all__`` -- is ``render.module``'s, because it is text (§7);
 :func:`exported` stays here, because which names another module may ask for is a
 decision about the bundle.
 
 **The per-node decision used to be unreachable BY NAME from either of them, and
 the entry-point module is what changed that.**  ``python -m codegen.emit`` executed
 this file as ``__main__`` under ``runpy``, so any module that then reached
-``codegen.emit`` by name held a SECOND module object -- a second :data:`ROWS` and a
-second :func:`decide_type` -- and the prohibition that prevented it cost three
+``codegen.emit`` by name held a SECOND module object -- a second dispatch table and a
+second decider -- and the prohibition that prevented it cost three
 callables carried on :class:`compiler.Module`, which is how a lowering decided a
 child node and named a constraint.  ``codegen/__main__.py`` removes the reason: no
 module of this compiler is ever bound as ``__main__``, so this module is imported
@@ -556,28 +558,22 @@ def _decide(
         return lower_const.decide(node, pointer)
 
     if lower_union.keyword(node) is not None and not lower_rules.presence_only(node):
-        # **D2's union keyword at a node that is NOT a root**, reached here rather than
-        # through a seventh row for the ``allOf`` arm's reason above: ``ROWS`` dispatches
-        # on ROOT KIND and is a partition by it, so a keyword at a position no root
-        # selector sees has no row to be.  Measured on the 3.2 bundle, and the
-        # measurement is about the NODE'S POSITION rather than about the document:
-        # of the 32 deferred nested combinators, **0 sit at a root** -- every one is at a
-        # ``properties``, an ``items``, a ``definitions`` entry or inside a branch -- so
-        # no root selector sees any of them and a row would have claimed none.
+        # **D2's union keyword, at EVERY position, in ONE arm.**  There were two
+        # readings of this: ``bundle.union_root`` selected the document for a table row
+        # and this line answered every other position, and both were
+        # ``lower_union.keyword`` plus ``rules.presence_only`` -- the selector was built
+        # on them precisely so the two could not disagree, which is what made it the
+        # SECOND COPY §11's repetition table names.  §14 step 5 deletes it.
         #
-        # **Asked of the DOCUMENT the answer is different, which is why it is asked of
-        # the node:** 2 of the 32 documents have a root ``populations.union_root`` already
-        # claims (``core/creative-item.json``, whose combinator is at
+        # The measurement that justified asking the NODE rather than the document still
+        # holds and is why there was never a row to write here: of the 32 deferred
+        # nested combinators, **0 sit at a root** -- every one is at a ``properties``, an
+        # ``items``, a ``definitions`` entry or inside a branch.  Asked of the DOCUMENT
+        # the answer differs: 2 of the 32 have a root step 5's population counts
+        # (``core/creative-item.json``, whose combinator is at
         # ``/oneOf/1/properties/content``, and ``core/placement-selection.json`` at
-        # ``/oneOf/0/properties/placement_refs/items``) and 14 have one
-        # ``composes_at_the_root`` claims.  A row claiming the document says nothing
-        # about the position inside it, which is the whole of why ROWS partitions by
-        # root kind.
-        #
-        # It is a TYPE and not the root row's base-plus-subclasses -- see
-        # ``lower.union.nested`` -- and ``lower_union.keyword`` is the one reading of
-        # which keyword a node carries, shared with ``populations.union_root``, so this arm
-        # and the root selector cannot disagree about what a union is.
+        # ``/oneOf/0/properties/placement_refs/items``) and 14 have one step 4's counts.
+        # A measurement over a document says nothing about the position inside it.
         #
         # Read AFTER ``$ref``, ``enum``, ``const`` and ``allOf``, each of which closes
         # the node ahead of it, and BEFORE ``type``: a union keyword beside a ``type``
@@ -617,15 +613,13 @@ def _decide(
         return lower_union.nested(node, pointer, name_hint, mod, position)
 
     if isinstance(node.get("allOf"), list):
-        # **D7's composition, at a node that is NOT a root.**  The same lowering the
-        # root reaches through :data:`ROWS` -- the conjunct list is the same list and
-        # the merge rule is the same rule at every depth -- and it is reached here
-        # rather than through a seventh row because ``ROWS`` dispatches on ROOT KIND
-        # and is a partition by it: a keyword that does not appear at a root has no
-        # row to be and no selector to select it.  Measured on the 3.2 bundle: of the
-        # 67 documents whose composition the product row was deferring, 26 carry it
-        # at a property or deeper and 0 of those 26 are claimed by
-        # ``composes_at_the_root``, so a row would have claimed none of them.
+        # **D7's composition, at EVERY position, in ONE arm.**  The conjunct list is
+        # the same list and the merge rule is the same rule at every depth, and a
+        # document ROOT reaches this very line -- §5's "root and non-root are one path".
+        # It used to reach ``lower_composition`` through ``bundle.composes_at_the_root``
+        # and a table row instead, which is §11's second reading of a root's kind.
+        # Measured on the 3.2 bundle: of the 67 documents whose composition the product
+        # row was deferring, 26 carry it at a property or deeper.
         #
         # Read BEFORE ``type``, for the reason ``populations.declares_its_own_root_kind``
         # reads a root's ``allOf`` before its ``type``: a draft-07 ``allOf`` applies
@@ -1093,7 +1087,11 @@ def lower_document(
         declare_alias(mod, symbol, doc, decided)
         return mod, symbol
     held = next(
-        (i for i, d in enumerate(mod.declarations) if isinstance(d, ir.EnumDecl) and d.name == symbol),
+        (
+            i
+            for i, d in enumerate(mod.declarations)
+            if isinstance(d, ir.EnumDecl) and d.name == symbol
+        ),
         None,
     )
     if held is not None:

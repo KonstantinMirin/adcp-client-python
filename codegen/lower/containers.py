@@ -326,7 +326,7 @@ def array(
         # **D2's root-array ``RootModel[list[X]]`` row, refused AT THE POSITION.**
         #
         # It was ``containers.root``, reached through a selector
-        # (``populations.is_container_root``) and a dispatch table (``emit.ROWS``) that §5
+        # (``bundle``'s deleted ``is_container_root``) and a dispatch table (``emit.ROWS``) §5
         # retires: "root and non-root are one path", so what ROOT changes is this arm's
         # ANSWER and not which arm answers.  The element is lowered FIRST -- the code
         # above, unchanged -- so the refusal names the element type the row would have
@@ -697,7 +697,8 @@ def multi_type(
 # **the container ROOT row is gone, and §5 is why**
 # --------------------------------------------------------------------------- #
 # ``root`` declared the module for a document whose root is a container, and it was
-# reached through ``populations.is_container_root`` and ``emit.ROWS``.  §5 deletes both: "Root
+# reached through ``bundle``'s deleted ``is_container_root`` and ``emit.ROWS``.  §5 deletes
+# both: "Root
 # and non-root are one path.  There is no second table of root selectors.  A document is
 # ``parse(raw, position=ROOT)`` followed by ``decide``.  The only thing ROOT adds is the
 # module wrapper."

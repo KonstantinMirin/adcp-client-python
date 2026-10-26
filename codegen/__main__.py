@@ -17,7 +17,7 @@ REFERENCES it: a module cannot import a symbol from a module no run wrote, so
 **This module exists so that no module of the compiler is ever bound as
 ``__main__``.**  ``runpy`` binds the file it executes under the name
 ``__main__``, so ``python -m codegen.emit`` left ``codegen.emit`` importable
-under its own name as a SECOND module object: one ``ROWS``, one ``decide_type``
+under its own name as a SECOND module object: one dispatch table, one decider
 and one ``Refusal`` class per binding, and a class compared by identity across
 that boundary is two classes.  The compiler's answer used to be a prohibition --
 no module of the walk could name ``codegen.emit`` at all, so the per-node
