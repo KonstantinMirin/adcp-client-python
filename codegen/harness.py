@@ -78,7 +78,7 @@ import copy
 import json
 from contextlib import contextmanager
 from collections import Counter
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -92,9 +92,15 @@ from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
 from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
 from pydantic import TypeAdapter, ValidationError
 
-from adcp.types._base import SchemaRef
-from codegen import bundle, dump_exemptions, keywords
-from codegen.keywords import Position
+from adcp.types._base import (
+    APPROXIMATIONS,
+    KINDS,
+    UNDERDETERMINED,
+    Approximation,
+    SchemaRef,
+)
+from codegen import attribution, bundle, dump_exemptions, keywords
+from codegen.keywords import Position, Rung
 
 # --------------------------------------------------------------------------- #
 # formats
@@ -910,6 +916,411 @@ def check_accepts(
     return res
 
 
+# --------------------------------------------------------------------------- #
+# section 8's accepts OBLIGATION: a widening is PROVED, not believed
+# --------------------------------------------------------------------------- #
+#: **Every shape the format's own checker admits**, for the three formats section 5's
+#: ``format`` row lets SELECT A PYTHON TYPE -- and those are the three a narrowing can
+#: come from, because a selected type brings its own constraints with it where a format
+#: riding as ``json_schema_extra`` brings none.  ``codegen.lower.scalars.FORMAT_TYPES`` is
+#: the declaration of which three; this is the shapes, and the two are asserted against
+#: each other in ``tests/test_approximation.py`` so a fourth selected format arrives here
+#: with its shapes or reddens.
+#:
+#: Section 8: "for a ``format`` every shape the format's own checker admits rather than the
+#: shape a generator finds most likely".  A generator finds the LIKELY shape, which for
+#: ``uri`` is a short ``http://`` and for ``date-time`` is a UTC ``Z`` -- so a draw alone
+#: is green against a type that refuses every other admissible shape, which is exactly the
+#: defect ``URL_IMPLIED``'s two rows record on the other side.
+#:
+#: Each value is admitted by RFC 3986 / RFC 3339 as the draft's own checker reads it, and
+#: ``tests/test_approximation.py`` asserts that of every one of them against the checker
+#: rather than taking this comment's word for it.
+FORMAT_SHAPES: Mapping[str, tuple[tuple[str, Any], ...]] = {
+    "uri": (
+        ("an https URL", "https://example.com/a"),
+        ("a plain http URL", "http://example.com/a"),
+        ("a URN", "urn:ietf:rfc:3986"),
+        ("a file URL", "file:///tmp/a"),
+        ("a mailto URI", "mailto:a@example.com"),
+        # 2,220 characters, which is what row .10's live narrowing is measured on: the
+        # document states no length and ``HttpUrl`` renders ``maxLength: 2083``.
+        ("a URL longer than 2,083 characters", "https://example.com/" + "a" * 2200),
+        ("a URL with a port and a query", "https://example.com:8443/a?b=c#d"),
+    ),
+    "date-time": (
+        ("a UTC timestamp", "2026-10-26T12:00:00Z"),
+        ("an offset timestamp", "2026-10-26T12:00:00+02:00"),
+        ("a negative-offset timestamp", "2026-10-26T12:00:00-05:00"),
+        ("a fractional-second timestamp", "2026-10-26T12:00:00.123456Z"),
+    ),
+    "date": (
+        ("a date", "2026-10-26"),
+        ("a leap day", "2024-02-29"),
+        ("the first day of an era", "0001-01-01"),
+    ),
+}
+
+#: The keywords whose classes are enumerated from the node, each with how.  A keyword NOT
+#: here has no derivation and :func:`value_classes` says so rather than passing -- the
+#: vacuous-pass rule this module applies to ``FormatStrategyVerdict.unchecked`` and to
+#: ``PairReport.no_instrument`` alike: a check that cannot reach its subject reports that,
+#: it does not report a pass.
+#:
+#: Section 8 names three families and all three are here: "every member of an ``enum``,
+#: both sides of each bound and the bound itself, and for a ``format`` every shape the
+#: format's own checker admits".  A ``const`` is a one-member ``enum``; a ``pattern``, a
+#: ``type`` and the structural keywords have one class, which is the node as it stands.
+_BOUNDS: Mapping[str, tuple[str, str]] = {
+    # keyword -> (the keyword that pins the LOW end, the keyword that pins the HIGH end)
+    "minLength": ("minLength", "maxLength"),
+    "maxLength": ("minLength", "maxLength"),
+    "minItems": ("minItems", "maxItems"),
+    "maxItems": ("minItems", "maxItems"),
+    "minProperties": ("minProperties", "maxProperties"),
+    "maxProperties": ("minProperties", "maxProperties"),
+    "minimum": ("minimum", "maximum"),
+    "maximum": ("minimum", "maximum"),
+}
+
+
+def _restricted(node: Mapping[str, Any], **pins: Any) -> dict:
+    """``node`` with the keywords in ``pins`` replaced -- a RESTRICTION of it.
+
+    Every value class is a sub-schema of the node and the class's value is a draw from
+    that sub-schema, which is what makes "a value the document admits" true by
+    construction rather than by assertion: a restriction admits a subset of what the node
+    admits.  :func:`check_widening` validates each drawn value against the node anyway,
+    because "by construction" is a claim about this function and the claim is cheap to
+    check.
+    """
+    return {**node, **pins}
+
+
+def value_classes(keyword: str, node: Mapping[str, Any]) -> tuple[tuple[str, dict], ...]:
+    """**The classes ``keyword`` distinguishes at ``node``**, as labelled sub-schemas.
+
+    Section 8: "The draw COVERS the node's admissible space by constraint class; it does
+    not sample it.  'Never tighter' is a claim about every value the document admits, and a
+    sampling draw reports only the values it drew -- so it can run green forever against a
+    type that refuses a whole class of admissible value."
+
+    Empty means NO DERIVATION, which :func:`check_widening` reports as
+    ``no_value_classes`` and never as a pass.  A keyword whose classes cannot be
+    enumerated is a widening nothing proves, and section 9's rule about a check that
+    cannot reach its subject applies: "A check is exhaustive over the set of nodes it
+    claims, or it does not exist."
+    """
+    if keyword == "enum" and isinstance(node.get("enum"), list):
+        return tuple(
+            (f"enum member {member!r}", _restricted(node, enum=[member]))
+            for member in node["enum"]
+        )
+    if keyword == "const":
+        return (("the pinned const", dict(node)),)
+    if keyword == "type":
+        words = node["type"] if isinstance(node.get("type"), list) else [node.get("type")]
+        return tuple((f"type {w!r}", _restricted(node, type=w)) for w in words if w)
+    if keyword == "format" and node.get("format") in FORMAT_SHAPES:
+        return tuple(
+            (f"{label} ({node['format']})", _restricted(node, const=value))
+            for label, value in FORMAT_SHAPES[node["format"]]
+        )
+    if keyword in _BOUNDS and isinstance(node.get(keyword), (int, float)):
+        low, high = _BOUNDS[keyword]
+        bound = node[keyword]
+        inside = bound + 1 if keyword.startswith("min") else bound - 1
+        floor, ceiling = node.get(low), node.get(high)
+        out = [(f"{keyword} exactly ({bound})", _restricted(node, **{low: bound, high: bound}))]
+        # **Both sides and the bound itself**, less the side the node's OTHER bound
+        # forbids: a ``minLength: 1, maxLength: 1`` node admits exactly one length, and a
+        # class for length 2 would be a value the DOCUMENT refuses -- which section 8 says
+        # nothing about, because the schema half refuses it first.
+        if (floor is None or inside >= floor) and (ceiling is None or inside <= ceiling):
+            out.append(
+                (f"{keyword} one step inside ({inside})", _restricted(node, **{low: inside, high: inside}))
+            )
+        return tuple(out)
+    if keyword == "uniqueItems" and node.get("uniqueItems") is True:
+        # What the keyword DISTINGUISHES is a list of two or more members, since a list of
+        # one cannot repeat: so the class is the shortest list the document admits that has
+        # a duplicate to forbid, and the length is PINNED rather than floored -- an
+        # unpinned draw may take any length above it, and a class whose value varies run to
+        # run is a class that reports a narrowing it did not reach.
+        least = max(2, node.get("minItems") or 0)
+        ceiling = node.get("maxItems")
+        if ceiling is not None and ceiling < least:
+            return ()  # the document admits no list long enough to repeat
+        return (
+            (
+                f"{least} distinct members",
+                _restricted(node, minItems=least, maxItems=least),
+            ),
+        )
+    if keyword in ("pattern", "multipleOf", "exclusiveMinimum", "exclusiveMaximum"):
+        # One class: the node as it stands, drawn with the keyword in force.  A second
+        # class would need a value one step from the bound, and for a ``pattern`` or a
+        # float bound there is no step this module can name.
+        return ((f"a value the {keyword} admits", dict(node)),)
+    if keyword == "properties" and isinstance(node.get("properties"), dict):
+        return tuple(
+            (f"the property {key!r} present", _restricted(node, required=[key]))
+            for key in sorted(node["properties"])
+        )
+    if keyword == "required" and isinstance(node.get("required"), list):
+        return (("every required name present", dict(node)),)
+    if keyword in ("additionalProperties", "patternProperties", "propertyNames"):
+        return ((f"a key the {keyword} admits", _restricted(node, minProperties=1)),)
+    if keyword in ("items", "contains"):
+        return ((f"a list the {keyword} admits", _restricted(node, minItems=1)),)
+    if keyword in ("allOf", "oneOf", "anyOf", "not", "if", "then", "else", "dependencies", "$ref"):
+        return ((f"a value the {keyword} admits", dict(node)),)
+    return ()
+
+
+def instance_path(pointer: str) -> tuple[Any, ...] | None:
+    """The INSTANCE location a schema pointer describes, or ``None`` where it has none.
+
+    ``#/properties/x`` describes the value under the key ``x``; ``#/items`` describes
+    every element, so index 0 stands for it; a same-instance hop -- ``#/allOf/0``,
+    ``#/oneOf/1``, ``#/then`` -- describes the SAME instance and contributes no segment,
+    which is ``adcp.types._base.SAME_INSTANCE_LIST``'s own rule read the other way.
+
+    ``None`` for a pointer whose segments describe no instance location at all -- a
+    ``#/definitions/x`` reached only through a ``$ref``, an ``#/if``, a
+    ``#/propertyNames`` -- and :func:`check_widening` reports that as
+    ``no_instance_path`` rather than placing a value somewhere the document does not mean.
+    """
+    segments = [s for s in pointer.lstrip("#").split("/") if s]
+    out: list[Any] = []
+    i = 0
+    while i < len(segments):
+        word = segments[i]
+        if word == "properties" and i + 1 < len(segments):
+            out.append(bundle.unescape_key(segments[i + 1]))
+            i += 2
+        elif word == "items":
+            out.append(0)
+            i += 1
+        elif word in ("allOf", "anyOf", "oneOf") and i + 1 < len(segments):
+            i += 2  # a same-instance hop through a list: no segment
+        elif word in ("then", "else"):
+            i += 1  # a same-instance hop
+        else:
+            return None
+    return tuple(out)
+
+
+def _placed(instance: Any, path: Sequence[Any], value: Any) -> Any:
+    """``instance`` with ``value`` at ``path``, as a copy.
+
+    A path segment the instance does not carry is CREATED, because a widened fact can sit
+    at an optional property the drawn instance happened to omit: the point of the draw is
+    the value at the pointer, so an instance without it says nothing.
+    """
+    if not path:
+        return value
+    out = copy.deepcopy(instance)
+    cursor = out
+    for segment in path[:-1]:
+        if isinstance(segment, int):
+            if not isinstance(cursor, list) or len(cursor) <= segment:
+                return None
+            cursor = cursor[segment]
+        else:
+            if not isinstance(cursor, dict):
+                return None
+            cursor = cursor.setdefault(segment, {})
+    last = path[-1]
+    if isinstance(last, int):
+        if not isinstance(cursor, list):
+            return None
+        while len(cursor) <= last:
+            cursor.append(value)
+        cursor[last] = value
+    else:
+        if not isinstance(cursor, dict):
+            return None
+        cursor[last] = value
+    return out
+
+
+@dataclass
+class WideningResult:
+    """Whether each declared approximation really WIDENS, by value and by pointer.
+
+    Section 8: "An approximation is a claim about this check, and this check is what
+    proves it ... An approximation that still refuses a value the document admits is a
+    NARROWING wearing a declaration, and it fails here, by value and by pointer.  This is
+    what keeps 'approximated' from being an allowlist."
+
+    ``unproved`` is as much a failure as ``narrowings``, and that is the decision rather
+    than an omission: a declaration whose classes this module cannot enumerate, or whose
+    pointer describes no instance location, is a widening nobody has proved -- and section
+    9's "a check is exhaustive over the set of nodes it claims, or it does not exist" says
+    what to do with it.
+    """
+
+    #: How many declarations were put to the check.
+    declarations: int = 0
+    #: How many drawn values reached the entry point and were accepted.
+    accepted: int = 0
+    #: A value the DOCUMENT admits and the class REFUSES, by pointer and by value.
+    narrowings: list[str] = field(default_factory=list)
+    #: A declaration this check could not reach, with the reason.
+    unproved: list[str] = field(default_factory=list)
+    detail: str = ""
+
+    @property
+    def outcome(self) -> str:
+        if self.detail:
+            return "error"
+        if self.narrowings:
+            return "narrowing_wearing_a_declaration"
+        if self.unproved:
+            return "unproved_widening"
+        if not self.declarations:
+            return "no_declarations"  # nothing was claimed, so nothing is owed
+        return "pass"
+
+
+def check_widening(
+    schema: dict,
+    accept: Callable[[Any], Any],
+    declared: Sequence[Approximation],
+    *,
+    at: str = "#",
+    instance: Any = None,
+    custom_formats: Mapping[str, Any] = (),
+) -> WideningResult:
+    """Section 8's accepts OBLIGATION, one declaration at a time.
+
+    ``instance`` is a payload the accepts check already drew for this pair, which is what
+    keeps this from costing a second whole-document draw: the obligation is about the value
+    at ONE pointer, so the rest of the payload is any payload the document admits.  With
+    none supplied the obligation can still run for a declaration at the pair's own root,
+    where the drawn class value IS the whole instance.
+
+    Each class is a RESTRICTION of the document's own node (:func:`value_classes`), so a
+    value drawn from it is a value the document admits -- asserted against the node anyway,
+    because a restriction is a claim about :func:`_restricted` and checking it is cheap.
+    The value is then placed at the pointer's instance location and offered to the entry
+    point.  A ``ValidationError`` there is the one thing section 2 says must never happen:
+    "An annotation tighter than its document refuses a payload the protocol permits, and
+    ``strict_validate`` cannot repair it."
+    """
+    res = WideningResult()
+    cf = dict(custom_formats)
+    validator_cls = validator_for(schema)
+    for one in declared:
+        res.declarations += 1
+        if one.kind == UNDERDETERMINED:
+            # Section 2: "No comparison, draw or dump can see one, which is precisely why
+            # it is declared and why its instrument is different (section 8)."  Its check
+            # is the disjointness equality (:func:`underdetermined_census`) and claiming
+            # it here would report a pass this check cannot earn.
+            res.declarations -= 1
+            continue
+        relative = "" if one.pointer == at else one.pointer[len(at.rstrip("/")) :]
+        node = at_or_none(schema, relative)
+        if not isinstance(node, dict) or one.keyword not in node:
+            res.unproved.append(
+                f"{one.pointer}/{one.keyword}: the document states no such keyword at "
+                "that pointer, so there is no fact to prove dropped (section 9: never "
+                "approximate on a keyword the walk itself inserted)"
+            )
+            continue
+        path = instance_path(relative)
+        if path is None:
+            res.unproved.append(
+                f"{one.pointer}/{one.keyword}: the pointer describes no instance "
+                "location, so no drawn value can be placed at it"
+            )
+            continue
+        classes = value_classes(one.keyword, node)
+        if not classes:
+            res.unproved.append(
+                f"{one.pointer}/{one.keyword}: no value class is derivable for this "
+                "keyword, so the widening is declared and unproved"
+            )
+            continue
+        for label, restriction in classes:
+            try:
+                value = one_instance(restriction, cf)
+            except Exception as e:  # noqa: BLE001 -- any draw failure is unproved, not a pass
+                res.unproved.append(
+                    f"{one.pointer}/{one.keyword}: {label} could not be drawn: {_why(e)}"
+                )
+                continue
+            if conforms(node, value, validator_cls=validator_for(node)) is False:
+                res.unproved.append(
+                    f"{one.pointer}/{one.keyword}: {label} drew {_dump(value)}, which the "
+                    "document's own node refuses -- the restriction is not one"
+                )
+                continue
+            payload = _placed(instance, path, value)
+            if payload is None:
+                res.unproved.append(
+                    f"{one.pointer}/{one.keyword}: {label} has nowhere to go in the drawn "
+                    f"instance at {list(path)}"
+                )
+                continue
+            if conforms(schema, payload, validator_cls=validator_cls) is False:
+                res.unproved.append(
+                    f"{one.pointer}/{one.keyword}: {label} placed at {list(path)} makes a "
+                    "payload the document refuses, so it says nothing about the class"
+                )
+                continue
+            try:
+                accept(payload)
+            except ValidationError as e:
+                err = e.errors()[0]
+                res.narrowings.append(
+                    f"{one.pointer}/{one.keyword}: {label} -- the document admits "
+                    f"{_dump(value)} and the class refuses it "
+                    f"({err['type']} at {err['loc']}: {err['msg']}); declared "
+                    f"approximated at rung {one.rung}, {one.attribution}"
+                )
+                continue
+            except Exception as e:  # noqa: BLE001
+                res.unproved.append(
+                    f"{one.pointer}/{one.keyword}: {label} raised "
+                    f"{type(e).__name__}: {e}"[:300]
+                )
+                continue
+            res.accepted += 1
+    return res
+
+
+def at_or_none(doc: Any, pointer: str) -> Any:
+    """:func:`at`, answering ``None`` for a pointer the document does not hold."""
+    try:
+        return at(doc, pointer)
+    except Exception:  # noqa: BLE001 -- a pointer the document does not hold
+        return None
+
+
+def one_instance(schema: Mapping[str, Any], custom_formats: Mapping[str, Any]) -> Any:
+    """ONE value the schema admits.
+
+    ``hypothesis``'s ``example()`` is not available outside a test, so this runs the same
+    ``given`` machinery :func:`check_accepts` runs, with one example, and keeps the first
+    value.  ``derandomize`` is on in :data:`_SETTINGS`, so the value is the same on every
+    run -- which is what makes a narrowing this check reports reproducible from the report.
+    """
+    drawn: list[Any] = []
+
+    def body(instance: Any) -> None:
+        drawn.append(instance)
+
+    with canonicalisation_shared_within_one_call():
+        run = given(instance=strategy(dict(schema), dict(custom_formats)))(body)
+        settings(max_examples=1, phases=[Phase.explicit, Phase.generate], **_SETTINGS)(run)()
+    if not drawn:
+        raise HypothesisException("the strategy produced no instance")
+    return drawn[0]
+
+
 def _why(e: BaseException) -> str:
     """``hypothesis``'s own reason, up to the point where it starts advising.
 
@@ -977,6 +1388,62 @@ def compared_facts(position: Position) -> tuple[str, ...]:
 FOLDED_FACTS = compared_facts(Position.ROOT)
 
 
+# --------------------------------------------------------------------------- #
+# section 7's declaration, read off the artifact as a CONSUMER reads it
+# --------------------------------------------------------------------------- #
+#: A site: the document, the pointer, and the keyword whose fact is dropped.  The key both
+#: section 8 set equalities range over, and the key ``codegen.attribution``'s registry is
+#: already keyed by -- one spelling of an approximation's ADDRESS, so neither equality has
+#: to reconcile two.
+Site = tuple[str, str, str]
+
+
+def site_of(declared: Approximation) -> Site:
+    return (declared.document, declared.pointer, declared.keyword)
+
+
+def declarations_of(subject: Any) -> tuple[Approximation, ...]:
+    """Section 7's ``__adcp_approximations__``, off a class or off a module.
+
+    Section 9 forbids the verifier the walk, so this is the whole of how a declaration
+    reaches the grader: "``render.py`` writes ``__adcp_approximations__`` onto the class,
+    the root model or the enumeration, and beside the module for an alias ... and
+    ``verify/`` reads it as a consumer reads any other class attribute."  ONE function for
+    both, because ``vars()`` answers for a class and for a module alike.
+
+    **``vars`` and not ``getattr``, so an INHERITED declaration is not read as this
+    class's own.**  A union branch subclasses its base, and the base is at ``#`` and so
+    declares everything in the document (``render.declared_at``'s containment rule); read
+    through ``getattr`` a branch would claim its base's declarations and the equality would
+    pass over a widening nothing at that branch widened.  ``graded()`` already draws the
+    same line for ``__adcp_schema__`` and for the same reason.
+    """
+    found = vars(subject).get(APPROXIMATIONS, ())
+    return tuple(found)
+
+
+def declared_facts(declared: Sequence[Approximation], base: str) -> dict[tuple[str, str], Approximation]:
+    """``declared`` keyed by the PAIR-RELATIVE pointer and the keyword.
+
+    ``base`` is the pair's own pointer, as ``__adcp_schema__`` spells it, and the
+    comparison reports a pointer relative to the node it entered at -- ``""`` at the pair's
+    own node, ``/properties/x`` one level in.  So the two meet by subtracting ``base``,
+    which is one string operation on one spelling and not a reconciliation of two
+    (``compiler.schema_ref`` is the sole producer of the spelling).
+
+    A declaration at a pointer OUTSIDE this pair's node is dropped here: it belongs to
+    another pair, and the run-level equality (:func:`census`) is where every declaration
+    has to be accounted for.
+    """
+    out: dict[tuple[str, str], Approximation] = {}
+    for one in declared:
+        if one.pointer == base:
+            out[("", one.keyword)] = one
+        elif one.pointer.startswith(base.rstrip("/") + "/"):
+            out[(one.pointer[len(base.rstrip("/")) :], one.keyword)] = one
+    return out
+
+
 @dataclass
 class ComparisonResult:
     """The schema comparison's verdict for one pair."""
@@ -986,6 +1453,25 @@ class ComparisonResult:
     missing: list[str] = field(default_factory=list)  # the model states nothing
     differs: list[str] = field(default_factory=list)  # the model states something else
     added: list[str] = field(default_factory=list)  # the document states nothing
+    #: **Section 8's fifth outcome**: "the document states the fact, the model does not,
+    #: and an approximation at that pointer and keyword declares it, names its rung and
+    #: carries an attribution.  Not a defect.  Counted, listed, and proved wide by the
+    #: accepts draw."  So a pair with entries here still PASSES, the way a pair with a
+    #: ``dump_exempt`` entry does, and the report prints the figure.
+    approximated: list[str] = field(default_factory=list)
+    #: The same facts as :attr:`approximated`, as SITES rather than as sentences -- the
+    #: set the run-level equality ranges over (:func:`census`).  Two fields for one fact,
+    #: deliberately: every other bucket here is a list of sentences because the report
+    #: prints one line per entry, and a set equality cannot be computed over a sentence
+    #: without parsing it back out, which is the reading section 3 of the architecture
+    #: document refuses for the same reason.
+    approximated_at: list[Site] = field(default_factory=list)
+    #: **Section 8's sixth outcome**: "an approximation is declared at a pointer and
+    #: keyword where the model DOES state the fact.  A defect, and the mirror of
+    #: *missing*.  Without it the declarations rot: a cell gets written, the widening stops
+    #: happening, the declaration stays, and it then hides the next real gap at the same
+    #: pointer behind a stale excuse."  Pinned at zero.
+    over_declared: list[str] = field(default_factory=list)
     #: D5's URL-type row, which is a CATEGORY OF ITS OWN and weaker than every
     #: other admission here -- see :func:`_url_typed`.  Counted separately and
     #: never folded into ``missing`` or into the implied-fact rows, so a reader can
@@ -1012,6 +1498,14 @@ class ComparisonResult:
             return "model_drops_a_fact"
         if self.added:
             return "model_adds_a_fact"
+        # Section 8's sixth outcome is a DEFECT and ranks with the other three: a
+        # declaration that outlives its widening hides the next real gap at the same
+        # pointer.  Below ``added`` because it is a fact about the DECLARATION where the
+        # three above are facts about the model, so a reader of a red pair meets the
+        # model's own disagreement first.  ``approximated`` is NOT here: section 8 says
+        # "Not a defect", so a pair carrying one passes and the figure is reported.
+        if self.over_declared:
+            return "declaration_outlived_its_widening"
         if not self.compared:
             return "no_evidence"  # the document states nothing; nothing was graded
         return "pass"
@@ -2251,6 +2745,8 @@ def compare_schema(
     *,
     document: dict | None = None,
     position: Position = Position.ROOT,
+    declared: Sequence[Approximation] = (),
+    at: str = "#",
 ) -> ComparisonResult:
     """The document's facts and the model's, compared in BOTH directions.
 
@@ -2288,8 +2784,43 @@ def compare_schema(
     every property, so it is a name the compiler makes up rather than a fact
     about a value.  The one other systematic model-only fact is D4's rendering
     of absence, and ``_narrows_nothing`` says exactly which and why.
+
+    **``declared`` and ``at`` are section 8's fifth and sixth outcomes.**  ``declared`` is
+    section 7's declaration read off the artifact (:func:`declarations_of`) and ``at`` is
+    the pair's own pointer, which is what the declaration's absolute pointer is relative
+    to.  Under section 2 every unexpressed keyword widens instead of refusing, so "the
+    *missing* bucket would fill with facts the design decided to drop, and a grader that
+    cannot tell a decided widening from a defect grades nothing".  The split is made HERE,
+    at the one place a fact is found absent, so there is no second traversal and no second
+    reading of what the document states.
+
+    **Nothing is loosened by it, and the direction is the whole of why**: *missing* keeps
+    its old meaning exactly -- the document states a compared fact and NOTHING declares its
+    absence -- so a pair with no declaration grades byte-identically to before.  What is
+    added is the other direction: a declaration at a pointer and keyword the model DOES
+    state is *over-declared*, which is a defect the comparison could not previously see at
+    all.
     """
     res = ComparisonResult()
+    facts = declared_facts(declared, at)
+
+    def declaration(pointer: str, kw: str) -> Approximation | None:
+        """The declaration for this fact, pair-relative, or ``None``."""
+        return facts.get((pointer, kw))
+
+    def approximated(one: Approximation, where: str, what: Any) -> None:
+        res.approximated.append(
+            f"{where}: the document says {what!r} and the model nothing; approximated at "
+            f"rung {one.rung} ({one.kind}), {one.attribution}"
+        )
+        res.approximated_at.append(site_of(one))
+
+    def over_declared(one: Approximation, where: str, what: Any) -> None:
+        res.over_declared.append(
+            f"{where}: declared approximated at rung {one.rung} ({one.attribution}) and "
+            f"the model states {what!r}; a declaration that outlives its widening hides "
+            "the next real gap at the same pointer"
+        )
     try:
         emitted = (
             model.model_json_schema()
@@ -2394,8 +2925,21 @@ def compare_schema(
                         "what its absence admits"
                     )
                     continue
+                # **Section 8's fifth outcome, and the ONE place *missing* splits.**  The
+                # fold rows above come first on purpose: each says the model omitting the
+                # keyword is not a drop AT ALL, so a declaration there would be
+                # over-declared rather than approximated, and reading the declaration
+                # first would excuse a fact nothing dropped.
+                one = declaration(pointer, kw)
+                if one is not None:
+                    approximated(one, where, doc[kw])
+                    continue
                 res.missing.append(f"{where}: the document says {doc[kw]!r}")
                 continue
+            # The model DOES state it, so a declaration here has outlived its widening.
+            stale = declaration(pointer, kw)
+            if stale is not None:
+                over_declared(stale, where, got[kw])
             a, b = doc[kw], got[kw]
             if kw == "additionalProperties":
                 if isinstance(a, dict) and a and isinstance(b, dict):
@@ -2464,6 +3008,14 @@ def compare_schema(
                 continue
             if _narrows_nothing(kw, got[kw], doc, required=required):
                 continue
+            # A declaration where the DOCUMENT states nothing is over-declared too, and
+            # for a second reason: section 9's "never approximate on a keyword the walk
+            # itself inserted" -- "an approximation must name something the document
+            # states, or the document is blamed for the compiler's own rewriting".  Here
+            # the document states nothing at all, so the declaration names no fact.
+            invented = declaration(pointer, kw)
+            if invented is not None:
+                over_declared(invented, f"{pointer}/{kw}", got[kw])
             res.added.append(f"{pointer}/{kw}: the model says {got[kw]!r}, the document nothing")
 
         props = doc.get("properties") or {}
@@ -2471,12 +3023,23 @@ def compare_schema(
         demanded = doc.get("required") if isinstance(doc.get("required"), list) else []
         if isinstance(props, dict):
             for key in sorted(props):
-                at = f"{pointer}/properties/{_esc(key)}"
+                into = f"{pointer}/properties/{_esc(key)}"
                 if key not in mine:
                     res.compared += 1
-                    res.missing.append(f"{at}: the model declares no such property")
+                    # A property the model does not declare is the ``properties``
+                    # keyword's own fact and the comparison reports it per KEY, so the
+                    # declaration that covers it is the one at this node for
+                    # ``properties`` -- section 5's CONTAINER rung, where an object
+                    # whose declared fields cannot be rendered is its bare container.
+                    # The declaration is keyed by (pointer, keyword) and this is the
+                    # pointer and the keyword the document states it at.
+                    one = declaration(pointer, "properties")
+                    if one is not None:
+                        approximated(one, into, props[key])
+                        continue
+                    res.missing.append(f"{into}: the model declares no such property")
                     continue
-                compare(props[key], mine[key], at, Position.PROP, required=key in demanded)
+                compare(props[key], mine[key], into, Position.PROP, required=key in demanded)
         for key in sorted(set(mine) - set(props)):
             res.model_facts += 1
             res.added.append(
@@ -2506,6 +3069,8 @@ def compare_schema(
                     "types the key of a __pydantic_extra__ store, which pydantic enforces "
                     "and does not render"
                 )
+            elif (one := declaration(pointer, "propertyNames")) is not None:
+                approximated(one, f"{pointer}/propertyNames", key_doc)
             else:
                 res.missing.append(
                     f"{pointer}/propertyNames: the document says {key_doc!r}, "
@@ -2566,6 +3131,22 @@ class Pair:
     #: exemption; it can never invent one.
     ref: SchemaRef | None = None
 
+    #: **Section 7's approximation declaration for this pair's own artifact.**
+    #:
+    #: A stated field for :attr:`ref`'s exact reason, and it is the same reason: section 7
+    #: puts the declaration "onto the class, the root model or the enumeration, and beside
+    #: the MODULE for an alias", so ``pair.model.__adcp_approximations__`` answers for a
+    #: class and does not exist for an alias.  :func:`declarations_of` is the reader for
+    #: both -- the caller says which object holds it and this module does the reading, so
+    #: section 9's "the verifier reads the declaration off the class, as a consumer" stays
+    #: true of the code that grades it.
+    #:
+    #: ``()`` is FAIL-SAFE in the direction that matters: a caller grading a bare node
+    #: supplies none, every unexpressed fact reads as *missing*, and the pair reddens
+    #: rather than passing on a declaration nobody handed it.
+    declared: tuple[Approximation, ...] = ()
+
+
 @dataclass
 class PairReport:
     name: str
@@ -2573,6 +3154,11 @@ class PairReport:
     accepts: AcceptsResult | None = None
     liveness: LivenessResult | None = None
     comparison: ComparisonResult | None = None
+    #: Section 8's accepts obligation for this pair's declarations, and ``None`` where the
+    #: pair declares nothing -- which is every pair of the tree at section 14 step 8.
+    #: ``None`` and not an empty result, so ``outcome`` can tell "nothing was claimed" from
+    #: "a claim was checked", the way it already tells ``accepts:unrun`` from a pass.
+    widening: WideningResult | None = None
     missing_formats: list[str] = field(default_factory=list)
     #: The DOCUMENT's own format-beside-pattern positions a draw CANNOT REACH, each
     #: measured by drawing that node alone (:func:`undrawable_formats`).  Filled by
@@ -2664,6 +3250,14 @@ class PairReport:
             return "liveness:unrun"
         if self.liveness.outcome not in ("pass", "no_payload"):
             return "liveness:" + self.liveness.outcome
+        # Section 8's accepts obligation, ranked with the accepts check it is part of and
+        # BELOW it: a model that refuses a drawn instance outright is a verdict about the
+        # whole pair, where this is a verdict about one declaration's claim.  Above the
+        # comparison, because "an approximation that still refuses a value the document
+        # admits is a NARROWING wearing a declaration" and a narrowing outranks a
+        # bookkeeping disagreement about what was declared.
+        if self.widening is not None and self.widening.outcome not in ("pass", "no_declarations"):
+            return "widening:" + self.widening.outcome
         if self.comparison is None or self.comparison.outcome not in ("pass", "no_evidence"):
             return "comparison:" + (self.comparison.outcome if self.comparison else "unrun")
         if self.accepts.outcome == "strategy_error":
@@ -2671,6 +3265,357 @@ class PairReport:
         if not self.graded_instances:
             return "no_accepts_check_evidence"
         return "pass"
+
+
+# --------------------------------------------------------------------------- #
+# section 8's TWO EQUALITIES, over the run
+# --------------------------------------------------------------------------- #
+@dataclass
+class Census:
+    """**Section 8's second equality**: the approximated set equals the declared set.
+
+    "Every *approximated* fact has a declaration (or it is *missing*), and every
+    declaration has an *approximated* fact (or it is *over-declared*).  Both directions,
+    for the reason the first equality has them: a set checked in one direction is complete
+    with respect to itself, and what it omits passes."
+
+    **Two sets a machine derives, and neither is hand-written.**  ``declared`` is read off
+    the emitted artifacts -- what the emitter recorded it could not render -- and
+    ``approximated`` is what the comparison found absent from a model and present in its
+    document.  Section 8: "Nobody can add an entry to make a failure go away without the
+    model actually widening at that pointer, because the accepts draw then has to accept
+    the values the keyword distinguishes.  A declaration is a claim with two instruments
+    pointed at it."
+
+    **Over the RUN and not over one pair**, and that is forced.  ``render.declared_at``
+    carries a declaration on every artifact whose node contains it, so a declaration under
+    a root union's ``#/oneOf/0`` sits on the base as well as on the branch -- and the
+    base's own comparison never descends a combinator, so at that pair the declaration is
+    neither *approximated* nor *over-declared*.  Per pair the equality would therefore
+    fail on a correct tree; over the union of the pairs the branch reports it and the
+    equality is exact.
+    """
+
+    #: Every site any artifact declares, with the declaration -- the emitter's own record
+    #: of what it could not render, read off the tree.
+    declared: dict[Site, Approximation] = field(default_factory=dict)
+    #: Every site the comparison reported *approximated* at, over every pair.
+    approximated: set[Site] = field(default_factory=set)
+    #: Sites declared and never reported approximated: the equality's failing direction.
+    #: A defect, and section 8's *over-declared* -- either the model states the fact (and
+    #: the pair that visited it says so) or no pair's comparison reached the pointer at
+    #: all, which is a declaration nothing grades.
+    undeclared_widenings: list[str] = field(default_factory=list)
+    #: Every *over-declared* line the pairs reported, carried through so one object
+    #: answers for the whole equality.
+    over_declared: list[str] = field(default_factory=list)
+    #: An attribution whose issue reference ``codegen.attribution`` does not hold, which
+    #: section 9's grader row names: "an upstream attribution's issue | ``attribution.py``'s
+    #: own test | an entry with no issue is a ``BuildFailure``".
+    unattributed: list[str] = field(default_factory=list)
+
+    @property
+    def stale(self) -> list[Site]:
+        """The declared sites with no approximated fact, as sites."""
+        return sorted(set(self.declared) - self.approximated)
+
+    @property
+    def outcome(self) -> str:
+        if self.over_declared or self.undeclared_widenings or self.unattributed:
+            return "the declared set and the approximated set disagree"
+        return "pass"
+
+    @property
+    def documents(self) -> int:
+        """How many DOCUMENTS carry at least one approximation.
+
+        A different figure over a different denominator from ``len(approximated)``, and
+        section 2 says the two are never added: "The number of documents carrying at least
+        one is a different figure over a different denominator, and the two are never
+        added."
+        """
+        return len({document for document, _, _ in self.declared})
+
+
+def census(graded: Sequence[tuple[Pair, PairReport]]) -> Census:
+    """The second equality, computed over every pair of a run.
+
+    ``graded`` is the pairs and their reports, which is the whole of what the equality
+    needs: the DECLARED half is ``pair.declared`` -- read off the artifact by
+    :func:`declarations_of` -- and the APPROXIMATED half is
+    ``report.comparison.approximated_at``.  Neither is a set this function writes.
+
+    The first equality of section 8 -- "the comparison's keyword set equals the set the
+    declaration renders" -- is not here: it is a property of ``compared_facts`` and
+    ``keywords.rendered_at``, so ``tests/test_every_check_names_its_set.py`` holds it over
+    the declaration directly, which is where a set equality between two derivations
+    belongs.
+    """
+    out = Census()
+    for pair, report in graded:
+        for one in pair.declared:
+            out.declared[site_of(one)] = one
+        if report.comparison is None:
+            continue
+        out.approximated |= set(report.comparison.approximated_at)
+        out.over_declared += [f"{pair.name}: {line}" for line in report.comparison.over_declared]
+    for site in out.stale:
+        one = out.declared[site]
+        out.undeclared_widenings.append(
+            f"{one.document}{one.pointer}/{one.keyword}: declared approximated at rung "
+            f"{one.rung} ({one.attribution}) and no pair's comparison reported the fact "
+            "absent from a model -- either the model states it, or no pair graded that "
+            "pointer, and both are a declaration nothing earns"
+        )
+    out.unattributed = unattributed(out.declared.values())
+    return out
+
+
+def unattributed(declared: Sequence[Approximation] | Any) -> list[str]:
+    """Every declaration whose attribution names neither a cell nor a live issue.
+
+    Section 2's attribution "is a choice of two and not a free-text note", and this is
+    where that bites on the artifact: an ``Ours`` attribution is the cell's own address, so
+    it is ``keywords.address`` of the keyword and nothing else; an ``Upstream`` one is an
+    entry of ``codegen.attribution``'s registry, so the site has to be in it.  A string
+    that is neither is a free-text note wearing an attribution.
+
+    This is the verifier's half of section 9's grader row.  ``attribution.py``'s own test
+    holds the other half -- that an entry with no issue cannot exist -- and the two are
+    different claims: that one is about the REGISTRY, this is about what an artifact says
+    it read out of it.
+    """
+    out: list[str] = []
+    for one in declared:
+        issue = attribution.issue_for(one.document, one.pointer, one.keyword)
+        expected = issue.attribution if issue is not None else keywords.address(one.keyword)
+        if one.attribution != expected:
+            out.append(
+                f"{one.document}{one.pointer}/{one.keyword}: the artifact says "
+                f"{one.attribution!r} and the declaration says {expected!r}; section 2 "
+                "makes the attribution a choice of two -- the cell's own address, or an "
+                "entry of codegen.attribution -- and never a free-text note"
+            )
+        if one.rung not in set(Rung):
+            out.append(
+                f"{one.document}{one.pointer}/{one.keyword}: rung {one.rung!r} is not one "
+                f"of section 2's ladder, {[r.value for r in Rung]}"
+            )
+        if one.kind not in KINDS:
+            out.append(
+                f"{one.document}{one.pointer}/{one.keyword}: kind {one.kind!r} is not one "
+                f"of section 2's two, {list(KINDS)}"
+            )
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# the UNDERDETERMINED equality: the one approximation no check above can see
+# --------------------------------------------------------------------------- #
+#: The combinators whose branches a union's dispatch has to separate, DERIVED from the
+#: declaration: ``keywords.combinators`` is "the keywords whose subschemas occupy a BRANCH,
+#: which is what a combinator IS -- so the pair is a reading of the declaration and not a
+#: literal".  Section 9's rule that nothing under ``codegen/`` names a keyword in a set
+#: literal holds of the verifier too, and section 9's own permitted import is what makes it
+#: possible: the keyword table is "the declared semantics, and both halves must read the
+#: same declaration or the grade means nothing".
+#:
+#: At ROOT, because a union's branches are read under the enclosing node's own position and
+#: ROOT is where the derivation enters; the pair is the same at every position the table
+#: gives one.
+_COMBINATORS = tuple(sorted(keywords.combinators(Position.ROOT)))
+
+
+#: The keywords whose subschema sits at RULE, DERIVED from the descent column rather than
+#: named: ``keywords.descends_at`` is "the ONE descent table, where today there are three",
+#: and a keyword holding a RULE subschema is exactly what a conditional is.  Section 11
+#: names the three descent tables as a repetition with one owner, and the verifier's own
+#: walk of the record is one of the three readers section 3 gives that column.
+_RULE_KEYWORDS = tuple(
+    sorted(k for k, p in keywords.descends_at(Position.ROOT).items() if p is Position.RULE)
+)
+
+
+def _rule_free_nodes(schema: Any, pointer: str = "") -> list[tuple[str, dict]]:
+    """Every dict node of the document that is NOT under a conditional, with its pointer.
+
+    :func:`_nodes` with one difference, and the difference is a POSITION carried by the
+    descent: a subschema reached through ``if``, ``then``, ``else`` or ``not`` is at RULE,
+    and section 3 of the semantics document says no type is lowered from a RULE node -- so
+    the subtree has no declaration for a derivation over declarations to range over.
+
+    Not a filter over :func:`_nodes`' pointers, deliberately: section 6 of the
+    architecture document makes deriving position from a pointer string the repetition
+    section 11 names, and "a pointer cannot tell a RULE node from a PROP one" in general --
+    a document may hold a property literally named ``then``.  The descent knows it
+    structurally, so the descent is what carries it.
+    """
+    out: list[tuple[str, dict]] = []
+    if isinstance(schema, list):
+        for i, v in enumerate(schema):
+            out += _rule_free_nodes(v, f"{pointer}/{i}")
+        return out
+    if not isinstance(schema, dict):
+        return out
+    out.append((pointer or "/", schema))
+    for k, v in schema.items():
+        if k in _RULE_KEYWORDS:
+            continue  # at RULE: no type is lowered from here (semantics §3)
+        if k in _DESCEND_MAP and isinstance(v, dict):
+            for kk, vv in v.items():
+                out += _rule_free_nodes(vv, f"{pointer}/{k}/{_esc(kk)}")
+        elif k in _DESCEND_ONE and isinstance(v, (dict, list)):
+            out += _rule_free_nodes(v, f"{pointer}/{k}")
+        elif k in _DESCEND_LIST and isinstance(v, list):
+            out += _rule_free_nodes(v, f"{pointer}/{k}")
+    return out
+
+
+def _pins(node: Mapping[str, Any]) -> dict[str, Any]:
+    """Each property this branch pins to a single value, by key.
+
+    A one-member ``enum`` is a ``const`` -- section 5's ``enum`` row says so of the model
+    side and draft-07 says so of the document -- so both spellings are read, which is the
+    whole of what the first separator needs.
+    """
+    out: dict[str, Any] = {}
+    for key, declaration in (node.get("properties") or {}).items():
+        if not isinstance(declaration, dict):
+            continue
+        if "const" in declaration:
+            out[key] = declaration["const"]
+        elif isinstance(declaration.get("enum"), list) and len(declaration["enum"]) == 1:
+            out[key] = declaration["enum"][0]
+    return out
+
+
+def separates(a: Mapping[str, Any], b: Mapping[str, Any], a_type: Any, b_type: Any) -> str | None:
+    """What tells two branch NODES apart, or ``None`` where nothing does.
+
+    **A second spelling of ``codegen.lower.union.separates``, over the DOCUMENT, and
+    deliberately so.**  Section 9: "the intersection rule it carries stays a second
+    spelling of the one in ``lower/composition.py`` on purpose ... One body of code
+    deciding what the model states and what the document states agrees with itself by
+    construction, so a defect in it is green on both sides."  The same reasoning holds
+    exactly here: if the verifier asked the walk which unions it could not separate, the
+    equality below would compare the walk's answer with itself.
+
+    Section 4's three separators, each read off the branch nodes of the record:
+
+    * one property pinned to different single values;
+    * a ``required`` name one branch declares and the other forbids, where the other
+      admits no name outside its own map;
+    * scalar branches of different ``type``.
+    """
+    first, second = _pins(a), _pins(b)
+    for key in sorted(set(first) & set(second)):
+        if first[key] != second[key]:
+            return f"{key!r} is pinned two ways"
+    for one, other in ((a, b), (b, a)):
+        closed = other.get("additionalProperties") is False and "patternProperties" not in other
+        if not closed:
+            continue
+        declared = set(other.get("properties") or {})
+        required = {n for n in (one.get("required") or []) if isinstance(n, str)}
+        if required - declared:
+            return f"one branch requires {sorted(required - declared)} and the other forbids it"
+    scalars = a_type not in (None, "object") and b_type not in (None, "object")
+    if scalars and a_type != b_type:
+        return f"the branches are scalars of type {a_type!r} and {b_type!r}"
+    return None
+
+
+def inseparable_unions(record: Mapping[str, Any]) -> tuple[str, ...]:
+    """Every union POINTER of this document whose branches the derivation cannot separate.
+
+    Section 8: an UNDERDETERMINED approximation "is invisible to all three checks, and that
+    is why it needs an instrument of its own ... Its check is section 4's disjointness
+    derivation: **the set of unions declaring one equals the set the derivation cannot
+    separate**, in both directions, so a union that becomes separable loses its declaration
+    and a union that stops being separable gains one."
+
+    Pairwise, for ``lower.union.overlapping``'s reason: "Where the branches are pairwise
+    disjoint, the payload selects its own branch and the order they are tried in cannot
+    change which one it reaches."  One unseparated pair makes the answer a property of
+    declaration order, which is what UNDERDETERMINED names.
+
+    A union whose branches are NOT all shapes is not in this set: section 4 lowers one to
+    an alias over the union of their types, where "which branch an overlapping payload
+    becomes" is not a question a declaration order answers -- there are no branch classes
+    to order.  A branch is a shape here where its node, under the root's applied ``type``,
+    is an object.
+
+    **A union at a RULE position is not in it either, and the POSITION is carried by the
+    descent rather than read off the pointer string.**  Section 3 of the semantics
+    document: under a conditional "a keyword describes what a rule tests, so no type is
+    lowered from it", so there is no branch class at all.  Section 6 of the architecture
+    document is explicit that a pointer STRING cannot answer this -- "a handler never
+    derives position from a pointer string", and "a pointer cannot tell a RULE node from a
+    PROP one" -- so :func:`_rule_free_nodes` sets the flag where it descends through
+    ``if``/``then``/``else``/``not`` and the question is never asked of a pointer.
+    Measured over the emitted tree: 3 of this derivation's pointers are at a RULE position
+    and all 3 leave with this clause.
+    """
+    out: list[str] = []
+    for pointer, node in _rule_free_nodes(record):
+        for kw in _COMBINATORS:
+            branches = node.get(kw)
+            if not isinstance(branches, list) or len(branches) < 2:  # noqa: PLR2004
+                continue
+            if not all(isinstance(b, Mapping) for b in branches):
+                continue
+            # **A PRESENCE-ONLY combinator is not a union at all**, and §4 of the
+            # architecture document decides it where the parser reads it: "a combinator
+            # whose every branch is ``required``-only is not a ``Union`` but a rule source
+            # of the enclosing object (the ``presence_only`` reading, read once here)".
+            # It lowers to a ``RequiredGroups`` rule on the enclosing class, so there are
+            # no branch classes for a declaration order to choose between -- which is the
+            # whole of what UNDERDETERMINED names.  Measured: without this clause the
+            # derivation reports 185 pointers, 16 of them roots whose documents emit as a
+            # single class with a presence rule.
+            if all(set(b) <= {"required"} for b in branches):
+                continue
+            applied = [b.get("type") or node.get("type") for b in branches]
+            if not all(t == "object" or (t is None and b.get("properties")) for t, b in zip(applied, branches)):
+                continue
+            base = "" if pointer == "/" else pointer
+            if any(
+                separates(branches[i], branches[j], applied[i], applied[j]) is None
+                for i in range(len(branches))
+                for j in range(i + 1, len(branches))
+            ):
+                out.append(f"#{base}/{kw}")
+    return tuple(sorted(out))
+
+
+def underdetermined_census(
+    declared: Sequence[Approximation], records: Mapping[str, Mapping[str, Any]]
+) -> tuple[list[str], list[str]]:
+    """Section 8's UNDERDETERMINED equality, in BOTH directions.
+
+    Returns ``(declared and separable, inseparable and undeclared)``.  Both empty is the
+    equality; either non-empty is a defect, and the two say different things -- a union that
+    became separable keeps a declaration it has not earned, and one that stopped being
+    separable carries no declaration at all and the value it constructs is then a property
+    of declaration order with nothing saying so.
+
+    ``records`` is document -> document of record, which is the verifier's own reading of
+    what the document states (section 9).
+    """
+    declared_at = {
+        (one.document, one.pointer)
+        for one in declared
+        if one.kind == UNDERDETERMINED
+    }
+    inseparable = {
+        (document, pointer)
+        for document, record in records.items()
+        for pointer in inseparable_unions(record)
+    }
+    return (
+        sorted(f"{d}{p}: declared UNDERDETERMINED and the derivation separates it" for d, p in declared_at - inseparable),
+        sorted(f"{d}{p}: the derivation cannot separate these branches and nothing declares it" for d, p in inseparable - declared_at),
+    )
 
 
 def check_pair(
@@ -2758,5 +3703,30 @@ def check_pair(
         if accepted
         else LivenessResult(outcome="no_payload", detail="the accepts check drew no instance")
     )
-    rep.comparison = compare_schema(pair.schema, pair.model, document=pair.document)
+    rep.comparison = compare_schema(
+        pair.schema,
+        pair.model,
+        document=pair.document,
+        declared=pair.declared,
+        at=pair.ref.pointer if pair.ref is not None else "#",
+    )
+    #: **Section 8's accepts obligation, and it runs only where a declaration claims
+    #: something.**  "An approximation is a claim about this check, and this check is what
+    #: proves it."  A pair declaring nothing owes nothing, so this costs no draw over the
+    #: 769-module tree as it stands -- which is section 14 step 8's exit condition read
+    #: from the verifier's side.
+    #:
+    #: The instance is the accepts check's OWN first draw, so the obligation costs one draw
+    #: per value class and no whole-document draw.  With none -- the accepts check drew
+    #: nothing -- only a declaration at the pair's own root can be proved, and every other
+    #: one is reported ``unproved`` rather than passed.
+    if pair.declared:
+        rep.widening = check_widening(
+            drawn_from,
+            pair.accept,
+            pair.declared,
+            at=pair.ref.pointer if pair.ref is not None else "#",
+            instance=accepted[0] if accepted else None,
+            custom_formats=custom_formats,
+        )
     return rep

@@ -56,6 +56,23 @@ def escape_key(key: str) -> str:
     return key.replace("~", "~0").replace("/", "~1")
 
 
+def unescape_key(segment: str) -> str:
+    """The document KEY one JSON Pointer segment spells.  :func:`escape_key`'s inverse.
+
+    Beside its inverse for that function's own reason, and extracted from
+    :func:`node_at`'s hop because a second reader arrived: ``harness.instance_path`` turns
+    a pointer into the INSTANCE location it describes, and a key carrying a ``/`` has to
+    come back out of the pointer the way ``node_at`` takes it out.  Two readings of RFC
+    6901's two escapes is how a grader and a dereferencer come to disagree about which key
+    a segment names.
+
+    The order matters and is the inverse of :func:`escape_key`'s: ``~1`` first, then
+    ``~0``, so a key spelling ``~1`` literally -- escaped ``~01`` -- does not come back as
+    a ``/``.
+    """
+    return segment.replace("~1", "/").replace("~0", "~")
+
+
 def node_at(root: object, pointer: str) -> object:
     """The node a JSON Pointer names in ``root``.  The INVERSE of :func:`escape_key`.
 
@@ -73,7 +90,7 @@ def node_at(root: object, pointer: str) -> object:
     for part in pointer.lstrip("/").split("/"):
         if part == "":
             continue
-        part = part.replace("~1", "/").replace("~0", "~")
+        part = unescape_key(part)
         # The two containers a JSON Pointer hop can land in, each matched before it is
         # indexed.  The hop used to be one expression with an ``isinstance(cur, list)``
         # guard and a ``# type: ignore[index]`` for the other half, which says "this is

@@ -44,7 +44,8 @@ import collections
 import sys
 from pathlib import Path
 
-from codegen import refusal
+from adcp.types._base import KINDS
+from codegen import keywords, refusal
 from codegen.emit import TREE, emit, write
 
 
@@ -92,11 +93,53 @@ def main(argv: list[str] | None = None) -> int:
     for document in sorted(out.carries_nothing):
         for line in out.carries_nothing[document]:
             print(f"carries nothing for {document} at {line}")
+    # **Section 2's approximations, as TWO figures over TWO denominators that are never
+    # added** (``docs/plan/architecture.md`` section 10): "``approximated K facts in D
+    # documents``, split by kind (WIDENED / UNDERDETERMINED) and by attribution (ours /
+    # upstream), with the upstream half listing its issues.  ``K`` and ``D`` are different
+    # counts over different denominators and the report never adds them.  Neither is
+    # pinned: both rise when a document starts emitting, and the semantics document's
+    # section 9 forbids pinning a figure that moves with emission."
+    #
+    # Printed BEFORE the refusals and AFTER the drops, in the same place and for the same
+    # reason the drops are printed there: an approximation is a fact about a document this
+    # run EMITTED, so a reader scanning the refusals for the document's name would not
+    # find it.
+    #
+    # Printed WHATEVER the figures are, including zero, which is section 10's rule for the
+    # defect counts read across: a reader sees the figure being met rather than inferring
+    # it from silence.  At section 14 step 8 it is zero in every column, and that IS the
+    # step's exit condition.
+    declared = [a for one in out.approximations.values() for a in one]
+    for a in declared:
+        print(
+            f"approximated {a.document}{a.pointer} on {a.keyword}: the document says "
+            f"{a.fact!r} and the annotation does not carry it; rung {a.rung} ({a.kind}), "
+            f"{a.attribution}"
+        )
+    by_kind = collections.Counter(a.kind for a in declared)
+    ours = [a for a in declared if a.attribution.startswith(keywords.DOCUMENT)]
+    upstream = sorted({a.attribution for a in declared if a not in ours})
+    print(
+        f"approximated {len(declared)} facts in {len(out.approximations)} documents "
+        f"({', '.join(f'{k} {by_kind[k]}' for k in KINDS)}; "
+        f"ours {len(ours)}, upstream {len(declared) - len(ours)})"
+        + (f": {', '.join(upstream)}" if upstream else "")
+    )
     # **The report names the KINDS and not "refused" alone.**  "refused" admits "not
     # built yet", which is how `emitted + refused == 1054` stayed green over 385
     # documents waiting on rows nobody had written, so the one figure the exit
     # condition counts -- emitted plus VERDICTS -- is printed beside the partition
     # rather than left to a reader to assemble.
+    #
+    # **Section 10 replaces this pair with ``emitted N / population N`` and it cannot be
+    # replaced yet, which is this row's reported conflict rather than its omission.**  The
+    # section's reason is that "``M`` goes to zero over this bundle and the pair stops
+    # partitioning anything" -- and ``M`` is 285 at section 14 step 8, because step 8
+    # widens no cell and so moves no document out of the refused set.  A report printing
+    # ``emitted 769 / population 1054`` while 285 documents refuse would state a partition
+    # the run does not hold.  The pair therefore stays until step 10 takes ``M`` to zero,
+    # and the three approximation figures above are added beside it.
     counted = collections.Counter(r["resolved"] for r in out.refusals.values())
     verdicts = sum(counted[k] for k in refusal.FINAL_KINDS)
     print(

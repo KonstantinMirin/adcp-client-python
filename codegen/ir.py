@@ -44,8 +44,24 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import KINDS, UNDERDETERMINED, WIDENED, Approximation, SchemaRef
 from adcp.types._runtime import Rule
+
+#: **Section 7's ``Approximation``, bound here and declared in the artifact's own
+#: package.**  The section's table puts it in this layer -- "document, pointer, keyword,
+#: kind (WIDENED / UNDERDETERMINED), rung, the fact the annotation does not carry in the
+#: document's own spelling, and the attribution" -- and its text puts the VALUE in the
+#: emitted module: "``render.py`` writes ``__adcp_approximations__`` onto the class ... and
+#: ``verify/`` reads it as a consumer reads any other class attribute."
+#:
+#: Both are satisfied by declaring it where ``SchemaRef`` is declared and binding the name
+#: here, which is exactly what this module already does for ``SchemaRef`` and ``Rule``:
+#: the declaration is ONE, the artifact carries it, and the verifier -- which section 9
+#: forbids ``codegen.ir`` -- reads it through ``adcp.types``, which section 9 permits.
+#: ``adcp.types._base.Approximation``'s own docstring carries the reasoning.  The two
+#: kind words travel with it, for the reason the class does: the emitted module spells
+#: one of them and both halves read it.
+_SECTION_7_APPROXIMATION = (Approximation, WIDENED, UNDERDETERMINED, KINDS)
 
 #: Absent is not the same as ``None``: a property whose schema declares
 #: ``default: null`` has a default and it is ``None``.
@@ -365,6 +381,59 @@ class RootBinding:
 
 
 @dataclass(frozen=True)
+class RootModelDecl:
+    """**Section 7's third root shape**: a root that is neither a class nor an alias.
+
+    "``RootModelDecl`` | pointer, ``SchemaRef``, the root ``TypeRef``, description, rules,
+    and for a mixed root union the dispatch facts -- a root that is an array, a mixed
+    union, or a document stating no schema keyword."
+
+    Three rows of the semantics document reach it and all three are section 14 step 9's,
+    not this row's: section 5's ``items`` row at ROOT ("array -> ``RootModel[list[X]]``"),
+    section 4's new mixed-root-union row ("A ``Union`` at ROOT mixing the two lowers to a
+    ``RootModelDecl`` over the union of the branches' types, with the class branches
+    declared beside it and the dispatch facts on the root model"), and section 7's
+    registry row ("a root stating only these keys is a permissive root model").
+
+    **Declared here with no producer, which is what makes each of those a one-handler
+    change against a slot that exists** -- the same arrangement ``Field.deprecated`` and
+    ``ClassDecl.branches`` were declared under, and the reason section 14 orders the
+    structure before the rows.  ``codegen/render.py`` renders it, and
+    ``tests/test_approximation.py`` grades that rendering against a hand-built declaration,
+    so the path from a declaration to text is exercised before a handler writes one.
+
+    *Why a declaration of its own and not a ``ClassDecl`` with a flag.*  A root model's
+    body is a ``root:`` annotation and a class's is a field list, so the two differ in
+    what the renderer writes rather than in a property of one shape; and section 7's table
+    gives them separate rows.  ``rules`` is on both because section 8 of the architecture
+    document requires it -- "each must carry ``__adcp_schema__``, ``strict_validate`` and
+    a rule tuple exactly as a class does, or a root model and a class disagree about what
+    their document accepts".
+
+    The runtime base a renderer writes it through is ``AdCPRootModel``, which section 8 of
+    the architecture document declares and step 9 adds; until then the renderer names it
+    and no emitted module imports it, so nothing of the committed tree moves.
+    """
+
+    name: str
+    ref: SchemaRef
+    #: The type the root model wraps: ``list[X]`` for a root array, the union of the
+    #: branches' types for a mixed root union, ``Any`` for a document stating no schema
+    #: keyword.
+    type: TypeRef
+    description: str | None = None
+    rules: tuple[Rule, ...] = ()
+    #: Section 4's three dispatch facts, on a MIXED root union and ``None`` everywhere
+    #: else -- the same three slots and the same meaning :class:`ClassDecl` carries them
+    #: with, because a mixed root union's class branches dispatch exactly as a class
+    #: base's do.
+    root_required: tuple[str, ...] | None = None
+    discriminator: str | None = None
+    combinator: str | None = None
+    branches: tuple[TypeRef, ...] | None = None
+
+
+@dataclass(frozen=True)
 class UnionInstall:
     """§4's rebuild: the union base takes its branches, and pydantic is told.
 
@@ -384,7 +453,7 @@ class UnionInstall:
 
 
 #: Every declaration a module can hold, which is what ``render.py`` dispatches on.
-Declaration = ClassDecl | EnumDecl | AliasDecl | RootBinding | UnionInstall
+Declaration = ClassDecl | EnumDecl | AliasDecl | RootBinding | RootModelDecl | UnionInstall
 
 
 @dataclass(frozen=True)
@@ -423,6 +492,23 @@ class Module:
     #: is what a check can grade it over in both directions -- an adoption whose two
     #: nodes are NOT identical is the failure that matters more than a missed collapse.
     adopted: Mapping[str, str] = field(default_factory=dict)
+    #: **§7's ``approximations`` slot**: every fact this document's annotations do not
+    #: carry, in DOCUMENT ORDER.  §6: "An approximation ... is **local** -- it belongs to
+    #: the node that could not render a keyword and says nothing about the node above it
+    #: -- so a parent composes it like any other part of a child's lowering and keeps
+    #: building ... What reaches ``lower_document`` is therefore not one approximation but
+    #: all of them, in document order, because ``+`` concatenates and the children were
+    #: lowered in the order the document states them."
+    #:
+    #: A TUPLE and not a set, for the reason ``declarations`` is one: the order is the
+    #: document's and the report prints one line per entry, so two reports of one document
+    #: are comparable.  ``render.py`` distributes them onto the declarations whose nodes
+    #: contain them (``render.declared_at``), which is the pairing §9 grades over.
+    #:
+    #: **Empty over the whole bundle at §14 step 8**, which is that step's exit condition:
+    #: the instrument exists and no cell widens, so every module's declaration is empty
+    #: and the emitted tree does not move.
+    approximations: tuple[Approximation, ...] = ()
 
 
 def symbols(decided: TypeRef) -> set[str]:
