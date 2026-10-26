@@ -14,10 +14,18 @@
       "type": "string"
     },
     "strength": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "BiddingPolicy.cost_per strength: `cap` optimizes for an average at or below the amount and accepts underdelivery when necessary; `target` optimizes around the amount while balancing volume and spend. Neither is a per-result or per-auction guarantee. The answer MUST keep this strength: a cap of 3 the seller can only meet at 4.50 returns {amount: 4.50, strength: 'cap'}, never 'target'. A seller that will not plan at any amount under this strength rejects instead.",
       "enum": [
         "cap",
         "target"
-      ]
+      ],
+      "enumDescriptions": {
+        "cap": "Optimize for an average at or below the amount, accepting underdelivery when necessary.",
+        "target": "Optimize around the amount while balancing volume and spend."
+      },
+      "title": "Outcome Target Cost Strength",
+      "type": "string"
     }
   },
   "required": [

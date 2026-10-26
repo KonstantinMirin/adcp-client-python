@@ -37,7 +37,84 @@
           "properties": {
             "context": {
               "additionalProperties": {
-                "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json"
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "A value that can be a literal or bound to a path in the data model",
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal string value",
+                    "properties": {
+                      "literalString": {
+                        "description": "Static string value",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "literalString"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal number value",
+                    "properties": {
+                      "literalNumber": {
+                        "description": "Static number value",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "literalNumber"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal boolean value",
+                    "properties": {
+                      "literalBoolean": {
+                        "description": "Static boolean value",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "literalBoolean"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Path to data model value",
+                    "properties": {
+                      "path": {
+                        "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "path"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal with path binding (sets default and binds)",
+                    "properties": {
+                      "literalString": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "literalString",
+                      "path"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "title": "A2UI Bound Value"
               },
               "description": "Context data to include with action",
               "type": "object"
@@ -53,11 +130,164 @@
           "type": "object"
         },
         "disabled": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "A value that can be a literal or bound to a path in the data model",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "label": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Button label text"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Button label text",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "variant": {
           "default": "primary",
@@ -83,7 +313,84 @@
           "properties": {
             "context": {
               "additionalProperties": {
-                "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json"
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "A value that can be a literal or bound to a path in the data model",
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal string value",
+                    "properties": {
+                      "literalString": {
+                        "description": "Static string value",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "literalString"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal number value",
+                    "properties": {
+                      "literalNumber": {
+                        "description": "Static number value",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "literalNumber"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal boolean value",
+                    "properties": {
+                      "literalBoolean": {
+                        "description": "Static boolean value",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "literalBoolean"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Path to data model value",
+                    "properties": {
+                      "path": {
+                        "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "path"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal with path binding (sets default and binds)",
+                    "properties": {
+                      "literalString": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "literalString",
+                      "path"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "title": "A2UI Bound Value"
               },
               "type": "object"
             },
@@ -97,8 +404,84 @@
           "type": "object"
         },
         "badge": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Badge text (e.g., 'New', 'Sale')"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Badge text (e.g., 'New', 'Sale')",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "children": {
           "description": "Child component IDs",
@@ -108,16 +491,244 @@
           "type": "array"
         },
         "image": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Card image URL"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Card image URL",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "subtitle": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Card subtitle"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Card subtitle",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "title": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Card title"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Card title",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         }
       },
       "required": [
@@ -160,16 +771,168 @@
       "description": "Image display component",
       "properties": {
         "alt": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Alt text for accessibility"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Alt text for accessibility",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "height": {
           "description": "Image height in pixels",
           "type": "integer"
         },
         "src": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Image source URL"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Image source URL",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "width": {
           "description": "Image width in pixels",
@@ -191,8 +954,84 @@
           "type": "boolean"
         },
         "label": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Button label"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Button label",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "type": {
           "description": "Integration type",
@@ -203,8 +1042,84 @@
           "type": "string"
         },
         "url": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Integration endpoint URL"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Integration endpoint URL",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         }
       },
       "required": [
@@ -222,12 +1137,164 @@
           "type": "boolean"
         },
         "label": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Link text"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Link text",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "url": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "URL to navigate to"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "URL to navigate to",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         }
       },
       "required": [
@@ -240,12 +1307,164 @@
       "description": "Data-bound list component",
       "properties": {
         "emptyMessage": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Message to show when list is empty"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Message to show when list is empty",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "items": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Path to array in data model"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Path to array in data model",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "layout": {
           "default": "vertical",
@@ -283,7 +1502,84 @@
           "properties": {
             "context": {
               "additionalProperties": {
-                "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json"
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "A value that can be a literal or bound to a path in the data model",
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal string value",
+                    "properties": {
+                      "literalString": {
+                        "description": "Static string value",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "literalString"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal number value",
+                    "properties": {
+                      "literalNumber": {
+                        "description": "Static number value",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "literalNumber"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal boolean value",
+                    "properties": {
+                      "literalBoolean": {
+                        "description": "Static boolean value",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "literalBoolean"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Path to data model value",
+                    "properties": {
+                      "path": {
+                        "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "path"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Literal with path binding (sets default and binds)",
+                    "properties": {
+                      "literalString": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "literalString",
+                      "path"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "title": "A2UI Bound Value"
               },
               "type": "object"
             },
@@ -297,28 +1593,484 @@
           "type": "object"
         },
         "badge": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Badge text (e.g., 'Best Seller')"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Badge text (e.g., 'Best Seller')",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "ctaLabel": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "CTA button label"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "CTA button label",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "description": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Product description"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Product description",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "image": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Product image URL"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Product image URL",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "price": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Price display string"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Price display string",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "title": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Product name"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Product name",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         }
       },
       "required": [
@@ -373,8 +2125,84 @@
       "description": "Text display component",
       "properties": {
         "text": {
-          "$ref": "https://adcontextprotocol.org/schemas/3.2.4/a2ui/bound-value.json",
-          "description": "Text content to display"
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Text content to display",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Literal string value",
+              "properties": {
+                "literalString": {
+                  "description": "Static string value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal number value",
+              "properties": {
+                "literalNumber": {
+                  "description": "Static number value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "literalNumber"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal boolean value",
+              "properties": {
+                "literalBoolean": {
+                  "description": "Static boolean value",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "literalBoolean"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Path to data model value",
+              "properties": {
+                "path": {
+                  "description": "JSON pointer path to value in data model (e.g., '/products/0/title')",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Literal with path binding (sets default and binds)",
+              "properties": {
+                "literalString": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "literalString",
+                "path"
+              ],
+              "type": "object"
+            }
+          ],
+          "title": "A2UI Bound Value"
         },
         "variant": {
           "default": "body",

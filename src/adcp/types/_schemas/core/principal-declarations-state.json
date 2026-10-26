@@ -5,11 +5,8 @@
   "properties": {
     "accepted": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "The intersection of the declared set with the seller's objective support. Sellers select asynchronous payload versions, signing algorithms, and experimental behavior only from this set. A change to this set caused by seller-side evolution fires principal.changed with reason declarations_intersection_changed.",
-      "maxProperties": 3,
       "properties": {
         "async_adcp_versions": {
           "description": "AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.",
@@ -44,9 +41,9 @@
             "enum": [
               "ed25519",
               "ecdsa-p256-sha256"
-            ]
+            ],
+            "type": "string"
           },
-          "maxItems": 2,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
@@ -58,11 +55,8 @@
     },
     "declared": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "The caller's current declared set, echoed verbatim.",
-      "maxProperties": 3,
       "properties": {
         "async_adcp_versions": {
           "description": "AdCP minor versions, such as 3.2, whose asynchronous payload shapes (webhooks and other seller-initiated pushes) the caller can parse. The seller selects payload shapes from the accepted intersection; without a declaration the seller uses its advertised default.",
@@ -97,9 +91,9 @@
             "enum": [
               "ed25519",
               "ecdsa-p256-sha256"
-            ]
+            ],
+            "type": "string"
           },
-          "maxItems": 2,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true

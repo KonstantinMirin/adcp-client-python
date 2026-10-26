@@ -3,6 +3,7 @@
   "allOf": [
     {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Campaign-level creative context for AI-powered creative generation. Provides the layer between brand identity (stable across campaigns) and individual creative execution (per-request). A brand has one identity (defined in brand.json) but different creative briefs for each campaign or flight.",
       "properties": {
         "audience": {
@@ -10,6 +11,7 @@
           "type": "string"
         },
         "compliance": {
+          "additionalProperties": true,
           "description": "Regulatory and legal compliance requirements for this campaign. Campaign-specific, regional, and product-based \u2014 distinct from brand-level disclaimers in brand.json.",
           "properties": {
             "prohibited_claims": {
@@ -23,6 +25,7 @@
             "required_disclosures": {
               "description": "Disclosures that must appear in creatives for this campaign. Each disclosure specifies the text, where it should appear, and which jurisdictions require it.",
               "items": {
+                "additionalProperties": true,
                 "properties": {
                   "jurisdictions": {
                     "description": "Jurisdictions where this disclosure is required. ISO 3166-1 alpha-2 country codes or ISO 3166-2 subdivision codes (e.g., 'US', 'GB', 'US-NJ', 'CA-QC'). If omitted, the disclosure applies to all jurisdictions in the campaign.",
@@ -43,23 +46,36 @@
                     "type": "integer"
                   },
                   "persistence": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "How long the disclosure must persist during content playback or display. When omitted, the creative agent should use the most restrictive persistence mode supported by the target format.",
                     "enum": [
+                      "continuous",
                       "initial",
-                      "flexible",
-                      "continuous"
-                    ]
+                      "flexible"
+                    ],
+                    "enumDescriptions": {
+                      "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
+                      "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion",
+                      "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration."
+                    },
+                    "title": "Disclosure Persistence",
+                    "type": "string"
                   },
                   "position": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Where the disclosure should appear within the creative. prominent: clearly visible in the main creative area; footer: at the bottom of visual creatives; audio: spoken in audio/video creatives; subtitle: displayed in the subtitle or closed-caption track; overlay: superimposed on video content; end_card: displayed on video end card; pre_roll: spoken or displayed before main content; companion: in companion ad unit alongside primary creative",
                     "enum": [
-                      "audio",
+                      "prominent",
                       "footer",
+                      "audio",
+                      "subtitle",
                       "overlay",
                       "end_card",
                       "pre_roll",
-                      "subtitle",
-                      "companion",
-                      "prominent"
-                    ]
+                      "companion"
+                    ],
+                    "title": "Disclosure Position",
+                    "type": "string"
                   },
                   "regulation": {
                     "description": "The regulation or legal authority requiring this disclosure (e.g., 'SEC Rule 156', 'FCA COBS 4.5', 'FDA 21 CFR 202')",
@@ -82,6 +98,7 @@
           "type": "object"
         },
         "messaging": {
+          "additionalProperties": true,
           "description": "Messaging framework for the campaign",
           "properties": {
             "cta": {
@@ -111,18 +128,21 @@
           "type": "string"
         },
         "objective": {
+          "description": "Campaign objective that guides creative tone and call-to-action strategy",
           "enum": [
             "awareness",
-            "retention",
+            "consideration",
             "conversion",
-            "engagement",
-            "consideration"
-          ]
+            "retention",
+            "engagement"
+          ],
+          "type": "string"
         },
         "reference_assets": {
           "description": "Visual and strategic reference materials such as mood boards, product shots, example creatives, and strategy documents",
           "items": {
             "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
             "description": "A reference asset that provides creative context. Carries visual materials (mood boards, product shots, example creatives) with semantic roles that tell creative agents how to use them.",
             "properties": {
               "description": {
@@ -130,15 +150,17 @@
                 "type": "string"
               },
               "role": {
+                "description": "How the creative agent should use this asset. style_reference: match the visual style; product_shot: include this product; mood_board: overall look and feel; example_creative: example of a similar execution; logo: logo to use; strategy_doc: strategy or planning document for context; storyboard: sequential visual direction for video or multi-scene creative",
                 "enum": [
-                  "logo",
-                  "mood_board",
-                  "storyboard",
-                  "product_shot",
-                  "strategy_doc",
                   "style_reference",
-                  "example_creative"
-                ]
+                  "product_shot",
+                  "mood_board",
+                  "example_creative",
+                  "logo",
+                  "strategy_doc",
+                  "storyboard"
+                ],
+                "type": "string"
               },
               "url": {
                 "description": "URL to the reference asset (image, video, or document)",
@@ -147,8 +169,8 @@
               }
             },
             "required": [
-              "role",
-              "url"
+              "url",
+              "role"
             ],
             "title": "Reference Asset",
             "type": "object"

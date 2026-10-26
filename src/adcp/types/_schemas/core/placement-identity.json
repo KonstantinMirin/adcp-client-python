@@ -43,16 +43,13 @@
         },
         "seller_agent": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Sales agent that defines and maintains the inline placement namespace.",
           "examples": [
             {
               "agent_url": "https://agent.acme.example"
             }
           ],
-          "maxProperties": 2,
           "properties": {
             "agent_url": {
               "description": "The seller agent's API endpoint URL as declared in the property publisher's adagents.json `authorized_agents[].url`. MUST use the `https://` scheme. Receivers compare this URL against the `authorized_agents` list using the AdCP URL canonicalization rules \u2014 not byte-equality \u2014 and reject mismatches with `seller_not_authorized`. See docs/reference/url-canonicalization.",

@@ -83,7 +83,7 @@ tally = {"accepts the duplicate": 0, "control failed (witness not conforming)": 
          "refused with the duplicate": 0, "unresolvable": 0}
 for doc_name, ptr, keys in sites():
     try:
-        root = bundle.resolved(B, doc_name)
+        root = bundle.record(B, doc_name)
     except Exception:
         tally["unresolvable"] += 1
         print(f"  {doc_name}#{ptr or '/'}: unresolvable")

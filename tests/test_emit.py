@@ -78,8 +78,7 @@ from codegen.harness import (
     LivenessResult,
     Pair,
     PairReport,
-    _closed,  # noqa: PLC2701 -- the harness's own reading of a closed additionalProperties
-    _composed,  # noqa: PLC2701 -- and its own folding of an allOf conjunct's facts
+    _composed,  # noqa: PLC2701 -- the harness's own folding of an allOf conjunct's facts
     check_pair,
     compare_schema,
     conforms,
@@ -783,26 +782,78 @@ PAIRS_FLOOR = 1095
 #: or why; a name says which, and two readings of one named set cannot drift apart the
 #: way ``PAIRS_PIN`` and ``OUTCOME_PINS`` could.
 #:
-#: Two groups are GONE rather than smaller.  ``comparison:model_drops_a_fact`` was one
+#: Two groups were GONE rather than smaller.  ``comparison:model_drops_a_fact`` was one
 #: ``description`` each at an ``additionalProperties`` node, closed in the EMITTER by
 #: ``salesagent-j3k2l.28``; ``accepts:model_dropped_a_fact``'s three pairs are EXEMPT
 #: and the exemption is reported (``codegen.dump_exemptions``, and the ``exempt`` census
 #: in the test named above).
+#:
+#: **TWO COMPARISON GROUPS ARRIVED AT ``adcp-client-python-10l.3``, AND THIS CENSUS IS
+#: WHERE THEY ARE NAMED RATHER THAN WHERE THEY ARE EXCUSED.**
+#: ``test_every_class_passes_all_three_checks`` is RED on every one of them and stays
+#: red: architecture §14 step 3 says a comparison failure that appears when
+#: ``bundle.record`` becomes this package's own inliner is a REAL FINDING and not a
+#: fold's absence, so nothing was added to the verifier to quiet one.
+#:
+#: **A THIRD GROUP APPEARED AND WAS CLEARED IN THE SAME ROW, WHICH IS WHY IT IS NOT
+#: HERE.**  23 pairs reported ``additionalProperties: true`` where their document states
+#: ``{"type": "object"}``: §4's mapping row renders ``dict[str, Any]`` and pydantic has
+#: no spelling of that which omits the keyword, and ``true`` and silence admit the same
+#: instances -- so the two sides were writing one acceptance fact two ways.  That is a
+#: reading this pipeline's own output forces, which §9 KEEPS and applies to both sides,
+#: so ``harness._silent_about_extras`` is where it now lives, scoped to a node that
+#: declares no ``properties``.  It replaces a blanket model-only arm whose one-site
+#: measurement had been absorbing all 23 (``harness._narrows_nothing``).
+#:
+#: The two that remain are each measured and each filed as its own row:
+#:
+#: 1. **An ``items`` overlay's ``description``, 2 pairs**
+#:    (``adcp-client-python-10l.18``).  ``harness._composed`` folds a conjunct by
+#:    gap-fill and the NODE's own declaration wins, which its docstring names as a KNOWN
+#:    CEILING; at ``core/media-buy-frequency-cap-requirement.json``'s
+#:    ``/properties/supported_control_modes/items`` the node is the BASE's declaration
+#:    and the narrowing conjunct's is the one the model carries, so the two descriptions
+#:    differ.  It was invisible before because the delegated resolver dropped a
+#:    ``description`` at an enum node while inlining, so neither side stated one.
+#: 2. **``core/requirements/catalog-field-binding.json``, 3 pairs, which is the document
+#:    this row's emission delta added** (``adcp-client-python-10l.19``).  At the root the
+#:    model states ``type: object`` and the document nothing, because
+#:    ``harness._entails_type``'s union derivation asks each branch for a ``type`` word
+#:    and two of the branches are a LOCAL ``$ref`` it does not resolve.  At ``#/oneOf/0``
+#:    and ``#/oneOf/1`` the entry's ``description`` is ``missing``: the branch class is
+#:    named off a local reference and carries no description from its target.
+#: Of :data:`NON_PASS_PAIRS`'s groups, the ones whose pairs round-trip NO instance.  A
+#: pair the generator could not draw for grades 0 instances, and so does one whose dump
+#: the document refused; a COMPARISON failure grades its instance like any other pair,
+#: because the comparison needs no generator and runs after the round trip.  Named so the
+#: complement in ``test_the_harness_result_is_counted_over_the_whole_population`` is a
+#: derivation from the mechanism rather than a second count.
+ROUND_TRIPS_NOTHING = ("no_instrument",)
 NON_PASS_PAIRS: dict[str, list[str]] = {
     "no_instrument": [
         "core/reference-renderer.json#",
         "core/reference-renderer.json#/properties/provenance",
     ],
+    "comparison:model_adds_a_fact": [
+        "core/requirements/catalog-field-binding.json#",
+    ],
+    "comparison:model_drops_a_fact": [
+        "core/media-buy-frequency-cap-requirement.json#",
+        "core/media-buy-support-requirements.json#",
+        "core/requirements/catalog-field-binding.json#/oneOf/0",
+        "core/requirements/catalog-field-binding.json#/oneOf/1",
+    ],
 }
-#: **PINNED AT ZERO ON PURPOSE AND BOTH ARE GREEN.**  Zero is the specification's
-#: symmetric comparison -- a fact the model adds reddens and a fact it drops reddens --
-#: and a zero does not collide between rows the way a census does.  It was pinned here
-#: while ``MISSING_PIN`` was RED, because re-pointing a pin at the measurement is what
-#: salesagent-j3k2l.28 said not to do; that row closed it.  The zeros are only
-#: meaningful over a non-empty comparison, which the totals test asserts PER PAIR
-#: rather than as a sum of ``compared``.
-MISSING_PIN = 0
-DIFFERS_PIN = 0
+#: **THE TWO ZEROS ARE GONE, REPLACED BY :data:`COMPARISON_FACTS`, and that is row .3's
+#: doing rather than a pin being loosened.**  They were pinned at 0 beside an ``added``
+#: zero -- the specification's symmetric comparison, "a fact the model adds reddens and a
+#: fact it drops reddens" -- and all three were green.  Row .3's 30 red facts make a
+#: zero unreachable, and three integers beside each other cannot say WHICH facts they
+#: count, so the set names every one by pair, pointer and DIRECTION and the three totals
+#: are derived from it in
+#: ``test_the_harness_result_is_counted_over_the_whole_population``.  That is as strong
+#: as the zeros at detecting a thirty-first fact and stronger at attributing the thirty:
+#: a fact arriving, leaving or changing direction reddens with the pair named.
 #: The pairs whose LIVENESS check has no payload, by name.  Written once and read by the
 #: two tests that need it, so ``pass`` is the complement of a named set rather than an
 #: arithmetic over two pins.  These are the same two pairs ``NON_PASS_PAIRS`` names and
@@ -1948,11 +1999,17 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     }, dict(by_outcome)
     assert by_outcome["pass"] == len(reports) - sum(len(v) for v in NON_PASS_PAIRS.values())
     # One instance per pair at the default depth, so the round-tripped total is the
-    # complement of the named non-pass set and not a number of its own: a pair whose
-    # generator could not draw and a pair whose dump the document refused both
-    # round-trip nothing.
+    # complement of the groups that round-trip NOTHING -- a pair whose generator could
+    # not draw and a pair whose dump the document refused.
+    #
+    # **DERIVED FROM :data:`ROUND_TRIPS_NOTHING` AND NOT FROM THE WHOLE NON-PASS SET,
+    # which is what row .3 forced.**  A COMPARISON failure round-trips its instance like
+    # any other pair: the comparison needs no generator and runs after the round trip,
+    # which is the same fact ``test_every_class_passes_all_three_checks``'s docstring
+    # states about an undrawable pair read the other way round.  Summing over every
+    # non-pass group was green only while the one group was ``no_instrument``.
     assert sum(r.graded_instances for r in reports) == len(reports) - sum(
-        len(v) for v in NON_PASS_PAIRS.values()
+        len(NON_PASS_PAIRS[k]) for k in ROUND_TRIPS_NOTHING
     )
 
     # THE COMPARISON, graded by its own denominator PER PAIR rather than by a total.
@@ -1969,9 +2026,23 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
         {name for name, r in pairs.items() if r.comparison.model_facts},
         inside=set(pairs),
     )
-    assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
-    assert sum(len(r.comparison.missing) for r in reports) == MISSING_PIN
-    assert sum(len(r.comparison.differs) for r in reports) == DIFFERS_PIN
+    # **THE THREE TOTALS ARE DERIVED FROM :data:`COMPARISON_FACTS` AND NOT PINNED, which
+    # is what row .3 forced.**  They were 0, 0 and 0, and the ``added`` zero carried the
+    # sentence "none of them narrows".  Row .3 produced 30 red facts over 27 pairs and
+    # ``COMPARISON_FACTS`` names every one by pair and pointer, so the totals here are
+    # that set's own arithmetic rather than three numbers beside it -- a fact arriving or
+    # leaving reddens where it can be attributed, and a fact MOVING between the three
+    # directions reddens here.  ``test_every_class_passes_all_three_checks`` is RED on
+    # all 27 and stays red; §14 step 3 makes these findings and not a fold's absence.
+    named = collections.Counter(
+        fact.split(" ")[0] for facts in COMPARISON_FACTS.values() for fact in facts
+    )
+    live = collections.Counter()
+    for r in reports:
+        live["added"] += len(r.comparison.added)
+        live["missing"] += len(r.comparison.missing)
+        live["differs"] += len(r.comparison.differs)
+    assert +live == +named, (dict(live), dict(named))
     # D5's URL-type rows, the one category that excuses a fact the model does not state.
     # The claim is WHICH facts it excuses, so that is what is asserted: a URL type
     # renders ``minLength: 1`` and ``HttpUrl`` renders ``maxLength: 2083``, and the
@@ -2298,8 +2369,11 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
         # ``allOf`` conjoins, so a conjunct's ``additionalProperties`` IS the node's --
         # and ``_composed`` is the harness's own folding, the one ``compare_schema``
         # reads the document through, so there is no second reading of what a conjunct
-        # contributes.  ``_closed`` folds the resolver's ``{"not": {}}`` back to
-        # ``false``.  Read bare instead, a composing node comes back SILENT while its
+        # contributes.  ``_closed`` stood here, folding the delegated resolver's
+        # ``{"not": {}}`` back to the ``false`` it is; it is deleted with that resolver
+        # (architecture §9) and ``bundle.record`` copies the document's own ``false``,
+        # which 0 raw nodes of the bundle spell any other way.  Read bare instead, a
+        # composing node comes back SILENT while its
         # class correctly carries the conjunct's value: measured on
         # ``core/attribution-window.json#/properties/post_click``, whose own node is
         # ``{"allOf": [{"$ref": "core/duration.json"}], "description": ...}`` and whose
@@ -2308,7 +2382,21 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
         # said nothing and this read it as the document permitting what it forbids.
         name = f"{row.ref.document}{row.ref.pointer}"
         classes.add(name)
-        declared = _closed(_composed(schema_at(row.ref)).get("additionalProperties", "silent"))
+        # **THROUGH ``_normalize`` AS WELL, which is how ``compare_schema`` reads the
+        # document side and is what row .3 made load-bearing here.**  Architecture §4
+        # leaves a LOCAL ``$ref`` in the record as written, so a union BRANCH can be
+        # ``{"$ref": "#/definitions/ScalarBinding"}`` -- a node that states nothing about
+        # additional properties while the entry it names states ``true``.  Read without
+        # resolving it, the two branches of
+        # ``core/requirements/catalog-field-binding.json`` came back SILENT against a
+        # class that correctly carries ``allow``, and the inherited-value arm below then
+        # asked the union ROOT's own document for a key no union root states.  One
+        # reading of the document for the comparison and for this check, which is the
+        # same argument ``_composed`` is read here for.
+        root = schema_at(SchemaRef(row.ref.document, "#"))
+        declared = _composed(
+            harness._normalize(schema_at(row.ref), root, declared_null=True)  # noqa: SLF001
+        ).get("additionalProperties", "silent")
         # The four forms, named: a schema here is the TYPED row, graded in full by
         # ``test_a_typed_additional_properties_is_a_typed_pydantic_extra``.  What D8
         # decides for it is the same as for ``true`` -- an additional property is part
@@ -2440,7 +2528,7 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
     it deprecates and says "will shortly become an error".  Measured before this
     was fixed: 4.4 s per validation against a live URL, and a
     ``RefResolutionError`` offline.  So the emitter writes each document resolved
-    (``bundle.resolved``).
+    (``bundle.record``).
 
     This is the runtime half of step 2.  The module half is the opposite and is
     graded below: a reference is an IMPORT in the generated module (P2) and is
@@ -2450,7 +2538,7 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
     **THE OBLIGATION IS "DECIDABLE LOCALLY", AND A LOCAL POINTER IS.**  The sentence
     above says why -- an ABSOLUTE URI has no store and goes to the network -- and a
     ``#/definitions/x`` needs no store at all, only the document as its resolution
-    scope.  ``bundle.resolved`` inlines a remote reference and leaves a local one, so
+    scope.  ``bundle.record`` inlines a remote reference and leaves a local one, so
     a packaged document CAN carry one, and the first ones to be packaged arrived with
     ``salesagent-j3k2l.28``: ``core/placement-presentation.json`` and
     ``core/bidding-policy-capability.json``, which were refused by name until that row.
@@ -2460,82 +2548,68 @@ def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
     THROUGH it.  So the split is read with ``bundle.split_ref``, which is the one
     reading of the ``#`` this project has, rather than by looking for the key.
 
-    **AND A REMOTE REFERENCE INSIDE A SECTION ENTRY NOTHING DECLARES IS DECIDABLE
-    TOO**, for a reason of the same shape: section 5 makes a ``definitions`` / ``$defs``
-    section "nothing by itself", each entry "declared on demand when a ``$ref`` names
-    it", and section 3 adds "an entry nothing references is not declared" -- so no class
-    grades at a pointer inside such an entry and no enclosing node's assertions descend
-    into one.  ``bundle.undecidable_references`` is the predicate, and the obligation
-    here is stated through it rather than as "no remote reference at all", which refused
-    ``a2ui/si-catalog.json`` for carrying 24 of them in one dead section
-    (``salesagent-j3k2l.71``).  The entries are NAMED below, the way the local set is,
-    and an entry some ``$ref`` does name is still owed its resolution --
-    ``tests/test_fragment_ref.py`` grades both directions on a bundle it writes.
+    **AND SINCE ROW .3 THERE IS NO REMOTE REFERENCE LEFT AT ALL, at any position.**
+    The predicate stays ``bundle.undecidable_references``, which is narrower than "no
+    remote reference" and is what admitted ``a2ui/si-catalog.json``'s 24 references in
+    one dead section (``salesagent-j3k2l.71``) -- it has simply stopped having a
+    survivor to admit: ``bundle.record`` descends by the table's descent column, where a
+    ``definitions``/``$defs`` entry is a subschema at a DEF position, so "every
+    cross-document ``$ref``" (architecture §4) means every one.  Both halves are
+    asserted, the narrow predicate AND the stronger fact, so a reading that started
+    leaving a remote reference anywhere reddens here with the pointer.
+
+    ``tests/test_fragment_ref.py`` grades the declared and the dead entry separately on
+    a bundle it writes, which is where the two positions are told apart.
     """
     documents = {g.ref.document for g in graded()}
     named = bundle.named_nodes(BUNDLE)
     local: dict[str, set[str]] = {}
-    inert: dict[str, set[str]] = {}
+    remote: dict[str, set[str]] = {}
     for document in sorted(documents):
         carried = schema_at(SchemaRef(document, "#"))
         owed = bundle.undecidable_references(carried, named.get(document, frozenset()))
         assert owed == [], (document, owed)
-        entries = bundle.section_entries(carried)
         for pointer, reference in bundle.references(carried):
             if bundle.split_ref(reference)[0]:
-                enclosing = bundle.pointers_above(pointer, entries)
-                assert enclosing, (document, pointer, reference)
-                inert.setdefault(document, set()).update(enclosing)
+                remote.setdefault(document, set()).add(pointer)
             else:
                 local.setdefault(document, set()).add(reference)
     # And the control: the bundle DOES have references, so the assertion above is
     # over documents that had something to resolve rather than over nothing.
     assert [d for d in documents if bundle.references(bundle.read(BUNDLE, d))]
-    # The entries the admitted half sits in, by name.  One document, one dead section,
-    # and every entry in it unnamed by every ``$ref`` of the bundle -- which is what
-    # makes the position unreachable rather than merely unreached.
-    assert {d: sorted(e) for d, e in inert.items()} == {
-        "a2ui/si-catalog.json": [
-            "/definitions/Button",
-            "/definitions/Card",
-            "/definitions/Image",
-            "/definitions/IntegrationAction",
-            "/definitions/Link",
-            "/definitions/List",
-            "/definitions/ProductCard",
-            "/definitions/Text",
-        ]
-    }, {d: sorted(e) for d, e in inert.items()}
-    for document, entries in inert.items():
-        assert named.get(document, frozenset()) & entries == set(), (document, sorted(entries))
-    # The local set, named rather than counted: the two documents that carry one, and
-    # the REFERENCES each one carries, by target.  A count per document said only how
-    # many there were, so a reference changing target was invisible to it and a
-    # document joining the set moved a number nobody could attribute.
+    # The stronger fact, asserted beside the narrow predicate: no document the package
+    # carries holds a cross-document reference at ANY position, dead section included.
+    assert remote == {}, {d: sorted(p) for d, p in remote.items()}
+    # THE LOCAL SET, DERIVED AND NOT PINNED, and row .3 is why.  It was a literal map
+    # of three documents to their references, because the delegated resolver INLINED a
+    # local reference and only a recursive chain survived it -- so the survivors were a
+    # property of what that library could manage.  Architecture §4 decides that a local
+    # ``$ref`` stays AS WRITTEN, so what survives is now a property of the DOCUMENT, and
+    # the check is the stronger one: the record's local references are the raw bundle
+    # document's, pointer for pointer and URI for URI.
+    #
+    # Derived from the RAW bundle document, which is an independent input and not the
+    # thing being graded, so it catches a reference changing target, a document joining
+    # the set and a document leaving it -- all three of which the literal could only
+    # report as a diff for a human to attribute.  21 documents of the committed tree
+    # carry one, measured at this tip; the three the literal named are asserted to be
+    # among them so the loop is not graded by an empty set.
     # ``tests/test_applied_schema.py`` reads the same references once per
     # (PAIR, reference) rather than once per document, which is a second denominator
     # for one fact and is why that file's figures are larger.
-    assert {d: sorted(r) for d, r in local.items()} == {
-        "core/bidding-policy-capability.json": [
-            "#/definitions/max_bid_with_cost_per",
-            "#/definitions/max_bid_with_roas",
-            "#/definitions/policy_profile",
-        ],
-        "core/placement-presentation.json": [
-            "#/definitions/color",
-            "#/definitions/layer",
-            "#/definitions/rectangle",
-        ],
-        # The third joined at ``salesagent-j3k2l.41``: its bounded-value definitions
-        # are a union whose array and mapping branches carry their own bound, which
-        # now rides on a generic alias instead of refusing the document.
-        "governance/reported-outcome-error.json": [
-            "#/definitions/bounded_scalar",
-            "#/definitions/bounded_value",
-            "#/definitions/bounded_value_level_2",
-            "#/definitions/bounded_value_level_3",
-        ],
-    }, {d: sorted(r) for d, r in local.items()}
+    for document in sorted(local):
+        raw = [u for _, u in bundle.references(bundle.read(BUNDLE, document))]
+        assert sorted(local[document]) == sorted({u for u in raw if not bundle.split_ref(u)[0]}), (
+            document,
+            sorted(local[document]),
+            sorted(raw),
+        )
+    carriers = claimed("documents the package carries a local reference in", set(local))
+    assert {
+        "core/bidding-policy-capability.json",
+        "core/placement-presentation.json",
+        "governance/reported-outcome-error.json",
+    } <= carriers, sorted(carriers)
 
 
 # --------------------------------------------------------------------------- #
@@ -3039,7 +3113,10 @@ def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
 
         adapter = TypeAdapter(base)
         for branch in base._branch_models:
-            payload = _an_instance(schema_at(branch.__adcp_schema__))
+            payload = _an_instance(
+                schema_at(branch.__adcp_schema__),
+                schema_at(SchemaRef(branch.__adcp_schema__.document, "#")),
+            )
             assert type(base.model_validate(payload)) is branch, (document, branch, payload)
             assert type(adapter.validate_python(payload)) is branch, (document, branch)
             assert type(Holder.model_validate({"v": payload}).v) is branch, (document, branch)
@@ -3052,8 +3129,26 @@ def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
     ), graded_arms
 
 
-def _an_instance(schema: dict) -> Any:
-    """One instance the schema admits, drawn rather than written."""
+def _an_instance(schema: dict, document: dict | None = None) -> Any:
+    """One instance the schema admits, drawn rather than written.
+
+    ``document`` is the schema's own document, and it is the resolution scope a LOCAL
+    ``$ref`` in a sub-node needs.  Architecture §4 leaves a local reference in the
+    record as written, so a BRANCH node can say ``{"$ref": "#/definitions/x"}`` -- a
+    pointer relative to the DOCUMENT root.  Handed the node alone,
+    ``hypothesis_jsonschema``'s generator raises ``_RefResolutionError``, which is a
+    statement about the GENERATOR wearing the model's name: ``harness.check_pair``
+    resolves the same way for the same reason and ``adcp.types._base._refuse_at``
+    evolves a document-rooted validator for the production path.  Reached at
+    ``core/reporting-delivery-method.json``'s and
+    ``core/reporting-dataset-share-destination.json``'s branches when row .3 stopped
+    inlining a local reference.
+    """
+    if document is not None:
+        try:
+            schema = harness.resolve(schema, store={}, referrer=document)
+        except Exception:  # noqa: BLE001 -- any resolution failure falls back to the node
+            pass
     drawn: list[Any] = []
 
     @settings(
@@ -3097,7 +3192,10 @@ def test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema() -> None:
             mine: int | None = None
 
         assert "_branch_models" not in Refinement.__dict__
-        arm = _an_instance(schema_at(branch.__adcp_schema__))
+        arm = _an_instance(
+            schema_at(branch.__adcp_schema__),
+            schema_at(SchemaRef(branch.__adcp_schema__.document, "#")),
+        )
         got = Refinement.model_validate({**arm, "mine": 7})
         assert type(got) is Refinement, (document, type(got))
         assert got.mine == 7, document
@@ -3134,7 +3232,10 @@ def test_model_dump_json_on_a_union_base_instance_does_not_raise() -> None:
         assert base.model_construct().model_dump() == {}
 
         branch = base._branch_models[0]
-        payload = _an_instance(schema_at(branch.__adcp_schema__))
+        payload = _an_instance(
+                schema_at(branch.__adcp_schema__),
+                schema_at(SchemaRef(branch.__adcp_schema__.document, "#")),
+            )
         instance = base.strict_validate(payload)
         # the arm's own fields survive the base-typed field, which is what the union in
         # the serialization slot buys and the base's model schema alone loses
@@ -3469,19 +3570,13 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "core/product-format-declaration.json": "allOf",
     "core/registry-event.json": "properties",
     "core/requirements/asset-requirements.json": "$ref",
-    # Was ``$ref`` -- "a bare $ref branch has no node to declare a subclass from" --
-    # until ``salesagent-j3k2l.59`` made such a branch a class with two bases.  Its
-    # three branches now name themselves off the ``kind`` pin (two of them through a
-    # LOCAL ``$ref``) and the root's dispatch derives to ``kind``, so the document gets
-    # past this module.  It then refused on a ``discriminator`` sibling of the NESTED
-    # union at ``/oneOf/2/properties/per_item_bindings/items`` until
-    # ``salesagent-j3k2l.67`` admitted that keyword there (§6's row: it constrains
-    # nothing and the comparison does not look for it), and it is back on ``$ref`` --
-    # ``#/definitions/ScalarBinding/properties/ext``, whose target
-    # ``core/ext.json`` ``bundle.resolved`` leaves untouched under a ``definitions``
-    # section.  That is ``salesagent-j3k2l.71``'s ground and the resolution is
-    # UNRESOLVED rather than a verdict.
-    "core/requirements/catalog-field-binding.json": "$ref",
+    # ``core/requirements/catalog-field-binding.json`` LEFT THIS MAP AT ROW .3 and is
+    # the row's whole emission delta: 747 -> 748.  Its last refusal was ``$ref`` at
+    # ``#/definitions/ScalarBinding/properties/ext``, resolution UNRESOLVED, because the
+    # delegated resolver descended neither ``definitions`` nor ``$defs`` and left that
+    # reference in the document the package would carry.  ``bundle.record`` descends a
+    # section entry like any other subschema position (architecture §4, §11), so the
+    # reference is inlined and the carried document decides locally.
     "core/tracker-execution-selector.json": "$ref",
     "core/wholesale-feed-event.json": "properties",
     "creative/get-creative-features-response.json": "allOf",
@@ -3583,11 +3678,18 @@ def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> Non
     """``harness._entails_type``, in both directions, and why it is not a tolerance.
 
     §4's base is a pydantic model, so it renders ``type: object``; 7 of this bundle's
-    union roots state their branches' type and not their own, and a ``const`` property
-    renders ``{"const": ..., "type": ...}`` where the document states only the ``const``.
-    Both are facts the model states and the document does not, which the symmetric
+    union roots state their branches' type and not their own; a ``const`` property
+    renders ``{"const": ..., "type": ...}`` where the document states only the ``const``;
+    and §4's enumeration row renders a ``StrEnum``, so ``{"enum": [...], "type":
+    "string"}`` where 164 nodes of the raw bundle state the ``enum`` alone.  All three
+    are facts the model states and the document does not, which the symmetric
     comparison reports as a narrowing -- correctly, as a rule, and wrongly for these,
     because the document's own node already admits only instances of that type.
+
+    **The enum derivation arrived with row .3** and is not a fold added: it was
+    ``_narrows_nothing``'s enum row, whose other two clauses undid the delegated
+    resolver's annotation drop and are deleted (architecture §9), while this clause has
+    a source in the document's own text and belongs to the question this function asks.
 
     So the predicate is asked of the DOCUMENT and this grades it three ways:
 
@@ -3595,7 +3697,7 @@ def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> Non
       refuses an instance of every other type -- asserted against ``jsonschema``, not
       asserted of the rule;
     * a typeless node with nothing forcing a type is still reported;
-    * the two derivations are each reached, so neither is dead.
+    * the three derivations are each reached, so none is dead.
     """
     from codegen.harness import _entails_type
 
@@ -3654,11 +3756,15 @@ def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> Non
     )
     assert narrower.outcome != "pass", narrower
 
-    # direction 3: both derivations are reached
+    # direction 3: all three derivations are reached
     assert _entails_type({"const": "platform"}, "string") is True
     assert _entails_type({"const": 3}, "integer") is True
     assert _entails_type({"const": True}, "boolean") is True  # and not "integer"
     assert _entails_type({"const": True}, "integer") is False
+    assert _entails_type({"enum": ["a", "b"]}, "string") is True
+    assert _entails_type({"enum": [1, 2]}, "integer") is True
+    assert _entails_type({"enum": ["a", 1]}, "string") is False  # a mixed vocabulary forces none
+    assert _entails_type({"enum": [True]}, "integer") is False  # exact type: bool is not int
     assert _entails_type({"oneOf": [{"type": "object"}, {"type": "object"}]}, "object") is True
     assert _entails_type({"anyOf": [{"type": "object"}, {"type": "object"}]}, "object") is True
 
@@ -4194,12 +4300,22 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     # mappings the walk could not reach before: three carry a mapping's own key COUNT,
     # which now rides on a generic alias, and ``reported-outcome-error``'s three are
     # inside the definitions its bounded-value union reaches.
+    #
+    # **9 -> 7 AT ``adcp-client-python-10l.3``, AND NO AUTHORED SITE LEFT THE SET.**
+    # Architecture §4 decides that a local ``$ref`` stays as written in the record, so
+    # ``governance/reported-outcome-error.json``'s ``/properties/details`` and
+    # ``/properties/ext`` are now the reference ``{"$ref":
+    # "#/definitions/bounded_object"}`` and not a copy of the mapping -- the mapping is
+    # still in the set, once, at ``/definitions/bounded_object``, which is where the
+    # document authors it.  The two positions that left were the delegated resolver's
+    # COPIES of that one node, so the set is now one entry per authored mapping, which
+    # is the honest denominator this test's own docstring asks for.  The key type is
+    # still graded at each of them, and ``test_a_local_reference_is_left_in_the_record``
+    # in ``tests/test_fragment_ref.py`` is what says the references survive.
     assert constrained == [
         ("core/geo-region-support.json#", "/properties/countries"),
         ("core/product-change-map.json#", "/"),
         ("governance/reported-outcome-error.json#", "/definitions/bounded_object"),
-        ("governance/reported-outcome-error.json#", "/properties/details"),
-        ("governance/reported-outcome-error.json#", "/properties/ext"),
         ("trusted-match/identity-match-response.json#", "/properties/tmpx_providers"),
         ("trusted-match/publisher-targeting-kv-config.json#", "/properties/targeting_kv_mapping"),
         ("trusted-match/publisher-tmpx-config.json#", "/properties/tmpx_macro_mapping"),
@@ -6617,11 +6733,23 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # work as finished.  The ceiling rises to the measurement, and the direction is
     # named: this is a pin ADMITTING that 51 documents are clearable, where before it
     # recorded them as decided.
+    # **1 -> 0 AT ``adcp-client-python-10l.3``, AND THE KIND HAS NO LIVE INSTANCE
+    # AGAIN.**  ``core/requirements/catalog-field-binding.json`` EMITS: its last refusal
+    # was the reference at ``#/definitions/ScalarBinding/properties/ext``, which the
+    # delegated resolver left in the carried document because it descended neither
+    # ``definitions`` nor ``$defs``, and ``bundle.record`` descends a section entry like
+    # any other subschema position (architecture §4, §11) -- so the record inlines it and
+    # the carried document decides locally.  Measured on the whole portable set at that
+    # row's tip: emitted 747 -> 748, refused 307 -> 306, deferred 67 and verdict 239 on
+    # both trees, and the remaining 306 refusals the same documents at the same pointers
+    # on the same keywords.  Architecture §13 item 5 says this kind is retired by §4's
+    # resolver; the kind itself is row .6's to remove, and until then the ceiling at 0 is
+    # what makes a document arriving at it loud.
     assert resolved[refusal_module.Kind.DEFERRED] <= 67, resolved[refusal_module.Kind.DEFERRED]
-    assert resolved[refusal_module.Kind.UNRESOLVED] <= 1, resolved[refusal_module.Kind.UNRESOLVED]
+    assert resolved[refusal_module.Kind.UNRESOLVED] <= 0, resolved[refusal_module.Kind.UNRESOLVED]
     assert {
         d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
-    } == {"core/requirements/catalog-field-binding.json"}, sorted(
+    } == set(), sorted(
         d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
     )
 
@@ -6643,8 +6771,12 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # the number this floor reads fell by 51 and the number of documents this compiler
     # finishes fell by 0; re-pointing it DOWN is the pin reporting the correction rather
     # than absorbing it.
+    # **986 -> 987 at ``adcp-client-python-10l.3``, a floor RISING, and the move is one
+    # emission: ``core/requirements/catalog-field-binding.json``, whose unresolved
+    # reference the record inlines.  Verdicts are unchanged at 239, so the whole of the
+    # rise is the emitted term.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 986, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 987, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
     pending = sum(resolved[k] for k in refusal_module.PENDING_KINDS)
@@ -6768,62 +6900,69 @@ def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
     )
     assert narrower.outcome != "pass", narrower
 
-    # In its OWN document the resolver leaves a const node whole, unlike an enum
-    # node -- so the ``description`` and the ``type`` are still there to compare.
-    node = bundle.resolved(BUNDLE, "collection/collection-list-changed-webhook.json")
+    # The record leaves a const node whole, and does so wherever it reaches one --
+    # ``test_a_const_node_inlined_through_a_ref_keeps_its_annotations`` below is the
+    # same assertion through a reference.
+    node = bundle.record(BUNDLE, "collection/collection-list-changed-webhook.json")
     event = node["properties"]["event"]
     assert event["const"] == "collection_list_changed"
     assert event["type"] == "string"
     assert event["description"]
 
 
-def test_a_const_node_inlined_through_a_ref_loses_its_annotations() -> None:
-    """The one hand-written comparison row this step adds, and why it is one row.
+def test_a_const_node_inlined_through_a_ref_keeps_its_annotations() -> None:
+    """The one hand-written comparison row this step added, DELETED by row .3.
 
     ``canonicalish`` reduces a node whose value set is FINITE to that set alone and
-    drops every annotation at it.  That is already folded out for an ``enum`` node
-    (``harness._narrows_nothing``'s third bullet); a ``const`` is a ONE-MEMBER enum
-    and gets the same rewrite -- but only when the node is INLINED through a
-    ``$ref``, which is why the test above sees a whole node and this one does not.
+    drops every annotation at it -- but only when the node is INLINED through a
+    ``$ref``, which is why the test above saw a whole node and this one did not.  The
+    row admitted a model-only ``description`` at such a node, and it was one of the six
+    folds ``docs/plan/architecture.md`` §9 deletes once ``bundle.record`` is this
+    package's own inliner.
 
-    Both halves of the drop are measured here, and they are decided in two
-    different places on purpose: the ``type`` half by ``_entails_type``'s existing
-    ``const`` arm (a DERIVATION from the document's own value), the ``description``
-    half by the new row.  The row is gated on the document stating a ``const`` at
-    that node, and the gate is probed by asking the rule about a node that states
-    none.
+    Measured both ways round on the live pair that forced the row:
+    ``core/agent-encryption-key.json``'s ``kty`` and the copy
+    ``core/authorized-agent-base.json`` inlines.  They are now the SAME node, key for
+    key, which is what makes the row unnecessary rather than merely unused -- and the
+    ``description`` is compared in both directions instead of excused in one.
+
+    The ``type`` half is unchanged and is still ``_entails_type``'s, a derivation from
+    the document's own value: 832 nodes of the raw bundle state a ``const`` with no
+    ``type``, so pydantic's ``Literal`` renders one the document does not state wherever
+    it reaches one of them.
     """
     from codegen.harness import _narrows_nothing
 
-    # the resolver, measured both ways round on the live pair
-    own = bundle.resolved(BUNDLE, "core/agent-encryption-key.json")["properties"]["kty"]
+    own = bundle.record(BUNDLE, "core/agent-encryption-key.json")["properties"]["kty"]
     assert own["const"] == "OKP"
     assert own["type"] == "string"
     assert own["description"]
-    through = bundle.resolved(BUNDLE, "core/authorized-agent-base.json")
+    through = bundle.record(BUNDLE, "core/authorized-agent-base.json")
     inlined = through["properties"]["encryption_keys"]["items"]["properties"]["kty"]
-    assert inlined == {"const": "OKP"}, inlined
+    assert inlined == own, (inlined, own)
 
-    # the row fires, and the gate is what makes it fire
-    assert _narrows_nothing("description", "any text", {"const": "OKP"}) is True
+    # The row is gone: a model-only ``description`` is reported at a ``const`` node
+    # like anywhere else, because the document's own is there to compare against.
+    assert _narrows_nothing("description", "any text", {"const": "OKP"}) is False
     assert _narrows_nothing("description", "any text", {"type": "string"}) is False
-    assert _narrows_nothing("description", "any text", {}) is False
-    # it excuses the DESCRIPTION and nothing else at the same node
-    assert _narrows_nothing("default", "OKP", {"const": "OKP"}) is False
-    assert _narrows_nothing("minLength", 1, {"const": "OKP"}) is False
-    # and the type half is still the derivation's, not this row's
+    # and the type half is still the derivation's
     assert _narrows_nothing("type", "string", {"const": "OKP"}) is True
     assert _narrows_nothing("type", "integer", {"const": "OKP"}) is False
+    # nothing else at the same node was ever excused and nothing is now
+    assert _narrows_nothing("default", "OKP", {"const": "OKP"}) is False
+    assert _narrows_nothing("minLength", 1, {"const": "OKP"}) is False
 
-    # the other direction is untouched: a model that DROPS the document's own
-    # description still reddens, which is the defect that matters
+    # Both directions at the node: a model that DROPS the document's own description
+    # reddens, which is the defect that matters, and one that INVENTS one reddens too,
+    # which is what the deleted row used to let through.
+    doc = {
+        "type": "object",
+        "properties": {"k": {"const": "OKP", "description": "d"}},
+        "required": ["k"],
+        "additionalProperties": False,
+    }
     dropped = compare_schema(
-        {
-            "type": "object",
-            "properties": {"k": {"const": "OKP", "description": "d"}},
-            "required": ["k"],
-            "additionalProperties": False,
-        },
+        doc,
         _constructed(
             {
                 "title": "NoDoc",
@@ -6836,6 +6975,25 @@ def test_a_const_node_inlined_through_a_ref_loses_its_annotations() -> None:
     )
     assert dropped.outcome == "model_drops_a_fact", dropped
     assert any("description" in m for m in dropped.missing), dropped.missing
+
+    invented = compare_schema(
+        {
+            "type": "object",
+            "properties": {"k": {"const": "OKP"}},
+            "required": ["k"],
+            "additionalProperties": False,
+        },
+        _constructed(
+            {
+                "title": "HasDoc",
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {"k": {"type": "string", "const": "OKP", "description": "d"}},
+                "required": ["k"],
+            }
+        )[0],
+    )
+    assert any("description" in a for a in invented.added), invented
 
 
 def test_the_const_row_has_exactly_one_lowering() -> None:
@@ -7263,7 +7421,68 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
 #: of a quantity every emitting row moves, and `tests/test_every_check_names_its_set.py`
 #: refuses it for that reason.  The KEY SET is still asserted exactly, which is what
 #: catches a fourth fold starting to fire or one of the three stopping.
-COMPOSED_FOLD_FLOORS = {"vocabulary": 6, "tighter:enum": 2, "agreed": 1}
+#: **THE COMPARISON'S OWN RED FACTS OVER THE GRADED TREE, BY PAIR AND POINTER.**
+#: 0 before ``adcp-client-python-10l.3``, 30 over 27 pairs as that row first measured
+#: them, and 5 over 5 pairs once the row wrote the reading §9 keeps for a mapping's
+#: ``additionalProperties: true`` (``harness._silent_about_extras``): 25 facts over 23
+#: pairs were ONE mechanism and it is cleared here rather than filed.  The 5 left are
+#: the row's PRODUCT rather than a regression -- architecture §14 step 3 makes a
+#: comparison failure that appears once ``bundle.record`` is this package's own inliner a
+#: REAL FINDING, so no fold was added or kept to quiet one -- and ``NON_PASS_PAIRS``
+#: names the two mechanisms behind them.  ``test_every_class_passes_all_three_checks`` is
+#: RED on every pair here.  Asserted as a SET and not as a count, so it is exactly as
+#: strong as the zero it replaces at detecting a sixth fact.
+#:
+#: Each fact is written ``"<direction> <pointer>"``, so the three per-direction totals
+#: in ``test_the_harness_result_is_counted_over_the_whole_population`` are this set's
+#: own arithmetic and carry no integer of their own -- and a fact that MOVED between
+#: ``added``, ``missing`` and ``differs`` reddens, which a count per direction could
+#: not see.
+COMPARISON_FACTS: dict[str, list[str]] = {
+    "core/media-buy-frequency-cap-requirement.json#": [
+        "differs /properties/supported_control_modes/items/description",
+    ],
+    "core/media-buy-support-requirements.json#": [
+        "differs /properties/frequency_cap_constraints/properties/supported_control_modes"
+        "/items/description",
+    ],
+    "core/requirements/catalog-field-binding.json#": [
+        "added /type",
+    ],
+    "core/requirements/catalog-field-binding.json#/oneOf/0": [
+        "missing /description",
+    ],
+    "core/requirements/catalog-field-binding.json#/oneOf/1": [
+        "missing /description",
+    ],
+}
+
+
+#: **Re-MEASURED at row .3's tip, and ``agreed`` is gone rather than lowered.**  The
+#: same-title lift is deleted with the delegated resolver (architecture §9): it fired
+#: where every branch of a combinator carried one ``title``, which was the signature of
+#: ``canonicalish`` rewriting a root ``if``/``then`` into an ``anyOf`` of the two cases,
+#: and ``bundle.record`` performs no such rewrite.  A floor for a fold that no longer
+#: exists would be a floor nothing can meet, so the entry is removed and the
+#: ``set(hits) == set(...)`` assertion below is what keeps a third fold from appearing
+#: unnoticed.  The two that remain are each a reading of the document's OWN ``allOf``.
+#:
+#: **BOTH RE-MEASURED AT THIS TIP, AND ONE FLOOR FELL: ``vocabulary`` 6 -> 5 while
+#: ``tighter:enum`` ROSE 2 -> 6.**  The work moved between the two axes and the cause is
+#: the one-member respelling's deletion.  ``_one_member_enum`` used to write a
+#: one-member ``enum`` as the ``const`` it is, on the node and on the conjunct alike, so
+#: a base's vocabulary met a branch's one-member set as ``const``-against-``enum`` and
+#: ``_one_vocabulary`` was what collapsed it.  Without the respelling both views state an
+#: ``enum`` and ``_tighter``'s member intersection answers instead.  Measured by name on
+#: this tree: ``vocabulary`` fires at ``core/canonical-media-buy-action.json``'s three
+#: branches and at ``core/product-execution-requirement.json#/oneOf/2`` and its
+#: ``connection`` property; ``tighter:enum`` at
+#: ``core/audience-evidence-requirements.json`` and
+#: ``core/product-audience-evidence-requirements.json`` (each twice, root and
+#: ``maximum_age``) and at ``core/media-buy-frequency-cap-requirement.json`` and
+#: ``core/media-buy-support-requirements.json``.  Neither is a number carried from
+#: anywhere: 5 and 6 are what this tree measures.
+COMPOSED_FOLD_FLOORS = {"vocabulary": 5, "tighter:enum": 6}
 
 
 def test_the_comparison_reads_a_composed_document_by_intersection(
@@ -7279,24 +7498,34 @@ def test_the_comparison_reads_a_composed_document_by_intersection(
     dropping an ``enum``, and stating a four-member vocabulary where its document stated
     five.
 
-    Three folds answer it, each counted here where it CHANGES the reading:
+    Two folds answer it, each counted here where it CHANGES the reading, and each a
+    reading of the document's own ``allOf`` rather than of any view of it:
 
     * ``_one_vocabulary`` -- a ``const`` and the ``enum`` it pins are one axis, so the
       merged node carries the pin and not both.
     * ``_tighter`` -- a keyword both views state composes to the INTERSECTION: an enum to
       the common members, a bound to the tighter value.
-    * ``_agreed`` -- an ``anyOf`` whose branches carry ONE title is the resolver's
-      conditional rewrite, and the facts its branches agree on are the node's own.
+
+    A third, ``_agreed``, was counted here and is DELETED with the delegated resolver
+    (architecture §9): it lifted the facts an ``anyOf``'s identically-titled branches
+    agreed on, and the one title was the signature of that resolver's conditional
+    rewrite.  ``bundle.record`` performs no rewrite, so there are no such branches.
 
     **The counts are the point and so is their being non-zero.**  A fold with no site is
     green for free; this run states how many sites each one has and reddens if a gate
-    stops matching, if a document leaves the population, or if a fourth fold starts
-    firing. Beside them, the comparison's own verdict over the same run: 0 facts in all
-    three directions, which is the pins in ``test_the_graded_population_is_the_whole_of_it``
-    read here against the fold counts that produce them.
+    stops matching, if a document leaves the population, or if a third fold starts
+    firing.
+
+    **Beside them, the comparison's own verdict over the same run, which was 0 facts in
+    all three directions and is now 30 NAMED facts.**  They are row .3's product and
+    ``NON_PASS_PAIRS`` attributes each of the three mechanisms; the set is asserted
+    rather than the count, so it is exactly as strong as the zero was at detecting a
+    thirty-first.  ``test_every_class_passes_all_three_checks`` is RED on every pair
+    behind them and stays red -- architecture §14 step 3 makes a comparison failure
+    appearing here a real finding, so nothing was added to the verifier to quiet one.
     """
     hits: collections.Counter[str] = collections.Counter()
-    tighter, vocabulary, agreed = harness._tighter, harness._one_vocabulary, harness._agreed
+    tighter, vocabulary = harness._tighter, harness._one_vocabulary
 
     def counted_tighter(keyword: str, node: Any, conjunct: Any) -> Any:
         answer = tighter(keyword, node, conjunct)
@@ -7310,24 +7539,30 @@ def test_the_comparison_reads_a_composed_document_by_intersection(
             hits["vocabulary"] += 1
         return left, right
 
-    def counted_agreed(branches: list[dict]) -> dict:
-        answer = agreed(branches)
-        if answer:
-            hits["agreed"] += 1
-        return answer
-
     monkeypatch.setattr(harness, "_tighter", counted_tighter)
     monkeypatch.setattr(harness, "_one_vocabulary", counted_vocabulary)
-    monkeypatch.setattr(harness, "_agreed", counted_agreed)
 
     pairs = graded()
     assert pairs, "no graded pair: every count below would be 0 and would say nothing"
-    red = 0
+    red: dict[str, list[str]] = {}
     for one in pairs:
         pair = pair_of(one)
         result = harness.compare_schema(pair.schema, pair.model, document=pair.document)
-        red += len(result.added) + len(result.missing) + len(result.differs)
-    assert red == 0, red
+        # The DIRECTION beside the pointer, which is the form
+        # :data:`COMPARISON_FACTS` is written in: a fact that moved between the three
+        # directions is a different fact about the model.
+        facts = [
+            f"{direction} {f.split(':')[0]}"
+            for direction, lines in (
+                ("added", result.added),
+                ("missing", result.missing),
+                ("differs", result.differs),
+            )
+            for f in lines
+        ]
+        if facts:
+            red[f"{one.ref.document}{one.ref.pointer}"] = sorted(facts)
+    assert red == COMPARISON_FACTS, red
     assert set(hits) == set(COMPOSED_FOLD_FLOORS), dict(hits)
     for fold, floor in sorted(COMPOSED_FOLD_FLOORS.items()):
         ratchet(

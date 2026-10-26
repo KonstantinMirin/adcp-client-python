@@ -12,6 +12,7 @@
       "description": "Flat list of components (adjacency list structure)",
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
         "description": "A component in an A2UI surface",
         "properties": {
           "component": {
@@ -34,8 +35,8 @@
           }
         },
         "required": [
-          "component",
-          "id"
+          "id",
+          "component"
         ],
         "title": "A2UI Component",
         "type": "object"

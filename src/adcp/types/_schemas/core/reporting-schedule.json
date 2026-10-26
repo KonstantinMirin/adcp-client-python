@@ -76,12 +76,7 @@
   "description": "The period and deadline contract from which reporting obligations are created. Every elapsed period produces an obligation even when it has zero rows or production fails, so a consumer can distinguish empty from missing.",
   "properties": {
     "alignment": {
-      "enum": [
-        "utc",
-        "billing_cycle",
-        "source_timezone",
-        "account_timezone"
-      ]
+      "$ref": "#/definitions/ReportingScheduleAlignment"
     },
     "delivery_sla": {
       "description": "Non-negative maximum time after period end before the required revision is due. PT0S means due at period close; expected_at equals the resolved period end plus this duration.",

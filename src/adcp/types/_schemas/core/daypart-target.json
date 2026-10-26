@@ -6,15 +6,19 @@
     "days": {
       "description": "Days of week this window applies to. Use multiple days for compact targeting (e.g., monday-friday in one object).",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Days of the week for daypart targeting",
         "enum": [
-          "friday",
           "monday",
-          "sunday",
           "tuesday",
-          "saturday",
+          "wednesday",
           "thursday",
-          "wednesday"
-        ]
+          "friday",
+          "saturday",
+          "sunday"
+        ],
+        "title": "Day of Week",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array"

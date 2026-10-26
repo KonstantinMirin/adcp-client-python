@@ -5,1700 +5,108 @@
   "properties": {
     "demographics": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "allOf": [
         {
-          "anyOf": [
-            {
-              "not": {
+          "if": {
+            "properties": {
+              "requested": {
                 "properties": {
-                  "applied_bases": {
-                    "contains": {
-                      "const": "verified"
-                    },
-                    "minItems": 1
+                  "age": {
+                    "required": [
+                      "accepted_bases"
+                    ]
                   }
-                },
-                "required": [
-                  "applied_bases"
-                ],
-                "type": "object"
-              },
-              "type": "object"
-            },
-            {
-              "properties": {
-                "applied_bases": {
-                  "contains": {
-                    "const": "verified"
-                  },
-                  "minItems": 1
                 }
-              },
-              "required": [
-                "applied_bases",
-                "applied_verification_methods"
-              ]
+              }
             }
-          ]
+          },
+          "then": {
+            "required": [
+              "applied_bases"
+            ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "requested": {
-                    "properties": {
-                      "age": {
-                        "required": [
-                          "accepted_bases"
-                        ]
-                      }
-                    }
-                  }
-                },
-                "type": "object"
-              },
-              "type": "object"
-            },
-            {
-              "properties": {
-                "requested": {
-                  "properties": {
-                    "age": {
-                      "required": [
-                        "accepted_bases"
-                      ]
-                    }
-                  }
+          "if": {
+            "required": [
+              "applied_verification_methods"
+            ]
+          },
+          "then": {
+            "properties": {
+              "applied_bases": {
+                "contains": {
+                  "const": "verified"
                 }
-              },
-              "required": [
-                "applied_bases"
-              ]
-            }
-          ]
+              }
+            },
+            "required": [
+              "applied_bases"
+            ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "required": [
-                  "applied_verification_methods"
-                ],
-                "type": "object"
-              },
-              "type": "object"
-            },
-            {
-              "properties": {
-                "applied_bases": {
-                  "contains": {
-                    "const": "verified"
-                  },
-                  "minItems": 1
+          "if": {
+            "properties": {
+              "applied_bases": {
+                "contains": {
+                  "const": "verified"
                 }
-              },
-              "required": [
-                "applied_bases",
-                "applied_verification_methods"
-              ]
-            }
-          ]
+              }
+            },
+            "required": [
+              "applied_bases"
+            ]
+          },
+          "then": {
+            "required": [
+              "applied_verification_methods"
+            ]
+          }
         }
       ],
       "description": "Canonical demographic predicate and exact seller execution details. Include whenever demographic targeting was requested or applied.",
       "not": {
         "anyOf": [
           {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "allOf": [
-              {
-                "anyOf": [
-                  {
-                    "not": {
-                      "properties": {
-                        "applied_bases": {
-                          "contains": {
-                            "const": "verified"
-                          },
-                          "minItems": 1
-                        }
-                      },
-                      "required": [
-                        "applied_bases"
-                      ],
-                      "type": "object"
-                    },
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "applied_bases": {
-                        "contains": {
-                          "const": "verified"
-                        },
-                        "minItems": 1
-                      }
-                    },
-                    "required": [
-                      "applied_bases",
-                      "applied_verification_methods"
-                    ]
-                  }
-                ]
-              },
-              {
-                "anyOf": [
-                  {
-                    "not": {
-                      "properties": {
-                        "requested": {
-                          "properties": {
-                            "age": {
-                              "required": [
-                                "accepted_bases"
-                              ]
-                            }
-                          }
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "requested": {
-                        "properties": {
-                          "age": {
-                            "required": [
-                              "accepted_bases"
-                            ]
-                          }
-                        }
-                      }
-                    },
-                    "required": [
-                      "applied_bases"
-                    ]
-                  }
-                ]
-              },
-              {
-                "anyOf": [
-                  {
-                    "not": {
-                      "required": [
-                        "applied_verification_methods"
-                      ],
-                      "type": "object"
-                    },
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "applied_bases": {
-                        "contains": {
-                          "const": "verified"
-                        },
-                        "minItems": 1
-                      }
-                    },
-                    "required": [
-                      "applied_bases",
-                      "applied_verification_methods"
-                    ]
-                  }
-                ]
-              }
-            ],
-            "description": "Lossless package readback for exact demographic targeting. requested preserves canonical buyer intent; applied states the canonical predicate actually booked; execution identifies the seller mechanism. Sellers MUST book only when requested and applied denote exactly the same set, including unknown-age membership. Unsupported predicates are rejected; a buyer that chooses another supported predicate submits it as a new request. Buyers SHOULD recompute equality from the two predicates.",
-            "properties": {
-              "applied": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Canonical demographic predicate actually applied by the seller.",
-                "properties": {
-                  "age": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "anyOf": [
-                      {
-                        "required": [
-                          "max"
-                        ]
-                      },
-                      {
-                        "required": [
-                          "min"
-                        ]
-                      }
-                    ],
-                    "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
-                    "properties": {
-                      "include_unknown": {
-                        "enum": [
-                          false,
-                          true
-                        ]
-                      },
-                      "max": {
-                        "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
-                        "maximum": 150,
-                        "minimum": 0,
-                        "type": "integer"
-                      },
-                      "min": {
-                        "description": "Inclusive minimum age in completed years. Omit for an open lower bound.",
-                        "maximum": 150,
-                        "minimum": 0,
-                        "type": "integer"
-                      }
-                    },
-                    "required": [
-                      "include_unknown"
-                    ],
-                    "title": "Demographic Age Range",
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "age"
-                ],
-                "title": "Demographic Predicate",
-                "type": "object"
-              },
-              "applied_bases": {
-                "description": "Effective user-level determination bases configured for this package after intersecting buyer accepted_bases, product supported_bases, and age_restriction. This is an auditable configuration readback, not proof that every impression used every listed basis.",
-                "items": {
-                  "enum": [
-                    "declared",
-                    "inferred",
-                    "verified"
-                  ]
-                },
-                "maxItems": 3,
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "applied_verification_methods": {
-                "description": "Effective verification methods when applied_bases contains verified. A method name does not establish that a particular proof or claim was valid; runtime verification and claim entailment remain required.",
-                "items": {
-                  "enum": [
-                    "world_id",
-                    "digital_id",
-                    "credit_card",
-                    "id_document",
-                    "facial_age_estimation"
-                  ]
-                },
-                "maxItems": 5,
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "equivalent": {
-                "const": true
-              },
-              "execution": {
-                "oneOf": [
-                  {
-                    "properties": {
-                      "ext": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                        "title": "Extension Object",
-                        "type": "object"
-                      },
-                      "interval_ids": {
-                        "description": "Seller-scoped interval identifiers whose union produced applied.",
-                        "items": {
-                          "minLength": 1,
-                          "type": "string",
-                          "x-entity": "demographic_interval_id"
-                        },
-                        "minItems": 1,
-                        "type": "array",
-                        "uniqueItems": true
-                      },
-                      "type": {
-                        "const": "enumerated_intervals"
-                      }
-                    },
-                    "required": [
-                      "interval_ids",
-                      "type"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "ext": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                        "title": "Extension Object",
-                        "type": "object"
-                      },
-                      "signal_refs": {
-                        "description": "Authoritative signal references whose demographic predicates were unioned to produce applied. Signal names alone never establish equivalence.",
-                        "items": {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
-                          "description": "Reference to a named signal definition. Uses scope as discriminator: 'data_provider' for a signal resolved through published adagents.json signals[], 'signal_source' for a source-native signal resolved through the issuing signal source, or 'product' for a product-local signal option. Scope is the resolution path, not provenance; authoritative enrichment lives on the seller, signal source, or data-provider signal definition, not on this reference.",
-                          "discriminator": {
-                            "propertyName": "scope"
-                          },
-                          "oneOf": [
-                            {
-                              "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                              "not": {
-                                "anyOf": [
-                                  {
-                                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                    "properties": {
-                                      "data_provider_domain": {
-                                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                        "type": "string"
-                                      },
-                                      "scope": {
-                                        "const": "data_provider"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "agent_url",
-                                      "data_provider_domain",
-                                      "scope",
-                                      "signal_id"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                    "properties": {
-                                      "data_provider_domain": {
-                                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                        "type": "string"
-                                      },
-                                      "scope": {
-                                        "const": "data_provider"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "data_provider_domain",
-                                      "id",
-                                      "scope",
-                                      "signal_id"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                    "properties": {
-                                      "data_provider_domain": {
-                                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                        "type": "string"
-                                      },
-                                      "scope": {
-                                        "const": "data_provider"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "data_provider_domain",
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                    "properties": {
-                                      "data_provider_domain": {
-                                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                        "type": "string"
-                                      },
-                                      "scope": {
-                                        "const": "data_provider"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "data_provider_domain",
-                                      "scope",
-                                      "signal_id",
-                                      "source"
-                                    ],
-                                    "type": "object"
-                                  }
-                                ]
-                              },
-                              "properties": {
-                                "data_provider_domain": {
-                                  "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                  "type": "string"
-                                },
-                                "scope": {
-                                  "const": "data_provider"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "data_provider_domain",
-                                "scope",
-                                "signal_id"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                              "not": {
-                                "anyOf": [
-                                  {
-                                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "product"
-                                      },
-                                      "signal_id": {
-                                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "agent_url",
-                                      "scope",
-                                      "signal_id"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "product"
-                                      },
-                                      "signal_id": {
-                                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "data_provider_domain",
-                                      "scope",
-                                      "signal_id"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "product"
-                                      },
-                                      "signal_id": {
-                                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "id",
-                                      "scope",
-                                      "signal_id"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "product"
-                                      },
-                                      "signal_id": {
-                                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "product"
-                                      },
-                                      "signal_id": {
-                                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "scope",
-                                      "signal_id",
-                                      "source"
-                                    ],
-                                    "type": "object"
-                                  }
-                                ]
-                              },
-                              "properties": {
-                                "scope": {
-                                  "const": "product"
-                                },
-                                "signal_id": {
-                                  "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "scope",
-                                "signal_id"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                              "not": {
-                                "anyOf": [
-                                  {
-                                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "signal_source"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the issuing signal source's signal set.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      },
-                                      "signal_source_url": {
-                                        "description": "URL of the signal source that issues this source-native signal.",
-                                        "format": "uri",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "agent_url",
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "signal_source"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the issuing signal source's signal set.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      },
-                                      "signal_source_url": {
-                                        "description": "URL of the signal source that issues this source-native signal.",
-                                        "format": "uri",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "data_provider_domain",
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "signal_source"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the issuing signal source's signal set.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      },
-                                      "signal_source_url": {
-                                        "description": "URL of the signal source that issues this source-native signal.",
-                                        "format": "uri",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "id",
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "signal_source"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the issuing signal source's signal set.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      },
-                                      "signal_source_url": {
-                                        "description": "URL of the signal source that issues this source-native signal.",
-                                        "format": "uri",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url",
-                                      "source"
-                                    ],
-                                    "type": "object"
-                                  }
-                                ]
-                              },
-                              "properties": {
-                                "scope": {
-                                  "const": "signal_source"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the issuing signal source's signal set.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                },
-                                "signal_source_url": {
-                                  "description": "URL of the signal source that issues this source-native signal.",
-                                  "format": "uri",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "scope",
-                                "signal_id",
-                                "signal_source_url"
-                              ],
-                              "type": "object"
-                            }
-                          ],
-                          "title": "Signal Ref",
-                          "x-entity": "signal"
-                        },
-                        "minItems": 1,
-                        "type": "array",
-                        "uniqueItems": true
-                      },
-                      "type": {
-                        "const": "signals"
-                      }
-                    },
-                    "required": [
-                      "signal_refs",
-                      "type"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "ext": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                        "title": "Extension Object",
-                        "type": "object"
-                      },
-                      "type": {
-                        "const": "continuous_bounds"
-                      }
-                    },
-                    "required": [
-                      "type"
-                    ],
-                    "type": "object"
-                  }
-                ]
-              },
-              "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
-              },
-              "requested": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Canonical demographic predicate and determination constraints requested by the buyer.",
-                "properties": {
-                  "age": {
-                    "allOf": [
-                      {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "anyOf": [
-                          {
-                            "required": [
-                              "max"
-                            ]
-                          },
-                          {
-                            "required": [
-                              "min"
-                            ]
-                          }
-                        ],
-                        "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
-                        "properties": {
-                          "include_unknown": {
-                            "enum": [
-                              false,
-                              true
-                            ]
-                          },
-                          "max": {
-                            "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
-                            "maximum": 150,
-                            "minimum": 0,
-                            "type": "integer"
-                          },
-                          "min": {
-                            "description": "Inclusive minimum age in completed years. Omit for an open lower bound.",
-                            "maximum": 150,
-                            "minimum": 0,
-                            "type": "integer"
-                          }
-                        },
-                        "required": [
-                          "include_unknown"
-                        ],
-                        "title": "Demographic Age Range",
-                        "type": "object"
-                      },
-                      {
-                        "anyOf": [
-                          {
-                            "not": {
-                              "required": [
-                                "accepted_verification_methods"
-                              ],
-                              "type": "object"
-                            },
-                            "type": "object"
-                          },
-                          {
-                            "properties": {
-                              "accepted_bases": {
-                                "contains": {
-                                  "const": "verified"
-                                },
-                                "minItems": 1
-                              }
-                            },
-                            "required": [
-                              "accepted_bases",
-                              "accepted_verification_methods"
-                            ]
-                          }
-                        ],
-                        "properties": {
-                          "accepted_bases": {
-                            "description": "User-level age determination bases the buyer permits for this predicate. Sellers MUST use only these bases or reject the request; they MUST NOT silently fall back to another basis. When omitted, the buyer imposes no determination-basis constraint beyond product capability and any age_restriction. population_estimate is structurally unavailable because aggregate evidence cannot identify an eligible user.",
-                            "items": {
-                              "enum": [
-                                "declared",
-                                "inferred",
-                                "verified"
-                              ]
-                            },
-                            "maxItems": 3,
-                            "minItems": 1,
-                            "type": "array",
-                            "uniqueItems": true
-                          },
-                          "accepted_verification_methods": {
-                            "description": "Verification methods acceptable when verified is an accepted basis. This field narrows verified demographic execution; age_restriction.accepted_methods independently governs legal eligibility and the two sets are intersected when both are present.",
-                            "items": {
-                              "enum": [
-                                "world_id",
-                                "digital_id",
-                                "credit_card",
-                                "id_document",
-                                "facial_age_estimation"
-                              ]
-                            },
-                            "maxItems": 5,
-                            "minItems": 1,
-                            "type": "array",
-                            "uniqueItems": true
-                          }
-                        },
-                        "type": "object"
-                      }
-                    ]
-                  }
-                },
-                "required": [
-                  "age"
-                ],
-                "title": "Demographic Targeting Intent",
-                "type": "object"
-              }
-            },
             "required": [
-              "applied",
-              "buyer_approved",
-              "equivalent",
-              "execution",
-              "requested"
-            ],
-            "title": "Demographic Targeting Resolution",
-            "type": "object"
+              "difference_reason"
+            ]
           },
           {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "allOf": [
-              {
-                "anyOf": [
-                  {
-                    "not": {
-                      "properties": {
-                        "applied_bases": {
-                          "contains": {
-                            "const": "verified"
-                          },
-                          "minItems": 1
-                        }
-                      },
-                      "required": [
-                        "applied_bases"
-                      ],
-                      "type": "object"
-                    },
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "applied_bases": {
-                        "contains": {
-                          "const": "verified"
-                        },
-                        "minItems": 1
-                      }
-                    },
-                    "required": [
-                      "applied_bases",
-                      "applied_verification_methods"
-                    ]
-                  }
-                ]
-              },
-              {
-                "anyOf": [
-                  {
-                    "not": {
-                      "properties": {
-                        "requested": {
-                          "properties": {
-                            "age": {
-                              "required": [
-                                "accepted_bases"
-                              ]
-                            }
-                          }
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "requested": {
-                        "properties": {
-                          "age": {
-                            "required": [
-                              "accepted_bases"
-                            ]
-                          }
-                        }
-                      }
-                    },
-                    "required": [
-                      "applied_bases"
-                    ]
-                  }
-                ]
-              },
-              {
-                "anyOf": [
-                  {
-                    "not": {
-                      "required": [
-                        "applied_verification_methods"
-                      ],
-                      "type": "object"
-                    },
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "applied_bases": {
-                        "contains": {
-                          "const": "verified"
-                        },
-                        "minItems": 1
-                      }
-                    },
-                    "required": [
-                      "applied_bases",
-                      "applied_verification_methods"
-                    ]
-                  }
-                ]
-              }
-            ],
-            "description": "Lossless package readback for exact demographic targeting. requested preserves canonical buyer intent; applied states the canonical predicate actually booked; execution identifies the seller mechanism. Sellers MUST book only when requested and applied denote exactly the same set, including unknown-age membership. Unsupported predicates are rejected; a buyer that chooses another supported predicate submits it as a new request. Buyers SHOULD recompute equality from the two predicates.",
-            "properties": {
-              "applied": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Canonical demographic predicate actually applied by the seller.",
-                "properties": {
-                  "age": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "anyOf": [
-                      {
-                        "required": [
-                          "max"
-                        ]
-                      },
-                      {
-                        "required": [
-                          "min"
-                        ]
-                      }
-                    ],
-                    "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
-                    "properties": {
-                      "include_unknown": {
-                        "enum": [
-                          false,
-                          true
-                        ]
-                      },
-                      "max": {
-                        "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
-                        "maximum": 150,
-                        "minimum": 0,
-                        "type": "integer"
-                      },
-                      "min": {
-                        "description": "Inclusive minimum age in completed years. Omit for an open lower bound.",
-                        "maximum": 150,
-                        "minimum": 0,
-                        "type": "integer"
-                      }
-                    },
-                    "required": [
-                      "include_unknown"
-                    ],
-                    "title": "Demographic Age Range",
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "age"
-                ],
-                "title": "Demographic Predicate",
-                "type": "object"
-              },
-              "applied_bases": {
-                "description": "Effective user-level determination bases configured for this package after intersecting buyer accepted_bases, product supported_bases, and age_restriction. This is an auditable configuration readback, not proof that every impression used every listed basis.",
-                "items": {
-                  "enum": [
-                    "declared",
-                    "inferred",
-                    "verified"
-                  ]
-                },
-                "maxItems": 3,
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "applied_verification_methods": {
-                "description": "Effective verification methods when applied_bases contains verified. A method name does not establish that a particular proof or claim was valid; runtime verification and claim entailment remain required.",
-                "items": {
-                  "enum": [
-                    "world_id",
-                    "digital_id",
-                    "credit_card",
-                    "id_document",
-                    "facial_age_estimation"
-                  ]
-                },
-                "maxItems": 5,
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "equivalent": {
-                "const": true
-              },
-              "execution": {
-                "oneOf": [
-                  {
-                    "properties": {
-                      "ext": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                        "title": "Extension Object",
-                        "type": "object"
-                      },
-                      "interval_ids": {
-                        "description": "Seller-scoped interval identifiers whose union produced applied.",
-                        "items": {
-                          "minLength": 1,
-                          "type": "string",
-                          "x-entity": "demographic_interval_id"
-                        },
-                        "minItems": 1,
-                        "type": "array",
-                        "uniqueItems": true
-                      },
-                      "type": {
-                        "const": "enumerated_intervals"
-                      }
-                    },
-                    "required": [
-                      "interval_ids",
-                      "type"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "ext": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                        "title": "Extension Object",
-                        "type": "object"
-                      },
-                      "signal_refs": {
-                        "description": "Authoritative signal references whose demographic predicates were unioned to produce applied. Signal names alone never establish equivalence.",
-                        "items": {
-                          "$schema": "http://json-schema.org/draft-07/schema#",
-                          "description": "Reference to a named signal definition. Uses scope as discriminator: 'data_provider' for a signal resolved through published adagents.json signals[], 'signal_source' for a source-native signal resolved through the issuing signal source, or 'product' for a product-local signal option. Scope is the resolution path, not provenance; authoritative enrichment lives on the seller, signal source, or data-provider signal definition, not on this reference.",
-                          "discriminator": {
-                            "propertyName": "scope"
-                          },
-                          "oneOf": [
-                            {
-                              "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                              "not": {
-                                "anyOf": [
-                                  {
-                                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                    "properties": {
-                                      "data_provider_domain": {
-                                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                        "type": "string"
-                                      },
-                                      "scope": {
-                                        "const": "data_provider"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "agent_url",
-                                      "data_provider_domain",
-                                      "scope",
-                                      "signal_id"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                    "properties": {
-                                      "data_provider_domain": {
-                                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                        "type": "string"
-                                      },
-                                      "scope": {
-                                        "const": "data_provider"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "data_provider_domain",
-                                      "id",
-                                      "scope",
-                                      "signal_id"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                    "properties": {
-                                      "data_provider_domain": {
-                                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                        "type": "string"
-                                      },
-                                      "scope": {
-                                        "const": "data_provider"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "data_provider_domain",
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                                    "properties": {
-                                      "data_provider_domain": {
-                                        "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                        "type": "string"
-                                      },
-                                      "scope": {
-                                        "const": "data_provider"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "data_provider_domain",
-                                      "scope",
-                                      "signal_id",
-                                      "source"
-                                    ],
-                                    "type": "object"
-                                  }
-                                ]
-                              },
-                              "properties": {
-                                "data_provider_domain": {
-                                  "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                  "type": "string"
-                                },
-                                "scope": {
-                                  "const": "data_provider"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "data_provider_domain",
-                                "scope",
-                                "signal_id"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                              "not": {
-                                "anyOf": [
-                                  {
-                                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "product"
-                                      },
-                                      "signal_id": {
-                                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "agent_url",
-                                      "scope",
-                                      "signal_id"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "product"
-                                      },
-                                      "signal_id": {
-                                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "data_provider_domain",
-                                      "scope",
-                                      "signal_id"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "product"
-                                      },
-                                      "signal_id": {
-                                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "id",
-                                      "scope",
-                                      "signal_id"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "product"
-                                      },
-                                      "signal_id": {
-                                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "product"
-                                      },
-                                      "signal_id": {
-                                        "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "scope",
-                                      "signal_id",
-                                      "source"
-                                    ],
-                                    "type": "object"
-                                  }
-                                ]
-                              },
-                              "properties": {
-                                "scope": {
-                                  "const": "product"
-                                },
-                                "signal_id": {
-                                  "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "scope",
-                                "signal_id"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                              "not": {
-                                "anyOf": [
-                                  {
-                                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "signal_source"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the issuing signal source's signal set.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      },
-                                      "signal_source_url": {
-                                        "description": "URL of the signal source that issues this source-native signal.",
-                                        "format": "uri",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "agent_url",
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "signal_source"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the issuing signal source's signal set.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      },
-                                      "signal_source_url": {
-                                        "description": "URL of the signal source that issues this source-native signal.",
-                                        "format": "uri",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "data_provider_domain",
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "signal_source"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the issuing signal source's signal set.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      },
-                                      "signal_source_url": {
-                                        "description": "URL of the signal source that issues this source-native signal.",
-                                        "format": "uri",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "id",
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url"
-                                    ],
-                                    "type": "object"
-                                  },
-                                  {
-                                    "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                                    "properties": {
-                                      "scope": {
-                                        "const": "signal_source"
-                                      },
-                                      "signal_id": {
-                                        "description": "Signal identifier within the issuing signal source's signal set.",
-                                        "pattern": "^[a-zA-Z0-9_-]+$",
-                                        "type": "string"
-                                      },
-                                      "signal_source_url": {
-                                        "description": "URL of the signal source that issues this source-native signal.",
-                                        "format": "uri",
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "scope",
-                                      "signal_id",
-                                      "signal_source_url",
-                                      "source"
-                                    ],
-                                    "type": "object"
-                                  }
-                                ]
-                              },
-                              "properties": {
-                                "scope": {
-                                  "const": "signal_source"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the issuing signal source's signal set.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                },
-                                "signal_source_url": {
-                                  "description": "URL of the signal source that issues this source-native signal.",
-                                  "format": "uri",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "scope",
-                                "signal_id",
-                                "signal_source_url"
-                              ],
-                              "type": "object"
-                            }
-                          ],
-                          "title": "Signal Ref",
-                          "x-entity": "signal"
-                        },
-                        "minItems": 1,
-                        "type": "array",
-                        "uniqueItems": true
-                      },
-                      "type": {
-                        "const": "signals"
-                      }
-                    },
-                    "required": [
-                      "signal_refs",
-                      "type"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "ext": {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                        "title": "Extension Object",
-                        "type": "object"
-                      },
-                      "type": {
-                        "const": "continuous_bounds"
-                      }
-                    },
-                    "required": [
-                      "type"
-                    ],
-                    "type": "object"
-                  }
-                ]
-              },
-              "ext": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                "title": "Extension Object",
-                "type": "object"
-              },
-              "requested": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "description": "Canonical demographic predicate and determination constraints requested by the buyer.",
-                "properties": {
-                  "age": {
-                    "allOf": [
-                      {
-                        "$schema": "http://json-schema.org/draft-07/schema#",
-                        "anyOf": [
-                          {
-                            "required": [
-                              "max"
-                            ]
-                          },
-                          {
-                            "required": [
-                              "min"
-                            ]
-                          }
-                        ],
-                        "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
-                        "properties": {
-                          "include_unknown": {
-                            "enum": [
-                              false,
-                              true
-                            ]
-                          },
-                          "max": {
-                            "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
-                            "maximum": 150,
-                            "minimum": 0,
-                            "type": "integer"
-                          },
-                          "min": {
-                            "description": "Inclusive minimum age in completed years. Omit for an open lower bound.",
-                            "maximum": 150,
-                            "minimum": 0,
-                            "type": "integer"
-                          }
-                        },
-                        "required": [
-                          "include_unknown"
-                        ],
-                        "title": "Demographic Age Range",
-                        "type": "object"
-                      },
-                      {
-                        "anyOf": [
-                          {
-                            "not": {
-                              "required": [
-                                "accepted_verification_methods"
-                              ],
-                              "type": "object"
-                            },
-                            "type": "object"
-                          },
-                          {
-                            "properties": {
-                              "accepted_bases": {
-                                "contains": {
-                                  "const": "verified"
-                                },
-                                "minItems": 1
-                              }
-                            },
-                            "required": [
-                              "accepted_bases",
-                              "accepted_verification_methods"
-                            ]
-                          }
-                        ],
-                        "properties": {
-                          "accepted_bases": {
-                            "description": "User-level age determination bases the buyer permits for this predicate. Sellers MUST use only these bases or reject the request; they MUST NOT silently fall back to another basis. When omitted, the buyer imposes no determination-basis constraint beyond product capability and any age_restriction. population_estimate is structurally unavailable because aggregate evidence cannot identify an eligible user.",
-                            "items": {
-                              "enum": [
-                                "declared",
-                                "inferred",
-                                "verified"
-                              ]
-                            },
-                            "maxItems": 3,
-                            "minItems": 1,
-                            "type": "array",
-                            "uniqueItems": true
-                          },
-                          "accepted_verification_methods": {
-                            "description": "Verification methods acceptable when verified is an accepted basis. This field narrows verified demographic execution; age_restriction.accepted_methods independently governs legal eligibility and the two sets are intersected when both are present.",
-                            "items": {
-                              "enum": [
-                                "world_id",
-                                "digital_id",
-                                "credit_card",
-                                "id_document",
-                                "facial_age_estimation"
-                              ]
-                            },
-                            "maxItems": 5,
-                            "minItems": 1,
-                            "type": "array",
-                            "uniqueItems": true
-                          }
-                        },
-                        "type": "object"
-                      }
-                    ]
-                  }
-                },
-                "required": [
-                  "age"
-                ],
-                "title": "Demographic Targeting Intent",
-                "type": "object"
-              }
-            },
             "required": [
-              "applied",
-              "difference_reason",
-              "equivalent",
-              "execution",
-              "requested"
-            ],
-            "title": "Demographic Targeting Resolution",
-            "type": "object"
+              "buyer_approved"
+            ]
           }
         ]
       },
       "properties": {
         "applied": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Canonical demographic predicate actually applied by the seller.",
           "properties": {
             "age": {
               "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": true,
               "anyOf": [
                 {
                   "required": [
-                    "max"
+                    "min"
                   ]
                 },
                 {
                   "required": [
-                    "min"
+                    "max"
                   ]
                 }
               ],
               "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
               "properties": {
                 "include_unknown": {
-                  "enum": [
-                    false,
-                    true
-                  ]
+                  "description": "Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.",
+                  "type": "boolean"
                 },
                 "max": {
                   "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
@@ -1729,13 +137,21 @@
         "applied_bases": {
           "description": "Effective user-level determination bases configured for this package after intersecting buyer accepted_bases, product supported_bases, and age_restriction. This is an auditable configuration readback, not proof that every impression used every listed basis.",
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "User-level bases that may resolve age for demographic targeting execution. Population estimates are deliberately absent because aggregate composition cannot establish an individual impression's age.",
             "enum": [
+              "verified",
               "declared",
-              "inferred",
-              "verified"
-            ]
+              "inferred"
+            ],
+            "enumDescriptions": {
+              "declared": "The user supplied an age, date of birth, or threshold affirmation without independent verification.",
+              "inferred": "The user's age was predicted from behavior, attributes, or another model.",
+              "verified": "The user's applicable age claim was established through an age-assurance or identity-verification method."
+            },
+            "title": "Age Determination Basis",
+            "type": "string"
           },
-          "maxItems": 3,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
@@ -1743,28 +159,55 @@
         "applied_verification_methods": {
           "description": "Effective verification methods when applied_bases contains verified. A method name does not establish that a particular proof or claim was valid; runtime verification and claim entailment remain required.",
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Methods for verifying user age for compliance. Does not include 'inferred' as it is not accepted for regulatory compliance.",
             "enum": [
-              "world_id",
+              "facial_age_estimation",
+              "id_document",
               "digital_id",
               "credit_card",
-              "id_document",
-              "facial_age_estimation"
-            ]
+              "world_id"
+            ],
+            "title": "Age Verification Method",
+            "type": "string"
           },
-          "maxItems": 5,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
         },
         "equivalent": {
-          "const": true
+          "const": true,
+          "description": "Always true for a stored package. requested and applied MUST denote exactly the same set, including unknown-age membership; sellers reject non-equivalent requests instead of storing an alternative.",
+          "type": "boolean"
         },
         "execution": {
           "oneOf": [
             {
+              "additionalProperties": true,
               "properties": {
                 "ext": {
                   "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                  "title": "Extension Object",
+                  "type": "object"
+                },
+                "type": {
+                  "const": "continuous_bounds",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "properties": {
+                "ext": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
                   "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                   "title": "Extension Object",
                   "type": "object"
@@ -1781,19 +224,22 @@
                   "uniqueItems": true
                 },
                 "type": {
-                  "const": "enumerated_intervals"
+                  "const": "enumerated_intervals",
+                  "type": "string"
                 }
               },
               "required": [
-                "interval_ids",
-                "type"
+                "type",
+                "interval_ids"
               ],
               "type": "object"
             },
             {
+              "additionalProperties": true,
               "properties": {
                 "ext": {
                   "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
                   "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                   "title": "Extension Object",
                   "type": "object"
@@ -1808,237 +254,42 @@
                     },
                     "oneOf": [
                       {
-                        "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                        "not": {
-                          "anyOf": [
-                            {
-                              "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                              "properties": {
-                                "data_provider_domain": {
-                                  "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                  "type": "string"
-                                },
-                                "scope": {
-                                  "const": "data_provider"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "agent_url",
-                                "data_provider_domain",
-                                "scope",
-                                "signal_id"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                              "properties": {
-                                "data_provider_domain": {
-                                  "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                  "type": "string"
-                                },
-                                "scope": {
-                                  "const": "data_provider"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "data_provider_domain",
-                                "id",
-                                "scope",
-                                "signal_id"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                              "properties": {
-                                "data_provider_domain": {
-                                  "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                  "type": "string"
-                                },
-                                "scope": {
-                                  "const": "data_provider"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "data_provider_domain",
-                                "scope",
-                                "signal_id",
-                                "signal_source_url"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
-                              "properties": {
-                                "data_provider_domain": {
-                                  "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                                  "type": "string"
-                                },
-                                "scope": {
-                                  "const": "data_provider"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "data_provider_domain",
-                                "scope",
-                                "signal_id",
-                                "source"
-                              ],
-                              "type": "object"
-                            }
-                          ]
-                        },
-                        "properties": {
-                          "data_provider_domain": {
-                            "description": "Domain that publishes the signal definition in its adagents.json signals[].",
-                            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                            "type": "string"
-                          },
-                          "scope": {
-                            "const": "data_provider"
-                          },
-                          "signal_id": {
-                            "description": "Signal identifier within the data provider's published adagents.json signals[].",
-                            "pattern": "^[a-zA-Z0-9_-]+$",
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "data_provider_domain",
-                          "scope",
-                          "signal_id"
-                        ],
-                        "type": "object"
-                      },
-                      {
+                        "additionalProperties": true,
                         "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
                         "not": {
                           "anyOf": [
                             {
-                              "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                              "properties": {
-                                "scope": {
-                                  "const": "product"
-                                },
-                                "signal_id": {
-                                  "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
                               "required": [
-                                "agent_url",
-                                "scope",
-                                "signal_id"
-                              ],
-                              "type": "object"
+                                "data_provider_domain"
+                              ]
                             },
                             {
-                              "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                              "properties": {
-                                "scope": {
-                                  "const": "product"
-                                },
-                                "signal_id": {
-                                  "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
                               "required": [
-                                "data_provider_domain",
-                                "scope",
-                                "signal_id"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                              "properties": {
-                                "scope": {
-                                  "const": "product"
-                                },
-                                "signal_id": {
-                                  "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "id",
-                                "scope",
-                                "signal_id"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                              "properties": {
-                                "scope": {
-                                  "const": "product"
-                                },
-                                "signal_id": {
-                                  "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "scope",
-                                "signal_id",
                                 "signal_source_url"
-                              ],
-                              "type": "object"
+                              ]
                             },
                             {
-                              "description": "Product-scoped signal. The signal_id is meaningful only within the selected product/package context and MUST match a Product.included_signals[].signal_ref.signal_id or Product.signal_targeting_options[].signal_ref.signal_id for that product, depending on whether the signal is descriptive or selectable.",
-                              "properties": {
-                                "scope": {
-                                  "const": "product"
-                                },
-                                "signal_id": {
-                                  "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                }
-                              },
                               "required": [
-                                "scope",
-                                "signal_id",
+                                "agent_url"
+                              ]
+                            },
+                            {
+                              "required": [
                                 "source"
-                              ],
-                              "type": "object"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "id"
+                              ]
                             }
                           ]
                         },
                         "properties": {
                           "scope": {
-                            "const": "product"
+                            "const": "product",
+                            "description": "Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.",
+                            "type": "string"
                           },
                           "signal_id": {
                             "description": "Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.",
@@ -2053,114 +304,88 @@
                         "type": "object"
                       },
                       {
+                        "additionalProperties": true,
+                        "description": "Data-provider-scoped signal. The signal_id resolves through the data provider's published adagents.json signals[] and can be authorization-verified there.",
+                        "not": {
+                          "anyOf": [
+                            {
+                              "required": [
+                                "agent_url"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "signal_source_url"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "source"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "id"
+                              ]
+                            }
+                          ]
+                        },
+                        "properties": {
+                          "data_provider_domain": {
+                            "description": "Domain that publishes the signal definition in its adagents.json signals[].",
+                            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                            "type": "string"
+                          },
+                          "scope": {
+                            "const": "data_provider",
+                            "description": "Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].",
+                            "type": "string"
+                          },
+                          "signal_id": {
+                            "description": "Signal identifier within the data provider's published adagents.json signals[].",
+                            "pattern": "^[a-zA-Z0-9_-]+$",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "scope",
+                          "data_provider_domain",
+                          "signal_id"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": true,
                         "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
                         "not": {
                           "anyOf": [
                             {
-                              "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                              "properties": {
-                                "scope": {
-                                  "const": "signal_source"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the issuing signal source's signal set.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                },
-                                "signal_source_url": {
-                                  "description": "URL of the signal source that issues this source-native signal.",
-                                  "format": "uri",
-                                  "type": "string"
-                                }
-                              },
                               "required": [
-                                "agent_url",
-                                "scope",
-                                "signal_id",
-                                "signal_source_url"
-                              ],
-                              "type": "object"
+                                "data_provider_domain"
+                              ]
                             },
                             {
-                              "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                              "properties": {
-                                "scope": {
-                                  "const": "signal_source"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the issuing signal source's signal set.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                },
-                                "signal_source_url": {
-                                  "description": "URL of the signal source that issues this source-native signal.",
-                                  "format": "uri",
-                                  "type": "string"
-                                }
-                              },
                               "required": [
-                                "data_provider_domain",
-                                "scope",
-                                "signal_id",
-                                "signal_source_url"
-                              ],
-                              "type": "object"
+                                "agent_url"
+                              ]
                             },
                             {
-                              "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                              "properties": {
-                                "scope": {
-                                  "const": "signal_source"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the issuing signal source's signal set.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                },
-                                "signal_source_url": {
-                                  "description": "URL of the signal source that issues this source-native signal.",
-                                  "format": "uri",
-                                  "type": "string"
-                                }
-                              },
                               "required": [
-                                "id",
-                                "scope",
-                                "signal_id",
-                                "signal_source_url"
-                              ],
-                              "type": "object"
-                            },
-                            {
-                              "description": "Signal-source-scoped signal. Use this for source-native signals that are not published in upstream adagents.json signals[]. The buyer trusts the issuing signal source for this identity; use scope 'data_provider' instead when the signal is published in adagents.json signals[], even if the publisher is also the seller or signal source.",
-                              "properties": {
-                                "scope": {
-                                  "const": "signal_source"
-                                },
-                                "signal_id": {
-                                  "description": "Signal identifier within the issuing signal source's signal set.",
-                                  "pattern": "^[a-zA-Z0-9_-]+$",
-                                  "type": "string"
-                                },
-                                "signal_source_url": {
-                                  "description": "URL of the signal source that issues this source-native signal.",
-                                  "format": "uri",
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "scope",
-                                "signal_id",
-                                "signal_source_url",
                                 "source"
-                              ],
-                              "type": "object"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "id"
+                              ]
                             }
                           ]
                         },
                         "properties": {
                           "scope": {
-                            "const": "signal_source"
+                            "const": "signal_source",
+                            "description": "Discriminator indicating the signal resolves through the issuing signal source.",
+                            "type": "string"
                           },
                           "signal_id": {
                             "description": "Signal identifier within the issuing signal source's signal set.",
@@ -2175,8 +400,8 @@
                         },
                         "required": [
                           "scope",
-                          "signal_id",
-                          "signal_source_url"
+                          "signal_source_url",
+                          "signal_id"
                         ],
                         "type": "object"
                       }
@@ -2189,29 +414,13 @@
                   "uniqueItems": true
                 },
                 "type": {
-                  "const": "signals"
+                  "const": "signals",
+                  "type": "string"
                 }
               },
               "required": [
-                "signal_refs",
-                "type"
-              ],
-              "type": "object"
-            },
-            {
-              "properties": {
-                "ext": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                  "title": "Extension Object",
-                  "type": "object"
-                },
-                "type": {
-                  "const": "continuous_bounds"
-                }
-              },
-              "required": [
-                "type"
+                "type",
+                "signal_refs"
               ],
               "type": "object"
             }
@@ -2219,37 +428,38 @@
         },
         "ext": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
           "title": "Extension Object",
           "type": "object"
         },
         "requested": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Canonical demographic predicate and determination constraints requested by the buyer.",
           "properties": {
             "age": {
               "allOf": [
                 {
                   "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
                   "anyOf": [
                     {
                       "required": [
-                        "max"
+                        "min"
                       ]
                     },
                     {
                       "required": [
-                        "min"
+                        "max"
                       ]
                     }
                   ],
                   "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
                   "properties": {
                     "include_unknown": {
-                      "enum": [
-                        false,
-                        true
-                      ]
+                      "description": "Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.",
+                      "type": "boolean"
                     },
                     "max": {
                       "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
@@ -2271,42 +481,47 @@
                   "type": "object"
                 },
                 {
-                  "anyOf": [
+                  "additionalProperties": true,
+                  "allOf": [
                     {
-                      "not": {
+                      "if": {
                         "required": [
                           "accepted_verification_methods"
-                        ],
-                        "type": "object"
+                        ]
                       },
-                      "type": "object"
-                    },
-                    {
-                      "properties": {
-                        "accepted_bases": {
-                          "contains": {
-                            "const": "verified"
-                          },
-                          "minItems": 1
-                        }
-                      },
-                      "required": [
-                        "accepted_bases",
-                        "accepted_verification_methods"
-                      ]
+                      "then": {
+                        "properties": {
+                          "accepted_bases": {
+                            "contains": {
+                              "const": "verified"
+                            }
+                          }
+                        },
+                        "required": [
+                          "accepted_bases"
+                        ]
+                      }
                     }
                   ],
                   "properties": {
                     "accepted_bases": {
                       "description": "User-level age determination bases the buyer permits for this predicate. Sellers MUST use only these bases or reject the request; they MUST NOT silently fall back to another basis. When omitted, the buyer imposes no determination-basis constraint beyond product capability and any age_restriction. population_estimate is structurally unavailable because aggregate evidence cannot identify an eligible user.",
                       "items": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "User-level bases that may resolve age for demographic targeting execution. Population estimates are deliberately absent because aggregate composition cannot establish an individual impression's age.",
                         "enum": [
+                          "verified",
                           "declared",
-                          "inferred",
-                          "verified"
-                        ]
+                          "inferred"
+                        ],
+                        "enumDescriptions": {
+                          "declared": "The user supplied an age, date of birth, or threshold affirmation without independent verification.",
+                          "inferred": "The user's age was predicted from behavior, attributes, or another model.",
+                          "verified": "The user's applicable age claim was established through an age-assurance or identity-verification method."
+                        },
+                        "title": "Age Determination Basis",
+                        "type": "string"
                       },
-                      "maxItems": 3,
                       "minItems": 1,
                       "type": "array",
                       "uniqueItems": true
@@ -2314,15 +529,18 @@
                     "accepted_verification_methods": {
                       "description": "Verification methods acceptable when verified is an accepted basis. This field narrows verified demographic execution; age_restriction.accepted_methods independently governs legal eligibility and the two sets are intersected when both are present.",
                       "items": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "Methods for verifying user age for compliance. Does not include 'inferred' as it is not accepted for regulatory compliance.",
                         "enum": [
-                          "world_id",
+                          "facial_age_estimation",
+                          "id_document",
                           "digital_id",
                           "credit_card",
-                          "id_document",
-                          "facial_age_estimation"
-                        ]
+                          "world_id"
+                        ],
+                        "title": "Age Verification Method",
+                        "type": "string"
                       },
-                      "maxItems": 5,
                       "minItems": 1,
                       "type": "array",
                       "uniqueItems": true
@@ -2341,16 +559,17 @@
         }
       },
       "required": [
+        "requested",
         "applied",
         "equivalent",
-        "execution",
-        "requested"
+        "execution"
       ],
       "title": "Demographic Targeting Resolution",
       "type": "object"
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"

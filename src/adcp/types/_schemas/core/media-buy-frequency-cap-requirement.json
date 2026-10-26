@@ -3,52 +3,66 @@
   "allOf": [
     {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "Buyer minimums for structured product frequency-cap support. An empty object requests any positive support. Otherwise each array must be a subset of the product's resolved support, where a product field omitted from frequency_cap_support inherits the seller-wide media_buy.frequency_capping declaration (an omitted seller-wide list means every value). Duration units resolve the same way: a requested window or suppression unit matches when the product lists it in window_constraints or suppression_constraints, or, when the product omits that list, when the seller-wide supported_window_units includes it or is omitted. A legacy package declaration of frequency_cap: true satisfies every requirement because its broad meaning is unchanged. Exact count and interval values belong in a concrete cap supplied during discovery.",
-      "maxProperties": 5,
       "properties": {
         "mutable_fields": {
           "description": "Require each listed logical field to be mutable after creation. Matches a product whose mutable_fields contains every listed value, or a product that omits mutable_fields, or legacy frequency_cap: true. A product declaring mutable_fields: [] is create-only and never matches a non-empty list.",
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A logical frequency-cap field that a product implementation can change after creation. suppress covers the effective cooldown whether represented by suppress or the deprecated suppress_minutes alias.",
             "enum": [
+              "max_impressions",
               "per",
               "window",
-              "suppress",
-              "max_impressions"
-            ]
+              "suppress"
+            ],
+            "title": "Frequency Cap Mutable Field",
+            "type": "string"
           },
-          "maxItems": 4,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
         },
         "supported_control_modes": {
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A supported package frequency-cap control shape.",
             "enum": [
-              "suppress",
               "max_impressions",
+              "suppress",
               "max_impressions_and_suppress"
-            ]
+            ],
+            "title": "Frequency Cap Control Mode",
+            "type": "string"
           },
-          "maxItems": 3,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
         },
         "supported_per_units": {
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Unit of measurement for reach and audience size metrics. Different channels and measurement providers count reach in fundamentally different units, making cross-channel comparison impossible without declaring the unit.",
             "enum": [
-              "custom",
-              "cookies",
+              "individuals",
+              "households",
               "devices",
               "accounts",
-              "households",
-              "individuals"
-            ]
+              "cookies",
+              "custom"
+            ],
+            "enumDescriptions": {
+              "accounts": "Unique logged-in accounts (platform-specific identity).",
+              "cookies": "Unique browser cookies.",
+              "custom": "Seller-defined reach unit. Describe in ext. For a Product.identity declaration with persistent_identifier false, describe the unit in Product.identity.reach_methodology.",
+              "devices": "Unique device identifiers (IDFA, GAID, CTV device ID).",
+              "households": "Unique households or TV homes.",
+              "individuals": "Unique people. Panel-based or identity-resolved measurement."
+            },
+            "title": "Reach Unit",
+            "type": "string"
           },
-          "maxItems": 6,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
@@ -56,15 +70,18 @@
         "supported_suppression_units": {
           "description": "Require each listed unit to be a supported suppress unit after seller-wide inheritance.",
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A duration unit supported for a frequency-cap window or suppression period.",
             "enum": [
-              "days",
-              "hours",
-              "minutes",
               "seconds",
+              "minutes",
+              "hours",
+              "days",
               "campaign"
-            ]
+            ],
+            "title": "Frequency Cap Duration Unit",
+            "type": "string"
           },
-          "maxItems": 5,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
@@ -72,15 +89,18 @@
         "supported_window_units": {
           "description": "Require each listed unit to be a supported max_impressions.window unit after seller-wide inheritance.",
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A duration unit supported for a frequency-cap window or suppression period.",
             "enum": [
-              "days",
-              "hours",
-              "minutes",
               "seconds",
+              "minutes",
+              "hours",
+              "days",
               "campaign"
-            ]
+            ],
+            "title": "Frequency Cap Duration Unit",
+            "type": "string"
           },
-          "maxItems": 5,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
@@ -98,7 +118,13 @@
       "properties": {
         "supported_control_modes": {
           "items": {
-            "const": "max_impressions"
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "The aggregate MediaBuy frequency-cap control shape supported in 3.2.",
+            "enum": [
+              "max_impressions"
+            ],
+            "title": "Media Buy Frequency Cap Control Mode",
+            "type": "string"
           },
           "minItems": 1,
           "type": "array",

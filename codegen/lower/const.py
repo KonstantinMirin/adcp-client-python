@@ -45,12 +45,15 @@ states no ``type`` the model states one it does not, which
 ``harness._entails_type`` already derives FROM THE DOCUMENT'S OWN ``const``
 (``_JSON_TYPE.get(type(doc["const"])) == value``).  That rule's docstring was
 written for exactly this rendering, and it is gated on the value, so a model
-claiming ``integer`` over a string ``const`` still reddens.  Nor does the resolver
-undo it: ``canonicalish`` reduces an **enum** node to its ``enum`` alone, dropping
-``type`` and ``description``, and leaves a **const** node whole -- probed on four
-const shapes and on ``collection/collection-list-changed-webhook.json``, whose
-``type`` and ``description`` both survive into the resolved document the package
-carries.
+claiming ``integer`` over a string ``const`` still reddens.  Nor does resolution
+undo it: ``bundle.record`` is this package's own inliner and copies a node with every
+key it states, at the referrer as much as at the target -- which is what row .3
+closed.  The delegated resolver it replaced reduced any FINITE value set to that set
+alone and dropped every annotation at it while inlining, so a ``const`` node kept its
+``type`` and ``description`` in its own packaged document and lost both inside a
+document referencing it; ``tests/test_emit.py``'s
+``test_a_const_node_inlined_through_a_ref_keeps_its_annotations`` is the measurement
+on the pair that forced the comparison row now deleted (architecture §9).
 
 **TWO REFUSALS.**  Both come from ``lower.union._literal``, which is where this row
 lived while it was scoped to one branch property, and both have a population of 0 in

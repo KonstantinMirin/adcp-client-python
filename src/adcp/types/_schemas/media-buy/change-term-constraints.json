@@ -55,26 +55,8 @@
           "type": "string"
         },
         "max_delta_amount": {
-          "additionalProperties": {
-            "not": {}
-          },
-          "description": "Maximum absolute amount by which the affected budget may change in the direction named by the action.",
-          "maxProperties": 2,
-          "properties": {
-            "amount": {
-              "minimum": 0,
-              "type": "number"
-            },
-            "currency": {
-              "pattern": "^[A-Z]{3}$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "amount",
-            "currency"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/money",
+          "description": "Maximum absolute amount by which the affected budget may change in the direction named by the action."
         },
         "max_delta_percent": {
           "description": "Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.",
@@ -82,48 +64,12 @@
           "type": "number"
         },
         "max_result_amount": {
-          "additionalProperties": {
-            "not": {}
-          },
-          "description": "Maximum resulting committed value after the change.",
-          "maxProperties": 2,
-          "properties": {
-            "amount": {
-              "minimum": 0,
-              "type": "number"
-            },
-            "currency": {
-              "pattern": "^[A-Z]{3}$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "amount",
-            "currency"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/money",
+          "description": "Maximum resulting committed value after the change."
         },
         "min_result_amount": {
-          "additionalProperties": {
-            "not": {}
-          },
-          "description": "Minimum resulting committed value after the change.",
-          "maxProperties": 2,
-          "properties": {
-            "amount": {
-              "minimum": 0,
-              "type": "number"
-            },
-            "currency": {
-              "pattern": "^[A-Z]{3}$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "amount",
-            "currency"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/money",
+          "description": "Minimum resulting committed value after the change."
         }
       },
       "required": [
@@ -173,11 +119,8 @@
         },
         "max_change": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Maximum extension, shortening, or shift in the direction named by the action.",
-          "maxProperties": 2,
           "properties": {
             "interval": {
               "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -185,13 +128,15 @@
               "type": "integer"
             },
             "unit": {
+              "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
               "enum": [
-                "days",
-                "hours",
-                "minutes",
                 "seconds",
+                "minutes",
+                "hours",
+                "days",
                 "campaign"
-              ]
+              ],
+              "type": "string"
             }
           },
           "required": [
@@ -203,11 +148,8 @@
         },
         "minimum_notice": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Minimum elapsed notice before the requested flight change may take effect.",
-          "maxProperties": 2,
           "properties": {
             "interval": {
               "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -215,13 +157,15 @@
               "type": "integer"
             },
             "unit": {
+              "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
               "enum": [
-                "days",
-                "hours",
-                "minutes",
                 "seconds",
+                "minutes",
+                "hours",
+                "days",
                 "campaign"
-              ]
+              ],
+              "type": "string"
             }
           },
           "required": [
@@ -318,11 +262,8 @@
         },
         "minimum_notice": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.",
-          "maxProperties": 2,
           "properties": {
             "interval": {
               "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -330,13 +271,15 @@
               "type": "integer"
             },
             "unit": {
+              "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
               "enum": [
-                "days",
-                "hours",
-                "minutes",
                 "seconds",
+                "minutes",
+                "hours",
+                "days",
                 "campaign"
-              ]
+              ],
+              "type": "string"
             }
           },
           "required": [

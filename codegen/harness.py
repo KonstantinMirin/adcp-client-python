@@ -61,9 +61,10 @@ third-party validator.  A payload the schema refuses is informative
 about the WIRING and nothing else, so ``check_liveness`` sends exactly one.
 
 **There is no process-global canonicalisation memo here**, and the documents this
-grades arrive already resolved (``codegen.emit`` writes them out with zero ``$ref``),
-so the one recursion reference resolution needs has happened before the harness sees
-anything.  What remains is the library's own: ``merged`` re-enters ``canonicalish``
+grades arrive as the DOCUMENT OF RECORD (``bundle.record``, which inlines every
+cross-document ``$ref`` and rewrites nothing), so the one recursion reference
+resolution needs has happened before the harness sees anything.  What remains is the
+library's own: ``merged`` re-enters ``canonicalish``
 for every subschema it sorts, so one ``from_schema`` call re-canonicalises the same
 subtrees of one document.  ``canonicalisation_shared_within_one_call`` shares those
 for the duration of ONE check and drops them on the way out -- its docstring carries
@@ -181,14 +182,23 @@ def resolve(
 ) -> dict:
     """Inline every ``$ref`` using hypothesis_jsonschema's own resolver.
 
+    **CONFINED TO DRAWING, and that is the whole of what it is for now.**
+    ``docs/plan/architecture.md`` §4 keeps the payload generator's resolver inside the
+    accepts check, where it may canonicalise its own copy because that copy is an
+    instrument of ONE check and is not the document.  :func:`check_accepts` is the one
+    caller, it hands the copy to ``from_schema`` and to nothing else, and nothing
+    downstream reads what it writes.  The DOCUMENT is ``bundle.record``'s, which inlines
+    and rewrites nothing -- so the six folds that undid this resolver's rewritings are
+    deleted (§9) and none of them can come back by this door.
+
     ``store`` maps an absolute URI to the document at it.  A ``$ref`` that is not
     in the store raises, by the library's design: it never fetches remotely.
 
     ``referrer`` is what a LOCAL pointer (``#/definitions/x``) resolves against, and
     it defaults to ``schema`` -- which is right for a whole document and wrong for a
-    NODE of one.  ``bundle.resolved`` inlines a remote reference and leaves a local
-    one, so a nested node's own ``$ref`` is a pointer into the DOCUMENT ROOT: given
-    the node as its own referrer, the library raises
+    NODE of one.  ``bundle.record`` inlines a cross-document reference and leaves a
+    local one, so a nested node's own ``$ref`` is a pointer into the DOCUMENT ROOT:
+    given the node as its own referrer, the library raises
     ``_RefResolutionError: Unresolvable JSON pointer``.  Pass the document and the
     same call inlines it (``salesagent-j3k2l.28``).
     """
@@ -431,32 +441,12 @@ _esc = compiler.escape_key
 
 
 def at(doc: Any, pointer: str) -> Any:
-    """Dereference a JSON Pointer against a document."""
-    cur = doc
-    for part in pointer.lstrip("/").split("/"):
-        if part == "":
-            continue
-        part = part.replace("~1", "/").replace("~0", "~")
-        cur = cur[int(part)] if isinstance(cur, list) else cur[part]
-    return cur
+    """Dereference a JSON Pointer against a document.
 
-
-def _distinct_values(items: Any) -> int | None:
-    """How many values ``items`` admits, when that is a countable number.
-
-    The one thing a ``uniqueItems`` step needs and draft-07 cannot state: with a
-    known bound, asking for bound + 1 elements forces a repeat, so the step is
-    EXCLUSIVE.  ``None`` means the schema admits more values than can be exhausted
-    and the step falls back to repeated draws from one schema, which is not
-    exclusive and does not pretend to be.
+    ``compiler.node_at`` is the one reading, beside ``escape_key``'s inverse; this is
+    the verifier's name for it.
     """
-    if not isinstance(items, dict):
-        return None  # a tuple-validation list: each slot has its own schema
-    if "const" in items:
-        return 1
-    if isinstance(items.get("enum"), list):
-        return len(items["enum"]) or None
-    return {"boolean": 2, "null": 1}.get(items.get("type"))
+    return compiler.node_at(doc, pointer)
 
 
 def _nodes(schema: Any, pointer: str = "") -> list[tuple[str, dict]]:
@@ -995,9 +985,8 @@ class ComparisonResult:
     #: never folded into ``missing`` or into the implied-fact rows, so a reader can
     #: see how many facts this row excuses and at which positions.
     url_typed: list[str] = field(default_factory=list)
-    #: The fifth resolver canonicalization: a DOCUMENT fact that constrains
-    #: nothing, so the model omitting it is not a drop -- see
-    #: :func:`_constrains_nothing`.  Counted separately for the same reason
+    #: A DOCUMENT fact that constrains nothing, so the model omitting it is not a
+    #: drop -- see :func:`_constrains_nothing`.  Counted separately for the same reason
     #: ``url_typed`` is: a fold that disappears into a green ``missing`` is
     #: invisible and permanent, and this one must stay auditable at its positions.
     constrains_nothing: list[str] = field(default_factory=list)
@@ -1044,23 +1033,39 @@ def _entails_type(doc: dict, value: Any) -> bool:
     """Does the document's own node already admit ONLY instances of ``value``?
 
     Asked of the node, not answered from a list of excused sites, and it answers ``False``
-    for a node that says nothing -- so a model that invents a type is still reported.  Two
-    derivations, because two shapes in this bundle constrain an instance's type without
-    naming it:
+    for a node that says nothing -- so a model that invents a type is still reported.
+    Three derivations, because three shapes in this bundle constrain an instance's type
+    without naming it, and every one of them is a fact of the DOCUMENT read against a
+    rendering THIS PIPELINE chose:
 
     * a ``const``.  ``{"const": "platform"}`` admits exactly the string ``"platform"``, so
       ``type: string`` beside it forbids nothing the node already admits.  pydantic renders
       a ``Literal`` as ``{"const": ..., "type": ...}`` and there is no spelling of a
-      literal that omits the type.  It is also where a ONE-MEMBER ``enum`` arrives, on
-      either side: :func:`_one_member_enum` writes that spelling as this one, so this
-      derivation and the ``description`` row beside it in :func:`_narrows_nothing` answer
-      a one-member set however the side that holds it spelled it
-      (``salesagent-j3k2l.28``).
+      literal that omits the type.  **832 nodes of the raw bundle, in 186 documents,
+      state a ``const`` with no ``type``**, so the shape is the document's own and not a
+      view of it.
+    * an ``enum`` whose members are all of ONE JSON type.  The vocabulary pins the
+      accepted set, so the type word beside it forbids nothing -- the same statement the
+      ``const`` arm makes about a one-member set, which is why the two are one function
+      and not two.  §4's enumeration row renders a ``StrEnum``, and pydantic writes
+      ``{"enum": [...], "type": "string"}`` for one; **164 nodes of the raw bundle, in 79
+      documents, state the ``enum`` and no ``type``**.  Gated on ONE implied type, so a
+      model claiming ``integer`` over a string enum, or any type at all over a mixed
+      vocabulary, is still reported.
     * a ``oneOf``/``anyOf`` whose EVERY branch declares the same ``type``.  Draft-07
       requires an instance to satisfy a branch, so a root that states no ``type`` of its
       own and whose branches all state ``object`` admits only objects.  §4's union base is
       a pydantic model and so renders ``type: object``; 7 of this bundle's union roots
       state the branches' type and not their own.
+
+    **The ``enum`` arm MOVED HERE from ``_narrows_nothing``'s enum row and is not a fold
+    added.**  That row admitted a model-only ``type``, ``description`` and ``default`` at
+    an enum node on the ground that ``canonicalish`` had dropped all four while inlining
+    -- the delegated resolver's rewriting, which §9 deletes.  The ``description`` and the
+    ``default`` go with it, because ``bundle.record`` keeps the document's own.  The
+    ``type`` half has a second and independent source that the record does not touch, and
+    the measurement above is it: a document that states no type beside its enum.  So the
+    arm stays and belongs with the question it is actually asking.
 
     **This is not a tolerance for "the model states more".**  It is the question
     :func:`_narrows_nothing` already exists to ask -- whether the accepted set moved -- and
@@ -1070,6 +1075,13 @@ def _entails_type(doc: dict, value: Any) -> bool:
     """
     if "const" in doc:
         return _JSON_TYPE.get(type(doc["const"])) == value
+    members = doc.get("enum")
+    if isinstance(members, list) and members:
+        # ``_JSON_TYPE`` is keyed on the EXACT type, so ``True`` implies ``boolean`` and
+        # not ``integer``; a member of any other Python type implies ``None``, which no
+        # ``type`` word equals, so a mixed vocabulary never reaches one answer.
+        implied = {_JSON_TYPE.get(type(m)) for m in members}
+        return len(implied) == 1 and value in implied
     for combinator in ("oneOf", "anyOf"):
         branches = doc.get(combinator)
         if isinstance(branches, list) and branches:
@@ -1111,16 +1123,21 @@ def _url_typed(got: Mapping[str, Any]) -> bool:
 def _constrains_nothing(keyword: str, doc: Mapping[str, Any], *, required: bool = False) -> bool:
     """Does a DOCUMENT fact constrain its accepted set, or not?
 
-    The fifth resolver canonicalization, and the mirror of :func:`_narrows_nothing`:
-    that one asks whether a MODEL-only fact narrows the document, this one asks
-    whether a DOCUMENT-only fact constrains anything at all.  A fact that admits
-    exactly what its absence admits is not dropped by a model that omits it, so
-    reporting it as ``missing`` says the model is wider than its schema when it is
-    not.  Measured on the 1,054-document bundle: 5 facts in 1 of its 3 shapes, plus
-    the third shape's own sites, and nothing else reaches this.
+    The mirror of :func:`_narrows_nothing`: that one asks whether a MODEL-only fact
+    narrows the document, this one asks whether a DOCUMENT-only fact constrains
+    anything at all.  A fact that admits exactly what its absence admits is not
+    dropped by a model that omits it, so reporting it as ``missing`` says the model is
+    wider than its schema when it is not.
+
+    **Two arms, and NEITHER is the delegated resolver's.**  ``docs/plan/architecture.md``
+    §9 deletes every fold that undoes a rewriting of that resolver and keeps the
+    readings this pipeline's own output forces; these two are the second kind -- one
+    reads a keyword the DOCUMENT itself writes, the other grades a decision §5 of the
+    semantics document made:
 
     * **``required: []``** -- an empty list demands no key, which is what silence
-      demands.  5 sites, and all 5 of the facts the first two arms account for today.
+      demands.  The document's own keyword, and §5 decides it compiles to nothing, so
+      a model that omits it drops nothing.  5 sites.
     * **``default`` on a property the enclosing node REQUIRES** -- a default is
       applied to an instance that OMITS the key, and a required key is in every
       instance the document admits, so the default can never be applied and its
@@ -1129,32 +1146,21 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any], *, required: bool 
       which also REPORTS the drop), and this arm is the grading half of the same
       decision, gated on the same shape.  5 of the bundle's 339 property defaults
       sit on a required property.
-    * **``enum: [false, true]`` at a node the document declares ``boolean``** --
-      the two members are the whole of the boolean domain, so the enum admits
-      exactly what ``boolean`` admits.  **0 sites in the bundle, and the arm is
-      kept.**  It had 5 -- ``/properties/replayed`` in five response documents --
-      and every one of them was a CONJUNCT's ``enum``: the resolver's finite-type
-      rewrite of the base's boolean, gap-filled beside the node's own
-      ``type: boolean``.  ``_composed`` now undoes that rewrite per conjunct
-      (``salesagent-j3k2l.28``), so the fact arrives as the ``type`` the node
-      already states and never reaches this function.  The shape this arm is for
-      is a document stating the PAIR in its own node, which the bundle does not do
-      today and which draft-07 plainly permits; its 3 positive and 12 negative
-      cases in ``tests/test_comparison_folds.py`` are what grade it, and they are
-      hand-written for exactly that reason.
+
+    **DELETED with the delegated resolver: ``enum: [false, true]`` at a node the
+    document declares ``boolean``.**  That arm restored a finite type the resolver had
+    written out as its members while inlining, and it had 0 sites in the bundle
+    already, because the bundle states no such pair in its own text -- all 5 it ever
+    had were a CONJUNCT's ``enum`` the resolver wrote.  ``bundle.record`` writes the
+    ``type`` the document writes, so there is no rewriting left to undo and the arm
+    would fire only on a document stating the pair itself, where §9's own rule is that
+    the fold must not fire: ``enum: [false, true]`` the DOCUMENT states is a fact to
+    compare.
 
     **Each clause is gated to ITS OWN SHAPE and the gates are the whole of this
     function's correctness.**  A fold that matches one real constraint is invisible
-    and permanent, which is why section 6 gates the other four by shape rather than
-    by keyword name:
+    and permanent:
 
-    * ``enum: [false]`` on a boolean PINS the value and must still compare.  So
-      must ``enum: [true]``.  The membership test is on the SET, so
-      ``[true, false]`` folds and ``[false]`` does not.
-    * ``enum: [false, true]`` where the document does NOT declare ``boolean``
-      restricts a wider domain -- a bare node, or ``["boolean", "null"]``, admits
-      ``null`` that the enum forbids -- so the type is required to be exactly
-      ``"boolean"`` and a list spelling does not qualify.
     * ``required: ["x"]`` demands a key and must still compare, so the value is
       required to be empty rather than merely a list.
     * A ``default`` on an OPTIONAL property is the one case where a default does
@@ -1170,14 +1176,6 @@ def _constrains_nothing(keyword: str, doc: Mapping[str, Any], *, required: bool 
     """
     if keyword == "required":
         return doc.get("required") == []
-    if keyword == "enum":
-        members = doc.get("enum")
-        return (
-            doc.get("type") == "boolean"
-            and isinstance(members, list)
-            and {type(m) for m in members} == {bool}
-            and set(members) == {True, False}
-        )
     return keyword == "default" and required
 
 
@@ -1243,10 +1241,11 @@ def _schema_half_enforces(keyword: str, doc: Mapping[str, Any], got: Mapping[str
 def _narrows_nothing(keyword: str, value: Any, doc: dict, *, required: bool = False) -> bool:
     """Does a model-only fact narrow the document's accepted set, or not?
 
-    A fact the model states and the document does not is reported, because that
-    is how a model NARROWER than its document shows up.  Three kinds narrow
-    nothing; two of them are 57 of the 57 model-only facts step 1's and step 2's
-    population has, and the third arrived with step 5's union roots:
+    A fact the model states and the document does not is reported, because that is how
+    a model NARROWER than its document shows up.  **Two kinds narrow nothing, and both
+    are a reading THIS PIPELINE'S OWN OUTPUT forces** -- which is the half
+    ``docs/plan/architecture.md`` §9 keeps when the record is this package's own
+    inliner:
 
     * **``default: null`` AT A KEY THE DOCUMENT DOES NOT DEMAND**, 56 of them.  D4
       renders an optional property ``T | None = None``, because a Python attribute
@@ -1279,263 +1278,96 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict, *, required: bool = Fa
       So the clause reads ``required``, which the comparison knows and this
       function was not being told.  One rule with the parameter it was missing,
       not a second rule beside it.
-    * **``additionalProperties: true``**, 1 of them.  Silence permits an
-      additional property, so ``true`` permits exactly as much and forbids
-      nothing.  It arises from the resolver: ``resolve_all_refs`` drops a
-      redundant ``additionalProperties: true`` while inlining, so
-      ``core/installment-ref.json``'s resolved ``collection_ref`` states nothing
-      where ``core/collection-ref.json`` states ``true`` and the imported class
-      carries ``allow``.  The same resolver rewrites ``false`` into
-      ``{"not": {}}`` (see ``_closed``), so this is the second half of one
-      canonicalization rather than a second phenomenon.
-
-      ``additionalProperties: false`` model-only is NOT excused: it forbids what
-      silence permits, which is a narrowing, and it is also how a class that
-      forbids where its own document is silent would show up -- D8 maps silence
-      to ``ignore``, which states nothing.
-    * **``type``, ``description`` and ``default`` AT A NODE THE DOCUMENT GIVES AN
-      ``enum``.**  The third resolver canonicalization, and the same resolver as
-      the second: ``canonicalish`` reduces an enum node to its ``enum`` ALONE,
-      dropping ``type``, ``title``, ``description`` and ``default`` -- measured
-      directly, ``{"type": "string", "enum": ["a", "b"], "description": "d",
-      "default": "a"}`` canonicalizes to ``{"enum": ["a", "b"]}``, while the same
-      node with ``minLength`` in place of the ``enum`` keeps all four.  So a
-      faithful enumeration states three facts its own resolved document no longer
-      does, and none of the three can narrow the ``enum``, which pins the accepted
-      set exactly.  Measured over this population: 42 such facts at 12 pairs
-      (``type`` 20, ``description`` 20, ``default`` 2), and **every one of them at
-      a node the document gives an enum** -- 0 elsewhere.
-
-      Each is still gated on the value, so the row cannot excuse a real
-      narrowing: the ``type`` has to be the one the document's own members imply
-      (a model claiming ``integer`` over a string enum reddens), and the
-      ``default`` has to BE one of the members (a default outside the document's
-      set is the generator inventing a value, and reddens).  A ``description``
-      changes no accepted set in any direction, so there is nothing further to
-      ask of it -- and the ``missing``/``differs`` half still catches a dropped or
-      wrong one, which is the defect that matters.
     * **a ``type`` the node's own content already forces**, which
       :func:`_entails_type` decides from the document.  A typeless node with nothing
       forcing it is still reported.
-    * **a ``description`` AT A NODE THE DOCUMENT GIVES A ``const``.**  The same
-      resolver canonicalization as the bullet above, at a ONE-MEMBER enum written
-      as a ``const``: ``canonicalish`` reduces a node whose value set is finite to
-      that set alone and drops every annotation at it.  Measured directly --
-      ``{"type": "string", "const": "OKP", "description": "d"}`` inlined through a
-      ``$ref`` comes back ``{"const": "OKP"}``, and so does the same node written
-      ``{"enum": ["OKP"]}`` -- and measured on the live pair both ways round:
-      ``core/agent-encryption-key.json``'s ``kty`` keeps its ``type`` and its
-      ``description`` in its OWN resolved document, and keeps neither inside
-      ``core/authorized-agent-base.json``, which references it.
 
-      So a faithful class whose field carries the document's ``description``
-      states a fact its referrer's resolved document no longer does.  The
-      ``type`` half of the same drop is already decided, by
-      :func:`_entails_type`'s ``const`` branch; this row is the ``description``
-      half and nothing else.  **It is gated on the document stating a ``const``
-      at that node**, so it excuses nothing anywhere else, and a ``description``
-      changes no accepted set in any direction -- while the
-      ``missing``/``differs`` half still catches a dropped or wrong one, which
-      is the defect that matters.
+    **DELETED with the delegated resolver (§9), and each one undid a rewriting of it
+    rather than reading anything of ours:**
 
-      Measured over the emitted population: **3 such facts at 1 pair**
-      (``core/authorized-agent-base.json``'s ``crv``, ``kty`` and ``use``), all
-      three a ``description``, and **0 elsewhere**.  A ``default`` or any other
-      annotation at a const node has no row and is still reported: 0 of the
-      bundle's 1,486 const nodes carries one.
+    * ``additionalProperties: true``, **and this one MOVED rather than went** -- see
+      :func:`_silent_about_extras`.  The arm read
+      ``keyword == "additionalProperties" and value is True`` on the MODEL side only,
+      and its stated reason was the resolver: ``resolve_all_refs`` dropped a redundant
+      ``additionalProperties: true`` while inlining, so a referrer's copy of a target
+      stated nothing where the target states ``true``.  That half is gone --
+      ``bundle.record`` copies the key, so both sides state it where the document does.
+      What the one-site measurement beside it never split off is the OTHER source: §4's
+      mapping row renders a property-less object as ``dict[K, V]``, and pydantic has no
+      spelling of ``dict[str, Any]`` that omits the keyword, so a faithful mapping states
+      it where its document is silent -- 23 pairs of the committed tree, measured.  That
+      is a reading this pipeline's own output forces, which §9 keeps and applies to BOTH
+      sides, so it is a normalisation of the NODE and no longer a model-only admission.
+      ``additionalProperties: false`` and a TYPED value are untouched on either side.
+    * ``type``, ``description`` and ``default`` at a node the document gives an
+      ``enum``.  ``canonicalish`` reduced an enum node to its ``enum`` ALONE while
+      inlining, dropping ``type``, ``title``, ``description`` and ``default``, so a
+      faithful enumeration stated three facts its own resolved document no longer did.
+      The record keeps all four, so the ``description`` and the ``default`` are
+      compared against the document's own.  **The ``type`` half is NOT deleted, it
+      MOVED**: 164 nodes of the raw bundle, in 79 documents, state an ``enum`` with no
+      ``type`` of their own, and a pydantic ``StrEnum`` renders one -- that is this
+      pipeline's output and not the resolver's, so :func:`_entails_type` answers it
+      beside the ``const`` it already answered, one derivation of "the type the
+      node's own content forces" rather than two.
+    * a ``description`` at a node the document gives a ``const``.  The same
+      ``canonicalish`` reduction at a one-member set: the referrer's copy of
+      ``core/agent-encryption-key.json``'s ``kty`` kept neither its ``type`` nor its
+      ``description``, while the target's own record kept both.  The record now keeps
+      both at both, so a dropped or wrong ``description`` is graded in both directions
+      and nothing is excused.
     """
-    if "enum" in doc:
-        return _implied_by_an_enum(keyword, value, doc["enum"])
-    if keyword == "description":
-        return "const" in doc
     if keyword == "default":
         return value is None and not required
-    if keyword == "type":
-        return _entails_type(doc, value)
-    return keyword == "additionalProperties" and value is True
+    return keyword == "type" and _entails_type(doc, value)
 
 
-#: The JSON Schema type name for each Python member type an ``enum`` can hold.
-#: ``bool`` before ``int``, because ``bool`` is a subclass of it.
-_MEMBER_TYPES: tuple[tuple[type, str], ...] = (
-    (bool, "boolean"),
-    (int, "integer"),
-    (float, "number"),
-    (str, "string"),
-)
+def _silent_about_extras(node: Any) -> Any:
+    """A MAPPING's ``additionalProperties: true``, read as the silence it is.
 
+    **A reading THIS PIPELINE'S OWN OUTPUT forces, so §9 keeps it, and it is applied to
+    BOTH sides by the one function.**  ``docs/plan/architecture.md`` §9 keeps "the
+    readings this pipeline's own output forces ... and each is applied to both sides" and
+    names three of them -- a nested class hoisted to ``$defs``, D4's ``| None``, a type
+    list rendered as a union.  Those three are EXAMPLES of the criterion and not the
+    whole of it: §4's mapping row renders a property-less object as ``dict[K, V]``, and
+    pydantic 2.13.5 has no spelling of ``dict[str, Any]`` that omits
+    ``additionalProperties: true`` -- so a faithful mapping states a keyword its document
+    is silent about, in exactly the way a faithful multi-type node states an ``anyOf``.
 
-def _implied_by_an_enum(keyword: str, value: Any, members: Any) -> bool:
-    """Is a model-only fact implied by the ``enum`` the document states?
+    **The two spellings are ONE acceptance fact.**  draft-07's ``additionalProperties``
+    constrains the keys a schema does not already declare, and ``true`` admits every one
+    of them, which is what silence admits; the two schemas accept and refuse identical
+    instances.  §2's "silence -> ``ignore``, ``true`` -> ``allow``" is a statement about
+    PYDANTIC's retention of an extra key on a CLASS, not about a document's accepted set,
+    and what this comparison grades is the accepted set.
 
-    See ``_narrows_nothing``'s third bullet.  ``None`` is excused for ``default``
-    on the same ground as everywhere else -- it is how Python spells an omitted
-    key -- and anything the three rows do not name is reported.
+    **SCOPED TO A MAPPING -- a node that declares no ``properties`` -- and the scope is
+    the whole of its correctness.**  On a node WITH ``properties`` the distinction is
+    load-bearing exactly as §2 says, a store's extras are retained or ignored by it, and
+    nothing here touches such a node.  The arm this replaces was
+    ``keyword == "additionalProperties" and value is True`` on the MODEL side only,
+    justified by a one-site measurement of the delegated resolver's redundant-key drop,
+    and it was silently absorbing 23 pairs of this mechanism -- a blanket predicate whose
+    population nobody had split.  One blanket predicate is not replaced by another: the
+    gate reads the node's own shape.
+
+    ``additionalProperties: false`` is NOT touched, on either side.  It forbids what
+    silence permits, so the two are different accepted sets: a model closing a mapping
+    its document leaves open is a NARROWING and is reported, and a document closing one
+    the model leaves open is ``missing``.  A TYPED value is not touched either -- it
+    restricts the value schema, which silence does not -- so a model typing a mapping
+    whose document says ``true`` still reports.
+
+    No ``type`` gate, because none is needed: for an object with no declared property the
+    two spellings admit the same keys, and for a non-object the keyword constrains
+    nothing either way.
     """
-    if not isinstance(members, list) or not members:
-        return False
-    if keyword == "description":
-        return True
-    if keyword == "default":
-        return value is None or any(type(value) is type(m) and value == m for m in members)
-    if keyword == "type":
-        implied = {next((n for t, n in _MEMBER_TYPES if type(m) is t), None) for m in members}
-        return len(implied) == 1 and value in implied
-    return False
-
-
-def _admitted(value: Any, doc: Mapping[str, Any]) -> bool:
-    """Does the node's own restored ``type`` admit this value?
-
-    The gate on the ``default`` a rewritten node lost.  Decided by the DOCUMENT's
-    restored type rather than by the model, so a default outside the document's set
-    -- the generator inventing a value -- is still reported.
-    """
-    kind = doc.get("type")
-    admits = {
-        "boolean": lambda v: isinstance(v, bool),
-        "null": lambda v: v is None,
-    }.get(kind if isinstance(kind, str) else "")
-    return admits is not None and admits(value)
-
-
-#: The two value sets draft-07 can write as a ``type`` and ``canonicalish`` rewrites
-#: into an enumeration of their members.
-_FINITE = ({"enum": [False, True]}, "boolean"), ({"const": None}, "null")
-
-
-def _one_member_enum(node: dict) -> dict:
-    """``{"enum": [v]}`` written as the ``const`` it is.
-
-    **One accepted set in two spellings, so the two sides are written the same one.**
-    ``enum: [v]`` and ``const: v`` admit exactly the same instance and draft-07 offers
-    both, and the two sides reach a node by their own routes: a document states either,
-    ``canonicalish`` rewrites a one-member ``enum`` into a ``const`` while INLINING a
-    remote reference, and the model states whichever its own lowering chose -- D2's
-    ``const`` row renders a ``Literal`` and so a ``const``, while a one-member enum node
-    becomes a one-member ``StrEnum`` and so an ``enum``.  So a faithful class read as
-    both dropping a ``const`` and adding an ``enum`` at a node where nothing disagreed.
-
-    Measured at 3 facts in each direction over 1 pair:
-    ``creative/get-creative-features-terminal-success.json``'s ``audit_observations``
-    ``items`` inlines ``creative/audit-observation.json``, whose ``code``, ``severity``
-    and ``recovery`` are each a one-member ``enum``.  **The same document's own pair is
-    green and that is the tell**: ``bundle.resolved`` of ``audit-observation.json``
-    keeps ``{"type": "string", "enum": ["OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"], ...}``
-    whole, and the referrer's resolved copy of that very node is
-    ``{"const": "OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"}`` -- the rewrite happens on the
-    inlining path and nowhere else, which is the same mechanism
-    :func:`_uncanonicalized` folds out at a boolean (``salesagent-j3k2l.28``).
-
-    **Toward ``const`` and not toward ``enum``, because ``const`` is where the rows that
-    answer a one-member set already are.**  The resolver drops the node's ``type`` and
-    its ``description`` when it rewrites, and both halves are already decided for a
-    ``const`` node -- the ``type`` by :func:`_entails_type`'s ``const`` derivation, over
-    a population of **832 typeless const nodes** that
-    ``test_the_document_type_word_is_not_restated_beside_the_literal`` asserts it fires
-    at every one of, and the ``description`` by :func:`_narrows_nothing`'s ``const``
-    row.  Folding the other way would have left both of those answering nothing the
-    comparison asks while a second derivation over the ``enum`` answered instead, which
-    is two rows for one fact.
-
-    ``{"enum": [false, true]}`` is NOT one member and is untouched: it is a boolean and
-    :func:`_uncanonicalized` restores it as the ``type`` the document wrote.
-    ``{"enum": [null]}`` folds to ``{"const": null}``, which is that same restoration's
-    other entry, so the one spelling reaches it from both -- 0 sites today.
-
-    A node stating BOTH keywords is left alone.  Draft-07 CONJOINS them, so the two are
-    separate statements there and each is compared as its side writes it; 0 nodes of the
-    bundle state the pair.
-    """
-    members = node.get("enum")
-    if "const" in node or not isinstance(members, list) or len(members) != 1:
+    if not isinstance(node, Mapping) or "properties" in node:
         return node
-    return {**{k: v for k, v in node.items() if k != "enum"}, "const": members[0]}
-
-
-def _uncanonicalized(doc: dict) -> tuple[dict, bool]:
-    """The document's node with the resolver's FINITE-TYPE rewrite undone.
-
-    ``resolve`` is ``hypothesis_jsonschema``'s own resolver, used here deliberately
-    so the schema the runtime decides with is the schema the harness grades, and it
-    canonicalizes while inlining.  For a type whose value set is finite it writes
-    the set out and **drops every annotation at that node**: measured,
-    ``{"type": "boolean", "description": "..."}`` resolves to
-    ``{"enum": [false, true]}`` and ``{"type": "null", "description": "..."}`` to
-    ``{"const": null}``.  Every other type keeps its keys --
-    ``{"type": "string", "description": "d"}`` and
-    ``{"type": "integer", "minimum": 1, "description": "d"}`` both come back whole
-    -- so this is one mechanism at two shapes and not a general licence.
-
-    The ``type`` is RESTORED, because ``enum: [false, true]`` IS ``type: boolean``:
-    the same accepted set, written two ways, and the second is the resolver's
-    spelling rather than the document's.  The dropped ``description`` cannot be
-    restored and is NOT copied off the model -- a fixture derived from the thing it
-    grades cannot falsify anything.  The flag says the node was rewritten, and
-    :func:`compare_schema` admits a model-only ``description`` at exactly such a
-    node and nowhere else, so the hole is one shape wide and named.
-
-    This is the third canonicalization the comparison folds out, beside ``_closed``
-    and the ``additionalProperties: true`` arm of ``_narrows_nothing``.  Reached for
-    the first time by ``core/demographic-predicate.json``, whose referenced
-    ``include_unknown`` is a plain boolean.  :func:`_derived_max_items` is the
-    fourth, and the only one that folds out a fact the resolver ADDS.
-    """
-    for canonical, kind in _FINITE:
-        if doc == canonical:
-            return {"type": kind}, True
-    if _derived_max_items(doc):
-        return {k: v for k, v in doc.items() if k != "maxItems"}, False
-    return doc, False
-
-
-def _derived_max_items(doc: Mapping[str, Any]) -> bool:
-    """Is this node's ``maxItems`` one the RESOLVER DERIVED from its ``uniqueItems``?
-
-    The FOURTH canonicalization, and the only one that folds out a fact the resolver
-    ADDS rather than one it drops or rewrites.  ``uniqueItems: true`` over a
-    countable item set bounds an instance's length at the number of distinct values
-    the items admit, and ``canonicalish`` writes that bound out as a ``maxItems``
-    the document's own text does not state.  The mechanism was already measured in
-    this module -- :func:`violated_keywords`'s docstring records
-    ``uniqueItems: true`` over a 2-member enum becoming ``maxItems: 2`` -- and it
-    became reachable by the COMPARISON only once a document carrying ``uniqueItems``
-    emitted a class (``salesagent-j3k2l.19``).  Measured at 3 pairs:
-    ``core/principal-declarations-state.json`` (twice, ``maxItems: 2`` over a
-    2-member enum), ``core/requirements/vast-asset-requirements.json`` (the same),
-    and ``property/property-error.json`` (``maxItems: 20`` over the 20-member
-    channel enum).
-
-    **A HAND-WRITTEN ROW, gated on the exact derivation and not on "a bound beside a
-    uniqueItems".**  The value must equal :func:`_distinct_values` of the items, so a
-    document's own ``maxItems`` is still compared: measured over the bundle, 28 raw
-    nodes state both keywords and 21 of them state a bound BELOW their item count,
-    which this does not touch.  At the 7 where the two coincide -- all in
-    ``protocol/get-adcp-capabilities-response.json``, refused today for another
-    keyword -- the model's own ``uniqueItems`` over the same item set already forbids
-    a longer instance, so no accepted set goes ungraded either way.  A rule reading
-    "a maxItems beside a uniqueItems is admitted" would be shorter and would excuse a
-    genuine dropped bound, invisibly and for good.
-    """
-    if doc.get("uniqueItems") is not True:
-        return False
-    bound = _distinct_values(doc.get("items"))
-    return bound is not None and doc.get("maxItems") == bound
-
-
-def _closed(x: Any) -> Any:
-    """``additionalProperties``, with the one canonicalization folded out.
-
-    ``{"not": {}}`` is the never-satisfiable schema and so is ``false``, and
-    ``resolve`` -- which is ``hypothesis_jsonschema``'s own resolver, used here
-    deliberately so the schema the runtime decides with is the schema the harness
-    grades -- rewrites the second into the first while inlining.  Measured at one
-    site in this step's population (``core/operator-identity.json``'s
-    ``operator_unit``, closed in the raw document and ``{"not": {}}`` in the
-    resolved one), and it is a fact about the resolver rather than about the
-    model: the two forms refuse the same instances.
-    """
-    return False if x == {"not": {}} else x
+    if node.get("additionalProperties") is not True:
+        return node
+    return {k: v for k, v in node.items() if k != "additionalProperties"}
 
 
 def _declares_null(doc: Any) -> bool:
@@ -1753,7 +1585,9 @@ def _conjoined_type(node: dict, kw: str, branches: list[dict]) -> tuple[dict, li
     """A ``type`` word BESIDE a union is conjoined into every branch, which is what
     draft-07 says it is.
 
-    The sixth canonicalization.  Every branch of a draft-07 combinator is applied to
+    **A reading THIS PIPELINE'S OWN OUTPUT forces, so §9 keeps it** -- the emitter is
+    what conjoins the word, through ``_base.applied_schema``, and nothing of the
+    delegated resolver is involved.  Every branch of a draft-07 combinator is applied to
     the SAME instance, so a sibling ``type`` asserts about that instance too and a
     branch stating none of its own has it: ``{"type": "string", "anyOf": [{"format":
     "uri-template"}, ...]}`` and ``{"anyOf": [{"type": "string", "format":
@@ -1825,21 +1659,21 @@ def _normalize(
     ``#/definitions/x`` is relative to the document root, which is why
     :class:`Pair` carries the document and not only the node.
 
-    Four normalizations, and each one is forced by a decision this pipeline made
-    rather than by anything arbitrary in pydantic:
+    **Every normalization left here is a reading THIS PIPELINE'S OWN OUTPUT forces,
+    which is the half ``docs/plan/architecture.md`` §9 keeps, and each is applied to
+    BOTH sides.**  The one-member-``enum`` respelling that stood first in this list is
+    deleted with the delegated resolver: ``canonicalish`` rewrote ``enum: [v]`` into
+    ``const: v`` while inlining a remote reference, so one accepted set arrived in two
+    spellings depending on which side held it.  ``bundle.record`` copies the
+    document's own spelling, and §4's enumeration row renders an ``enum`` for an
+    ``enum`` node and a ``Literal`` -- so a ``const`` -- for a ``const`` one, so the
+    two sides now reach the node with the same keyword and there is nothing to fold.
 
-    * **A one-member value set, which draft-07 spells two ways.**
-      :func:`_one_member_enum` writes a one-member ``enum`` as the ``const`` it is, on
-      both sides, because the document and the model each reach that node by their own
-      route and pick their own spelling of one accepted set.
     * **A local ``$ref``.**  A nested object is a nested CLASS and a
       cross-document reference is an IMPORT (P2), so pydantic hoists both into
-      ``$defs`` and references them.  ``codegen.bundle.resolved`` inlines a REMOTE
-      reference and leaves a LOCAL one, so the document says ``$ref`` too -- at a
-      ``definitions`` entry, which is the one section resolution does not reach
-      (measured on ``core/placement-presentation.json``: the local reference at
-      ``/properties/decorations/items/oneOf/0`` IS inlined and the one at
-      ``/definitions/text_decoration/properties/layer`` is not).
+      ``$defs`` and references them.  ``codegen.bundle.record`` inlines a REMOTE
+      reference and leaves a LOCAL one as written, so the document says ``$ref`` too,
+      and this is the "nested class hoisted to ``$defs``" reading §9 names.
     * **An ``anyOf`` with a ``null`` branch, AND WHICH OF THE TWO THINGS IT IS.**
       D4 renders an optional property ``T | None``, because the attribute holds
       ``None`` for an omitted key.  pydantic states that as a union; the document
@@ -1928,7 +1762,6 @@ def _normalize(
     """
     if depth > 16 or not isinstance(node, dict):  # a self-referential $defs chain
         return node if isinstance(node, dict) else {}
-    node = _one_member_enum(node)
     if "$ref" in node:
         target = _target(node["$ref"], root)
         # ``declared_null`` deliberately does NOT travel through here.  It would be an
@@ -1944,20 +1777,16 @@ def _normalize(
         stated = node.get(kw)
         if not (isinstance(stated, list) and stated and all(isinstance(b, dict) for b in stated)):
             continue
-        # Each branch read through the FINITE-TYPE rewrite, which is the third
-        # canonicalization (:func:`_uncanonicalized`) applied one level down rather
-        # than a fourth rule.  The resolver writes a finite type out as its members
-        # WHILE INLINING, so the same union is two shapes depending on whether the
-        # document states it or references one that does: measured, the three
-        # documents that reference
-        # ``creative/creative-feature-result.json#/properties/value`` carry
-        # ``oneOf: [{"enum": [false, true]}, {"type": "number"}, {"type": "string"}]``
-        # where the two that state it carry ``{"type": "boolean"}`` as the first
-        # branch.  Without this the fold fired on the 2 and not on the 3, and the 3
-        # reported the model's type list as ``added`` -- the reading half-done is
-        # the same defect it was built to close.  ``{"const": null}`` is the same
-        # rewrite of a ``null`` branch and is restored by the same call.
-        branches = [_uncanonicalized(b)[0] for b in stated]
+        # The branches as the DOCUMENT writes them.  They were read through the
+        # delegated resolver's finite-type rewrite here, because that resolver wrote a
+        # finite type out as its members WHILE INLINING and so gave one union two
+        # shapes depending on whether the document stated it or referenced one that
+        # did: the three documents referencing
+        # ``creative/creative-feature-result.json#/properties/value`` carried
+        # ``oneOf: [{"enum": [false, true]}, ...]`` where the two that state it carry
+        # ``{"type": "boolean"}``.  ``bundle.record`` copies the branch, so all five
+        # now carry the one shape and the rewrite has nothing to undo (§9).
+        branches = list(stated)
         node, branches = _conjoined_type(node, kw, branches)
         live = [b for b in branches if b.get("type") != "null"]
         nulls = [b for b in branches if b.get("type") == "null"]
@@ -1992,119 +1821,18 @@ def _normalize(
                 # admits it.  Folding would state a fact the document does not.
                 return node
             return {"type": [*kinds, "null"] if keep_null and nulls else kinds, **outer}
-        # **The sixth canonicalization, GATED on the one thing that proves the resolver
-        # wrote it: every branch carries the SAME ``title``.**  ``harness.resolve``
-        # inlines a reference THROUGH ``canonicalish``, which rewrites a root
-        # ``if``/``then`` into an ``anyOf`` of the two cases and COPIES the node's own
-        # ``title`` into both -- so a referring document's copy of a target states its
-        # properties, its ``required``, its ``type`` and its ``description`` inside two
-        # identically-titled branches, while the target's OWN package copy (which has no
-        # reference to resolve, so the resolver never reads it) states them at the node.
-        # Measured on the pair that first reached it:
-        # ``media-buy/sync-catalogs-request.json`` at
-        # ``/properties/item_availability_updates/items`` references
+        # **DELETED WITH THE DELEGATED RESOLVER (§9): the same-title lift.**  It fired
+        # where every branch of a combinator carried the SAME ``title``, which was the
+        # signature of ``canonicalish`` rewriting a root ``if``/``then`` into an
+        # ``anyOf`` of the two cases and copying the node's own ``title`` into both.
+        # The pair it existed for -- ``media-buy/sync-catalogs-request.json`` at
+        # ``/properties/item_availability_updates/items``, which references
         # ``core/catalog-item-availability-update.json``, whose root carries
-        # ``if``/``then``, and every fact the faithful model carried there read as
-        # ``added`` -- 11 facts over 1 pair, in the one direction §6 cares most about.
-        #
-        # **The gate is not a heuristic, it is this pipeline's own rule read
-        # backwards.** Section 4's names row names a union branch by its ``title``, and
-        # ``lower.union.lower_union`` REFUSES a root whose branches derive one class
-        # name -- so two branches sharing a title cannot be a union this emitter emits,
-        # and a node that is one carries no agreed facts to lift.  Ungated, the lift
-        # reddened 300 ``missing`` facts at UNION ROOTS, whose base deliberately states
-        # none of its branches' fields (§4, ``union.ROOT_CONJUNCTS``) because each
-        # branch is graded as its own pair -- which is exactly what ``_composed``'s
-        # docstring already says about leaving a root combinator alone, and why this is
-        # gated rather than general.
-        titles = {b.get("title") for b in live}
-        if len(live) > 1 and len(titles) == 1 and isinstance(live[0].get("title"), str):
-            lifted = _agreed(live)
-            if lifted:
-                return {**lifted, **node}
+        # ``if``/``then`` -- now reads the target's own node, with its ``properties``,
+        # its ``required``, its ``type`` and its ``description`` where the document
+        # writes them, so there are no agreed facts to lift back up.  ``_agreed`` and
+        # ``_widest`` were its only readers and go with it.
     return node
-
-
-def _agreed(branches: list[dict]) -> dict:
-    """The facts EVERY branch of a combinator states, which are the node's own.
-
-    An instance satisfying a ``oneOf``/``anyOf`` satisfies SOME branch, so a fact every
-    branch states is a fact of the node -- the one direction a branch list entails
-    anything about the instance.  Nothing is subtracted and the combinator is kept: this
-    ADDS what the branches agree on, so a branch that disagrees leaves its fact out and
-    the pair still reports.  The caller says when it applies.
-
-    Two rules, which are the two rules :func:`_composed` makes for the same reason:
-
-    * **``required`` agrees by INTERSECTION.**  Every branch demanding a name means the
-      node demands it; one branch demanding it does not.
-    * **Every other fact agrees by EQUALITY, and a property's declaration agrees by
-      equality or by VOCABULARY UNION** (:func:`_widest`).  A keyword two branches state
-      differently is otherwise a fact the node does not state: the weakest statement the
-      two have in common is not derivable, so it is left out and whatever the model says
-      about it is still reported.
-    """
-    agreed: dict = {}
-    for kw in FOLDED_FACTS:
-        if kw == "required" or not all(kw in b for b in branches):
-            continue
-        first = branches[0][kw]
-        if all(b[kw] == first for b in branches):
-            agreed[kw] = first
-    names = [b.get("required") for b in branches]
-    if all(isinstance(n, list) for n in names):
-        shared = [n for n in names[0] if all(n in rest for rest in names[1:])]
-        if shared:
-            agreed["required"] = shared
-    maps = [b.get("properties") for b in branches]
-    if all(isinstance(m, dict) for m in maps):
-        common = {}
-        for key in maps[0]:
-            if not all(key in m and isinstance(m[key], dict) for m in maps):
-                continue
-            widest = _widest([m[key] for m in maps])
-            if widest is not None:
-                common[key] = widest
-        if common:
-            agreed["properties"] = common
-    return agreed
-
-
-def _widest(declarations: list[dict]) -> dict | None:
-    """The weakest statement every branch's declaration of one key entails, or ``None``.
-
-    Equality where the branches agree, and otherwise the VOCABULARY UNION -- the one
-    axis on which a union of two statements is computable at all: an instance satisfying
-    either declaration takes a value from one of the two member sets, so it takes a
-    value from their union and the document states that much.  Every declaration has to
-    be a vocabulary and NOTHING else, so the union carries no keyword one branch states
-    and another does not.
-
-    Measured on the pair this exists for: the resolver's conditional rewrite of
-    ``core/catalog-item-availability-update.json`` differs between its two branches in
-    exactly one property -- ``reason``, a ten-member ``enum`` in the ``else`` arm and
-    ``{"const": "other"}`` in the ``then`` arm -- and the union is the ten members the
-    faithful ``StrEnum`` carries.  Left out, that one property was the last ``added``
-    fact of the pair.
-
-    A model NARROWER than the union still reports, as a ``differs``, and that is the
-    safe direction: the branches' choice is coupled across properties, so a model
-    faithful to the coupling can be narrower than this, and a visible false failure is
-    what §6 asks for over a silent pass.
-    """
-    first = declarations[0]
-    if all(d == first for d in declarations):
-        return first
-    members: list = []
-    for d in declarations:
-        if set(d) == {"enum"} and isinstance(d["enum"], list):
-            vocabulary = d["enum"]
-        elif set(d) == {"const"}:
-            vocabulary = [d["const"]]
-        else:
-            return None
-        members += [m for m in vocabulary if not _in_vocabulary(m, members)]
-    return {"enum": members}
 
 
 #: How deep an ``allOf`` chain ``_composed`` folds before it stops folding.  Same
@@ -2251,7 +1979,7 @@ def _composed(doc: Any, depth: int = 0) -> Any:
     than through its parent.
 
     A ``$ref`` conjunct is not resolved here, and does not need to be: the
-    caller hands this a RESOLVED document (``codegen.bundle.resolved`` writes it
+    caller hands this a RESOLVED document (``codegen.bundle.record`` writes it
     into the package and ``adcp.types._base.schema_at`` reads it back), and 0 of
     the conjuncts in that 61-document sample still carried a ``$ref``.  A
     conjunct that somehow did would state no fact in ``compared_facts`` and so fold to
@@ -2264,25 +1992,15 @@ def _composed(doc: Any, depth: int = 0) -> Any:
     for conjunct in conjuncts:
         if not isinstance(conjunct, dict):
             continue
-        # The conjunct is read through the SAME canonicalization the node is read
-        # through (:func:`_uncanonicalized`), and BEFORE its facts are folded in.
-        # The resolver's finite-type rewrite drops the ``type`` when it writes a
-        # boolean out as ``{"enum": [false, true]}``, so an inlined base's boolean
-        # arrives here typeless; gap-filling that node's ``enum`` leaves the merged
-        # node with an enum and no type, which is neither spelling of the fact and
-        # is a shape no document states.  Measured at 9 facts over 5
-        # ``formats/canonical`` documents, each restating an inherited boolean with
-        # nothing but a ``default`` and a ``description``: the enum read as
-        # ``missing`` while the base plainly states the same accepted set the model
-        # does.  Undoing the rewrite first hands the fold ``{"type": "boolean"}``,
-        # the document's own spelling, and the pair grades the accepted set as a
-        # ``type``.
-        #
-        # NOT a widening of ``_constrains_nothing``, whose ``type == "boolean"``
-        # gate is correct and unchanged: an untyped ``enum: [false, true]`` the
-        # DOCUMENT itself states is still compared, because this rewrites a
-        # CONJUNCT the resolver wrote and nothing else.
-        c = _uncanonicalized(_one_member_enum(_composed(conjunct, depth + 1)))[0]
+        # The conjunct as the DOCUMENT writes it.  It was read through the delegated
+        # resolver's finite-type rewrite and its one-member respelling first, because
+        # that resolver dropped the ``type`` when it wrote a boolean out as
+        # ``{"enum": [false, true]}`` and an inlined base's boolean then arrived here
+        # typeless -- 9 facts over 5 ``formats/canonical`` documents, each restating an
+        # inherited boolean, whose ``enum`` read as ``missing``.  ``bundle.record``
+        # copies the base's ``{"type": "boolean"}``, so the conjunct arrives in the
+        # document's own spelling and both undoings are deleted (§9).
+        c = _composed(conjunct, depth + 1)
         # One statement on the vocabulary axis before anything is gap-filled, so the
         # merged node cannot carry a ``const`` beside the ``enum`` it pins.
         out, c = _one_vocabulary(out, c)
@@ -2466,7 +2184,13 @@ def compare_schema(
         # not of the node.
         doc = _patterned_key(doc, closed=False) or doc
         got = _patterned_key(got, closed=True) or got
-        doc, rewritten = _uncanonicalized(doc)
+        # A MAPPING's ``additionalProperties: true`` is the silence it is, on BOTH sides
+        # and by the one function -- §9's "the readings this pipeline's own output
+        # forces", of which §4's ``dict[K, V]`` rendering is one
+        # (:func:`_silent_about_extras`).  AFTER ``_composed`` and ``_patterned_key``, so
+        # a conjunct's gap-filled value and a patterned key's synthesised one are read
+        # the same way the node's own is.
+        doc, got = _silent_about_extras(doc), _silent_about_extras(got)
         for kw in compared_facts(at_position):
             if kw not in doc:
                 continue
@@ -2482,9 +2206,9 @@ def compare_schema(
                         "and the schema half enforces it"
                     )
                     continue
-                # The fifth canonicalization: a document fact that constrains
-                # nothing is not dropped by a model that omits it.  Counted apart
-                # from ``missing`` so the fold stays auditable at its positions.
+                # A document fact that constrains nothing is not dropped by a model
+                # that omits it.  Counted apart from ``missing`` so the fold stays
+                # auditable at its positions.
                 if _constrains_nothing(kw, doc, required=required):
                     res.constrains_nothing.append(
                         f"{where}: the document says {doc[kw]!r}, which admits exactly "
@@ -2509,7 +2233,12 @@ def compare_schema(
                     # value's own ``type``, ``required`` and ``enum``.
                     compare(a, b, f"{where}", Position.MAPV)
                     continue
-                a, b = _closed(a), _closed(b)
+                # ``_closed`` stood here and is DELETED WITH THE DELEGATED RESOLVER
+                # (§9): it read ``{"not": {}}`` as the ``false`` it is, which the
+                # resolver wrote while inlining a closed object.  0 raw nodes of the
+                # bundle spell a closed object that way, so with ``bundle.record``
+                # copying the document's own ``false`` there is nothing to fold, and a
+                # ``{"not": {}}`` a document itself ever states is a fact to compare.
             elif kw == "description":
                 a, b = _text(a), _text(b)
             elif kw in ("required", "enum"):
@@ -2523,16 +2252,15 @@ def compare_schema(
             if kw in doc or kw not in got:
                 continue
             res.model_facts += 1
-            # ``rewritten``: the resolver dropped the node's annotations when it
-            # wrote the finite type out as its members, so the model states a
-            # ``description`` and a ``default`` its RESOLVED document no longer does.
-            # Admitted at that node only; see ``_uncanonicalized``.  The ``default``
-            # is still gated on the VALUE -- it has to be one the restored type
-            # admits -- so this cannot excuse a generator inventing one; measured on
-            # ``core/canonical-projection-slot-override.json``'s two booleans, whose
-            # documents state ``default: true`` and ``default: false`` and whose
-            # resolved nodes state neither.  ``description`` needs no gate: it
-            # changes no accepted set in any direction.
+            # The two ``rewritten`` arms stood here and are DELETED WITH THE DELEGATED
+            # RESOLVER (§9): that resolver dropped the node's annotations when it wrote
+            # a finite type out as its members, so a faithful model stated a
+            # ``description`` and a ``default`` its own resolved document no longer did
+            # -- ``core/canonical-projection-slot-override.json``'s two booleans state
+            # ``default: true`` and ``default: false`` and their resolved nodes stated
+            # neither.  ``bundle.record`` copies both, so both are COMPARED, which is
+            # the stronger grade in each direction.
+            #
             # D5's URL-type rows for the facts a URL type ADDS, one row per fact,
             # each naming itself and each gated on its own exact value
             # (:data:`URL_IMPLIED`).  ``minLength: 1`` is rendered by every pydantic
@@ -2555,11 +2283,7 @@ def compare_schema(
                     + ("any URL type renders" if kw == "minLength" else "HttpUrl renders")
                 )
                 continue
-            if (
-                _narrows_nothing(kw, got[kw], doc, required=required)
-                or (rewritten and kw == "description")
-                or (rewritten and kw == "default" and _admitted(got[kw], doc))
-            ):
+            if _narrows_nothing(kw, got[kw], doc, required=required):
                 continue
             res.added.append(f"{pointer}/{kw}: the model says {got[kw]!r}, the document nothing")
 
@@ -2806,7 +2530,7 @@ def check_pair(
     rep.missing_formats = sorted(missing_formats(pair.schema, custom_formats))
     accepted: list[Any] = []
     #: **The two INSTANCE checks need a self-contained schema and the comparison does
-    #: not, which is the whole of why this line exists.**  ``bundle.resolved`` inlines
+    #: not, which is the whole of why this line exists.**  ``bundle.record`` inlines
     #: a remote reference and leaves a LOCAL one, so a nested node can say
     #: ``{"$ref": "#/definitions/rectangle"}`` -- a pointer into its DOCUMENT.  Handed
     #: that node alone, ``hypothesis_jsonschema``'s generator raises

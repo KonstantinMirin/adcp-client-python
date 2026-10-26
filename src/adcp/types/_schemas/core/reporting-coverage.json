@@ -21,11 +21,7 @@
   "properties": {
     "covered_package_ids": {
       "items": {
-        "minLength": 1,
-        "title": "Reporting Package ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "package"
+        "$ref": "#/definitions/ReportingPackageId"
       },
       "type": "array",
       "uniqueItems": true
@@ -36,11 +32,7 @@
     },
     "fully_covered_media_buy_ids": {
       "items": {
-        "minLength": 1,
-        "title": "Reporting Media Buy ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "media_buy"
+        "$ref": "#/definitions/ReportingMediaBuyId"
       },
       "type": "array",
       "uniqueItems": true
@@ -51,19 +43,11 @@
         "additionalProperties": false,
         "properties": {
           "media_buy_id": {
-            "minLength": 1,
-            "title": "Reporting Media Buy ID",
-            "type": "string",
-            "x-adcp-model-context-inline": true,
-            "x-entity": "media_buy"
+            "$ref": "#/definitions/ReportingMediaBuyId"
           },
           "package_ids": {
             "items": {
-              "minLength": 1,
-              "title": "Reporting Package ID",
-              "type": "string",
-              "x-adcp-model-context-inline": true,
-              "x-entity": "package"
+              "$ref": "#/definitions/ReportingPackageId"
             },
             "minItems": 1,
             "type": "array",
@@ -91,11 +75,7 @@
     "media_buy_ids": {
       "description": "Exact media-buy denominator, including unsupported and unknown buys. An empty array is an explicitly evaluated zero-buy scope.",
       "items": {
-        "minLength": 1,
-        "title": "Reporting Media Buy ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "media_buy"
+        "$ref": "#/definitions/ReportingMediaBuyId"
       },
       "type": "array",
       "uniqueItems": true
@@ -103,22 +83,14 @@
     "package_ids": {
       "description": "Exact package denominator for the evaluated media buys.",
       "items": {
-        "minLength": 1,
-        "title": "Reporting Package ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "package"
+        "$ref": "#/definitions/ReportingPackageId"
       },
       "type": "array",
       "uniqueItems": true
     },
     "partially_covered_media_buy_ids": {
       "items": {
-        "minLength": 1,
-        "title": "Reporting Media Buy ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "media_buy"
+        "$ref": "#/definitions/ReportingMediaBuyId"
       },
       "type": "array",
       "uniqueItems": true
@@ -134,44 +106,28 @@
     },
     "unknown_media_buy_ids": {
       "items": {
-        "minLength": 1,
-        "title": "Reporting Media Buy ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "media_buy"
+        "$ref": "#/definitions/ReportingMediaBuyId"
       },
       "type": "array",
       "uniqueItems": true
     },
     "unknown_package_ids": {
       "items": {
-        "minLength": 1,
-        "title": "Reporting Package ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "package"
+        "$ref": "#/definitions/ReportingPackageId"
       },
       "type": "array",
       "uniqueItems": true
     },
     "unsupported_media_buy_ids": {
       "items": {
-        "minLength": 1,
-        "title": "Reporting Media Buy ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "media_buy"
+        "$ref": "#/definitions/ReportingMediaBuyId"
       },
       "type": "array",
       "uniqueItems": true
     },
     "unsupported_package_ids": {
       "items": {
-        "minLength": 1,
-        "title": "Reporting Package ID",
-        "type": "string",
-        "x-adcp-model-context-inline": true,
-        "x-entity": "package"
+        "$ref": "#/definitions/ReportingPackageId"
       },
       "type": "array",
       "uniqueItems": true

@@ -10,6 +10,7 @@
       "properties": {
         "ext": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
           "title": "Extension Object",
           "type": "object"
@@ -26,6 +27,7 @@
                 "allOf": [
                   {
                     "$schema": "http://json-schema.org/draft-07/schema#",
+                    "additionalProperties": true,
                     "description": "Legacy-compatible product-context reference to a placement. For publisher-catalog placements, publisher_domain plus placement_id resolves the declaration in that publisher's adagents.json. For seller-inline placements, the enclosing seller and product supply scope. When publisher_domain is omitted on legacy inputs, receivers MAY interpret the ID relative to the enclosing single-publisher product. Use placement-identity.json when a self-contained cross-document identity is required.",
                     "properties": {
                       "placement_id": {
@@ -57,13 +59,11 @@
                 "description": "Self-contained identity for either a publisher-catalog placement or a sales-agent-defined inline placement. The discriminator names which authority owns placement_id.",
                 "oneOf": [
                   {
-                    "additionalProperties": {
-                      "not": {}
-                    },
-                    "maxProperties": 3,
+                    "additionalProperties": false,
                     "properties": {
                       "kind": {
-                        "const": "publisher_ref"
+                        "const": "publisher_ref",
+                        "type": "string"
                       },
                       "placement_id": {
                         "minLength": 1,
@@ -78,20 +78,18 @@
                     },
                     "required": [
                       "kind",
-                      "placement_id",
-                      "publisher_domain"
+                      "publisher_domain",
+                      "placement_id"
                     ],
                     "title": "Publisher catalog placement identity",
                     "type": "object"
                   },
                   {
-                    "additionalProperties": {
-                      "not": {}
-                    },
-                    "maxProperties": 3,
+                    "additionalProperties": false,
                     "properties": {
                       "kind": {
-                        "const": "seller_inline"
+                        "const": "seller_inline",
+                        "type": "string"
                       },
                       "placement_id": {
                         "description": "Stable placement ID within the defining sales agent's namespace. The agent MUST NOT reuse it for a different semantic placement.",
@@ -101,16 +99,13 @@
                       },
                       "seller_agent": {
                         "$schema": "http://json-schema.org/draft-07/schema#",
-                        "additionalProperties": {
-                          "not": {}
-                        },
+                        "additionalProperties": false,
                         "description": "Sales agent that defines and maintains the inline placement namespace.",
                         "examples": [
                           {
                             "agent_url": "https://agent.acme.example"
                           }
                         ],
-                        "maxProperties": 2,
                         "properties": {
                           "agent_url": {
                             "description": "The seller agent's API endpoint URL as declared in the property publisher's adagents.json `authorized_agents[].url`. MUST use the `https://` scheme. Receivers compare this URL against the `authorized_agents` list using the AdCP URL canonicalization rules \u2014 not byte-equality \u2014 and reject mismatches with `seller_not_authorized`. See docs/reference/url-canonicalization.",
@@ -134,8 +129,8 @@
                     },
                     "required": [
                       "kind",
-                      "placement_id",
-                      "seller_agent"
+                      "seller_agent",
+                      "placement_id"
                     ],
                     "title": "Seller inline placement identity",
                     "type": "object"
@@ -162,6 +157,7 @@
       "properties": {
         "ext": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
           "title": "Extension Object",
           "type": "object"

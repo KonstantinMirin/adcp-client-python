@@ -160,7 +160,7 @@ DEFERRED_TO_A_LATER_ROW = "this step lowers no such keyword (a later D2 row does
 
 #: A ``$ref`` the bundle's resolution did not reach.  Producer: ``emit`` at the
 #: unresolved-reference check, which pairs it with ``Kind.UNRESOLVED``.
-UNRESOLVED_TARGET = "is still unresolved after bundle.resolved"
+UNRESOLVED_TARGET = "is still unresolved after bundle.record"
 
 #: The prefix a chained refusal quotes its target's whole refusal after.
 #: Producer: ``emit`` at the cross-document reference, as

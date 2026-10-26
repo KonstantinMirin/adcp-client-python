@@ -3,6 +3,7 @@
   "allOf": [
     {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "A typed data feed. Catalogs carry the items, locations, stock levels, or pricing that publishers use to render ads. They can be synced to a platform via sync_catalogs (managed lifecycle with approval), provided inline, or fetched from an external URL. The catalog type determines the item schema and can be structural (offering, product, inventory, store, promotion) or vertical-specific (hotel, flight, job, vehicle, real_estate, education, destination, app). Selectors (ids, tags, category, query) filter items regardless of sourcing method.",
       "examples": [
         {
@@ -136,59 +137,99 @@
           "type": "string"
         },
         "content_id_type": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Identifier type that the event's content_ids field should be matched against for items in this catalog. For example, 'gtin' means content_ids values are Global Trade Item Numbers, 'sku' means retailer SKUs. Omit when using a custom identifier scheme not listed in the enum.",
           "enum": [
             "sku",
             "gtin",
-            "app_id",
+            "offering_id",
             "job_id",
             "hotel_id",
-            "store_id",
             "flight_id",
-            "listing_id",
-            "program_id",
             "vehicle_id",
-            "offering_id",
-            "destination_id"
-          ]
+            "listing_id",
+            "store_id",
+            "program_id",
+            "destination_id",
+            "app_id"
+          ],
+          "title": "Content ID Type",
+          "type": "string"
         },
         "conversion_events": {
           "description": "Event types that represent conversions for items in this catalog. Declares what events the platform should attribute to catalog items \u2014 e.g., a job catalog converts via submit_application, a product catalog via purchase. The event's content_ids field carries the item IDs that connect back to catalog items. Use content_id_type to declare what identifier type content_ids values represent.",
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Standard marketing event types for event logging, aligned with IAB ECAPI",
             "enum": [
-              "lead",
-              "share",
-              "custom",
-              "donate",
-              "follow",
-              "refund",
-              "search",
-              "contact",
-              "purchase",
-              "schedule",
               "page_view",
-              "subscribe",
-              "app_launch",
-              "add_to_cart",
-              "app_install",
-              "select_item",
-              "start_trial",
-              "viewed_cart",
-              "content_view",
-              "qualify_lead",
               "view_content",
               "select_content",
-              "add_to_wishlist",
-              "disqualify_lead",
-              "watch_milestone",
-              "add_payment_info",
+              "select_item",
+              "search",
+              "share",
+              "add_to_cart",
               "remove_from_cart",
+              "viewed_cart",
+              "add_to_wishlist",
               "initiate_checkout",
+              "add_payment_info",
+              "purchase",
+              "refund",
+              "lead",
+              "qualify_lead",
               "close_convert_lead",
+              "disqualify_lead",
+              "complete_registration",
+              "subscribe",
+              "follow",
+              "content_view",
+              "watch_milestone",
+              "start_trial",
+              "app_install",
+              "app_launch",
+              "contact",
+              "schedule",
+              "donate",
               "submit_application",
-              "complete_registration"
-            ]
+              "custom"
+            ],
+            "enumDescriptions": {
+              "add_payment_info": "User added payment information",
+              "add_to_cart": "User added an item to cart",
+              "add_to_wishlist": "User added an item to a wishlist",
+              "app_install": "User installed an application",
+              "app_launch": "User launched an application",
+              "close_convert_lead": "Lead converted to a customer or closed deal",
+              "complete_registration": "User completed account registration",
+              "contact": "User initiated contact (call, message, etc.)",
+              "content_view": "User meaningfully consumed a content unit, such as a watch, listen, stream, episode play, or read",
+              "custom": "Custom event type (specify in custom_event_name)",
+              "disqualify_lead": "Lead disqualified or marked as not viable",
+              "donate": "User made a donation",
+              "follow": "User made a free, durable opt-in to an account, channel, feed, list, podcast, or similar owned property",
+              "initiate_checkout": "User started checkout process",
+              "lead": "User expressed interest (form submission, signup, etc.)",
+              "page_view": "User viewed a page",
+              "purchase": "User completed a purchase",
+              "qualify_lead": "Lead qualified by sales or scoring criteria",
+              "refund": "A purchase was fully or partially refunded (adjusts ROAS)",
+              "remove_from_cart": "User removed an item from cart",
+              "schedule": "User scheduled an appointment or event",
+              "search": "User performed a search",
+              "select_content": "User selected or clicked on content (article, video, etc.)",
+              "select_item": "User selected a specific product or item from a list",
+              "share": "User shared content via social or messaging",
+              "start_trial": "User started a free trial",
+              "submit_application": "User submitted an application (loan, job, etc.)",
+              "subscribe": "User started a paid subscription or paid membership",
+              "view_content": "User viewed specific content (product, article, etc.)",
+              "viewed_cart": "User viewed their shopping cart",
+              "watch_milestone": "User reached a content progress threshold, such as 25%, 50%, 75%, 100%, or a seconds-viewed milestone"
+            },
+            "title": "Event Type",
+            "type": "string"
           },
-          "maxItems": 31,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
@@ -197,6 +238,25 @@
           "description": "Declarative normalization rules for external feeds. Maps non-standard feed field names, date formats, price encodings, and image URLs to the AdCP catalog item schema. Applied during sync_catalogs ingestion. Supports field renames, named transforms (date, divide, boolean, split), static literal injection, and assignment of image URLs to typed asset pools.",
           "items": {
             "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
+            "allOf": [
+              {
+                "not": {
+                  "required": [
+                    "feed_field",
+                    "value"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "required": [
+                    "catalog_field",
+                    "asset_group_id"
+                  ]
+                }
+              }
+            ],
             "description": "Declares how a field in an external feed maps to the AdCP catalog item schema. Used in sync_catalogs feed_field_mappings to normalize non-AdCP feeds (Google Merchant Center, LinkedIn Jobs XML, hotel XML, etc.) to the standard catalog item schema without requiring the buyer to preprocess every feed. Multiple mappings can assemble a nested object via dot notation (e.g., separate mappings for price.amount and price.currency).",
             "examples": [
               {
@@ -265,268 +325,6 @@
                 "description": "Boolean coercion with default"
               }
             ],
-            "not": {
-              "anyOf": [
-                {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Declares how a field in an external feed maps to the AdCP catalog item schema. Used in sync_catalogs feed_field_mappings to normalize non-AdCP feeds (Google Merchant Center, LinkedIn Jobs XML, hotel XML, etc.) to the standard catalog item schema without requiring the buyer to preprocess every feed. Multiple mappings can assemble a nested object via dot notation (e.g., separate mappings for price.amount and price.currency).",
-                  "examples": [
-                    {
-                      "data": {
-                        "catalog_field": "name",
-                        "feed_field": "hotel_name"
-                      },
-                      "description": "Simple field rename"
-                    },
-                    {
-                      "data": {
-                        "catalog_field": "valid_from",
-                        "feed_field": "available_from",
-                        "format": "YYYYMMDD",
-                        "timezone": "UTC",
-                        "transform": "date"
-                      },
-                      "description": "Date format transform \u2014 YYYYMMDD to ISO 8601"
-                    },
-                    {
-                      "data": {
-                        "by": 100,
-                        "catalog_field": "price.amount",
-                        "feed_field": "price_cents",
-                        "transform": "divide"
-                      },
-                      "description": "Divide cents to dollars"
-                    },
-                    {
-                      "data": {
-                        "catalog_field": "price.currency",
-                        "value": "USD"
-                      },
-                      "description": "Static literal injection \u2014 currency not in feed"
-                    },
-                    {
-                      "data": {
-                        "asset_group_id": "images_landscape",
-                        "feed_field": "primary_photo_url"
-                      },
-                      "description": "Image URL assigned to typed asset pool"
-                    },
-                    {
-                      "data": {
-                        "asset_group_id": "images_vertical",
-                        "feed_field": "portrait_photo_url"
-                      },
-                      "description": "Vertical photo URL assigned to vertical pool"
-                    },
-                    {
-                      "data": {
-                        "catalog_field": "amenities",
-                        "feed_field": "amenity_list",
-                        "separator": ",",
-                        "transform": "split"
-                      },
-                      "description": "Split comma-separated tags to array"
-                    },
-                    {
-                      "data": {
-                        "catalog_field": "available",
-                        "default": false,
-                        "feed_field": "is_available",
-                        "transform": "boolean"
-                      },
-                      "description": "Boolean coercion with default"
-                    }
-                  ],
-                  "properties": {
-                    "asset_group_id": {
-                      "description": "Places the feed field value (a URL) into a typed asset pool on the catalog item's assets array. The value is wrapped as an image or video asset in a group with this ID. Use standard group IDs: 'images_landscape', 'images_vertical', 'images_square', 'logo', 'video'. Mutually exclusive with catalog_field.",
-                      "type": "string"
-                    },
-                    "by": {
-                      "description": "For transform 'divide': the divisor to apply (e.g., 100 to convert integer cents to decimal dollars).",
-                      "exclusiveMinimum": 0,
-                      "type": "number"
-                    },
-                    "catalog_field": {
-                      "description": "Target field on the catalog item schema, using dot notation for nested fields (e.g., 'name', 'price.amount', 'location.city'). Mutually exclusive with asset_group_id.",
-                      "type": "string"
-                    },
-                    "default": {
-                      "description": "Fallback value to use when feed_field is absent, null, or empty. Applied after any transform would have been applied. Allows optional feed fields to have a guaranteed baseline value."
-                    },
-                    "ext": {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                      "title": "Extension Object",
-                      "type": "object"
-                    },
-                    "feed_field": {
-                      "description": "Field name in the external feed record. Omit when injecting a static literal value (use the value property instead).",
-                      "type": "string"
-                    },
-                    "format": {
-                      "description": "For transform 'date': the input date format string (e.g., 'YYYYMMDD', 'MM/DD/YYYY', 'DD-MM-YYYY'). Output is always ISO 8601 (e.g., '2025-03-01'). Uses Unicode date pattern tokens.",
-                      "type": "string"
-                    },
-                    "separator": {
-                      "default": ",",
-                      "description": "For transform 'split': the separator character or string to split on. Defaults to ','.",
-                      "type": "string"
-                    },
-                    "timezone": {
-                      "description": "For transform 'date': the timezone of the input value. IANA timezone identifier (e.g., 'UTC', 'America/New_York', 'Europe/Amsterdam'). Defaults to UTC when omitted.",
-                      "type": "string"
-                    },
-                    "transform": {
-                      "enum": [
-                        "date",
-                        "split",
-                        "divide",
-                        "boolean"
-                      ]
-                    },
-                    "value": {
-                      "description": "Static literal value to inject into catalog_field for every item, regardless of what the feed contains. Mutually exclusive with feed_field. Useful for fields the feed omits (e.g., currency when price is always USD, or a constant category value)."
-                    }
-                  },
-                  "required": [
-                    "asset_group_id",
-                    "catalog_field"
-                  ],
-                  "title": "Catalog Field Mapping",
-                  "type": "object"
-                },
-                {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Declares how a field in an external feed maps to the AdCP catalog item schema. Used in sync_catalogs feed_field_mappings to normalize non-AdCP feeds (Google Merchant Center, LinkedIn Jobs XML, hotel XML, etc.) to the standard catalog item schema without requiring the buyer to preprocess every feed. Multiple mappings can assemble a nested object via dot notation (e.g., separate mappings for price.amount and price.currency).",
-                  "examples": [
-                    {
-                      "data": {
-                        "catalog_field": "name",
-                        "feed_field": "hotel_name"
-                      },
-                      "description": "Simple field rename"
-                    },
-                    {
-                      "data": {
-                        "catalog_field": "valid_from",
-                        "feed_field": "available_from",
-                        "format": "YYYYMMDD",
-                        "timezone": "UTC",
-                        "transform": "date"
-                      },
-                      "description": "Date format transform \u2014 YYYYMMDD to ISO 8601"
-                    },
-                    {
-                      "data": {
-                        "by": 100,
-                        "catalog_field": "price.amount",
-                        "feed_field": "price_cents",
-                        "transform": "divide"
-                      },
-                      "description": "Divide cents to dollars"
-                    },
-                    {
-                      "data": {
-                        "catalog_field": "price.currency",
-                        "value": "USD"
-                      },
-                      "description": "Static literal injection \u2014 currency not in feed"
-                    },
-                    {
-                      "data": {
-                        "asset_group_id": "images_landscape",
-                        "feed_field": "primary_photo_url"
-                      },
-                      "description": "Image URL assigned to typed asset pool"
-                    },
-                    {
-                      "data": {
-                        "asset_group_id": "images_vertical",
-                        "feed_field": "portrait_photo_url"
-                      },
-                      "description": "Vertical photo URL assigned to vertical pool"
-                    },
-                    {
-                      "data": {
-                        "catalog_field": "amenities",
-                        "feed_field": "amenity_list",
-                        "separator": ",",
-                        "transform": "split"
-                      },
-                      "description": "Split comma-separated tags to array"
-                    },
-                    {
-                      "data": {
-                        "catalog_field": "available",
-                        "default": false,
-                        "feed_field": "is_available",
-                        "transform": "boolean"
-                      },
-                      "description": "Boolean coercion with default"
-                    }
-                  ],
-                  "properties": {
-                    "asset_group_id": {
-                      "description": "Places the feed field value (a URL) into a typed asset pool on the catalog item's assets array. The value is wrapped as an image or video asset in a group with this ID. Use standard group IDs: 'images_landscape', 'images_vertical', 'images_square', 'logo', 'video'. Mutually exclusive with catalog_field.",
-                      "type": "string"
-                    },
-                    "by": {
-                      "description": "For transform 'divide': the divisor to apply (e.g., 100 to convert integer cents to decimal dollars).",
-                      "exclusiveMinimum": 0,
-                      "type": "number"
-                    },
-                    "catalog_field": {
-                      "description": "Target field on the catalog item schema, using dot notation for nested fields (e.g., 'name', 'price.amount', 'location.city'). Mutually exclusive with asset_group_id.",
-                      "type": "string"
-                    },
-                    "default": {
-                      "description": "Fallback value to use when feed_field is absent, null, or empty. Applied after any transform would have been applied. Allows optional feed fields to have a guaranteed baseline value."
-                    },
-                    "ext": {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
-                      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                      "title": "Extension Object",
-                      "type": "object"
-                    },
-                    "feed_field": {
-                      "description": "Field name in the external feed record. Omit when injecting a static literal value (use the value property instead).",
-                      "type": "string"
-                    },
-                    "format": {
-                      "description": "For transform 'date': the input date format string (e.g., 'YYYYMMDD', 'MM/DD/YYYY', 'DD-MM-YYYY'). Output is always ISO 8601 (e.g., '2025-03-01'). Uses Unicode date pattern tokens.",
-                      "type": "string"
-                    },
-                    "separator": {
-                      "default": ",",
-                      "description": "For transform 'split': the separator character or string to split on. Defaults to ','.",
-                      "type": "string"
-                    },
-                    "timezone": {
-                      "description": "For transform 'date': the timezone of the input value. IANA timezone identifier (e.g., 'UTC', 'America/New_York', 'Europe/Amsterdam'). Defaults to UTC when omitted.",
-                      "type": "string"
-                    },
-                    "transform": {
-                      "enum": [
-                        "date",
-                        "split",
-                        "divide",
-                        "boolean"
-                      ]
-                    },
-                    "value": {
-                      "description": "Static literal value to inject into catalog_field for every item, regardless of what the feed contains. Mutually exclusive with feed_field. Useful for fields the feed omits (e.g., currency when price is always USD, or a constant category value)."
-                    }
-                  },
-                  "required": [
-                    "feed_field",
-                    "value"
-                  ],
-                  "title": "Catalog Field Mapping",
-                  "type": "object"
-                }
-              ]
-            },
             "properties": {
               "asset_group_id": {
                 "description": "Places the feed field value (a URL) into a typed asset pool on the catalog item's assets array. The value is wrapped as an image or video asset in a group with this ID. Use standard group IDs: 'images_landscape', 'images_vertical', 'images_square', 'logo', 'video'. Mutually exclusive with catalog_field.",
@@ -546,6 +344,7 @@
               },
               "ext": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": true,
                 "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                 "title": "Extension Object",
                 "type": "object"
@@ -568,12 +367,14 @@
                 "type": "string"
               },
               "transform": {
+                "description": "Named transform to apply to the feed field value before writing to the catalog schema. See transform-specific parameters (format, timezone, by, separator).",
                 "enum": [
                   "date",
-                  "split",
                   "divide",
-                  "boolean"
-                ]
+                  "boolean",
+                  "split"
+                ],
+                "type": "string"
               },
               "value": {
                 "description": "Static literal value to inject into catalog_field for every item, regardless of what the feed contains. Mutually exclusive with feed_field. Useful for fields the feed omits (e.g., currency when price is always USD, or a constant category value)."
@@ -586,16 +387,30 @@
           "type": "array"
         },
         "feed_format": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Format of the external feed at url. Required when url points to a non-AdCP feed (e.g., Google Merchant Center XML, Meta Product Catalog). Omit for offering-type catalogs where the feed is native AdCP JSON.",
           "enum": [
-            "custom",
-            "shopify",
-            "tiktok_shop",
-            "linkedin_jobs",
+            "google_merchant_center",
             "facebook_catalog",
+            "shopify",
+            "linkedin_jobs",
+            "tiktok_shop",
             "pinterest_catalog",
             "openai_product_feed",
-            "google_merchant_center"
-          ]
+            "custom"
+          ],
+          "enumDescriptions": {
+            "custom": "A feed whose shape is not one of the named formats above. The buyer MUST supply feed_field_mappings to normalize it to the AdCP catalog item schema.",
+            "facebook_catalog": "Meta (Facebook / Instagram) product catalog feed \u2014 a Google-Merchant-Center-derived dialect, the closest clone of the GMC field set.",
+            "google_merchant_center": "Google Merchant Center / Google Shopping product data specification \u2014 the de-facto e-commerce product-feed lingua franca that the other named commerce formats derive from.",
+            "linkedin_jobs": "LinkedIn job-posting feed (XML).",
+            "openai_product_feed": "OpenAI Commerce product feed for ChatGPT shopping \u2014 a GMC-derived dialect adding ChatGPT-specific eligibility flags (is_eligible_search / is_eligible_checkout / is_eligible_ads). Spec: https://developers.openai.com/commerce/specs/file-upload/products",
+            "pinterest_catalog": "Pinterest product catalog feed \u2014 a GMC-derived dialect with stricter serialization (composite-encoded price and shipping, a mandatory google_product_category, space-delimited availability enums) that a strict GMC parser would mis-handle.",
+            "shopify": "Shopify product feed export.",
+            "tiktok_shop": "TikTok Shop product catalog feed \u2014 a GMC-derived dialect with material deltas (sku_id as the primary identifier rather than id, and a first-class video_link) that a GMC parser keyed on id would mis-parse."
+          },
+          "title": "Feed Format",
+          "type": "string"
         },
         "gtins": {
           "description": "Filter product-type catalogs by GTIN identifiers for cross-retailer catalog matching. Accepts standard GTIN formats (GTIN-8, UPC-A/GTIN-12, EAN-13/GTIN-13, GTIN-14). Only applicable when type is 'product'.",
@@ -639,29 +454,37 @@
           "type": "array"
         },
         "type": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Catalog type. Structural types: 'offering' (AdCP Offering objects), 'product' (ecommerce entries), 'inventory' (stock per location), 'store' (physical locations), 'promotion' (deals and pricing). Vertical types: 'hotel', 'flight', 'job', 'vehicle', 'real_estate', 'education', 'destination', 'app' \u2014 each with an industry-specific item schema.",
           "enum": [
-            "app",
-            "job",
-            "hotel",
-            "store",
-            "flight",
-            "product",
-            "vehicle",
             "offering",
-            "education",
+            "product",
             "inventory",
+            "store",
             "promotion",
+            "hotel",
+            "flight",
+            "job",
+            "vehicle",
+            "real_estate",
+            "education",
             "destination",
-            "real_estate"
-          ]
+            "app"
+          ],
+          "title": "Catalog Type",
+          "type": "string"
         },
         "update_frequency": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "How often the platform should re-fetch the feed from url. Only applicable when url is provided. Platforms may use this as a hint for polling schedules.",
           "enum": [
-            "daily",
+            "realtime",
             "hourly",
-            "weekly",
-            "realtime"
-          ]
+            "daily",
+            "weekly"
+          ],
+          "title": "Update Frequency",
+          "type": "string"
         },
         "url": {
           "description": "URL to an external catalog feed. The platform fetches and resolves items from this URL. For offering-type catalogs, the feed contains an array of Offering objects. For other types, the feed format is determined by feed_format. When omitted with type 'product', the platform uses its synced copy of the brand's product catalog.",
