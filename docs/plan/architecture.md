@@ -1271,9 +1271,26 @@ condition, below.
     document's §5 states: an `allOf` restatement whose intersection is not computable; an empty
     intersection; a union whose branches cannot be separated (UNDERDETERMINED); a `contains`
     predicate no `AtLeastOne` carries; a keyword with no row; a list-valued `items`; a root
-    stating no schema keyword. **The upstream issues must be filed before this step lands**, not
-    after: `attribution.py` admits no entry without one, so an unfiled issue is a build failure
-    and the step cannot be completed around it.
+    stating no schema keyword.
+
+    *The upstream issues do NOT block this step, corrected 2026-10-26.* This said they must be
+    filed first, because `attribution.py` admits no entry without a reference. That makes the
+    compiler's own completion wait on a third party's issue tracker, and the thing being built
+    is a compiler that represents every schema — it cannot have an external calendar in its exit
+    condition.
+
+    So the gate moves off the step and onto the WORD "upstream". Every approximation is
+    attributed, and an attribution is OURS until an issue exists: `Attribution.ours(reason)` needs
+    no reference and says in one sentence what the schema would have to state for the gap to
+    close. Only `Attribution.upstream(issue)` requires a live reference, and that constructor
+    keeps its `BuildFailure` — so nothing is ever *claimed* as upstream without a filed issue,
+    which is the honesty property the original gate was protecting. Filing an issue later
+    reclassifies the attribution from ours to upstream and the *ours* backlog falls by that much;
+    it does not change a type or an emission.
+
+    What this costs: the *ours* figure reads higher until the issues are filed, which is correct
+    — an unfiled gap IS ours. What it buys: `refused == 0` is reachable without waiting on
+    anyone outside this repository.
 
     **The seam collapse lands here, moved from step 8 on 2026-10-26.** Once this step has given
     every reachable cell a rung, `decide` collapses to `Lowering`, `Refusal` narrows to its one
