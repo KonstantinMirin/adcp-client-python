@@ -245,21 +245,40 @@ def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
     # annotation -- which is what keeps the fact in exactly one place.  Where no type is
     # selected the format rides as an annotation on the node's own scalar type, and the
     # schema comparison grades it there.
-    if fmt is not None and fmt in mod.asserted and fmt in FORMAT_TYPES:
+    # **A ``uri`` beside another string constraint KEEPS BOTH HALVES, and the row's own
+    # fallback is what keeps them** (§14 step 9, and §5's group (a)): "The ``format`` row
+    # refuses a ``uri`` beside a string constraint because a URL type carries none.  The
+    # row's own fallback already answers it: the type is the constrained ``str`` and the
+    # ``format`` rides as ``json_schema_extra={"format": "uri"}``.  Both facts are kept
+    # and neither half narrows; what is given up is the URL type's parsing, which is not
+    # an acceptance fact."
+    #
+    # So the URL type is not SELECTED here and the two lines below -- the row's second
+    # and third choices, which every other unselected format already takes -- answer: a
+    # named alias in ``adcp.types.constraints`` for the bound, with ``format`` set, which
+    # ``render._field`` puts in ``json_schema_extra`` where §8 grades it.  The refusal
+    # this replaced said the keyword "would go missing or differ ungraded", and that was
+    # true of the URL type it was about: pydantic refuses to apply a string constraint to
+    # one, so the bound had nowhere to go.  It has somewhere to go on a ``str``.
+    #
+    # ``pattern`` is NOT in this set and the URL type still wins over it, which is §5's
+    # ``pattern`` row: "On ``format: uri`` -> selects the type instead, and the pattern
+    # stays with the schema half."  That is a different trade from this one -- there the
+    # document's two facts are a type and a regex and the row keeps the type; here they
+    # are a bound and a format and the fallback keeps both.
+    selects_a_url_type = (
+        fmt is not None
+        and fmt in URL_FORMATS
+        and not sorted(set(constraints) - {"pattern"})
+    )
+    if (
+        fmt is not None
+        and fmt in mod.asserted
+        and fmt in FORMAT_TYPES
+        and (fmt not in URL_FORMATS or selects_a_url_type)
+    ):
         selected = FORMAT_TYPES[fmt](node.facts)
-        if fmt in URL_FORMATS and constraints:
-            unowned = sorted(set(constraints) - {"pattern"})
-            if unowned:
-                return Refusal(
-                    unowned[0],
-                    node.pointer,
-                    f"a format: uri node states {unowned}, and a URL type carries no "
-                    "string constraint at all -- pydantic refuses to apply one -- while "
-                    "the comparison's URL-type rows admit only a dropped pattern and "
-                    "the two bounds a URL type renders of its own, so this keyword "
-                    "would go missing or differ ungraded",
-                    kind=Kind.VERDICT,
-                )
+        if fmt in URL_FORMATS:
             return Decided(ir.TypeRef(selected))
         return Decided(ir.TypeRef(selected), constraints)
     path = constraints_module.resolve(word, constraints)

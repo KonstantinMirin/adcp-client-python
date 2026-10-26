@@ -1,0 +1,1241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "consumer_status_task"
+        ]
+      },
+      "then": {
+        "required": [
+          "reliable_reporting_version",
+          "revision_content_task"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "consumer_mismatch_escalation_seconds"
+        ]
+      },
+      "then": {
+        "required": [
+          "consumer_status_task",
+          "operations_contact"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reliable_reporting_version": {
+            "const": "1.0"
+          }
+        },
+        "required": [
+          "reliable_reporting_version"
+        ]
+      },
+      "then": {
+        "required": [
+          "revision_content_task"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "managed_delivery": {
+            "const": true
+          }
+        },
+        "required": [
+          "managed_delivery"
+        ]
+      },
+      "then": {
+        "properties": {
+          "offerings": {
+            "contains": {
+              "required": [
+                "method"
+              ]
+            }
+          }
+        },
+        "required": [
+          "resource_retention_days",
+          "authorization_revocation_seconds"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reconciled_billing": {
+            "const": true
+          }
+        },
+        "required": [
+          "reconciled_billing"
+        ]
+      },
+      "then": {
+        "properties": {
+          "offerings": {
+            "contains": {
+              "properties": {
+                "reconciliation_mode": {
+                  "const": "consumer_receipt"
+                }
+              },
+              "required": [
+                "reconciliation_mode"
+              ]
+            }
+          }
+        },
+        "required": [
+          "receipt_task"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "offerings": {
+            "contains": {
+              "required": [
+                "method"
+              ]
+            }
+          }
+        },
+        "required": [
+          "offerings"
+        ]
+      },
+      "then": {
+        "properties": {
+          "managed_delivery": {
+            "const": true
+          }
+        },
+        "required": [
+          "managed_delivery"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "offerings": {
+            "contains": {
+              "properties": {
+                "reconciliation_mode": {
+                  "const": "consumer_receipt"
+                }
+              },
+              "required": [
+                "reconciliation_mode"
+              ]
+            }
+          }
+        },
+        "required": [
+          "offerings"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reconciled_billing": {
+            "const": true
+          }
+        },
+        "required": [
+          "reconciled_billing"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "readiness_notification"
+        ]
+      },
+      "then": {
+        "properties": {
+          "managed_delivery": {
+            "const": true
+          }
+        },
+        "required": [
+          "managed_delivery"
+        ]
+      }
+    }
+  ],
+  "description": "Reliable Reporting status and durable delivery support, advertised in three tiers over one data model. Core (supported: true) is the required tier: obligations, revisions, post-official adjustments, fixed RFC 8785/JCS revision-binding digests, the five health states, and get_reporting_status seller status. During the published migration window, sellers may additionally advertise sync_reporting_status consumer status over ordinary task transport; it becomes part of required Core only in the next eligible minor after the notice window. Core has no destination, materialization, bespoke webhook, or Managed external-materialization canonicalization machinery. managed_delivery adds file/dataset-share/warehouse delivery and materializations. Reconciled Billing adds canonical digests and consumer receipts for immutable billing-purpose reporting evidence/control totals only; it does not create, approve, modify, or settle invoices, calculate taxes/FX, authorize accounting entries, transfer funds, or determine legal payment obligations. Each offerings entry is an atomic supported combination; buyers MUST NOT construct an unsupported cross-product. Presence requires media_buy.reporting_delivery in experimental_features; RFC 9421 webhook signing is required only when readiness_notification, status_notification, or ledger_notification is declared. Polling get_media_buy_delivery remains the compatibility baseline when this block is absent.",
+  "properties": {
+    "authorization_revocation_seconds": {
+      "description": "Maximum delay after caller/account authorization ends before seller-controlled transport access, provider grants, and write credentials are revoked. It cannot revoke a buyer's access to data already written into a buyer-owned destination.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "automated_recovery_window_seconds": {
+      "description": "Maximum late interval during which a due obligation may remain delayed while automated recovery continues before action_required.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "configuration_task": {
+      "const": "sync_accounts",
+      "type": "string"
+    },
+    "consumer_mismatch_escalation_seconds": {
+      "description": "Maximum interval after a CONSUMER_STATUS_MISMATCH issue's opened_at during which the seller may keep that issue at a non-escalated recommended_action. After it, the issue MUST be action_required with a contact_ recommended_action naming the diagnosed responsible_party. Declaring it requires operations_contact so the escalation has a destination. Absence means the seller publishes no escalation commitment; it never means an unbounded one.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "consumer_status_task": {
+      "const": "sync_reporting_status",
+      "description": "Opt-in consumer-status loop during the published migration window, becoming required Core in the next eligible minor after that window. Buyers call this seller-hosted task to record whether each expected reporting period was received, missing, or unreadable. Buyers expose no reverse endpoint, and the status is not a billing receipt.",
+      "type": "string"
+    },
+    "ledger_notification": {
+      "const": "reporting.ledger_changed",
+      "description": "Optional tier-independent invalidation for every newly committed revision or post-official adjustment, even when health does not change. Receivers repair through get_reporting_status changes_after; polling remains authoritative.",
+      "type": "string"
+    },
+    "managed_delivery": {
+      "default": false,
+      "description": "Tier flag: this seller supports managed file, dataset-share, or warehouse delivery. Offerings whose method names a delivery pattern require this tier. When false or absent, every offering is API-delivered and Core-only.",
+      "type": "boolean"
+    },
+    "offerings": {
+      "description": "Atomic supported feed/profile/schedule/finality/method combinations. offering_id values MUST be unique.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "feed_purpose": {
+                  "const": "billing"
+                }
+              },
+              "required": [
+                "feed_purpose"
+              ]
+            },
+            "then": {
+              "properties": {
+                "reconciliation_mode": {
+                  "const": "consumer_receipt"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "reconciliation_mode": {
+                  "const": "consumer_receipt"
+                }
+              },
+              "required": [
+                "reconciliation_mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "reporting_profile": {
+                  "required": [
+                    "canonicalization_id",
+                    "canonicalization_contract_version",
+                    "canonicalization_media_type",
+                    "canonicalization_uri",
+                    "canonicalization_sha256"
+                  ]
+                }
+              },
+              "required": [
+                "method"
+              ]
+            }
+          }
+        ],
+        "definitions": {
+          "ReportingDeliveryPattern": {
+            "enum": [
+              "file_transfer",
+              "dataset_share",
+              "warehouse_materialization"
+            ],
+            "title": "Reporting Delivery Pattern",
+            "type": "string"
+          },
+          "ReportingFeedPurpose": {
+            "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
+            "enum": [
+              "pacing",
+              "analytics",
+              "billing"
+            ],
+            "title": "Reporting Feed Purpose",
+            "type": "string",
+            "x-adcp-model-context-inline": true
+          }
+        },
+        "description": "One atomic combination a seller can honor. Buyers MUST NOT form a cross-product from separate capability arrays; each installed configuration selects one offering_id and values within that offering. A Core API-delivered offering requires no Managed external-materialization canonicalization code or contract, but every resulting revision still carries the fixed RFC 8785/JCS revision-binding canonicalization and digest.",
+        "properties": {
+          "feed_purpose": {
+            "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
+            "enum": [
+              "pacing",
+              "analytics",
+              "billing"
+            ],
+            "title": "Reporting Feed Purpose",
+            "type": "string",
+            "x-adcp-model-context-inline": true
+          },
+          "method": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "required": [
+                    "pattern"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "provider"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "pattern": {
+                      "const": "file_transfer"
+                    }
+                  },
+                  "required": [
+                    "pattern"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "format"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "pattern": {
+                      "const": "dataset_share"
+                    }
+                  },
+                  "required": [
+                    "pattern"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "access_mode"
+                  ]
+                }
+              }
+            ],
+            "description": "Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.",
+            "properties": {
+              "access_mode": {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[a-z][a-z0-9_.-]*$",
+                "type": "string"
+              },
+              "destination_modes": {
+                "items": {
+                  "enum": [
+                    "provision",
+                    "existing"
+                  ],
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "format": {
+                "enum": [
+                  "jsonl",
+                  "csv",
+                  "parquet",
+                  "avro",
+                  "orc"
+                ],
+                "type": "string"
+              },
+              "orchestration": {
+                "description": "Party responsible for starting, configuring, and monitoring the delivery operation. Independent of destination ownership and the service that moves the data.",
+                "enum": [
+                  "producer_managed",
+                  "consumer_managed"
+                ],
+                "title": "Reporting Orchestration",
+                "type": "string",
+                "x-adcp-model-context-inline": true
+              },
+              "pattern": {
+                "enum": [
+                  "file_transfer",
+                  "dataset_share",
+                  "warehouse_materialization"
+                ],
+                "title": "Reporting Delivery Pattern",
+                "type": "string"
+              },
+              "producer_identity": {
+                "additionalProperties": false,
+                "dependencies": {
+                  "cloud": [
+                    "region"
+                  ],
+                  "region": [
+                    "cloud"
+                  ]
+                },
+                "description": "Seller principal a buyer grants access to for this exact buyer-hosted destination offering.",
+                "properties": {
+                  "cloud": {
+                    "enum": [
+                      "aws",
+                      "azure",
+                      "gcp"
+                    ],
+                    "title": "Reporting Cloud",
+                    "type": "string",
+                    "x-adcp-model-context-inline": true
+                  },
+                  "identity": {
+                    "maxLength": 512,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "provider": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "domain": {
+                        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "domain"
+                    ],
+                    "type": "object"
+                  },
+                  "region": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "provider",
+                  "identity"
+                ],
+                "type": "object"
+              },
+              "provider": {
+                "additionalProperties": false,
+                "properties": {
+                  "domain": {
+                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "domain"
+                ],
+                "type": "object"
+              },
+              "reader_compatibility": {
+                "items": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "title": "Reporting Reader Compatibility Item",
+                  "type": "string",
+                  "x-adcp-model-context-inline": true
+                },
+                "type": "array",
+                "uniqueItems": true
+              },
+              "transport": {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[a-z][a-z0-9_.-]*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "pattern",
+              "transport",
+              "orchestration",
+              "destination_modes"
+            ],
+            "type": "object"
+          },
+          "offering_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+            "type": "string",
+            "x-entity": "reporting_offering"
+          },
+          "reconciliation_mode": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Receipt contract included in this atomic offering. Billing offerings MUST require consumer_receipt.",
+            "enum": [
+              "delivery_only",
+              "consumer_receipt"
+            ],
+            "title": "Reporting Reconciliation Mode",
+            "type": "string",
+            "x-status": "experimental"
+          },
+          "report_definition_id": {
+            "description": "Immutable semantic definition for metric, grain, attribution, action-report-time, timezone/calendar, source/API mapping, and restatement/finality policy. Configurations and revisions MUST echo this exact value.",
+            "maxLength": 255,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+            "type": "string",
+            "x-entity": "reporting_definition"
+          },
+          "report_definition_sha256": {
+            "description": "Digest of the exact report-definition bytes. SDKs verify this before parsing and cache by digest.",
+            "pattern": "^[A-Fa-f0-9]{64}$",
+            "type": "string"
+          },
+          "report_definition_uri": {
+            "description": "Retrievable immutable reporting-report-definition.json document on the authenticated seller/provider or AdCP-registry origin.",
+            "format": "uri",
+            "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+            "type": "string"
+          },
+          "reporting_profile": {
+            "additionalProperties": false,
+            "description": "Machine-readable semantic and validation contract for delivered rows. The canonicalization_* fields describe the external-materialization canonical-digest contract and are required only for offerings under the reconciled_billing tier; Core and managed-delivery offerings omit those fields but every Core revision still carries the fixed RFC 8785/JCS revision-binding digest.",
+            "properties": {
+              "canonicalization_contract_version": {
+                "const": "1.0",
+                "type": "string"
+              },
+              "canonicalization_id": {
+                "description": "Rules for stable logical row ordering, value encoding, nulls, and schema used by canonical_content_digest.",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "canonicalization_media_type": {
+                "const": "application/vnd.adcp.reporting-canonicalization+json",
+                "type": "string"
+              },
+              "canonicalization_sha256": {
+                "description": "Digest of the exact canonicalization contract identified by canonicalization_id.",
+                "pattern": "^[A-Fa-f0-9]{64}$",
+                "type": "string"
+              },
+              "canonicalization_uri": {
+                "description": "Retrievable exact canonicalization contract on the authenticated seller/provider or AdCP-registry origin. SDKs apply the same bounded, redirect-free SSRF controls as schema_uri and verify canonicalization_sha256 before use.",
+                "format": "uri",
+                "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+                "type": "string"
+              },
+              "grain": {
+                "description": "Stable description of what one logical row represents.",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+                "type": "string"
+              },
+              "primary_keys": {
+                "items": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "title": "Reporting Primary Key",
+                  "type": "string",
+                  "x-adcp-model-context-inline": true
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "schema_dialect": {
+                "const": "https://json-schema.org/draft/2020-12/schema",
+                "description": "Closed SDK-bundled dialect. The SDK never resolves a metaschema over the network, and the fetched document's $schema MUST equal this value.",
+                "type": "string"
+              },
+              "schema_ref_policy": {
+                "const": "local_fragment_only",
+                "description": "The fetched schema is a self-contained bundle. Every $ref is a local # fragment; remote and relative-document dependencies are forbidden.",
+                "type": "string"
+              },
+              "schema_sha256": {
+                "description": "Digest of the exact schema bytes. SDKs verify this before parsing and cache by digest.",
+                "pattern": "^[A-Fa-f0-9]{64}$",
+                "type": "string"
+              },
+              "schema_uri": {
+                "description": "Authenticated seller/provider or AdCP-registry HTTPS origin only; never an IP literal, userinfo URL, redirect target, or mutable validation authority.",
+                "format": "uri",
+                "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+                "type": "string"
+              },
+              "version": {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "schema_uri",
+              "schema_sha256",
+              "schema_dialect",
+              "schema_ref_policy",
+              "grain",
+              "primary_keys"
+            ],
+            "type": "object"
+          },
+          "schedule": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "else": {
+                  "else": {
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "period_anchor_policy"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "period_timezone_policy"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "period_anchor"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "period_timezone"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "if": {
+                    "properties": {
+                      "alignment": {
+                        "const": "source_timezone"
+                      }
+                    },
+                    "required": [
+                      "alignment"
+                    ]
+                  },
+                  "then": {
+                    "allOf": [
+                      {
+                        "else": {
+                          "not": {
+                            "required": [
+                              "period_timezone"
+                            ]
+                          }
+                        },
+                        "if": {
+                          "properties": {
+                            "period_timezone_policy": {
+                              "const": "fixed"
+                            }
+                          },
+                          "required": [
+                            "period_timezone_policy"
+                          ]
+                        },
+                        "then": {
+                          "required": [
+                            "period_timezone"
+                          ]
+                        }
+                      }
+                    ],
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "period_anchor_policy"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "period_anchor"
+                          ]
+                        }
+                      ]
+                    },
+                    "required": [
+                      "period_timezone_policy"
+                    ]
+                  }
+                },
+                "if": {
+                  "properties": {
+                    "alignment": {
+                      "const": "billing_cycle"
+                    }
+                  },
+                  "required": [
+                    "alignment"
+                  ]
+                },
+                "then": {
+                  "allOf": [
+                    {
+                      "else": {
+                        "not": {
+                          "anyOf": [
+                            {
+                              "required": [
+                                "period_anchor"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "period_timezone"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "if": {
+                        "properties": {
+                          "period_anchor_policy": {
+                            "const": "fixed"
+                          }
+                        },
+                        "required": [
+                          "period_anchor_policy"
+                        ]
+                      },
+                      "then": {
+                        "required": [
+                          "period_anchor",
+                          "period_timezone"
+                        ]
+                      }
+                    }
+                  ],
+                  "required": [
+                    "period_anchor_policy"
+                  ]
+                }
+              }
+            ],
+            "description": "Period and availability SLA this offering can honor. For example, PT1H with snapshot finality explicitly advertises hourly provisional snapshots; a separate P1D official offering advertises daily finalized reporting.",
+            "properties": {
+              "alignment": {
+                "description": "Calendar used to establish exact period boundaries. source_timezone is an explicit upstream reporting clock, such as an ad server network timezone, that may differ from the AdCP account timezone. The obligation echoes resolved timestamps and source timezone.",
+                "enum": [
+                  "utc",
+                  "account_timezone",
+                  "source_timezone",
+                  "billing_cycle"
+                ],
+                "title": "Reporting Schedule Alignment",
+                "type": "string",
+                "x-adcp-model-context-inline": true
+              },
+              "delivery_sla": {
+                "pattern": "^P(?=\\d|T)(?=.*\\d)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
+                "type": "string"
+              },
+              "period_anchor": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "period_anchor_policy": {
+                "description": "For billing_cycle only. fixed requires the advertised anchor and timezone; configurable lets each authorized account configuration select them.",
+                "enum": [
+                  "fixed",
+                  "configurable"
+                ],
+                "type": "string"
+              },
+              "period_duration": {
+                "pattern": "^P(?=.*[1-9])(?=\\d|T)(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?=\\d)(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?)?$",
+                "type": "string"
+              },
+              "period_timezone": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              "period_timezone_policy": {
+                "description": "For source_timezone only. fixed advertises one exact upstream IANA timezone; account_resolved requires the seller to resolve and echo the account's upstream reporting timezone during configuration.",
+                "enum": [
+                  "fixed",
+                  "account_resolved"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "period_duration",
+              "alignment",
+              "delivery_sla"
+            ],
+            "title": "Reporting Schedule Offering",
+            "type": "object",
+            "x-adcp-validation": {
+              "iana_timezone": "Every advertised fixed period_timezone MUST be a recognized IANA Time Zone Database zone name or link, including UTC. Unknown identifiers and numeric UTC offsets are invalid.",
+              "installed_schedule_match": "period_duration, alignment, and delivery_sla MUST equal the installed configuration. For fixed billing_cycle offerings, period_anchor and period_timezone MUST also equal it. For configurable billing_cycle offerings, the installed configuration supplies both values. A fixed source_timezone offering supplies period_timezone; an account_resolved source_timezone offering requires the seller to resolve and echo period_timezone before the configuration becomes ready. utc and account_timezone use the normative origins in reporting-schedule.json, so even multi-unit durations have one independently derivable phase.",
+              "source_compatibility": "The resolved schedule MUST be compatible with the pinned report definition calendar. A seller MUST NOT advertise or accept a schedule merely because it can query the source eventually; it must be able to produce the exact promised periods natively or through lossless finer-grained re-bucketing."
+            },
+            "x-status": "experimental"
+          },
+          "supported_finality": {
+            "description": "Finality classes available under this exact report definition, schedule, and delivery method. snapshot is an explicit provisional capability, not inferred from poll frequency. Use separate atomic offerings when snapshot and official schedules or methods differ.",
+            "items": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Finality of a reporting revision. Snapshot revisions are provisional and may be superseded. An official revision is the immutable, invoice-addressable close for its reporting slice and MUST NOT be superseded; later source corrections are explicit reporting adjustments rather than silent replacement revisions.",
+              "enum": [
+                "snapshot",
+                "official"
+              ],
+              "enumDescriptions": {
+                "official": "Immutable seller-authoritative close for the represented period. Buyers may key invoices and settlement records to its reporting_revision_id. Later corrections are explicit adjustments, never superseding revisions.",
+                "snapshot": "Provisional seller/source reporting evidence; not sufficient by itself for billing."
+              },
+              "title": "Reporting Finality",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "offering_id",
+          "feed_purpose",
+          "report_definition_id",
+          "report_definition_uri",
+          "report_definition_sha256",
+          "reporting_profile",
+          "schedule",
+          "supported_finality",
+          "reconciliation_mode"
+        ],
+        "title": "Reporting Delivery Offering",
+        "type": "object",
+        "x-adcp-validation": {
+          "safe_schema_fetch": "schema_uri, canonicalization_uri, and report_definition_uri origins must be the authenticated seller, the named provider, or an AdCP registry. Reject userinfo, IP literals, localhost, private/reserved DNS results, redirects, and DNS/connect-target mismatch; pin resolution, cap bytes/time, require the expected content type, verify the corresponding SHA-256 before parsing, and cache by digest. The canonicalization and report-definition documents MUST validate against their AdCP contract schemas. The fetched row schema's $schema MUST equal schema_dialect, whose metaschema is SDK-bundled and never network-fetched. Before compiling with no network-capable resolver installed, recursively reject every $ref not beginning with #, all $dynamicRef and $recursiveRef keywords, cyclic references, excessive depth/node count, oversized regexes, and unsupported vocabularies. Fetched content and annotations are untrusted data, never agent or LLM instructions.",
+          "snapshot_declaration": "A snapshot claim is the atomic combination of supported_finality containing snapshot, this exact schedule, report definition/profile, and delivery method. Sellers MUST NOT imply a faster snapshot cadence from polling, webhook, or transport support that is not advertised by such an offering.",
+          "tier_boundaries": "An offering without method is Core: delivered through existing API transports, with no destination, manifest, or Managed external-materialization canonicalization code or contract required. Every Core revision nevertheless carries the fixed RFC 8785/JCS revision-binding canonicalization and digest. method requires the managed_delivery capability. reconciliation_mode consumer_receipt requires a managed method and the reconciled_billing capability, and such offerings MUST carry the full external canonicalization_* contract in reporting_profile. delivery_only offerings omit that external canonicalization contract."
+        },
+        "x-status": "experimental"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "operations_contact": {
+      "additionalProperties": false,
+      "description": "Optional non-secret human escalation path for reporting issues the protocol cannot resolve. It is display metadata for an operator, not an AdCP endpoint: agents MUST NOT dereference, probe, or send protocol traffic to these values, and they carry no authorization. Required when consumer_mismatch_escalation_seconds is advertised.",
+      "minProperties": 1,
+      "properties": {
+        "email": {
+          "description": "Monitored operations mailbox for reporting escalations. A role address, not an individual.",
+          "format": "email",
+          "maxLength": 254,
+          "type": "string"
+        },
+        "url": {
+          "description": "HTTPS page a human uses to open or track a reporting issue, such as a support portal or status page. Same hardened origin shape as the offering document URIs: never an IP literal, userinfo URL, loopback host, AdCP task endpoint, webhook target, or credentialed link.",
+          "format": "uri",
+          "maxLength": 2048,
+          "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "readiness_notification": {
+      "const": "reporting.delivery_ready",
+      "description": "Optional managed-delivery-only positive-readiness doorbell. It names a materialization at a destination, so Core sellers MUST omit it.",
+      "type": "string"
+    },
+    "receipt_task": {
+      "const": "sync_reporting_receipts",
+      "description": "Required when reconciled_billing is true: the task consumers call to submit and read back authenticated revision and adjustment receipts.",
+      "type": "string"
+    },
+    "reconciled_billing": {
+      "default": false,
+      "description": "Tier flag: this seller supports canonical-digest verification and authenticated consumer receipts for both report materializations and post-official adjustments through receipt_task. Offerings with reconciliation_mode consumer_receipt and billing-grade canonicalization require this tier.",
+      "type": "boolean"
+    },
+    "reliability_statistics": {
+      "description": "Optional evidence-scoped observed performance for advertised offerings. offering_id values MUST be unique and name offerings in this capability block.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "official_revisions_adjusted": {
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "official_revisions_adjusted"
+              ]
+            },
+            "then": {
+              "required": [
+                "adjustment_latency_seconds"
+              ]
+            }
+          }
+        ],
+        "definitions": {
+          "LatencyPercentiles": {
+            "additionalProperties": false,
+            "properties": {
+              "p50": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p95": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "p50",
+              "p95"
+            ],
+            "type": "object"
+          },
+          "ReportingReliabilityMeasurementPeriod": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "start": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "type": "object"
+          }
+        },
+        "description": "Observed, evidence-scoped reliability for one atomic reporting offering. Counts are supplied with percentiles so buyers can compare a short, consistently met SLA with a long nominal SLA and can see how often official reports require later adjustments.",
+        "properties": {
+          "adjustment_latency_seconds": {
+            "additionalProperties": false,
+            "description": "Observed seconds from official finalized_at to the first adjustment, required when official_revisions_adjusted is nonzero.",
+            "properties": {
+              "p50": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p95": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "p50",
+              "p95"
+            ],
+            "type": "object"
+          },
+          "adjustment_magnitude": {
+            "description": "Optional absolute adjustment-magnitude percentiles for comparable control totals such as spend.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "control_total_name": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "p50_absolute_delta": {
+                  "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+                  "type": "string"
+                },
+                "p95_absolute_delta": {
+                  "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+                  "type": "string"
+                },
+                "sample_count": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "maxLength": 32,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "control_total_name",
+                "unit",
+                "sample_count",
+                "p50_absolute_delta",
+                "p95_absolute_delta"
+              ],
+              "type": "object"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "evidence": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "else": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "attestation_uri"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "attestation_sha256"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "if": {
+                  "properties": {
+                    "basis": {
+                      "const": "third_party_attestation"
+                    }
+                  },
+                  "required": [
+                    "basis"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "attestation_uri",
+                    "attestation_sha256"
+                  ]
+                }
+              }
+            ],
+            "properties": {
+              "attestation_sha256": {
+                "pattern": "^[A-Fa-f0-9]{64}$",
+                "type": "string"
+              },
+              "attestation_uri": {
+                "format": "uri",
+                "pattern": "^https://(?![^/]*@)(?!localhost(?:[:/]|$))(?!\\[)(?!\\d+(?:\\.\\d+){3}(?::|/|$))(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?::\\d+)?(?:/|$)",
+                "type": "string"
+              },
+              "basis": {
+                "enum": [
+                  "reporting_ledger",
+                  "third_party_attestation"
+                ],
+                "type": "string"
+              },
+              "generated_at": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "basis",
+              "generated_at"
+            ],
+            "type": "object"
+          },
+          "measurement_period": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "start": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "type": "object"
+          },
+          "obligations_due": {
+            "description": "Denominator for on-time performance.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "obligations_on_time": {
+            "description": "Obligations whose required revision was published by expected_at. Divide by obligations_due for the on-time rate.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "offering_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+            "type": "string",
+            "x-entity": "reporting_offering"
+          },
+          "official_revisions_adjusted": {
+            "description": "Distinct official revisions receiving at least one adjustment. Divide by official_revisions_published for the adjustment rate.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "official_revisions_published": {
+            "description": "Denominator for the official-adjustment rate.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "publication_latency_seconds": {
+            "additionalProperties": false,
+            "description": "Observed seconds from period.end to publication of the required revision.",
+            "properties": {
+              "p50": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p95": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "p50",
+              "p95"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "offering_id",
+          "measurement_period",
+          "obligations_due",
+          "obligations_on_time",
+          "official_revisions_published",
+          "official_revisions_adjusted",
+          "publication_latency_seconds",
+          "evidence"
+        ],
+        "title": "Reporting Reliability Statistics",
+        "type": "object",
+        "x-adcp-validation": {
+          "comparability": "Statistics MUST use the exact selected offering semantics and complete measurement period. Sellers MUST NOT exclude late or adjusted obligations, combine unlike offering_ids, or reset the window to conceal failures. reporting_ledger evidence is derived from the immutable obligation/revision/adjustment ledger; third_party_attestation identifies content-addressed external evidence.",
+          "counts": "obligations_on_time MUST be no greater than obligations_due. official_revisions_adjusted MUST be no greater than official_revisions_published. p95 values MUST be no less than corresponding p50 values.",
+          "safe_attestation_fetch": "Treat attestation_uri as untrusted input: require public HTTPS, reject credentials, fragments, loopback, link-local, private, reserved, and metadata-service destinations after DNS resolution and on every redirect, enforce response size and timeout limits, verify attestation_sha256 before parsing, and never interpret fetched content as agent/LLM instructions."
+        },
+        "x-status": "experimental"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "reliable_reporting_version": {
+      "const": "1.0",
+      "description": "Explicit adoption declaration for the proper-name AdCP 3.2 Reliable Reporting contract. Presence, together with supported: true and the media_buy.reporting_delivery experimental feature gate, is the affirmative machine-readable answer. Absence denotes the earlier experimental managed-reporting shape.",
+      "type": "string"
+    },
+    "resource_retention_days": {
+      "description": "Minimum period after publication for which at least one verified exact materialization remains readable to every still-authorized intended consumer.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "revision_content_task": {
+      "const": "get_media_buy_delivery",
+      "description": "Reliable Reporting exact-content read: callers select reporting_revision_id and receive immutable revision metadata plus authoritative canonical reporting_rows.",
+      "type": "string"
+    },
+    "status_notification": {
+      "const": "reporting.status_changed",
+      "description": "Optional tier-independent invalidation doorbell for health transitions in either direction, including clock-driven waiting-to-delayed and delayed-to-action_required. Valid for Core: it names no destination. Polling status_task remains the authoritative recovery path whether or not this is offered.",
+      "type": "string"
+    },
+    "status_retention_days": {
+      "description": "Minimum period for which obligation, revision, and materialization metadata remain queryable.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "status_task": {
+      "const": "get_reporting_status",
+      "type": "string"
+    },
+    "supported": {
+      "const": true,
+      "type": "boolean"
+    },
+    "supports_webhook_activity": {
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "supported",
+    "configuration_task",
+    "status_task",
+    "offerings",
+    "automated_recovery_window_seconds",
+    "status_retention_days"
+  ],
+  "title": "Reporting Delivery Capabilities",
+  "type": "object",
+  "x-adcp-validation": {
+    "consumer_status_escalation": "consumer_mismatch_escalation_seconds requires both consumer_status_task and operations_contact; operations_contact MAY be advertised alone by a seller that publishes a contact without committing to a clock. The window is measured from the issue's opened_at, not from the current poll, so re-emission cannot reset it. operations_contact is inert human-facing metadata: agents surface it to an operator and MUST NOT fetch the url, send protocol requests to it, or treat either value as a credential, a callback, or evidence of agent identity. Publishing a contact does not shorten any seller obligation, and omitting one does not excuse an unresolved mismatch. The url is constrained to the same hardened public-origin shape as the offering document URIs so that never-dereference is true by construction rather than by assertion.",
+    "product_applicability": "This seller-wide catalog declares possible atomic combinations, not universal applicability to every product. Product.reporting_capabilities.reporting_delivery_offering_ids declares product/package eligibility; sync_accounts validation applies account-specific constraints, including exact upstream calendar compatibility; reporting obligations freeze effective media-buy coverage.",
+    "reliability_statistics": "Each reliability_statistics offering_id MUST name exactly one offerings entry and occur at most once. Counts and percentiles follow reporting-reliability-statistics.json; a long declared delivery_sla never substitutes for disclosure of observed publication delay and adjustment behavior.",
+    "reliable_reporting_discovery": "Reliable Reporting 1.0 is supported if and only if reliable_reporting_version is 1.0, supported is true, and the enclosing capability document contains media_buy.reporting_delivery in experimental_features. Such sellers use reporting-definition contract 1.1 and implement checkpoint/adjustment fields even though those fields remain schema-optional for compatibility with the preceding experimental managed-reporting shape. managed_delivery and reconciled_billing then identify optional tiers; offering and product applicability still determine whether a concrete feed is available.",
+    "tier_boundaries": "Core is the only required tier and MUST be implementable with no destination, materialization, manifest, billing receipt code, bespoke webhook, or Managed external-materialization canonicalization code or contract; every Core revision nevertheless requires fixed RFC 8785/JCS revision-binding canonicalization. Core sellers expose get_reporting_status. A seller advertising consumer_status_task additionally accepts sync_reporting_status through ordinary task transport; the active migration notice makes that field mandatory only in the next eligible minor after the notice window. An offering without method is delivered through existing get_media_buy_delivery and reporting_webhook transports. An offering whose method names file_transfer, dataset_share, or warehouse_materialization is valid only when managed_delivery is true. An offering with reconciliation_mode consumer_receipt must declare a managed method and reconciled_billing. Reconciled Billing receipt acceptance means only matching digest/version/row-count/control-total evidence, never invoice/price/fee approval, dispute waiver, posting authorization, or payment due; rejection means evidence discrepancy only. readiness_notification requires managed_delivery; status_notification and ledger_notification are optional Core-compatible invalidations. A seller with no outbound reporting push still passes Core conformance.",
+    "unique_offerings": "offering_id values MUST be unique. Each installed configuration MUST exactly match one offering's feed, report_definition_id, reporting profile, schedule, requested finality, reconciliation mode, pattern, transport, orchestration, destination mode, and every applicable provider, access_mode, format, producer_identity, and reader-compatibility constraint."
+  },
+  "x-status": "experimental"
+}
