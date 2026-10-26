@@ -1,6 +1,11 @@
 __pycache__/
 *.pyc
 .venv/
+# Without the second line a `.venv` SYMLINK is not ignored: a trailing slash
+# matches a directory only, and a sibling git worktree sharing one environment
+# reaches it by symlink. One was committed that way -- mode 120000 holding an
+# absolute path, which breaks every other checkout of the branch.
+.venv
 .pytest_cache/
 .hypothesis/
 .mypy_cache/
