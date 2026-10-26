@@ -8,7 +8,7 @@ the annotation says, so they grade the document and not the model.  Measured as 
 test below (:func:`test_the_schema_comparison_is_what_grades_this_row`), and the
 result corrects a finding carried forward from an earlier attempt at this step:
 the SCHEMA COMPARISON does grade it now, because ``enum`` is in
-``harness.FACTS`` -- a node lowered to the scalar its ``type`` names states no
+the compared set -- a node lowered to the scalar its ``type`` names states no
 ``enum`` where the document states one, and that reddens.
 
 What the harness still cannot see is everything about the enumeration that is not
@@ -34,13 +34,14 @@ import pytest
 from pydantic import Field, TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
-from codegen import bundle, compiler, emit
+from codegen import bundle, compiler, emit, keywords
+from codegen.keywords import Position
 from codegen.harness import (
     _implied_by_an_enum,
     _narrows_nothing,
     _text,
     compare_schema,
-    FACTS,
+    compared_facts,
 )
 from codegen.lower import enum as lower_enum
 from codegen import refusal as refusal_module
@@ -428,7 +429,7 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
     # The whole block is an annotation, so NO check in the harness grades it:
     # `enumDescriptions` is not a fact the comparison compares.  P2 in
     # ``docs/plan/step3-prediction.md`` predicted that before it was probed.
-    assert "enumDescriptions" not in FACTS
+    assert "enumDescriptions" not in compared_facts(Position.ROOT)
 
 
 def _docstrings(cls: ast.ClassDef) -> dict[str, str]:
@@ -587,8 +588,8 @@ def test_the_schema_comparison_is_what_grades_this_row() -> None:
     concluded that nothing in the harness can grade the row.  Two of the three
     checks are still blind, for the reason they are blind to everything:
     ``strict_validate``'s schema half refuses a non-member whatever the
-    annotation says.  The SCHEMA COMPARISON is not, because ``enum`` is in
-    ``FACTS``: the widened model states no ``enum`` where the document states
+    annotation says.  The SCHEMA COMPARISON is not, because ``enum`` is in the
+    compared set: the widened model states no ``enum`` where the document states
     one.
 
     Graded on the document of a real root enum, with the faithful model beside the
@@ -602,7 +603,7 @@ def test_the_schema_comparison_is_what_grades_this_row() -> None:
     )
     (symbol,) = module.__all__
 
-    assert "enum" in FACTS
+    assert "enum" in compared_facts(Position.ROOT)
     faithful = compare_schema(doc, getattr(module, symbol))
     widened = compare_schema(doc, str)  # the scalar the document's `type` names
 
@@ -907,9 +908,9 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
     ignored and the documents holding one emit.
 
     **The decision is no longer this row's**, and that is ``salesagent-j3k2l.23``:
-    the reason above is a fact about the KEYWORD and not about an enum root, so
-    ``compiler.BUNDLE_ANNOTATIONS`` takes it once for every position and
-    ``lower.enum.HANDLED`` no longer names it. Asserted in BOTH directions here,
+    the reason above is a fact about the KEYWORD and not about an enum root, so §6's
+    own row in ``codegen.keywords`` takes it once for every position and
+    ``lower.enum.CLAIMS`` no longer names it. Asserted in BOTH directions here,
     because one name admitted in two places is two places for one decision to
     drift -- and the drift was observable: the 4th document carrying one
     (``core/media-buy-available-action-id.json``) is a union root, which this
@@ -932,8 +933,9 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
         "enums/media-buy-valid-action.json",
         "enums/request-signing-error-code.json",
     ], carriers
-    assert "enumMetadata" in compiler.BUNDLE_ANNOTATIONS
-    assert "enumMetadata" not in lower_enum.HANDLED
+    assert keywords.cell("enumMetadata", Position.ROOT).effect is keywords.Effect.NOTHING
+    assert keywords.grid_of("enumMetadata") == keywords.ADMITTED
+    assert "enumMetadata" not in lower_enum.CLAIMS
     out = emit.emit(BUNDLE, population())
     # **THE PRICED SET, NOT ITS SIZE.**  The comment below prices unannotating the
     # keyword, and a count of three went stale as an ARGUMENT while staying green as an
@@ -949,19 +951,18 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
     }, sorted(enum_rooted)
     assert all(d in out.emitted for d in enum_rooted)
 
-    # The price. ``compiler.ANNOTATIONS`` is the set ``check_keywords`` reads; the
-    # one module that still binds it at import (``lower.rules``) asks a
-    # different question of it -- what a node DECLARES -- and patching that as well
-    # was measured to give the same three documents, so this patches the one.  The
-    # second such binder was ``lower.product``, which is ``compiler``'s own
-    # ``lower_composition`` now and reads the name it patches.
-    without = frozenset(compiler.ANNOTATIONS - {"enumMetadata"})
-    original = compiler.ANNOTATIONS
+    # The price, priced by REMOVING THE ROW rather than by patching a set: the
+    # alternative is "§6 does not admit this keyword", and with no row the screen
+    # refuses the document by name at every position -- which is exactly what §7's
+    # last rule says happens to a keyword none of the three sections names.  One table
+    # and one reading of it, so there is no second set left to patch.
+    without = {k: v for k, v in keywords.TABLE.items() if k != "enumMetadata"}
+    original = keywords.TABLE
     try:
-        compiler.ANNOTATIONS = without
+        keywords.TABLE = without
         refusing = emit.emit(BUNDLE, population())
     finally:
-        compiler.ANNOTATIONS = original
+        keywords.TABLE = original
     # **THE PRICE IS FOUR DOCUMENTS NOW, NOT THREE, AND THAT IS
     # ``salesagent-j3k2l.21``.**  The docstring above priced it at "exactly the 3 enum
     # roots with no cascade", and the carriers list says why that was true:

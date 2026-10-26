@@ -63,7 +63,7 @@ from adcp.types._base import (
     schema_at,
 )
 from adcp.types._runtime import RuleBound
-from codegen import bundle, compiler, emit, harness
+from codegen import bundle, compiler, emit, harness, keywords
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.lower import const as lower_const
@@ -5861,7 +5861,7 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
             conjunct = unread.pop(0)
             if not isinstance(conjunct, dict):
                 continue
-            keys = {k for k in conjunct if k not in compiler.ANNOTATIONS}
+            keys = set(compiler.declaring(conjunct, keywords.Position.CONJ))
             if keys == {"$ref"}:
                 continue
             unread.extend(conjunct.get("allOf") or [])
@@ -5902,7 +5902,9 @@ def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() ->
         PropertyModel.model_validate({**ok, "tags": ["a", "a"]})
     assert caught.value.errors()[0]["type"] == "uniqueItems", caught.value.errors()
 
-    assert "uniqueItems" in rules.KEYWORDS, "the keyword must not block an object lowering"
+    assert "uniqueItems" in rules.KEYWORDS(keywords.Position.ROOT), (
+        "the keyword must not block an object lowering"
+    )
     # **This line used to assert the OPPOSITE and the design reversed under it.**  It
     # read ``not any("UniqueItems" in source for source in RULE_KIND_POPULATION)``,
     # which iterated that constant's KEYS; it was written at ``438240878`` when it had
@@ -6102,13 +6104,13 @@ def test_a_const_that_cannot_be_a_literal_is_refused_by_name() -> None:
 def test_a_keyword_beside_a_const_refuses_rather_than_being_dropped() -> None:
     """The row's screen, probed by making it fail.
 
-    :data:`codegen.lower.const.HANDLED` is two keywords because two is the whole
+    :data:`codegen.lower.const.CLAIMS` is two keywords because two is the whole
     vocabulary the bundle writes beside a ``const``, asserted over all 1,486 nodes
     below.  A third would be a constraint applied to a value the ``Literal`` has
     already pinned, and dropping it silently is the defect P3 removes -- so it
     refuses, by the keyword's own name.
     """
-    assert lower_const.HANDLED == frozenset({"type", "const"})
+    assert lower_const.CLAIMS == frozenset({"type", "const"})
     r = _const_refusal({"type": "string", "const": "x", "minLength": 2})
     assert r.keyword == "minLength", r
     assert r.pointer == "/properties/k", r
@@ -6124,7 +6126,7 @@ def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
       root kind for a row to claim, nothing goes into
       ``bundle.declares_its_own_root_kind``, and the table's partition is untouched;
     * the vocabulary beside a ``const`` is ``type`` and ``description`` and nothing
-      else, which is what makes ``HANDLED`` two keywords;
+      else, which is what makes ``CLAIMS`` two keywords;
     * no node writes both an ``enum`` and a ``const``, so ``_decide``'s two branches do
       not overlap and their order there is not a precedence;
     * **0 documents refuse on ``const``** over the whole portable population -- the
@@ -6526,9 +6528,23 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # So a falling chain floor is the SIGN of an emitting row rather than a regression,
     # and the thing that distinguishes the two is naming which chains left and where
     # their documents went -- which is what the paragraph above does.
+    # **151 -> 126 AND 1 -> 29 AT ``adcp-client-python-10l.2``, AND THE TWO MOVES ARE
+    # ONE MOVE: no chain left the refusal set and none arrived (155 before, 155 after),
+    # and 25 of them re-resolved from VERDICT to DEFERRED because their TARGETS did.**
+    # That row makes a refusal's kind a reading of the keyword table's cell instead of
+    # an argument chosen at the raise site, and two raise sites were passing VERDICT for
+    # a cell the semantics document decides compiles: the ``$ref``-sibling screen and
+    # the nested-union sibling screen.  A chained refusal carries its target's answer
+    # through ``through=``, so re-minting 26 direct refusals moved 25 chains with them.
+    #
+    # A chain floor falling because the target's KIND changed is a different event from
+    # one falling because the target EMITTED, and the two are told apart by the figure
+    # beside it: emitted is 747 on both trees and the refusal set is the same 307
+    # documents at the same pointers on the same keywords.  Nothing cleared; what moved
+    # is what the report CLAIMS about 51 documents, which is the row's whole purpose.
     assert len(chained) >= 152, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 151, dict(split)
+    assert split[refusal_module.Kind.VERDICT] >= 126, dict(split)
     assert split[refusal_module.Kind.DEFERRED] >= 1, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
@@ -6590,7 +6606,18 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # again and the document MOVED rather than cleared: out of the verdict column and
     # into the pending one, on this row's own ground.  Named rather than counted, for
     # the reason a ceiling going UP exists.
-    assert resolved[refusal_module.Kind.DEFERRED] <= 65, resolved[refusal_module.Kind.DEFERRED]
+    # **65 -> 67 at ``adcp-client-python-10l.2``, A CEILING GOING UP, AND IT IS THE ROW
+    # WORKING RATHER THAN A REGRESSION.**  Measured on the whole portable set at that
+    # row's tip: deferred 16 -> 67, verdict 290 -> 239, emitted 747 on both trees and
+    # the refusal set the same 307 documents at the same pointers on the same keywords.
+    # Fifty-one documents moved out of the verdict column, 26 directly and 25 through a
+    # chain, because the kind is now read off the keyword table's cell rather than
+    # passed at a raise site -- and §9's first rule is that a refusal for code nobody
+    # has written is a DEFERRAL, never a verdict, because minting one reports clearable
+    # work as finished.  The ceiling rises to the measurement, and the direction is
+    # named: this is a pin ADMITTING that 51 documents are clearable, where before it
+    # recorded them as decided.
+    assert resolved[refusal_module.Kind.DEFERRED] <= 67, resolved[refusal_module.Kind.DEFERRED]
     assert resolved[refusal_module.Kind.UNRESOLVED] <= 1, resolved[refusal_module.Kind.UNRESOLVED]
     assert {
         d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
@@ -6599,8 +6626,25 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     )
 
     # Grow-only: what the exit condition actually counts.
+    #
+    # **988 -> 986 at ``adcp-client-python-10l.2``, AND A FLOOR FALLING HERE IS THE ONE
+    # MOVE THIS PIN EXISTS TO MAKE VISIBLE.**  ``accounted`` is ``emitted + VERDICTS``,
+    # so it falls when verdicts do: 290 -> 239, with emitted unchanged at 747 and the
+    # refusal set the same 307 documents at the same pointers on the same keywords.  No
+    # document stopped emitting and none started refusing -- measured by diffing the two
+    # reports document by document.
+    #
+    # The 51 that moved were counted as FINISHED and are not: each is a cell the
+    # semantics document decides and the walk has not written, which §9 calls a DEFERRAL
+    # and which the old reading minted as a verdict against the document.  The two
+    # biggest producers are the ``$ref``-sibling screen (the five ``const``-beside-a-
+    # ``$ref`` documents the epic names, plus the siblings at ``pattern``) and the
+    # nested-union sibling screen, and 25 chains carried their targets' new answer.  So
+    # the number this floor reads fell by 51 and the number of documents this compiler
+    # finishes fell by 0; re-pointing it DOWN is the pin reporting the correction rather
+    # than absorbing it.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 988, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 986, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
     pending = sum(resolved[k] for k in refusal_module.PENDING_KINDS)
@@ -6811,7 +6855,7 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
     # attribution row (a bare const branch is a scalar branch) and not a lowering.
     # Asserted by resolving the name rather than by grepping for the word, which
     # "constrains" would match: the one place a Literal can be BUILT is the row.
-    assert "const" in lower_union.BRANCH_HANDLED
+    assert "const" in lower_union.BRANCH_CLAIMS
     builds = [
         name
         for name, module in (
@@ -6843,7 +6887,7 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
     # ``Literal`` arm of one -- so the attribution row has no refused document left to
     # point at. Measured over all 1,054 portable documents: **0** are refused on a
     # branch's own non-object type. The row stays, asserted above by resolving the name
-    # in ``BRANCH_HANDLED``; what is asserted here instead is the emitted shape, which is
+    # in ``BRANCH_CLAIMS``; what is asserted here instead is the emitted shape, which is
     # the same claim read off the artifact rather than off a refusal.
     module = emit.lower_document("core/start-timing.json", bundle.read(BUNDLE, "core/start-timing.json"))[0]
     assert "Literal['asap']" in "\n".join(b for b in module.blocks), module.blocks
@@ -7087,21 +7131,25 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
                         (f"{where}/allOf/{j}", c) for j, c in enumerate(conjunct["allOf"])
                     )
                 sites.add(f"{document} {where}")
-                keys = {
-                    k
-                    for k in conjunct
-                    if k not in compiler.ANNOTATIONS and not k.startswith("x-")
-                }
+                keys = set(compiler.declaring(conjunct, keywords.Position.CONJ))
                 # Clause 5.  The name is dropped, the drop is on the record at this
-                # conjunct's own pointer, and nothing on the class answers to it.
-                for name in sorted(keys - compiler.DRAFT07):
+                # conjunct's own pointer, and nothing on the class answers to it.  A
+                # dropped name is one §7 REFUSES: the cell is what says it contributes
+                # nothing, where this read draft-07's meta-schema before.
+                refused = {
+                    k
+                    for k in keys
+                    if (c := keywords.cell(k, keywords.Position.CONJ)) is not None
+                    and c.effect is keywords.Effect.REFUSE
+                }
+                for name in sorted(refused):
                     foreign_names += 1
                     assert any(
                         line.startswith(f"{where}: {name}:")
                         for line in out.carries_nothing.get(document, [])
                     ), (document, where, name, out.carries_nothing.get(document))
                     assert compiler.field_name(name) not in cls.model_fields, (document, where)
-                keys &= compiler.DRAFT07
+                keys -= refused
                 if keys == {"$ref"}:
                     # Clause 1.
                     parts["base"].add(f"{document} {where}")

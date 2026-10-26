@@ -48,32 +48,21 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from codegen import compiler
+from codegen.keywords import Position
 
 RUNTIME_MODULE = "adcp.types._runtime"
 
-#: Keywords that ANNOTATE a node without constraining an instance.
+#: Everything this module reads off a node with FIELDS: the keywords whose CELL
+#: compiles to a RULE, read off ``codegen.keywords`` at the position asked about.
 #:
-#: ``codegen.compiler``'s, not a second copy: D13 puts the machinery a lowering is
-#: handed there, and every reader of this set can import it -- the walk
-#: (``emit.decide_type``), the keyword screen (``compiler.check_keywords``), every
-#: reduction below, and ``bundle.states_an_object_rule`` through
-#: :func:`presence_only`.  The lane homed it HERE on the reasoning that this package
-#: was the only one all three could import without a cycle, which was true of the
-#: seam it was written against and is not true of D13's: ``compiler`` sits below both
-#: this package and ``bundle``.  Two copies of the set would be one place for a
-#: selector to claim a document its lowering cannot read.
-ANNOTATIONS = compiler.ANNOTATIONS
-
-#: Everything this module reads off a node with FIELDS.  A keyword screen admits it,
-#: which is what stops a document being refused for one of them.
-#:
-#: ``codegen.compiler``'s, not a second copy, for the reason :data:`ANNOTATIONS` is --
-#: and the pressure was the same: three lowerings screen on this set and two of them
-#: (the ``allOf`` row, the union row) cannot import this module at all (D13), so the
-#: set has to sit below both packages.  ``compiler.rules_at`` is the screen a lowering
-#: actually asks, because a combinator is a rule only where
-#: :func:`presence_only` holds.
-KEYWORDS = compiler.RULE_KEYWORDS
+#: Not a set here and not a set in ``compiler`` either: ``compiler.rule_sources`` is a
+#: reading of the declaration, and ``compiler.rules_at`` is the screen a lowering
+#: actually asks, because a combinator is a rule source only where
+#: :func:`presence_only` holds -- a co-occurrence, which the table is not keyed by.
+#: Three lowerings screen on it and two of them (the ``allOf`` row, the union row)
+#: cannot import this module at all (D13), which is why the reading sits in
+#: ``compiler``, below both packages.
+KEYWORDS = compiler.rule_sources
 
 #: Of those, the ones that can appear on a node with no object to carry a rule -- a
 #: scalar, where a rule tuple has nowhere to live.  Measured over the 1,054 portable
@@ -304,8 +293,13 @@ def _whole(value: Any) -> int | None:
 
 
 def _keys(sub: dict) -> set[str]:
-    """The keys of ``sub`` that SAY something about an instance."""
-    return {k for k in sub if k not in ANNOTATIONS and not k.startswith("x-")}
+    """The keys of ``sub`` that SAY something about an instance.
+
+    ``compiler.declaring`` at RULE, because every node this module reads is inside a
+    conditional or a ``not``: a key that annotates without constraining is not part of
+    what a rule TESTS.
+    """
+    return set(compiler.declaring(sub, Position.RULE))
 
 
 def _required_groups(sub: Any) -> list[tuple[str, ...]] | None:

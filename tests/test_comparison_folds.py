@@ -117,21 +117,26 @@ def test_a_default_on_an_optional_property_constrains_and_is_never_folded() -> N
 
 
 def test_the_three_shapes_are_the_only_ones_and_the_population_is_not_empty() -> None:
-    """The fold admits exactly three shapes, asserted by exhausting FACTS.
+    """The fold admits exactly three shapes, asserted by exhausting the compared set.
 
-    A fold whose population nobody enumerated can grow silently when a keyword is
-    added to ``FACTS``.  This reads the real keyword list rather than a copy of it,
-    so a new keyword that this fold would swallow fails here.  The third shape is
+    A fold whose population nobody enumerated can grow silently when a keyword joins
+    the compared set.  This reads the real set -- ``harness.compared_facts``, which is
+    the table's rendered column -- rather than a copy of it, so a new keyword that this
+    fold would swallow fails here.  The third shape is
     asked with ``required=True``, which is the only way to reach it, and the first
     two are asked at the default -- so a rule that folded on requiredness alone
     reddens in the third assertion.
     """
-    from codegen.harness import FACTS
+    from codegen.harness import compared_facts
+    from codegen.keywords import Position
 
-    assert FACTS, "empty keyword list: the assertion below would pass vacuously"
-    folding = {kw for kw in FACTS if _constrains_nothing(kw, {"type": "boolean", "enum": [False, True]})}
+    facts = compared_facts(Position.PROP)
+    assert facts, "empty keyword set: the assertion below would pass vacuously"
+    folding = {
+        kw for kw in facts if _constrains_nothing(kw, {"type": "boolean", "enum": [False, True]})
+    }
     assert folding == {"enum"}, folding
-    folding = {kw for kw in FACTS if _constrains_nothing(kw, {"type": "object", "required": []})}
+    folding = {kw for kw in facts if _constrains_nothing(kw, {"type": "object", "required": []})}
     assert folding == {"required"}, folding
-    folding = {kw for kw in FACTS if _constrains_nothing(kw, DEFAULTED, required=True)}
+    folding = {kw for kw in facts if _constrains_nothing(kw, DEFAULTED, required=True)}
     assert folding == {"default"}, folding
