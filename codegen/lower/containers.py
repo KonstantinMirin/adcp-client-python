@@ -79,7 +79,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from codegen import compiler
+from codegen import compiler, ir
 from codegen.keywords import Position
 from codegen.compiler import Decided, Module
 from codegen.refusal import Kind, Refusal
@@ -175,7 +175,7 @@ _DISTINCT_HAS_NOWHERE_TO_LIVE = (
 #: :data:`BOUNDS` and for the same reason: a bound on the container is the container's,
 #: so it rides on the field rather than on ``K`` or ``V``.
 #:
-#: **Translated by the compiler and not here** (``compiler.KEY_COUNT``), because the
+#: **Translated by the RENDERER and not here** (``render.KEY_COUNT``), because the
 #: translation is pydantic's rather than the document's: dmcg's ``Constraints`` has no
 #: ``minProperties`` field at all and silently sets nothing for one, while its length
 #: channel renders ``Field(min_length=..., max_length=...)``, which pydantic renders
@@ -210,7 +210,7 @@ ARM = {
 }
 
 
-def _inner(decided: Decided, pointer: str, what: str, mod: Module) -> compiler.Type:
+def _inner(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef:
     """The decided type of something INSIDE a container, named where it needs to be.
 
     A constraint or a format on an inner node has nowhere to go: the compiler's
@@ -226,7 +226,7 @@ def _inner(decided: Decided, pointer: str, what: str, mod: Module) -> compiler.T
 
 def _contents(
     node: dict, pointer: str, symbol: str, what: str, mod: Module, position: Position
-) -> compiler.Type:
+) -> ir.TypeRef:
     """The type of a container's CONTENTS -- its element, or its mapping's value.
 
     One function for the two, because the two are the same question asked at two
@@ -311,7 +311,7 @@ def array(
         # the same reading D2 gives a typeless node.  A bound on the list is still
         # the list's, so it is carried.
         return Decided(
-            compiler.Type(container="list", of=(compiler.Type("typing.Any"),)), bounds
+            ir.TypeRef(container="list", of=(ir.TypeRef("typing.Any"),)), bounds
         )
     if not isinstance(items, dict):
         raise Refusal(
@@ -323,7 +323,7 @@ def array(
         )
     at = f"{pointer}/items"
     element = _contents(items, at, name_hint + "Item", "the element", mod, Position.ELEM)
-    return Decided(compiler.Type(container="list", of=(element,)), bounds)
+    return Decided(ir.TypeRef(container="list", of=(element,)), bounds)
 
 
 def mapping(
@@ -423,7 +423,7 @@ def mapping(
         at = f"{pointer}/patternProperties/{compiler.escape_key(expr)}"
         key = _key({"pattern": expr}, f"{pointer}/patternProperties", mod)
         return Decided(
-            compiler.Type(
+            ir.TypeRef(
                 container="dict",
                 of=(_value(inner, at, name_hint, mod, keyword="patternProperties"),),
                 key=key,
@@ -442,7 +442,7 @@ def mapping(
         )
     key = _key(node.get("propertyNames"), f"{pointer}/propertyNames", mod)
     value = _value(ap, f"{pointer}/additionalProperties", name_hint, mod)
-    return Decided(compiler.Type(container="dict", of=(value,), key=key), bounds)
+    return Decided(ir.TypeRef(container="dict", of=(value,), key=key), bounds)
 
 
 def _value(
@@ -452,7 +452,7 @@ def _value(
     mod: Module,
     *,
     keyword: str = "additionalProperties",
-) -> compiler.Type:
+) -> ir.TypeRef:
     """A mapping's value type; ``Any`` for ``true`` and for the empty schema.
 
     ``true`` and ``{}`` are the same schema -- every value -- and ``Any`` is that set.
@@ -464,13 +464,13 @@ def _value(
     no such keyword is a refusal a reader cannot act on.
     """
     if node is True or node == {}:
-        return compiler.Type("typing.Any")
+        return ir.TypeRef("typing.Any")
     if not isinstance(node, dict):
         raise Refusal(keyword, pointer, f"not a schema: {node!r}", kind=Kind.VERDICT)
     return _contents(node, pointer, name_hint + "Value", "the value", mod, Position.MAPV)
 
 
-def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
+def _key(node: Any, pointer: str, mod: Module) -> ir.TypeRef:
     """A mapping's key type, from the document (D5), with ``str`` the last resort.
 
     The order is the document's own: a ``$ref`` NAMES the key type, so the key is
@@ -510,7 +510,7 @@ def _key(node: Any, pointer: str, mod: Module) -> compiler.Type:
     not the model.
     """
     if node is None:
-        return compiler.Type("str")
+        return ir.TypeRef("str")
     if not isinstance(node, dict):
         raise Refusal("propertyNames", pointer, f"not a schema: {node!r}", kind=Kind.VERDICT)
     if "$ref" in node:
@@ -648,7 +648,7 @@ def multi_type(
             "would be emitted ungraded",
             kind=Kind.DEFERRED,
         )
-    arms: list[compiler.Type] = []
+    arms: list[ir.TypeRef] = []
     for kind in kinds:
         cut = {"type": kind, **{k: v for k, v in node.items() if k in ARM[kind]}}
         at = f"{pointer}/type/{kind}"  # not a real pointer; it names the ARM that refused
@@ -660,10 +660,10 @@ def multi_type(
                 mod,
             )
         )
-    unique = tuple(dict.fromkeys(arms))  # document order, deduped
+    unique = ir.deduped(arms)  # document order, deduped; see ir.deduped for why not a hash
     if len(unique) == 1:
         return Decided(unique[0])
-    return Decided(compiler.Type(container="union", of=unique))
+    return Decided(ir.TypeRef(container="union", of=unique))
 
 
 # --------------------------------------------------------------------------- #

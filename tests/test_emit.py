@@ -41,6 +41,7 @@ import subprocess
 import sys
 import tempfile
 import types
+from dataclasses import replace
 from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal, NamedTuple
 from unittest import mock
@@ -62,8 +63,8 @@ from adcp.types._base import (
     SchemaRef,
     schema_at,
 )
-from adcp.types._runtime import RuleBound
-from codegen import bundle, compiler, emit, harness, keywords
+from adcp.types._runtime import Dependencies, RuleBound
+from codegen import bundle, compiler, emit, harness, ir, keywords, render
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.lower import const as lower_const
@@ -1517,7 +1518,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 # so the two cannot disagree about what the module declares; the
                 # constraints are read off the node for the same reason the name is a
                 # function of the whole shape.
-                stated_constraints = {k: node[k] for k in compiler.CONSTRAINTS if k in node}
+                stated_constraints = {k: node[k] for k in ir.FACTS if k in node}
                 word = next(k for k in kinds if k != "null")
                 alias = constraints_module.symbol(word, stated_constraints, format=fmt)
                 assert fmt in annotated_formats or (constraints_module.MODULE, alias) in imported, (
@@ -2756,7 +2757,7 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
             for _, node in bundle.nodes(doc)
             if "$ref" not in node
             for k in node
-            if k in emit.CONSTRAINTS
+            if k in ir.FACTS
         }
         used = {
             kw.arg
@@ -3953,7 +3954,7 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
         raise AssertionError(f"the fixture binds no target for {uri}")
 
     mod, symbol = emit.lower_document("constructed.json", doc, bind)
-    text = emit.render(mod, symbol)
+    text = render.module(mod, emit.exported(mod, symbol))
     module = types.ModuleType("_constructed_fixture")
     module.__dict__.update({name: type_ for name, type_ in targets.values()})
     # D5's aliases are reached by an ABSOLUTE import, so they survive the strip
@@ -3964,7 +3965,7 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
     # a ``$ref`` target gets, for the same reason, and the annotation stays the
     # compiler's.
     if mod.aliases:
-        exec(constraints_module.declare(mod.aliases), module.__dict__)  # noqa: S102
+        exec(render.constraints_module(mod.aliases), module.__dict__)  # noqa: S102
     alias_import = f"from {constraints_module.MODULE} import"
     # Registered, because ``from __future__ import annotations`` makes every
     # annotation a string and pydantic resolves it against the defining module's
@@ -4136,9 +4137,9 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     assert Constraints.model_fields["unique_items"].alias == "uniqueItems"
     assert Constraints(uniqueItems=True).model_fields_set == {"unique_items"}
 
-    listed = compiler.Type(container="list", of=(compiler.Type("str"),))
-    kept = compiler.render_alias("Kept", listed, {"minItems": 1})
-    dropped = compiler.render_alias("Dropped", listed, {"uniqueItems": True})
+    listed = ir.TypeRef(container="list", of=(ir.TypeRef("str"),))
+    kept = render.alias(ir.AliasDecl("Kept", replace(listed, facts={"minItems": 1})))
+    dropped = render.alias(ir.AliasDecl("Dropped", replace(listed, facts={"uniqueItems": True})))
     assert "min_length=1" in kept.text, kept.text
     assert "Field" not in dropped.text, dropped.text  # the fact has no rendering
 
@@ -4148,7 +4149,7 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
         "properties": {"a": {"type": "array", "items": {"type": "string"}, "uniqueItems": True}},
     }
     mod, symbol = emit.lower_document("u.json", held)
-    text = emit.render(mod, symbol)
+    text = render.module(mod, emit.exported(mod, symbol))
     assert "UniqueItems('a')" in text, text
     assert "json_schema_extra={'uniqueItems': True}" in text, text
 
@@ -4596,7 +4597,7 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
             ],
         },
     )
-    text = "\n".join(mod.blocks)
+    text = "\n".join(one.text for one in render.blocks(mod.declarations))
     assert symbol == "R"
     assert "ConditionalRequired" in text, text
     assert "propertyNames" not in text and "s" in text, text
@@ -4628,7 +4629,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     **The one document is also where the store's first defect showed**, which is the
     reason to say "one" rather than to stop asserting the number: dmcg reported a
     ``typing.Dict`` import for an annotation it rendered ``dict[str, bool]``, so the
-    module carried an import it does not use.  Fixed in ``compiler.render`` by the
+    module carried an import it does not use.  Fixed in ``render.klass`` by the
     rule the ``ConfigDict`` line beside it already follows -- take the imports the
     rendered annotation's own names call for.  A mechanism with a population of 0 is
     green for free; this one has 1, and that is what found it.
@@ -4742,7 +4743,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     )
     # and the import it does NOT need is gone.  Read off the typing import line and
     # not off the whole module, because ``ConfigDict(`` contains ``Dict`` -- the same
-    # trap the rule in ``compiler.render`` is written to avoid.
+    # trap the rule in ``render.klass`` is written to avoid.
     (typing_line,) = [
         line
         for line in _source("core/canonical-media-buy-features.json").splitlines()
@@ -4857,10 +4858,15 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # union -- the string's ``minLength`` applied to the integer arm. Measured here on
     # the compiler directly, so the alternative has its own evidence rather than a
     # reference to it.
-    escaped = compiler.render_alias(
-        "Escaped",
-        compiler.Type(container="union", of=(compiler.Type("str"), compiler.Type("int"))),
-        {"minLength": 4},
+    escaped = render.alias(
+        ir.AliasDecl(
+            "Escaped",
+            ir.TypeRef(
+                container="union",
+                of=(ir.TypeRef("str"), ir.TypeRef("int")),
+                facts={"minLength": 4},
+            ),
+        )
     )
     assert "Annotated[str | int, Field(min_length=4)]" in escaped.text, escaped.text
 
@@ -4880,7 +4886,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # document's -- the integer arm takes no string bound. Built by hand from the
     # alias the emitter would have used, because the emitter refuses to reach it.
     arm_alias = {"StrMinLen4": None}
-    exec(constraints_module.declare({named: ("string", {"minLength": 4}, None)}), arm_alias)  # noqa: S102
+    exec(render.constraints_module({named: ("string", {"minLength": 4}, None)}), arm_alias)  # noqa: S102
 
     class Armed(AdCPBaseModel):
         v: arm_alias[named] | int  # type: ignore[name-defined,valid-type]
@@ -4933,7 +4939,9 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         {"title": "MN", "type": "object", "properties": {"v": {"type": ["string", "null"]}}},
     )
     assert symbol == "MN"
-    assert "v: str | None" in "\n".join(mod.blocks), mod.blocks
+    assert "v: str | None" in "\n".join(
+        one.text for one in render.blocks(mod.declarations)
+    ), mod.declarations
 
     # A keyword no arm can carry constrains nothing, so it refuses by name.
     with pytest.raises(Refusal) as caught:
@@ -5122,7 +5130,7 @@ def test_a_constraint_inside_a_container_is_named_and_nothing_is_left_refused() 
     # (``compiler.carried``), so a refusal minted at any of the three positions it
     # serves lands here whichever lowering asked.
     inner = {
-        d: r for d, r in out.refusals.items() if "compiler.Type carries no constraint" in r["detail"]
+        d: r for d, r in out.refusals.items() if "ir.TypeRef carries no constraint" in r["detail"]
     }
     assert inner == {}, inner
 
@@ -5738,7 +5746,11 @@ def test_every_rule_kind_is_written_from_a_real_bundle_node() -> None:
             if not isinstance(node, dict):
                 continue
             for source in rules.lower(node).rules:
-                kind = source.split("(", 1)[0]
+                # The kind is the runtime dataclass's own name, read off the INSTANCE:
+                # ``rules.lower`` composes values now and ``codegen.render`` writes the
+                # constructor expression (architecture §7), so a kind cannot be read out
+                # of text that no longer exists here.
+                kind = type(source).__name__
                 everywhere[kind] = everywhere.get(kind, 0) + 1
                 documents.setdefault(kind, set()).add(document)
                 if "properties" in node:
@@ -5856,8 +5868,14 @@ def test_a_conditional_that_narrows_a_value_is_the_schemas_and_not_a_rules() -> 
     # sits at /properties/region/allOf/0 and says `x.maximum = 100`, which is a
     # statement about a VALUE and so reduces to no rule at all.
     assert rules.lower(schema).rules == [
-        "Dependencies('breakpoint_id', ('state_id',))"
+        Dependencies("breakpoint_id", ("state_id",))
     ], rules.lower(schema).rules
+    # And the expression the renderer writes for it, so the SPELLING of the constructor
+    # is graded here too: the kinds are frozen dataclasses declared in the runtime
+    # (architecture §7) and the call is ``codegen.render``'s.
+    assert render._rule(rules.lower(schema).rules[0]) == (
+        "Dependencies('breakpoint_id', ('state_id',))"
+    )
     region = schema["properties"]["region"]
     assert isinstance(region["allOf"][0]["if"], dict)
     assert rules.lower(region).rules == [], rules.lower(region).rules
@@ -7029,7 +7047,7 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
         for node in ast.walk(ast.parse(inspect.getsource(module)))
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
-        and node.func.attr == "Type"
+        and node.func.attr == "TypeRef"
         and any(k.arg == "literals" for k in node.keywords)
     ]
     # **THE INVARIANT IS ONE LOWERING PER KEYWORD, not one builder of ``Literal``**, and
@@ -7048,7 +7066,9 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
     # in ``BRANCH_CLAIMS``; what is asserted here instead is the emitted shape, which is
     # the same claim read off the artifact rather than off a refusal.
     module = emit.lower_document("core/start-timing.json", bundle.read(BUNDLE, "core/start-timing.json"))[0]
-    assert "Literal['asap']" in "\n".join(b for b in module.blocks), module.blocks
+    assert "Literal['asap']" in "\n".join(
+        one.text for one in render.blocks(module.declarations)
+    ), module.declarations
 
 
 # --------------------------------------------------------------------------- #

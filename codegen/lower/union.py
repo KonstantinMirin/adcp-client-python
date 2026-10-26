@@ -121,7 +121,7 @@ from typing import Any
 
 from adcp.types._base import applied_schema
 
-from codegen import compiler, keywords
+from codegen import compiler, ir, keywords
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 
@@ -553,7 +553,7 @@ def _alias(doc: dict, symbol: str, pointer: str, kw: str, mod: compiler.Module) 
     this one has gone into every branch.
 
     **A null branch lands here and the bundle has none.**  ``{"type": "null"}`` decides
-    to ``compiler.Type("None")`` through ``emit._decide``'s own arm, so such a root
+    to ``ir.TypeRef("None")`` through ``emit._decide``'s own arm, so such a root
     aliases to ``str | None``.  At a root that ``| None`` can only be a fact about the
     TYPE -- there is no key for an absence to be the absence of -- which is the half of
     D4 this row is named for; the other half is the ``| None`` the compiler adds to an
@@ -886,39 +886,34 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
             kind=Kind.VERDICT,
         )
 
-    mod.imports.add((compiler.BASE_MODULE, "AdCPBaseModel"))
-    mod.imports.add((compiler.BASE_MODULE, "BranchDispatchMixin"))
+    mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
+    mod.imports.add((ir.BASE_MODULE, "BranchDispatchMixin"))
     mod.imports.add(("typing", "ClassVar"))
-    mod.imports |= stated.body.imports
     description = doc.get("description")
-    rendered = compiler.render(
-        compiler.Class(
+    # §4's three facts the emitter writes onto the BASE, as the class's own slots rather
+    # than as class-body text (``docs/plan/architecture.md`` §7): ``_ROOT_REQUIRED`` is
+    # always empty in this step's population and is declared anyway, because the mixin's
+    # refusal reads it and a root with required fields refuses above;
+    # ``_BRANCH_DISCRIMINATOR`` is the derived dispatch, the one fact here that is a
+    # judgement about the branches rather than a transcription of the root; and the
+    # combinator is the keyword a refusal has to name.  ``render._union_base_lines``
+    # writes all four statements, and the root's own rule -- which every branch inherits
+    # -- arrives through ``rules`` like any other class's.
+    mod.declare(
+        symbol,
+        pointer,
+        ir.ClassDecl(
             name=symbol,
             ref=compiler.schema_ref(mod.document, pointer),
-            properties=(),
+            fields=(),
             description=description if isinstance(description, str) and description else None,
             bases=("BranchDispatchMixin", "AdCPBaseModel"),
-            body_lines=(
-                "_branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()",
-                # Always empty in this step's population, and written anyway: the mixin's
-                # refusal reads it, and a root with required fields refuses above.
-                "_ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()",
-                # §4's derived dispatch, which is the one fact on this base that is a
-                # judgement about the branches rather than a transcription of the root.
-                f'_BRANCH_DISCRIMINATOR: ClassVar[str] = "{on}"',
-                # No blank line between the attributes and the method: dmcg indents every
-                # body line, so an empty one renders as trailing whitespace.
-                "@classmethod",
-                "def _branch_combinator(cls) -> str:",
-                f'    return "{kw}"',
-                # The root's own rule, which every branch inherits.  Last, because the
-                # compiler indents each body entry and a multi-line entry after the
-                # method reads as part of neither.
-                *(line for line in (stated.body.text,) if line),
-            ),
-        )
+            rules=stated.rules,
+            root_required=(),
+            discriminator=on,
+            combinator=kw,
+        ),
     )
-    mod.add(symbol, pointer, rendered)
 
     for plan in planned:
         # Three branch shapes and three readers, and every one of them takes the union
@@ -953,12 +948,12 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
         lower = compiler.lower_composition if "allOf" in plan.node else compiler.lower_object
         lower(plan.node, plan.name, plan.pointer, mod, Position.BRANCH, bases=(symbol,))
 
-    # The module trailer.  Two statements beside the classes, which is the module writer's
-    # own text (§3: no compiler template has a slot for a line beside a class), and they
-    # declare no name -- so they are appended rather than declared.
-    mod.blocks.append(
-        f"{symbol}._branch_models = ({', '.join(names)},)\n{symbol}.model_rebuild(force=True)"
-    )
+    # §4's rebuild.  Two statements beside the classes -- the module writer's own text
+    # (§3: no template has a slot for a line beside a class) -- and they declare no name,
+    # so the declaration is appended rather than passed through ``Module.declare``.
+    # ``render.union_install`` writes them (§7: the union trailer was the fourth text the
+    # walk produced).
+    mod.declarations.append(ir.UnionInstall(symbol, tuple(names)))
     return symbol
 
 
@@ -969,7 +964,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
 #: deferral.  The sentence is :data:`ROOT_CONJUNCTS`' reasoning at a nested pointer, and
 #: the mechanism it names is different: a root's branches are CLASSES and the fact is
 #: unreportable because a branch's ``#/<kw>/<i>`` node does not state it, while a nested
-#: union is one TYPE and there is no slot on a ``compiler.Type`` for a sibling fact at
+#: union is one TYPE and there is no slot on a ``ir.TypeRef`` for a sibling fact at
 #: all.  Both ends of that were measured on the pinned harness: the document states the
 #: sibling at this pointer and ``harness.compare_schema`` looks for it here, so a model
 #: whose node is a bare ``anyOf`` reports it ``missing`` -- a model wider than its
@@ -985,7 +980,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
 _NESTED_SIBLING = (
     "a sibling of a nested oneOf/anyOf is a CONJUNCTION with every branch (draft-07), "
     "and a nested union lowers to one type -- A | B -- which has no slot for a fact of "
-    "its own: compiler.Type carries a container and its members and nothing else.  "
+    "its own: ir.TypeRef carries a container and its members and nothing else.  "
     "Conjoining it into each branch instead states it at a pointer the document does "
     "not, and dropping it is a model wider than its document, which "
     "harness.compare_schema reports as a missing fact at this very pointer"
@@ -1024,7 +1019,7 @@ def nested(
     nested position exports nothing: it is a property's type, an element type or a
     mapping value, so what it needs is a TYPE -- which is exactly what
     ``lower.containers.multi_type`` already builds for a ``type`` LIST, through the same
-    ``compiler.Type(container="union", ...)``.
+    ``ir.TypeRef(container="union", ...)``.
 
     It is reached from ``emit.decide_type`` and NOT through ``emit.ROWS``, for the
     reason the nested ``allOf`` arm beside it is: ``ROWS`` dispatches on ROOT KIND and
@@ -1085,7 +1080,7 @@ def nested(
         raise Refusal(
             kw, pointer, f"{len(branches)} branch: a union of one is the branch itself, not a union"
         , kind=Kind.VERDICT)
-    arms: list[compiler.Type] = []
+    arms: list[ir.TypeRef] = []
     for i, branch in enumerate(branches):
         at = f"{pointer}/{kw}/{i}"
         if not isinstance(branch, dict):
@@ -1107,12 +1102,12 @@ def nested(
         # positions with no field of their own ask for a named type, and it refuses a
         # shape the alias module cannot spell rather than dropping it.
         arms.append(compiler.carried(decided, at, "this branch", mod))
-    unique = tuple(dict.fromkeys(arms))  # document order, deduped
+    unique = ir.deduped(arms)  # document order, deduped; see ir.deduped for why not a hash
     if len(unique) == 1:
         # Two branches that lower to one type are one type, and saying ``X | X`` would
         # be a second spelling of it.  ``multi_type`` dedupes for the same reason.
         return compiler.Decided(unique[0])
-    return compiler.Decided(compiler.Type(container="union", of=unique))
+    return compiler.Decided(ir.TypeRef(container="union", of=unique))
 
 
 def _inherited(branch: dict, pointer: str, root: str, mod: compiler.Module) -> Inherited:
