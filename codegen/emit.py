@@ -1056,7 +1056,22 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             # target was named before this document was parsed (§10's order), so its own
             # symbol table is what binds the re-used field's type and the set of symbols
             # a composing subclass may import from it (``compiler._reused``).
-            shape = mod.shapes.get(edge.into)
+            #
+            # **A UNION BASE's shape does not cross, and §5's ``$ref`` row at CONJ is
+            # the sentence** (§14 step 9): "where it is not a class declaring fields --
+            # a scalar, an enum, a container, or a UNION ROOT, whose instance is one of
+            # its branches -- it is not a class a model can extend: the target is this
+            # node's own TYPE."  A base records a shape like any other class now,
+            # because §4's "a branch composes its own with them" needs it INSIDE the
+            # declaring module, so the reading that keeps a union root out of a
+            # reuser's bases is here, where the :class:`Target` is built -- and it is
+            # read off ``ClassDecl.branches``, the fact that says the instance is one of
+            # the branches, rather than off a second flag.  Before step 9 the union row
+            # declared its base outside ``declare_object`` and so recorded nothing,
+            # which is the same answer this gives.
+            declared = mod.at.get(edge.into)
+            dispatches = isinstance(declared, ir.ClassDecl) and declared.branches is not None
+            shape = None if dispatches else mod.shapes.get(edge.into)
             answers[site] = Target(
                 relative_module(document, edge.target),
                 symbol,
