@@ -1288,6 +1288,44 @@ def lowers(answer: Cell) -> bool:
     return answer.effect in LOWERED
 
 
+def rule_sources(position: Position) -> frozenset[str]:
+    """The keywords whose cell at ``position`` compiles to a RULE.
+
+    Here rather than in ``compiler.py`` because ``codegen/schema/parse.py`` classifies a
+    node's rule sources (§4) and the decision layer screens and lowers them, so both read
+    one declaration -- which is §11's layering: this is the declaration layer, and a
+    predicate over a cell is a reader of the table and not a second copy of it.
+    """
+    return frozenset(
+        k for k in TABLE if (c := cell(k, position)) is not None and c.effect is Effect.RULE
+    )
+
+
+def combinators(position: Position) -> frozenset[str]:
+    """``oneOf`` and ``anyOf``, read off the DESCENT column rather than named.
+
+    They are the keywords whose subschemas occupy a BRANCH, which is what a combinator
+    IS -- so the pair is a reading of the declaration and not a literal.
+    """
+    return frozenset(
+        k for k in TABLE if (c := cell(k, position)) is not None and c.descends is Position.BRANCH
+    )
+
+
+def declares(keyword: str, position: Position) -> bool:
+    """Does this key STATE something about an instance at this position?
+
+    The question the parser's classification asks of a branch (``parse._required_only``)
+    and of a node's annotations, and the one the screen asks in the other direction.  A
+    key that annotates without constraining is not a declaration; a key with no row is,
+    because a keyword the bundle did not use before could constrain anything.
+    """
+    answer = cell(keyword, position)
+    if answer is None:
+        return not admitted_by_prefix(keyword)
+    return lowers(answer) or answer.effect is Effect.REFUSE
+
+
 def admitted_by_prefix(keyword: str) -> bool:
     """The one admission by SHAPE: a vendor extension cannot be a schema keyword."""
     return keyword.startswith(NAMESPACE)
