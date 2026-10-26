@@ -103,7 +103,6 @@ from codegen.compiler import (
     Decided,
     Module,
     Target,
-    _no_binder,
     check_keywords,
     class_name,
     declare_alias,
@@ -479,8 +478,9 @@ def exported(mod: Module, symbol: str, composed: frozenset[str] = frozenset()) -
 def lower_document(
     document: str,
     doc: dict,
-    bind: Callable[[str, str], Target | Refusal] = _no_binder,
+    targets: Mapping[tuple[str, str], Target | Refusal] | None = None,
     named: frozenset[str] = frozenset(),
+    roots: Mapping[str, dict] | None = None,
 ) -> tuple[Module, str] | Refusal:
     """One document's module and root symbol, or the refusal the walk returned.
 
@@ -494,7 +494,11 @@ def lower_document(
     """
     mod = Module(
         document=document,
-        bind=bind,
+        # §5's ``targets``, as DATA: the run resolved every reference site of this
+        # document before parsing it, in the dependency order §10 computes, so a
+        # cross-document reference is a lookup and never a callback.
+        targets=targets if targets is not None else {},
+        roots=roots if roots is not None else {},
         asserted=asserted_formats(doc),
         named=named,
         # The SUBSCHEMA behind each named pointer, read off ``bundle.nodes`` -- the one
@@ -659,150 +663,326 @@ class Emitted:
     carries_nothing: dict[str, list[str]] = field(default_factory=dict)
 
 
-def _composed_nodes(bundle_dir: Path, known: set[str]) -> dict[str, frozenset[str]]:
-    """For each document, the pointers of its nodes that another document's root
-    ``allOf`` COMPOSES.
+# **``_composed_nodes`` is ``bundle.composed`` now**, and the move is §11's row for it:
+# the pointers another document's root ``allOf`` composes are a fact about the bundle's
+# reference GRAPH, which §11 gives to the layer that knows "files, paths, ``$ref`` URIs,
+# edges, the record".  It also read every portable document a SECOND time, after
+# ``named_nodes``'s own pass, and the merge of the two scans its docstring named as the
+# upgrade path is ``bundle.edges``: both readings are projections of ONE scan now.
 
-    The companion to :func:`bundle.named_nodes`, and the same kind of fact: a function
-    of the BUNDLE and not of the run's document set, so a module's ``__all__`` does not
-    depend on who else was emitted (P7) and the one-document command writes the bytes the
-    whole-population run writes.  :func:`exported` says what it is for -- a composing
-    subclass re-uses the base's decided field, so the base's field types cross the module
-    boundary while no ``$ref`` fragment names them.
 
-    A bare conjunct composes the target's ROOT, whose pointer is ``""``; the one conjunct
-    in this bundle that carries a fragment
-    (``core/package-delivery-metric-value.json`` -> ``core/delivery-metric-aggregate.json#/oneOf/0``)
-    composes that node, and it is recorded at its own pointer rather than folded into the
-    root -- a branch's fields are not the union base's.
+def closure(documents: Collection[str], sites: Mapping[str, Sequence[bundle.Edge]]) -> list[str]:
+    """``documents`` and every document one of them references, transitively.
 
-    **It sits here and not in ``codegen/bundle.py``, where it belongs**, only because
-    this lane owns this module and not that one; moving it is one cut and one import.
-    Known ceiling: it reads every portable document a second time, after
-    ``named_nodes``'s own pass, which is ~2 s on the 3.2 bundle against a ~60 s run.
-    Merging the two scans is the upgrade path, and it is the reason to move it.
+    §10: "takes the transitive closure of the named documents over them (a module cannot
+    import from a module no run wrote)".  Over the EDGES and not over the walk: the
+    closure is computed before any document is parsed, which is what lets the run order
+    it and hand each document its targets as data instead of calling back into itself
+    from inside a lowering.
+
+    Sorted, so the run is order-independent (P7).  A site whose URI names no document of
+    this bundle contributes nothing here and refuses at the site, which is where the
+    pointer that carried it is.
     """
-    out: dict[str, set[str]] = {}
-    for document in sorted(known):  # sorted, like ``portable``: P7
-        doc = bundle.read(bundle_dir, document)
-        # **A root ``allOf``, read directly.**  This asked
-        # ``populations.composes_at_the_root``, one of the six root selectors §5 deletes, and
-        # the clause that predicate carried over this one -- "and no union beside it" --
-        # is empty for THIS question: measured over the 1,054 portable documents, the
-        # pairs a root ``allOf`` names are the same 27 either way.  The reason is
-        # ``union.ROOT_CONJUNCTS``: a union root carrying ``allOf`` is refused on it, so
-        # such a root never composes and its conjuncts' fields never cross a module
-        # boundary.  This is a fact about the bundle's reference GRAPH, which is §11's
-        # source layer, and not a reading of a root's KIND.
-        if not isinstance(doc.get("allOf"), list):
+    out: set[str] = set()
+    unread = sorted(set(documents))
+    while unread:
+        document = unread.pop()
+        if document in out:
             continue
-        for conjunct in doc.get("allOf", []):
-            uri = conjunct.get("$ref") if isinstance(conjunct, dict) else None
-            if not isinstance(uri, str):
-                continue
-            head, into = bundle.split_ref(uri)
-            # A LOCAL conjunct composes a node of this very document, whose symbol the
-            # module already declares and never imports, so it is this document's own
-            # entry -- the same reason ``named_nodes`` keys a local reference against the
-            # referring document.
-            target = bundle.document_for(head, known) if head else document
-            if target is not None:
-                # The ROOT's pointer is ``""`` in ``Module.declared`` and a node's is
-                # ``/oneOf/0`` -- ``bundle.split_ref``'s own spelling, which is what
-                # ``bundle.named_nodes`` produces and what ``decide_type`` matches
-                # against.  ``"#"`` here would look right and match nothing.
-                out.setdefault(target, set()).add(into)
-    return {d: frozenset(p) for d, p in out.items()}
+        out.add(document)
+        unread += [
+            edge.target
+            for edge in sites.get(document, ())
+            if edge.target is not None and edge.target not in out
+        ]
+    return sorted(out)
+
+
+def order(
+    documents: Sequence[str], sites: Mapping[str, Sequence[bundle.Edge]]
+) -> tuple[list[str], dict[str, Refusal]]:
+    """``documents`` ordered so every document follows the documents it references, and
+    the refusal for each document on a reference CYCLE.
+
+    §10's second sentence, and §2's reason for it: "the run's own state -- which
+    documents are lowered, which refused -- is a fold in ``emit.py`` over a dependency
+    order computed before any document is lowered, so no handler ever calls back into
+    the run."  The order is what makes ``ctx.targets`` possible at all: a document's
+    targets are finished modules by the time it is parsed.
+
+    **A cycle is a VERDICT for every document ON it**, which is the answer the in-flight
+    stack gave one document at a time: two modules importing each other's symbol at
+    module scope is an ``ImportError``, not a type.  Measured over the 1,054 portable
+    documents: 3,124 cross-document edges and **0 cycles**, so this is the rule rather
+    than a measurement -- and a document that merely REFERENCES a cycle is not on it and
+    refuses through the chain, as it does for any refused target.
+
+    Depth-first in sorted order, so the order is a function of the bundle and of the
+    document set and of nothing a caller iterates (P7).
+    """
+    ready: list[str] = []
+    cycles: dict[str, Refusal] = {}
+    held = set(documents)
+    #: ``None`` not yet reached, ``False`` in flight, ``True`` finished -- the three
+    #: colours a cycle check needs, as data rather than as two sets.
+    done: dict[str, bool] = {}
+
+    def visit(document: str, stack: list[str]) -> None:
+        if done.get(document) is True:
+            return
+        if done.get(document) is False:
+            on = [*stack[stack.index(document):], document]
+            for member in on[:-1]:
+                cycles.setdefault(
+                    member,
+                    Refusal(
+                        "$ref",
+                        "",
+                        f"a reference cycle: {' -> '.join(on)}",
+                        kind=Kind.VERDICT,
+                    ),
+                )
+            return
+        done[document] = False
+        stack.append(document)
+        for edge in sites.get(document, ()):
+            if edge.target is not None and edge.target in held:
+                visit(edge.target, stack)
+        stack.pop()
+        done[document] = True
+        ready.append(document)
+
+    for document in sorted(held):
+        visit(document, [])
+    return [d for d in ready if d not in cycles], cycles
+
+
+def decidable(
+    bundle_dir: Path,
+    document: str,
+    doc: dict,
+    targets: Mapping[tuple[str, str], Target | Refusal],
+    named: frozenset[str],
+    roots: Mapping[str, dict],
+) -> tuple[Module, str] | Refusal:
+    """One document lowered AND its carried record checked, as one value.
+
+    Split out of the fold so that the lowering and the two checks each read in one
+    place, and what this returns is the document's whole outcome.  It was the body of a
+    ``try``/``except Refusal``/``finally``, which is what §2 retires, and then the body
+    of a memoising closure, which is what §14 step 7's dependency order retires: a
+    document is lowered once, when the order reaches it, so there is no memo to consult
+    and no in-flight stack to push.
+    """
+    outcome = lower_document(document, doc, targets, named, roots)
+    if isinstance(outcome, Refusal):
+        return outcome
+    # **The document the package will carry has to be DECIDABLE, and that is
+    # checked here because a refusal belongs where every other one is.**  A
+    # ``$ref`` at a position the package's own validation reaches is a schema
+    # nothing local can decide, so ``jsonschema`` fetches the target over the
+    # network; the write loop below says what that costs.  ``bundle.record``
+    # is the one resolution, and what survives it is a LOCAL reference: it
+    # inlines every cross-document ``$ref``, at every position the table's
+    # descent column reaches, which includes a ``definitions``/``$defs`` entry.
+    #
+    # **WHICH OF THOSE SURVIVORS IS A DEFECT IS DECIDED BY DECLARATION, AND
+    # ``bundle.undecidable_references`` IS THE PREDICATE.**  Section 5 makes a
+    # section "nothing by itself", each entry "declared on demand when a
+    # ``$ref`` names it", and section 3 adds "an entry nothing references is
+    # not declared" -- which ``compiler.local_reference`` already reads: an entry is
+    # declared only where a reference names it, so a dead one is not.  So a reference inside an entry
+    # nothing names is at a position no class grades and no enclosing node's
+    # assertions descend into, while a reference inside an entry a ``$ref``
+    # DOES name is owed resolution, because a class is declared at that
+    # pointer and validates through it.
+    #
+    # This check read "the document holds an absolute ``$ref``" and refused
+    # both alike, with the note that narrowing it would be "a check relaxed to
+    # fit".  The narrowing is not to reachability-as-observed-today, which is
+    # what that note refuses and rightly: it is to the on-demand DECLARATION
+    # set the emitter is already handed, so what is admitted is exactly what
+    # section 3 says is never declared.  Measured: ``a2ui/si-catalog.json``'s
+    # carried document decides with the network removed -- with
+    # ``socket.socket`` replaced by a constructor that raises, ``jsonschema``
+    # accepts ``{"catalogId": "si-standard", "components": ["Text"]}`` and
+    # refuses ``{"catalogId": "other"}``, ``{"components": "Text"}`` and
+    # ``{"catalogId": 1}`` on ``const`` and ``type`` -- so refusing it was
+    # refusing a document that IS locally decidable.  Of the bundle's 101
+    # remote references under a section, 77 in 18 documents sit in a named
+    # entry and are still counted; those 24 are the whole of what this admits.
+    #
+    # A LOCAL reference is decidable at every position and is counted at none:
+    # it names a node of the very document the package carries, so
+    # ``jsonschema`` resolves it against the referrer and fetches nothing.
+    #
+    # **0 SITES SINCE ``bundle.record`` BECAME THIS PACKAGE'S OWN INLINER, and
+    # the check is kept as the guard that says so.**  The record inlines every
+    # cross-document reference the descent column reaches, sections included, so
+    # the only reference left in one is local and this predicate selects none.
+    # ``core/requirements/catalog-field-binding.json`` was the one document it
+    # refused -- a reference at ``/definitions/ScalarBinding/properties/ext``,
+    # inside an entry a ``$ref`` names, which the delegated resolver did not
+    # descend to -- and that is an emission delta of this row and not a check
+    # relaxed to fit: nothing here is narrower, the record is wider.  Firing
+    # again would mean ``record`` left a reference at a position the package's
+    # own validation decides through, which is a defect in the inliner.
+    rec = bundle.record(bundle_dir, document)
+    if isinstance(rec, Refusal):
+        # §4: a reference whose target is not a bundle document, and a
+        # cross-document cycle, make the record undefined for this document.
+        # The refusal is the one ``record`` minted, RETURNED from here because this
+        # is where every other refusal of a document is recorded.  ``bundle.record``
+        # is the precedent §3 names for a verdict a document earns on its own terms:
+        # it returned a refusal as a value before this row, and every other producer
+        # now does the same.
+        return rec
+    unresolved = bundle.undecidable_references(rec, named)
+    if unresolved:
+        pointer, uri = unresolved[0]
+        # **NO KIND IS MINTED HERE, because §3 retires the one this had.**
+        # ``Kind.UNRESOLVED`` "named a reference the delegated resolver did not
+        # reach, and the resolver in §4 reaches every position" -- and the comment
+        # above says what firing means now that ``bundle.record`` IS that resolver:
+        # "a defect in the inliner".  Two readings inside this compiler then
+        # disagree about which positions validation reaches, which is a property of
+        # the COMPILER and not of any document, so §2's rule applies and it is a
+        # :class:`codegen.refusal.BuildFailure` that no layer catches.  Measured
+        # over the 1,054 portable documents at ``d048658``: ``unresolved`` is 0 and
+        # the kind was carried by no refusal, so nothing moves.
+        raise BuildFailure(
+            f"{document}: {uri} at {pointer or '/'} {refusal.UNRESOLVED_TARGET}, at a "
+            f"position the package's own validation decides through ({len(unresolved)} "
+            "here): bundle.record inlines every cross-document reference the descent "
+            "column reaches, so a survivor is the inliner and "
+            "bundle.undecidable_references disagreeing about which positions validation "
+            "reaches -- a defect in this compiler and not an outcome of this document"
+        )
+    return outcome
 
 
 def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     """Lower every named document, and every document one of them references.
 
-    Sorted, so the run is order-independent (P7).  Transitive emission is the walk
-    a reference forces: a module cannot import a symbol from a module no run wrote,
-    so a named document's targets are emitted whether or not they were named.  The
-    walk is over ``$ref`` strings and nothing else -- an import edge is
-    ``(referencing path, target path)``, which is what D1 already derives a module
-    path from, so there is no resolution here and no node graph.  Resolution does
-    the OPPOSITE of what an import needs: it substitutes the target's contents for
-    the reference, leaving nothing to emit an import from.
+    **A FOLD OVER A DEPENDENCY ORDER** (§10), which is what replaced the recursive
+    binder: ``bundle.edges`` is the reference graph, :func:`closure` is the set a run
+    must write (a module cannot import a symbol from a module no run wrote),
+    :func:`order` sorts it so every document follows the documents it references, and
+    each document is then handed its TARGETS as data.  The walk is over ``$ref``
+    strings and nothing else -- an import edge is ``(referencing path, target path)``,
+    which is what D1 already derives a module path from -- so there is no resolution
+    here and no node graph.  Resolution does the OPPOSITE of what an import needs: it
+    substitutes the target's contents for the reference, leaving nothing to emit an
+    import from.
 
-    It terminates on a memo, and a document reached while its own lowering is in
-    flight is a reference CYCLE, which refuses by name: two modules importing each
-    other's symbol at module scope is an ImportError, not a type.
+    Sorted at every step, so the run is order-independent (P7).  Nothing is memoised
+    and nothing is in flight: a document is lowered once, when the order reaches it,
+    and a target is a finished module by then.
     """
     out = Emitted()
     packages: set[str] = set()
     known = set(bundle.portable(bundle_dir))
-    # Read once per run, from the BUNDLE rather than from ``documents``: a module's
-    # content must not depend on who else was named (see ``bundle.named_nodes``).
-    named = bundle.named_nodes(bundle_dir)
-    composed = _composed_nodes(bundle_dir, known)
+    # **ONE SCAN of the bundle, and three readings of it** (``bundle.edges``): the
+    # per-document ``named`` set, the pointers a root ``allOf`` composes, and the
+    # reference graph the order is computed over.  Read from the BUNDLE rather than from
+    # ``documents``: a module's content must not depend on who else was named
+    # (``bundle.named``), which is §10's own sentence about why one document's module is
+    # the same text whether it is emitted alone or with the whole bundle.
+    found = bundle.edges(bundle_dir)
+    named = bundle.named(found)
+    composed = bundle.composed(found)
+    #: The reference sites of each document, in document order: every ``$ref`` the
+    #: document states, including a LOCAL one.  A local reference is in the map so that
+    #: the one caller that can meet one without going through ``nodes.Reference.head``
+    #: -- ``compiler.lower_composition``'s ``$ref``-conjunct arm -- is answered by name
+    #: rather than by the absence of an entry, which is the arm the binder closure kept
+    #: for exactly this reason.  :func:`closure` and :func:`order` read ``edge.target``,
+    #: which is ``None`` for a local reference, so neither follows one.
+    sites: dict[str, list[bundle.Edge]] = {}
+    for edge in found:
+        sites.setdefault(edge.document, []).append(edge)
+    ordered, refused = order(closure(documents, sites), sites)
     lowered: dict[str, tuple[Module, str, dict]] = {}
-    refused: dict[str, Refusal] = {}
-    inflight: list[str] = []
+    #: ``$ref`` URI -> the ROOT NODE of the document it names, for §2's intersection
+    #: rule (:meth:`compiler.Module.resolve_node`).  **Run-level and not per document**,
+    #: and the reason is whose declaration that rule reads: it compares two property
+    #: DECLARATIONS, and one of them is a BASE's, so the URI it asks about is a site of
+    #: the base's document and not of the one being lowered.  Filled as the order
+    #: finishes each document, which is early enough by construction -- a base precedes
+    #: the document composing it, and the base's own targets precede the base.
+    roots: dict[str, dict] = {}
+    #: target document -> the no-fragment URIs that name it, so the fill above is a
+    #: lookup rather than a scan per document.
+    spellings: dict[str, set[str]] = {}
+    for edge in found:
+        if edge.target is not None and not edge.into:
+            spellings.setdefault(edge.target, set()).add(edge.uri)
 
-    def bind(referencing: str) -> Callable[[str, str], Target | Refusal]:
-        def do(uri: str, pointer: str) -> Target | Refusal:
-            # A reference is a (document, node) pair, and the node half is what a
-            # FRAGMENT carries.  Both halves come from one reading of the ``#``
-            # (``bundle.split_ref``), the same one ``bundle.record`` reads a reference
-            # with, so the binder and the inliner cannot disagree about which document
-            # a reference names.
-            head, into = bundle.split_ref(uri)
-            if not head:
-                # A LOCAL reference never arrives here.  It names a node of the
-                # document being written, so there is no module to import from and
-                # nothing for a binder to resolve: ``decide_type`` branches on the
-                # empty document half first and asks ``compiler.local_reference`` for the
-                # symbol this module declares.  This stays as the loud answer for a
-                # caller that reaches the binder another way, rather than being
-                # deleted and leaving ``document_for`` to return ``None`` and report a
-                # pointer as a document the bundle does not hold.
-                return Refusal(
+    def resolve(document: str) -> dict[tuple[str, str], Target | Refusal]:
+        """This document's reference sites, resolved: §5's ``targets``.
+
+        Every answer the binder closure returned, computed here instead -- and computed
+        BEFORE the document is parsed, which is what the dependency order buys: each
+        target is either in ``lowered`` or in ``refused``, so nothing recurses and no
+        stack says which documents are in flight.
+        """
+        answers: dict[tuple[str, str], Target | Refusal] = {}
+        for edge in sites.get(document, ()):
+            site = (edge.uri, edge.pointer)
+            if edge.local:
+                # A LOCAL reference names a node of the document being written, so there
+                # is no module to import from and nothing for a binding to resolve:
+                # ``references.lower`` branches on the empty document half first and asks
+                # ``compiler.local_reference`` for the symbol this module declares.  This
+                # stays as the loud answer for the one caller that reaches a reference
+                # another way -- ``compiler.lower_composition``'s conjunct arm -- rather
+                # than being left out and reporting a pointer as a document the bundle
+                # does not hold.
+                answers[site] = Refusal(
                     "$ref",
-                    pointer,
-                    f"{uri} is a pointer into this document, which is not a binding at "
-                    "all -- the walk resolves one through compiler.local_reference and "
+                    edge.pointer,
+                    f"{edge.uri} is a pointer into this document, which is not a binding "
+                    "at all -- the walk resolves one through compiler.local_reference and "
                     "never through a binder",
                     kind=Kind.VERDICT,
                 )
-            target = bundle.document_for(head, known)
-            if target is None:
-                return Refusal(
-                    "$ref", pointer, f"{uri} names no document of this bundle"
-                , kind=Kind.VERDICT)
-            lowered_target = lower(target)  # the target emits first, or this refuses with it
-            if isinstance(lowered_target, Refusal):
-                r = lowered_target
-                # **The fragment is NAMED here, not only the document.**  The chain
-                # fires before the node is looked up -- the target refuses as a whole,
-                # so the reference never reaches the node -- and a message naming only
-                # the document sends the reader to a file without saying which of its
-                # nodes was wanted.  Bundle-relative, so it reads as a pointer into
-                # this bundle rather than as the URI's own base; a reference with no
-                # fragment is unchanged, which is all 214 of the existing chains.
+                continue
+            if edge.target is None:
+                answers[site] = Refusal(
+                    "$ref",
+                    edge.pointer,
+                    f"{edge.uri} names no document of this bundle",
+                    kind=Kind.VERDICT,
+                )
+                continue
+            if edge.target in refused:
+                r = refused[edge.target]
+                # **The fragment is NAMED here, not only the document.**  A message
+                # naming only the document sends the reader to a file without saying
+                # which of its nodes was wanted.  Bundle-relative, so it reads as a
+                # pointer into this bundle rather than as the URI's own base; a
+                # reference with no fragment is unchanged.
                 #
                 # **``through=r`` is the classification and the quoted text is for the
                 # reader.**  Whether this document is pending or final is not a property
-                # of its own sentence at all, it is whatever the target's is -- and that
-                # used to be answered by parsing the target's refusal back out of the
-                # string this line writes.  It is answered by carrying the object
-                # instead: ``Refusal.resolved`` takes the target's, so a chain of any
-                # depth is one attribute read and no sentence is parsed.
-                wanted = f"{target}#{into}" if into else target
-                return Refusal(
+                # of its own sentence at all, it is whatever the target's is --
+                # ``Refusal.resolved`` takes the target's, so a chain of any depth is one
+                # attribute read and no sentence is parsed.
+                wanted = f"{edge.target}#{edge.into}" if edge.into else edge.target
+                answers[site] = Refusal(
                     "$ref",
-                    pointer,
+                    edge.pointer,
                     f"its target {wanted} is refused: {r}",
                     kind=Kind.CHAINED,
                     through=r,
                 )
-            mod, symbol = lowered_target
-            if into:
+                continue
+            mod, symbol, _ = lowered[edge.target]
+            if edge.into:
                 # The fragment names a NODE, so the symbol is the one the target
                 # module declared AT THAT POINTER rather than its root.  The target
-                # declares one because ``bundle.named_nodes`` told it to.
+                # declares one because ``bundle.named`` told it to.
                 #
                 # Two kinds of pointer have no symbol, and both are REFUSED with the
                 # fragment named rather than bound to the root -- binding to the root
@@ -818,179 +998,49 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                 #    refused on a keyword of their own -- so 0 are reachable and the
                 #    step whose population reaches one decides whether the chain is
                 #    followed to the declaring module.
-                if into not in mod.declared:
-                    return Refusal(
+                if edge.into not in mod.declared:
+                    answers[site] = Refusal(
                         "$ref",
-                        pointer,
-                        f"{uri}: its target {target} declares no symbol at {into} "
-                        "(the walk either does not reach that node, or the node is "
-                        "itself a $ref whose symbol that module imports rather than "
-                        "declares)",
+                        edge.pointer,
+                        f"{edge.uri}: its target {edge.target} declares no symbol at "
+                        f"{edge.into} (the walk either does not reach that node, or the "
+                        "node is itself a $ref whose symbol that module imports rather "
+                        "than declares)",
                         kind=Kind.DEFERRED,
                     )
-                symbol = mod.declared[into]
+                    continue
+                symbol = mod.declared[edge.into]
             # ``shape`` is ``None`` for a target that is not a class -- D2's
             # root-scalar alias, and a named node that is not one either -- which is
             # what lets a composing row refuse it as a base rather than writing a
             # module that cannot be imported.
-            # The target's own root node travels with the symbol, and only for a
-            # reference with NO fragment: section 2's intersection rule asks whether one bare
-            # ``$ref`` narrows another, which is a fact about the two targets
-            # (``compiler.Module.resolve_node``).  Read off the record ``lower`` already
-            # keeps, so nothing is re-read and the node is the one that was lowered.
-            return Target(
-                relative_module(referencing, target),
-                symbol,
-                mod.shapes.get(symbol),
-                node=None if into else lowered[target][2],
+            #
+            answers[site] = Target(
+                relative_module(document, edge.target), symbol, mod.shapes.get(symbol)
             )
+        return answers
 
-        return do
-
-    def lower(document: str) -> tuple[Module, str] | Refusal:
-        """This document's module and root symbol, memoised, or the refusal for it.
-
-        **The memo of refusals is READ as a value now** and that is the whole of what
-        changed here: a document already refused returns its refusal, where it used to
-        re-raise it.  The arithmetic is identical -- ``refused`` is written once, at the
-        point the refusal first reaches this function -- and the ``try``/``except``/
-        ``finally`` around the body is gone with the raise: nothing can leave this
-        function other than by returning, so the in-flight stack is popped on the one
-        path there is.  §2's "the one ``try`` left in the compiler is around nothing".
-        """
-        if document in lowered:
-            mod, symbol, _ = lowered[document]
-            return mod, symbol
-        if document in refused:
-            return refused[document]
-        if document in inflight:
-            # NOT recorded in ``refused``: this is the answer to the REFERRER, which
-            # chains onto it, and the document's own frame -- still in flight below this
-            # one -- records what that chain comes to.  Recording it here would memoise
-            # the cycle as this document's outcome and a second reference inside the same
-            # subtree would read it instead of reaching the ``inflight`` test with its own
-            # stack.  That is the shape the raise had and it is kept exactly; the
-            # population is 0 cycles over the 1,054 portable documents, so it is reasoned
-            # rather than measured and written down for that reason.
-            return Refusal(
-                "$ref",
-                "",
-                f"a reference cycle: {' -> '.join([*inflight, document])}",
-                kind=Kind.VERDICT,
-            )
-        inflight.append(document)
+    for document in ordered:
         doc = bundle.read(bundle_dir, document)
-        outcome = decidable(document, doc)
-        inflight.pop()
-        if isinstance(outcome, Refusal):
-            refused[document] = outcome
-            return outcome
-        mod, symbol = outcome
-        lowered[document] = (mod, symbol, doc)
-        return mod, symbol
-
-    def decidable(document: str, doc: dict) -> tuple[Module, str] | Refusal:
-        """One document lowered AND its carried record checked, as one value.
-
-        Split out of :func:`lower` so that the memo, the in-flight stack and the two
-        checks each read in one place: the stack is pushed and popped around this call,
-        and what this returns is the document's whole outcome.  It was the body of a
-        ``try``/``except Refusal``/``finally``, which is what §2 retires.
-        """
-        outcome = lower_document(
-            document, doc, bind(document), named.get(document, frozenset())
+        outcome = decidable(
+            bundle_dir,
+            document,
+            doc,
+            resolve(document),
+            named.get(document, frozenset()),
+            roots,
         )
         if isinstance(outcome, Refusal):
-            return outcome
-        # **The document the package will carry has to be DECIDABLE, and that is
-        # checked here because a refusal belongs where every other one is.**  A
-        # ``$ref`` at a position the package's own validation reaches is a schema
-        # nothing local can decide, so ``jsonschema`` fetches the target over the
-        # network; the write loop below says what that costs.  ``bundle.record``
-        # is the one resolution, and what survives it is a LOCAL reference: it
-        # inlines every cross-document ``$ref``, at every position the table's
-        # descent column reaches, which includes a ``definitions``/``$defs`` entry.
-        #
-        # **WHICH OF THOSE SURVIVORS IS A DEFECT IS DECIDED BY DECLARATION, AND
-        # ``bundle.undecidable_references`` IS THE PREDICATE.**  Section 5 makes a
-        # section "nothing by itself", each entry "declared on demand when a
-        # ``$ref`` names it", and section 3 adds "an entry nothing references is
-        # not declared" -- which ``compiler.local_reference`` already reads: an entry is
-        # declared only where a reference names it, so a dead one is not.  So a reference inside an entry
-        # nothing names is at a position no class grades and no enclosing node's
-        # assertions descend into, while a reference inside an entry a ``$ref``
-        # DOES name is owed resolution, because a class is declared at that
-        # pointer and validates through it.
-        #
-        # This check read "the document holds an absolute ``$ref``" and refused
-        # both alike, with the note that narrowing it would be "a check relaxed to
-        # fit".  The narrowing is not to reachability-as-observed-today, which is
-        # what that note refuses and rightly: it is to the on-demand DECLARATION
-        # set the emitter is already handed, so what is admitted is exactly what
-        # section 3 says is never declared.  Measured: ``a2ui/si-catalog.json``'s
-        # carried document decides with the network removed -- with
-        # ``socket.socket`` replaced by a constructor that raises, ``jsonschema``
-        # accepts ``{"catalogId": "si-standard", "components": ["Text"]}`` and
-        # refuses ``{"catalogId": "other"}``, ``{"components": "Text"}`` and
-        # ``{"catalogId": 1}`` on ``const`` and ``type`` -- so refusing it was
-        # refusing a document that IS locally decidable.  Of the bundle's 101
-        # remote references under a section, 77 in 18 documents sit in a named
-        # entry and are still counted; those 24 are the whole of what this admits.
-        #
-        # A LOCAL reference is decidable at every position and is counted at none:
-        # it names a node of the very document the package carries, so
-        # ``jsonschema`` resolves it against the referrer and fetches nothing.
-        #
-        # **0 SITES SINCE ``bundle.record`` BECAME THIS PACKAGE'S OWN INLINER, and
-        # the check is kept as the guard that says so.**  The record inlines every
-        # cross-document reference the descent column reaches, sections included, so
-        # the only reference left in one is local and this predicate selects none.
-        # ``core/requirements/catalog-field-binding.json`` was the one document it
-        # refused -- a reference at ``/definitions/ScalarBinding/properties/ext``,
-        # inside an entry a ``$ref`` names, which the delegated resolver did not
-        # descend to -- and that is an emission delta of this row and not a check
-        # relaxed to fit: nothing here is narrower, the record is wider.  Firing
-        # again would mean ``record`` left a reference at a position the package's
-        # own validation decides through, which is a defect in the inliner.
-        rec = bundle.record(bundle_dir, document)
-        if isinstance(rec, Refusal):
-            # §4: a reference whose target is not a bundle document, and a
-            # cross-document cycle, make the record undefined for this document.
-            # The refusal is the one ``record`` minted, RETURNED from here because this
-            # is where every other refusal of a document is recorded.  ``bundle.record``
-            # is the precedent §3 names for a verdict a document earns on its own terms:
-            # it returned a refusal as a value before this row, and every other producer
-            # now does the same.
-            return rec
-        unresolved = bundle.undecidable_references(rec, named.get(document, frozenset()))
-        if unresolved:
-            pointer, uri = unresolved[0]
-            # **NO KIND IS MINTED HERE, because §3 retires the one this had.**
-            # ``Kind.UNRESOLVED`` "named a reference the delegated resolver did not
-            # reach, and the resolver in §4 reaches every position" -- and the comment
-            # above says what firing means now that ``bundle.record`` IS that resolver:
-            # "a defect in the inliner".  Two readings inside this compiler then
-            # disagree about which positions validation reaches, which is a property of
-            # the COMPILER and not of any document, so §2's rule applies and it is a
-            # :class:`codegen.refusal.BuildFailure` that no layer catches.  Measured
-            # over the 1,054 portable documents at ``d048658``: ``unresolved`` is 0 and
-            # the kind was carried by no refusal, so nothing moves.
-            raise BuildFailure(
-                f"{document}: {uri} at {pointer or '/'} {refusal.UNRESOLVED_TARGET}, at a "
-                f"position the package's own validation decides through ({len(unresolved)} "
-                "here): bundle.record inlines every cross-document reference the descent "
-                "column reaches, so a survivor is the inliner and "
-                "bundle.undecidable_references disagreeing about which positions validation "
-                "reaches -- a defect in this compiler and not an outcome of this document"
-            )
-        return outcome
-
-    # **THE RUN IS A FOLD OVER VALUES AND NOT A SWEEP WITH A CATCH** (§2: the run's own
-    # state "is a fold in ``emit.py`` over a dependency order").  ``lower`` returns a
-    # refusal and records it, so the loop body is one call: there is nothing to catch,
-    # and nothing can skip the body of the loop.
-    for document in sorted(set(documents)):
-        lower(document)  # a refusal is recorded in `refused` and reported below
+            refused[document] = outcome
+            continue
+        mod, symbol = outcome
+        lowered[document] = (mod, symbol, doc)
+        # The target's own root node, for §2's intersection rule and for nothing else.
+        # Written when the document FINISHES, so a refused document contributes none and
+        # the rule treats such a pair as unordered -- which is the safe direction and is
+        # what the binder answered for a refused target before.
+        for uri in sorted(spellings.get(document, ())):
+            roots[uri] = doc
 
     for document in sorted(lowered):
         mod, symbol, doc = lowered[document]

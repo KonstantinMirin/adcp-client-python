@@ -291,13 +291,12 @@ class Target:
     module: str
     symbol: str
     shape: Shape | None = None
-    #: The target's own ROOT NODE, for the ONE reader that needs the schema rather than
-    #: the symbol: section 2's intersection rule asked of two declarations that are each a bare
-    #: ``$ref`` (:func:`Module.resolve_node`).  ``None`` for a reference carrying a
-    #: FRAGMENT, which is the scope rather than an omission -- the binder has already
-    #: looked the fragment's SYMBOL up and a node navigator here would be a second
-    #: pointer walk -- so such a pair stays undecidable and refuses.
-    node: dict | None = None
+
+    # **The target's own ROOT NODE is not here and is ``Module.roots``'s now.**  §2's
+    # intersection rule asked of two declarations that are each a bare ``$ref`` is the
+    # one reader that needs the target's schema rather than its symbol, and it holds a
+    # DECLARATION and not a node -- so it has no pointer to ask a site with, and the
+    # run keys that one answer by the URI alone (:func:`Module.resolve_node`).
 
 
 @dataclass(frozen=True)
@@ -315,19 +314,27 @@ class Decided:
     format: str | None = None
 
 
-def _no_binder(uri: str, pointer: str) -> Target | Refusal:
-    """The default binder: a document lowered on its own resolves no reference.
+#: What a reference site answers when the run resolved none: a document lowered on its
+#: own resolves no reference.  A SENTENCE and not a refusal, because the site's own
+#: pointer is what a refusal has to name and only the asking node holds it -- so the
+#: reading is :func:`unresolved`, below, and this is the text it carries.
+NO_TARGET = (
+    "the run resolved no target for this reference, so there is no module to import a "
+    "symbol from: a reference is an IMPORT of the target's symbol (section 2's rule), "
+    "and a document lowered outside a run has no other document to import from"
+)
 
-    ``emit`` supplies the real one, which owns the walk.  Lowering a document
-    without it refuses its references by name rather than inventing an import, so
+
+def unresolved(uri: str, pointer: str) -> Refusal:
+    """The answer at a reference site the run supplied no target for.
+
+    ``emit`` builds :attr:`Module.targets` from ``bundle.edges`` -- the same descent the
+    parser reads the reference off -- so every site the walk reaches has an entry, and a
+    site with none is a document lowered outside a run.  That is the shape the refusing
+    default binder had, and it is a refusal by name rather than an invented import, so
     there is no path on which a reference is silently dropped.
     """
-    return Refusal(
-        "$ref",
-        pointer,
-        f"no reference binder: {uri} cannot be resolved to a module",
-        kind=Kind.VERDICT,
-    )
+    return Refusal("$ref", pointer, f"{NO_TARGET}: {uri}", kind=Kind.VERDICT)
 
 
 def decide(
@@ -399,14 +406,32 @@ class Module:
     #: outside it derives a bare, unqualified name rather than one naming a root that
     #: is not there -- the same shape as ``asserted`` and ``named`` being empty.
     root: str = ""
-    #: ``(uri, pointer) -> Target``; see ``emit.emit``.  The last callable carried
-    #: here, and the one the entry-point module does not retire: it is a CLOSURE over
+    #: **§5's ``targets``: every document this one references, already lowered by the
+    #: run in dependency order, so a cross-document reference is a LOOKUP and never a
+    #: callback.**  This was ``bind``, the last CALLABLE carried here -- a closure over
     #: the run's lowered/refused/in-flight documents and over ``emit.lower``'s own
-    #: recursion, so there is no module-level function to reach by name in its place.
-    #: ``docs/plan/architecture.md`` §14 step 7 is where it goes, by computing the
-    #: reference closure and the dependency order up front and passing ``targets``
-    #: through this context as data.
-    bind: Callable[[str, str], Target | Refusal] = _no_binder
+    #: recursion -- and §14 step 7 is what retires it: ``emit`` computes the reference
+    #: closure and the dependency order up front, so a target is finished before the
+    #: document referencing it is parsed and the answer is data.
+    #:
+    #: **Keyed by the reference SITE, ``(uri, pointer)``, and not by the target
+    #: document**, which is §5's table read for its content rather than for its key.
+    #: Two things follow and both are the reason: no lowering reads a ``#`` or a bundle
+    #: path, so ``bundle.split_ref`` and ``document_for`` stay in the source layer where
+    #: §11 puts them; and the refusal a site earns -- a URI naming no document of this
+    #: bundle, a target that refused, a fragment the target declares no symbol at --
+    #: names THAT SITE's pointer, which only the site identifies.  The sites are
+    #: ``bundle.edges``, the same descent the parser reads the reference off, so a site
+    #: the walk reaches and this map has no entry for is a document lowered outside a
+    #: run (:func:`unresolved`).
+    targets: Mapping[tuple[str, str], Target | Refusal] = field(default_factory=dict)
+    #: ``$ref`` URI -> the ROOT NODE of the document it names, for the one reader that
+    #: needs the target's schema rather than its symbol: §2's intersection rule asked of
+    #: two declarations that are each a bare ``$ref`` (:func:`Module.resolve_node`).
+    #: Keyed by the URI alone, because that reader holds a declaration and not a node and
+    #: so has no pointer to ask with; populated only for a reference with NO fragment,
+    #: which is that rule's own scope.
+    roots: Mapping[str, dict] = field(default_factory=dict)
     #: The formats this document's own draft asserts; see ``emit.asserted_formats``.
     #: Empty by default, so a node lowered outside ``lower_document`` selects no
     #: format-derived type rather than one nothing checks.
@@ -582,11 +607,24 @@ class Module:
         refusal now, so "undecidable" is an ``isinstance`` arm rather than a caught
         exception.  Nothing about the reading changed -- a refused target was ``None``
         before and is ``None`` here -- which is what makes it a relocation.
+
+        **And the binder itself is gone** (§14 step 7): :attr:`roots` is the same two
+        answers as DATA, built by the run from the documents it has already lowered, so
+        a missing entry is every one of the undecidable cases at once -- a local
+        reference, a fragment, a target that refuses, a URI naming no document -- and
+        the caller treats the pair as unordered and refuses, which is the safe direction.
         """
-        bound = self.bind(uri, "")
-        if isinstance(bound, Refusal):
-            return None
-        return bound.node
+        return self.roots.get(uri)
+
+    def target(self, uri: str, pointer: str) -> Target | Refusal:
+        """What the run resolved the reference at ``pointer`` to.
+
+        The lookup that replaced ``bind``'s call (§14 step 7): the answer was computed
+        before this document was parsed, so there is no recursion to re-enter and no
+        in-flight stack to consult.  A site with no entry is a document lowered outside
+        a run (:func:`unresolved`), which is the refusing default the binder had.
+        """
+        return self.targets.get((uri, pointer)) or unresolved(uri, pointer)
 
     def declare(self, name: str, pointer: str, declaration: ir.Declaration) -> Refusal | None:
         """Record one declaration under its symbol and its pointer, or say why not.
@@ -1721,11 +1759,11 @@ def lower_composition(
                 )
             keys = {"$ref"}
         if keys == {"$ref"}:
-            target = mod.bind(conjunct["$ref"], where)
+            target = mod.target(conjunct["$ref"], where)
             if isinstance(target, Refusal):
-                # The binder's own answer, returned upward unchanged (§6): a target that
+                # The RUN's own answer, returned upward unchanged (§6): a target that
                 # refuses makes this conjunct's base undecidable, and the CHAIN is the
-                # binder's to mint because it is the one that knows the target's refusal.
+                # run's to mint because it is the one that knows the target's refusal.
                 return target
             if target.shape is None:
                 # **The KIND is read off the cell and is a DEFERRAL, not a verdict.**
