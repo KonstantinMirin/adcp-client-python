@@ -1,0 +1,2290 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "A seller's commercial pricing offer, discriminated by pricing_model. pricing_option_id is the immutable identity of its binding commercial terms: changing fixed price, floor, currency, model, or priced applicability requires a new ID rather than reinterpreting the old one. fixed_price is an agreed seller price; floor_price is the seller minimum for an auction-priced option; price_guidance is non-binding discovery guidance. Buyer execution instructions belong in BiddingPolicy. revenue_share is contingent pricing: its payable spend is calculated from settled commissionable_value and does not use fixed_price or auction bidding fields. The legacy max_bid boolean and package bid_price are deprecated in 3.2 and removed in the next major.",
+  "discriminator": {
+    "propertyName": "pricing_model"
+  },
+  "oneOf": [
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Cost Per Mille (cost per 1,000 impressions) pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
+      "properties": {
+        "currency": {
+          "description": "ISO 4217 currency code",
+          "examples": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "eligible_adjustments": {
+          "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Categorizes how a price adjustment affects the transaction",
+            "enum": [
+              "fee",
+              "discount",
+              "commission",
+              "settlement"
+            ],
+            "enumDescriptions": {
+              "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+              "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+              "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+              "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+            },
+            "title": "Price Adjustment Kind",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "fixed_price": {
+          "description": "Fixed price per unit. If present, this is fixed pricing. If absent, auction-based.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "floor_price": {
+          "description": "Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "max_bid": {
+          "default": false,
+          "deprecated": true,
+          "description": "DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.",
+          "type": "boolean"
+        },
+        "min_spend_per_package": {
+          "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+          "minimum": 0,
+          "type": "number"
+        },
+        "price_breakdown": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+          "properties": {
+            "adjustments": {
+              "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+              "items": {
+                "additionalProperties": true,
+                "oneOf": [
+                  {
+                    "required": [
+                      "rate"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amount"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "beneficiary": {
+                    "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Categorizes how a price adjustment affects the transaction",
+                    "enum": [
+                      "fee",
+                      "discount",
+                      "commission",
+                      "settlement"
+                    ],
+                    "enumDescriptions": {
+                      "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+                      "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+                      "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+                      "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+                    },
+                    "title": "Price Adjustment Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                    "examples": [
+                      "ad_serving",
+                      "data_targeting",
+                      "brand_safety",
+                      "volume",
+                      "negotiated",
+                      "early_booking",
+                      "agency",
+                      "intermediary",
+                      "cash_discount",
+                      "early_payment"
+                    ],
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "rate": {
+                    "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                    "exclusiveMaximum": 1,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "type": "object"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            "list_price": {
+              "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "list_price",
+            "adjustments"
+          ],
+          "title": "Price Breakdown",
+          "type": "object"
+        },
+        "price_guidance": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Optional pricing guidance for auction-based bidding",
+          "properties": {
+            "p25": {
+              "description": "25th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p50": {
+              "description": "Median of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p75": {
+              "description": "75th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p90": {
+              "description": "90th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "title": "Price Guidance",
+          "type": "object"
+        },
+        "pricing_model": {
+          "const": "cpm",
+          "description": "Cost per 1,000 impressions",
+          "type": "string"
+        },
+        "pricing_option_id": {
+          "description": "Unique identifier for this pricing option within the product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pricing_option_id",
+        "pricing_model",
+        "currency"
+      ],
+      "title": "CPM Pricing Option",
+      "type": "object"
+    },
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Viewable Cost Per Mille (cost per 1,000 viewable impressions) pricing - MRC viewability standard. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
+      "properties": {
+        "currency": {
+          "description": "ISO 4217 currency code",
+          "examples": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "eligible_adjustments": {
+          "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Categorizes how a price adjustment affects the transaction",
+            "enum": [
+              "fee",
+              "discount",
+              "commission",
+              "settlement"
+            ],
+            "enumDescriptions": {
+              "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+              "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+              "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+              "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+            },
+            "title": "Price Adjustment Kind",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "fixed_price": {
+          "description": "Fixed price per unit. If present, this is fixed pricing. If absent, auction-based.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "floor_price": {
+          "description": "Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "max_bid": {
+          "default": false,
+          "deprecated": true,
+          "description": "DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.",
+          "type": "boolean"
+        },
+        "min_spend_per_package": {
+          "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+          "minimum": 0,
+          "type": "number"
+        },
+        "price_breakdown": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+          "properties": {
+            "adjustments": {
+              "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+              "items": {
+                "additionalProperties": true,
+                "oneOf": [
+                  {
+                    "required": [
+                      "rate"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amount"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "beneficiary": {
+                    "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Categorizes how a price adjustment affects the transaction",
+                    "enum": [
+                      "fee",
+                      "discount",
+                      "commission",
+                      "settlement"
+                    ],
+                    "enumDescriptions": {
+                      "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+                      "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+                      "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+                      "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+                    },
+                    "title": "Price Adjustment Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                    "examples": [
+                      "ad_serving",
+                      "data_targeting",
+                      "brand_safety",
+                      "volume",
+                      "negotiated",
+                      "early_booking",
+                      "agency",
+                      "intermediary",
+                      "cash_discount",
+                      "early_payment"
+                    ],
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "rate": {
+                    "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                    "exclusiveMaximum": 1,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "type": "object"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            "list_price": {
+              "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "list_price",
+            "adjustments"
+          ],
+          "title": "Price Breakdown",
+          "type": "object"
+        },
+        "price_guidance": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Optional pricing guidance for auction-based bidding",
+          "properties": {
+            "p25": {
+              "description": "25th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p50": {
+              "description": "Median of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p75": {
+              "description": "75th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p90": {
+              "description": "90th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "title": "Price Guidance",
+          "type": "object"
+        },
+        "pricing_model": {
+          "const": "vcpm",
+          "description": "Cost per 1,000 viewable impressions (MRC standard)",
+          "type": "string"
+        },
+        "pricing_option_id": {
+          "description": "Unique identifier for this pricing option within the product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pricing_option_id",
+        "pricing_model",
+        "currency"
+      ],
+      "title": "vCPM Pricing Option",
+      "type": "object"
+    },
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Cost Per Click pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
+      "properties": {
+        "currency": {
+          "description": "ISO 4217 currency code",
+          "examples": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "eligible_adjustments": {
+          "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Categorizes how a price adjustment affects the transaction",
+            "enum": [
+              "fee",
+              "discount",
+              "commission",
+              "settlement"
+            ],
+            "enumDescriptions": {
+              "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+              "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+              "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+              "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+            },
+            "title": "Price Adjustment Kind",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "fixed_price": {
+          "description": "Fixed price per click. If present, this is fixed pricing. If absent, auction-based.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "floor_price": {
+          "description": "Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "max_bid": {
+          "default": false,
+          "deprecated": true,
+          "description": "DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.",
+          "type": "boolean"
+        },
+        "min_spend_per_package": {
+          "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+          "minimum": 0,
+          "type": "number"
+        },
+        "price_breakdown": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+          "properties": {
+            "adjustments": {
+              "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+              "items": {
+                "additionalProperties": true,
+                "oneOf": [
+                  {
+                    "required": [
+                      "rate"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amount"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "beneficiary": {
+                    "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Categorizes how a price adjustment affects the transaction",
+                    "enum": [
+                      "fee",
+                      "discount",
+                      "commission",
+                      "settlement"
+                    ],
+                    "enumDescriptions": {
+                      "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+                      "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+                      "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+                      "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+                    },
+                    "title": "Price Adjustment Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                    "examples": [
+                      "ad_serving",
+                      "data_targeting",
+                      "brand_safety",
+                      "volume",
+                      "negotiated",
+                      "early_booking",
+                      "agency",
+                      "intermediary",
+                      "cash_discount",
+                      "early_payment"
+                    ],
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "rate": {
+                    "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                    "exclusiveMaximum": 1,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "type": "object"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            "list_price": {
+              "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "list_price",
+            "adjustments"
+          ],
+          "title": "Price Breakdown",
+          "type": "object"
+        },
+        "price_guidance": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Optional pricing guidance for auction-based bidding",
+          "properties": {
+            "p25": {
+              "description": "25th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p50": {
+              "description": "Median of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p75": {
+              "description": "75th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p90": {
+              "description": "90th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "title": "Price Guidance",
+          "type": "object"
+        },
+        "pricing_model": {
+          "const": "cpc",
+          "description": "Cost per click",
+          "type": "string"
+        },
+        "pricing_option_id": {
+          "description": "Unique identifier for this pricing option within the product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pricing_option_id",
+        "pricing_model",
+        "currency"
+      ],
+      "title": "CPC Pricing Option",
+      "type": "object"
+    },
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Cost Per Completed View (100% video/audio completion) pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
+      "properties": {
+        "currency": {
+          "description": "ISO 4217 currency code",
+          "examples": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "eligible_adjustments": {
+          "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Categorizes how a price adjustment affects the transaction",
+            "enum": [
+              "fee",
+              "discount",
+              "commission",
+              "settlement"
+            ],
+            "enumDescriptions": {
+              "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+              "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+              "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+              "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+            },
+            "title": "Price Adjustment Kind",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "fixed_price": {
+          "description": "Fixed price per completed view. If present, this is fixed pricing. If absent, auction-based.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "floor_price": {
+          "description": "Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "max_bid": {
+          "default": false,
+          "deprecated": true,
+          "description": "DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.",
+          "type": "boolean"
+        },
+        "min_spend_per_package": {
+          "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+          "minimum": 0,
+          "type": "number"
+        },
+        "price_breakdown": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+          "properties": {
+            "adjustments": {
+              "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+              "items": {
+                "additionalProperties": true,
+                "oneOf": [
+                  {
+                    "required": [
+                      "rate"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amount"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "beneficiary": {
+                    "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Categorizes how a price adjustment affects the transaction",
+                    "enum": [
+                      "fee",
+                      "discount",
+                      "commission",
+                      "settlement"
+                    ],
+                    "enumDescriptions": {
+                      "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+                      "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+                      "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+                      "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+                    },
+                    "title": "Price Adjustment Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                    "examples": [
+                      "ad_serving",
+                      "data_targeting",
+                      "brand_safety",
+                      "volume",
+                      "negotiated",
+                      "early_booking",
+                      "agency",
+                      "intermediary",
+                      "cash_discount",
+                      "early_payment"
+                    ],
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "rate": {
+                    "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                    "exclusiveMaximum": 1,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "type": "object"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            "list_price": {
+              "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "list_price",
+            "adjustments"
+          ],
+          "title": "Price Breakdown",
+          "type": "object"
+        },
+        "price_guidance": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Optional pricing guidance for auction-based bidding",
+          "properties": {
+            "p25": {
+              "description": "25th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p50": {
+              "description": "Median of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p75": {
+              "description": "75th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p90": {
+              "description": "90th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "title": "Price Guidance",
+          "type": "object"
+        },
+        "pricing_model": {
+          "const": "cpcv",
+          "description": "Cost per completed view (100% completion)",
+          "type": "string"
+        },
+        "pricing_option_id": {
+          "description": "Unique identifier for this pricing option within the product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pricing_option_id",
+        "pricing_model",
+        "currency"
+      ],
+      "title": "CPCV Pricing Option",
+      "type": "object"
+    },
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Cost Per View (at publisher-defined threshold) pricing for video/audio. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
+      "properties": {
+        "currency": {
+          "description": "ISO 4217 currency code",
+          "examples": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "eligible_adjustments": {
+          "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Categorizes how a price adjustment affects the transaction",
+            "enum": [
+              "fee",
+              "discount",
+              "commission",
+              "settlement"
+            ],
+            "enumDescriptions": {
+              "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+              "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+              "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+              "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+            },
+            "title": "Price Adjustment Kind",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "fixed_price": {
+          "description": "Fixed price per view. If present, this is fixed pricing. If absent, auction-based.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "floor_price": {
+          "description": "Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "max_bid": {
+          "default": false,
+          "deprecated": true,
+          "description": "DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.",
+          "type": "boolean"
+        },
+        "min_spend_per_package": {
+          "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+          "minimum": 0,
+          "type": "number"
+        },
+        "parameters": {
+          "additionalProperties": true,
+          "description": "CPV-specific parameters defining the view threshold",
+          "properties": {
+            "view_threshold": {
+              "oneOf": [
+                {
+                  "description": "Percentage completion threshold (0.0 to 1.0, e.g., 0.5 = 50%)",
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "additionalProperties": true,
+                  "description": "Time-based view threshold",
+                  "properties": {
+                    "duration_seconds": {
+                      "description": "Seconds of viewing required",
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "duration_seconds"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "required": [
+            "view_threshold"
+          ],
+          "type": "object"
+        },
+        "price_breakdown": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+          "properties": {
+            "adjustments": {
+              "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+              "items": {
+                "additionalProperties": true,
+                "oneOf": [
+                  {
+                    "required": [
+                      "rate"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amount"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "beneficiary": {
+                    "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Categorizes how a price adjustment affects the transaction",
+                    "enum": [
+                      "fee",
+                      "discount",
+                      "commission",
+                      "settlement"
+                    ],
+                    "enumDescriptions": {
+                      "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+                      "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+                      "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+                      "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+                    },
+                    "title": "Price Adjustment Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                    "examples": [
+                      "ad_serving",
+                      "data_targeting",
+                      "brand_safety",
+                      "volume",
+                      "negotiated",
+                      "early_booking",
+                      "agency",
+                      "intermediary",
+                      "cash_discount",
+                      "early_payment"
+                    ],
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "rate": {
+                    "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                    "exclusiveMaximum": 1,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "type": "object"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            "list_price": {
+              "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "list_price",
+            "adjustments"
+          ],
+          "title": "Price Breakdown",
+          "type": "object"
+        },
+        "price_guidance": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Optional pricing guidance for auction-based bidding",
+          "properties": {
+            "p25": {
+              "description": "25th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p50": {
+              "description": "Median of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p75": {
+              "description": "75th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p90": {
+              "description": "90th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "title": "Price Guidance",
+          "type": "object"
+        },
+        "pricing_model": {
+          "const": "cpv",
+          "description": "Cost per view at threshold",
+          "type": "string"
+        },
+        "pricing_option_id": {
+          "description": "Unique identifier for this pricing option within the product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pricing_option_id",
+        "pricing_model",
+        "currency",
+        "parameters"
+      ],
+      "title": "CPV Pricing Option",
+      "type": "object"
+    },
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Cost Per Point (Gross Rating Point) pricing for TV and audio campaigns. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
+      "properties": {
+        "currency": {
+          "description": "ISO 4217 currency code",
+          "examples": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "eligible_adjustments": {
+          "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Categorizes how a price adjustment affects the transaction",
+            "enum": [
+              "fee",
+              "discount",
+              "commission",
+              "settlement"
+            ],
+            "enumDescriptions": {
+              "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+              "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+              "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+              "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+            },
+            "title": "Price Adjustment Kind",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "fixed_price": {
+          "description": "Fixed price per rating point. If present, this is fixed pricing. If absent, auction-based.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "floor_price": {
+          "description": "Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "min_spend_per_package": {
+          "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+          "minimum": 0,
+          "type": "number"
+        },
+        "parameters": {
+          "additionalProperties": true,
+          "description": "CPP-specific parameters for demographic targeting",
+          "properties": {
+            "demographic": {
+              "description": "Target demographic code within the specified demographic_system (e.g., P18-49 for Nielsen, ABC1 Adults for BARB)",
+              "type": "string"
+            },
+            "demographic_system": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Measurement system for the demographic field. Defaults to nielsen when omitted.",
+              "enum": [
+                "nielsen",
+                "nielsen_audio",
+                "barb",
+                "agf",
+                "oztam",
+                "mediametrie",
+                "custom"
+              ],
+              "enumDescriptions": {
+                "agf": "AGF Videoforschung (Germany). Erwachsene notation + age bands. Examples: E 14-49, E 14+",
+                "barb": "BARB (UK). NRS social grade + age bands. Examples: ABC1 Adults, 16-34, Adults",
+                "custom": "Publisher-defined demographic notation",
+                "mediametrie": "Mediametrie (France). Named segments + age bands",
+                "nielsen": "Nielsen notation. Prefix: P(ersons), M(en), W(omen), A(dults), C(hildren), T(eens) + age range. Examples: P18-49, M25-54, W35+",
+                "nielsen_audio": "Nielsen Audio (US radio, formerly Arbitron). Same P/M/W/A prefix + age-range notation as Nielsen TV, measured on the PPM/diary radio panel. Examples: P25-54, A18+, W25-54",
+                "oztam": "OzTAM (Australia). Age/gender bands, 4+ measurement universe"
+              },
+              "title": "Demographic System",
+              "type": "string"
+            },
+            "min_points": {
+              "description": "Minimum GRPs/TRPs required",
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "demographic"
+          ],
+          "type": "object"
+        },
+        "price_breakdown": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+          "properties": {
+            "adjustments": {
+              "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+              "items": {
+                "additionalProperties": true,
+                "oneOf": [
+                  {
+                    "required": [
+                      "rate"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amount"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "beneficiary": {
+                    "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Categorizes how a price adjustment affects the transaction",
+                    "enum": [
+                      "fee",
+                      "discount",
+                      "commission",
+                      "settlement"
+                    ],
+                    "enumDescriptions": {
+                      "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+                      "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+                      "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+                      "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+                    },
+                    "title": "Price Adjustment Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                    "examples": [
+                      "ad_serving",
+                      "data_targeting",
+                      "brand_safety",
+                      "volume",
+                      "negotiated",
+                      "early_booking",
+                      "agency",
+                      "intermediary",
+                      "cash_discount",
+                      "early_payment"
+                    ],
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "rate": {
+                    "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                    "exclusiveMaximum": 1,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "type": "object"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            "list_price": {
+              "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "list_price",
+            "adjustments"
+          ],
+          "title": "Price Breakdown",
+          "type": "object"
+        },
+        "price_guidance": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Optional pricing guidance for auction-based bidding",
+          "properties": {
+            "p25": {
+              "description": "25th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p50": {
+              "description": "Median of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p75": {
+              "description": "75th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p90": {
+              "description": "90th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "title": "Price Guidance",
+          "type": "object"
+        },
+        "pricing_model": {
+          "const": "cpp",
+          "description": "Cost per Gross Rating Point",
+          "type": "string"
+        },
+        "pricing_option_id": {
+          "description": "Unique identifier for this pricing option within the product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pricing_option_id",
+        "pricing_model",
+        "currency",
+        "parameters"
+      ],
+      "title": "CPP Pricing Option",
+      "type": "object"
+    },
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Cost Per Acquisition pricing. Advertiser pays a fixed price when a specified conversion event occurs. The event_type field declares which event triggers billing (e.g., purchase, lead, app_install).",
+      "properties": {
+        "currency": {
+          "description": "ISO 4217 currency code",
+          "examples": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "custom_event_name": {
+          "description": "Name of the custom event when event_type is 'custom'. Required when event_type is 'custom', ignored otherwise.",
+          "type": "string"
+        },
+        "eligible_adjustments": {
+          "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Categorizes how a price adjustment affects the transaction",
+            "enum": [
+              "fee",
+              "discount",
+              "commission",
+              "settlement"
+            ],
+            "enumDescriptions": {
+              "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+              "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+              "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+              "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+            },
+            "title": "Price Adjustment Kind",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "event_source_id": {
+          "description": "When present, only events from this specific event source count toward billing. Allows different CPA rates for different sources (e.g., online vs in-store purchases). Must match an event source configured via sync_event_sources.",
+          "type": "string"
+        },
+        "event_type": {
+          "allOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Standard marketing event types for event logging, aligned with IAB ECAPI",
+              "enum": [
+                "page_view",
+                "view_content",
+                "select_content",
+                "select_item",
+                "search",
+                "share",
+                "add_to_cart",
+                "remove_from_cart",
+                "viewed_cart",
+                "add_to_wishlist",
+                "initiate_checkout",
+                "add_payment_info",
+                "purchase",
+                "refund",
+                "lead",
+                "qualify_lead",
+                "close_convert_lead",
+                "disqualify_lead",
+                "complete_registration",
+                "subscribe",
+                "follow",
+                "content_view",
+                "watch_milestone",
+                "start_trial",
+                "app_install",
+                "app_launch",
+                "contact",
+                "schedule",
+                "donate",
+                "submit_application",
+                "custom"
+              ],
+              "enumDescriptions": {
+                "add_payment_info": "User added payment information",
+                "add_to_cart": "User added an item to cart",
+                "add_to_wishlist": "User added an item to a wishlist",
+                "app_install": "User installed an application",
+                "app_launch": "User launched an application",
+                "close_convert_lead": "Lead converted to a customer or closed deal",
+                "complete_registration": "User completed account registration",
+                "contact": "User initiated contact (call, message, etc.)",
+                "content_view": "User meaningfully consumed a content unit, such as a watch, listen, stream, episode play, or read",
+                "custom": "Custom event type (specify in custom_event_name)",
+                "disqualify_lead": "Lead disqualified or marked as not viable",
+                "donate": "User made a donation",
+                "follow": "User made a free, durable opt-in to an account, channel, feed, list, podcast, or similar owned property",
+                "initiate_checkout": "User started checkout process",
+                "lead": "User expressed interest (form submission, signup, etc.)",
+                "page_view": "User viewed a page",
+                "purchase": "User completed a purchase",
+                "qualify_lead": "Lead qualified by sales or scoring criteria",
+                "refund": "A purchase was fully or partially refunded (adjusts ROAS)",
+                "remove_from_cart": "User removed an item from cart",
+                "schedule": "User scheduled an appointment or event",
+                "search": "User performed a search",
+                "select_content": "User selected or clicked on content (article, video, etc.)",
+                "select_item": "User selected a specific product or item from a list",
+                "share": "User shared content via social or messaging",
+                "start_trial": "User started a free trial",
+                "submit_application": "User submitted an application (loan, job, etc.)",
+                "subscribe": "User started a paid subscription or paid membership",
+                "view_content": "User viewed specific content (product, article, etc.)",
+                "viewed_cart": "User viewed their shopping cart",
+                "watch_milestone": "User reached a content progress threshold, such as 25%, 50%, 75%, 100%, or a seconds-viewed milestone"
+              },
+              "title": "Event Type",
+              "type": "string"
+            }
+          ],
+          "description": "The conversion event type that triggers billing (e.g., purchase, lead, app_install)"
+        },
+        "fixed_price": {
+          "description": "Fixed price per acquisition in the specified currency",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "min_spend_per_package": {
+          "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+          "minimum": 0,
+          "type": "number"
+        },
+        "price_breakdown": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+          "properties": {
+            "adjustments": {
+              "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+              "items": {
+                "additionalProperties": true,
+                "oneOf": [
+                  {
+                    "required": [
+                      "rate"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amount"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "beneficiary": {
+                    "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Categorizes how a price adjustment affects the transaction",
+                    "enum": [
+                      "fee",
+                      "discount",
+                      "commission",
+                      "settlement"
+                    ],
+                    "enumDescriptions": {
+                      "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+                      "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+                      "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+                      "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+                    },
+                    "title": "Price Adjustment Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                    "examples": [
+                      "ad_serving",
+                      "data_targeting",
+                      "brand_safety",
+                      "volume",
+                      "negotiated",
+                      "early_booking",
+                      "agency",
+                      "intermediary",
+                      "cash_discount",
+                      "early_payment"
+                    ],
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "rate": {
+                    "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                    "exclusiveMaximum": 1,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "type": "object"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            "list_price": {
+              "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "list_price",
+            "adjustments"
+          ],
+          "title": "Price Breakdown",
+          "type": "object"
+        },
+        "pricing_model": {
+          "const": "cpa",
+          "description": "Cost per acquisition (conversion event)",
+          "type": "string"
+        },
+        "pricing_option_id": {
+          "description": "Unique identifier for this pricing option within the product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pricing_option_id",
+        "pricing_model",
+        "event_type",
+        "currency",
+        "fixed_price"
+      ],
+      "title": "CPA Pricing Option",
+      "type": "object"
+    },
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "required": [
+                "custom_event_name"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "custom"
+              }
+            },
+            "required": [
+              "event_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "custom_event_name"
+            ]
+          }
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "fixed_price"
+                ]
+              },
+              {
+                "required": [
+                  "floor_price"
+                ]
+              },
+              {
+                "required": [
+                  "price_guidance"
+                ]
+              },
+              {
+                "required": [
+                  "max_bid"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "description": "Revenue-share pricing. The advertiser pays a fixed decimal commission rate applied to settled commissionable_value attributed to the declared conversion event and event source. Spend is rounded once to the ISO 4217 minor-unit precision of currency after multiplication: spend = round_currency(commissionable_value \u00d7 commission_rate). This is contingent pricing, not fixed-unit pricing or an auction.",
+      "properties": {
+        "commission_basis_description": {
+          "description": "Human-readable definition of inclusions, exclusions, and return or cancellation treatment used by the billing authority to calculate commissionable_value.",
+          "maxLength": 1000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "commission_rate": {
+          "description": "Decimal proportion applied to commissionable_value. For example, 0.04 means 4%.",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "currency": {
+          "description": "ISO 4217 currency code for commissionable_value and resulting spend",
+          "examples": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "custom_event_name": {
+          "description": "Name of the custom event when event_type is custom. Required for custom events and absent otherwise.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_source_id": {
+          "description": "Event source whose attribution is authoritative for billing. Must match an event source configured through sync_event_sources.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "event_type": {
+          "allOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Standard marketing event types for event logging, aligned with IAB ECAPI",
+              "enum": [
+                "page_view",
+                "view_content",
+                "select_content",
+                "select_item",
+                "search",
+                "share",
+                "add_to_cart",
+                "remove_from_cart",
+                "viewed_cart",
+                "add_to_wishlist",
+                "initiate_checkout",
+                "add_payment_info",
+                "purchase",
+                "refund",
+                "lead",
+                "qualify_lead",
+                "close_convert_lead",
+                "disqualify_lead",
+                "complete_registration",
+                "subscribe",
+                "follow",
+                "content_view",
+                "watch_milestone",
+                "start_trial",
+                "app_install",
+                "app_launch",
+                "contact",
+                "schedule",
+                "donate",
+                "submit_application",
+                "custom"
+              ],
+              "enumDescriptions": {
+                "add_payment_info": "User added payment information",
+                "add_to_cart": "User added an item to cart",
+                "add_to_wishlist": "User added an item to a wishlist",
+                "app_install": "User installed an application",
+                "app_launch": "User launched an application",
+                "close_convert_lead": "Lead converted to a customer or closed deal",
+                "complete_registration": "User completed account registration",
+                "contact": "User initiated contact (call, message, etc.)",
+                "content_view": "User meaningfully consumed a content unit, such as a watch, listen, stream, episode play, or read",
+                "custom": "Custom event type (specify in custom_event_name)",
+                "disqualify_lead": "Lead disqualified or marked as not viable",
+                "donate": "User made a donation",
+                "follow": "User made a free, durable opt-in to an account, channel, feed, list, podcast, or similar owned property",
+                "initiate_checkout": "User started checkout process",
+                "lead": "User expressed interest (form submission, signup, etc.)",
+                "page_view": "User viewed a page",
+                "purchase": "User completed a purchase",
+                "qualify_lead": "Lead qualified by sales or scoring criteria",
+                "refund": "A purchase was fully or partially refunded (adjusts ROAS)",
+                "remove_from_cart": "User removed an item from cart",
+                "schedule": "User scheduled an appointment or event",
+                "search": "User performed a search",
+                "select_content": "User selected or clicked on content (article, video, etc.)",
+                "select_item": "User selected a specific product or item from a list",
+                "share": "User shared content via social or messaging",
+                "start_trial": "User started a free trial",
+                "submit_application": "User submitted an application (loan, job, etc.)",
+                "subscribe": "User started a paid subscription or paid membership",
+                "view_content": "User viewed specific content (product, article, etc.)",
+                "viewed_cart": "User viewed their shopping cart",
+                "watch_milestone": "User reached a content progress threshold, such as 25%, 50%, 75%, 100%, or a seconds-viewed milestone"
+              },
+              "title": "Event Type",
+              "type": "string"
+            }
+          ],
+          "description": "Conversion event whose attributed value may become commissionable (for example purchase or subscribe)"
+        },
+        "pricing_model": {
+          "const": "revenue_share",
+          "description": "Percentage commission on settled attributed conversion value",
+          "type": "string"
+        },
+        "pricing_option_id": {
+          "description": "Unique identifier for this pricing option within the product",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "pricing_option_id",
+        "pricing_model",
+        "event_type",
+        "event_source_id",
+        "commission_rate",
+        "currency",
+        "commission_basis_description"
+      ],
+      "title": "Revenue Share Pricing Option",
+      "type": "object"
+    },
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Flat rate pricing for sponsorships, takeovers, and DOOH exclusive placements. A fixed total cost regardless of delivery volume. For duration-scaled pricing (rate \u00d7 time units), use the `time` model instead. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
+      "properties": {
+        "currency": {
+          "description": "ISO 4217 currency code",
+          "examples": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "eligible_adjustments": {
+          "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Categorizes how a price adjustment affects the transaction",
+            "enum": [
+              "fee",
+              "discount",
+              "commission",
+              "settlement"
+            ],
+            "enumDescriptions": {
+              "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+              "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+              "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+              "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+            },
+            "title": "Price Adjustment Kind",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "fixed_price": {
+          "description": "Flat rate cost. If present, this is fixed pricing. If absent, auction-based.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "floor_price": {
+          "description": "Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "min_spend_per_package": {
+          "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+          "minimum": 0,
+          "type": "number"
+        },
+        "parameters": {
+          "additionalProperties": true,
+          "description": "DOOH inventory allocation parameters. Sponsorship and takeover flat_rate options omit this field entirely \u2014 only include for digital out-of-home inventory.",
+          "properties": {
+            "daypart": {
+              "description": "Named daypart for this slot (e.g., morning_commute, evening_rush)",
+              "type": "string"
+            },
+            "duration_hours": {
+              "description": "Duration of the DOOH slot in hours (e.g., 24 for a full-day takeover)",
+              "minimum": 0,
+              "type": "number"
+            },
+            "estimated_impressions": {
+              "description": "Estimated audience impressions for this slot (informational, not a delivery guarantee)",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "loop_duration_seconds": {
+              "deprecated": true,
+              "description": "Deprecated compatibility copy of the placement-level dooh_placement_attributes.loop_duration_seconds, which is the canonical source. Retained for backward compatibility; new integrations read the placement-level field. When both are present they MUST agree. A product that offers different loop durations under different prices MUST expose distinct placements or products rather than vary this compatibility copy by pricing option.",
+              "minimum": 1,
+              "type": "integer",
+              "x-adcp-validation": {
+                "spec": "docs/media-buy/advanced-topics/pricing-models.mdx#flat-rate",
+                "verifier_constraints": {
+                  "must_equal_effective_placement_field": "dooh_placement_attributes.loop_duration_seconds"
+                }
+              }
+            },
+            "loop_position": {
+              "description": "Seller-defined position label for the reserved span within the loop, such as any, first, last, or adjacent_to_content_break. This is deliberately an open string because network vocabularies differ. Consumers MUST accept unrecognized values as opaque and treat them as conveying no position guarantee the consumer understands; an unrecognized value is not a protocol error.",
+              "minLength": 1,
+              "type": "string",
+              "x-added-in": "3.2.0"
+            },
+            "min_plays_per_hour": {
+              "description": "Minimum number of plays per hour guaranteed",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "slot_span": {
+              "description": "Number of consecutive loop slots reserved by this seller-declared pre-packaged offer. Contiguity is guaranteed; position is not guaranteed unless loop_position is also present. This field does not carry a buyer-requested custom span for an offer the seller has not pre-packaged.",
+              "minimum": 1,
+              "type": "integer",
+              "x-added-in": "3.2.0"
+            },
+            "sov_percentage": {
+              "description": "Guaranteed share of voice on a 0-100 percentage scale. To compare this contracted value with delivery dooh_metrics.sov_achieved, divide sov_percentage by 100. Share is time-weighted: the sum of the reserved segment durations divided by the full loop duration. On equal-duration loops this equals the slot-count ratio.",
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            "type": {
+              "const": "dooh",
+              "description": "Discriminator identifying this as DOOH parameters",
+              "type": "string"
+            },
+            "venue_package": {
+              "description": "Named collection of DOOH venues or installed surfaces included in this buy",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "title": "DoohParameters",
+          "type": "object"
+        },
+        "price_breakdown": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+          "properties": {
+            "adjustments": {
+              "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+              "items": {
+                "additionalProperties": true,
+                "oneOf": [
+                  {
+                    "required": [
+                      "rate"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amount"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "beneficiary": {
+                    "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Categorizes how a price adjustment affects the transaction",
+                    "enum": [
+                      "fee",
+                      "discount",
+                      "commission",
+                      "settlement"
+                    ],
+                    "enumDescriptions": {
+                      "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+                      "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+                      "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+                      "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+                    },
+                    "title": "Price Adjustment Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                    "examples": [
+                      "ad_serving",
+                      "data_targeting",
+                      "brand_safety",
+                      "volume",
+                      "negotiated",
+                      "early_booking",
+                      "agency",
+                      "intermediary",
+                      "cash_discount",
+                      "early_payment"
+                    ],
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "rate": {
+                    "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                    "exclusiveMaximum": 1,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "type": "object"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            "list_price": {
+              "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "list_price",
+            "adjustments"
+          ],
+          "title": "Price Breakdown",
+          "type": "object"
+        },
+        "price_guidance": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Optional pricing guidance for auction-based bidding",
+          "properties": {
+            "p25": {
+              "description": "25th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p50": {
+              "description": "Median of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p75": {
+              "description": "75th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p90": {
+              "description": "90th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "title": "Price Guidance",
+          "type": "object"
+        },
+        "pricing_model": {
+          "const": "flat_rate",
+          "description": "Fixed cost regardless of delivery volume",
+          "type": "string"
+        },
+        "pricing_option_id": {
+          "description": "Unique identifier for this pricing option within the product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pricing_option_id",
+        "pricing_model",
+        "currency"
+      ],
+      "title": "Flat Rate Pricing Option",
+      "type": "object"
+    },
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Cost per time unit (hour, day, week, or month) - rate scales with campaign duration. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
+      "properties": {
+        "currency": {
+          "description": "ISO 4217 currency code",
+          "examples": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "eligible_adjustments": {
+          "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Categorizes how a price adjustment affects the transaction",
+            "enum": [
+              "fee",
+              "discount",
+              "commission",
+              "settlement"
+            ],
+            "enumDescriptions": {
+              "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+              "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+              "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+              "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+            },
+            "title": "Price Adjustment Kind",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "fixed_price": {
+          "description": "Cost per time unit. If present, this is fixed pricing. If absent, auction-based.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "floor_price": {
+          "description": "Minimum acceptable bid per time unit for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "min_spend_per_package": {
+          "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+          "minimum": 0,
+          "type": "number"
+        },
+        "parameters": {
+          "additionalProperties": true,
+          "description": "Time-based pricing parameters",
+          "properties": {
+            "max_duration": {
+              "description": "Maximum booking duration in time_units. Must be >= min_duration when both are present.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "min_duration": {
+              "description": "Minimum booking duration in time_units",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "time_unit": {
+              "description": "The time unit for pricing. Total cost = fixed_price \u00d7 number of time_units in the campaign flight.",
+              "enum": [
+                "hour",
+                "day",
+                "week",
+                "month"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "time_unit"
+          ],
+          "type": "object"
+        },
+        "price_breakdown": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+          "properties": {
+            "adjustments": {
+              "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+              "items": {
+                "additionalProperties": true,
+                "oneOf": [
+                  {
+                    "required": [
+                      "rate"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "amount"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "amount": {
+                    "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "beneficiary": {
+                    "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "Categorizes how a price adjustment affects the transaction",
+                    "enum": [
+                      "fee",
+                      "discount",
+                      "commission",
+                      "settlement"
+                    ],
+                    "enumDescriptions": {
+                      "commission": "Does not change the buyer's price or budget. Represents a revenue split \u2014 the portion retained by an intermediary (e.g., agency commission). Budgets are managed inclusive of commissions.",
+                      "discount": "Reduces the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., volume discounts, negotiated rates, early booking).",
+                      "fee": "Increases the price the buyer pays and the revenue the seller receives. Applied between list_price and fixed_price (e.g., ad serving fees, data/targeting surcharges, brand safety verification).",
+                      "settlement": "Does not change the committed price or budget. Applied at invoicing or payment time (e.g., cash discount for early payment). Informational for buyer agents; affects actual settlement amount."
+                    },
+                    "title": "Price Adjustment Kind",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                    "examples": [
+                      "ad_serving",
+                      "data_targeting",
+                      "brand_safety",
+                      "volume",
+                      "negotiated",
+                      "early_booking",
+                      "agency",
+                      "intermediary",
+                      "cash_discount",
+                      "early_payment"
+                    ],
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "rate": {
+                    "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                    "exclusiveMaximum": 1,
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "type": "object"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            "list_price": {
+              "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "list_price",
+            "adjustments"
+          ],
+          "title": "Price Breakdown",
+          "type": "object"
+        },
+        "price_guidance": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Optional pricing guidance for auction-based bidding",
+          "properties": {
+            "p25": {
+              "description": "25th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p50": {
+              "description": "Median of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p75": {
+              "description": "75th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            },
+            "p90": {
+              "description": "90th percentile of recent winning bids",
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "title": "Price Guidance",
+          "type": "object"
+        },
+        "pricing_model": {
+          "const": "time",
+          "description": "Cost per time unit - rate scales with campaign duration",
+          "type": "string"
+        },
+        "pricing_option_id": {
+          "description": "Unique identifier for this pricing option within the product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pricing_option_id",
+        "pricing_model",
+        "currency",
+        "parameters"
+      ],
+      "title": "Time-Based Pricing Option",
+      "type": "object"
+    }
+  ],
+  "title": "Pricing Option"
+}

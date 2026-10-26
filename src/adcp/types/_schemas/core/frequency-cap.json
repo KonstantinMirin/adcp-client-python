@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "required": [
+        "suppress"
+      ]
+    },
+    {
+      "required": [
+        "suppress_minutes"
+      ]
+    },
+    {
+      "required": [
+        "max_impressions"
+      ]
+    }
+  ],
+  "dependencies": {
+    "max_impressions": [
+      "per",
+      "window"
+    ],
+    "per": [
+      "max_impressions"
+    ],
+    "window": [
+      "max_impressions"
+    ]
+  },
+  "description": "Frequency capping settings for package-level application. Two types of frequency control can be used independently or together: suppress enforces a cooldown between consecutive exposures; max_impressions + per + window caps total exposures per entity in a time window. When both suppress and max_impressions are set, an impression is delivered only if both constraints permit it (AND semantics). At least one of suppress, suppress_minutes, or max_impressions must be set. Field location determines scope; this value has no scope discriminator. The MediaBuy root uses the narrower media-buy-frequency-cap schema, which permits maximum impressions only in 3.2.",
+  "properties": {
+    "max_impressions": {
+      "description": "Maximum number of impressions per entity per window. For duration windows, implementations typically use a rolling window. campaign applies across the owning field's full flight: the package flight for a targeting overlay, or the MediaBuy flight for a root cap.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "per": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Unit of measurement for reach and audience size metrics. Different channels and measurement providers count reach in fundamentally different units, making cross-channel comparison impossible without declaring the unit.",
+          "enum": [
+            "individuals",
+            "households",
+            "devices",
+            "accounts",
+            "cookies",
+            "custom"
+          ],
+          "enumDescriptions": {
+            "accounts": "Unique logged-in accounts (platform-specific identity).",
+            "cookies": "Unique browser cookies.",
+            "custom": "Seller-defined reach unit. Describe in ext. For a Product.identity declaration with persistent_identifier false, describe the unit in Product.identity.reach_methodology.",
+            "devices": "Unique device identifiers (IDFA, GAID, CTV device ID).",
+            "households": "Unique households or TV homes.",
+            "individuals": "Unique people. Panel-based or identity-resolved measurement."
+          },
+          "title": "Reach Unit",
+          "type": "string"
+        }
+      ],
+      "description": "Entity granularity for impression counting. Required when max_impressions is set."
+    },
+    "suppress": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+          "properties": {
+            "interval": {
+              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "unit": {
+              "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+              "enum": [
+                "seconds",
+                "minutes",
+                "hours",
+                "days",
+                "campaign"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "interval",
+            "unit"
+          ],
+          "title": "Duration",
+          "type": "object"
+        }
+      ],
+      "description": "Cooldown period between consecutive exposures to the same entity. Prevents back-to-back ad delivery (e.g. {\"interval\": 60, \"unit\": \"minutes\"} for a 1-hour cooldown). Preferred over suppress_minutes."
+    },
+    "suppress_minutes": {
+      "deprecated": true,
+      "description": "Deprecated \u2014 use suppress instead. Cooldown period in minutes between consecutive exposures to the same entity (e.g. 60 for a 1-hour cooldown).",
+      "minimum": 0,
+      "type": "number"
+    },
+    "window": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+          "properties": {
+            "interval": {
+              "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "unit": {
+              "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+              "enum": [
+                "seconds",
+                "minutes",
+                "hours",
+                "days",
+                "campaign"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "interval",
+            "unit"
+          ],
+          "title": "Duration",
+          "type": "object"
+        }
+      ],
+      "description": "Time window for the max_impressions cap (e.g. {\"interval\": 7, \"unit\": \"days\"} or {\"interval\": 1, \"unit\": \"campaign\"} for the full flight). Required when max_impressions is set."
+    }
+  },
+  "title": "Frequency Cap",
+  "type": "object"
+}

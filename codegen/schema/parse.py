@@ -528,9 +528,37 @@ def _multi_type(
     ignored for every other type.  A member sits at the node's OWN pointer and position,
     because it is the same instance re-read under one of its admissible words.
     """
+    # **The node's own ``description`` travels into every arm**, which is §6's
+    # description-authority rule read at the one position a node becomes TWO
+    # declarations.  An arm "is the same instance re-read under one of its admissible
+    # words", so the sentence the document states about that instance is the arm's too --
+    # and the ``object`` arm is the one where it is load-bearing: §4 makes an object with
+    # ``properties`` a CLASS, and a class's description is its DOCSTRING, which nothing
+    # else can supply (``Shape.description``: "pydantic cannot be left to do it,
+    # ``cls.__doc__`` is ``None`` for a subclass with no docstring of its own").
+    #
+    # Measured on ``core/delivery-metrics.json#/properties/quartile_data``, the bundle's
+    # one emitted multi-type node whose ``object`` arm declares ``properties``: without
+    # this the nested class carried no docstring and §8's comparison reported the
+    # document's own ``/description`` as *missing* at the pair, while every other nested
+    # class in the same document carries one.  The FIELD carried it either way -- §6
+    # gives PROP a ``Field(description=…)`` -- so what was dropped was the class's half
+    # and not the property's.
+    #
+    # It is not in :data:`ARM`, and deliberately: that table is "the keywords that type
+    # can carry", a per-word CONSTRAINT question, and a description is a statement about
+    # the instance that every word carries equally.  Putting it in ARM would also put it
+    # in ``carried`` and so in :attr:`nodes.MultiType.stated`, which is the set of
+    # constraint keywords the node states and which the row reports a keyword no arm can
+    # carry out of.
+    annotated = {k: v for k, v in raw.items() if k == "description"}
     members = tuple(
         parse(
-            {"type": word, **{k: v for k, v in raw.items() if k in ARM.get(word, frozenset())}},
+            {
+                "type": word,
+                **annotated,
+                **{k: v for k, v in raw.items() if k in ARM.get(word, frozenset())},
+            },
             pointer=pointer,
             position=position,
             source=source,

@@ -1035,6 +1035,26 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
             )
             if isinstance(composed, Refusal):
                 return composed
+            if isinstance(composed, compiler.Decided):
+                # §5's ``$ref`` row at CONJ answered with a TYPE rather than a class
+                # (§14 step 9): the branch's conjunct resolves to something that is not a
+                # class, so the composition declared none.  §4 makes a branch of a ROOT
+                # union a CLASS -- that is what ``isinstance(payload, Base)`` is -- so a
+                # branch whose whole content is an annotation is a SCALAR branch, which
+                # :func:`_plan`'s ``type`` check refuses by name wherever the document
+                # declares the type.  Here the document declares none, so the refusal is
+                # this one.  Measured over the 1,054 portable documents: 0 branches reach
+                # it, and ``bases=`` already puts this union's base among the conjuncts'
+                # bases, so a branch whose conjunct IS a class never arrives.
+                return Refusal(
+                    "allOf",
+                    plan.pointer,
+                    f"this branch composes {composed.type.path or 'an annotation'}, which "
+                    "section 5's $ref row at CONJ makes the branch's own TYPE rather than "
+                    "a base: section 4 makes a branch of a root union a CLASS, so there "
+                    "is no subclass for this branch to be",
+                    kind=Kind.VERDICT,
+                )
         elif isinstance(plan.parsed, nodes.Object):
             classed = compiler.lower_object(
                 plan.parsed, mod, bases=(ir.TypeRef(pointer, local=True),)

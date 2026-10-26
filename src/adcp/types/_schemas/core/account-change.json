@@ -1,0 +1,250 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Immutable metadata for one committed material change to account-scoped state recoverable through an authoritative AdCP read. The record is an ordered invalidation and audit aid, not a historical resource snapshot. Sellers MUST NOT include credentials, financial account numbers, raw audience members, raw logged events, webhook bodies, or unbounded before/after values.",
+  "examples": [
+    {
+      "data": {
+        "action": "updated",
+        "change_id": "chg_01K38G7X8ZGX9T4F1Q5W6Y2M3N",
+        "changed_paths": [
+          "/name",
+          "/assets/0"
+        ],
+        "occurred_at": "2026-08-24T11:57:41Z",
+        "origin": {
+          "connection_id": "conn_social_primary",
+          "kind": "connected_platform"
+        },
+        "recorded_at": "2026-08-24T11:58:04Z",
+        "repair": {
+          "task": "list_creatives"
+        },
+        "resource": {
+          "account_id": "acc_luma_shared",
+          "resource_id": "cr_8421",
+          "type": "creative"
+        },
+        "resource_revision": 12
+      },
+      "description": "Creative modified on a connected platform"
+    }
+  ],
+  "properties": {
+    "action": {
+      "description": "Material change action. Standard values are created, discovered, updated, status_changed, linked, unlinked, deleted, and purged. Future standard or vendor-namespaced values are allowed; receivers MUST treat unknown values as generic invalidations.",
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_.-]{0,99}$",
+      "type": "string"
+    },
+    "actor": {
+      "additionalProperties": true,
+      "description": "Optional privacy-safe actor classification. Sellers MUST omit direct personal identifiers unless the authenticated caller is authorized for them.",
+      "properties": {
+        "id": {
+          "description": "Opaque, redaction-safe actor reference.",
+          "maxLength": 255,
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "principal",
+            "operator",
+            "system",
+            "platform",
+            "unknown"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "batch_id": {
+      "description": "Optional stable identifier grouping records produced by one committed operation or one external-source ingestion batch. Each independently repairable authoritative identity still receives its own record; batch_id does not change cursor ordering or notification identity.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string"
+    },
+    "change_id": {
+      "description": "Stable seller-generated identifier for this logical change. Retries and notification re-emissions reuse this identifier.",
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+      "type": "string"
+    },
+    "changed_paths": {
+      "description": "Bounded set of RFC 6901 JSON Pointers naming material fields that changed. Values are intentionally omitted.",
+      "items": {
+        "maxLength": 500,
+        "pattern": "^(|/.*)$",
+        "type": "string"
+      },
+      "maxItems": 64,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "ext": {
+      "allOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "title": "Extension Object",
+          "type": "object"
+        }
+      ],
+      "description": "Bounded vendor extensions. The entire encoded change record, including extensions, MUST NOT exceed 64 KiB and remains subject to the same secret/PII prohibitions.",
+      "maxProperties": 20
+    },
+    "occurred_at": {
+      "description": "Upstream business time when the change occurred, only when the seller can establish it reliably.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "origin": {
+      "additionalProperties": true,
+      "description": "Server-derived origin classification. The seller MUST NOT trust caller-supplied origin or actor claims.",
+      "properties": {
+        "connection_id": {
+          "description": "Opaque, non-secret reference to the connected source when safe for this caller.",
+          "maxLength": 255,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "adcp",
+            "seller_operator",
+            "seller_system",
+            "connected_platform",
+            "unknown"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "reason": {
+      "description": "Short machine-readable reason code, when available.",
+      "maxLength": 100,
+      "pattern": "^[a-z][a-z0-9_.-]{0,99}$",
+      "type": "string"
+    },
+    "recorded_at": {
+      "description": "Time the seller committed or durably observed the change. Feed order is defined by the cursor, not by this timestamp.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "repair": {
+      "additionalProperties": true,
+      "description": "Authoritative AdCP read the receiver uses to reconcile current state. The buyer constructs safe request arguments from the structured resource identity. A deleted or legally purged resource may instead declare unavailable with a categorical reason.",
+      "properties": {
+        "available": {
+          "default": true,
+          "description": "False when deletion or compelled erasure makes the resource unavailable on the repair read.",
+          "type": "boolean"
+        },
+        "task": {
+          "description": "Allowlisted authoritative read task. This is a repair hint, never an instruction to dispatch dynamically. The buyer constructs and validates the request locally from the authenticated feed account and resource identity.",
+          "enum": [
+            "list_accounts",
+            "get_media_buys",
+            "get_media_buy_delivery",
+            "list_creatives",
+            "sync_audiences",
+            "sync_event_sources",
+            "sync_catalogs",
+            "get_account_financials",
+            "list_products",
+            "get_signals"
+          ],
+          "type": "string"
+        },
+        "unavailable_reason": {
+          "enum": [
+            "deleted",
+            "purged",
+            "legal_erasure",
+            "access_revoked",
+            "other"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "task"
+      ],
+      "type": "object"
+    },
+    "resource": {
+      "additionalProperties": true,
+      "description": "Stable identity of the changed resource. Resource types are open for forward compatibility. account_id is always present; resource_id identifies the changed entity and parent_ids supplies any IDs needed to disambiguate nested resources.",
+      "properties": {
+        "account_id": {
+          "description": "Seller-assigned account containing the resource.",
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string",
+          "x-entity": "account"
+        },
+        "parent_ids": {
+          "additionalProperties": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "description": "Additional canonical parent identifiers needed to repair a nested resource, for example media_buy_id and package_id for a creative assignment. Keys and values MUST NOT contain sensitive payload data.",
+          "maxProperties": 12,
+          "type": "object"
+        },
+        "resource_id": {
+          "description": "Canonical identifier for the resource within its type. For an account change this equals account_id.",
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string"
+        },
+        "type": {
+          "description": "Open resource-type name such as account, media_buy, package, creative, creative_assignment, delivery_report, audience, event_source, catalog, or account_financials.",
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_.-]{0,99}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "account_id",
+        "resource_id"
+      ],
+      "type": "object"
+    },
+    "resource_revision": {
+      "description": "Post-change revision exposed by the repair read, when that resource family defines one.",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "summary": {
+      "description": "Optional brief, untrusted human-readable summary. MUST NOT contain secrets or sensitive payload data.",
+      "maxLength": 500,
+      "type": "string"
+    }
+  },
+  "required": [
+    "change_id",
+    "recorded_at",
+    "resource",
+    "action",
+    "origin",
+    "repair"
+  ],
+  "title": "Account Change",
+  "type": "object"
+}

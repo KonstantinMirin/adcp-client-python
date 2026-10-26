@@ -245,27 +245,71 @@ def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
     # annotation -- which is what keeps the fact in exactly one place.  Where no type is
     # selected the format rides as an annotation on the node's own scalar type, and the
     # schema comparison grades it there.
-    if fmt is not None and fmt in mod.asserted and fmt in FORMAT_TYPES:
+    # **A ``uri`` beside another string constraint KEEPS BOTH HALVES, and the row's own
+    # fallback is what keeps them** (§14 step 9, and §5's group (a)): "The ``format`` row
+    # refuses a ``uri`` beside a string constraint because a URL type carries none.  The
+    # row's own fallback already answers it: the type is the constrained ``str`` and the
+    # ``format`` rides as ``json_schema_extra={"format": "uri"}``.  Both facts are kept
+    # and neither half narrows; what is given up is the URL type's parsing, which is not
+    # an acceptance fact."
+    #
+    # So the URL type is not SELECTED here and the two lines below -- the row's second
+    # and third choices, which every other unselected format already takes -- answer: a
+    # named alias in ``adcp.types.constraints`` for the bound, with ``format`` set, which
+    # ``render._field`` puts in ``json_schema_extra`` where §8 grades it.  The refusal
+    # this replaced said the keyword "would go missing or differ ungraded", and that was
+    # true of the URL type it was about: pydantic refuses to apply a string constraint to
+    # one, so the bound had nowhere to go.  It has somewhere to go on a ``str``.
+    #
+    # ``pattern`` is NOT in this set and the URL type still wins over it, which is §5's
+    # ``pattern`` row: "On ``format: uri`` -> selects the type instead, and the pattern
+    # stays with the schema half."  That is a different trade from this one -- there the
+    # document's two facts are a type and a regex and the row keeps the type; here they
+    # are a bound and a format and the fallback keeps both.
+    if (
+        fmt is not None
+        and fmt in mod.asserted
+        and fmt in FORMAT_TYPES
+        and (fmt not in URL_FORMATS or selects_a_url_type(fmt, constraints))
+    ):
         selected = FORMAT_TYPES[fmt](node.facts)
-        if fmt in URL_FORMATS and constraints:
-            unowned = sorted(set(constraints) - {"pattern"})
-            if unowned:
-                return Refusal(
-                    unowned[0],
-                    node.pointer,
-                    f"a format: uri node states {unowned}, and a URL type carries no "
-                    "string constraint at all -- pydantic refuses to apply one -- while "
-                    "the comparison's URL-type rows admit only a dropped pattern and "
-                    "the two bounds a URL type renders of its own, so this keyword "
-                    "would go missing or differ ungraded",
-                    kind=Kind.VERDICT,
-                )
+        if fmt in URL_FORMATS:
             return Decided(ir.TypeRef(selected))
         return Decided(ir.TypeRef(selected), constraints)
     path = constraints_module.resolve(word, constraints)
     if path is not None:
         return Decided(_named_alias(path, word, constraints, mod), format=fmt)
     return Decided(ir.TypeRef(SCALAR[word]), constraints, format=fmt)
+
+
+def selects_a_url_type(fmt: str | None, constraints: Mapping[str, Any]) -> bool:
+    """Does a ``uri`` format select a URL TYPE here, or take the row's own fallback?
+
+    §5's ``format`` row names a URL type for ``uri``; §5's group (a) says what happens
+    where the node states another string constraint beside it: "the type is the
+    constrained ``str`` and the ``format`` rides as
+    ``json_schema_extra={"format": "uri"}``.  Both facts are kept and neither half
+    narrows; what is given up is the URL type's parsing, which is not an acceptance
+    fact."  pydantic refuses to apply a string constraint to a URL type at all, so the
+    two readings are exclusive and this is the one function that says which fires.
+
+    ``pattern`` is NOT a constraint for this question, and that is §5's ``pattern`` row
+    rather than an exception here: "On ``format: uri`` → selects the type instead, and
+    the pattern stays with the schema half."  There the document's two facts are a type
+    and a regex and the row keeps the type; here they are a bound and a format and the
+    fallback keeps both.
+
+    **Declared at module scope because a CHECK asks it too.**  ``tests/test_emit.py``'s
+    format check derives the type a format selects from :data:`FORMAT_TYPES` and asserts
+    the module imports it, so it needs the same answer to "is a type selected here" --
+    and a second reading of that is how a check comes to grade a document against a
+    compiler nobody runs.  One function, two readers.
+    """
+    return (
+        fmt is not None
+        and fmt in URL_FORMATS
+        and not sorted(set(constraints) - {"pattern"})
+    )
 
 
 def null(node: nodes.Null, mod: Module) -> Decided | Refusal:
@@ -279,36 +323,54 @@ def null(node: nodes.Null, mod: Module) -> Decided | Refusal:
 def typeless(node: nodes.Typeless, mod: Module) -> Decided | Refusal:
     """No type and no kind keyword: a ``not`` over a value, or nothing.
 
-    At ROOT there are two shapes and §4's table has a row for neither, so the keyword a
-    reader needs is the one that WOULD have decided a kind: a CONDITIONAL -- read off the
-    descent column rather than named -- and otherwise nothing, reported on ``type``.  Both
-    are properties of the document and so both are VERDICTS.
+    **At ROOT the answer is §4's third root shape, and both of the refusals that stood
+    here are gone** (§14 step 9).  §4's table's last row is "a root stating no schema
+    keyword at all -> a permissive root model", and §5's group (a) gives a root stating
+    only ``if``/``then`` the same shape with the conditional as a rule.  So one arm
+    answers both, which is what the two shapes always were: a root with no kind keyword,
+    once with a rule to carry and once without.
     """
     from codegen import bundle
     from codegen.lower import rules as lower_rules
 
     if node.position is Position.ROOT:
-        kw = next((k for k in bundle.CONDITIONAL if k in node.rules), None)
-        declared = list(node.declares)
-        if kw is None:
-            return Refusal(
-                "type",
-                node.pointer,
-                f"the root declares no kind keyword at all: {declared} are data keys, "
-                "not schema keywords, so there is no type, no properties and no "
-                "composition to read -- and a class over them would state what no "
-                "part of this document declares",
-                kind=Kind.VERDICT,
-            )
-        return Refusal(
-            kw,
+        # **§4: "a root stating no schema keyword at all -> a permissive root model",
+        # and it is FAITHFUL rather than wide.**  §4's own reasoning: "Read by its own
+        # declared draft it is the empty schema: draft-07 ignores an unknown key, so the
+        # document admits every instance, and a permissive root model is faithful to it
+        # rather than wide."  Measured on ``core/asset-group-vocabulary.json``, which
+        # declares draft-07 and whose keys are not schema keywords:
+        # ``Draft7Validator`` accepts ``42``, ``"x"``, ``null``, an object and an array,
+        # so ``root: Any`` is exactly as wide as the document.  §5(b)'s row for this was
+        # MOVED to group (a) on 2026-10-26 for that reason, and it therefore carries NO
+        # approximation -- "a permissive root model over a document that constrains
+        # nothing DROPS nothing, so there is no fact to declare", and §8's
+        # *over-declared* outcome would report one.
+        #
+        # **And a root stating only ``if``/``then`` is the same shape with a RULE.**
+        # §5's group (a): "The conditional is a rule, and §2 hangs a rule with no class
+        # above it on the value's own type: the root is a permissive root model carrying
+        # ``ConditionalRequired``.  The document states a conditional and nothing else,
+        # and so does the model."  The conditional is read by the same
+        # ``lower.rules.lower`` every class's is, off the rule sources the parser
+        # classified from the table -- so there is no second reading of what an ``if``
+        # compiles to, and the root model's tuple carries it exactly as a class's would.
+        #
+        # The upstream issue a registry document earns -- the schema should say more
+        # than it does -- stands and is the issue list's, not a declaration's (§5(b)).
+        stated = compiler.rules_at(node, position=Position.ROOT)
+        refused = check_keywords(node, {*stated.screen, *lower_rules.ON_A_VALUE}, mod=mod)
+        if refused is not None:
+            return refused
+        return compiler.declare_root_model(
+            mod,
             node.pointer,
-            f"a root is exactly one kind and this one states {kw!r} (the root "
-            f"declares {declared}): a conditional describes what a rule TESTS, so "
-            "section 5 hangs it on the nearest class and this root declares no "
-            "properties for one -- there is no class, and no type, for the rule to "
-            "attach to",
-            kind=Kind.VERDICT,
+            node,
+            # §4's "permissive": the empty schema admits every instance, and ``Any`` is
+            # that set -- the same reading §4's typeless row gives a typeless node at
+            # every other position, which the last line of this function returns.
+            ir.TypeRef("typing.Any"),
+            rules=stated.rules,
         )
     # ``rules.ON_A_VALUE`` for :func:`lower`'s reason, which does not depend on the type
     # word being present: a ``not`` is a statement about which VALUES the node admits, so
