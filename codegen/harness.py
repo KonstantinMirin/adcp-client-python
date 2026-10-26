@@ -1905,6 +1905,96 @@ def _one_vocabulary(node: dict, conjunct: dict) -> tuple[dict, dict]:
     return node, conjunct
 
 
+def _vocabulary(view: Any) -> list | None:
+    """The value set ``view`` states, or ``None`` where it states none.
+
+    A ``const`` is read as the one-member set it is, which is the same rewrite
+    ``codegen.compiler._as_enum`` makes on the model side and for the same reason: a pin
+    and a vocabulary are one axis, so one reader answers ``const`` against ``const``,
+    ``const`` against ``enum`` and ``enum`` against ``enum``.  Read BEFORE
+    :func:`_one_vocabulary` collapses the axis, because that collapse drops one of the
+    two statements and the question here is which VIEW made the surviving one.
+    """
+    if not isinstance(view, dict):
+        return None
+    if "const" in view:
+        return [view["const"]]
+    members = view.get("enum")
+    return members if isinstance(members, list) else None
+
+
+def _inside(inner: list | None, outer: list | None) -> bool:
+    """Is ``inner`` a STRICT subset of ``outer``, both read as stated value sets?
+
+    Strictness is "every member of ``inner`` is in ``outer`` and some member of
+    ``outer`` is not in ``inner``" and not a length comparison, so a duplicate member --
+    which the ``enum`` row refuses at emission but which this reader meets before any
+    such check -- cannot make a set read as smaller than the one it equals.
+    """
+    if inner is None or outer is None:
+        return False
+    return all(_in_vocabulary(m, outer) for m in inner) and any(
+        not _in_vocabulary(m, inner) for m in outer
+    )
+
+
+def _described_by_the_conjunct(node: dict, conjunct: dict) -> dict:
+    """``node`` with its ``description`` stood down where the CONJUNCT states the one.
+
+    **The view that states the composed node's VALUE SET states its description**, which
+    is ``docs/plan/rebuild-plan.md`` §6's description row read where §2's intersection
+    puts it: "a composed base's loses to the document's own".  Under ``allOf`` the
+    composed node admits the intersection, and where one view's vocabulary is strictly
+    inside the other's the intersection IS that view's declaration -- so that view is
+    the one the document states at this pointer, and its description comes with it.
+    The model reads it the same way one step earlier: ``compiler._intersection`` decides
+    the field from the narrowing declaration and carries that declaration's annotations
+    (``compiler.RENDERED``), so the element type is the narrowing ``$ref``'s class and
+    its docstring is that target's description.  §9 keeps the two spellings apart and
+    requires them to agree; this is the document half of the one in the compiler.
+
+    Measured on ``core/media-buy-frequency-cap-requirement.json`` at
+    ``/properties/supported_control_modes/items``, whose base declares the element as
+    ``enums/frequency-cap-control-mode.json`` (three members, "A supported package
+    frequency-cap control shape.") and whose own overlay narrows it to
+    ``enums/media-buy-frequency-cap-control-mode.json`` (one member, "The aggregate
+    MediaBuy frequency-cap control shape supported in 3.2."): the merged node took the
+    conjunct's ``enum`` by :func:`_tighter` and kept the BASE's description, so a class
+    faithful to the narrowing declaration read as dropping a fact -- 1 ``differs`` here
+    and 1 at ``core/media-buy-support-requirements.json``, which reaches the same node
+    through a ``$ref``.
+
+    **Three gates, and each one has to be here.**
+
+    * **The conjunct must state a description.**  Silence inherits (§6 clause 3), so a
+      narrowing conjunct that says nothing to a reader leaves the base's description
+      standing rather than deleting it.  Measured: ``core/canonical-media-buy-action.json``
+      narrows ``task`` to a ``const`` and states no description of its own, and dropping
+      the base's there would make the document state none where the model states one.
+    * **The conjunct's set must be INSIDE the node's.**  Where the node is the narrower
+      view the node already states the composed declaration and its own description is
+      the answer -- 3 sites on this tree, each a response's own ``status`` pinned to one
+      member of the task-status vocabulary ``core/protocol-envelope.json`` states.
+    * **STRICTLY inside.**  Two views stating the same value set state the same
+      declaration, and then §6's default stands: the node's own wins.  That is also
+      where the other 277 sites land -- two descriptions differing on no narrowing at
+      all, over 145 pairs -- and the gap-fill's own measurement is the reason: at a
+      pointer the document declares itself, the node IS the document's own.
+
+    The axis is the VOCABULARY and not every keyword :func:`_tighter` can order.  A
+    conjunct narrowing a BOUND beside a description of its own has **0 sites** on this
+    tree, and so does one widening a vocabulary; an arm for either would be a derivation
+    matching nothing (``_restatement``'s own precedent).  ``default`` is left out for the
+    same measurement: the 7 sites where two views default a property differently are
+    all at ``neither``, where this rule does not fire.
+    """
+    if "description" not in conjunct:
+        return node
+    if not _inside(_vocabulary(conjunct), _vocabulary(node)):
+        return node
+    return {k: v for k, v in node.items() if k != "description"}
+
+
 def _tighter(keyword: str, node: Any, conjunct: Any) -> Any:
     """The INTERSECTION of two views of one keyword, or :data:`_UNDECIDED`.
 
@@ -1955,19 +2045,28 @@ def _composed(doc: Any, depth: int = 0) -> Any:
       node, and ``compare`` folds it by calling this function again when it
       descends.  One mechanism for composition at every depth rather than a
       second rule for properties.
-    * **Every other fact fills a gap and never overrides.**  The node's own
-      declaration wins.  KNOWN CEILING: where a node and a conjunct state the
-      same ordering keyword with different bounds the effective constraint is
-      the TIGHTER one, and this reports the looser one as expected -- a false
-      failure, which is the safe direction and is visible.  Measured over 61 of
-      the 342 ``allOf``-root documents in the 3.2 bundle (smallest first, an
-      80-second budget): no ordering keyword is stated in two views at a root,
-      and of the 6 properties declared in both a root and a conjunct the only
-      keyword that ever DISAGREES is ``description`` (3 of 6), where the node
-      winning is also the right answer -- the class's field description comes
-      from the root's own declaration.  Intersecting by direction would be code
-      for a population of zero; the upgrade path is to replace the gap-fill with
-      a per-keyword intersection if a document ever collides on a bound.
+    * **A CONSTRAINING fact two views state composes to the intersection**
+      (:func:`_tighter`), and one only the conjunct states fills a gap.  That is
+      §2 in its own words -- "an enum is the intersection of the members, a bound
+      is the tighter one" -- and the keyword this function cannot order keeps the
+      node's, which is a looser expectation and so a visible false failure rather
+      than a pair that passes for nothing.
+    * **A ``description`` two views state goes with the view that states the
+      composed VALUE SET** (:func:`_described_by_the_conjunct`), which is §6's
+      "a composed base's loses to the document's own" read where §2's
+      intersection puts it.  **This bullet WAS the KNOWN CEILING and the ceiling
+      is gone.**  It read "every other fact fills a gap and never overrides, the
+      node's own declaration wins", measured over 61 of the 342 ``allOf``-root
+      documents of the 3.2 bundle at a ROOT, where "the node winning is also the
+      right answer" because at a root the node IS the document's own.  It is not
+      the node at an OVERLAY: once the conjunct's ``properties`` and ``items``
+      are stashed and folded on descent, the node at the descended pointer is
+      the BASE's declaration and the stash is the document's own, so the polarity
+      flips and the gap-fill graded the WIDER of two descriptions.  Re-measured
+      over the whole graded tree rather than at roots alone: 2 sites where a
+      conjunct both narrows the vocabulary and states a description of its own,
+      3 where the NODE is the narrower view, 277 where neither narrows, and 0
+      where the narrowing is a BOUND.
 
     **``if`` / ``then`` / ``else`` / ``not`` need no code and that is not an
     oversight.**  A conjunct holding only those states nothing unconditional
@@ -2007,6 +2106,13 @@ def _composed(doc: Any, depth: int = 0) -> Any:
         # copies the base's ``{"type": "boolean"}``, so the conjunct arrives in the
         # document's own spelling and both undoings are deleted (§9).
         c = _composed(conjunct, depth + 1)
+        # **The view that states the composed node's VALUE SET states its description**
+        # (:func:`_described_by_the_conjunct`), read BEFORE the vocabulary axis
+        # collapses: the collapse drops one of the two statements and this asks which
+        # VIEW made the surviving one.  Written as a stand-down of the node's own rather
+        # than as a second write, so the gap-fill below stays the one place a fact
+        # crosses from a conjunct to the merged node.
+        out = _described_by_the_conjunct(out, c)
         # One statement on the vocabulary axis before anything is gap-filled, so the
         # merged node cannot carry a ``const`` beside the ``enum`` it pins.
         out, c = _one_vocabulary(out, c)

@@ -905,10 +905,19 @@ NON_PASS_PAIRS: dict[str, list[str]] = {
     "comparison:model_adds_a_fact": [
         "core/requirements/catalog-field-binding.json#",
     ],
-    "comparison:model_drops_a_fact": [
-        "core/media-buy-frequency-cap-requirement.json#",
-        "core/media-buy-support-requirements.json#",
-    ],
+    # **``comparison:model_drops_a_fact`` IS GONE, and the group with it**
+    # (``adcp-client-python-10l.18``).  It held
+    # ``core/media-buy-frequency-cap-requirement.json#`` and
+    # ``core/media-buy-support-requirements.json#``, each reporting one ``differs`` on
+    # ``/properties/supported_control_modes/items/description``: ``_composed``
+    # gap-filled the description at a pointer whose node is a composed BASE's and whose
+    # stash is the document's own narrowing conjunct, so the comparison graded the
+    # WIDER of two descriptions against a class faithful to the narrower.
+    # ``harness._described_by_the_conjunct`` is §6's "a composed base's loses to the
+    # document's own" read where §2's intersection puts it, and the group empties.  A
+    # group with no pair is removed rather than left as an empty list, because
+    # ``set(by_outcome) == {"pass"} | set(NON_PASS_PAIRS)`` would then demand an
+    # outcome no pair has.
 }
 #: **THE TWO ZEROS ARE GONE, REPLACED BY :data:`COMPARISON_FACTS`, and that is row .3's
 #: doing rather than a pin being loosened.**  They were pinned at 0 beside an ``added``
@@ -7622,10 +7631,12 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
 #: purpose: a fold whose population is 0 passes for free, which is what the local-``$ref``
 #: fold's pin was doing before ``salesagent-j3k2l.28`` measured it.
 #:
-#: ``vocabulary`` is the ``const``/``enum`` axis collapse (6 sites), ``tighter`` the
-#: keyword intersection (2, both ``enum``), and ``agreed`` the resolver's conditional
-#: rewrite read as the facts its branches agree on (1).  They are counted where the fold
-#: CHANGES something, not where it is called, so a gate that stopped matching reddens.
+#: ``vocabulary`` is the ``const``/``enum`` axis collapse, ``tighter`` the keyword
+#: intersection (both sites ``enum``), and ``description`` the annotation following the
+#: view that states the composed value set.  A fourth, ``agreed`` -- the delegated
+#: resolver's conditional rewrite read as the facts its branches agree on -- went with
+#: that resolver (architecture §9).  They are counted where the fold CHANGES something,
+#: not where it is called, so a gate that stopped matching reddens.
 #: The fold names, and a FLOOR on each one's sites rather than an equality: the obligation
 #: is that none of the three has a population of zero, because a fold with no site is
 #: green for free -- which is what the local-``$ref`` fold's pin was doing before
@@ -7637,13 +7648,20 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
 #: 0 before ``adcp-client-python-10l.3``, 30 over 27 pairs as that row first measured
 #: them, and 5 over 5 pairs once the row wrote the reading §9 keeps for a mapping's
 #: ``additionalProperties: true`` (``harness._silent_about_extras``): 25 facts over 23
-#: pairs were ONE mechanism and it is cleared here rather than filed.  The 5 left are
+#: pairs were ONE mechanism and it is cleared here rather than filed.  The 5 left were
 #: the row's PRODUCT rather than a regression -- architecture §14 step 3 makes a
 #: comparison failure that appears once ``bundle.record`` is this package's own inliner a
-#: REAL FINDING, so no fold was added or kept to quiet one -- and ``NON_PASS_PAIRS``
-#: names the two mechanisms behind them.  ``test_every_class_passes_all_three_checks`` is
-#: RED on every pair here.  Asserted as a SET and not as a count, so it is exactly as
-#: strong as the zero it replaces at detecting a sixth fact.
+#: REAL FINDING, so no fold was added or kept to quiet one.
+#:
+#: **1 left of the 5.**  §14 step 5 cleared bead ``.19``'s two BRANCH pairs with
+#: ``lower_union``'s "silence inherits", and ``adcp-client-python-10l.18`` clears the
+#: two ``model_drops_a_fact`` pairs with ``harness._described_by_the_conjunct``.  Each
+#: was cleared by writing the rule §6 states, not by admitting the fact: the two counts
+#: in ``COMPOSED_FOLD_FLOORS`` and here are one measurement read from two ends.
+#: ``NON_PASS_PAIRS`` names the mechanism behind what is left, and
+#: ``test_every_class_passes_all_three_checks`` is RED on every pair here.  Asserted as
+#: a SET and not as a count, so it is exactly as strong as the zero it replaces at
+#: detecting a second fact.
 #:
 #: Each fact is written ``"<direction> <pointer>"``, so the three per-direction totals
 #: in ``test_the_harness_result_is_counted_over_the_whole_population`` are this set's
@@ -7651,13 +7669,19 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
 #: ``added``, ``missing`` and ``differs`` reddens, which a count per direction could
 #: not see.
 COMPARISON_FACTS: dict[str, list[str]] = {
-    "core/media-buy-frequency-cap-requirement.json#": [
-        "differs /properties/supported_control_modes/items/description",
-    ],
-    "core/media-buy-support-requirements.json#": [
-        "differs /properties/frequency_cap_constraints/properties/supported_control_modes"
-        "/items/description",
-    ],
+    # **``core/media-buy-frequency-cap-requirement.json#`` and
+    # ``core/media-buy-support-requirements.json#`` are GONE, which is
+    # ``adcp-client-python-10l.18`` clearing ``_composed``'s description ceiling.**  Each
+    # reported one ``differs`` -- the first at
+    # ``/properties/supported_control_modes/items/description`` and the second at the
+    # same node reached through a ``$ref``, under
+    # ``/properties/frequency_cap_constraints``.  The base declares the element as
+    # ``enums/frequency-cap-control-mode.json`` and the document's own overlay narrows it
+    # to ``enums/media-buy-frequency-cap-control-mode.json``; the gap-fill kept the
+    # BASE's description at a pointer where §6 gives it to the document's own, so a class
+    # typed by the narrowing declaration read as dropping a fact.
+    # ``harness._described_by_the_conjunct`` is the reading, and the two documents are
+    # the whole of its population on this tree.
     "core/requirements/catalog-field-binding.json#": [
         "added /type",
     ],
@@ -7697,7 +7721,16 @@ COMPARISON_FACTS: dict[str, list[str]] = {
 #: ``maximum_age``) and at ``core/media-buy-frequency-cap-requirement.json`` and
 #: ``core/media-buy-support-requirements.json``.  Neither is a number carried from
 #: anywhere: 5 and 6 are what this tree measures.
-COMPOSED_FOLD_FLOORS = {"vocabulary": 5, "tighter:enum": 6}
+#:
+#: **A THIRD READING JOINS THEM: ``description``, floored at 2**
+#: (``adcp-client-python-10l.18``).  ``_described_by_the_conjunct`` gives a
+#: ``description`` two views state to the view that states the composed VALUE SET, which
+#: is §6's "a composed base's loses to the document's own" read where §2's intersection
+#: puts it.  Its 2 sites are ``core/media-buy-frequency-cap-requirement.json`` and
+#: ``core/media-buy-support-requirements.json``, which are exactly the two pairs that
+#: left ``COMPARISON_FACTS`` -- so the floor and the facts are one measurement read from
+#: two ends, and a reading that stopped firing would redden here as well as there.
+COMPOSED_FOLD_FLOORS = {"vocabulary": 5, "tighter:enum": 6, "description": 2}
 
 
 def test_the_comparison_reads_a_composed_document_by_intersection(
@@ -7713,34 +7746,43 @@ def test_the_comparison_reads_a_composed_document_by_intersection(
     dropping an ``enum``, and stating a four-member vocabulary where its document stated
     five.
 
-    Two folds answer it, each counted here where it CHANGES the reading, and each a
+    THREE readings answer it, each counted here where it CHANGES the reading, and each a
     reading of the document's own ``allOf`` rather than of any view of it:
 
     * ``_one_vocabulary`` -- a ``const`` and the ``enum`` it pins are one axis, so the
       merged node carries the pin and not both.
     * ``_tighter`` -- a keyword both views state composes to the INTERSECTION: an enum to
       the common members, a bound to the tighter value.
+    * ``_described_by_the_conjunct`` -- a ``description`` two views state goes with the
+      view that states the composed VALUE SET, which is §6's "a composed base's loses to
+      the document's own" at the pointer where §2's intersection decides which view that
+      is.  ``adcp-client-python-10l.18``, and the last of ``_composed``'s named ceilings.
 
-    A third, ``_agreed``, was counted here and is DELETED with the delegated resolver
+    A fourth, ``_agreed``, was counted here and is DELETED with the delegated resolver
     (architecture §9): it lifted the facts an ``anyOf``'s identically-titled branches
     agreed on, and the one title was the signature of that resolver's conditional
     rewrite.  ``bundle.record`` performs no rewrite, so there are no such branches.
 
     **The counts are the point and so is their being non-zero.**  A fold with no site is
     green for free; this run states how many sites each one has and reddens if a gate
-    stops matching, if a document leaves the population, or if a third fold starts
+    stops matching, if a document leaves the population, or if a fourth fold starts
     firing.
 
     **Beside them, the comparison's own verdict over the same run, which was 0 facts in
-    all three directions and is now 30 NAMED facts.**  They are row .3's product and
-    ``NON_PASS_PAIRS`` attributes each of the three mechanisms; the set is asserted
-    rather than the count, so it is exactly as strong as the zero was at detecting a
-    thirty-first.  ``test_every_class_passes_all_three_checks`` is RED on every pair
-    behind them and stays red -- architecture §14 step 3 makes a comparison failure
-    appearing here a real finding, so nothing was added to the verifier to quiet one.
+    all three directions, is 30 NAMED facts as row .3 measured them, and is 1 here.**
+    Row .3's 5 are down to 1: ``_silent_about_extras`` cleared 25 over 23 pairs,
+    ``lower_union``'s "silence inherits" cleared the 2 BRANCH pairs of bead ``.19``, and
+    ``_described_by_the_conjunct`` clears the 2 this row names.  What is left is
+    ``core/requirements/catalog-field-binding.json#``'s ``added /type``, which
+    ``NON_PASS_PAIRS`` attributes.  The set is asserted rather than the count, so it is
+    exactly as strong as the zero was at detecting a second fact.
+    ``test_every_class_passes_all_three_checks`` is RED on the pair behind it and stays
+    red -- architecture §14 step 3 makes a comparison failure appearing here a real
+    finding, so nothing was added to the verifier to quiet one.
     """
     hits: collections.Counter[str] = collections.Counter()
     tighter, vocabulary = harness._tighter, harness._one_vocabulary
+    described = harness._described_by_the_conjunct
 
     def counted_tighter(keyword: str, node: Any, conjunct: Any) -> Any:
         answer = tighter(keyword, node, conjunct)
@@ -7754,8 +7796,15 @@ def test_the_comparison_reads_a_composed_document_by_intersection(
             hits["vocabulary"] += 1
         return left, right
 
+    def counted_described(node: dict, conjunct: dict) -> dict:
+        answer = described(node, conjunct)
+        if answer is not node:
+            hits["description"] += 1
+        return answer
+
     monkeypatch.setattr(harness, "_tighter", counted_tighter)
     monkeypatch.setattr(harness, "_one_vocabulary", counted_vocabulary)
+    monkeypatch.setattr(harness, "_described_by_the_conjunct", counted_described)
 
     pairs = graded()
     assert pairs, "no graded pair: every count below would be 0 and would say nothing"

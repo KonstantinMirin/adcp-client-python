@@ -26,6 +26,7 @@ at the node.  The agreeing cases are the short half of the file.
 
 from __future__ import annotations
 
+import copy
 from typing import Annotated, Any, Literal
 
 import pytest
@@ -956,3 +957,259 @@ def test_a_model_that_TYPES_a_mapping_whose_document_says_true_is_still_reported
 
     res = graded(holder({"type": "object", "additionalProperties": True}), TypedMapping)
     assert "/properties/v/additionalProperties" in keys(res.added), res
+
+
+# --------------------------------------------------------------------------- #
+# reading six: a `description` two views state goes with the view that states the
+# composed VALUE SET (adcp-client-python-10l.18)
+#
+# `_composed` folds a conjunct by GAP-FILL for every fact `_tighter` cannot order, and
+# `description` is one of those: the node's own won and the conjunct's was dropped.  At
+# a ROOT that is the right answer and the measurement that justified it was taken there
+# -- the node IS the document's own declaration and a conjunct is a composed base's, so
+# §6's "a composed base's loses to the document's own" and "the node's own wins" are the
+# same sentence.
+#
+# They are opposite sentences at an OVERLAY.  A conjunct's `properties` and `items` are
+# stashed as an `allOf` on the merged node and folded again on descent, so at the
+# descended pointer the NODE is the base's declaration and the STASH is the document's
+# own narrowing conjunct.  Measured on `core/media-buy-frequency-cap-requirement.json`
+# at `/properties/supported_control_modes/items`, whose base declares the element as
+# `enums/frequency-cap-control-mode.json` (three members) and whose own overlay narrows
+# it to `enums/media-buy-frequency-cap-control-mode.json` (one): the merged node took
+# the conjunct's `enum` by `_tighter` and kept the BASE's description, so a class typed
+# by the narrowing declaration read as dropping a fact.  2 pairs, 2 `differs`.
+#
+# `_described_by_the_conjunct` is the reading, and its SCOPE is the whole of its
+# correctness: it fires where the conjunct's value set is STRICTLY inside the node's and
+# the conjunct states a description, and nowhere else.  Re-measured over the graded
+# tree: 2 sites inside the scope, 3 where the node is the narrower view, 277 where
+# neither narrows, 0 where the narrowing is a bound.  So each gate is perturbed
+# separately below, and the must-REPORT half is asserted through a pair.
+# --------------------------------------------------------------------------- #
+#: The two views of one element, as the bundle writes them: a base's vocabulary and the
+#: document's own narrowing of it, each with a description of its own.
+WIDE_ELEMENT = {"type": "string", "enum": ["a", "b", "c"], "description": "the package shape"}
+NARROW_ELEMENT = {"type": "string", "enum": ["a", "b"], "description": "the aggregate shape"}
+
+
+def overlaid(base: dict, overlay: dict) -> dict:
+    """A holder declaring ``v`` in TWO conjuncts and in no ``properties`` of its own.
+
+    The measured shape, and the reason the polarity flips: the holder's own
+    ``properties`` is empty, so the first conjunct's declaration of ``v`` becomes the
+    merged node and the second arrives as the stash ``_composed`` folds on descent.  A
+    fixture that put the base in the holder's own ``properties`` would have the node be
+    the document's own and would never reach this reading.
+    """
+    root = document({"type": "string"}, {"type": "string"})
+    holder = root["definitions"]["holder"]
+    holder["properties"] = {}
+    # DEEP COPIES: ``WIDE_ELEMENT`` and ``NARROW_ELEMENT`` are module-level and are read
+    # by the scope table as well, so a fixture holding either by reference would let one
+    # test's grading decide another's -- under xdist, in an order nobody chose.
+    holder["allOf"] = [
+        {"properties": {"v": copy.deepcopy(base)}},
+        {"properties": {"v": copy.deepcopy(overlay)}},
+    ]
+    return root
+
+
+#: The live shape: an array whose ELEMENT the overlay narrows.  Written through ``items``
+#: rather than at the property itself because that is where the bundle states it, and
+#: because the ``items`` stash is a second mechanism between the document and the
+#: reading -- a test at the property alone would pass with the descent broken.
+NARROWED_ELEMENT = overlaid(
+    {"type": "array", "items": WIDE_ELEMENT}, {"type": "array", "items": NARROW_ELEMENT}
+)
+
+
+class NarrowedWithItsOwnDescription(Base):
+    v: list[Annotated[Literal["a", "b"], Field(description="the aggregate shape")]]
+
+
+class NarrowedWithTheBasesDescription(Base):
+    v: list[Annotated[Literal["a", "b"], Field(description="the package shape")]]
+
+
+class NarrowedAndSilent(Base):
+    v: list[Literal["a", "b"]]
+
+
+def test_a_class_typed_by_the_narrowing_declaration_states_the_documents_description() -> None:
+    """The live shape, as a pair: the faithful class reports nothing in any direction.
+
+    "Faithful" is the compiler's own answer here -- ``_intersection`` decides the field
+    from the narrowing declaration and carries that declaration's annotations, so the
+    element type is the narrowing target's class and its docstring is that target's
+    description.  This asserts the DOCUMENT side reaches the same reading, which is what
+    §9 requires of the two spellings it keeps apart.
+    """
+    res = graded(NARROWED_ELEMENT, NarrowedWithItsOwnDescription)
+    assert (res.added, res.missing, res.differs) == ([], [], []), res
+    # The vocabulary is graded too, and by ``_tighter`` rather than by this reading: a
+    # fold that moved the description and left the enum wide would pass the assertion
+    # above only because the model happened to say nothing about it.
+    assert res.compared, res
+
+
+def test_a_class_stating_the_WIDER_descriptions_text_is_still_reported() -> None:
+    """The must-report half, and the one the old gap-fill made green.
+
+    A class carrying the BASE's description where the document's own conjunct states
+    another is the exact pair the ceiling passed -- with the polarity reversed, since
+    the gap-fill graded against the base's text.  It reports ``differs``, which is the
+    proof the reading moved the authority rather than stopped comparing.
+    """
+    res = graded(NARROWED_ELEMENT, NarrowedWithTheBasesDescription)
+    assert "/properties/v/items/description" in keys(res.differs), res
+
+
+def test_a_class_stating_NO_description_is_still_missing_one() -> None:
+    """The other must-report half: the reading decides WHICH description the document
+    states, never whether it states one.  A class that drops it entirely is ``missing``.
+    """
+    res = graded(NARROWED_ELEMENT, NarrowedAndSilent)
+    assert "/properties/v/items/description" in keys(res.missing), res
+
+
+#: Every gate of :func:`_described_by_the_conjunct`, perturbed ONE AT A TIME against the
+#: shape above, with the reason the reading must not fire.  Asserted on the function and
+#: not through a pair: a pair that happens to report says nothing about which gate held,
+#: and three of these perturbations leave a pair green for a different reason.
+OUTSIDE_THE_SCOPE: list[tuple[dict, dict, str]] = [
+    (
+        WIDE_ELEMENT,
+        {"type": "string", "enum": ["a", "b"]},
+        "the conjunct states NO description, and silence inherits (§6 clause 3): "
+        "core/canonical-media-buy-action.json narrows task to a const and says nothing "
+        "to a reader, where deleting the base's text would make the document state none",
+    ),
+    (
+        NARROW_ELEMENT,
+        WIDE_ELEMENT,
+        "the NODE is the narrower view, so the node already states the composed "
+        "declaration and its own description is the answer -- 3 sites on the tree",
+    ),
+    (
+        WIDE_ELEMENT,
+        {"type": "string", "enum": ["c", "b", "a"], "description": "a reordering"},
+        "the two state the SAME value set in a different order, so neither narrows and "
+        "§6's default stands: the node's own wins",
+    ),
+    (
+        WIDE_ELEMENT,
+        {"type": "string", "enum": ["b", "c", "d"], "description": "an overlap"},
+        "the sets OVERLAP and neither contains the other, so no view states the "
+        "intersection and there is nothing to inherit an annotation from",
+    ),
+    (
+        WIDE_ELEMENT,
+        {"type": "string", "enum": ["x"], "description": "a disjoint pin"},
+        "the sets are DISJOINT -- an empty intersection, which is the emitter's refusal "
+        "to make, so the pair must report rather than be regraded",
+    ),
+    (
+        {"type": "integer", "minimum": 0, "description": "the base's bound"},
+        {"type": "integer", "minimum": 3, "description": "a tighter bound"},
+        "the narrowing is a BOUND and not a vocabulary: 0 sites on the tree, and an arm "
+        "for it would be a derivation matching nothing",
+    ),
+    (
+        {"type": "string", "description": "the base's text"},
+        {"minLength": 3, "description": "a tighter length"},
+        "neither view states a value set at all, so the axis this reading is about is "
+        "not in play",
+    ),
+    (
+        {"type": "string", "enum": ["a", "a", "b"], "description": "a duplicated member"},
+        {"type": "string", "enum": ["a", "b"], "description": "the same two members"},
+        "the conjunct's set EQUALS the node's and only a duplicate makes it look "
+        "smaller, so strictness is membership and never a length",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("node", "conjunct", "why"),
+    OUTSIDE_THE_SCOPE,
+    # UNDERSCORES and not the hyphens the ids above this section use: every gate here is
+    # selected by name from ``perturb_composed_description.sh``, and ``pytest -k`` reads a
+    # hyphen as part of its expression grammar rather than as part of a word -- so a
+    # hyphenated id selects NO test and the perturbation script scores a dead guard as a
+    # live one.  Measured: three cases printed "STAYED GREEN" with no test having run.
+    ids=[
+        "conjunct_silent",
+        "node_is_narrower",
+        "same_set_reordered",
+        "overlapping",
+        "disjoint",
+        "bound_narrows",
+        "no_vocabulary",
+        "duplicate_member",
+    ],
+)
+def test_the_description_reading_fires_on_NOTHING_outside_its_shape(
+    node: dict, conjunct: dict, why: str
+) -> None:
+    """The control, and the whole of this reading's correctness.
+
+    It replaced a gap-fill whose answer was right at 277 of 282 sites, so a gate that
+    widened by one case would re-grade a description the document does state at its own
+    pointer -- and the symptom is a FALSE GREEN, because the re-graded text is whatever
+    the model happens to say.  Each row is the live shape with one gate perturbed and
+    nothing else.
+    """
+    from codegen.harness import _described_by_the_conjunct  # noqa: PLC0415
+
+    assert _described_by_the_conjunct(node, conjunct) == node, why
+
+
+def test_the_reading_fires_INSIDE_its_shape_so_the_table_above_is_not_vacuous() -> None:
+    """The positive case on the same function, so the eight rows above are a scope and
+    not a predicate that answers ``node`` to everything.
+
+    Asserted as "the node's description stood down and nothing else moved": the reading
+    is written as a stand-down rather than a second write, so the gap-fill below it stays
+    the one place a fact crosses from a conjunct to the merged node.
+    """
+    from codegen.harness import _described_by_the_conjunct  # noqa: PLC0415
+
+    answer = _described_by_the_conjunct(WIDE_ELEMENT, NARROW_ELEMENT)
+    assert answer == {k: v for k, v in WIDE_ELEMENT.items() if k != "description"}, answer
+
+
+def test_a_conjuncts_const_INSIDE_the_nodes_enum_is_the_narrower_view() -> None:
+    """A ``const`` is read as the one-member vocabulary it is, which is the rewrite
+    ``compiler._as_enum`` makes on the model side.
+
+    Without it the pin -- the tightest narrowing a conjunct can state -- would be the one
+    shape the reading missed, and it is also the shape ``_one_vocabulary`` fires on, so
+    the vocabulary is read BEFORE that collapse drops one of the two statements.
+    """
+    from codegen.harness import _described_by_the_conjunct  # noqa: PLC0415
+
+    pin = {"type": "string", "const": "a", "description": "the aggregate shape"}
+    answer = _described_by_the_conjunct(WIDE_ELEMENT, pin)
+    assert "description" not in answer, answer
+    # And the other direction is the node's: a node that pins inside the conjunct's
+    # vocabulary is the narrower view and keeps its own text.
+    assert _described_by_the_conjunct(pin, WIDE_ELEMENT) == pin
+
+
+def test_a_default_two_views_state_differently_is_NOT_moved() -> None:
+    """The reading is scoped to ``description`` and ``default`` is left where it was.
+
+    ``compiler.RENDERED`` carries both and the authority question is the same one, but
+    the 7 sites where two views default a property differently are all outside this
+    reading's shape -- none of them narrows a vocabulary -- so an arm for ``default``
+    would be a derivation matching nothing.  Asserted so that adding one is a decision
+    rather than a side effect.
+    """
+    from codegen.harness import _described_by_the_conjunct  # noqa: PLC0415
+
+    node = {"type": "string", "enum": ["a", "b", "c"], "default": "c", "description": "d"}
+    conjunct = {"type": "string", "enum": ["a", "b"], "default": "a", "description": "e"}
+    answer = _described_by_the_conjunct(node, conjunct)
+    assert answer["default"] == "c", answer
+    assert "description" not in answer, answer
