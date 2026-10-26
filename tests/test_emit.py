@@ -87,6 +87,7 @@ from codegen.harness import (
     violated_keywords,
 )
 from codegen.lower import rules
+import populations
 
 from nodeset import claimed, partitions, ratchet
 
@@ -124,7 +125,7 @@ def enums() -> list[str]:
 def composing() -> list[str]:
     """Step 4's population: a root ``allOf`` with no union beside it."""
     return [
-        d for d in bundle.portable(BUNDLE) if bundle.composes_at_the_root(bundle.read(BUNDLE, d))
+        d for d in bundle.portable(BUNDLE) if populations.composes_at_the_root(bundle.read(BUNDLE, d))
     ]
 
 
@@ -132,10 +133,10 @@ def composing() -> list[str]:
 def union_roots() -> list[str]:
     """Step 5's population: a document whose root carries ``oneOf`` or ``anyOf``.
 
-    Read off ``bundle.union_root``, which is also the step's DISPATCH selector, so the
+    Read off ``populations.union_root``, which is also the step's DISPATCH selector, so the
     population this file counts and the population the table claims are one function.
     """
-    return [d for d in bundle.portable(BUNDLE) if bundle.union_root(bundle.read(BUNDLE, d))]
+    return [d for d in bundle.portable(BUNDLE) if populations.union_root(bundle.read(BUNDLE, d))]
 
 
 @functools.cache
@@ -198,14 +199,14 @@ def container_roots() -> list[str]:
     Also step 6's row in ``emit.ROWS``, and the two being one predicate is the
     point: a row cannot claim a document its step does not count.
     """
-    return [d for d in bundle.portable(BUNDLE) if bundle.is_container_root(bundle.read(BUNDLE, d))]
+    return [d for d in bundle.portable(BUNDLE) if populations.is_container_root(bundle.read(BUNDLE, d))]
 
 
 @functools.cache
 def object_rules() -> list[str]:
     """Step 7's population: an object root whose composition is a presence rule."""
     return [
-        d for d in bundle.portable(BUNDLE) if bundle.states_an_object_rule(bundle.read(BUNDLE, d))
+        d for d in bundle.portable(BUNDLE) if populations.states_an_object_rule(bundle.read(BUNDLE, d))
     ]
 
 
@@ -410,26 +411,43 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     }
 
 
-def test_step_sevens_population_reaches_the_object_row_and_no_other() -> None:
-    """The step-5/step-7 boundary, asserted on the selectors rather than assumed.
+#: The six root populations, in the order their steps landed.  ``tests/populations.py``
+#: is where ``docs/plan/architecture.md`` §5 puts them, and §14 step 5 deleted the table
+#: they used to double as the selectors of: "Root and non-root are one path.  There is no
+#: second table of root selectors."
+ROOT_POPULATIONS = (
+    populations.is_object_root,
+    populations.is_scalar_root,
+    populations.is_enum_root,
+    populations.composes_at_the_root,
+    populations.union_root,
+    populations.is_container_root,
+)
 
-    Step 7 adds no ROW: a rule attaches to the nearest class, so its documents are
-    lowered by the object row with ``rules.lower`` inside
-    ``compiler.lower_object``.  That only works if the object row CLAIMS them, and
+
+def test_step_sevens_population_is_counted_as_an_object_root_and_nothing_else() -> None:
+    """The step-5/step-7 boundary, asserted on the measurements rather than assumed.
+
+    Step 7 adds no lowering of its own: a rule attaches to the nearest class, so its
+    documents are lowered by the OBJECT arm with ``rules.lower`` inside
+    ``compiler.lower_object``.  That only works if the object reading reaches them, and
     it did not: a root whose ``oneOf`` holds ``required`` groups carries a union
-    keyword, so ``union_root`` claimed all 5 and ``is_object_root`` claimed none --
-    and step 5's row refuses a branch declaring no property, so step 7's whole
-    population was selected by a row that refuses it.
+    keyword, so step 5's predicate counted all 5 and step 7's reached none -- and step
+    5's lowering refuses a branch declaring no property, so step 7's whole population
+    was counted by a step that refuses it.
 
-    ``bundle.union_root`` now asks ``rules.presence_only`` as well, and this is the
-    assertion that keeps it: every document of step 7's population is claimed by
-    exactly one row, and that row is the object one.
+    ``populations.union_root`` asks ``rules.presence_only`` as well, and this is the
+    assertion that keeps it.  It read ``emit.ROWS`` before §14 step 5 deleted the table,
+    and the WALK'S own answer is asserted beside the count now -- the document EMITS, so
+    the object arm is what read it, which is the half the table used to stand in for.
     """
     assert object_rules(), "step 7's population is empty; this would be vacuous"
+    out = emit.emit(BUNDLE, object_rules())
     for document in object_rules():
         doc = bundle.read(BUNDLE, document)
-        claiming = [s.__name__ for s, _ in emit.ROWS if s(doc)]
-        assert claiming == ["is_object_root"], (document, claiming)
+        counting = [c.__name__ for c in ROOT_POPULATIONS if c(doc)]
+        assert counting == ["is_object_root"], (document, counting)
+        assert document in out.emitted, (document, out.refusals.get(document))
 
 
 def test_every_named_document_is_either_emitted_or_refused_by_name_and_keyword() -> None:
@@ -848,13 +866,20 @@ PAIRS_FLOOR = 1095
 #:    and the narrowing conjunct's is the one the model carries, so the two descriptions
 #:    differ.  It was invisible before because the delegated resolver dropped a
 #:    ``description`` at an enum node while inlining, so neither side stated one.
-#: 2. **``core/requirements/catalog-field-binding.json``, 3 pairs, which is the document
-#:    this row's emission delta added** (``adcp-client-python-10l.19``).  At the root the
-#:    model states ``type: object`` and the document nothing, because
-#:    ``harness._entails_type``'s union derivation asks each branch for a ``type`` word
-#:    and two of the branches are a LOCAL ``$ref`` it does not resolve.  At ``#/oneOf/0``
-#:    and ``#/oneOf/1`` the entry's ``description`` is ``missing``: the branch class is
-#:    named off a local reference and carries no description from its target.
+#: 2. **``core/requirements/catalog-field-binding.json``, 1 pair of the 3 it had**
+#:    (``adcp-client-python-10l.19``).  At the root the model states ``type: object``
+#:    and the document nothing, because ``harness._entails_type``'s union derivation
+#:    asks each branch for a ``type`` word and two of the branches are a LOCAL ``$ref``
+#:    it does not resolve.  That half is the VERIFIER'S and architecture §9 bars the
+#:    verifier from importing the walk, so no mechanism of the walk reaches it.
+#:
+#:    **The two BRANCH pairs are cleared, by §14 step 5** -- ``#/oneOf/0`` and
+#:    ``#/oneOf/1`` reported the entry's ``description`` ``missing``, because a branch
+#:    class named off a local reference carried none from its target.  §6 clause 3,
+#:    "silence inherits", is the rule and ``lower_union`` now reads it where
+#:    ``lower_composition`` already did: a branch with two bases IS a composition of the
+#:    union base and the target, so a branch whose own node states no description states
+#:    the one its base does.  One module changed and nothing else in the tree did.
 #: Of :data:`NON_PASS_PAIRS`'s groups, the ones whose pairs round-trip NO instance.  A
 #: pair the generator could not draw for grades 0 instances, and so does one whose dump
 #: the document refused; a COMPARISON failure grades its instance like any other pair,
@@ -873,8 +898,6 @@ NON_PASS_PAIRS: dict[str, list[str]] = {
     "comparison:model_drops_a_fact": [
         "core/media-buy-frequency-cap-requirement.json#",
         "core/media-buy-support-requirements.json#",
-        "core/requirements/catalog-field-binding.json#/oneOf/0",
-        "core/requirements/catalog-field-binding.json#/oneOf/1",
     ],
 }
 #: **THE TWO ZEROS ARE GONE, REPLACED BY :data:`COMPARISON_FACTS`, and that is row .3's
@@ -2915,7 +2938,7 @@ def test_a_union_root_is_a_base_or_an_alias_and_the_document_decides_which() -> 
        this is the clause that says the bundle has none to grade.
     """
     portable = sorted(claimed("bundle.portable", bundle.portable(BUNDLE)))
-    roots = [d for d in portable if bundle.union_root(bundle.read(BUNDLE, d))]
+    roots = [d for d in portable if populations.union_root(bundle.read(BUNDLE, d))]
     claimed("union roots in the bundle", roots, inside=portable)
 
     scalar_instance, with_a_class_branch, mixed = [], [], []
@@ -3823,66 +3846,67 @@ _NOT_OF_TYPE = {
 }
 
 
-def test_the_dispatch_table_is_unordered_so_two_rows_claiming_one_document_is_a_build_failure() -> None:
-    """§ Layout: a document selected by two rows is a build failure, not a precedence
-    puzzle.
+def test_a_root_is_exactly_one_kind_so_the_populations_do_not_overlap() -> None:
+    """**``emit.ROWS`` is deleted, so a collision is unrepresentable rather than caught.**
 
-    The rows in the table are disjoint -- which is what the union clause in
-    ``bundle.declares_its_own_root_kind`` is for: without it ``is_object_root`` and
-    ``union_root`` both claim 35 documents and ``is_scalar_root`` and ``union_root`` both
-    claim 1.  That disjointness is asserted over the whole bundle below, and the failure
-    ITSELF is graded on a table built to collide, because no bundle document can reach it.
+    This graded a build failure on a table built to collide, because no bundle document
+    could reach one.  §14 step 5 removes the table: §5 says "root and non-root are one
+    path", so a root reaches ``emit._decide`` like every other node and a dispatch on a
+    node's KIND reaches exactly one arm.  ``emit.AmbiguousRoot`` goes with it -- a build
+    failure with no way to occur is a shape the structure no longer has, not a check
+    that was dropped.
+
+    What survives is the half that was always a fact about the DOCUMENTS: the six
+    population predicates do not overlap, which is what the union clause in
+    ``populations.declares_its_own_root_kind`` is for -- without it ``is_object_root``
+    and ``union_root`` both count 35 documents and ``is_scalar_root`` and ``union_root``
+    both count 1.  Two steps counting one document is what the epic's arithmetic reads
+    off, so the measurement is worth keeping even though the dispatch cannot be
+    ambiguous.
     """
     for document in bundle.portable(BUNDLE):
         doc = bundle.read(BUNDLE, document)
-        selecting = [low.__name__ for selector, low in emit.ROWS if selector(doc)]
-        assert len(selecting) <= 1, (document, selecting)
-    # the control: every row of the table selects something, so the assertion above is not
-    # satisfied by a table nothing matches
-    claimed = {low.__name__: 0 for _, low in emit.ROWS}
+        counting = [c.__name__ for c in ROOT_POPULATIONS if c(doc)]
+        assert len(counting) <= 1, (document, counting)
+    # the control: every predicate counts something, so the assertion above is not
+    # satisfied by predicates nothing matches
+    counted = {c.__name__: 0 for c in ROOT_POPULATIONS}
     for document in bundle.portable(BUNDLE):
         doc = bundle.read(BUNDLE, document)
-        for selector, low in emit.ROWS:
-            if selector(doc):
-                claimed[low.__name__] += 1
-    assert all(claimed.values()), claimed
-
-    from codegen.lower import union
-
-    collides = ((lambda d: True, emit._object_root), (lambda d: True, emit._union_root))
-    with mock.patch.object(emit, "ROWS", collides):
-        with pytest.raises(emit.AmbiguousRoot, match="all select this root"):
-            emit.lower_document(PAGINATION, bundle.read(BUNDLE, PAGINATION))
+        for c in ROOT_POPULATIONS:
+            if c(doc):
+                counted[c.__name__] += 1
+    assert all(counted.values()), counted
 
 
-def test_a_union_lowering_is_reached_only_through_the_table_and_the_table_is_the_population() -> None:
-    """A row cannot claim a document its step does not count.
+def test_the_union_arm_and_step_fives_population_read_one_definition_of_a_union() -> None:
+    """The walk and the measurement cannot disagree about what a union root is.
 
-    The selector IS the population test -- ``bundle.union_root`` is both the dispatch row's
-    predicate and what ``union_roots()`` counts here -- and the lowering reads its keyword
-    through ``lower.union.keyword``, which is where it lives and which the selector is
-    built ON -- D13's import rule makes the lowering own the read and ``bundle`` read it.  So
-    there is no second definition of "is a union root" for the two to disagree through.
+    ``lower.union.keyword`` is where the keyword read lives, ``emit._decide``'s union arm
+    is what dispatches on it, and ``populations.union_root`` is built on that same
+    function -- so there is no second definition for the two to drift through.  It
+    asserted ``emit.ROWS`` held exactly one entry whose selector was this predicate;
+    §14 step 5 deleted the table, and what is left is the one reading plus step 7's
+    narrowing, asserted in both directions below.
     """
     from codegen.lower import rules, union
 
     assert union.keyword is not None
-    rows = [low for selector, low in emit.ROWS if selector is bundle.union_root]
-    assert rows == [emit._union_root], rows
+
     # Both arms of the loop below range over a set of nodes, and each one is named
     # non-empty: an empty bundle would run the loop zero times and say nothing about
     # either arm -- "every union root carries a keyword" and "every non-root carrying
     # one spells a presence rule" would both hold for free.
     claimed(
         "documents whose root carries oneOf or anyOf",
-        [d for d in bundle.portable(BUNDLE) if bundle.union_root(bundle.read(BUNDLE, d))],
+        [d for d in bundle.portable(BUNDLE) if populations.union_root(bundle.read(BUNDLE, d))],
     )
     claimed(
         "documents carrying the keyword without being a union root",
         [
             d
             for d in bundle.portable(BUNDLE)
-            if not bundle.union_root(bundle.read(BUNDLE, d))
+            if not populations.union_root(bundle.read(BUNDLE, d))
             and union.keyword(bundle.read(BUNDLE, d)) is not None
         ],
     )
@@ -3890,11 +3914,11 @@ def test_a_union_lowering_is_reached_only_through_the_table_and_the_table_is_the
         doc = bundle.read(BUNDLE, document)
         # The row's selector is the lowering's own read NARROWED by step 7's: a
         # combinator of ``required`` groups carries the keyword and is a rule, not a
-        # union, and ``bundle.union_root`` is where the two steps' readings meet
+        # union, and ``populations.union_root`` is where the two steps' readings meet
         # (a lowering cannot import another lowering, D13).  So the selector implies
         # the keyword and not the reverse, and the gap is exactly the presence-only
         # roots -- asserted in both directions, so neither can drift.
-        if bundle.union_root(doc):
+        if populations.union_root(doc):
             assert union.keyword(doc) is not None, document
         elif union.keyword(doc) is not None:
             kw = union.keyword(doc)
@@ -3932,7 +3956,7 @@ def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
     earlier rendering dropped at all five of this population's scalar roots
     because an alias has no docstring slot -- a ``Field(description=...)`` does.
 
-    The population is ``bundle.is_scalar_root`` itself and not ``type in SCALAR``,
+    The population is ``populations.is_scalar_root`` itself and not ``type in SCALAR``,
     because those are two different sets: all 214 of the bundle's root enums
     declare ``type: "string"``, and D2 makes them CLASSES.  Reading the row's own
     selector is what keeps this test from asserting the scalar row's outcome over
@@ -3941,7 +3965,7 @@ def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
     graded_aliases = 0
     for document in sorted({g.ref.document for g in graded()}):
         doc = bundle.read(BUNDLE, document)
-        if not bundle.is_scalar_root(doc):
+        if not populations.is_scalar_root(doc):
             continue
         tree = ast.parse(_source(document))
         assigned = {
@@ -4043,48 +4067,58 @@ def _accept_of(doc: dict, model: Any) -> Any:
     return accept
 
 
-def test_the_dispatch_table_is_a_partition_and_a_collision_is_a_build_failure() -> None:
-    """``emit.ROWS`` is unordered, so disjointness is the property that makes it work.
+def test_every_root_reaches_one_arm_and_the_populations_partition_the_bundle() -> None:
+    """**``emit.ROWS`` is deleted; both halves of this claim moved with it.**
 
-    Both halves, because the first alone passes for a table whose rows happen not to
-    overlap on THIS bundle and the second alone passes for a table nothing selects:
+    §14 step 5 removes the table of root selectors and §5's "root and non-root are one
+    path" is what replaced it -- a document is the per-node dispatch at ROOT, and a
+    dispatch on a node's KIND reaches exactly one arm.  So the two halves this asserted
+    are now a measurement and a property:
 
-    * over the whole bundle, no document is selected by more than one row -- and the
-      count selected by exactly one is asserted, so the partition is not satisfied by
-      a table that selects nothing;
-    * a document two rows DO select raises rather than picking one, which is the
-      difference between a build failure and a precedence puzzle.
+    * the MEASUREMENT.  Six predicates in ``tests/populations.py`` count six steps'
+      documents, and a root counted twice would mean two steps counted one document --
+      which is what the epic's arithmetic is read off.  The one-population half is named
+      NON-EMPTY, so it is not satisfied by predicates that count nothing.
+    * the PROPERTY.  A collision is unrepresentable, so there is no build failure left to
+      grade on a fixture.  What IS gradeable is that every root the bundle holds reaches
+      an arm and the arm answers BY NAME, which is the loop below over the roots no
+      population counts.
 
-    The second is graded on a selector added here, because the bundle has no document
-    that collides -- which is the whole claim of the first half, so a fixture is the
-    only way to reach the branch.
+    **The roots no population counts are not waiting for a row**: they are DATA
+    documents with no schema keyword at the root, conditional-only documents and a bare
+    root ``$ref``, and each is refused on the keyword its kind is read from -- at its own
+    position now, in the reference arm and in the typeless arm, rather than by
+    ``lower_document`` reporting the absence of a row.  How many there are is a function
+    of the predicates -- it was 21 before ``composes_at_the_root``'s two-reading hole
+    closed and 7 after -- so it is the MEMBERSHIP that is asserted and not the size.
     """
     documents = claimed("bundle.portable", bundle.portable(BUNDLE))
     by_count: dict[int, set[str]] = {}
     for document in sorted(documents):
         doc = bundle.read(BUNDLE, document)
-        n = sum(1 for selector, _ in emit.ROWS if selector(doc))
+        n = sum(1 for counts in ROOT_POPULATIONS if counts(doc))
         by_count.setdefault(n, set()).add(document)
     assert sorted(by_count) == [0, 1], {k: len(v) for k, v in by_count.items()}  # never two
-    # The two counts PARTITION the bundle by name, and the one-row half is asserted
-    # NON-EMPTY, which is what keeps the disjointness above from being satisfied by a
-    # table that selects nothing.  How many documents no row claims is a function of
-    # the rows -- it was 21 before ``composes_at_the_root``'s two-reading hole closed
-    # and 7 after -- so it is the membership that is asserted and not the size.
-    # **The documents no row claims are not waiting for a row**: they are DATA
-    # documents with no schema keyword at the root, conditional-only documents and a
-    # bare root ``$ref``, and ``emit.lower_document`` refuses each on the keyword its
-    # kind is read from rather than on the absence of a row.
-    partitions(documents, claimed_by_one_row=by_count[1], claimed_by_no_row=by_count[0])
-    claimed("documents exactly one row claims", by_count[1], inside=documents)
+    partitions(
+        documents,
+        counted_by_one_population=by_count[1],
+        counted_by_no_population=by_count[0],
+    )
+    claimed("documents exactly one population counts", by_count[1], inside=documents)
 
-    both = {"title": "Both", "type": "object", "properties": {"a": {"type": "string"}}}
-    assert bundle.is_object_root(both)
-    rows = (*emit.ROWS, (lambda _doc: True, emit._object_root))  # noqa: SLF001 -- the collision fixture
-    with patch.object(emit, "ROWS", rows), pytest.raises(emit.AmbiguousRoot) as caught:
-        emit.lower_document("both.json", both)
-    assert "all select this root" in str(caught.value)
-    assert "is_object_root" in str(caught.value)
+    uncounted = claimed("roots no population counts", by_count[0], inside=documents)
+    out = emit.emit(BUNDLE, sorted(uncounted))
+    for document in sorted(uncounted):
+        assert document in out.refusals, document
+        where = out.refusals[document]
+        assert where["pointer"] == "/", (document, where)
+        # The keyword is one the DOCUMENT states, or ``type`` where the root states no
+        # kind keyword at all -- which is the arm reading the document rather than
+        # reporting that nothing claimed it.
+        assert where["keyword"] == "type" or where["keyword"] in bundle.read(
+            BUNDLE, document
+        ), (document, where)
+
 
 
 def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
@@ -6299,7 +6333,7 @@ def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
 
     * **0 of the 1,054 documents carries a ``const`` at its ROOT**, so there is no
       root kind for a row to claim, nothing goes into
-      ``bundle.declares_its_own_root_kind``, and the table's partition is untouched;
+      ``populations.declares_its_own_root_kind``, and the table's partition is untouched;
     * the vocabulary beside a ``const`` is ``type`` and ``description`` and nothing
       else, which is what makes ``CLAIMS`` two keywords;
     * no node writes both an ``enum`` and a ``const``, so ``_decide``'s two branches do
@@ -6828,7 +6862,36 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     #
     # The ceiling rises to the measurement and the direction is named: this pin ADMITS
     # that 62 more documents are clearable where before it recorded them as decided.
-    assert resolved[refusal_module.Kind.DEFERRED] <= 108, resolved[refusal_module.Kind.DEFERRED]
+    # **108 -> 109 AT ``adcp-client-python-10l.5``'s SECOND HALF, A CEILING GOING UP BY
+    # ONE, AND IT IS THE THIRD INSTANCE OF THE SAME EVENT: a kind MINTED AT A RAISE SITE
+    # read off the cell instead.**  Measured on the whole portable set across §14 step
+    # 5's one-path change: emitted 769 on both trees and the SAME 769 documents, refused
+    # 285 on both trees and the SAME 285 documents, deferred 108 -> 109 and verdict
+    # 177 -> 176.
+    #
+    # **Exactly one document moved, by name**:
+    # ``creative/list-creatives-response.json`` at
+    # ``/properties/creatives/items``.  That node carries a nested ``oneOf`` beside an
+    # ``additionalProperties``, and §5's ``allOf`` row ("beside a union → the same, onto
+    # the base") plus ``nodes.Union.siblings`` put the union arm BEFORE the ``allOf``
+    # arm -- where ``emit.ROWS`` gave a composing union ROOT to the union row and
+    # ``_decide`` gave every other position to the ``allOf`` arm, so root and non-root
+    # disagreed about the precedence.  With one path the node reaches the union arm,
+    # whose sibling screen is ``compiler.check_keywords`` and therefore reads the KIND
+    # OFF THE CELL (``compiler.kind_for``); ``lower_composition``'s
+    # ``_refuse_a_combinator_of_shapes`` had passed ``Kind.VERDICT`` by hand.
+    #
+    # Both refusals name the same mechanism -- a sibling of a nested union -- so what
+    # changed is which of two spellings of it answered, and the cell's answer is the one
+    # architecture §3 decides ("a refusal's kind is derived from the cell and never
+    # chosen at a raise site").  §9's first rule makes it a DEFERRAL: ``nodes.Union``
+    # carries the siblings and §14 step 8 writes them onto the base, so the compilation
+    # is decided and merely unwritten, and a verdict would claim the obstruction belongs
+    # to the document, to pydantic or to the pointer space when it belongs to none.
+    #
+    # The ceiling rises to the measurement and the direction is named: this pin ADMITS
+    # that one more document is clearable where before it recorded it as decided.
+    assert resolved[refusal_module.Kind.DEFERRED] <= 109, resolved[refusal_module.Kind.DEFERRED]
     assert resolved[refusal_module.Kind.UNRESOLVED] <= 0, resolved[refusal_module.Kind.UNRESOLVED]
     assert {
         d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.UNRESOLVED
@@ -6871,8 +6934,15 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # nobody has written is a DEFERRAL, so re-pointing this floor DOWN is the pin
     # reporting the correction rather than absorbing it.  The emitted term is what rose
     # and nothing it counts moved the other way.
+    # **946 -> 945 at ``adcp-client-python-10l.5``'s SECOND HALF, and the -1 is the
+    # verdict term alone.**  ``accounted`` is ``emitted + VERDICTS``: emitted is 769 on
+    # both trees and the same 769 documents, and verdicts 177 -> 176.  The one document
+    # is ``creative/list-creatives-response.json``, named and attributed at the deferred
+    # ceiling above -- a kind that was minted at a raise site is read off the cell -- so
+    # re-pointing this floor DOWN is the pin reporting the correction rather than
+    # absorbing it.  Nothing stopped emitting and nothing started refusing.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 946, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 945, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
     pending = sum(resolved[k] for k in refusal_module.PENDING_KINDS)
@@ -7547,12 +7617,15 @@ COMPARISON_FACTS: dict[str, list[str]] = {
     "core/requirements/catalog-field-binding.json#": [
         "added /type",
     ],
-    "core/requirements/catalog-field-binding.json#/oneOf/0": [
-        "missing /description",
-    ],
-    "core/requirements/catalog-field-binding.json#/oneOf/1": [
-        "missing /description",
-    ],
+    # **``#/oneOf/0`` and ``#/oneOf/1`` are GONE, which is §14 step 5 clearing bead
+    # ``.19``'s ``/description`` half.**  Each reported ``missing /description``: the
+    # branch is a bare local ``$ref`` and the branch class named off it carried no
+    # description from its target.  §6 clause 3, "silence inherits", is the rule, and
+    # ``lower_union`` reads it where ``lower_composition`` already did -- a branch with
+    # two bases is a composition of the union base and the target.  The root's
+    # ``added /type`` stays, because that half is ``harness._entails_type`` not
+    # resolving a local ``$ref`` inside a branch and architecture §9 bars the verifier
+    # from importing the walk, so no mechanism of the walk reaches it.
 }
 
 

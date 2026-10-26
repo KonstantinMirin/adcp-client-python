@@ -79,7 +79,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from codegen import compiler, ir
+from codegen import bundle, compiler, ir
 from codegen.keywords import Position
 from codegen.compiler import Decided, Module
 from codegen.refusal import Kind, Refusal
@@ -310,10 +310,8 @@ def array(
         # ``{"type": "array"}`` admits a list of anything, and ``Any`` is that set --
         # the same reading D2 gives a typeless node.  A bound on the list is still
         # the list's, so it is carried.
-        return Decided(
-            ir.TypeRef(container="list", of=(ir.TypeRef("typing.Any"),)), bounds
-        )
-    if not isinstance(items, dict):
+        element = ir.TypeRef("typing.Any")
+    elif not isinstance(items, dict):
         raise Refusal(
             "items",
             pointer,
@@ -321,8 +319,33 @@ def array(
             "own schema and the shape is a fixed-length tuple, not a list[X]",
             kind=Kind.VERDICT,
         )
-    at = f"{pointer}/items"
-    element = _contents(items, at, name_hint + "Item", "the element", mod, Position.ELEM)
+    else:
+        at = f"{pointer}/items"
+        element = _contents(items, at, name_hint + "Item", "the element", mod, Position.ELEM)
+    if position is Position.ROOT:
+        # **D2's root-array ``RootModel[list[X]]`` row, refused AT THE POSITION.**
+        #
+        # It was ``containers.root``, reached through a selector
+        # (``populations.is_container_root``) and a dispatch table (``emit.ROWS``) that §5
+        # retires: "root and non-root are one path", so what ROOT changes is this arm's
+        # ANSWER and not which arm answers.  The element is lowered FIRST -- the code
+        # above, unchanged -- so the refusal names the element type the row would have
+        # wrapped rather than just the shape.
+        #
+        # The row is unimplemented because all five root arrays of this bundle refuse on
+        # a keyword of a later step: 4 carry ``uniqueItems: true`` at the root (D6's
+        # rule, step 7) and ``media-buy/product-refinement.json`` refuses inside its
+        # ``items``.  So a ``RootModel`` base would be a class no document reaches and no
+        # pair grades -- a DEFERRAL, since the obstruction is unwritten code.
+        raise Refusal(
+            "type",
+            pointer,
+            f"a root array is D2's RootModel[list[X]] row and {element.path or '<a class>'}"
+            " is the element type it would wrap; the row is unimplemented because all "
+            "five root arrays of this bundle refuse on a keyword of a later step, so no "
+            "document would grade it",
+            kind=Kind.DEFERRED,
+        )
     return Decided(ir.TypeRef(container="list", of=(element,)), bounds)
 
 
@@ -420,7 +443,11 @@ def mapping(
         # ``harness`` reads both sides into that one shape so the value schema and the
         # key expression are each GRADED rather than excused.
         expr, inner = next(iter(patterned.items()))
-        at = f"{pointer}/patternProperties/{compiler.escape_key(expr)}"
+        # ``bundle.escape_key``: §11 puts a pointer segment speller in the SOURCE
+        # layer, and §14 step 5 moved it there out of ``compiler.py``.  The ONE
+        # pointer this module spells, and the parser §4 declares is what retires it --
+        # a node's pointer is assigned when the node is built.
+        at = f"{pointer}/patternProperties/{bundle.escape_key(expr)}"
         key = _key({"pattern": expr}, f"{pointer}/patternProperties", mod)
         return Decided(
             ir.TypeRef(
@@ -667,29 +694,18 @@ def multi_type(
 
 
 # --------------------------------------------------------------------------- #
-# the dispatch row: a root that is a container
+# **the container ROOT row is gone, and §5 is why**
 # --------------------------------------------------------------------------- #
-def root(doc: dict, symbol: str, pointer: str, mod: Module, position: Position) -> str:
-    """Declare the module for a document whose ROOT is a container.
-
-    A mapping root and a multi-type root have no field to hang themselves on, so D2
-    makes each a module-level ``Annotated`` alias -- the same row a scalar root takes,
-    and for the same reason: a wrapper class would be a second name for the same node
-    (P2) and would put an object on the wire where the document carries a map.
-
-    An array root is D2's ``RootModel[list[X]]`` row and refuses, after lowering its
-    element so the refusal reports the element type the row would have wrapped.  This
-    module's docstring carries the measurement.
-    """
-    decided = compiler.decide(doc, pointer, symbol, mod, position)
-    if doc.get("type") == "array":
-        raise Refusal(
-            "type",
-            pointer,
-            f"a root array is D2's RootModel[list[X]] row and {decided.type.of[0].path or '<a '
-            'class>'} is the element type it would wrap; the row is unimplemented because "
-            "all five root arrays of this bundle refuse on a keyword of a later step, so "
-            "no document would grade it",
-            kind=Kind.DEFERRED,
-        )
-    return compiler.declare_alias(mod, symbol, doc, decided)
+# ``root`` declared the module for a document whose root is a container, and it was
+# reached through ``populations.is_container_root`` and ``emit.ROWS``.  §5 deletes both: "Root
+# and non-root are one path.  There is no second table of root selectors.  A document is
+# ``parse(raw, position=ROOT)`` followed by ``decide``.  The only thing ROOT adds is the
+# module wrapper."
+#
+# So its three halves went to the three places that own them.  A mapping root and a
+# multi-type root have no field to hang themselves on, so they stay what :func:`mapping`
+# and :func:`multi_type` already decide and ``emit.lower_document`` wraps the ANNOTATION
+# in the module-level alias -- which is the wrapper §5 names, shared with D2's
+# root-scalar row and no longer reached through a selector.  An array root is D2's
+# ``RootModel[list[X]]`` row and refuses at the position, inside :func:`array`, where the
+# element is already lowered.

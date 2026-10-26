@@ -232,42 +232,14 @@ def schema_ref(document: str, pointer: str) -> SchemaRef:
     return SchemaRef(document, f"#{pointer}")
 
 
-def escape_key(key: str) -> str:
-    """One JSON Pointer segment from a document KEY (RFC 6901's two escapes).
-
-    Named here, in the module every walk and both halves of the harness import,
-    because a pointer segment is spelled by FOUR readers -- ``bundle.nodes``,
-    ``harness._nodes``, ``harness.compare_schema``'s property descent, and the
-    mapping row's ``patternProperties`` pointer -- and the inverse is already
-    spelled once here (:func:`local_reference`'s caller).  A ``patternProperties``
-    expression is the first key in this bundle that actually NEEDS it: the
-    ``media-buy/get-products-response.json`` extension pattern is
-    ``^https?://[^@]+@sha256:[a-f0-9]{64}$``, whose two slashes would otherwise
-    read as two pointer hops and make the refusal's own pointer undereferenceable.
-    """
-    return key.replace("~", "~0").replace("/", "~1")
-
-
-def node_at(root: object, pointer: str) -> object:
-    """The node a JSON Pointer names in ``root``.  The INVERSE of :func:`escape_key`.
-
-    Beside its inverse for the same reason that one is here: a pointer segment is
-    spelled and read by more than one module, and ``bundle.record`` dereferences the
-    fragment half of a ``$ref`` while ``harness.at`` dereferences a pointer on the
-    document side.  Two readings of RFC 6901's two escapes is how an inliner and a
-    grader come to disagree about which node a reference names.
-
-    Raises ``KeyError``, ``IndexError``, ``TypeError`` or ``ValueError`` for a pointer
-    that names no node, which is what lets ``bundle.record`` turn one into a refusal
-    naming the reference rather than letting it crash the run.
-    """
-    cur = root
-    for part in pointer.lstrip("/").split("/"):
-        if part == "":
-            continue
-        part = part.replace("~1", "/").replace("~0", "~")
-        cur = cur[int(part)] if isinstance(cur, list) else cur[part]  # type: ignore[index]
-    return cur
+# **``escape_key`` and ``node_at`` are ``codegen/bundle.py``'s now.**  A JSON Pointer
+# segment speller and its inverse are the SOURCE layer's, which is where
+# ``docs/plan/architecture.md`` §11 puts them, and they sat here only because this
+# module is the one every walk and both halves of the verifier already imported.
+# That accident was the one import the VERIFIER made of the WALK, which §9 forbids
+# outright, and §14 step 5 is the row that moves the pair: the move is correct only
+# once ``bundle.py`` imports no lowering, which is what deleting the root selectors
+# did.
 
 
 # --------------------------------------------------------------------------- #
@@ -1300,7 +1272,7 @@ def _refuse_a_combinator_of_shapes(doc: dict, pointer: str, screen: frozenset[st
     and its two branches are ``{"required": [...], "not": {...}}`` -- every one of which
     constrains only which keys are present, so what sends it down this path is
     ``rules._required_only`` admitting ``{"required"}`` ALONE.  Widening that predicate
-    moves ``rules.presence_only``, which ``bundle.states_an_object_rule`` is BUILT ON as a
+    moves ``rules.presence_only``, which ``populations.states_an_object_rule`` is BUILT ON as a
     row's selector, so it is a change to a population and not to this row.
     """
     for keyword in _COMBINATORS:
@@ -1726,7 +1698,7 @@ def lower_composition(
             # through ``rules._required_groups`` today, which is the same row's cheaper
             # answer -- a ``RequiredGroups`` rule -- blocked only by
             # ``rules._required_only`` admitting ``{"required"}`` ALONE.  Widening it
-            # moves ``bundle.states_an_object_rule``, a row's selector, which is why
+            # moves ``populations.states_an_object_rule``, a row's selector, which is why
             # that is a change to a population rather than to this reader (the
             # measurement is :func:`_refuse_a_combinator_of_shapes`' docstring, taken
             # for this exact branch shape).

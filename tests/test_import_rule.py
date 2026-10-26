@@ -135,23 +135,27 @@ VERIFIER = frozenset({"harness.py", "dump_exemptions.py"})
 #: record and the document set; ``codegen.refusal`` is how a refusal the run recorded is
 #: read; ``codegen.dump_exemptions`` is the verifier's own other half.
 #:
-#: §14 step 4 moved the renderer out of ``compiler.py`` and this set did NOT shrink by
-#: it, because the renderer was never what forced the one entry §9 does not permit:
-#: ``harness.py`` takes ``compiler.escape_key`` and ``compiler.node_at`` -- a JSON Pointer
-#: segment speller and its inverse, which §11 puts in the SOURCE layer (``bundle.py``,
-#: already permitted here) and not in the walk.
+#: **``codegen.compiler`` is GONE from this set, which is §14 step 5's own clearance.**
+#: §14 step 4 moved the renderer out of ``compiler.py`` and the set did not shrink by it,
+#: because the renderer was never what forced the entry: ``harness.py`` took
+#: ``compiler.escape_key`` and ``compiler.node_at`` -- a JSON Pointer segment speller and
+#: its inverse, which §11 puts in the SOURCE layer and not in the walk.
 #:
-#: **Moving the pair to ``bundle.py`` today makes the rule greener and the coupling
-#: wider, which is why it waits.**  Measured, as the ``codegen`` modules each import
-#: pulls in: ``codegen.compiler`` reaches 4 (``compiler``, ``ir``, ``keywords``,
-#: ``refusal``), and ``codegen.bundle`` reaches 8 -- those four plus ``bundle``,
-#: ``lower``, ``lower.rules`` and ``lower.union``, because ``bundle`` imports two
+#: Row .4 measured why the obvious move was WRONG then, as the ``codegen`` modules each
+#: import pulls in: ``codegen.compiler`` reached 4 (``compiler``, ``ir``, ``keywords``,
+#: ``refusal``) and ``codegen.bundle`` reached 8 -- those four plus ``bundle``,
+#: ``lower``, ``lower.rules`` and ``lower.union``, because ``bundle`` imported two
 #: LOWERINGS for its root selectors.  §9's reason is that the verifier must not read the
-#: walk, so trading one named import for a transitive reach into ``codegen.lower`` buys
-#: the ratchet a line and costs the section its point.  **§14 step 5 is the row that
-#: retires this entry**: it deletes the root selectors from ``bundle.py`` along with
-#: ``content_key``, ``object_constrained`` and the HANDLED sets, and the pointer speller
-#: can then move to a ``bundle`` that reaches no lowering.
+#: walk, so trading one named import for a transitive reach into ``codegen.lower`` would
+#: have bought the ratchet a line and cost the section its point.
+#:
+#: §14 step 5 deletes those root selectors (``docs/plan/architecture.md`` §5: "there is
+#: no second table of root selectors"), and the two that read a lowering -- ``union_root``
+#: and ``states_an_object_rule`` -- are now ``tests/populations.py``'s.  So ``bundle.py``
+#: imports no lowering, the pair moved there, and the verifier imports no module of the
+#: walk at all.  :func:`test_the_verifier_reaches_no_module_of_the_walk_transitively` is
+#: what holds the transitive half, so the move cannot be undone by an import added to
+#: ``bundle.py`` later.
 #:
 #: A hand-written entry names itself and can be audited, where a rule wide enough to
 #: admit it would admit the walk as well: this set may SHRINK and may not grow.
@@ -161,7 +165,25 @@ VERIFIER_MAY_IMPORT = frozenset(
         "codegen.bundle",
         "codegen.refusal",
         "codegen.dump_exemptions",
+    }
+)
+
+#: The modules of the WALK, by dotted name: §9's own list, "Never ``codegen.schema``,
+#: ``codegen.lower``, ``codegen.ir``, ``codegen.render``, ``codegen.emit``", plus
+#: ``codegen.compiler`` and ``codegen.constraints``, which §12 says that module dissolves
+#: into.  Read by the transitive test below, which is what makes
+#: :data:`VERIFIER_MAY_IMPORT`'s shrink durable: a permitted module that IMPORTS one of
+#: these puts the walk back in the verifier's reach through the back door, which is
+#: exactly what the root selectors did.
+THE_WALK = frozenset(
+    {
+        "codegen.schema",
+        "codegen.lower",
+        "codegen.ir",
+        "codegen.render",
+        "codegen.emit",
         "codegen.compiler",
+        "codegen.constraints",
     }
 )
 
@@ -223,6 +245,20 @@ def _named(path: Path) -> list[str]:
     """Every module name the file at ``path`` imports, at any depth."""
     package = _package_of(path)
     return sorted({name for node in _imports(path) for name in _resolved(node, package)})
+
+
+def _module_name(path: Path) -> str:
+    """The dotted name of one module of ``codegen/``.
+
+    ``codegen/lower/union.py`` is ``codegen.lower.union`` and ``codegen/lower/__init__.py``
+    is ``codegen.lower``, which is the name an importer of the PACKAGE binds -- so the
+    transitive closure below follows a package's own ``__init__`` imports as edges of the
+    package, which is what they are.
+    """
+    parts = path.relative_to(PKG).with_suffix("").parts
+    if parts[-1] == "__init__":
+        parts = parts[:-1]
+    return ".".join(("codegen", *parts))
 
 
 def _model_layer_violations(path: Path) -> list[str]:
@@ -355,6 +391,50 @@ def test_the_verifier_does_not_import_the_walk(path: Path) -> None:
     )
 
 
+def test_the_verifier_reaches_no_module_of_the_walk_transitively() -> None:
+    """§9's reason, read through the import graph rather than through one statement.
+
+    "The verifier grades an emitted class against the document it names, and it does so
+    without reading the walk."  A test over the verifier's OWN import statements holds
+    the letter of that: it is why :data:`VERIFIER_MAY_IMPORT` is a hand-written set.  It
+    does not hold the reason, and row .4 measured exactly how -- ``codegen.bundle`` is
+    permitted and used to import ``codegen.lower.rules`` and ``codegen.lower.union`` for
+    its root selectors, so ``import codegen.bundle`` reached eight ``codegen`` modules
+    and the walk was in the verifier's reach through the back door.
+
+    §14 step 5 deletes the selectors and the pointer speller the verifier needed moves
+    into ``bundle.py``, so ``codegen.compiler`` left the permitted set.  **This is what
+    keeps it out**: a module the verifier may import must not reach a module of the walk,
+    whatever a later row adds to it.  Closed transitively over the package's own import
+    statements, so an edge added two modules away reddens here and not in a review.
+    """
+    graph = {_module_name(path): set(_named(path)) for path in _modules()}
+    reached: dict[str, set[str]] = {}
+    for start in sorted(VERIFIER_MAY_IMPORT):
+        seen: set[str] = set()
+        queue = [start]
+        while queue:
+            name = queue.pop()
+            for edge in graph.get(name, ()):  # a module with no entry is not ours
+                if edge in seen or not edge.startswith("codegen"):
+                    continue
+                seen.add(edge)
+                queue.append(edge)
+        reached[start] = seen
+    walked = {
+        start: sorted(seen & THE_WALK) for start, seen in reached.items() if seen & THE_WALK
+    }
+    assert walked == {}, (
+        f"a module §9 permits the verifier reaches the walk: {walked}; §9's reason is "
+        "that one body of code answering both halves agrees with itself by construction, "
+        "and a transitive edge makes that true without any import statement saying so"
+    )
+    # The control: the closure is NON-EMPTY, so the assertion above is not satisfied by a
+    # resolver that resolved nothing.  ``codegen.bundle`` reaches ``codegen.keywords`` and
+    # ``codegen.refusal``, which is two of the eight it reached before this row.
+    assert reached["codegen.bundle"], reached
+
+
 def test_the_rule_catches_each_spelling(tmp_path: Path) -> None:
     """The instrument, on the spellings a grep gets wrong and on the non-violations.
 
@@ -377,7 +457,7 @@ def test_the_rule_catches_each_spelling(tmp_path: Path) -> None:
             "codegen.emit"
         ],
         "from codegen import bundle\nfrom codegen.refusal import Refusal": [],
-        "from codegen.compiler import escape_key\nimport jsonschema": [],
+        "from codegen.bundle import escape_key\nimport jsonschema": [],
         "from codegen import ir, render": ["codegen.ir", "codegen.render"],
     }
     model_cases = {

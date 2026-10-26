@@ -5,15 +5,13 @@ which holds the argument parser and the refusal report and nothing else:
 
     python -m codegen --bundle schemas/cache/3.2 core/pagination-request.json
 
-The committed tree is the same command over this step's whole population, which
-is derived from the bundle and never listed by hand (``tests/test_emit.py``
-grades the tree against exactly this):
-
-    python -m codegen --bundle schemas/cache/3.2 $(python -c 'from pathlib \
-      import Path; from codegen import bundle; b = Path("schemas/cache/3.2"); \
-      print(*[d for d in bundle.portable(b) if bundle.is_leaf_object(bundle.read(b, d)) \
-      or bundle.references_a_property(bundle.read(b, d)) \
-      or bundle.composes_at_the_root(bundle.read(b, d))])')
+The committed tree is the same command over the steps' whole population, which is
+derived from the bundle and never listed by hand.  The predicates it is the union of
+live in ``tests/populations.py`` and ``tests/test_emit.py``'s ``population()`` is the
+union -- ``docs/plan/architecture.md`` §5 puts them there ("the document-set predicates
+a step's result was stated over are the tests' business and live under ``tests/``"), so
+this package names no population and the one the tree is graded against is the one the
+suite counts.
 
 A document this command does not name is still emitted when a named one
 REFERENCES it: a module cannot import a symbol from a module no run wrote, so
@@ -491,6 +489,31 @@ def _decide(
         # resolves a reference to a MODULE and a local reference names none; handing one
         # to the binder was what made "a node of the module being written has no symbol
         # to import yet" the answer for all 45 documents carrying one.
+        if position is Position.ROOT:
+            # **A root that is a bare ``$ref`` has no row in §4's table, and the one
+            # path is where that is now said.**  §5's ``$ref`` row makes a reference an
+            # IMPORT of the target's symbol, and a module whose ROOT symbol is another
+            # module's class is a second import path for that class -- which §1 refuses
+            # by name ("there is one import path per class, and never a second way to
+            # reach the same class").  The deleted ``ROWS`` said the same thing by
+            # having no selector claim such a root; this says it at the position, which
+            # is where §5 puts a position-dependent answer.
+            #
+            # A VERDICT, and the kind is the same one the table says: the obstruction
+            # is the POINTER SPACE -- the document names a node that already has a home
+            # -- and no row is waiting to be written for it.  Measured: 1 document,
+            # ``core/signal-pricing-option.json``, refused on ``$ref`` as a verdict
+            # before this row and after it.
+            raise Refusal(
+                "$ref",
+                pointer,
+                f"a root that is a bare reference to {node['$ref']!r} would bind this "
+                "module's own symbol to a class another module declares, which is a "
+                "second import path for one class (section 1); section 5's $ref row "
+                "makes a reference an import and section 4's table gives a root no such "
+                "shape",
+                kind=Kind.VERDICT,
+            )
         head, into = bundle.split_ref(node["$ref"])
         if not head:
             return compiler.local_reference(mod, into, pointer)
@@ -532,6 +555,67 @@ def _decide(
         check_keywords(node, pointer, position, lower_const.CLAIMS, mod=mod)
         return lower_const.decide(node, pointer)
 
+    if lower_union.keyword(node) is not None and not lower_rules.presence_only(node):
+        # **D2's union keyword at a node that is NOT a root**, reached here rather than
+        # through a seventh row for the ``allOf`` arm's reason above: ``ROWS`` dispatches
+        # on ROOT KIND and is a partition by it, so a keyword at a position no root
+        # selector sees has no row to be.  Measured on the 3.2 bundle, and the
+        # measurement is about the NODE'S POSITION rather than about the document:
+        # of the 32 deferred nested combinators, **0 sit at a root** -- every one is at a
+        # ``properties``, an ``items``, a ``definitions`` entry or inside a branch -- so
+        # no root selector sees any of them and a row would have claimed none.
+        #
+        # **Asked of the DOCUMENT the answer is different, which is why it is asked of
+        # the node:** 2 of the 32 documents have a root ``populations.union_root`` already
+        # claims (``core/creative-item.json``, whose combinator is at
+        # ``/oneOf/1/properties/content``, and ``core/placement-selection.json`` at
+        # ``/oneOf/0/properties/placement_refs/items``) and 14 have one
+        # ``composes_at_the_root`` claims.  A row claiming the document says nothing
+        # about the position inside it, which is the whole of why ROWS partitions by
+        # root kind.
+        #
+        # It is a TYPE and not the root row's base-plus-subclasses -- see
+        # ``lower.union.nested`` -- and ``lower_union.keyword`` is the one reading of
+        # which keyword a node carries, shared with ``populations.union_root``, so this arm
+        # and the root selector cannot disagree about what a union is.
+        #
+        # Read AFTER ``$ref``, ``enum``, ``const`` and ``allOf``, each of which closes
+        # the node ahead of it, and BEFORE ``type``: a union keyword beside a ``type``
+        # word is a CONJUNCTION with every branch, which ``nested``'s sibling screen
+        # refuses by name -- reading ``type`` first would lower the type and drop the
+        # branches, which is a model wider than its document.
+        #
+        # **``presence_only`` is the gate and it is the published step-5/step-7 boundary,
+        # not a precedence rule invented here.**  A combinator whose every branch is
+        # ``required``-only says which KEYS are present, which is D6's rule on the
+        # nearest class (``lower.rules``, reached through ``compiler.rules_at`` by the
+        # object row below) -- not a union of shapes.  ``tests/populations.py``'s
+        # ``states_an_object_rule`` asks the same predicate of a ROOT, so the two read
+        # one definition.
+        #
+        # Measured: without this gate the arm claimed every presence-only node too and
+        # **emitted fell 674 -> 620**, because a class-plus-rule became a union whose
+        # sibling ``properties`` then refused.  The predicate is read HERE, at the
+        # dispatch, because ``lower.union`` imports ``compiler`` and ``refusal`` and
+        # nothing else of this package (D13) and so cannot ask step 7's question.
+        #
+        # **ROOT and BELOW-ROOT are ONE ARM now, which is §5's "root and non-root are
+        # one path".**  They were two: ``populations.union_root`` selected the document and
+        # ``emit.ROWS`` routed it to ``lower_union.lower_union``, while this line
+        # answered every other position.  Both readings of "is this a union" were
+        # ``lower_union.keyword`` plus ``rules.presence_only`` -- the selector was built
+        # on them precisely so the two could not disagree -- so the SELECTOR was the
+        # second copy and the POSITION is what actually differs.  §5 names what ROOT
+        # adds and it is §4's own union row: a base plus one class per branch, rather
+        # than the one ``A | B`` type a nested union is.
+        if position is Position.ROOT:
+            return Decided(
+                ir.TypeRef(
+                    lower_union.lower_union(node, name_hint, pointer, mod), local=True
+                )
+            )
+        return lower_union.nested(node, pointer, name_hint, mod, position)
+
     if isinstance(node.get("allOf"), list):
         # **D7's composition, at a node that is NOT a root.**  The same lowering the
         # root reaches through :data:`ROWS` -- the conjunct list is the same list and
@@ -543,7 +627,7 @@ def _decide(
         # at a property or deeper and 0 of those 26 are claimed by
         # ``composes_at_the_root``, so a row would have claimed none of them.
         #
-        # Read BEFORE ``type``, for the reason ``bundle.declares_its_own_root_kind``
+        # Read BEFORE ``type``, for the reason ``populations.declares_its_own_root_kind``
         # reads a root's ``allOf`` before its ``type``: a draft-07 ``allOf`` applies
         # to the whole instance, so a node that composes is a composition whatever
         # else it declares, and lowering the ``properties`` without the conjuncts
@@ -569,53 +653,58 @@ def _decide(
             )
         )
 
-    if lower_union.keyword(node) is not None and not lower_rules.presence_only(node):
-        # **D2's union keyword at a node that is NOT a root**, reached here rather than
-        # through a seventh row for the ``allOf`` arm's reason above: ``ROWS`` dispatches
-        # on ROOT KIND and is a partition by it, so a keyword at a position no root
-        # selector sees has no row to be.  Measured on the 3.2 bundle, and the
-        # measurement is about the NODE'S POSITION rather than about the document:
-        # of the 32 deferred nested combinators, **0 sit at a root** -- every one is at a
-        # ``properties``, an ``items``, a ``definitions`` entry or inside a branch -- so
-        # no root selector sees any of them and a row would have claimed none.
-        #
-        # **Asked of the DOCUMENT the answer is different, which is why it is asked of
-        # the node:** 2 of the 32 documents have a root ``bundle.union_root`` already
-        # claims (``core/creative-item.json``, whose combinator is at
-        # ``/oneOf/1/properties/content``, and ``core/placement-selection.json`` at
-        # ``/oneOf/0/properties/placement_refs/items``) and 14 have one
-        # ``composes_at_the_root`` claims.  A row claiming the document says nothing
-        # about the position inside it, which is the whole of why ROWS partitions by
-        # root kind.
-        #
-        # It is a TYPE and not the root row's base-plus-subclasses -- see
-        # ``lower.union.nested`` -- and ``lower_union.keyword`` is the one reading of
-        # which keyword a node carries, shared with ``bundle.union_root``, so this arm
-        # and the root selector cannot disagree about what a union is.
-        #
-        # Read AFTER ``$ref``, ``enum``, ``const`` and ``allOf``, each of which closes
-        # the node ahead of it, and BEFORE ``type``: a union keyword beside a ``type``
-        # word is a CONJUNCTION with every branch, which ``nested``'s sibling screen
-        # refuses by name -- reading ``type`` first would lower the type and drop the
-        # branches, which is a model wider than its document.
-        #
-        # **``presence_only`` is the gate and it is the published step-5/step-7 boundary,
-        # not a precedence rule invented here.**  A combinator whose every branch is
-        # ``required``-only says which KEYS are present, which is D6's rule on the
-        # nearest class (``lower.rules``, reached through ``compiler.rules_at`` by the
-        # object row below) -- not a union of shapes.  ``bundle.states_an_object_rule``
-        # asks the same predicate of a ROOT, so the two positions read one definition.
-        #
-        # Measured: without this gate the arm claimed every presence-only node too and
-        # **emitted fell 674 -> 620**, because a class-plus-rule became a union whose
-        # sibling ``properties`` then refused.  The predicate is read HERE, at the
-        # dispatch, because ``lower.union`` imports ``compiler`` and ``refusal`` and
-        # nothing else of this package (D13) and so cannot ask step 7's question.
-        return lower_union.nested(node, pointer, name_hint, mod, position)
-
     kind = node.get("type")
 
     if kind is None:
+        if position is Position.ROOT:
+            # **The two root shapes a typeless node can be, at the one position where
+            # nothing encloses it.**
+            #
+            # ``properties`` beside no ``type`` is §5's ``type`` row -- "absent beside
+            # ``properties`` → an object, where an enclosing node applies ``type:
+            # object`` to the same instance, and refused otherwise" -- so the object
+            # lowering is what reads it, and at a ROOT nothing encloses the node, so it
+            # is that row's "refused otherwise" and ``lower_object`` says so by name.
+            # This is exactly what the deleted ``is_object_root`` claimed (``type in
+            # (None, "object")``) and what ``lower_object`` then refused, so no document
+            # moves.
+            #
+            # With no ``properties`` either, the root states no kind at all: §4's table
+            # has no row for it, and the keyword a reader needs is the one that WOULD
+            # have decided a kind.  Every kind-stating keyword but these two has been
+            # read by an arm above, so what can remain is a CONDITIONAL -- read off the
+            # table's descent column (``bundle.CONDITIONAL``) rather than named -- and
+            # otherwise nothing, which is reported on ``type``.  Both keep the kind the
+            # deleted ``lower_document`` arm minted, because both are properties of the
+            # document: measured, 4 documents, 2 on ``if`` and 2 on ``type``.
+            if "properties" in node:
+                return Decided(
+                    ir.TypeRef(
+                        lower_object(node, name_hint, pointer, mod, position), local=True
+                    )
+                )
+            kw = next((k for k in bundle.CONDITIONAL if k in node), None)
+            declared = sorted(compiler.declaring(node, position))
+            if kw is None:
+                raise Refusal(
+                    "type",
+                    pointer,
+                    f"the root declares no kind keyword at all: {declared} are data keys, "
+                    "not schema keywords, so there is no type, no properties and no "
+                    "composition to read -- and a class over them would state what no "
+                    "part of this document declares",
+                    kind=Kind.VERDICT,
+                )
+            raise Refusal(
+                kw,
+                pointer,
+                f"a root is exactly one kind and this one states {kw!r} (the root "
+                f"declares {declared}): a conditional describes what a rule TESTS, so "
+                "section 5 hangs it on the nearest class and this root declares no "
+                "properties for one -- there is no class, and no type, for the rule to "
+                "attach to",
+                kind=Kind.VERDICT,
+            )
         # ``rules.ON_A_VALUE`` for the SCALAR arm's reason, which does not depend on the
         # type word being present: a ``not`` is a statement about which VALUES the node
         # admits, so D4 leaves it to the schema half, and a node with no ``type`` has no
@@ -888,116 +977,43 @@ def exported(mod: Module, symbol: str, composed: frozenset[str] = frozenset()) -
 
 
 # --------------------------------------------------------------------------- #
-# the dispatch table (D13, and §5 Layout)
+# **the dispatch table is GONE, and the one path is what replaced it**
 # --------------------------------------------------------------------------- #
-def _object_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
-    """D2's object row: a root declaring ``properties`` is a model named by its
-    title.  ``lower_object`` is the whole of it, and it is the compiler's because a
-    nested object is the same job at a different pointer."""
-    return lower_object(doc, name, pointer, mod, Position.ROOT)
-
-
-def _scalar_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
-    """D2's root-scalar row, which steps 1 and 2 need because a reference TARGET is
-    one 100 times over: ``core/creative-revision-id.json`` is a string with
-    ``minLength``/``maxLength`` and has no field to hang itself on.  An alias, not a
-    class -- a wrapper class would be a second name for the same node (P2) and would
-    make every referencing model carry an object where the document carries a
-    string.  ``compiler.declare_alias`` holds the rest, including its known
-    ceiling."""
-    return declare_alias(mod, name, doc, decide_type(doc, pointer, name, mod, Position.ROOT))
-
-
-def _enum_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
-    """D2's enumeration row at a document root (step 3).
-
-    The same decision an inline enum gets -- :func:`decide_type` reaches
-    ``lower.enum`` too -- with the module-level binding a root needs around it,
-    because ``Enum.jinja2`` has no ``class_body_lines`` slot for the
-    ``__adcp_schema__`` line and D9 forbids writing one in afterwards.
-    """
-    check_keywords(doc, pointer, Position.ROOT, lower_enum.CLAIMS, mod=mod)
-    return compiler.bind_without_a_model(
-        mod, name, lower_enum.decide(doc, name, pointer)
-    )
-
-
-def _composing_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
-    """D7's composition at a root.  A wrapper and not the lowering itself, because a
-    row's lowering is reached with the four arguments every row takes and the POSITION
-    is the row's own fact: a root is at ROOT, and nothing derives that from a pointer.
-    """
-    return lower_composition(doc, name, pointer, mod, Position.ROOT)
-
-
-def _container_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
-    """D2's container row at a root, wrapped for :func:`_composing_root`'s reason."""
-    return lower_containers.root(doc, name, pointer, mod, Position.ROOT)
-
-
-def _union_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
-    """D2's union row (step 5): the base carrying ``BranchDispatchMixin``, one
-    subclass per branch, and the module trailer that installs the union."""
-    return lower_union.lower_union(doc, name, pointer, mod)
-
-
-#: **D2's rows, as the ``(selector, lowering)`` pairs D13 states, and the table is
-#: UNORDERED.**
-#:
-#: A selector reads a DOCUMENT and says whether this row lowers its root; the
-#: lowering declares the module and returns the symbol it exports.  A selector IS
-#: its step's population test in ``codegen.bundle``, so a row cannot come to claim
-#: a document its step does not count, and there is no second definition of a
-#: population to drift from.
-#:
-#: Unordered is the decision, not an omission.  :func:`lower_document` FAILS on a
-#: document two rows select rather than letting the table's order decide, because
-#: an ordered chain makes precedence a property of where a lane happened to insert
-#: its row -- invisible in review, and the same "last wins" this project refuses of
-#: an ``allOf`` member list.  Disjointness is a fact about the SELECTORS and belongs
-#: there: a collision is a selector defect and gets fixed in ``codegen.bundle``.
-#:
-#: Dispatch is on the ROOT KIND and not on the document's whole content, which is
-#: what makes the table a partition rather than a precedence puzzle: a root is
-#: exactly one kind.  The per-NODE walk is :func:`decide_type`, which every row
-#: shares and which reaches the nested rows; those arms are not rows here for the
-#: same reason ``decide_type`` is not one -- they are the walk, not a root's owner.
-#:
-#: ``emit`` imports each lowering, and no lowering imports ``emit`` (D13).
-ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str]], ...] = (
-    (bundle.is_object_root, _object_root),
-    (bundle.is_scalar_root, _scalar_root),
-    (bundle.is_enum_root, _enum_root),
-    (bundle.composes_at_the_root, _composing_root),
-    (bundle.union_root, _union_root),
-    (bundle.is_container_root, _container_root),
-)
-
-
-#: The keywords a root's KIND is read from, and the order an UNCLAIMED root is
-#: reported by.  **Not a dispatch table and not a precedence list**: ``ROWS`` is the
-#: dispatch and a root any row claims never reaches this.  It exists so that a root
-#: no row claims is refused on the keyword that would have decided it, rather than
-#: on the emitter's failure to find a row -- which is a fact about the emitter and
-#: tells a reader nothing about the document in front of them.
-ROOT_KIND = ("$ref", "if", "oneOf", "anyOf", "allOf", "enum", "properties", "type")
-
-#: Root keys that state no kind, so a refusal reporting what the root declares
-#: leaves them out: they are the same on every document and carry no signal.  Read off
-#: the table rather than named: a key that states no kind is one whose CELL at ROOT
-#: carries nothing and holds no subschema, which is the same question in one place.
-
-
-class AmbiguousRoot(Exception):
-    """Two D2 rows select one document.
-
-    A BUILD FAILURE and not a ``Refusal``: a refusal is the designed outcome of a
-    keyword this emitter does not lower, and this is the emitter disagreeing with
-    itself about which row owns a root kind.  Recording it as a refusal would file
-    it against the document, where it would read as the bundle's fault, and the
-    build would pass.
-    """
-
+# ``ROWS`` was six ``(selector, lowering)`` pairs over a document's ROOT KIND, with
+# ``bundle``'s six root selectors as the selectors and six wrappers here as the
+# lowerings.  ``docs/plan/architecture.md`` §5 deletes it in one sentence: **"Root and
+# non-root are one path.  There is no second table of root selectors.  A document is
+# ``parse(raw, position=ROOT)`` followed by ``decide``.  The only thing ROOT adds is the
+# module wrapper."**  §11's repetition table says the same thing as a repetition -- "the
+# kind read in ``_decide``, in the root selectors, in ``union.keyword``, in
+# ``rules.presence_only`` | ``parse``'s classification" -- so the table was the second
+# reading of the kind, and the six wrappers were the ROOT cell of six arms :func:`_decide`
+# already had.
+#
+# Where each row went, and every one of them is a cell at a POSITION rather than a row:
+#
+# * ``is_object_root`` -> :func:`_decide`'s ``type: object`` arm, plus its typeless arm
+#   at ROOT for the ``properties``-with-no-``type`` shape the selector also claimed;
+# * ``is_scalar_root`` and ``is_container_root``'s mapping and multi-type halves -> the
+#   arms themselves, with the MODULE WRAPPER below.  §5 names it: "a root whose lowering
+#   is an alias or an enumeration gets a ``RootBinding`` declaration from
+#   ``lower_document``, which is the one function that knows a root is a root";
+# * ``is_container_root``'s array half -> ``lower.containers.array`` at ROOT, which is
+#   where D2's ``RootModel[list[X]]`` row is refused now;
+# * ``is_enum_root`` -> the ``enum`` arm, with the wrapper below;
+# * ``composes_at_the_root`` -> the ``allOf`` arm, which already took the position;
+# * ``union_root`` -> the union arm at ROOT.
+#
+# What ``AmbiguousRoot`` guarded is unrepresentable rather than unchecked: a dispatch on
+# a node's KIND reaches exactly one arm, so there is no table for two selectors to claim
+# one document in.  It was a BUILD FAILURE, and a build failure with no way to occur is
+# not a check that was dropped.
+#
+# ``ROOT_KIND`` goes with them.  It was "the order an UNCLAIMED root is reported by", and
+# an unclaimed root is what no longer exists: a root reaches an arm, and the arm names the
+# keyword.  The two shapes §4's table gives a root no row for say so at their own
+# position -- a bare ``$ref`` root in the reference arm, and a root stating no kind in the
+# typeless arm.
 
 def lower_document(
     document: str,
@@ -1039,41 +1055,51 @@ def lower_document(
 
         object_constrained=bundle.constrained_to_object(doc),
     )
-    claimed = [(selects, lower) for selects, lower in ROWS if selects(doc)]
-    if len(claimed) > 1:
-        raise AmbiguousRoot(
-            f"{document}: {', '.join(s.__name__ for s, _ in claimed)} all select this root; "
-            "the table is unordered, so two selectors claiming one document is a defect in "
-            "the selectors and the metric would count it twice"
+    # **ONE PATH: the per-node decision, at ROOT.**  §5: "A document is ``parse(raw,
+    # position=ROOT)`` followed by ``decide``."  ``parse`` is §14 step 5's other half
+    # and is not written, so the raw document goes to the dispatch as every other node
+    # does; what has gone is the second dispatch on top of it.
+    #
+    # :func:`_decide` and not :func:`decide_type`, and the difference is the two things
+    # a ROOT does not have.  ``mod.named`` never holds the root's pointer
+    # (``bundle.named_nodes`` skips a reference with no fragment), so there is nothing
+    # for :func:`compiler.name_the_node` to name; and the CONTENT MEMO is empty at the
+    # root and would be SEEDED with the whole document's content by the wrapper -- which
+    # §7 moves into ``lower/names.py`` as a pass over the finished module anyway.  So the
+    # wrapper's two jobs are both absent here and calling it would add one: a nested node
+    # of content identical to the document root would adopt the root's own symbol.
+    decided = _decide(doc, "", symbol, mod, Position.ROOT)
+
+    # **THE MODULE WRAPPER, which is the only thing ROOT adds** (§5).  A class carries
+    # ``strict_validate`` by inheritance, so a root the dispatch declared under this
+    # module's own symbol is finished.  The two root shapes with no class are the ones
+    # §5 names, and both bind the same two module-level statements through
+    # ``ir.RootBinding``:
+    #
+    # * an ENUMERATION.  The ``enum`` arm declared the ``ir.EnumDecl`` itself, because
+    #   that is what the arm answers at every position; the ROOT wrapper is what puts the
+    #   binding around it.  ``Enum.jinja2`` has no ``class_body_lines`` slot, so the
+    #   reference cannot be written into the class (D9 forbids writing one in
+    #   afterwards) and the statements go beside it.
+    # * an ALIAS.  A scalar, a mapping and a multi-type root have no field to hang
+    #   themselves on, and a wrapper class would be a second name for the same node (P2).
+    #   ``compiler.declare_alias`` is the one spelling of those statements and it is what
+    #   the deleted ``_scalar_root`` and ``containers.root`` both called.
+    #
+    # A class, an alias and an enumeration therefore cannot come to answer differently
+    # about what their own document accepts, which is what put the two statements in one
+    # declaration in the first place.
+    if mod.declared.get("") != symbol:
+        declare_alias(mod, symbol, doc, decided)
+        return mod, symbol
+    held = next(
+        (i for i, d in enumerate(mod.declarations) if isinstance(d, ir.EnumDecl) and d.name == symbol),
+        None,
+    )
+    if held is not None:
+        mod.declarations[held] = ir.RootBinding(
+            compiler.schema_ref(document, ""), symbol, mod.declarations[held]
         )
-    if not claimed:
-        # **Refused on the keyword the root's KIND is read from, and with no promise
-        # of a row.**  This said "no D2 row selects this root (a later step's row
-        # does)", which names no keyword and asserts a schedule -- and for the seven
-        # documents it is now down to, the promise is simply false: four of them are
-        # DATA documents carrying no schema keyword at all, so no row will ever read
-        # them.  A refusal that points at a file without saying what in it stopped
-        # the emitter sends the reader back to re-run.
-        kw = next((k for k in ROOT_KIND if k in doc), None)
-        declared = sorted(compiler.declaring(doc, Position.ROOT))
-        if kw is None:
-            raise Refusal(
-                "type",
-                "",
-                f"the root declares no kind keyword at all: {declared} are data keys, not "
-                "schema keywords, so there is no type, no properties and no composition "
-                "for a row to read -- and a class over them would state what no part of "
-                "this document declares",
-                kind=Kind.VERDICT,
-            )
-        raise Refusal(
-            kw,
-            "",
-            f"a root is exactly one kind, this one's is read from {kw!r} (the root declares "
-            f"{declared}), and no D2 row lowers that kind at a root",
-            kind=Kind.VERDICT,
-        )
-    claimed[0][1](doc, symbol, "", mod)
     return mod, symbol
 
 
@@ -1159,7 +1185,16 @@ def _composed_nodes(bundle_dir: Path, known: set[str]) -> dict[str, frozenset[st
     out: dict[str, set[str]] = {}
     for document in sorted(known):  # sorted, like ``portable``: P7
         doc = bundle.read(bundle_dir, document)
-        if not bundle.composes_at_the_root(doc):
+        # **A root ``allOf``, read directly.**  This asked
+        # ``populations.composes_at_the_root``, one of the six root selectors §5 deletes, and
+        # the clause that predicate carried over this one -- "and no union beside it" --
+        # is empty for THIS question: measured over the 1,054 portable documents, the
+        # pairs a root ``allOf`` names are the same 27 either way.  The reason is
+        # ``union.ROOT_CONJUNCTS``: a union root carrying ``allOf`` is refused on it, so
+        # such a root never composes and its conjuncts' fields never cross a module
+        # boundary.  This is a fact about the bundle's reference GRAPH, which is §11's
+        # source layer, and not a reading of a root's KIND.
+        if not isinstance(doc.get("allOf"), list):
             continue
         for conjunct in doc.get("allOf", []):
             uri = conjunct.get("$ref") if isinstance(conjunct, dict) else None
