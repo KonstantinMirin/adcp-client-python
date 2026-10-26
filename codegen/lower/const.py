@@ -90,6 +90,7 @@ from __future__ import annotations
 import jsonschema
 
 from codegen import compiler, ir
+from codegen.schema import nodes
 from codegen.refusal import Kind, Refusal
 
 #: The cells a ``const`` node CONSUMES -- this row's own coverage, which is what a
@@ -119,7 +120,7 @@ CLAIMS = frozenset({"type", "const"})
 LITERALS = (bool, int, str)
 
 
-def decide(node: dict, pointer: str) -> compiler.Decided:
+def lower(node: nodes.Constant, name_hint: str, mod: compiler.Module) -> compiler.Decided:
     """What one ``const`` node IS: the value it pins.
 
     The ``Literal`` TEXT is the RENDERER's -- ``ir.TypeRef.literals`` carries the
@@ -128,7 +129,9 @@ def decide(node: dict, pointer: str) -> compiler.Decided:
     ``Module``, which is also what fixed a mangling the hand-built spelling had: see
     :attr:`codegen.ir.TypeRef.literals`.
     """
-    value = node["const"]
+    pointer = node.pointer
+    compiler.check_keywords(node.raw, pointer, node.position, CLAIMS, mod=mod)
+    value = node.value
     if not isinstance(value, LITERALS):
         raise Refusal(
             "const",
@@ -138,11 +141,11 @@ def decide(node: dict, pointer: str) -> compiler.Decided:
             "with no document, pointer or keyword in the message",
             kind=Kind.VERDICT,
         )
-    if not jsonschema.Draft7Validator(node).is_valid(value):
+    if not jsonschema.Draft7Validator(node.raw).is_valid(value):
         raise Refusal(
             "const",
             pointer,
-            f"const {value!r} is not a {node.get('type')!r}: the node admits nothing",
+            f"const {value!r} is not a {node.word!r}: the node admits nothing",
             kind=Kind.VERDICT,
         )
     return compiler.Decided(ir.TypeRef(literals=(value,)))
