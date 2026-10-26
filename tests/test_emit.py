@@ -866,7 +866,9 @@ PAIRS_FLOOR = 1095
 #: declares no ``properties``.  It replaces a blanket model-only arm whose one-site
 #: measurement had been absorbing all 23 (``harness._narrows_nothing``).
 #:
-#: The two that remain are each measured and each filed as its own row:
+#: **NEITHER OF THE TWO REMAINS, AND NO COMPARISON GROUP IS LEFT.**  Both were measured
+#: and both were filed as their own row, and each was cleared by writing the rule the
+#: semantics document states rather than by admitting the fact:
 #:
 #: 1. **An ``items`` overlay's ``description``, 2 pairs**
 #:    (``adcp-client-python-10l.18``).  ``harness._composed`` folds a conjunct by
@@ -874,16 +876,20 @@ PAIRS_FLOOR = 1095
 #:    CEILING; at ``core/media-buy-frequency-cap-requirement.json``'s
 #:    ``/properties/supported_control_modes/items`` the node is the BASE's declaration
 #:    and the narrowing conjunct's is the one the model carries, so the two descriptions
-#:    differ.  It was invisible before because the delegated resolver dropped a
-#:    ``description`` at an enum node while inlining, so neither side stated one.
-#: 2. **``core/requirements/catalog-field-binding.json``, 1 pair of the 3 it had**
-#:    (``adcp-client-python-10l.19``).  At the root the model states ``type: object``
-#:    and the document nothing, because ``harness._entails_type``'s union derivation
-#:    asks each branch for a ``type`` word and two of the branches are a LOCAL ``$ref``
-#:    it does not resolve.  That half is the VERIFIER'S and architecture §9 bars the
-#:    verifier from importing the walk, so no mechanism of the walk reaches it.
+#:    differ.  ``harness._described_by_the_conjunct`` is §6's rule read where §2's
+#:    intersection puts it, and the ``comparison:model_drops_a_fact`` group went with it.
+#: 2. **``core/requirements/catalog-field-binding.json``, 3 pairs and now 0**
+#:    (``adcp-client-python-10l.19``).  At the root the model stated ``type: object`` and
+#:    the document nothing, because ``harness._entails_type``'s union derivation asks
+#:    each branch for a ``type`` word and two of the three branches state theirs through
+#:    a LOCAL ``$ref``.  The DOCUMENT states the fact, so the comparison was the half
+#:    that was wrong: ``harness._normalize`` took the local-``$ref`` reading at a NODE
+#:    and not at the branches inside a combinator, and ``harness._branch_target`` takes
+#:    it at a branch -- by the one function, so both sides get it, and ONE HOP gated on a
+#:    BARE branch, which is every one of the bundle's 33 such branches.  The
+#:    ``comparison:model_adds_a_fact`` group goes with it.
 #:
-#:    **The two BRANCH pairs are cleared, by §14 step 5** -- ``#/oneOf/0`` and
+#:    **The two BRANCH pairs went earlier, by §14 step 5** -- ``#/oneOf/0`` and
 #:    ``#/oneOf/1`` reported the entry's ``description`` ``missing``, because a branch
 #:    class named off a local reference carried none from its target.  §6 clause 3,
 #:    "silence inherits", is the rule and ``lower_union`` now reads it where
@@ -902,9 +908,19 @@ NON_PASS_PAIRS: dict[str, list[str]] = {
         "core/reference-renderer.json#",
         "core/reference-renderer.json#/properties/provenance",
     ],
-    "comparison:model_adds_a_fact": [
-        "core/requirements/catalog-field-binding.json#",
-    ],
+    # **``comparison:model_adds_a_fact`` IS GONE, and the group with it**
+    # (``adcp-client-python-10l.19``).  It held
+    # ``core/requirements/catalog-field-binding.json#``, whose root union states no
+    # ``type`` of its own and whose three branches each state ``object`` -- two of them
+    # through ``#/definitions/ScalarBinding`` and ``#/definitions/AssetPoolBinding``.
+    # ``_entails_type``'s union derivation asks each branch for its own ``type`` word, so
+    # the reference answered nothing and §4's union base, a pydantic model rendering
+    # ``type: object``, read as NARROWER than a document that states the word three
+    # times.  ``harness._branch_target`` takes ``_normalize``'s local-``$ref`` reading at
+    # a union BRANCH as well as at a node, and the group empties.  **NO COMPARISON GROUP
+    # IS LEFT**: every pair here is now a ``no_instrument``, which is the generator's
+    # reach and not the comparison's verdict.
+    #
     # **``comparison:model_drops_a_fact`` IS GONE, and the group with it**
     # (``adcp-client-python-10l.18``).  It held
     # ``core/media-buy-frequency-cap-requirement.json#`` and
@@ -3761,8 +3777,10 @@ def test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_
 def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> None:
     """``harness._entails_type``, in both directions, and why it is not a tolerance.
 
-    §4's base is a pydantic model, so it renders ``type: object``; 7 of this bundle's
-    union roots state their branches' type and not their own; a ``const`` property
+    §4's base is a pydantic model, so it renders ``type: object``; 34 of this bundle's
+    union roots state their branches' type and not their own -- 33 with the branches
+    read as written, and the 34th only once a branch's own local reference is
+    (``adcp-client-python-10l.19``); a ``const`` property
     renders ``{"const": ..., "type": ...}`` where the document states only the ``const``;
     and §4's enumeration row renders a ``StrEnum``, so ``{"enum": [...], "type":
     "string"}`` where 164 nodes of the raw bundle state the ``enum`` alone.  All three
@@ -3783,17 +3801,33 @@ def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> Non
     * a typeless node with nothing forcing a type is still reported;
     * the three derivations are each reached, so none is dead.
     """
-    from codegen.harness import _entails_type
+    from codegen.harness import _entails_type, _normalize
 
     # Direction 1: every site the rule excuses in the committed tree, with the DOCUMENT
     # asked whether it really refuses an instance of every other type.  The sites are
     # enumerated off the tree rather than listed, so a new one is graded by itself.
+    #
+    # **Read through ``_normalize`` and against the document ROOT, which is how
+    # ``compare_schema`` reads it (``adcp-client-python-10l.19``).**  The node was taken
+    # raw here, and the rule's union derivation asks each BRANCH for its ``type`` word:
+    # a branch that is a bare local ``$ref`` states none until the reference is read, so
+    # the site the comparison excuses at
+    # ``core/requirements/catalog-field-binding.json#`` was invisible to this loop and
+    # went ungraded.  One reading on both -- and ``jsonschema`` is then asked of the node
+    # the rule actually answered about.
     excused: list[tuple[SchemaRef, str, str]] = []
     for g in graded():
         if not isinstance(g.model, type):
             continue
-        doc = schema_at(g.ref)
-        nodes = [("", doc), *sorted((doc.get("properties") or {}).items())]
+        root = schema_at(SchemaRef(g.ref.document, "#"))
+        doc = _normalize(schema_at(g.ref), root, declared_null=True)
+        nodes = [
+            ("", doc),
+            *sorted(
+                (key, _normalize(value, root, declared_null=True))
+                for key, value in (doc.get("properties") or {}).items()
+            ),
+        ]
         for where, node in nodes:
             if not isinstance(node, dict) or "type" in node:
                 continue
@@ -7653,15 +7687,24 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
 #: comparison failure that appears once ``bundle.record`` is this package's own inliner a
 #: REAL FINDING, so no fold was added or kept to quiet one.
 #:
-#: **1 left of the 5.**  §14 step 5 cleared bead ``.19``'s two BRANCH pairs with
-#: ``lower_union``'s "silence inherits", and ``adcp-client-python-10l.18`` clears the
-#: two ``model_drops_a_fact`` pairs with ``harness._described_by_the_conjunct``.  Each
-#: was cleared by writing the rule §6 states, not by admitting the fact: the two counts
-#: in ``COMPOSED_FOLD_FLOORS`` and here are one measurement read from two ends.
-#: ``NON_PASS_PAIRS`` names the mechanism behind what is left, and
-#: ``test_every_class_passes_all_three_checks`` is RED on every pair here.  Asserted as
-#: a SET and not as a count, so it is exactly as strong as the zero it replaces at
-#: detecting a second fact.
+#: **0 LEFT OF THE 5, AND THE SET IS EMPTY.**  §14 step 5 cleared bead ``.19``'s two
+#: BRANCH pairs with ``lower_union``'s "silence inherits",
+#: ``adcp-client-python-10l.18`` cleared the two ``model_drops_a_fact`` pairs with
+#: ``harness._described_by_the_conjunct``, and ``adcp-client-python-10l.19`` clears the
+#: last one -- ``core/requirements/catalog-field-binding.json#``'s ``added /type`` --
+#: with ``harness._branch_target``, the local-``$ref`` reading ``_normalize`` already
+#: took at a NODE taken at a union BRANCH as well.  Each was cleared by writing the
+#: rule the semantics document states, not by admitting the fact: the two counts in
+#: ``COMPOSED_FOLD_FLOORS`` and here are one measurement read from two ends.
+#:
+#: **An EMPTY dict and not a deleted name.**  The set is what
+#: ``test_the_comparison_reads_a_composed_document_by_intersection`` asserts the live
+#: red facts against and what the three per-direction totals in
+#: ``test_the_harness_result_is_counted_over_the_whole_population`` are derived from, so
+#: empty is the strongest state it has: every direction is examined and every one is
+#: zero, and a fact arriving reddens with its pair, pointer and direction named.  That
+#: is strictly stronger than the three pinned zeros row ``.3`` replaced, which could
+#: say that a fact had appeared but not which.
 #:
 #: Each fact is written ``"<direction> <pointer>"``, so the three per-direction totals
 #: in ``test_the_harness_result_is_counted_over_the_whole_population`` are this set's
@@ -7682,18 +7725,21 @@ COMPARISON_FACTS: dict[str, list[str]] = {
     # typed by the narrowing declaration read as dropping a fact.
     # ``harness._described_by_the_conjunct`` is the reading, and the two documents are
     # the whole of its population on this tree.
-    "core/requirements/catalog-field-binding.json#": [
-        "added /type",
-    ],
-    # **``#/oneOf/0`` and ``#/oneOf/1`` are GONE, which is §14 step 5 clearing bead
-    # ``.19``'s ``/description`` half.**  Each reported ``missing /description``: the
-    # branch is a bare local ``$ref`` and the branch class named off it carried no
-    # description from its target.  §6 clause 3, "silence inherits", is the rule, and
-    # ``lower_union`` reads it where ``lower_composition`` already did -- a branch with
-    # two bases is a composition of the union base and the target.  The root's
-    # ``added /type`` stays, because that half is ``harness._entails_type`` not
-    # resolving a local ``$ref`` inside a branch and architecture §9 bars the verifier
-    # from importing the walk, so no mechanism of the walk reaches it.
+    #
+    # **``core/requirements/catalog-field-binding.json#`` IS GONE TOO, and with it bead
+    # ``.19``'s last pair.**  It reported ``added /type``: §4's union base is a pydantic
+    # model and renders ``type: object``, the root states no ``type`` of its own, and
+    # ``_entails_type``'s union derivation asks each branch for a ``type`` word -- which
+    # two of the three branches state through ``#/definitions/ScalarBinding`` and
+    # ``#/definitions/AssetPoolBinding`` rather than in their own text.  The DOCUMENT
+    # states the fact and the comparison was not reading it: ``_normalize`` took the
+    # local-``$ref`` reading at a NODE and not at the branches inside a combinator, and
+    # ``harness._branch_target`` takes it at a branch, by the one function and so on
+    # both sides.  The two BRANCH pairs went earlier, by §14 step 5 and
+    # ``lower_union``'s "silence inherits".  Nothing was added to the verifier to quiet
+    # a failure: the reading is §9's own "a nested class hoisted to ``$defs``", applied
+    # one level in, and ``tests/test_comparison_document_side.py`` counts every site it
+    # can fire at and names the four it changes an answer at.
 }
 
 
