@@ -620,16 +620,27 @@ def _key(node: nodes.Node | None, mod: Module) -> ir.TypeRef | Refusal:
         # The one key kind that needs no alias: the bundle already names the type, so
         # P2 applies unchanged -- an import, and no constraint of the target copied.
         return _key_type(node, mod)
-    if isinstance(node, nodes.Enumeration):
-        return Refusal(
-            "enum",
-            pointer,
-            f"propertyNames closes the key set to {sorted(map(repr, node.members))}, which "
-            "D5 reads as a MODEL whose keys are its fields rather than a mapping; its one "
-            "type-position site in this bundle is core/store-item.json#/properties/hours, "
-            "whose document refuses on enum, so the model would reach no document",
-            kind=Kind.VERDICT,
-        )
+    # **An ``enum`` KEY goes through the walk like every other key, and the arm that
+    # refused it is retired** (§14 step 9).  §5's group (a): "`propertyNames` with an
+    # `enum`, and `enum` at KEY.  Both rows refuse 'by name with the key set'.  A
+    # `Literal` of the members is the key type, and Pydantic renders `dict[Literal[…],
+    # V]` back as `propertyNames: {enum: […]}` -- the document's own keyword, rendered
+    # and gradable.  Faithful, not wide."
+    #
+    # The refusal that stood here read the closed key set as a MODEL whose keys are its
+    # fields.  That reading is not wrong about what the document means and it is not the
+    # one §4's table gives: a node without ``properties`` is ``dict[K, V]``, and
+    # ``propertyNames`` types the K.  A model would have to invent a field per member --
+    # each one optional, since ``propertyNames`` closes the key set without requiring any
+    # of it -- which states a ``properties`` map the document does not.  The ``Literal``
+    # key states exactly the keyword the document states, and pydantic renders it back
+    # under that name, which is the whole of why this is faithful rather than a
+    # substitution.
+    #
+    # Nothing is special-cased here: the enum node is lowered by the same walk as a
+    # ``$ref`` key and a constrained one, and ``lower.enum.resolves_no_name`` is what
+    # makes an untitled one a ``Literal`` -- because KEY supplies no name, which
+    # :func:`_key_type` already states as ``names.Unnamed()``.
     # Through the walk, so the key is D5's named shape and this row spells nothing: a
     # length-bounded key resolves to ``constraints.StrMinLen1`` and is recorded there,
     # and a key the alias module has no spelling for comes back with its constraints

@@ -76,6 +76,7 @@ from typing import Any
 
 from codegen import compiler, ir
 from codegen.compiler import Decided, Module
+from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 
@@ -235,7 +236,24 @@ def resolves_no_name(node: nodes.Enumeration, *, of_a_root_union: bool = False) 
     Of the 353 combinator-branch positions with no D3 identity of any shape, these 4 are
     the only enum nodes.
     """
-    return not node.title and of_a_root_union
+    #
+    # **KEY is the OTHER position that supplies none, added at
+    # ``adcp-client-python-10l.20``, and reading it off ``node.position`` is not the
+    # mistake §6 corrected.**  §6's objection was to the FACT and not to the field:
+    # ``position is BRANCH`` says "a branch of SOME union" where the predicate means "a
+    # branch of a ROOT union", and the two differ.  KEY has no such ambiguity -- §4's
+    # nested rule names a property, an element, a mapping VALUE and a ``definitions``
+    # entry, and names no key at all, which ``containers._key_type`` already states as
+    # ``names.Unnamed()``.  So "KEY supplies no name" is unconditional, it is a fact the
+    # PARSER assigned about this very node (§6: "Who carries the position.  The node
+    # does"), and no pointer is parsed for it.
+    #
+    # §5's group (a) is the sentence: "A `Literal` of the members is the key type, and
+    # Pydantic renders `dict[Literal[…], V]` back as `propertyNames: {enum: […]}` -- the
+    # document's own keyword, rendered and gradable.  Faithful, not wide.  Where the key
+    # node is named, the `StrEnum` is the key type and renders the same way" -- which is
+    # the ``node.title`` half, unchanged and now reached at a second position.
+    return not node.title and (of_a_root_union or node.position is Position.KEY)
 
 
 def literal(node: nodes.Enumeration) -> compiler.Decided | Refusal:

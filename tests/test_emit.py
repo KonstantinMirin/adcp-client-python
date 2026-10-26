@@ -4960,9 +4960,15 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     ))
     assert caught.keyword == "patternProperties", caught.keyword
 
-    # A closed key set is a MODEL and not a mapping (D5), and its one type-position
-    # site in this bundle sits in a document that refuses on `enum` first.
-    caught = refusal_from(emit.lower_document(
+    # **A closed key set is the mapping's KEY TYPE, and the refusal that stood here is
+    # retired at ``adcp-client-python-10l.20``** (§5's group (a): "A `Literal` of the
+    # members is the key type, and Pydantic renders `dict[Literal[…], V]` back as
+    # `propertyNames: {enum: […]}` -- the document's own keyword, rendered and gradable.
+    # Faithful, not wide.").  The reading that refused -- a closed key set is a MODEL
+    # whose keys are its fields -- would have had to invent a `properties` map the
+    # document does not state, one optional field per member, because `propertyNames`
+    # closes the key set without requiring any of it.
+    built = emit.lower_document(
         "e.json",
         {
             "title": "E",
@@ -4971,15 +4977,22 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
                 "m": {"type": "object", "propertyNames": {"enum": ["mon", "tue"]}}
             },
         },
-    ))
-    assert caught.keyword == "enum"
-    assert "MODEL whose keys are its fields" in caught.detail
+    )
+    assert not isinstance(built, Refusal), built
+    keyed, _ = built
+    (field,) = keyed.at[""].fields
+    assert field.type.container == "dict", field.type
+    assert field.type.key == ir.TypeRef(literals=("mon", "tue")), field.type.key
+
+    # And the bundle's one type-position site, which is still refused -- through a chain
+    # and not on its own key set.  Named, because the arm above is now graded on a
+    # constructed document and this is what says WHY: the site's document is behind
+    # another row, so the emitted population does not reach the arm yet.
     hours = bundle.read(BUNDLE, "core/store-item.json")
     assert "enum" in hours["properties"]["hours"]["propertyNames"]
-    # The document is refused, and on an even earlier blocker than its key set -- a
-    # ``$ref`` whose target carries an ``enum``.  Which keyword fires first is not the
-    # claim; that no document reaches the closed-key-set row is.
-    assert "core/store-item.json" in emit.emit(BUNDLE, ["core/store-item.json"]).refusals
+    refused_site = emit.emit(BUNDLE, ["core/store-item.json"]).refusals["core/store-item.json"]
+    assert refused_site["kind"] == refusal_module.Kind.CHAINED, refused_site
+    assert refused_site["keyword"] == "$ref", refused_site
 
 
 def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() -> None:
@@ -4994,9 +5007,14 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
     **The second half is what the test is for.**  "Not refused" is free -- a keyword
     nothing reads is not refused either -- so the claim is checked against the one
     thing that distinguishes silence from a drop: the SAME key schema at a TYPE
-    position is read, and a closed key set there refuses by name (§5: a closed key
-    set is a MODEL whose keys are its fields).  One keyword, two positions, two
-    answers, and the position is what decides.
+    position is READ, and there it is the mapping's key type.  One keyword, two
+    positions, two answers, and the position is what decides.
+
+    *The type position used to REFUSE and ``adcp-client-python-10l.20`` retired that*
+    (§5's group (a)), so the contrast is now between stating nothing and stating the
+    key rather than between stating nothing and refusing -- which is a stronger
+    contrast for this test's own purpose: both halves now produce a module, and the
+    difference is what the module says.
 
     Measured over the 1,054 portable documents: 3 of the bundle's 4 ``enum`` key
     schemas sit at a rule position, and 2 of their documents EMIT -- so the position
@@ -5029,7 +5047,11 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
 
     # And the probe, both positions, one key schema.  The rule position lowers and
     # states only the conditional the ``if``/``then`` pair is about...
-    key = {"enum": ["s"]}
+    # TWO members, not one: pydantic renders a one-member ``Literal`` back as
+    # ``propertyNames: {const: …}``, which is draft-07's own equivalent spelling and a
+    # different keyword from the one the assertion below is about.  The bundle's own site
+    # has seven, so two is the smaller end of the real shape rather than a special case.
+    key = {"enum": ["s", "t"]}
     mod, symbol = emit.lower_document(
         "r.json",
         {
@@ -5048,18 +5070,45 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
     assert symbol == "R"
     assert "ConditionalRequired" in text, text
     assert "propertyNames" not in text and "s" in text, text
-    # ... while the same key schema at a TYPE position is READ, and a closed key set
-    # there refuses by name with the key set in the detail.
-    caught = refusal_from(emit.lower_document(
+    # ... while the same key schema at a TYPE position is READ, and it is a `Literal`
+    # of the members: §5's group (a), implemented at ``adcp-client-python-10l.20``.
+    #
+    # **The refusal that stood here is retired, and this is the half that proves the
+    # replacement is FAITHFUL rather than a substitution.**  §5's group (a): "A
+    # `Literal` of the members is the key type, and Pydantic renders
+    # `dict[Literal[…], V]` back as `propertyNames: {enum: […]}` -- the document's own
+    # keyword, rendered and gradable.  Faithful, not wide."  Three things are asserted
+    # and the second and third are what "faithful" means:
+    #
+    # * the KEY TYPE is the `Literal`, read off the rendered text;
+    # * the model's own schema states the document's own keyword back, so §8 compares
+    #   the fact rather than excusing it;
+    # * the key set is ENFORCED -- an undeclared key is refused -- so nothing widened.
+    #
+    # One keyword, two positions, two answers, and the position is still what decides:
+    # the rule position states nothing (above) and the type position states the key.
+    built = emit.lower_document(
         "t.json",
         {
             "title": "T",
             "type": "object",
-            "properties": {"m": {"type": "object", "propertyNames": key}},
+            "properties": {"m": {"type": "object", "propertyNames": key,
+                                 "additionalProperties": {"type": "string"}}},
         },
-    ))
-    assert caught.keyword == "enum", caught
-    assert "MODEL whose keys are its fields" in caught.detail, caught.detail
+    )
+    assert not isinstance(built, Refusal), built
+    keyed, _ = built
+    keyed_text = "\n".join(one.text for one in render.blocks(_assigned(keyed).declarations))
+    assert "dict[Literal['s', 't'], str]" in keyed_text, keyed_text
+
+    # Rendered back under the document's own keyword, and enforcing.  Asserted on the
+    # TYPE rather than on the emitted module, because a constructed document is not in
+    # the shipped package and so has no ``strict_validate`` to reach (``_constructed``).
+    adapter = TypeAdapter(dict[Literal["s", "t"], str])
+    assert adapter.json_schema()["propertyNames"] == {"enum": ["s", "t"]}, adapter.json_schema()
+    assert adapter.validate_python({"s": "v"}) == {"s": "v"}
+    with pytest.raises(ValidationError):
+        adapter.validate_python({"u": "v"})
 
 
 def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
