@@ -13,8 +13,15 @@ class SignalValueType(StrEnum):
     The data type of a signal's values, determining how it can be targeted
     """
     BINARY = 'binary'
+    """Boolean signal - user either matches or doesn't (e.g., 'likely_tesla_buyers')"""
+
+
     CATEGORICAL = 'categorical'
+    """Signal with discrete values from a defined set (e.g., 'vehicle_ownership' with values 'tesla', 'bmw', etc.)"""
+
+
     NUMERIC = 'numeric'
+    """Signal with continuous numeric values within a range (e.g., 'purchase_propensity' from 0.0 to 1.0)"""
 
 
 strict_validate = strict_alias(__adcp_schema__, "SignalValueType", SignalValueType)
