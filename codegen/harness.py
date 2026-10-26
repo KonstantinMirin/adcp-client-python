@@ -1285,12 +1285,20 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict, *, required: bool = Fa
     **DELETED with the delegated resolver (§9), and each one undid a rewriting of it
     rather than reading anything of ours:**
 
-    * ``additionalProperties: true``.  ``resolve_all_refs`` dropped a redundant
+    * ``additionalProperties: true``, **and this one MOVED rather than went** -- see
+      :func:`_silent_about_extras`.  The arm read
+      ``keyword == "additionalProperties" and value is True`` on the MODEL side only,
+      and its stated reason was the resolver: ``resolve_all_refs`` dropped a redundant
       ``additionalProperties: true`` while inlining, so a referrer's copy of a target
-      stated nothing where the target states ``true`` and the imported class carried
-      ``allow``.  ``bundle.record`` copies the key, so both sides state it and it is
-      COMPARED -- which is the better outcome, since ``additionalProperties: false``
-      model-only was never excused here either.
+      stated nothing where the target states ``true``.  That half is gone --
+      ``bundle.record`` copies the key, so both sides state it where the document does.
+      What the one-site measurement beside it never split off is the OTHER source: §4's
+      mapping row renders a property-less object as ``dict[K, V]``, and pydantic has no
+      spelling of ``dict[str, Any]`` that omits the keyword, so a faithful mapping states
+      it where its document is silent -- 23 pairs of the committed tree, measured.  That
+      is a reading this pipeline's own output forces, which §9 keeps and applies to BOTH
+      sides, so it is a normalisation of the NODE and no longer a model-only admission.
+      ``additionalProperties: false`` and a TYPED value are untouched on either side.
     * ``type``, ``description`` and ``default`` at a node the document gives an
       ``enum``.  ``canonicalish`` reduced an enum node to its ``enum`` ALONE while
       inlining, dropping ``type``, ``title``, ``description`` and ``default``, so a
@@ -1312,6 +1320,54 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict, *, required: bool = Fa
     if keyword == "default":
         return value is None and not required
     return keyword == "type" and _entails_type(doc, value)
+
+
+def _silent_about_extras(node: Any) -> Any:
+    """A MAPPING's ``additionalProperties: true``, read as the silence it is.
+
+    **A reading THIS PIPELINE'S OWN OUTPUT forces, so §9 keeps it, and it is applied to
+    BOTH sides by the one function.**  ``docs/plan/architecture.md`` §9 keeps "the
+    readings this pipeline's own output forces ... and each is applied to both sides" and
+    names three of them -- a nested class hoisted to ``$defs``, D4's ``| None``, a type
+    list rendered as a union.  Those three are EXAMPLES of the criterion and not the
+    whole of it: §4's mapping row renders a property-less object as ``dict[K, V]``, and
+    pydantic 2.13.5 has no spelling of ``dict[str, Any]`` that omits
+    ``additionalProperties: true`` -- so a faithful mapping states a keyword its document
+    is silent about, in exactly the way a faithful multi-type node states an ``anyOf``.
+
+    **The two spellings are ONE acceptance fact.**  draft-07's ``additionalProperties``
+    constrains the keys a schema does not already declare, and ``true`` admits every one
+    of them, which is what silence admits; the two schemas accept and refuse identical
+    instances.  §2's "silence -> ``ignore``, ``true`` -> ``allow``" is a statement about
+    PYDANTIC's retention of an extra key on a CLASS, not about a document's accepted set,
+    and what this comparison grades is the accepted set.
+
+    **SCOPED TO A MAPPING -- a node that declares no ``properties`` -- and the scope is
+    the whole of its correctness.**  On a node WITH ``properties`` the distinction is
+    load-bearing exactly as §2 says, a store's extras are retained or ignored by it, and
+    nothing here touches such a node.  The arm this replaces was
+    ``keyword == "additionalProperties" and value is True`` on the MODEL side only,
+    justified by a one-site measurement of the delegated resolver's redundant-key drop,
+    and it was silently absorbing 23 pairs of this mechanism -- a blanket predicate whose
+    population nobody had split.  One blanket predicate is not replaced by another: the
+    gate reads the node's own shape.
+
+    ``additionalProperties: false`` is NOT touched, on either side.  It forbids what
+    silence permits, so the two are different accepted sets: a model closing a mapping
+    its document leaves open is a NARROWING and is reported, and a document closing one
+    the model leaves open is ``missing``.  A TYPED value is not touched either -- it
+    restricts the value schema, which silence does not -- so a model typing a mapping
+    whose document says ``true`` still reports.
+
+    No ``type`` gate, because none is needed: for an object with no declared property the
+    two spellings admit the same keys, and for a non-object the keyword constrains
+    nothing either way.
+    """
+    if not isinstance(node, Mapping) or "properties" in node:
+        return node
+    if node.get("additionalProperties") is not True:
+        return node
+    return {k: v for k, v in node.items() if k != "additionalProperties"}
 
 
 def _declares_null(doc: Any) -> bool:
@@ -2128,6 +2184,13 @@ def compare_schema(
         # not of the node.
         doc = _patterned_key(doc, closed=False) or doc
         got = _patterned_key(got, closed=True) or got
+        # A MAPPING's ``additionalProperties: true`` is the silence it is, on BOTH sides
+        # and by the one function -- §9's "the readings this pipeline's own output
+        # forces", of which §4's ``dict[K, V]`` rendering is one
+        # (:func:`_silent_about_extras`).  AFTER ``_composed`` and ``_patterned_key``, so
+        # a conjunct's gap-filled value and a patterned key's synthesised one are read
+        # the same way the node's own is.
+        doc, got = _silent_about_extras(doc), _silent_about_extras(got)
         for kw in compared_facts(at_position):
             if kw not in doc:
                 continue

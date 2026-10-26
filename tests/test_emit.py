@@ -793,35 +793,35 @@ PAIRS_FLOOR = 1095
 #: ``test_every_class_passes_all_three_checks`` is RED on every one of them and stays
 #: red: architecture §14 step 3 says a comparison failure that appears when
 #: ``bundle.record`` becomes this package's own inliner is a REAL FINDING and not a
-#: fold's absence, so nothing was added to the verifier to quiet one.  Three mechanisms,
-#: each measured and each filed:
+#: fold's absence, so nothing was added to the verifier to quiet one.
 #:
-#: 1. **``additionalProperties: true`` at a ``dict[str, Any]``, 23 pairs.**  The document
-#:    states ``{"type": "object"}`` -- a mapping with no value schema, and it is the RAW
-#:    bundle's own text at every one of these positions, measured -- so §4's mapping row
-#:    renders ``dict[str, Any]`` and pydantic has no spelling of that which omits
-#:    ``additionalProperties: true``.  ``true`` and silence admit the same instances, so
-#:    the model is not narrower; the pair is red because the two sides write one fact two
-#:    ways.  ``harness._narrows_nothing``'s ``additionalProperties`` arm used to absorb
-#:    it, and architecture §9 names that arm as one of the six folds the record deletes
-#:    -- its own stated reason was the resolver ("``resolve_all_refs`` drops a redundant
-#:    ``additionalProperties: true`` while inlining"), and this second source was never
-#:    measured beside it.  A reading on BOTH sides is what §9 leaves room for and it is
-#:    not this row's to write.
-#: 2. **An ``items`` overlay's ``description``, 2 pairs.**  ``harness._composed`` folds a
-#:    conjunct by gap-fill and the NODE's own declaration wins, which its docstring names
-#:    as a KNOWN CEILING; at ``core/media-buy-frequency-cap-requirement.json``'s
+#: **A THIRD GROUP APPEARED AND WAS CLEARED IN THE SAME ROW, WHICH IS WHY IT IS NOT
+#: HERE.**  23 pairs reported ``additionalProperties: true`` where their document states
+#: ``{"type": "object"}``: §4's mapping row renders ``dict[str, Any]`` and pydantic has
+#: no spelling of that which omits the keyword, and ``true`` and silence admit the same
+#: instances -- so the two sides were writing one acceptance fact two ways.  That is a
+#: reading this pipeline's own output forces, which §9 KEEPS and applies to both sides,
+#: so ``harness._silent_about_extras`` is where it now lives, scoped to a node that
+#: declares no ``properties``.  It replaces a blanket model-only arm whose one-site
+#: measurement had been absorbing all 23 (``harness._narrows_nothing``).
+#:
+#: The two that remain are each measured and each filed as its own row:
+#:
+#: 1. **An ``items`` overlay's ``description``, 2 pairs**
+#:    (``adcp-client-python-10l.18``).  ``harness._composed`` folds a conjunct by
+#:    gap-fill and the NODE's own declaration wins, which its docstring names as a KNOWN
+#:    CEILING; at ``core/media-buy-frequency-cap-requirement.json``'s
 #:    ``/properties/supported_control_modes/items`` the node is the BASE's declaration
 #:    and the narrowing conjunct's is the one the model carries, so the two descriptions
 #:    differ.  It was invisible before because the delegated resolver dropped a
 #:    ``description`` at an enum node while inlining, so neither side stated one.
-#: 3. **``core/requirements/catalog-field-binding.json``, 3 pairs, which is the document
-#:    this row's emission delta added.**  At the root the model states ``type: object``
-#:    and the document nothing, because ``harness._entails_type``'s union derivation asks
-#:    each branch for a ``type`` word and two of the branches are a LOCAL ``$ref`` it does
-#:    not resolve.  At ``#/oneOf/0`` and ``#/oneOf/1`` the entry's ``description`` is
-#:    ``missing``: the branch class is named off a local reference and carries no
-#:    description from its target.
+#: 2. **``core/requirements/catalog-field-binding.json``, 3 pairs, which is the document
+#:    this row's emission delta added** (``adcp-client-python-10l.19``).  At the root the
+#:    model states ``type: object`` and the document nothing, because
+#:    ``harness._entails_type``'s union derivation asks each branch for a ``type`` word
+#:    and two of the branches are a LOCAL ``$ref`` it does not resolve.  At ``#/oneOf/0``
+#:    and ``#/oneOf/1`` the entry's ``description`` is ``missing``: the branch class is
+#:    named off a local reference and carries no description from its target.
 #: Of :data:`NON_PASS_PAIRS`'s groups, the ones whose pairs round-trip NO instance.  A
 #: pair the generator could not draw for grades 0 instances, and so does one whose dump
 #: the document refused; a COMPARISON failure grades its instance like any other pair,
@@ -835,29 +835,7 @@ NON_PASS_PAIRS: dict[str, list[str]] = {
         "core/reference-renderer.json#/properties/provenance",
     ],
     "comparison:model_adds_a_fact": [
-        "a2ui/component.json#",
-        "a2ui/surface.json#",
-        "core/assets/catalog-asset.json#",
-        "core/catalog.json#",
-        "core/reporting-canonicalization-contract.json#",
-        "core/reporting-canonicalization-contract.json#/properties/golden_vectors",
-        "core/reporting-canonicalization-contract.json#/properties/golden_vectors/properties/additional/items",
-        "core/reporting-canonicalization-contract.json#/properties/golden_vectors/properties/ordering_encoding",
-        "core/reporting-report-definition.json#",
-        "core/reporting-report-definition.json#/properties/source",
         "core/requirements/catalog-field-binding.json#",
-        "media-buy/sync-catalogs-request.json#",
-        "sponsored-intelligence/si-send-message-request.json#",
-        "sponsored-intelligence/si-send-message-request.json#/properties/action_response",
-        "sponsored-intelligence/si-send-message-response.json#",
-        "sponsored-intelligence/si-send-message-response.json#/properties/handoff",
-        "sponsored-intelligence/si-send-message-response.json#/properties/handoff/properties/intent",
-        "sponsored-intelligence/si-send-message-response.json#/properties/response",
-        "sponsored-intelligence/si-terminate-session-request.json#",
-        "sponsored-intelligence/si-terminate-session-request.json#/properties/termination_context",
-        "sponsored-intelligence/si-terminate-session-request.json#/properties/termination_context/properties/transaction_intent",
-        "sponsored-intelligence/si-terminate-session-response.json#",
-        "sponsored-intelligence/si-terminate-session-response.json#/properties/follow_up",
     ],
     "comparison:model_drops_a_fact": [
         "core/media-buy-frequency-cap-requirement.json#",
@@ -7444,13 +7422,16 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
 #: refuses it for that reason.  The KEY SET is still asserted exactly, which is what
 #: catches a fourth fold starting to fire or one of the three stopping.
 #: **THE COMPARISON'S OWN RED FACTS OVER THE GRADED TREE, BY PAIR AND POINTER.**
-#: 0 before ``adcp-client-python-10l.3`` and 30 after it, and they are the row's
-#: PRODUCT rather than a regression: architecture §14 step 3 makes a comparison
-#: failure that appears once ``bundle.record`` is this package's own inliner a REAL
-#: FINDING, so no fold was added or kept to quiet one.  ``NON_PASS_PAIRS`` names the
-#: three mechanisms and ``test_every_class_passes_all_three_checks`` is RED on every
-#: pair here.  Asserted as a SET and not as a count, so it is exactly as strong as
-#: the zero it replaces at detecting a thirty-first fact.
+#: 0 before ``adcp-client-python-10l.3``, 30 over 27 pairs as that row first measured
+#: them, and 5 over 5 pairs once the row wrote the reading §9 keeps for a mapping's
+#: ``additionalProperties: true`` (``harness._silent_about_extras``): 25 facts over 23
+#: pairs were ONE mechanism and it is cleared here rather than filed.  The 5 left are
+#: the row's PRODUCT rather than a regression -- architecture §14 step 3 makes a
+#: comparison failure that appears once ``bundle.record`` is this package's own inliner a
+#: REAL FINDING, so no fold was added or kept to quiet one -- and ``NON_PASS_PAIRS``
+#: names the two mechanisms behind them.  ``test_every_class_passes_all_three_checks`` is
+#: RED on every pair here.  Asserted as a SET and not as a count, so it is exactly as
+#: strong as the zero it replaces at detecting a sixth fact.
 #:
 #: Each fact is written ``"<direction> <pointer>"``, so the three per-direction totals
 #: in ``test_the_harness_result_is_counted_over_the_whole_population`` are this set's
@@ -7458,89 +7439,21 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
 #: ``added``, ``missing`` and ``differs`` reddens, which a count per direction could
 #: not see.
 COMPARISON_FACTS: dict[str, list[str]] = {
-    'a2ui/component.json#': [
-        'added /properties/component/additionalProperties/additionalProperties',
+    "core/media-buy-frequency-cap-requirement.json#": [
+        "differs /properties/supported_control_modes/items/description",
     ],
-    'a2ui/surface.json#': [
-        'added /properties/components/items/properties/component/additionalProperties/additionalProperties',
+    "core/media-buy-support-requirements.json#": [
+        "differs /properties/frequency_cap_constraints/properties/supported_control_modes"
+        "/items/description",
     ],
-    'core/assets/catalog-asset.json#': [
-        'added /properties/items/items/additionalProperties',
+    "core/requirements/catalog-field-binding.json#": [
+        "added /type",
     ],
-    'core/catalog.json#': [
-        'added /properties/items/items/additionalProperties',
+    "core/requirements/catalog-field-binding.json#/oneOf/0": [
+        "missing /description",
     ],
-    'core/media-buy-frequency-cap-requirement.json#': [
-        'differs /properties/supported_control_modes/items/description',
-    ],
-    'core/media-buy-support-requirements.json#': [
-        'differs /properties/frequency_cap_constraints/properties/supported_control_modes/items/description',
-    ],
-    'core/reporting-canonicalization-contract.json#': [
-        'added /properties/golden_vectors/properties/additional/items/properties/input_rows/items/additionalProperties',
-        'added /properties/golden_vectors/properties/ordering_encoding/properties/input_rows/items/additionalProperties',
-    ],
-    'core/reporting-canonicalization-contract.json#/properties/golden_vectors': [
-        'added /properties/additional/items/properties/input_rows/items/additionalProperties',
-        'added /properties/ordering_encoding/properties/input_rows/items/additionalProperties',
-    ],
-    'core/reporting-canonicalization-contract.json#/properties/golden_vectors/properties/additional/items': [
-        'added /properties/input_rows/items/additionalProperties',
-    ],
-    'core/reporting-canonicalization-contract.json#/properties/golden_vectors/properties/ordering_encoding': [
-        'added /properties/input_rows/items/additionalProperties',
-    ],
-    'core/reporting-report-definition.json#': [
-        'added /properties/source/properties/query_semantics/additionalProperties',
-    ],
-    'core/reporting-report-definition.json#/properties/source': [
-        'added /properties/query_semantics/additionalProperties',
-    ],
-    'core/requirements/catalog-field-binding.json#': [
-        'added /type',
-    ],
-    'core/requirements/catalog-field-binding.json#/oneOf/0': [
-        'missing /description',
-    ],
-    'core/requirements/catalog-field-binding.json#/oneOf/1': [
-        'missing /description',
-    ],
-    'media-buy/sync-catalogs-request.json#': [
-        'added /properties/catalogs/items/properties/items/items/additionalProperties',
-    ],
-    'sponsored-intelligence/si-send-message-request.json#': [
-        'added /properties/action_response/properties/payload/additionalProperties',
-    ],
-    'sponsored-intelligence/si-send-message-request.json#/properties/action_response': [
-        'added /properties/payload/additionalProperties',
-    ],
-    'sponsored-intelligence/si-send-message-response.json#': [
-        'added /properties/handoff/properties/intent/properties/product/additionalProperties',
-        'added /properties/response/properties/surface/properties/components/items/properties/component/additionalProperties/additionalProperties',
-    ],
-    'sponsored-intelligence/si-send-message-response.json#/properties/handoff': [
-        'added /properties/intent/properties/product/additionalProperties',
-    ],
-    'sponsored-intelligence/si-send-message-response.json#/properties/handoff/properties/intent': [
-        'added /properties/product/additionalProperties',
-    ],
-    'sponsored-intelligence/si-send-message-response.json#/properties/response': [
-        'added /properties/surface/properties/components/items/properties/component/additionalProperties/additionalProperties',
-    ],
-    'sponsored-intelligence/si-terminate-session-request.json#': [
-        'added /properties/termination_context/properties/transaction_intent/properties/product/additionalProperties',
-    ],
-    'sponsored-intelligence/si-terminate-session-request.json#/properties/termination_context': [
-        'added /properties/transaction_intent/properties/product/additionalProperties',
-    ],
-    'sponsored-intelligence/si-terminate-session-request.json#/properties/termination_context/properties/transaction_intent': [
-        'added /properties/product/additionalProperties',
-    ],
-    'sponsored-intelligence/si-terminate-session-response.json#': [
-        'added /properties/follow_up/properties/data/additionalProperties',
-    ],
-    'sponsored-intelligence/si-terminate-session-response.json#/properties/follow_up': [
-        'added /properties/data/additionalProperties',
+    "core/requirements/catalog-field-binding.json#/oneOf/1": [
+        "missing /description",
     ],
 }
 
