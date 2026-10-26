@@ -33,27 +33,26 @@ differing only in a ``$comment`` states a different thing to a reader, and a nod
 whose enclosing type word differs decides differently, which is the bit the old key
 appended by hand.
 
-**:attr:`Base.raw` is the declaration the node was parsed from, and it is excluded
-from equality too.**  Two readings are declaration-level by the design's own
-decision and neither is a second reading of what a node IS:
+**NO NODE CARRIES THE MAPPING IT WAS PARSED FROM.**  §14 step 5's staging allowed one
+during the conversion -- "a node may carry its originating mapping ... the step is not
+complete until that carrier is deleted" -- and it is deleted: ``Base.raw`` is gone and
+with it ``emit.content_key``, the JSON serialisation the content dedup was keyed on.
+A handler reads node fields, and the three readings that stay at the DECLARATION level
+are each a decision the design states, each with its own typed carrier:
 
-* §6 keeps ``restatement``, ``intersection`` and ``at_least_as_tight`` as "pure
-  functions over two nodes" -- section 2's intersection rule, which MERGES two
-  declarations of one property and hands the merged declaration back to
-  :func:`codegen.schema.parse.parse`.  The merge is over declarations because the
-  result has to be parsed as one node, not composed out of two decided ones;
-* ``lower/rules.py`` reads the rule sources a node carries (:attr:`Base.rules`),
-  which are the raw subschemas at RULE -- §4: "a node at RULE is parsed like any
-  other, kept on the enclosing node as a rule source, and is never handed to
-  ``decide``".
+* :attr:`Conjunct.raw` and :attr:`Base.declared` -- §6 keeps ``restatement``,
+  ``intersection`` and ``at_least_as_tight`` as pure functions over DECLARATIONS,
+  because section 2's intersection rule MERGES two declarations of one property and
+  hands the merged declaration back to :func:`codegen.schema.parse.parse`: the result
+  has to be parsed as one node, not composed out of two decided ones;
+* :attr:`Base.rules` -- the raw subschemas at RULE, §4: "a node at RULE is parsed like
+  any other, kept on the enclosing node as a rule source, and is never handed to
+  ``decide``".  ``lower/rules.py`` is its only reader;
+* :attr:`Union.branch_raw` -- §4 "Names"'s three rules and §4's dispatch derivation are
+  readings of a branch's own declaration: its title, its ``const`` pin, its ``required``
+  set.
 
-Nothing else reads it, and ``tests/test_import_rule.py`` is where that is held.
-
-**These kinds have no reader yet.**  ``schema/parse.py`` is what builds them and it
-is the half of §14 step 5 row ``adcp-client-python-10l.5`` did not land; the package
-docstring says why and on what precedent.  So this is a DECLARATION, in the layer §11
-gives it, and every sentence below is the decision a reader will have to agree with
-rather than a description of code that runs.
+``tests/test_import_rule.py`` is where "nothing else reads a mapping" is held.
 
 **Why frozen dataclasses and not a class hierarchy with a ``lower`` method.**  §2:
 the kinds are closed (draft-07 fixes them and §4's table lists every one) and the
@@ -130,12 +129,6 @@ class Base:
     #: -- absent and ``true`` are different statements, and ``"additionalProperties" in
     #: declares`` is how "stated at all" is asked.
     extra: Any = None
-    #: §14 step 5's MIGRATION CARRIER, and nothing of the walk reads it: the step's own
-    #: staging says "during this step a node may carry its originating mapping ... the
-    #: step is not complete until that carrier is deleted".  Its last reader is
-    #: ``emit.content_key``, which §14 step 5 also deletes, and the two go together in
-    #: this row's last commit.  Excluded from equality.
-    raw: Mapping[str, Any] = field(default_factory=dict, compare=False)
 
     @property
     def description(self) -> str | None:

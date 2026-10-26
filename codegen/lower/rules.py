@@ -144,14 +144,13 @@ def lower(
 def lower_declaration(declaration: Mapping[str, Any], position: Position) -> Lowered:
     """:func:`lower`, asked of a raw DECLARATION: an ``allOf`` conjunct's rules.
 
-    The sources are read off the table at the conjunct's own position, which is what
-    ``schema.parse`` does for a node, so the two readings are one reading of one table.
+    The sources are ``compiler.declaration_rule_sources``, which is the one reading of
+    them -- the conjunct SCREEN in ``lower_composition`` asks the same function for the
+    same keys, so a conjunct's screen and its rule tuple cannot disagree about which
+    keywords are rules at CONJ.
     """
-    sources = KEYWORDS(position)
-    if presence_only(declaration):
-        sources |= compiler.combinators(position)
     return lower(
-        {k: v for k, v in declaration.items() if k in sources},
+        compiler.declaration_rule_sources(declaration, position),
         declaration.get("properties") if isinstance(declaration.get("properties"), dict) else {},
         "additionalProperties" in declaration,
     )

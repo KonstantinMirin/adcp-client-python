@@ -59,38 +59,33 @@ dependency runs one way… Nothing is screened twice and no mapping is traversed
 is what §4 is actually protecting."  :func:`parse` classifies, and the one screen pass over
 ``sorted(raw)`` answers all four arms in the order the cell and the kind make available.
 
-**WHAT THIS RUNG OWNS, AND WHAT §14 STEP 5 STAGES.**  The step's end state is not
-negotiable -- "``parse`` is the only reader of a raw mapping, and a handler reads node
-fields" -- and the step says how it is reached: "during this step a node may carry its
-originating mapping, ``parse`` performs the one traversal, and each handler converts to
-node fields one kind at a time -- each conversion its own commit, each checked by the byte
-compare.  **The step is not complete until that carrier is deleted.**"
-:attr:`nodes.Base.raw` is that carrier.
+**§14 STEP 5 IS COMPLETE AND ITS MIGRATION CARRIER IS DELETED.**  The step's end state
+is "``parse`` is the only reader of a raw mapping, and a handler reads node fields", and
+the step staged the conversion rather than softening it: "during this step a node may
+carry its originating mapping, ``parse`` performs the one traversal, and each handler
+converts to node fields one kind at a time -- each conversion its own commit, each
+checked by the byte compare.  **The step is not complete until that carrier is
+deleted.**"  ``nodes.Base.raw`` was that carrier and it is gone, along with
+``emit.content_key``, the JSON serialisation the content dedup was keyed on.  All twelve
+kinds take their node, and `lower/rules.py` plus §2's intersection rule are the only
+readers left of a declaration -- each with a typed carrier ``nodes.py`` declares.
 
-Two things are staged per kind and both move together, because they are one conversion:
+So this function refuses nothing and raises nothing, and the two things a kind's handler
+needs in order to refuse are FIELDS:
 
-* the ADMISSION SCREEN and the shape validation.  A kind not yet converted screens its own
-  node through ``compiler.check_keywords`` over :attr:`nodes.Base.raw` -- the table, at the
-  node's own position, over the set that kind claims, which is exactly §3's admission
-  reader asked one node late;
-* the DESCENT.  A kind not yet converted reaches its children through
-  ``compiler.decide``, which PARSES the child and dispatches it -- so the child's mapping
-  is read by this module and by nothing else, and the count of readers is one at every
-  rung.  A kind that is converted takes its children off fields, and no mapping is read
-  twice at any point: that is what "one traversal" is being held to here, and the eager
-  whole-tree form §6 describes is what the last conversion leaves behind.
-
-Converted in this rung, with their descent: ``Reference``, ``Enumeration``, ``Constant``,
-``Scalar``, ``Null``, ``Typeless``, ``Object``, ``Mapping``, ``Array``, ``MultiType``.
-Still reading the carrier: ``Composition`` and ``Union``, whose own facts are the conjunct
-merge and the branch plan.  Their subschemas are therefore NOT descended here -- a
-:class:`nodes.Conjunct` is a declaration by §2's own decision, and a branch is parsed by
-the union row through ``compiler.decide`` until that row converts.
-
-So this function refuses nothing and raises nothing.  A malformed value is left in
-:attr:`nodes.Base.raw` and the not-yet-converted reader refuses it where it does today,
-which keeps the refused set and each refusal's ``resolved`` kind where the byte compare
-can see them.
+* the ADMISSION SCREEN reads :attr:`nodes.Base.declares` -- ``keywords.declares`` at the
+  node's own position, which is exactly the set §3's admission reader can refuse on --
+  and :attr:`nodes.Base.extensions` for the ``x-`` keys it reports.  ``handled`` stays the
+  caller's, which is the LOWERING reader §3 gives to ``lower/*``;
+* the SHAPE VALIDATION is :attr:`nodes.Base.faults` for the one fault no field answers
+  and a field everywhere else: an ``items`` that is not a schema is
+  :attr:`nodes.Array.element` being ``None`` beside ``items`` in ``declares``, an
+  ``enum`` that is not a list is :attr:`nodes.Enumeration.members` being empty, and a
+  ``patternProperties`` with the wrong number of entries is
+  :attr:`nodes.Mapping_.patterns`.  Each failure is a VERDICT, because a malformed
+  document is a property of the document (§4), and the kind's handler raises it at the
+  point its own check raised it -- so the report stays a function of the document and not
+  of where the reading happens.
 """
 
 from __future__ import annotations
@@ -208,7 +203,7 @@ def parse(
         # (``containers._value``, ``compiler.fields``), which is a reading the kind's
         # conversion moves here.
         return nodes.Typeless(
-            document=source.document, pointer=pointer, position=position, raw={}
+            document=source.document, pointer=pointer, position=position
         )
 
     if applied is None:
@@ -232,7 +227,6 @@ def parse(
         "declared": declared if isinstance(declared, Mapping) else {},
         "extra": raw.get("additionalProperties"),
         "faults": _faults(raw),
-        "raw": raw,
     }
 
     # **The arm order is the classification, and it is §5's decision rather than a
@@ -448,7 +442,6 @@ def extras_store(
         key=_key(raw.get("propertyNames"), f"{pointer}/propertyNames", source),
         extra=extra,
         word="object",
-        raw={},
     )
 
 
