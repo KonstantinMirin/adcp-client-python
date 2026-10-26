@@ -65,6 +65,9 @@ class DeliveryMetricsReachWindow(AdCPBaseModel):
 
 
 class DeliveryMetricsQuartileData(AdCPBaseModel):
+    """
+    Audio/video quartile completion data. Null indicates the metric is not applicable to this package/buy (e.g. quartile data on a non-video buy). Individual quartiles are addressable via the leaf metric identities `quartile_25` (q1_views), `quartile_50` (q2_views), `quartile_75` (q3_views), and `quartile_100` (q4_views) for declaration, commitments, aggregates, and breakdown sorting; this object remains the canonical carrier of the values. Quartiles are player-fired events (VAST firstQuartile/midpoint/thirdQuartile/complete). `quartile_100` counts 100%-of-duration completions and is distinct from `completed_views`, which counts completions at the seller's billable view threshold (`view_duration_seconds`) when one is set.
+    """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-metrics.json', pointer='#/properties/quartile_data')
     q1_views: Annotated[NonNegativeFloat | None, Field(description='25% completion views')] = None
     q2_views: Annotated[NonNegativeFloat | None, Field(description='50% completion views')] = None
