@@ -1045,9 +1045,23 @@ NON_PASS_PAIRS: dict[str, list[str]] = {
 #: after it, 38 after D2's Literal amendment -- and the reason it never moved is that
 #: no row had yet added a base, not that an addition would be wrong.
 UNION_BASE_FLOOR = 38
+#: **The two PERMISSIVE root models join at ``adcp-client-python-10l.20``, and they are
+#: the one shape for which "no payload" is the DOCUMENT'S answer rather than the
+#: generator's reach.**  §4's last table row makes a root stating no schema keyword a
+#: permissive root model, and §5(b)'s measurement of what that is faithful TO is exactly
+#: why there is no payload to derive: "``Draft7Validator`` accepts ``42``, ``"x"``,
+#: ``null``, an object and an array, so the permissive model is exactly as wide as the
+#: document."  A document that REFUSES NOTHING has no refusable instance, so the liveness
+#: check has nothing to offer the pair -- which is a fact about the document and not a
+#: gap in the draw.  The two are the roots stating only ``if``/``then``, whose ``then``
+#: narrows a VALUE and so states nothing a payload can violate at the root
+#: (§5's ``then``/``else`` row: "Its ``properties`` -> nothing on the model; the schema
+#: half narrows the value").
 NO_PAYLOAD_PAIRS: tuple[str, ...] = (
     "core/reference-renderer.json#",
     "core/reference-renderer.json#/properties/provenance",
+    "core/targeting-unknown-age-eligibility-constraint.json#",
+    "core/targeting-verified-age-basis-constraint.json#",
 )
 
 
@@ -1092,15 +1106,49 @@ def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for()
         f"{g.ref.document}{g.ref.pointer}" for g, r in reports if r.liveness.outcome == "no_payload"
     )
     assert excused == sorted(NO_PAYLOAD_PAIRS), excused
-    # Read off the reports rather than off the list: each one is a pair whose accepts
-    # check could not DRAW, and the liveness result says exactly that.
+    # **Read off the reports rather than off the list, and there are TWO CAUSES since
+    # ``adcp-client-python-10l.20``.**  :data:`NO_PAYLOAD_PAIRS`' own comment forecast the
+    # split -- "'the accepts check drew no instance' and 'the pair's verdict is
+    # ``no_instrument``' are two statements about one cause, and a row that separates them
+    # should redden in one place and not both" -- and §4's permissive root model is what
+    # separates them.  For that shape the draw SUCCEEDS, because the document admits every
+    # instance; what has no payload is the REFUSAL, because the document refuses nothing.
+    # So the cause is asserted per pair and the two are partitioned by name below rather
+    # than collapsed into one sentence.
+    #
+    # Last paragraph of this docstring, inverted by that same row: "A document refusing
+    # NOTHING would have to state no root type at all, and this bundle has none" -- it has
+    # five, and two of them emit here (the other three are the registry documents, still
+    # refused on a data key's cell).
+    causes: dict[str, set[str]] = {"drew_no_instance": set(), "refuses_nothing": set()}
     for g, r in reports:
-        if r.liveness.outcome == "no_payload":
-            assert r.accepts.outcome == "strategy_error", (g.ref, r.accepts.outcome)
-            assert r.liveness.detail == "the accepts check drew no instance", r.liveness.detail
-            assert r.liveness.how == "", r.liveness.how
-        else:
+        if r.liveness.outcome != "no_payload":
             assert r.liveness.how, (g.ref, r.liveness.outcome)
+            continue
+        name = f"{g.ref.document}{g.ref.pointer}"
+        assert r.liveness.how == "", (g.ref, r.liveness.how)
+        if r.accepts.outcome == "strategy_error":
+            assert r.liveness.detail == "the accepts check drew no instance", r.liveness.detail
+            causes["drew_no_instance"].add(name)
+            continue
+        # The other cause, asserted as the SHAPE it is rather than as a name: the pair's
+        # document is the empty schema, so every value is admissible and no value is
+        # refusable.  Both halves are checked against the document itself.
+        assert r.accepts.outcome == "pass", (g.ref, r.accepts.outcome)
+        # The DOCUMENT's own answer and not a predicate of ours: draft-07 is what
+        # decides that the empty schema admits everything, so the check is that its own
+        # validator admits a value of every JSON type.
+        node = schema_at(g.ref)
+        validator = jsonschema.Draft7Validator(node)
+        assert all(
+            validator.is_valid(value) for value in (42, "x", None, True, {}, [])
+        ), (g.ref, node)
+        causes["refuses_nothing"].add(name)
+    partitions(set(NO_PAYLOAD_PAIRS), **{k: v for k, v in causes.items()})
+    assert causes["refuses_nothing"] == {
+        "core/targeting-unknown-age-eligibility-constraint.json#",
+        "core/targeting-verified-age-basis-constraint.json#",
+    }, sorted(causes["refuses_nothing"])
     # The two mapping roots this test's own premise got wrong, asserted the right way
     # round: they state a root type, so the replacement IS refused and they ARE graded.
     for name in ("core/context.json#", "core/ext.json#"):
@@ -3833,7 +3881,11 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     "creative/get-creative-features-response.json": "allOf",
     "creative/preview-creative-response.json": "allOf",
     "creative/sync-creatives-response.json": "allOf",
-    "error-details/governance-agent-not-accepted.json": "maxLength",
+    # ``maxLength`` -> ``$ref`` at ``adcp-client-python-10l.20``: §5's ``format`` row's
+    # own fallback keeps a ``uri`` beside a bound, so this document's own verdict cleared
+    # and what is left is a CHAIN through ``governance/accepted-governance-agents.json``,
+    # whose obstruction is a sibling of a NESTED union.
+    "error-details/governance-agent-not-accepted.json": "$ref",
     "error-details/vast-version-mismatch.json": "properties",
     "media-buy/build-creative-response.json": "allOf",
     "media-buy/buy-products-request.json": "allOf",
@@ -5076,6 +5128,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     assert emitted_typed == [
         "a2ui/component.json",
         "collection/get-collection-list-response.json",
+        "core/account-change.json",
         "core/canonical-media-buy-features.json",
         "core/geo-place-area.json",
         "core/geo-region-support.json",
@@ -5091,6 +5144,10 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         "trusted-match/publisher-targeting-kv-config.json",
         "trusted-match/publisher-tmpx-config.json",
     ], emitted_typed
+    # ``core/account-change.json`` JOINED at ``adcp-client-python-10l.20``: §5's ``$ref``
+    # row at CONJ made a non-class target the composing node's own TYPE, which cleared
+    # its ``/properties/ext/allOf/0`` conjunct, and the document declares a typed
+    # ``additionalProperties`` of its own.  Named in the list above rather than counted.
     store = [
         (d, pointer or "/")
         for d in bundle.portable(BUNDLE)
