@@ -49,6 +49,21 @@ from codegen.refusal import Kind, Refusal
 import populations
 
 from tests.nodeset import claimed, partitions, ratchet
+from codegen.schema import nodes as schema_nodes
+from codegen.schema import parse as schema_parse
+
+
+def _probe_node(doc: dict, mod: "compiler.Module", pointer: str = "") -> "schema_nodes.Base":
+    """One hand-written declaration as the NODE the parser decides it is, at ROOT.
+
+    The ``Source`` is the module's own, so the applied word and the ``carries_nothing``
+    report the parser writes are the ones the module collects -- the production parse and
+    not a second arrangement of it.
+    """
+    return schema_parse.parse(
+        doc, pointer=pointer, position=keywords.Position.ROOT, source=mod.source
+    )
+
 
 #: The seven population predicates, in the order their steps landed.  Read off
 #: ``tests/populations.py`` rather than off ``emit.ROWS``, which §14 step 5 deleted: the
@@ -234,14 +249,23 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # reason the row's selector carried a root clause: a NESTED ``allOf`` is a different
     # step's measurement (``test_emit.py`` counts it), and stubbing the whole arm would
     # take those documents out of ``without`` as well and inflate this row's delta.
-    composing_at_a_root = emit.lower_composition
+    # **The row is reached at ``compiler.lower_composition`` now**, because §14 step 5
+    # made ``lower/composition.py`` the handler and ``emit`` no longer names the function
+    # at all.  The patch has to be where the CALL resolves or the perturbation is inert
+    # and this check passes vacuously -- which is what ``tests/nodeset.py``'s non-empty
+    # assertion is for, and it is what caught the stale target.
+    composing_at_a_root = compiler.lower_composition
 
-    def without_the_root_arm(node, name, pointer, mod, position, **kw):  # noqa: ANN001,ANN202
+    def without_the_root_arm(node, name, mod, *rest, **kw):  # noqa: ANN001,ANN202
+        # The POSITION is the node's own field now; a union BRANCH still arrives as a raw
+        # declaration with its position beside it (the staging), so both are read.
+        position = node.position if isinstance(node, schema_nodes.Base) else rest[1]
+        pointer = node.pointer if isinstance(node, schema_nodes.Base) else rest[0]
         if position is keywords.Position.ROOT:
             raise Refusal("allOf", pointer, refusal.DEFERRED_TO_A_LATER_ROW, kind=Kind.DEFERRED)
-        return composing_at_a_root(node, name, pointer, mod, position, **kw)
+        return composing_at_a_root(node, name, mod, *rest, **kw)
 
-    with mock.patch.object(emit, "lower_composition", without_the_root_arm):
+    with mock.patch.object(compiler, "lower_composition", without_the_root_arm):
         without = emit.emit(BUNDLE, pop)
 
     claimed("bundle.portable", docs)
@@ -1063,9 +1087,14 @@ def test_the_accepts_and_liveness_checks_are_green_with_a_denominator(
 # what refuses, by name, pointer and keyword
 # --------------------------------------------------------------------------- #
 def _lower(doc: dict, binder=emit._no_binder) -> str:  # noqa: SLF001 -- the test is the caller
-    return compiler.lower_composition(
-        doc, "Probe", "", emit.Module(document="probe.json", bind=binder), keywords.Position.ROOT
-    )
+    """One hand-written composing declaration, lowered as the walk lowers it.
+
+    §14 step 5 makes a handler take its node, so the declaration goes through
+    ``codegen.schema.parse.parse`` at the position it is written for -- the production
+    parse, so the node graded here is a node a document can produce.
+    """
+    mod = emit.Module(document="probe.json", bind=binder)
+    return compiler.lower_composition(_probe_node(doc, mod), "Probe", mod)
 
 
 def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> None:
@@ -1208,7 +1237,7 @@ def test_a_constraining_sibling_of_a_ref_conjunct_compiles_to_nothing_and_is_rep
         document="probe.json",
         bind=lambda uri, pointer: emit.Target("..core.probe_base", "ProbeBase", shape),
     )
-    compiler.lower_composition(doc, "Probe", "", mod, keywords.Position.ROOT)
+    compiler.lower_composition(_probe_node(doc, mod), "Probe", mod)
     assert "ProbeBase" in {symbol for _, symbol in mod.imports}
     assert [line for line in mod.carries_nothing if "minimum" in line], mod.carries_nothing
     assert "/allOf/0: minimum" in mod.carries_nothing[0], mod.carries_nothing
@@ -1293,7 +1322,7 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
             keyword: value,
             **also,
         }
-        compiler.lower_composition(doc, "Probe", "", mod, keywords.Position.ROOT)
+        compiler.lower_composition(_probe_node(doc, mod), "Probe", mod)
         assert mod.declared[""] == "Probe", (keyword, mod.declared)
         assert [
             one for one in render.blocks(mod.declarations) if "_adcp_rules" in one.text
@@ -1580,8 +1609,8 @@ def test_breaking_the_inner_annotation_carrier_reddens_the_comparison(
     monkeypatch.setattr(
         containers,
         "_contents",
-        lambda node, pointer, symbol, what, mod, position: containers._inner(
-            compiler.decide(node, pointer, symbol, mod, position), pointer, what, mod
+        lambda node, symbol, what, mod: containers._inner(
+            compiler.lower_node(node, symbol, mod), node.pointer, what, mod
         ),
     )
     cls, text, schema = _emit_probe(
