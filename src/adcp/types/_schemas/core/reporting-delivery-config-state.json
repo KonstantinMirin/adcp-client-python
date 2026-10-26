@@ -110,128 +110,90 @@
     },
     "configuration": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "allOf": [
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "authoritative_party": {
-                    "const": "seller"
-                  },
-                  "feed_purpose": {
-                    "const": "billing"
-                  }
-                },
-                "required": [
-                  "feed_purpose"
-                ],
-                "type": "object"
+          "if": {
+            "properties": {
+              "authoritative_party": {
+                "const": "seller"
               },
-              "type": "object"
+              "feed_purpose": {
+                "const": "billing"
+              }
             },
-            {
-              "properties": {
-                "authoritative_party": {
-                  "const": "seller"
-                },
-                "feed_purpose": {
-                  "const": "billing"
-                },
-                "reconciliation_mode": {
-                  "const": "consumer_receipt"
-                }
-              },
-              "required": [
-                "feed_purpose"
-              ]
+            "required": [
+              "feed_purpose"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reconciliation_mode": {
+                "const": "consumer_receipt"
+              }
             }
-          ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "feed_purpose": {
-                    "const": "billing"
-                  }
-                },
-                "required": [
-                  "feed_purpose"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "feed_purpose": {
+                "const": "billing"
+              }
             },
-            {
-              "properties": {
-                "feed_purpose": {
-                  "const": "billing"
-                },
-                "required_finality": {
-                  "const": "official"
-                }
-              },
-              "required": [
-                "feed_purpose"
-              ]
+            "required": [
+              "feed_purpose"
+            ]
+          },
+          "then": {
+            "properties": {
+              "required_finality": {
+                "const": "official"
+              }
             }
-          ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "reconciliation_mode": {
-                    "const": "consumer_receipt"
-                  }
-                },
-                "required": [
-                  "reconciliation_mode"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "reconciliation_mode": {
+                "const": "consumer_receipt"
+              }
             },
-            {
-              "properties": {
-                "reconciliation_mode": {
-                  "const": "consumer_receipt"
-                }
-              },
-              "required": [
-                "method",
-                "reconciliation_mode"
-              ]
-            }
-          ]
+            "required": [
+              "reconciliation_mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "method"
+            ]
+          }
         }
       ],
       "description": "Desired durable reporting delivery for one account. Entries are owned by (authenticated caller, account) and keyed by (delivery_config_id, delivery_config_version). The generation's feed, report definition, profile, scope, coverage requirement, finality, schedule, method, and immutable destination generation are fixed; only lifecycle intent (`active` and `revocation_effective_at`) may change without a new generation. Sellers reject a reused version with different immutable content. sync_accounts replacement semantics apply only to the calling principal's set. Omission leaves that set unchanged; [] deactivates that caller's set and stops new publication without affecting another caller. Sellers implementing this schema MUST advertise media_buy.reporting_delivery in experimental_features.",
-      "maxProperties": 15,
       "properties": {
         "active": {
-          "enum": [
-            false,
-            true
-          ]
+          "default": true,
+          "description": "Whether new reporting obligations should use this configuration. Inactive configurations remain visible for historical resolution.",
+          "type": "boolean"
         },
         "authoritative_party": {
+          "default": "seller",
+          "description": "Reserved: which party's count of this feed is authoritative. seller (the default, and the only value any 3.2 seller accepts) means the seller produces every revision and the consumer may only attest to what it consumed. consumer is reserved for the buyer-deposited billing revision task scoped to a later minor; until that task exists sellers MUST reject it with UNSUPPORTED_FEATURE. Reserving the field now keeps a future buyer-basis billing feed additive instead of breaking the billing-feed constraints. See https://github.com/adcontextprotocol/adcp/issues/7440.",
           "enum": [
             "seller",
             "consumer"
-          ]
+          ],
+          "type": "string"
         },
         "coverage_requirement": {
+          "description": "Whether every package in the resolved media-buy scope must support the exact selected offering. full fails closed when any package is unsupported or unknown. allow_partial permits publication only for the explicitly covered package denominator; every revision and status response still exposes partial coverage and MUST NOT present covered-subset totals as whole-buy totals.",
           "enum": [
             "full",
             "allow_partial"
-          ]
+          ],
+          "type": "string"
         },
         "delivery_config_id": {
           "description": "Caller-selected stable identifier, unique within the authenticated caller and account.",
@@ -247,11 +209,15 @@
           "type": "integer"
         },
         "feed_purpose": {
+          "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
           "enum": [
             "pacing",
-            "billing",
-            "analytics"
-          ]
+            "analytics",
+            "billing"
+          ],
+          "title": "Reporting Feed Purpose",
+          "type": "string",
+          "x-adcp-model-context-inline": true
         },
         "method": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -270,10 +236,130 @@
           "description": "Provider-neutral durable reporting delivery method. The caller may request protocol-managed provisioning or reuse an existing seller-issued binding. Transport names are open so new platforms do not require an AdCP enum change. Credentials, bearer profiles, and private keys MUST NOT appear. Sellers implementing this schema MUST advertise media_buy.reporting_delivery in experimental_features.",
           "oneOf": [
             {
-              "additionalProperties": {
-                "not": {}
+              "additionalProperties": false,
+              "properties": {
+                "destination": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "Storage or warehouse destination for durable reporting. The caller either references an existing seller-issued immutable destination generation or asks the seller to validate and bind a provider-native location. A destination_ref is owned by the stable authenticated principal's relationship with this seller and may be reused across accounts; each account delivery configuration separately authorizes its feed and scope. Changing proof-bound coordinates or the accepted delivery contract produces a new destination_ref. Access grants name advertised producer identities; credentials never transit AdCP.",
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "destination_ref": {
+                          "description": "Seller-issued immutable destination-generation reference returned by sync_agent_configuration, an earlier sync, or bilateral setup.",
+                          "maxLength": 255,
+                          "minLength": 1,
+                          "type": "string",
+                          "x-entity": "reporting_destination"
+                        },
+                        "mode": {
+                          "const": "existing",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "destination_ref"
+                      ],
+                      "title": "Existing binding"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "access_mode": {
+                          "description": "Optional provider access family used for capability matching.",
+                          "maxLength": 64,
+                          "minLength": 1,
+                          "pattern": "^[a-z][a-z0-9_.-]*$",
+                          "type": "string"
+                        },
+                        "location": {
+                          "description": "Provider-native bucket, prefix, project/dataset, catalog/schema, or equivalent locator. It MUST NOT contain an embedded credential or signed URL.",
+                          "maxLength": 2048,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "mode": {
+                          "const": "provision",
+                          "type": "string"
+                        },
+                        "provider": {
+                          "additionalProperties": false,
+                          "description": "Platform hosting the destination.",
+                          "properties": {
+                            "domain": {
+                              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "domain"
+                          ],
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "provider",
+                        "location"
+                      ],
+                      "title": "Provision binding"
+                    }
+                  ],
+                  "title": "Reporting Write Destination",
+                  "type": "object",
+                  "x-adcp-validation": {
+                    "authorization": "Bind every destination_ref to the stable authenticated caller. Reuse across that caller's accounts is permitted only after each account configuration independently verifies disclosure authority for its feed and media-buy scope. Reject unknown, unauthorized, and cross-caller refs indistinguishably.",
+                    "destination_proof": "Before ready, prove destination control and caller authority for every selected account, feed, and media-buy scope. A proof-bound coordinate or delivery-contract change creates a new destination_ref; old references remain stable for retained configurations and history. Revoke grants when the configuration, caller authorization, or account becomes inactive."
+                  },
+                  "x-status": "experimental"
+                },
+                "format": {
+                  "description": "Physical file format.",
+                  "enum": [
+                    "jsonl",
+                    "csv",
+                    "parquet",
+                    "avro",
+                    "orc"
+                  ],
+                  "type": "string"
+                },
+                "orchestration": {
+                  "description": "Party responsible for starting, configuring, and monitoring the delivery operation. Independent of destination ownership and the service that moves the data.",
+                  "enum": [
+                    "producer_managed",
+                    "consumer_managed"
+                  ],
+                  "title": "Reporting Orchestration",
+                  "type": "string",
+                  "x-adcp-model-context-inline": true
+                },
+                "pattern": {
+                  "const": "file_transfer",
+                  "description": "Immutable file/object publication with a manifest-last commit boundary.",
+                  "type": "string"
+                },
+                "transport": {
+                  "description": "Storage transport such as s3, gcs, azure_blob, or sftp.",
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "pattern": "^[a-z][a-z0-9_.-]*$",
+                  "type": "string"
+                }
               },
-              "maxProperties": 4,
+              "required": [
+                "pattern",
+                "transport",
+                "orchestration",
+                "destination",
+                "format"
+              ],
+              "title": "File transfer",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "destination": {
                   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -292,10 +378,7 @@
                   "description": "Recipient configuration for a producer-hosted reporting share. The caller either references an existing seller-issued immutable recipient/destination generation or asks the seller to provision one for the named recipient. A destination_ref is owned by the stable authenticated principal's relationship with this seller and may be reused across accounts; each account delivery configuration separately authorizes disclosure of its feed and scope. Changing proof-bound recipient coordinates or the accepted delivery contract produces a new destination_ref. No bearer profile, token, private key, password, or other credential may appear here.",
                   "oneOf": [
                     {
-                      "additionalProperties": {
-                        "not": {}
-                      },
-                      "maxProperties": 2,
+                      "additionalProperties": false,
                       "properties": {
                         "destination_ref": {
                           "description": "Seller-issued immutable recipient/destination-generation reference returned by sync_agent_configuration, an earlier sync, or bilateral setup.",
@@ -305,20 +388,18 @@
                           "x-entity": "reporting_destination"
                         },
                         "mode": {
-                          "const": "existing"
+                          "const": "existing",
+                          "type": "string"
                         }
                       },
                       "required": [
-                        "destination_ref",
-                        "mode"
+                        "mode",
+                        "destination_ref"
                       ],
                       "title": "Existing binding"
                     },
                     {
-                      "additionalProperties": {
-                        "not": {}
-                      },
-                      "maxProperties": 4,
+                      "additionalProperties": false,
                       "properties": {
                         "access_mode": {
                           "description": "Provider access family, such as databricks_to_databricks, open_sharing, or secure_data_sharing.",
@@ -328,14 +409,12 @@
                           "type": "string"
                         },
                         "mode": {
-                          "const": "provision"
+                          "const": "provision",
+                          "type": "string"
                         },
                         "provider": {
-                          "additionalProperties": {
-                            "not": {}
-                          },
+                          "additionalProperties": false,
                           "description": "Data-sharing platform, such as databricks.com or snowflake.com.",
-                          "maxProperties": 1,
                           "properties": {
                             "domain": {
                               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
@@ -348,9 +427,7 @@
                           "type": "object"
                         },
                         "recipient": {
-                          "additionalProperties": {
-                            "not": {}
-                          },
+                          "additionalProperties": false,
                           "dependencies": {
                             "cloud": [
                               "region"
@@ -360,14 +437,16 @@
                             ]
                           },
                           "description": "Intended buyer principal. The identity is interpreted by the provider and access mode; for example, a Databricks sharing identifier, Snowflake organization/account pair, or Open Sharing recipient email. It is an identifier, never a credential.",
-                          "maxProperties": 3,
                           "properties": {
                             "cloud": {
                               "enum": [
                                 "aws",
-                                "gcp",
-                                "azure"
-                              ]
+                                "azure",
+                                "gcp"
+                              ],
+                              "title": "Reporting Cloud",
+                              "type": "string",
+                              "x-adcp-model-context-inline": true
                             },
                             "identity": {
                               "maxLength": 512,
@@ -387,9 +466,9 @@
                         }
                       },
                       "required": [
-                        "access_mode",
                         "mode",
                         "provider",
+                        "access_mode",
                         "recipient"
                       ],
                       "title": "Provision recipient"
@@ -404,13 +483,19 @@
                   "x-status": "experimental"
                 },
                 "orchestration": {
+                  "description": "Party responsible for starting, configuring, and monitoring the delivery operation. Independent of destination ownership and the service that moves the data.",
                   "enum": [
-                    "consumer_managed",
-                    "producer_managed"
-                  ]
+                    "producer_managed",
+                    "consumer_managed"
+                  ],
+                  "title": "Reporting Orchestration",
+                  "type": "string",
+                  "x-adcp-model-context-inline": true
                 },
                 "pattern": {
-                  "const": "dataset_share"
+                  "const": "dataset_share",
+                  "description": "Producer-hosted relation or share read through the intended recipient's access path.",
+                  "type": "string"
                 },
                 "transport": {
                   "description": "Sharing transport such as delta_sharing, snowflake_secure_sharing, or bigquery_authorized_view.",
@@ -421,29 +506,23 @@
                 }
               },
               "required": [
-                "destination",
-                "orchestration",
                 "pattern",
-                "transport"
+                "transport",
+                "orchestration",
+                "destination"
               ],
               "title": "Dataset share",
               "type": "object"
             },
             {
-              "additionalProperties": {
-                "not": {}
-              },
-              "maxProperties": 4,
+              "additionalProperties": false,
               "properties": {
                 "destination": {
                   "$schema": "http://json-schema.org/draft-07/schema#",
                   "description": "Storage or warehouse destination for durable reporting. The caller either references an existing seller-issued immutable destination generation or asks the seller to validate and bind a provider-native location. A destination_ref is owned by the stable authenticated principal's relationship with this seller and may be reused across accounts; each account delivery configuration separately authorizes its feed and scope. Changing proof-bound coordinates or the accepted delivery contract produces a new destination_ref. Access grants name advertised producer identities; credentials never transit AdCP.",
                   "oneOf": [
                     {
-                      "additionalProperties": {
-                        "not": {}
-                      },
-                      "maxProperties": 2,
+                      "additionalProperties": false,
                       "properties": {
                         "destination_ref": {
                           "description": "Seller-issued immutable destination-generation reference returned by sync_agent_configuration, an earlier sync, or bilateral setup.",
@@ -453,20 +532,18 @@
                           "x-entity": "reporting_destination"
                         },
                         "mode": {
-                          "const": "existing"
+                          "const": "existing",
+                          "type": "string"
                         }
                       },
                       "required": [
-                        "destination_ref",
-                        "mode"
+                        "mode",
+                        "destination_ref"
                       ],
                       "title": "Existing binding"
                     },
                     {
-                      "additionalProperties": {
-                        "not": {}
-                      },
-                      "maxProperties": 4,
+                      "additionalProperties": false,
                       "properties": {
                         "access_mode": {
                           "description": "Optional provider access family used for capability matching.",
@@ -482,14 +559,12 @@
                           "type": "string"
                         },
                         "mode": {
-                          "const": "provision"
+                          "const": "provision",
+                          "type": "string"
                         },
                         "provider": {
-                          "additionalProperties": {
-                            "not": {}
-                          },
+                          "additionalProperties": false,
                           "description": "Platform hosting the destination.",
-                          "maxProperties": 1,
                           "properties": {
                             "domain": {
                               "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
@@ -503,9 +578,9 @@
                         }
                       },
                       "required": [
-                        "location",
                         "mode",
-                        "provider"
+                        "provider",
+                        "location"
                       ],
                       "title": "Provision binding"
                     }
@@ -519,13 +594,19 @@
                   "x-status": "experimental"
                 },
                 "orchestration": {
+                  "description": "Party responsible for starting, configuring, and monitoring the delivery operation. Independent of destination ownership and the service that moves the data.",
                   "enum": [
-                    "consumer_managed",
-                    "producer_managed"
-                  ]
+                    "producer_managed",
+                    "consumer_managed"
+                  ],
+                  "title": "Reporting Orchestration",
+                  "type": "string",
+                  "x-adcp-model-context-inline": true
                 },
                 "pattern": {
-                  "const": "warehouse_materialization"
+                  "const": "warehouse_materialization",
+                  "description": "Exact-revision publication into a warehouse relation or partition.",
+                  "type": "string"
                 },
                 "transport": {
                   "description": "Warehouse or transfer transport such as bigquery, snowflake, databricks_sql, or gam_bigquery_transfer.",
@@ -536,137 +617,12 @@
                 }
               },
               "required": [
-                "destination",
-                "orchestration",
                 "pattern",
-                "transport"
+                "transport",
+                "orchestration",
+                "destination"
               ],
               "title": "Warehouse materialization",
-              "type": "object"
-            },
-            {
-              "additionalProperties": {
-                "not": {}
-              },
-              "maxProperties": 5,
-              "properties": {
-                "destination": {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
-                  "description": "Storage or warehouse destination for durable reporting. The caller either references an existing seller-issued immutable destination generation or asks the seller to validate and bind a provider-native location. A destination_ref is owned by the stable authenticated principal's relationship with this seller and may be reused across accounts; each account delivery configuration separately authorizes its feed and scope. Changing proof-bound coordinates or the accepted delivery contract produces a new destination_ref. Access grants name advertised producer identities; credentials never transit AdCP.",
-                  "oneOf": [
-                    {
-                      "additionalProperties": {
-                        "not": {}
-                      },
-                      "maxProperties": 2,
-                      "properties": {
-                        "destination_ref": {
-                          "description": "Seller-issued immutable destination-generation reference returned by sync_agent_configuration, an earlier sync, or bilateral setup.",
-                          "maxLength": 255,
-                          "minLength": 1,
-                          "type": "string",
-                          "x-entity": "reporting_destination"
-                        },
-                        "mode": {
-                          "const": "existing"
-                        }
-                      },
-                      "required": [
-                        "destination_ref",
-                        "mode"
-                      ],
-                      "title": "Existing binding"
-                    },
-                    {
-                      "additionalProperties": {
-                        "not": {}
-                      },
-                      "maxProperties": 4,
-                      "properties": {
-                        "access_mode": {
-                          "description": "Optional provider access family used for capability matching.",
-                          "maxLength": 64,
-                          "minLength": 1,
-                          "pattern": "^[a-z][a-z0-9_.-]*$",
-                          "type": "string"
-                        },
-                        "location": {
-                          "description": "Provider-native bucket, prefix, project/dataset, catalog/schema, or equivalent locator. It MUST NOT contain an embedded credential or signed URL.",
-                          "maxLength": 2048,
-                          "minLength": 1,
-                          "type": "string"
-                        },
-                        "mode": {
-                          "const": "provision"
-                        },
-                        "provider": {
-                          "additionalProperties": {
-                            "not": {}
-                          },
-                          "description": "Platform hosting the destination.",
-                          "maxProperties": 1,
-                          "properties": {
-                            "domain": {
-                              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "domain"
-                          ],
-                          "type": "object"
-                        }
-                      },
-                      "required": [
-                        "location",
-                        "mode",
-                        "provider"
-                      ],
-                      "title": "Provision binding"
-                    }
-                  ],
-                  "title": "Reporting Write Destination",
-                  "type": "object",
-                  "x-adcp-validation": {
-                    "authorization": "Bind every destination_ref to the stable authenticated caller. Reuse across that caller's accounts is permitted only after each account configuration independently verifies disclosure authority for its feed and media-buy scope. Reject unknown, unauthorized, and cross-caller refs indistinguishably.",
-                    "destination_proof": "Before ready, prove destination control and caller authority for every selected account, feed, and media-buy scope. A proof-bound coordinate or delivery-contract change creates a new destination_ref; old references remain stable for retained configurations and history. Revoke grants when the configuration, caller authorization, or account becomes inactive."
-                  },
-                  "x-status": "experimental"
-                },
-                "format": {
-                  "enum": [
-                    "csv",
-                    "orc",
-                    "avro",
-                    "jsonl",
-                    "parquet"
-                  ]
-                },
-                "orchestration": {
-                  "enum": [
-                    "consumer_managed",
-                    "producer_managed"
-                  ]
-                },
-                "pattern": {
-                  "const": "file_transfer"
-                },
-                "transport": {
-                  "description": "Storage transport such as s3, gcs, azure_blob, or sftp.",
-                  "maxLength": 64,
-                  "minLength": 1,
-                  "pattern": "^[a-z][a-z0-9_.-]*$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "destination",
-                "format",
-                "orchestration",
-                "pattern",
-                "transport"
-              ],
-              "title": "File transfer",
               "type": "object"
             }
           ],
@@ -683,10 +639,15 @@
           "x-entity": "reporting_offering"
         },
         "reconciliation_mode": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Whether producer-side delivery evidence is sufficient or the selected consumer must submit an authenticated matching receipt. A seller-authoritative billing feed MUST use consumer_receipt.",
           "enum": [
             "delivery_only",
             "consumer_receipt"
-          ]
+          ],
+          "title": "Reporting Reconciliation Mode",
+          "type": "string",
+          "x-status": "experimental"
         },
         "report_definition_id": {
           "description": "Exact immutable semantic definition selected from the offering. This makes the expected obligation identity independently derivable and prevents attribution, timezone, source-mapping, or restatement-policy drift behind a profile label.",
@@ -704,10 +665,18 @@
           "type": "string"
         },
         "required_finality": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Finality the durable path must ultimately provide. Snapshot delivery may still precede an official requirement.",
           "enum": [
-            "official",
-            "snapshot"
-          ]
+            "snapshot",
+            "official"
+          ],
+          "enumDescriptions": {
+            "official": "Immutable seller-authoritative close for the represented period. Buyers may key invoices and settlement records to its reporting_revision_id. Later corrections are explicit adjustments, never superseding revisions.",
+            "snapshot": "Provisional seller/source reporting evidence; not sufficient by itself for billing."
+          },
+          "title": "Reporting Finality",
+          "type": "string"
         },
         "revocation_effective_at": {
           "description": "Optional requested cutoff for deactivation. No new publication may begin after the applied cutoff; historical access is limited to the contracted recovery window.",
@@ -716,126 +685,48 @@
         },
         "schedule": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
-          "anyOf": [
+          "additionalProperties": false,
+          "allOf": [
             {
-              "anyOf": [
-                {
+              "else": {
+                "else": {
                   "not": {
                     "anyOf": [
                       {
-                        "properties": {
-                          "alignment": {
-                            "const": "source_timezone"
-                          }
-                        },
-                        "required": [
-                          "alignment"
-                        ],
-                        "type": "object"
-                      },
-                      {
                         "required": [
                           "period_anchor"
-                        ],
-                        "type": "object"
+                        ]
                       },
                       {
                         "required": [
                           "period_timezone"
-                        ],
-                        "type": "object"
+                        ]
                       }
                     ]
-                  },
-                  "type": "object"
+                  }
                 },
-                {
-                  "not": {
-                    "properties": {
-                      "alignment": {
-                        "const": "source_timezone"
-                      }
-                    },
-                    "required": [
-                      "alignment",
-                      "period_anchor",
-                      "period_timezone"
-                    ],
-                    "type": "object"
-                  },
+                "if": {
                   "properties": {
                     "alignment": {
                       "const": "source_timezone"
                     }
                   },
                   "required": [
-                    "alignment",
-                    "period_timezone"
-                  ],
-                  "type": "object"
-                }
-              ],
-              "not": {
-                "anyOf": [
-                  {
-                    "not": {
-                      "anyOf": [
-                        {
-                          "properties": {
-                            "alignment": {
-                              "const": "source_timezone"
-                            }
-                          },
-                          "required": [
-                            "alignment"
-                          ],
-                          "type": "object"
-                        },
-                        {
-                          "required": [
-                            "period_anchor"
-                          ],
-                          "type": "object"
-                        },
-                        {
-                          "required": [
-                            "period_timezone"
-                          ],
-                          "type": "object"
-                        }
-                      ]
-                    },
-                    "type": "object"
-                  },
-                  {
-                    "not": {
-                      "properties": {
-                        "alignment": {
-                          "const": "source_timezone"
-                        }
-                      },
-                      "required": [
-                        "alignment",
-                        "period_anchor",
-                        "period_timezone"
-                      ],
-                      "type": "object"
-                    },
-                    "properties": {
-                      "alignment": {
-                        "const": "source_timezone"
-                      }
-                    },
+                    "alignment"
+                  ]
+                },
+                "then": {
+                  "not": {
                     "required": [
-                      "alignment",
-                      "period_timezone"
-                    ],
-                    "type": "object"
-                  }
-                ],
+                      "period_anchor"
+                    ]
+                  },
+                  "required": [
+                    "period_timezone"
+                  ]
+                }
+              },
+              "if": {
                 "properties": {
                   "alignment": {
                     "const": "billing_cycle"
@@ -843,22 +734,14 @@
                 },
                 "required": [
                   "alignment"
-                ],
-                "type": "object"
+                ]
               },
-              "type": "object"
-            },
-            {
-              "properties": {
-                "alignment": {
-                  "const": "billing_cycle"
-                }
-              },
-              "required": [
-                "alignment",
-                "period_anchor",
-                "period_timezone"
-              ]
+              "then": {
+                "required": [
+                  "period_anchor",
+                  "period_timezone"
+                ]
+              }
             }
           ],
           "definitions": {
@@ -876,15 +759,18 @@
             }
           },
           "description": "The period and deadline contract from which reporting obligations are created. Every elapsed period produces an obligation even when it has zero rows or production fails, so a consumer can distinguish empty from missing.",
-          "maxProperties": 5,
           "properties": {
             "alignment": {
+              "description": "Calendar used to establish exact period boundaries. source_timezone is an explicit upstream reporting clock, such as an ad server network timezone, that may differ from the AdCP account timezone. The obligation echoes resolved timestamps and source timezone.",
               "enum": [
                 "utc",
-                "billing_cycle",
+                "account_timezone",
                 "source_timezone",
-                "account_timezone"
-              ]
+                "billing_cycle"
+              ],
+              "title": "Reporting Schedule Alignment",
+              "type": "string",
+              "x-adcp-model-context-inline": true
             },
             "delivery_sla": {
               "description": "Non-negative maximum time after period end before the required revision is due. PT0S means due at period close; expected_at equals the resolved period end plus this duration.",
@@ -909,9 +795,9 @@
             }
           },
           "required": [
+            "period_duration",
             "alignment",
-            "delivery_sla",
-            "period_duration"
+            "delivery_sla"
           ],
           "title": "Reporting Schedule",
           "type": "object",
@@ -923,15 +809,14 @@
           "x-status": "experimental"
         },
         "scope": {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Media buys covered by this configuration.",
           "maxProperties": 1,
           "minProperties": 1,
           "properties": {
             "all_media_buys": {
-              "const": true
+              "const": true,
+              "type": "boolean"
             },
             "media_buy_ids": {
               "items": {
@@ -950,18 +835,18 @@
         }
       },
       "required": [
-        "active",
-        "coverage_requirement",
         "delivery_config_id",
         "delivery_config_version",
-        "feed_purpose",
         "offering_id",
-        "reconciliation_mode",
+        "active",
+        "feed_purpose",
         "report_definition_id",
         "reporting_profile",
+        "scope",
+        "coverage_requirement",
         "required_finality",
-        "schedule",
-        "scope"
+        "reconciliation_mode",
+        "schedule"
       ],
       "title": "Reporting Delivery Configuration",
       "type": "object",
@@ -975,9 +860,7 @@
     },
     "current_coverage": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "definitions": {
         "ReportingMediaBuyId": {
           "minLength": 1,
@@ -995,7 +878,6 @@
         }
       },
       "description": "Current effective product/package coverage for the selected offering and resolved account. This setup-time view may change as media buys or provider capabilities change; each period obligation later freezes its own authoritative coverage.",
-      "maxProperties": 12,
       "properties": {
         "covered_package_ids": {
           "items": {
@@ -1026,10 +908,7 @@
         "limitations": {
           "description": "Stable reasons that some requested scope is not covered by the exact selected offering. These are capability facts, not delivery failures.",
           "items": {
-            "additionalProperties": {
-              "not": {}
-            },
-            "maxProperties": 3,
+            "additionalProperties": false,
             "properties": {
               "media_buy_id": {
                 "minLength": 1,
@@ -1052,17 +931,18 @@
               },
               "reason": {
                 "enum": [
-                  "capability_unknown",
-                  "provider_limitation",
                   "offering_unsupported",
+                  "account_entitlement_unavailable",
                   "credential_scope_insufficient",
-                  "account_entitlement_unavailable"
-                ]
+                  "provider_limitation",
+                  "capability_unknown"
+                ],
+                "type": "string"
               }
             },
             "required": [
-              "media_buy_id",
-              "reason"
+              "reason",
+              "media_buy_id"
             ],
             "type": "object"
           },
@@ -1106,10 +986,11 @@
         "status": {
           "enum": [
             "full",
-            "none",
             "partial",
+            "none",
             "unknown"
-          ]
+          ],
+          "type": "string"
         },
         "unknown_media_buy_ids": {
           "items": {
@@ -1157,18 +1038,18 @@
         }
       },
       "required": [
-        "covered_package_ids",
-        "evaluated_at",
-        "fully_covered_media_buy_ids",
-        "limitations",
-        "media_buy_ids",
-        "package_ids",
-        "partially_covered_media_buy_ids",
         "status",
-        "unknown_media_buy_ids",
-        "unknown_package_ids",
+        "evaluated_at",
+        "media_buy_ids",
+        "fully_covered_media_buy_ids",
+        "partially_covered_media_buy_ids",
         "unsupported_media_buy_ids",
-        "unsupported_package_ids"
+        "unknown_media_buy_ids",
+        "package_ids",
+        "covered_package_ids",
+        "unsupported_package_ids",
+        "unknown_package_ids",
+        "limitations"
       ],
       "title": "Reporting Coverage",
       "type": "object",
@@ -1193,119 +1074,69 @@
     "issues": {
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": {
-          "not": {}
-        },
+        "additionalProperties": false,
         "allOf": [
           {
-            "anyOf": [
-              {
-                "anyOf": [
-                  {
-                    "not": {
-                      "properties": {
-                        "recommended_action": {
-                          "const": "contact_seller"
-                        },
-                        "responsible_party": {
-                          "const": "seller"
-                        },
-                        "severity": {
-                          "const": "delayed"
-                        }
-                      },
-                      "required": [
-                        "reporting_obligation_id",
-                        "reporting_revision_id"
-                      ],
-                      "type": "object"
-                    },
-                    "properties": {
-                      "recommended_action": {
-                        "const": "contact_seller"
-                      },
-                      "responsible_party": {
-                        "const": "seller"
-                      }
-                    },
-                    "required": [
-                      "reporting_obligation_id",
-                      "reporting_revision_id"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "properties": {
-                      "recommended_action": {
-                        "const": "wait_for_retry"
-                      },
-                      "responsible_party": {
-                        "const": "seller"
-                      },
-                      "severity": {
-                        "const": "delayed"
-                      }
-                    },
-                    "required": [
-                      "reporting_obligation_id",
-                      "reporting_revision_id"
-                    ]
-                  }
-                ],
-                "properties": {
-                  "code": {
-                    "const": "REVISION_UNREADABLE"
-                  }
-                },
-                "required": [
-                  "code"
-                ]
+            "if": {
+              "properties": {
+                "code": {
+                  "const": "CONSUMER_STATUS_MISMATCH"
+                }
               },
-              {
-                "not": {
-                  "properties": {
-                    "code": {
-                      "const": "REVISION_UNREADABLE"
-                    }
-                  },
-                  "required": [
-                    "code"
-                  ],
-                  "type": "object"
-                },
-                "type": "object"
-              }
-            ]
+              "required": [
+                "code"
+              ]
+            },
+            "then": {
+              "required": [
+                "opened_at",
+                "reporting_status_id"
+              ]
+            }
           },
           {
-            "anyOf": [
-              {
-                "not": {
-                  "properties": {
-                    "code": {
-                      "const": "CONSUMER_STATUS_MISMATCH"
-                    }
-                  },
-                  "required": [
-                    "code"
-                  ],
-                  "type": "object"
-                },
-                "type": "object"
+            "if": {
+              "properties": {
+                "code": {
+                  "const": "REVISION_UNREADABLE"
+                }
               },
-              {
+              "required": [
+                "code"
+              ]
+            },
+            "then": {
+              "else": {
                 "properties": {
-                  "code": {
-                    "const": "CONSUMER_STATUS_MISMATCH"
+                  "recommended_action": {
+                    "const": "contact_seller"
                   }
-                },
-                "required": [
-                  "code",
-                  "opened_at",
-                  "reporting_status_id"
-                ]
+                }
+              },
+              "if": {
+                "properties": {
+                  "severity": {
+                    "const": "delayed"
+                  }
+                }
+              },
+              "properties": {
+                "responsible_party": {
+                  "const": "seller"
+                }
+              },
+              "required": [
+                "reporting_obligation_id",
+                "reporting_revision_id"
+              ],
+              "then": {
+                "properties": {
+                  "recommended_action": {
+                    "const": "wait_for_retry"
+                  }
+                }
               }
-            ]
+            }
           }
         ],
         "definitions": {
@@ -1320,26 +1151,26 @@
           }
         },
         "description": "Structured reporting condition that explains delayed or action_required health without exposing credentials, provider response bodies, or internal stack traces.",
-        "maxProperties": 20,
         "properties": {
           "code": {
             "enum": [
               "REPORT_OVERDUE",
-              "ACCESS_REQUIRED",
-              "DELIVERY_FAILED",
-              "RECEIPT_REJECTED",
-              "RECEIPT_REQUIRED",
-              "RESOURCE_EXPIRED",
               "PRODUCTION_FAILED",
-              "HISTORY_UNAVAILABLE",
-              "READER_INCOMPATIBLE",
-              "REVISION_UNREADABLE",
+              "DELIVERY_FAILED",
+              "ACCESS_REQUIRED",
               "CONFIGURATION_REQUIRED",
-              "CONSUMER_STATUS_MISMATCH",
-              "ADJUSTMENT_RECEIPT_REJECTED",
+              "REPORTING_COVERAGE_INCOMPLETE",
+              "RESOURCE_EXPIRED",
+              "READER_INCOMPATIBLE",
+              "HISTORY_UNAVAILABLE",
+              "REVISION_UNREADABLE",
+              "RECEIPT_REQUIRED",
+              "RECEIPT_REJECTED",
               "ADJUSTMENT_RECEIPT_REQUIRED",
-              "REPORTING_COVERAGE_INCOMPLETE"
-            ]
+              "ADJUSTMENT_RECEIPT_REJECTED",
+              "CONSUMER_STATUS_MISMATCH"
+            ],
+            "type": "string"
           },
           "delivery_config_id": {
             "maxLength": 64,
@@ -1364,11 +1195,15 @@
             "type": "string"
           },
           "feed_purpose": {
+            "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
             "enum": [
               "pacing",
-              "billing",
-              "analytics"
-            ]
+              "analytics",
+              "billing"
+            ],
+            "title": "Reporting Feed Purpose",
+            "type": "string",
+            "x-adcp-model-context-inline": true
           },
           "issue_id": {
             "description": "Seller-issued stable identifier for this logical issue: re-emissions and later polls of the same unresolved condition reuse it, and resolution retires it, so consumers can project AdCP reporting issues into durable work items. A recurrence after resolution receives a new id.",
@@ -1378,12 +1213,14 @@
             "type": "string"
           },
           "issue_state": {
+            "description": "Optional seller-maintained lifecycle for this issue_id. open is the default when omitted. acknowledged means a human on responsible_party has taken it up but the condition persists. resolved means the underlying condition no longer holds; a recurrence uses a new issue_id. waived means the parties agreed off-protocol to disregard this exact issue even though its underlying condition may still hold. Only open and acknowledged issues appear in issues[]; retiring an issue removes it from the projection rather than publishing it at resolved or waived, so a reader that treats a nonempty issues[] as degradation stays correct. A CONSUMER_STATUS_MISMATCH waiver follows the bilateral, exact-scope requirements in consumer_mismatch_lifecycle.",
             "enum": [
               "open",
-              "waived",
+              "acknowledged",
               "resolved",
-              "acknowledged"
-            ]
+              "waived"
+            ],
+            "type": "string"
           },
           "media_buy_ids": {
             "items": {
@@ -1429,15 +1266,16 @@
           },
           "recommended_action": {
             "enum": [
-              "contact_buyer",
-              "repair_access",
-              "contact_seller",
               "wait_for_retry",
+              "contact_buyer",
+              "contact_seller",
               "contact_provider",
+              "repair_access",
               "update_configuration",
-              "use_supported_reader",
-              "change_reporting_scope"
-            ]
+              "change_reporting_scope",
+              "use_supported_reader"
+            ],
+            "type": "string"
           },
           "reporting_obligation_id": {
             "maxLength": 255,
@@ -1467,21 +1305,25 @@
               "buyer",
               "seller",
               "provider"
-            ]
+            ],
+            "type": "string"
           },
           "severity": {
             "enum": [
               "delayed",
               "action_required"
-            ]
+            ],
+            "title": "Reporting Status Severity",
+            "type": "string",
+            "x-adcp-model-context-inline": true
           }
         },
         "required": [
-          "code",
           "issue_id",
-          "recommended_action",
+          "code",
+          "severity",
           "responsible_party",
-          "severity"
+          "recommended_action"
         ],
         "title": "Reporting Status Issue",
         "type": "object",
@@ -1542,13 +1384,7 @@
       "type": "object"
     },
     "state": {
-      "enum": [
-        "ready",
-        "inactive",
-        "pending_setup",
-        "action_required",
-        "pending_validation"
-      ]
+      "$ref": "#/definitions/ReportingDeliveryConfigLifecycleState"
     },
     "validated_at": {
       "format": "date-time",

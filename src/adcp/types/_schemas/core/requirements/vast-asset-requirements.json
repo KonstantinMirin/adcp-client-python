@@ -11,6 +11,7 @@
   "properties": {
     "media_file_requirements": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Technical acceptance constraints for the alternative MediaFile renditions in each applicable resolved InLine linear creative.",
       "properties": {
         "codecs": {
@@ -36,12 +37,15 @@
         "delivery_methods": {
           "description": "Accepted values of the required `MediaFile@delivery` attribute. `progressive` identifies a directly downloadable media file; `streaming` identifies a streaming media resource.",
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Delivery method declared by the required VAST MediaFile `delivery` attribute.",
             "enum": [
-              "streaming",
-              "progressive"
-            ]
+              "progressive",
+              "streaming"
+            ],
+            "title": "VAST Media Delivery Method",
+            "type": "string"
           },
-          "maxItems": 2,
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
@@ -104,6 +108,10 @@
       }
     },
     "vast_version": {
+      "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "deprecated": true,
+      "description": "Deprecated one-element alias for `vast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.",
       "enum": [
         "2.0",
         "3.0",
@@ -111,11 +119,16 @@
         "4.1",
         "4.2",
         "4.3"
-      ]
+      ],
+      "title": "VAST Version",
+      "type": "string"
     },
     "vast_versions": {
       "description": "Accepted VAST version set for this asset requirement.",
       "items": {
+        "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
         "enum": [
           "2.0",
           "3.0",
@@ -123,7 +136,9 @@
           "4.1",
           "4.2",
           "4.3"
-        ]
+        ],
+        "title": "VAST Version",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",

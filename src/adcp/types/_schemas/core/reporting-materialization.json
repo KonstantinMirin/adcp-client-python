@@ -211,11 +211,15 @@
       "type": "string"
     },
     "feed_purpose": {
+      "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
       "enum": [
         "pacing",
-        "billing",
-        "analytics"
-      ]
+        "analytics",
+        "billing"
+      ],
+      "title": "Reporting Feed Purpose",
+      "type": "string",
+      "x-adcp-model-context-inline": true
     },
     "method": {
       "enum": [
@@ -254,68 +258,42 @@
     },
     "resource": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "allOf": [
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "immutability": {
-                    "const": "native_version"
-                  }
-                },
-                "required": [
-                  "immutability"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "manifest"
+              }
             },
-            {
-              "properties": {
-                "immutability": {
-                  "const": "native_version"
-                }
-              },
-              "required": [
-                "immutability",
-                "native_version_ref"
-              ]
-            }
-          ]
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "manifest_version",
+              "manifest_sha256"
+            ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "kind": {
-                    "const": "manifest"
-                  }
-                },
-                "required": [
-                  "kind"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "immutability": {
+                "const": "native_version"
+              }
             },
-            {
-              "properties": {
-                "kind": {
-                  "const": "manifest"
-                }
-              },
-              "required": [
-                "kind",
-                "manifest_sha256",
-                "manifest_version"
-              ]
-            }
-          ]
+            "required": [
+              "immutability"
+            ]
+          },
+          "then": {
+            "required": [
+              "native_version_ref"
+            ]
+          }
         }
       ],
       "definitions": {
@@ -328,7 +306,6 @@
         }
       },
       "description": "Secret-free authenticated descriptor for an exact reporting materialization. The descriptor MUST select immutable bytes or a provider-native immutable snapshot/version so an exact older revision never resolves to mutable latest state. Callers resolve access through the previously validated caller/account-bound destination/share binding, never from credentials embedded here. No field, including future extensions, may contain credentials, signed URLs, bearer material, or private keys.",
-      "maxProperties": 9,
       "properties": {
         "expires_at": {
           "description": "Mandatory finite lower-bound endpoint through which this exact resource remains resolvable; it cannot be earlier than the advertised retention contract.",
@@ -336,17 +313,21 @@
           "type": "string"
         },
         "immutability": {
+          "description": "How this descriptor selects the exact immutable materialization.",
           "enum": [
-            "native_version",
-            "immutable_location"
-          ]
+            "immutable_location",
+            "native_version"
+          ],
+          "type": "string"
         },
         "kind": {
+          "description": "Shape through which the durable revision is consumed.",
           "enum": [
-            "dataset",
             "manifest",
+            "dataset",
             "warehouse_relation"
-          ]
+          ],
+          "type": "string"
         },
         "location": {
           "description": "Non-secret provider-native object, relation, or share identifier. MUST NOT contain an activation URL, signed URL, bearer token, password, private key, or embedded credential.",
@@ -360,7 +341,9 @@
           "type": "string"
         },
         "manifest_version": {
-          "const": "1.0"
+          "const": "1.0",
+          "description": "Version of reporting-file-manifest.json used by a manifest resource.",
+          "type": "string"
         },
         "native_version_ref": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -393,11 +376,11 @@
         }
       },
       "required": [
-        "expires_at",
-        "immutability",
+        "resource_ref",
         "kind",
         "location",
-        "resource_ref"
+        "immutability",
+        "expires_at"
       ],
       "title": "Reporting Resource",
       "type": "object",
@@ -424,111 +407,70 @@
     },
     "verification": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "allOf": [
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "verification_profile": {
-                    "const": "canonical_digest"
-                  }
-                },
-                "required": [
-                  "verification_profile"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "verification_profile": {
+                "const": "native_commit"
+              }
             },
-            {
-              "properties": {
-                "verification_profile": {
-                  "const": "canonical_digest"
-                }
-              },
-              "required": [
-                "canonical_content_digest",
-                "verification_profile"
-              ]
-            }
-          ]
+            "required": [
+              "verification_profile"
+            ]
+          },
+          "then": {
+            "required": [
+              "native_commit_evidence"
+            ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "verification_profile": {
-                    "const": "manifest_checksums"
-                  }
-                },
-                "required": [
-                  "verification_profile"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "verification_profile": {
+                "const": "manifest_checksums"
+              }
             },
-            {
-              "properties": {
-                "verification_profile": {
-                  "const": "manifest_checksums"
-                }
-              },
-              "required": [
-                "physical_checksums",
-                "verification_profile"
-              ]
-            }
-          ]
+            "required": [
+              "verification_profile"
+            ]
+          },
+          "then": {
+            "required": [
+              "physical_checksums"
+            ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "verification_profile": {
-                    "const": "native_commit"
-                  }
-                },
-                "required": [
-                  "verification_profile"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "verification_profile": {
+                "const": "canonical_digest"
+              }
             },
-            {
-              "properties": {
-                "verification_profile": {
-                  "const": "native_commit"
-                }
-              },
-              "required": [
-                "native_commit_evidence",
-                "verification_profile"
-              ]
-            }
-          ]
+            "required": [
+              "verification_profile"
+            ]
+          },
+          "then": {
+            "required": [
+              "canonical_content_digest"
+            ]
+          }
         }
       ],
       "description": "Producer evidence for one materialization, with an explicit assurance profile. Native commit and manifest profiles prove a committed destination plus row counts and control totals without claiming full logical-content equality. canonical_digest adds exact logical equality and is required for billing. A separate authenticated consumer receipt records what the consumer actually reconciled.",
-      "maxProperties": 8,
       "properties": {
         "canonical_content_digest": {
           "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Cryptographic digest of logical reporting rows under an immutable canonicalization contract.",
-          "maxProperties": 5,
           "properties": {
             "algorithm": {
-              "const": "sha256"
+              "const": "sha256",
+              "type": "string"
             },
             "canonicalization_id": {
               "maxLength": 128,
@@ -552,10 +494,10 @@
           },
           "required": [
             "algorithm",
+            "value",
             "canonicalization_id",
-            "canonicalization_sha256",
             "canonicalization_uri",
-            "value"
+            "canonicalization_sha256"
           ],
           "title": "Reporting Canonical Content Digest",
           "type": "object",
@@ -568,45 +510,7 @@
             "description": "One profile-defined aggregate used to reconcile a reporting revision without rereading every row. Names and units are defined by the immutable report definition. Values use canonical strings so currency and large integer comparisons are exact across SDKs.",
             "oneOf": [
               {
-                "additionalProperties": {
-                  "not": {}
-                },
-                "maxProperties": 4,
-                "properties": {
-                  "name": {
-                    "maxLength": 128,
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
-                    "type": "string"
-                  },
-                  "unit": {
-                    "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
-                    "maxLength": 32,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "value": {
-                    "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
-                    "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
-                    "type": "string"
-                  },
-                  "value_type": {
-                    "const": "decimal"
-                  }
-                },
-                "required": [
-                  "name",
-                  "value",
-                  "value_type"
-                ],
-                "title": "DecimalReportingControlTotal",
-                "type": "object"
-              },
-              {
-                "additionalProperties": {
-                  "not": {}
-                },
-                "maxProperties": 4,
+                "additionalProperties": false,
                 "properties": {
                   "name": {
                     "maxLength": 128,
@@ -626,7 +530,8 @@
                     "type": "string"
                   },
                   "value_type": {
-                    "const": "integer"
+                    "const": "integer",
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -635,6 +540,39 @@
                   "value_type"
                 ],
                 "title": "IntegerReportingControlTotal",
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+                    "type": "string"
+                  },
+                  "unit": {
+                    "description": "Profile-defined unit such as impressions or an ISO 4217 currency code.",
+                    "maxLength": 32,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "value": {
+                    "description": "Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.",
+                    "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+                    "type": "string"
+                  },
+                  "value_type": {
+                    "const": "decimal",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "value",
+                  "value_type"
+                ],
+                "title": "DecimalReportingControlTotal",
                 "type": "object"
               }
             ],
@@ -645,11 +583,8 @@
           "uniqueItems": true
         },
         "native_commit_evidence": {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "description": "Provider-native immutable version evidence observed through the named consumer or destination path.",
-          "maxProperties": 2,
           "properties": {
             "native_version_ref": {
               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -662,9 +597,10 @@
             },
             "observed_through": {
               "enum": [
-                "destination",
-                "representative_consumer"
-              ]
+                "representative_consumer",
+                "destination"
+              ],
+              "type": "string"
             }
           },
           "required": [
@@ -678,13 +614,11 @@
           "items": {
             "oneOf": [
               {
-                "additionalProperties": {
-                  "not": {}
-                },
-                "maxProperties": 3,
+                "additionalProperties": false,
                 "properties": {
                   "algorithm": {
-                    "const": "sha256"
+                    "const": "sha256",
+                    "type": "string"
                   },
                   "object_ref": {
                     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -701,21 +635,19 @@
                   }
                 },
                 "required": [
-                  "algorithm",
                   "object_ref",
+                  "algorithm",
                   "value"
                 ],
                 "title": "SHA-256 physical checksum",
                 "type": "object"
               },
               {
-                "additionalProperties": {
-                  "not": {}
-                },
-                "maxProperties": 3,
+                "additionalProperties": false,
                 "properties": {
                   "algorithm": {
-                    "const": "sha512"
+                    "const": "sha512",
+                    "type": "string"
                   },
                   "object_ref": {
                     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -732,8 +664,8 @@
                   }
                 },
                 "required": [
-                  "algorithm",
                   "object_ref",
+                  "algorithm",
                   "value"
                 ],
                 "title": "SHA-512 physical checksum",
@@ -750,18 +682,25 @@
           "type": "integer"
         },
         "verification_path": {
+          "description": "Path on which verification succeeded. dataset_share readiness requires representative_consumer; delivered warehouse state requires destination.",
           "enum": [
             "producer",
-            "destination",
-            "representative_consumer"
-          ]
+            "representative_consumer",
+            "destination"
+          ],
+          "type": "string"
         },
         "verification_profile": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Assurance evidence used for one reporting materialization or receipt.",
           "enum": [
             "native_commit",
-            "canonical_digest",
-            "manifest_checksums"
-          ]
+            "manifest_checksums",
+            "canonical_digest"
+          ],
+          "title": "Reporting Verification Profile",
+          "type": "string",
+          "x-status": "experimental"
         },
         "verified_at": {
           "description": "When the producer completed verification through the claimed consumer/destination path.",
@@ -770,11 +709,11 @@
         }
       },
       "required": [
-        "control_totals",
-        "row_count",
+        "verified_at",
         "verification_path",
         "verification_profile",
-        "verified_at"
+        "row_count",
+        "control_totals"
       ],
       "title": "Reporting Verification",
       "type": "object",

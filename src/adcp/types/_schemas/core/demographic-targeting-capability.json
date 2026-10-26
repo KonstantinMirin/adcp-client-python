@@ -109,25 +109,24 @@
             "properties": {
               "age": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": true,
                 "anyOf": [
                   {
                     "required": [
-                      "max"
+                      "min"
                     ]
                   },
                   {
                     "required": [
-                      "min"
+                      "max"
                     ]
                   }
                 ],
                 "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
                 "properties": {
                   "include_unknown": {
-                    "enum": [
-                      false,
-                      true
-                    ]
+                    "description": "Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.",
+                    "type": "boolean"
                   },
                   "max": {
                     "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
@@ -179,11 +178,20 @@
         "supported_bases": {
           "description": "User-level age determination bases this product can use for exact execution. Sellers MUST publish only bases whose provenance they can preserve and audit; they MUST NOT infer a basis from an opaque platform age bucket. When omitted, the product makes no basis-aware targeting commitment and MUST reject requests that specify accepted_bases.",
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "User-level bases that may resolve age for demographic targeting execution. Population estimates are deliberately absent because aggregate composition cannot establish an individual impression's age.",
             "enum": [
+              "verified",
               "declared",
-              "inferred",
-              "verified"
-            ]
+              "inferred"
+            ],
+            "enumDescriptions": {
+              "declared": "The user supplied an age, date of birth, or threshold affirmation without independent verification.",
+              "inferred": "The user's age was predicted from behavior, attributes, or another model.",
+              "verified": "The user's applicable age claim was established through an age-assurance or identity-verification method."
+            },
+            "title": "Age Determination Basis",
+            "type": "string"
           },
           "minItems": 1,
           "type": "array",
@@ -192,13 +200,17 @@
         "supported_verification_methods": {
           "description": "Age verification methods available when supported_bases contains verified. This is an availability declaration only: a method must still establish the entire requested age predicate. Threshold-only methods such as World ID cannot establish an arbitrary bounded range.",
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Methods for verifying user age for compliance. Does not include 'inferred' as it is not accepted for regulatory compliance.",
             "enum": [
-              "world_id",
+              "facial_age_estimation",
+              "id_document",
               "digital_id",
               "credit_card",
-              "id_document",
-              "facial_age_estimation"
-            ]
+              "world_id"
+            ],
+            "title": "Age Verification Method",
+            "type": "string"
           },
           "minItems": 1,
           "type": "array",

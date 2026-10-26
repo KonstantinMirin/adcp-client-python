@@ -65,58 +65,8 @@
   "description": "Decoded-payload JWS envelope for the closed designated-task response-signing profile. The protected member is the base64url-encoded JWS protected header; payload is the decoded signed payload that verifiers canonicalize with RFC 8785/JCS and base64url-encode before checking the ordinary JWS signature.",
   "properties": {
     "payload": {
-      "description": "Decoded signed payload. Signers compute the JWS payload bytes from the RFC 8785/JCS canonicalization of this object.",
-      "properties": {
-        "agent_url": {
-          "description": "Canonical URL of the responding brand agent entry whose response-signing key verifies this envelope.",
-          "format": "uri",
-          "type": "string"
-        },
-        "brand_domain": {
-          "description": "Brand tenant whose policy store produced the answer. The signer MUST derive this from server-side tenant resolution, not caller-supplied request fields.",
-          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-          "type": "string"
-        },
-        "exp": {
-          "description": "Expiration time as Unix epoch seconds. Online verifiers reject envelopes after this time, allowing only implementation-defined clock skew.",
-          "minimum": 0,
-          "type": "integer"
-        },
-        "iat": {
-          "description": "Issued-at time as Unix epoch seconds.",
-          "minimum": 0,
-          "type": "integer"
-        },
-        "request_hash": {
-          "description": "sha256: prefix plus unpadded base64url SHA-256 of the canonical request-binding object for this call.",
-          "pattern": "^sha256:[A-Za-z0-9_-]{43}$",
-          "type": "string"
-        },
-        "response": {
-          "description": "Canonical task-body success response payload being attested. Any unsigned task-body fields on the outer response, excluding signed_response and protocol/version envelope fields, MUST match this object.",
-          "type": "object"
-        },
-        "task": {
-          "enum": [
-            "verify_brand_claim",
-            "verify_brand_claims"
-          ]
-        },
-        "typ": {
-          "const": "adcp-response-payload+jws"
-        }
-      },
-      "required": [
-        "agent_url",
-        "brand_domain",
-        "exp",
-        "iat",
-        "request_hash",
-        "response",
-        "task",
-        "typ"
-      ],
-      "type": "object"
+      "$ref": "#/definitions/response_payload",
+      "description": "Decoded signed payload. Signers compute the JWS payload bytes from the RFC 8785/JCS canonicalization of this object."
     },
     "protected": {
       "description": "Base64url-encoded JWS protected header. The decoded header MUST include alg, kid, and typ: adcp-response-payload+jws, and MUST NOT include the RFC 7797 b64 header. Verifiers enforce the key purpose by resolving kid to a JWK with adcp_use: response-signing.",

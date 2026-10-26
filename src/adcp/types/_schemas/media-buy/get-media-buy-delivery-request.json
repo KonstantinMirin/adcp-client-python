@@ -151,10 +151,7 @@
       ],
       "oneOf": [
         {
-          "additionalProperties": {
-            "not": {}
-          },
-          "maxProperties": 1,
+          "additionalProperties": false,
           "properties": {
             "account_id": {
               "description": "Seller-assigned account identifier. For upstream-managed account namespaces, this value comes from list_accounts; for seller-defined namespaces without a list_accounts surface, it is supplied out-of-band. Buyer-declared account sellers MAY echo account_id from sync_accounts as an internal handle, but they MUST continue accepting the account's current natural-key AccountRef on subsequent calls. Buyers of buyer-declared accounts send the natural key; a seller MAY also accept its echoed account_id, and buyers MUST NOT assume it does. A former key tombstoned by identity reconciliation returns ACCOUNT_MOVED to authorized callers.",
@@ -167,16 +164,11 @@
           ]
         },
         {
-          "additionalProperties": {
-            "not": {}
-          },
-          "maxProperties": 6,
+          "additionalProperties": false,
           "properties": {
             "brand": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "Brand reference identifying the advertiser",
               "examples": [
                 {
@@ -197,7 +189,6 @@
                   "domain": "nova-athletics.example"
                 }
               ],
-              "maxProperties": 6,
               "properties": {
                 "brand_id": {
                   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -215,9 +206,11 @@
                   "x-entity": "advertiser_brand"
                 },
                 "brand_kit_override": {
+                  "additionalProperties": true,
                   "description": "Inline override for brand-kit fields normally resolved from `/.well-known/brand.json` on `domain` (logo, colors, voice, tagline). Use when brand.json is missing, stale, or inappropriate for this specific call \u2014 e.g., a campaign-scoped tagline, a co-branded creative, a freshly-rebranded color palette the brand.json hasn't shipped yet. Same inline-override pattern as `industries` and `data_subject_contestation` above: brand.json is canonical, the override is per-call. Adopters needing to override fields outside this subset (`voice_attributes`, `prohibited_terms`, etc.) MUST publish a different brand.json and reference it via a different `domain` \u2014 the inline override is intentionally narrow to a small high-traffic subset.\n\n**Merge semantics (normative).** The merge is **field-level**, not whole-object replacement. Each field within `brand_kit_override` (`logo`, `colors`, `voice`, `tagline`) is evaluated independently \u2014 when a field is present on the override the override value applies; when a field is absent the brand.json value applies (or is absent if brand.json doesn't carry one either). For composite fields (`colors.primary`, `colors.secondary`, `colors.accent`), the merge is one level deeper: each color slot is evaluated independently \u2014 a producer can override `colors.primary` while still inheriting `colors.secondary` from brand.json. SDKs MUST NOT treat a present `brand_kit_override.colors` as wiping the brand.json `colors` block entirely; only the per-slot fields present in the override take precedence. Without this rule, a partial-override semantics would diverge across SDKs and produce inconsistent rendering for the same payload.",
                   "properties": {
                     "colors": {
+                      "additionalProperties": true,
                       "description": "Override brand colors (hex strings).",
                       "properties": {
                         "accent": {
@@ -237,6 +230,7 @@
                     },
                     "logo": {
                       "$schema": "http://json-schema.org/draft-07/schema#",
+                      "additionalProperties": true,
                       "description": "Override logo asset.",
                       "properties": {
                         "alt_text": {
@@ -245,7 +239,9 @@
                           "x-accessibility": true
                         },
                         "asset_type": {
-                          "const": "image"
+                          "const": "image",
+                          "description": "Discriminator identifying this as an image asset. See /schemas/creative/asset-types for the registry.",
+                          "type": "string"
                         },
                         "breakpoint_id": {
                           "description": "Binding used only when this image populates a `seller_rendered_stateful_display` `state_canvases` slot. It MUST match one breakpoint declared on the selected state (semantic validators resolve it). Omit for ordinary image slots.",
@@ -339,13 +335,22 @@
                                   "type": "string"
                                 },
                                 "role": {
+                                  "description": "Role of the declaring party in the supply chain",
                                   "enum": [
-                                    "tool",
-                                    "agency",
                                     "creator",
+                                    "advertiser",
+                                    "agency",
                                     "platform",
-                                    "advertiser"
-                                  ]
+                                    "tool"
+                                  ],
+                                  "enumDescriptions": {
+                                    "advertiser": "The brand or advertiser that owns the content",
+                                    "agency": "Agency acting on behalf of the advertiser",
+                                    "creator": "The party that created or generated the content",
+                                    "platform": "Ad platform or publisher that processed the content",
+                                    "tool": "Automated tool or service that attached provenance metadata"
+                                  },
+                                  "type": "string"
                                 }
                               },
                               "required": [
@@ -354,17 +359,32 @@
                               "type": "object"
                             },
                             "digital_source_type": {
+                              "$schema": "http://json-schema.org/draft-07/schema#",
+                              "description": "IPTC-aligned classification of AI involvement in producing this content",
                               "enum": [
-                                "human_edits",
                                 "digital_capture",
                                 "digital_creation",
+                                "trained_algorithmic_media",
+                                "composite_with_trained_algorithmic_media",
                                 "algorithmic_media",
                                 "composite_capture",
-                                "data_driven_media",
                                 "composite_synthetic",
-                                "trained_algorithmic_media",
-                                "composite_with_trained_algorithmic_media"
-                              ]
+                                "human_edits",
+                                "data_driven_media"
+                              ],
+                              "enumDescriptions": {
+                                "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
+                                "composite_capture": "Multiple digital captures composited together without AI",
+                                "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
+                                "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
+                                "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)",
+                                "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
+                                "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
+                                "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
+                                "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)"
+                              },
+                              "title": "Digital Source Type",
+                              "type": "string"
                             },
                             "disclosure": {
                               "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
@@ -395,6 +415,7 @@
                                         "properties": {
                                           "ext": {
                                             "$schema": "http://json-schema.org/draft-07/schema#",
+                                            "additionalProperties": true,
                                             "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                                             "title": "Extension Object",
                                             "type": "object"
@@ -405,27 +426,39 @@
                                             "type": "integer"
                                           },
                                           "persistence": {
+                                            "$schema": "http://json-schema.org/draft-07/schema#",
+                                            "description": "How long the disclosure must persist during content playback or display",
                                             "enum": [
+                                              "continuous",
                                               "initial",
-                                              "flexible",
-                                              "continuous"
-                                            ]
+                                              "flexible"
+                                            ],
+                                            "enumDescriptions": {
+                                              "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
+                                              "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion",
+                                              "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration."
+                                            },
+                                            "title": "Disclosure Persistence",
+                                            "type": "string"
                                           },
                                           "positions": {
                                             "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
                                             "items": {
+                                              "$schema": "http://json-schema.org/draft-07/schema#",
+                                              "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
                                               "enum": [
-                                                "audio",
+                                                "prominent",
                                                 "footer",
+                                                "audio",
+                                                "subtitle",
                                                 "overlay",
                                                 "end_card",
                                                 "pre_roll",
-                                                "subtitle",
-                                                "companion",
-                                                "prominent"
-                                              ]
+                                                "companion"
+                                              ],
+                                              "title": "Disclosure Position",
+                                              "type": "string"
                                             },
-                                            "maxItems": 8,
                                             "minItems": 1,
                                             "type": "array",
                                             "uniqueItems": true
@@ -444,10 +477,8 @@
                                   "type": "array"
                                 },
                                 "required": {
-                                  "enum": [
-                                    false,
-                                    true
-                                  ]
+                                  "description": "The declaring party's claim that AI disclosure is required for this content under applicable regulations. This is a declared signal carried through the supply chain \u2014 useful as a routing and audit input \u2014 not a regulatory determination made by the protocol. Receiving parties remain responsible for their own jurisdictional analysis and should not treat `required: false` as compliance cover.",
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
@@ -465,10 +496,18 @@
                                     "type": "string"
                                   },
                                   "method": {
+                                    "$schema": "http://json-schema.org/draft-07/schema#",
+                                    "description": "How provenance data is carried within the content",
                                     "enum": [
                                       "manifest_wrapper",
                                       "provenance_markers"
-                                    ]
+                                    ],
+                                    "enumDescriptions": {
+                                      "manifest_wrapper": "A provenance manifest embedded in the file container per format-specific rules (e.g., JUMBF box in JPEG, C2PATextManifestWrapper in plaintext per C2PA Section A.7). The manifest travels with the file but is tied to the file's byte structure.",
+                                      "provenance_markers": "Invisible markers embedded within the content stream that encode or reference a provenance record. Designed to survive reformatting, copy-paste, CMS ingestion, and ad-server transcoding that breaks file-level bindings."
+                                    },
+                                    "title": "Embedded Provenance Method",
+                                    "type": "string"
                                   },
                                   "provider": {
                                     "description": "Organization that performed the embedding (e.g., 'Encypher', 'Digimarc'). Display label and audit context \u2014 not a wire identifier.",
@@ -479,11 +518,8 @@
                                     "type": "string"
                                   },
                                   "verify_agent": {
-                                    "additionalProperties": {
-                                      "not": {}
-                                    },
+                                    "additionalProperties": false,
                                     "description": "Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).",
-                                    "maxProperties": 2,
                                     "properties": {
                                       "agent_url": {
                                         "description": "URL of the governance agent the buyer represents was used to embed/verify this layer. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
@@ -513,24 +549,32 @@
                             },
                             "ext": {
                               "$schema": "http://json-schema.org/draft-07/schema#",
+                              "additionalProperties": true,
                               "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                               "title": "Extension Object",
                               "type": "object"
                             },
                             "human_oversight": {
+                              "description": "Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` \u2014 the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.",
                               "enum": [
                                 "none",
-                                "edited",
-                                "directed",
+                                "prompt_only",
                                 "selected",
-                                "prompt_only"
-                              ]
+                                "edited",
+                                "directed"
+                              ],
+                              "enumDescriptions": {
+                                "directed": "Human directed the creative process with AI as an assistive tool",
+                                "edited": "Human edited or refined AI-generated output",
+                                "none": "Fully automated with no human involvement in generation",
+                                "prompt_only": "Human provided the prompt or instructions but did not review outputs",
+                                "selected": "Human selected from multiple AI-generated candidates"
+                              },
+                              "type": "string"
                             },
                             "synthetic_depiction": {
-                              "enum": [
-                                false,
-                                true
-                              ]
+                              "description": "Assessed declaration of whether the content synthetically depicts a real or fictional person performing or appearing in a way that was generated or materially manipulated rather than captured as depicted. `true` covers both a fully synthetic performer and material manipulation of a real performer; `false` is an assessed declaration that the content does not contain such a depiction. Absence means the content has not been assessed for synthetic depiction. This field does not claim consent, legality, or independent verification, and receivers MUST NOT derive it solely from `digital_source_type`.",
+                              "type": "boolean"
                             },
                             "verification": {
                               "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
@@ -548,12 +592,14 @@
                                     "type": "string"
                                   },
                                   "result": {
+                                    "description": "Verification outcome",
                                     "enum": [
                                       "authentic",
-                                      "ai_modified",
                                       "ai_generated",
+                                      "ai_modified",
                                       "inconclusive"
-                                    ]
+                                    ],
+                                    "type": "string"
                                   },
                                   "verified_by": {
                                     "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')",
@@ -566,8 +612,8 @@
                                   }
                                 },
                                 "required": [
-                                  "result",
-                                  "verified_by"
+                                  "verified_by",
+                                  "result"
                                 ],
                                 "type": "object"
                               },
@@ -579,10 +625,18 @@
                               "items": {
                                 "properties": {
                                   "c2pa_action": {
+                                    "$schema": "http://json-schema.org/draft-07/schema#",
+                                    "description": "C2PA action classification for this watermark",
                                     "enum": [
                                       "c2pa.watermarked.bound",
                                       "c2pa.watermarked.unbound"
-                                    ]
+                                    ],
+                                    "enumDescriptions": {
+                                      "c2pa.watermarked.bound": "Watermark linked to a C2PA manifest for this asset. The watermark and manifest are mutually reinforcing: the manifest references the watermark, and the watermark can be used to locate the manifest.",
+                                      "c2pa.watermarked.unbound": "Watermark independent of any C2PA manifest. Applied before any provenance signing event (e.g., by the AI generator at creation time) or in pipelines where no manifest is present."
+                                    },
+                                    "title": "C2PA Watermark Action",
+                                    "type": "string"
                                   },
                                   "embedded_at": {
                                     "description": "When the watermark was applied (ISO 8601)",
@@ -590,23 +644,30 @@
                                     "type": "string"
                                   },
                                   "media_type": {
+                                    "$schema": "http://json-schema.org/draft-07/schema#",
+                                    "description": "Media category of the watermarked content",
                                     "enum": [
-                                      "text",
                                       "audio",
                                       "image",
-                                      "video"
-                                    ]
+                                      "video",
+                                      "text"
+                                    ],
+                                    "enumDescriptions": {
+                                      "audio": "Watermark applied to audio content (e.g., spread-spectrum, echo hiding)",
+                                      "image": "Watermark applied to image content (e.g., spatial domain, frequency domain)",
+                                      "text": "Watermark applied to text content (e.g., synonym substitution, structural modification)",
+                                      "video": "Watermark applied to video content (e.g., per-frame image watermarking, temporal watermarking)"
+                                    },
+                                    "title": "Watermark Media Type",
+                                    "type": "string"
                                   },
                                   "provider": {
                                     "description": "Organization that applied the watermark (e.g., 'Imatag', 'Steg.AI', 'Encypher'). Display label and audit context \u2014 not a wire identifier.",
                                     "type": "string"
                                   },
                                   "verify_agent": {
-                                    "additionalProperties": {
-                                      "not": {}
-                                    },
+                                    "additionalProperties": false,
                                     "description": "Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing \u2014 the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).",
-                                    "maxProperties": 2,
                                     "properties": {
                                       "agent_url": {
                                         "description": "URL of the governance agent the buyer represents was used to apply/detect this watermark. MUST use the `https://` scheme and MUST appear in the seller's `creative_policy.accepted_verifiers[].agent_url` list (canonicalized per /docs/reference/url-canonicalization: lowercase scheme and host, strip default port, normalize path dot-segments). Sellers MUST NOT call this URL until the canonicalized match is confirmed.",
@@ -655,9 +716,9 @@
                       },
                       "required": [
                         "asset_type",
-                        "height",
                         "url",
-                        "width"
+                        "width",
+                        "height"
                       ],
                       "title": "Image Asset",
                       "type": "object"
@@ -684,23 +745,20 @@
                   "uniqueItems": true
                 },
                 "data_subject_contestation": {
-                  "additionalProperties": {
-                    "not": {}
-                  },
+                  "additionalProperties": false,
                   "anyOf": [
-                    {
-                      "required": [
-                        "email"
-                      ]
-                    },
                     {
                       "required": [
                         "url"
                       ]
+                    },
+                    {
+                      "required": [
+                        "email"
+                      ]
                     }
                   ],
                   "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand \u2192 house \u2192 missing.",
-                  "maxProperties": 3,
                   "properties": {
                     "email": {
                       "format": "email",
@@ -752,9 +810,7 @@
             },
             "operator_unit": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "Optional operator-owned business unit, agency seat, or platform account. Only id participates in the natural account key; name is mutable display metadata.",
               "examples": [
                 {
@@ -766,7 +822,6 @@
                   "name": "Nova Benelux"
                 }
               ],
-              "maxProperties": 2,
               "properties": {
                 "id": {
                   "description": "Stable identifier assigned by the operator. Numeric platform IDs and durable slugs are both valid. Scoped by the enclosing operator domain.",
@@ -790,10 +845,9 @@
               "x-entity": "operator_unit"
             },
             "sandbox": {
-              "enum": [
-                false,
-                true
-              ]
+              "default": false,
+              "description": "When true, references the sandbox account for this brand/operator pair. Defaults to false (production account).",
+              "type": "boolean"
             },
             "timezone": {
               "description": "Immutable account timezone. Include it in the natural key when get_adcp_capabilities.account.timezone declares account_fixed with buyer_selected; omit it for seller_fixed or seller_assigned accounts.",
@@ -815,23 +869,24 @@
       "description": "Attribution window to apply for conversion metrics. When provided, the seller returns conversion data using the requested lookback windows instead of their platform default. The seller echoes the applied window in the response. Sellers that do not support configurable windows ignore this field and return their default. Check get_adcp_capabilities conversion_tracking.attribution_windows for available options.",
       "properties": {
         "model": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Attribution model to use. When omitted, the seller applies their default model.",
           "enum": [
-            "linear",
             "last_touch",
+            "first_touch",
+            "linear",
             "time_decay",
-            "data_driven",
-            "first_touch"
-          ]
+            "data_driven"
+          ],
+          "title": "Attribution Model",
+          "type": "string"
         },
         "post_click": {
           "allOf": [
             {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
-              "maxProperties": 2,
               "properties": {
                 "interval": {
                   "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -839,13 +894,15 @@
                   "type": "integer"
                 },
                 "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
                   "enum": [
-                    "days",
-                    "hours",
-                    "minutes",
                     "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
                     "campaign"
-                  ]
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -862,11 +919,8 @@
           "allOf": [
             {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
-              "maxProperties": 2,
               "properties": {
                 "interval": {
                   "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -874,13 +928,15 @@
                   "type": "integer"
                 },
                 "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
                   "enum": [
-                    "days",
-                    "hours",
-                    "minutes",
                     "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
                     "campaign"
-                  ]
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -898,6 +954,7 @@
     },
     "context": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
       "title": "Context Object",
       "type": "object"
@@ -909,6 +966,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
@@ -934,11 +992,8 @@
     },
     "pagination": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "Cursor pagination. With reporting_revision_id, pages immutable authoritative rows while all revision metadata repeats on every page.",
-      "maxProperties": 2,
       "properties": {
         "cursor": {
           "description": "Opaque cursor from a previous response to fetch the next page",
@@ -974,51 +1029,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric \u2014 direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "type": "object"
@@ -1033,57 +1098,68 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric \u2014 direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "type": "object"
         },
         "collection": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Request delivery by canonical content collection. Check reporting_capabilities.supports_collection_breakdown.",
           "properties": {
             "limit": {
@@ -1093,51 +1169,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric used to order rows. Falls back to spend when unavailable at this row grain; on fallback sort_direction resets to desc. Rows lacking a value for the applied sort metric order last regardless of direction.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Sellers MUST apply the requested direction to the applied sort metric; direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "title": "Delivery Breakdown Controls",
@@ -1145,6 +1231,7 @@
         },
         "collection_property": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Request delivery at the collection \u00d7 property intersection. This is the reporting grain that can prove a collection delivered on a particular host service; independent collection and property marginals cannot. Check reporting_capabilities.supports_collection_property_breakdown.",
           "properties": {
             "limit": {
@@ -1154,51 +1241,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric used to order rows. Falls back to spend when unavailable at this row grain; on fallback sort_direction resets to desc. Rows lacking a value for the applied sort metric order last regardless of direction.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Sellers MUST apply the requested direction to the applied sort metric; direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "title": "Delivery Breakdown Controls",
@@ -1214,51 +1311,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric \u2014 direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "type": "object"
@@ -1271,25 +1378,24 @@
               "description": "Optional canonical age ranges to return as distinct rows. Copying an applied targeting predicate here requests aligned reporting only when the reporting capability supports that exact predicate. Omit to request the product's declared native demographic breakdown.",
               "items": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": true,
                 "anyOf": [
                   {
                     "required": [
-                      "max"
+                      "min"
                     ]
                   },
                   {
                     "required": [
-                      "min"
+                      "max"
                     ]
                   }
                 ],
                 "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
                 "properties": {
                   "include_unknown": {
-                    "enum": [
-                      false,
-                      true
-                    ]
+                    "description": "Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.",
+                    "type": "boolean"
                   },
                   "max": {
                     "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
@@ -1321,51 +1427,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric \u2014 direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "type": "object"
@@ -1384,51 +1500,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric \u2014 direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "type": "object"
@@ -1447,51 +1573,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric \u2014 direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "type": "object"
@@ -1506,51 +1642,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric \u2014 direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "type": "object"
@@ -1612,13 +1758,17 @@
                   {
                     "properties": {
                       "system": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "Metro area classification systems for geographic targeting",
                         "enum": [
-                          "custom",
+                          "nielsen_dma",
                           "uk_itl1",
                           "uk_itl2",
-                          "nielsen_dma",
-                          "eurostat_nuts2"
-                        ]
+                          "eurostat_nuts2",
+                          "custom"
+                        ],
+                        "title": "Metro Area System",
+                        "type": "string"
                       }
                     },
                     "required": [
@@ -1668,6 +1818,69 @@
                       {
                         "properties": {
                           "country": {
+                            "const": "US"
+                          },
+                          "system": {
+                            "enum": [
+                              "zip",
+                              "zip_plus_four"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "GB"
+                          },
+                          "system": {
+                            "enum": [
+                              "outward",
+                              "full"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "CA"
+                          },
+                          "system": {
+                            "enum": [
+                              "fsa",
+                              "full"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "enum": [
+                              "DE",
+                              "CH",
+                              "AT"
+                            ]
+                          },
+                          "system": {
+                            "const": "plz"
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
+                            "const": "FR"
+                          },
+                          "system": {
+                            "const": "code_postal"
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "country": {
                             "const": "AU"
                           },
                           "system": {
@@ -1688,59 +1901,10 @@
                       {
                         "properties": {
                           "country": {
-                            "const": "CA"
-                          },
-                          "system": {
-                            "enum": [
-                              "fsa",
-                              "full"
-                            ]
-                          }
-                        }
-                      },
-                      {
-                        "properties": {
-                          "country": {
-                            "const": "FR"
-                          },
-                          "system": {
-                            "const": "code_postal"
-                          }
-                        }
-                      },
-                      {
-                        "properties": {
-                          "country": {
-                            "const": "GB"
-                          },
-                          "system": {
-                            "enum": [
-                              "full",
-                              "outward"
-                            ]
-                          }
-                        }
-                      },
-                      {
-                        "properties": {
-                          "country": {
                             "const": "IN"
                           },
                           "system": {
                             "const": "pin"
-                          }
-                        }
-                      },
-                      {
-                        "properties": {
-                          "country": {
-                            "const": "US"
-                          },
-                          "system": {
-                            "enum": [
-                              "zip",
-                              "zip_plus_four"
-                            ]
                           }
                         }
                       },
@@ -1757,40 +1921,26 @@
                       {
                         "properties": {
                           "country": {
-                            "enum": [
-                              "AT",
-                              "CH",
-                              "DE"
-                            ]
-                          },
-                          "system": {
-                            "const": "plz"
-                          }
-                        }
-                      },
-                      {
-                        "properties": {
-                          "country": {
                             "not": {
                               "enum": [
+                                "US",
+                                "GB",
+                                "CA",
+                                "DE",
+                                "CH",
                                 "AT",
+                                "FR",
                                 "AU",
                                 "BR",
-                                "CA",
-                                "CH",
-                                "DE",
-                                "FR",
-                                "GB",
                                 "IN",
-                                "US",
                                 "ZA"
                               ]
                             }
                           },
                           "system": {
                             "enum": [
-                              "custom",
-                              "postal_code"
+                              "postal_code",
+                              "custom"
                             ]
                           }
                         }
@@ -1804,31 +1954,35 @@
                         "type": "string"
                       },
                       "system": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "description": "Country-local postal code system.",
                         "enum": [
-                          "cep",
-                          "fsa",
-                          "pin",
-                          "plz",
-                          "zip",
-                          "full",
-                          "at_plz",
-                          "ca_fsa",
-                          "ch_plz",
-                          "custom",
-                          "de_plz",
-                          "us_zip",
-                          "ca_full",
-                          "gb_full",
-                          "outward",
-                          "postcode",
-                          "gb_outward",
-                          "au_postcode",
-                          "code_postal",
                           "postal_code",
+                          "zip",
                           "zip_plus_four",
+                          "outward",
+                          "full",
+                          "fsa",
+                          "plz",
+                          "code_postal",
+                          "postcode",
+                          "cep",
+                          "pin",
+                          "custom",
+                          "us_zip",
+                          "us_zip_plus_four",
+                          "gb_outward",
+                          "gb_full",
+                          "ca_fsa",
+                          "ca_full",
+                          "de_plz",
                           "fr_code_postal",
-                          "us_zip_plus_four"
-                        ]
+                          "au_postcode",
+                          "ch_plz",
+                          "at_plz"
+                        ],
+                        "title": "Postal Code System",
+                        "type": "string"
                       }
                     },
                     "required": [
@@ -1846,19 +2000,24 @@
                     },
                     "properties": {
                       "system": {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "deprecated": true,
+                        "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
                         "enum": [
-                          "at_plz",
-                          "ca_fsa",
-                          "ch_plz",
-                          "de_plz",
                           "us_zip",
-                          "ca_full",
-                          "gb_full",
+                          "us_zip_plus_four",
                           "gb_outward",
-                          "au_postcode",
+                          "gb_full",
+                          "ca_fsa",
+                          "ca_full",
+                          "de_plz",
                           "fr_code_postal",
-                          "us_zip_plus_four"
-                        ]
+                          "au_postcode",
+                          "ch_plz",
+                          "at_plz"
+                        ],
+                        "title": "Country-Fused Postal Code System",
+                        "type": "string"
                       }
                     },
                     "required": [
@@ -1877,12 +2036,16 @@
               "type": "string"
             },
             "geo_level": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Geographic granularity level for the breakdown",
               "enum": [
-                "metro",
-                "region",
                 "country",
+                "region",
+                "metro",
                 "postal_area"
-              ]
+              ],
+              "title": "Geographic Targeting Level",
+              "type": "string"
             },
             "limit": {
               "default": 25,
@@ -1891,104 +2054,127 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric \u2014 direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             },
             "system": {
               "anyOf": [
                 {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "Metro area classification systems for geographic targeting",
                   "enum": [
-                    "custom",
+                    "nielsen_dma",
                     "uk_itl1",
                     "uk_itl2",
-                    "nielsen_dma",
-                    "eurostat_nuts2"
-                  ]
+                    "eurostat_nuts2",
+                    "custom"
+                  ],
+                  "title": "Metro Area System",
+                  "type": "string"
                 },
                 {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "Postal code system names for geographic targeting. Prefer country-local values with an explicit ISO 3166-1 alpha-2 country. Deprecated country-fused values remain in this published enum for 3.x compatibility.",
                   "enum": [
-                    "cep",
-                    "fsa",
-                    "pin",
-                    "plz",
-                    "zip",
-                    "full",
-                    "at_plz",
-                    "ca_fsa",
-                    "ch_plz",
-                    "custom",
-                    "de_plz",
-                    "us_zip",
-                    "ca_full",
-                    "gb_full",
-                    "outward",
-                    "postcode",
-                    "gb_outward",
-                    "au_postcode",
-                    "code_postal",
                     "postal_code",
+                    "zip",
                     "zip_plus_four",
+                    "outward",
+                    "full",
+                    "fsa",
+                    "plz",
+                    "code_postal",
+                    "postcode",
+                    "cep",
+                    "pin",
+                    "custom",
+                    "us_zip",
+                    "us_zip_plus_four",
+                    "gb_outward",
+                    "gb_full",
+                    "ca_fsa",
+                    "ca_full",
+                    "de_plz",
                     "fr_code_postal",
-                    "us_zip_plus_four"
-                  ]
+                    "au_postcode",
+                    "ch_plz",
+                    "at_plz"
+                  ],
+                  "title": "Postal Code System",
+                  "type": "string"
                 },
                 {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "deprecated": true,
+                  "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
                   "enum": [
-                    "at_plz",
-                    "ca_fsa",
-                    "ch_plz",
-                    "de_plz",
                     "us_zip",
-                    "ca_full",
-                    "gb_full",
+                    "us_zip_plus_four",
                     "gb_outward",
-                    "au_postcode",
+                    "gb_full",
+                    "ca_fsa",
+                    "ca_full",
+                    "de_plz",
                     "fr_code_postal",
-                    "us_zip_plus_four"
-                  ]
+                    "au_postcode",
+                    "ch_plz",
+                    "at_plz"
+                  ],
+                  "title": "Country-Fused Postal Code System",
+                  "type": "string"
                 }
               ],
               "description": "Optional classification system for metro or postal_area levels. Metro uses metro-system values (e.g., 'nielsen_dma'); native postal_area uses country-local postal-system values with country (e.g., country 'US', system 'zip'); deprecated legacy postal_area requests may use legacy-postal-system values such as 'us_zip'. Omit to request the level without selecting a specific system."
@@ -2001,6 +2187,7 @@
         },
         "installment": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Request delivery by canonical installment within a collection. Check reporting_capabilities.supports_installment_breakdown.",
           "properties": {
             "limit": {
@@ -2010,51 +2197,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric used to order rows. Falls back to spend when unavailable at this row grain; on fallback sort_direction resets to desc. Rows lacking a value for the applied sort metric order last regardless of direction.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Sellers MUST apply the requested direction to the applied sort metric; direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "title": "Delivery Breakdown Controls",
@@ -2062,6 +2259,7 @@
         },
         "installment_property": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Request delivery at the installment \u00d7 property intersection. This is the reporting grain that can prove a specific airing, episode, issue, or programming block delivered on a particular host service; independent installment and property marginals cannot. Check reporting_capabilities.supports_installment_property_breakdown.",
           "properties": {
             "limit": {
@@ -2071,51 +2269,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric used to order rows. Falls back to spend when unavailable at this row grain; on fallback sort_direction resets to desc. Rows lacking a value for the applied sort metric order last regardless of direction.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Sellers MUST apply the requested direction to the applied sort metric; direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "title": "Delivery Breakdown Controls",
@@ -2131,51 +2339,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric \u2014 direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "type": "object"
@@ -2195,57 +2413,68 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric to sort breakdown rows by, in `sort_direction` order (descending by default). Falls back to 'spend' when the seller does not report the requested metric at this breakdown's row grain; on fallback the sort direction resets to 'desc'. Rows lacking a value for the applied sort metric order last regardless of direction. The applied sort is echoed in the response.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric \u2014 direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "type": "object"
         },
         "placement_property": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Request delivery at the placement \u00d7 property intersection. Use when a placement may span multiple web, app, social, or assistant properties. Check reporting_capabilities.supports_placement_property_breakdown.",
           "properties": {
             "limit": {
@@ -2255,51 +2484,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric used to order rows. Falls back to spend when unavailable at this row grain; on fallback sort_direction resets to desc. Rows lacking a value for the applied sort metric order last regardless of direction.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Sellers MUST apply the requested direction to the applied sort metric; direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "title": "Delivery Breakdown Controls",
@@ -2307,6 +2546,7 @@
         },
         "property": {
           "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": true,
           "description": "Request delivery by canonical publisher property. Check reporting_capabilities.supports_property_breakdown.",
           "properties": {
             "limit": {
@@ -2316,51 +2556,61 @@
               "type": "integer"
             },
             "sort_by": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "spend",
+              "description": "Metric used to order rows. Falls back to spend when unavailable at this row grain; on fallback sort_direction resets to desc. Rows lacking a value for the applied sort metric order last regardless of direction.",
               "enum": [
-                "cpm",
-                "ctr",
-                "grps",
-                "roas",
-                "leads",
-                "plays",
-                "reach",
-                "saves",
-                "spend",
-                "views",
-                "clicks",
-                "follows",
-                "downloads",
-                "frequency",
-                "units_sold",
-                "conversions",
-                "engagements",
                 "impressions",
+                "spend",
+                "clicks",
+                "ctr",
+                "views",
+                "completed_views",
+                "completion_rate",
+                "conversions",
+                "conversion_value",
+                "roas",
+                "cost_per_acquisition",
+                "new_to_brand_rate",
+                "leads",
+                "grps",
+                "reach",
+                "frequency",
+                "engagements",
+                "follows",
+                "saves",
+                "profile_visits",
+                "engagement_rate",
+                "cost_per_click",
+                "commissionable_value",
+                "plays",
+                "cost_per_completed_view",
+                "cpm",
+                "downloads",
+                "units_sold",
+                "new_to_brand_units",
+                "viewable_rate",
+                "viewable_impressions",
+                "measurable_impressions",
+                "viewed_seconds",
                 "quartile_25",
                 "quartile_50",
                 "quartile_75",
-                "quartile_100",
-                "viewable_rate",
-                "cost_per_click",
-                "profile_visits",
-                "viewed_seconds",
-                "completed_views",
-                "completion_rate",
-                "engagement_rate",
-                "conversion_value",
-                "new_to_brand_rate",
-                "new_to_brand_units",
-                "commissionable_value",
-                "cost_per_acquisition",
-                "viewable_impressions",
-                "measurable_impressions",
-                "cost_per_completed_view"
-              ]
+                "quartile_100"
+              ],
+              "title": "Sort Metric",
+              "type": "string"
             },
             "sort_direction": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "default": "desc",
+              "description": "Direction for sort_by ordering. Sellers MUST apply the requested direction to the applied sort metric; direction has no availability fallback.",
               "enum": [
                 "asc",
                 "desc"
-              ]
+              ],
+              "title": "Sort Direction",
+              "type": "string"
             }
           },
           "title": "Delivery Breakdown Controls",
@@ -2392,57 +2642,61 @@
     "requested_metrics": {
       "description": "Optional list of metrics to include in the response. When omitted, all available metrics are included (unchanged behavior). Applies to every metrics-bearing object in the response: totals, by_package, daily and window slices, and breakdown rows. impressions and spend are always included regardless of this list, except that a legacy or externally created mixed-currency buy MUST omit monetary and money-derived values from media-buy and window totals, MUST omit daily_breakdown, and MUST report monetary values only on currency-qualified package rows (including window package rows). Requesting a leaf metric identity returns its canonical nested carrier \u2014 e.g. requesting viewable_rate returns the viewability object, requesting quartile_75 returns quartile_data \u2014 never a flat duplicate. Metrics requested but not available for this buy are omitted from the response without error; contract accountability is unchanged \u2014 missing_metrics still reconciles against committed_metrics, but sellers MUST NOT list a metric in missing_metrics when its absence is solely due to this narrowing. Must be a subset of the product's reporting_capabilities.available_metrics; values outside the declared set are ignored. Subset evaluation follows the container-subsumption rule in enums/available-metric.json. Sort is evaluated before narrowing: excluding a metric from this list never triggers the sort_by fallback, and breakdown rows may be ordered by a metric absent from the narrowed payload \u2014 the applied-sort echo still names it. Same narrowing semantics as reporting_webhook.requested_metrics, with one shape difference: this field requires at least one entry when present (omit it entirely for full payloads), while the webhook field permits an empty array with the same meaning as omission.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Standard delivery and performance metrics available for reporting. Most values name flat numeric fields of `core/delivery-metrics.json`. Leaf identities address a single numeric value nested inside an object-shaped metric so it can be declared, committed, aggregated, and sorted individually: `quartile_25`/`quartile_50`/`quartile_75`/`quartile_100` resolve to `quartile_data.q1_views`\u2013`q4_views`, and `viewable_rate`/`viewable_impressions`/`measurable_impressions`/`viewed_seconds` resolve to the same-named fields of `viewability`. Structured nested identities `viewed_seconds_percentiles` and `viewed_seconds_histogram` make the corresponding optional distribution carriers discoverable, committable, and requestable, but not aggregatable or sortable. The nested object or array remains the canonical carrier \u2014 nested identities never introduce duplicate flat response fields. Container tokens such as `viewability`, `quartile_data`, `dooh_metrics`, and `time_based_views` declare their documented nested surface. **Container subsumption applies only to numeric leaves**: `viewability` subsumes `viewable_rate`, `viewable_impressions`, `measurable_impressions`, and `viewed_seconds`; `quartile_data` subsumes `quartile_25`, `quartile_50`, `quartile_75`, and `quartile_100`. This rule applies to capability declaration, `required_metrics` filtering, format `reported_metrics` intersection, and `requested_metrics` selection. Optional structured identities MUST be declared explicitly: `viewability` alone does not satisfy `viewed_seconds_percentiles` or `viewed_seconds_histogram`. Requesting any nested identity selects its canonical carrier in the response. A nested identity declaration does not imply sibling values or the carrier's non-metric fields.",
         "enum": [
-          "cpm",
-          "ctr",
-          "grps",
-          "roas",
-          "leads",
-          "plays",
-          "reach",
-          "saves",
-          "spend",
-          "views",
-          "clicks",
-          "follows",
-          "downloads",
-          "frequency",
-          "brand_lift",
-          "units_sold",
-          "conversions",
-          "engagements",
           "impressions",
-          "ooh_metrics",
+          "spend",
+          "clicks",
+          "ctr",
+          "views",
+          "completed_views",
+          "completion_rate",
+          "conversions",
+          "conversion_value",
+          "commissionable_value",
+          "roas",
+          "cost_per_acquisition",
+          "new_to_brand_rate",
+          "leads",
+          "reach",
+          "frequency",
+          "grps",
+          "engagements",
+          "engagement_rate",
+          "follows",
+          "saves",
+          "profile_visits",
+          "viewability",
+          "viewable_rate",
+          "viewable_impressions",
+          "measurable_impressions",
+          "viewed_seconds",
+          "viewed_seconds_percentiles",
+          "viewed_seconds_histogram",
+          "quartile_data",
           "quartile_25",
           "quartile_50",
           "quartile_75",
-          "viewability",
-          "dooh_metrics",
-          "foot_traffic",
           "quartile_100",
-          "quartile_data",
-          "viewable_rate",
-          "cost_per_click",
-          "profile_visits",
-          "viewed_seconds",
-          "completed_views",
-          "completion_rate",
-          "conversion_lift",
-          "engagement_rate",
-          "conversion_value",
           "time_based_views",
-          "brand_search_lift",
-          "new_to_brand_rate",
-          "new_to_brand_units",
-          "commissionable_value",
-          "cost_per_acquisition",
-          "viewable_impressions",
-          "incremental_sales_lift",
-          "measurable_impressions",
+          "dooh_metrics",
+          "ooh_metrics",
+          "cost_per_click",
           "cost_per_completed_view",
-          "viewed_seconds_histogram",
-          "viewed_seconds_percentiles"
-        ]
+          "cpm",
+          "downloads",
+          "units_sold",
+          "new_to_brand_units",
+          "plays",
+          "incremental_sales_lift",
+          "brand_lift",
+          "foot_traffic",
+          "conversion_lift",
+          "brand_search_lift"
+        ],
+        "title": "Available Metric",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -2457,27 +2711,53 @@
       "description": "Filter by status. Can be a single status or array of statuses",
       "oneOf": [
         {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Status of a media buy.",
           "enum": [
+            "pending_creatives",
+            "pending_start",
             "active",
             "paused",
-            "canceled",
-            "rejected",
             "completed",
-            "pending_start",
-            "pending_creatives"
-          ]
+            "rejected",
+            "canceled"
+          ],
+          "enumDescriptions": {
+            "active": "Media buy is currently running",
+            "canceled": "Media buy was terminated before natural completion. Check cancellation.canceled_by to determine whether the buyer or seller initiated.",
+            "completed": "Media buy has finished running",
+            "paused": "Media buy is temporarily paused",
+            "pending_creatives": "**Buyer-side action required.** The media buy is approved by the seller and has no creatives assigned \u2014 the buyer must attach creatives via `sync_creatives` before the buy can serve. Not to be confused with a publisher-side or governance-side approval queue: the seller has already accepted the buy; only the buyer's creative submission is missing. Naming convention: `pending_X` names the lifecycle phase that is next required (here, `creatives`), not a state of waiting on seller/operator approval \u2014 consistent with `pending_start` (waiting for the flight date to begin).",
+            "pending_start": "Media buy is ready to serve and waiting for its flight date to begin.",
+            "rejected": "Media buy was declined by the seller after creation"
+          },
+          "title": "Media Buy Status",
+          "type": "string"
         },
         {
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Status of a media buy.",
             "enum": [
+              "pending_creatives",
+              "pending_start",
               "active",
               "paused",
-              "canceled",
-              "rejected",
               "completed",
-              "pending_start",
-              "pending_creatives"
-            ]
+              "rejected",
+              "canceled"
+            ],
+            "enumDescriptions": {
+              "active": "Media buy is currently running",
+              "canceled": "Media buy was terminated before natural completion. Check cancellation.canceled_by to determine whether the buyer or seller initiated.",
+              "completed": "Media buy has finished running",
+              "paused": "Media buy is temporarily paused",
+              "pending_creatives": "**Buyer-side action required.** The media buy is approved by the seller and has no creatives assigned \u2014 the buyer must attach creatives via `sync_creatives` before the buy can serve. Not to be confused with a publisher-side or governance-side approval queue: the seller has already accepted the buy; only the buyer's creative submission is missing. Naming convention: `pending_X` names the lifecycle phase that is next required (here, `creatives`), not a state of waiting on seller/operator approval \u2014 consistent with `pending_start` (waiting for the flight date to begin).",
+              "pending_start": "Media buy is ready to serve and waiting for its flight date to begin.",
+              "rejected": "Media buy was declined by the seller after creation"
+            },
+            "title": "Media Buy Status",
+            "type": "string"
           },
           "minItems": 1,
           "type": "array"
@@ -2485,14 +2765,18 @@
       ]
     },
     "time_granularity": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Per-window slice granularity for the pull, using the same vocabulary as reporting_webhook.reporting_frequency. When set, the seller returns per-window delivery slices over the date range \u2014 useful for reconstructing data a buyer's webhook receiver missed, since the slice payload is shape-aligned with what reporting_webhook would have delivered for the same window. Capability-scoped: the value MUST be one of the seller's declared reporting_capabilities.windowed_pull_granularities; otherwise the seller MUST return UNSUPPORTED_GRANULARITY. When set to daily, weekly, monthly, or quarterly and the in-scope packages span more than one reporting timezone, the seller MUST return VALIDATION_ERROR. When omitted, behavior is unchanged (cumulative aggregates plus optional daily breakdowns per existing fields).",
       "enum": [
-        "daily",
         "hourly",
+        "daily",
         "weekly",
         "monthly",
         "quarterly",
         "post_campaign"
-      ]
+      ],
+      "title": "Reporting Frequency",
+      "type": "string"
     }
   },
   "title": "Get Media Buy Delivery Request",

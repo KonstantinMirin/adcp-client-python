@@ -9,16 +9,17 @@
     },
     "measurable_impressions": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "anyOf": [
         {
           "required": [
-            "high",
-            "low"
+            "mid"
           ]
         },
         {
           "required": [
-            "mid"
+            "low",
+            "high"
           ]
         }
       ],
@@ -65,16 +66,17 @@
     },
     "value": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "anyOf": [
         {
           "required": [
-            "high",
-            "low"
+            "mid"
           ]
         },
         {
           "required": [
-            "mid"
+            "low",
+            "high"
           ]
         }
       ],
@@ -101,11 +103,8 @@
     },
     "vendor": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-      "maxProperties": 3,
       "properties": {
         "brand_id": {
           "$schema": "http://json-schema.org/draft-07/schema#",

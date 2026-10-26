@@ -110,18 +110,34 @@
     "restricted_attributes": {
       "description": "Restricted attribute categories that regulations in this category prohibit for targeting. Governance agents enforce these when the category is active on a plan \u2014 if a plan declares policy_categories: ['fair_housing'], the governance agent restricts targeting on these attributes.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Personal data categories that may be restricted from use in audience targeting. Combines GDPR Article 9 special categories with US civil-rights protected classes (FHA familial_status, ADEA age). Used in two places: (1) on campaign plans via restricted_attributes to declare which categories are prohibited, and (2) on signal-definition.json via restricted_attributes to declare which categories a signal touches. Governance agents match plan restrictions against signal declarations for structural validation.",
         "enum": [
-          "age",
+          "racial_ethnic_origin",
+          "political_opinions",
+          "religious_beliefs",
+          "trade_union_membership",
           "health_data",
+          "sex_life_sexual_orientation",
           "genetic_data",
           "biometric_data",
-          "familial_status",
-          "religious_beliefs",
-          "political_opinions",
-          "racial_ethnic_origin",
-          "trade_union_membership",
-          "sex_life_sexual_orientation"
-        ]
+          "age",
+          "familial_status"
+        ],
+        "enumDescriptions": {
+          "age": "A person's age or age range. US ADEA (40+) for employment, US FHA for housing, EU AVMSD for content-directed targeting. Restricted for regulated verticals.",
+          "biometric_data": "Biometric data used for identification. GDPR Article 9(1).",
+          "familial_status": "Whether a household includes children under 18, a pregnant person, or a person seeking custody of a minor. US FHA protected class.",
+          "genetic_data": "Genetic data. GDPR Article 9(1), US GINA.",
+          "health_data": "Health status, medical conditions, disability. GDPR Article 9(1), US ADA protected class. Includes inferred health data from behavioral signals.",
+          "political_opinions": "Political opinions or affiliations. GDPR Article 9(1). EU DSA Article 26 prohibits targeting on this category.",
+          "racial_ethnic_origin": "Race or ethnic origin. GDPR Article 9(1), US FHA/ECOA/EEOC protected class.",
+          "religious_beliefs": "Religious or philosophical beliefs. GDPR Article 9(1), US FHA/EEOC protected class.",
+          "sex_life_sexual_orientation": "Sex life or sexual orientation. GDPR Article 9(1).",
+          "trade_union_membership": "Trade union membership. GDPR Article 9(1)."
+        },
+        "title": "Restricted Attribute",
+        "type": "string"
       },
       "type": "array"
     }

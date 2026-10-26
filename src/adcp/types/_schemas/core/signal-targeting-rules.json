@@ -41,6 +41,7 @@
       "description": "Optional product-scoped overrides for specific ProductSignalTargetingOption.selection_group values. Use this when one product has mixed behavior, such as fixed seller-applied suppressions, a required pick-one include tier, optional buyer-selected exclusions, or heterogeneous targeting planes that must be represented as separate ANDed clauses. Rules apply only to options whose selection_group matches. When selection_group_rules are present, each packages[].targeting_overlay.signal_targeting_groups child group MUST contain signals from exactly one selection_group and one targeting_mode, and buyers MUST send at most one child group for each (selection_group, targeting_mode) pair. Sellers MUST reject duplicate, mixed, or collapsed groups that combine distinct selection_group_rules into the same child group.",
       "items": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
         "description": "Product-scoped override for one ProductSignalTargetingOption.selection_group value. Use this when a product has mixed signal-selection behavior, such as fixed suppressions plus a required pick-one include tier.",
         "properties": {
           "max_selected_signals": {
@@ -58,17 +59,21 @@
             "type": "string"
           },
           "selection_mode": {
+            "description": "Selection behavior for this selection_group. 'required' means at least min_selected_signals, or 1 when omitted. 'fixed' means default_selected options in this group are seller-applied and read-only.",
             "enum": [
-              "fixed",
               "optional",
-              "required"
-            ]
+              "required",
+              "fixed"
+            ],
+            "type": "string"
           },
           "targeting_mode": {
+            "description": "How options in this selection_group are intended to be used in signal_targeting_groups. 'include' maps to child groups with operator 'any'. 'exclude' maps to child groups with operator 'none'. Omit when options in the group may be used according to each option's allowed_targeting_modes.",
             "enum": [
-              "exclude",
-              "include"
-            ]
+              "include",
+              "exclude"
+            ],
+            "type": "string"
           }
         },
         "required": [

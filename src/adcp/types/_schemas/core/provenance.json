@@ -80,17 +80,32 @@
       "type": "object"
     },
     "digital_source_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "IPTC-aligned classification of AI involvement in producing this content",
       "enum": [
-        "human_edits",
         "digital_capture",
         "digital_creation",
+        "trained_algorithmic_media",
+        "composite_with_trained_algorithmic_media",
         "algorithmic_media",
         "composite_capture",
-        "data_driven_media",
         "composite_synthetic",
-        "trained_algorithmic_media",
-        "composite_with_trained_algorithmic_media"
-      ]
+        "human_edits",
+        "data_driven_media"
+      ],
+      "enumDescriptions": {
+        "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
+        "composite_capture": "Multiple digital captures composited together without AI",
+        "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
+        "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
+        "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)",
+        "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
+        "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
+        "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
+        "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)"
+      },
+      "title": "Digital Source Type",
+      "type": "string"
     },
     "disclosure": {
       "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
@@ -121,6 +136,7 @@
                 "properties": {
                   "ext": {
                     "$schema": "http://json-schema.org/draft-07/schema#",
+                    "additionalProperties": true,
                     "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
                     "title": "Extension Object",
                     "type": "object"
@@ -131,25 +147,38 @@
                     "type": "integer"
                   },
                   "persistence": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "How long the disclosure must persist during content playback or display",
                     "enum": [
+                      "continuous",
                       "initial",
-                      "flexible",
-                      "continuous"
-                    ]
+                      "flexible"
+                    ],
+                    "enumDescriptions": {
+                      "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
+                      "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion",
+                      "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration."
+                    },
+                    "title": "Disclosure Persistence",
+                    "type": "string"
                   },
                   "positions": {
                     "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
                     "items": {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
                       "enum": [
-                        "audio",
+                        "prominent",
                         "footer",
+                        "audio",
+                        "subtitle",
                         "overlay",
                         "end_card",
                         "pre_roll",
-                        "subtitle",
-                        "companion",
-                        "prominent"
-                      ]
+                        "companion"
+                      ],
+                      "title": "Disclosure Position",
+                      "type": "string"
                     },
                     "minItems": 1,
                     "type": "array",
@@ -188,10 +217,18 @@
             "type": "string"
           },
           "method": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "How provenance data is carried within the content",
             "enum": [
               "manifest_wrapper",
               "provenance_markers"
-            ]
+            ],
+            "enumDescriptions": {
+              "manifest_wrapper": "A provenance manifest embedded in the file container per format-specific rules (e.g., JUMBF box in JPEG, C2PATextManifestWrapper in plaintext per C2PA Section A.7). The manifest travels with the file but is tied to the file's byte structure.",
+              "provenance_markers": "Invisible markers embedded within the content stream that encode or reference a provenance record. Designed to survive reformatting, copy-paste, CMS ingestion, and ad-server transcoding that breaks file-level bindings."
+            },
+            "title": "Embedded Provenance Method",
+            "type": "string"
           },
           "provider": {
             "description": "Organization that performed the embedding (e.g., 'Encypher', 'Digimarc'). Display label and audit context \u2014 not a wire identifier.",
@@ -233,6 +270,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
@@ -308,10 +346,18 @@
       "items": {
         "properties": {
           "c2pa_action": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "C2PA action classification for this watermark",
             "enum": [
               "c2pa.watermarked.bound",
               "c2pa.watermarked.unbound"
-            ]
+            ],
+            "enumDescriptions": {
+              "c2pa.watermarked.bound": "Watermark linked to a C2PA manifest for this asset. The watermark and manifest are mutually reinforcing: the manifest references the watermark, and the watermark can be used to locate the manifest.",
+              "c2pa.watermarked.unbound": "Watermark independent of any C2PA manifest. Applied before any provenance signing event (e.g., by the AI generator at creation time) or in pipelines where no manifest is present."
+            },
+            "title": "C2PA Watermark Action",
+            "type": "string"
           },
           "embedded_at": {
             "description": "When the watermark was applied (ISO 8601)",
@@ -319,12 +365,22 @@
             "type": "string"
           },
           "media_type": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Media category of the watermarked content",
             "enum": [
-              "text",
               "audio",
               "image",
-              "video"
-            ]
+              "video",
+              "text"
+            ],
+            "enumDescriptions": {
+              "audio": "Watermark applied to audio content (e.g., spread-spectrum, echo hiding)",
+              "image": "Watermark applied to image content (e.g., spatial domain, frequency domain)",
+              "text": "Watermark applied to text content (e.g., synonym substitution, structural modification)",
+              "video": "Watermark applied to video content (e.g., per-frame image watermarking, temporal watermarking)"
+            },
+            "title": "Watermark Media Type",
+            "type": "string"
           },
           "provider": {
             "description": "Organization that applied the watermark (e.g., 'Imatag', 'Steg.AI', 'Encypher'). Display label and audit context \u2014 not a wire identifier.",

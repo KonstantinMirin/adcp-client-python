@@ -746,6 +746,28 @@ def escape_key(key: str) -> str:
     return key.replace("~", "~0").replace("/", "~1")
 
 
+def node_at(root: object, pointer: str) -> object:
+    """The node a JSON Pointer names in ``root``.  The INVERSE of :func:`escape_key`.
+
+    Beside its inverse for the same reason that one is here: a pointer segment is
+    spelled and read by more than one module, and ``bundle.record`` dereferences the
+    fragment half of a ``$ref`` while ``harness.at`` dereferences a pointer on the
+    document side.  Two readings of RFC 6901's two escapes is how an inliner and a
+    grader come to disagree about which node a reference names.
+
+    Raises ``KeyError``, ``IndexError``, ``TypeError`` or ``ValueError`` for a pointer
+    that names no node, which is what lets ``bundle.record`` turn one into a refusal
+    naming the reference rather than letting it crash the run.
+    """
+    cur = root
+    for part in pointer.lstrip("/").split("/"):
+        if part == "":
+            continue
+        part = part.replace("~1", "/").replace("~0", "~")
+        cur = cur[int(part)] if isinstance(cur, list) else cur[part]  # type: ignore[index]
+    return cur
+
+
 # --------------------------------------------------------------------------- #
 # the carriers
 # --------------------------------------------------------------------------- #
@@ -2012,9 +2034,11 @@ def lower_composition(
             # SIBLING, which is the cause, and never on ``$ref``, which is only
             # the position.  The same reading ``emit.decide_type`` applies to a
             # reference used as an annotation -- draft-07 says a ``$ref`` IGNORES
-            # its siblings, while the resolver the harness grades through MERGES
-            # them, so a document with one would be graded against a schema it
-            # does not mean whichever way the base was bound.
+            # its siblings, and letting the referring value win would make the
+            # record state an acceptance fact the bundle's draft does not hold
+            # (architecture §13 item 2, semantics §9's last rule).  So the refusal
+            # names the sibling until the cell decides it compiles to nothing and
+            # the run reports it, which is rows .2 and .5's work.
             raise Refusal(
                 min(keys - {"$ref"}),
                 where,
@@ -2609,7 +2633,7 @@ def _intersection(
 
     **"Silent" means silent AFTER RESOLUTION, and that is the whole of §6's clause 2.**
     A child that is a bare ``$ref`` states no description in the document's TEXT and
-    states its target's at the pointer the comparison grades, because the resolver
+    states its target's at the pointer the comparison grades, because ``bundle.record``
     inlines the target there -- so gap-filling the base's over it puts a description the
     document does not carry at a pointer the document declares itself.  Measured at 17
     ``differs``, every one ``/properties/context/description``: a response root composing

@@ -11,12 +11,16 @@
     "audio_channels": {
       "description": "Accepted audio channel configurations",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Audio channel configuration for audio and video assets",
         "enum": [
-          "5.1",
-          "7.1",
           "mono",
-          "stereo"
-        ]
+          "stereo",
+          "5.1",
+          "7.1"
+        ],
+        "title": "Audio Channel Layout",
+        "type": "string"
       },
       "type": "array"
     },
@@ -79,10 +83,18 @@
       "type": "array"
     },
     "frame_rate_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Required frame rate type. Broadcast and SSAI require constant frame rate for seamless splicing.",
       "enum": [
         "constant",
         "variable"
-      ]
+      ],
+      "enumDescriptions": {
+        "constant": "Constant frame rate (CFR) \u2014 each frame occupies an identical time interval",
+        "variable": "Variable frame rate (VFR) \u2014 frame intervals may differ"
+      },
+      "title": "Frame Rate Type",
+      "type": "string"
     },
     "frame_rates": {
       "description": "Accepted frame rates in frames per second (e.g., [24, 30, 60])",
@@ -93,10 +105,18 @@
       "type": "array"
     },
     "gop_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Required GOP structure. SSAI and broadcast require closed GOPs for clean splice points.",
       "enum": [
-        "open",
-        "closed"
-      ]
+        "closed",
+        "open"
+      ],
+      "enumDescriptions": {
+        "closed": "Each GOP is independently decodable \u2014 required for SSAI and broadcast splicing",
+        "open": "GOPs may reference frames from adjacent GOPs \u2014 not suitable for splicing"
+      },
+      "title": "GOP Type",
+      "type": "string"
     },
     "loudness_lufs": {
       "description": "Target integrated loudness in LUFS (e.g., -24 for broadcast, -16 for streaming)",
@@ -163,16 +183,32 @@
       "type": "integer"
     },
     "moov_atom_position": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Required moov atom position in MP4 container. 'start' enables progressive download without buffering the entire file.",
       "enum": [
-        "end",
-        "start"
-      ]
+        "start",
+        "end"
+      ],
+      "enumDescriptions": {
+        "end": "moov atom at end of file \u2014 requires full download before playback can begin",
+        "start": "moov atom at beginning of file \u2014 enables progressive download and streaming delivery"
+      },
+      "title": "Moov Atom Position",
+      "type": "string"
     },
     "scan_type": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Required scan type. Modern delivery requires progressive scan.",
       "enum": [
-        "interlaced",
-        "progressive"
-      ]
+        "progressive",
+        "interlaced"
+      ],
+      "enumDescriptions": {
+        "interlaced": "Alternating lines drawn in two passes per frame (legacy broadcast)",
+        "progressive": "All lines of each frame are drawn in sequence"
+      },
+      "title": "Scan Type",
+      "type": "string"
     },
     "true_peak_dbfs": {
       "description": "Maximum true peak level in dBFS (e.g., -2 for broadcast)",

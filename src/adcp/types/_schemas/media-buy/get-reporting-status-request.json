@@ -160,10 +160,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "anyOf": [
         {
-          "additionalProperties": {
-            "not": {}
-          },
-          "maxProperties": 1,
+          "additionalProperties": false,
           "properties": {
             "account_id": {
               "minLength": 1,
@@ -176,18 +173,12 @@
           ]
         },
         {
-          "additionalProperties": {
-            "not": {}
-          },
-          "maxProperties": 6,
+          "additionalProperties": false,
           "properties": {
             "brand": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
-              "maxProperties": 3,
               "properties": {
                 "brand_id": {
                   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -238,9 +229,7 @@
             },
             "operator_unit": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "Optional operator-owned business unit, agency seat, or platform account. Only id participates in identity; name is mutable display metadata.",
               "examples": [
                 {
@@ -252,7 +241,6 @@
                   "name": "Nova Benelux"
                 }
               ],
-              "maxProperties": 2,
               "properties": {
                 "id": {
                   "description": "Stable identifier assigned by the operator. Numeric platform IDs and durable slugs are both valid. Scoped by the enclosing operator domain.",
@@ -276,10 +264,8 @@
               "x-entity": "operator_unit"
             },
             "sandbox": {
-              "enum": [
-                false,
-                true
-              ]
+              "default": false,
+              "type": "boolean"
             },
             "timezone": {
               "description": "Immutable account timezone. Include it in the natural key only for buyer-selected account_fixed provisioning.",
@@ -325,6 +311,7 @@
     },
     "context": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
       "title": "Context Object",
       "type": "object"
@@ -345,6 +332,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
@@ -352,11 +340,15 @@
     "feed_purposes": {
       "description": "Optional summary/periods feed filter. The response echoes exact resolved configuration generations so this never creates an opaque aggregate.",
       "items": {
+        "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
         "enum": [
           "pacing",
-          "billing",
-          "analytics"
-        ]
+          "analytics",
+          "billing"
+        ],
+        "title": "Reporting Feed Purpose",
+        "type": "string",
+        "x-adcp-model-context-inline": true
       },
       "minItems": 1,
       "type": "array",
@@ -364,10 +356,18 @@
     },
     "finality": {
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Finality of a reporting revision. Snapshot revisions are provisional and may be superseded. An official revision is the immutable, invoice-addressable close for its reporting slice and MUST NOT be superseded; later source corrections are explicit reporting adjustments rather than silent replacement revisions.",
         "enum": [
-          "official",
-          "snapshot"
-        ]
+          "snapshot",
+          "official"
+        ],
+        "enumDescriptions": {
+          "official": "Immutable seller-authoritative close for the represented period. Buyers may key invoices and settlement records to its reporting_revision_id. Later corrections are explicit adjustments, never superseding revisions.",
+          "snapshot": "Provisional seller/source reporting evidence; not sufficient by itself for billing."
+        },
+        "title": "Reporting Finality",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -376,13 +376,24 @@
     "health": {
       "description": "Periods-view result filter only; it never changes summary health.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Operational health for an explicitly echoed reporting scope. Aggregate precedence is action_required, delayed, then healthy. waiting applies only when no active obligation is due. action_required also applies immediately when a readable consumer-receipt revision or adjustment lacks an accepted current receipt; Reliable Reporting defines no separate receipt SLA. complete applies only when the queried scope is closed, retained coverage is complete, and every obligation has its configured required finality plus a verified readable materialization.",
         "enum": [
-          "delayed",
           "healthy",
           "waiting",
-          "complete",
-          "action_required"
-        ]
+          "delayed",
+          "action_required",
+          "complete"
+        ],
+        "enumDescriptions": {
+          "action_required": "A delivery, SLA, retry, or immediate readable-evidence receipt-reconciliation boundary was crossed and at least one structured human action is supplied.",
+          "complete": "The queried scope is closed, retained coverage is complete, and every obligation has its configured required finality plus a verified readable materialization.",
+          "delayed": "At least one obligation is late but remains within the seller's declared automated recovery path, or \u2014 for a caller-scoped Reliable Reporting view only \u2014 an authenticated consumer's received status was made stale by a seller restatement and is still inside its bounded re-read grace window. In the second case nothing is late; treat the two causes separately when building a seller-lateness SLA view, and read issues[].code to tell them apart.",
+          "healthy": "Due obligations in the queried active scope are current and automated delivery is working.",
+          "waiting": "No obligation in the queried active scope is due yet."
+        },
+        "title": "Reporting Health",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -404,11 +415,8 @@
     },
     "pagination": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "Periods or revision-view pagination. Cursors are bound to the authenticated caller, account, filters, and ledger snapshot.",
-      "maxProperties": 2,
       "properties": {
         "cursor": {
           "description": "Opaque cursor from a previous response to fetch the next page",
@@ -453,11 +461,7 @@
       "x-entity": "reporting_revision"
     },
     "view": {
-      "enum": [
-        "periods",
-        "summary",
-        "revision"
-      ]
+      "$ref": "#/definitions/ReportingStatusView"
     }
   },
   "required": [

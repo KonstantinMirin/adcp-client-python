@@ -117,10 +117,15 @@
         },
         "schemes": {
           "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "deprecated": true,
+            "description": "Legacy authentication schemes for the webhook auth block. Bearer: token sent in Authorization header. HMAC-SHA256: legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit the authentication block and use the RFC 9421 webhook signing profile (applicable on schemas where authentication is optional). Removed in AdCP 4.0.",
             "enum": [
               "Bearer",
               "HMAC-SHA256"
-            ]
+            ],
+            "title": "Authentication Scheme",
+            "type": "string"
           },
           "maxItems": 1,
           "minItems": 1,
@@ -163,6 +168,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"

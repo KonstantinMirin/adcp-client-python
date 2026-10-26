@@ -14,6 +14,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"
@@ -37,23 +38,24 @@
       "anyOf": [
         {
           "enum": [
-            "city",
-            "ward",
-            "state",
-            "county",
             "airport",
             "borough",
-            "commune",
-            "quarter",
-            "district",
-            "province",
-            "post_town",
-            "territory",
-            "prefecture",
+            "city",
             "city_region",
+            "commune",
+            "county",
+            "district",
             "municipality",
-            "neighborhood"
-          ]
+            "neighborhood",
+            "post_town",
+            "prefecture",
+            "province",
+            "quarter",
+            "state",
+            "territory",
+            "ward"
+          ],
+          "type": "string"
         },
         {
           "format": "uri",

@@ -95,25 +95,24 @@
             "properties": {
               "age": {
                 "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": true,
                 "anyOf": [
                   {
                     "required": [
-                      "max"
+                      "min"
                     ]
                   },
                   {
                     "required": [
-                      "min"
+                      "max"
                     ]
                   }
                 ],
                 "description": "A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.",
                 "properties": {
                   "include_unknown": {
-                    "enum": [
-                      false,
-                      true
-                    ]
+                    "description": "Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.",
+                    "type": "boolean"
                   },
                   "max": {
                     "description": "Inclusive maximum age in completed years. Omit for an open upper bound.",
@@ -141,15 +140,28 @@
                 "type": "string"
               },
               "demographic_system": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Audience measurement systems for demographic notation in GRP forecasts and pricing, across video and audio channels. Specifies how demographics are written, not whose panel produced the numbers \u2014 provider identity is measurement_source.",
                 "enum": [
-                  "agf",
-                  "barb",
-                  "oztam",
-                  "custom",
                   "nielsen",
+                  "nielsen_audio",
+                  "barb",
+                  "agf",
+                  "oztam",
                   "mediametrie",
-                  "nielsen_audio"
-                ]
+                  "custom"
+                ],
+                "enumDescriptions": {
+                  "agf": "AGF Videoforschung (Germany). Erwachsene notation + age bands. Examples: E 14-49, E 14+",
+                  "barb": "BARB (UK). NRS social grade + age bands. Examples: ABC1 Adults, 16-34, Adults",
+                  "custom": "Publisher-defined demographic notation",
+                  "mediametrie": "Mediametrie (France). Named segments + age bands",
+                  "nielsen": "Nielsen notation. Prefix: P(ersons), M(en), W(omen), A(dults), C(hildren), T(eens) + age range. Examples: P18-49, M25-54, W35+",
+                  "nielsen_audio": "Nielsen Audio (US radio, formerly Arbitron). Same P/M/W/A prefix + age-range notation as Nielsen TV, measured on the PPM/diary radio panel. Examples: P25-54, A18+, W25-54",
+                  "oztam": "OzTAM (Australia). Age/gender bands, 4+ measurement universe"
+                },
+                "title": "Demographic System",
+                "type": "string"
               }
             },
             "required": [
@@ -203,15 +215,28 @@
     "demographic_systems": {
       "description": "Measurement-system notations this product may return. A code remains opaque unless its capability interval and response row also carry a canonical age predicate.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Audience measurement systems for demographic notation in GRP forecasts and pricing, across video and audio channels. Specifies how demographics are written, not whose panel produced the numbers \u2014 provider identity is measurement_source.",
         "enum": [
-          "agf",
-          "barb",
-          "oztam",
-          "custom",
           "nielsen",
+          "nielsen_audio",
+          "barb",
+          "agf",
+          "oztam",
           "mediametrie",
-          "nielsen_audio"
-        ]
+          "custom"
+        ],
+        "enumDescriptions": {
+          "agf": "AGF Videoforschung (Germany). Erwachsene notation + age bands. Examples: E 14-49, E 14+",
+          "barb": "BARB (UK). NRS social grade + age bands. Examples: ABC1 Adults, 16-34, Adults",
+          "custom": "Publisher-defined demographic notation",
+          "mediametrie": "Mediametrie (France). Named segments + age bands",
+          "nielsen": "Nielsen notation. Prefix: P(ersons), M(en), W(omen), A(dults), C(hildren), T(eens) + age range. Examples: P18-49, M25-54, W35+",
+          "nielsen_audio": "Nielsen Audio (US radio, formerly Arbitron). Same P/M/W/A prefix + age-range notation as Nielsen TV, measured on the PPM/diary radio panel. Examples: P25-54, A18+, W25-54",
+          "oztam": "OzTAM (Australia). Age/gender bands, 4+ measurement universe"
+        },
+        "title": "Demographic System",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",

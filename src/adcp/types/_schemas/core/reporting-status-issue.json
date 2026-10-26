@@ -121,11 +121,15 @@
       "type": "string"
     },
     "feed_purpose": {
+      "description": "Operational use of an independently scheduled and reconciled feed. pacing is the fast snapshot path; billing requires official revisions and consumer reconciliation. Event-level exposure is intentionally deferred until a privacy and authorization contract exists.",
       "enum": [
         "pacing",
-        "billing",
-        "analytics"
-      ]
+        "analytics",
+        "billing"
+      ],
+      "title": "Reporting Feed Purpose",
+      "type": "string",
+      "x-adcp-model-context-inline": true
     },
     "issue_id": {
       "description": "Seller-issued stable identifier for this logical issue: re-emissions and later polls of the same unresolved condition reuse it, and resolution retires it, so consumers can project AdCP reporting issues into durable work items. A recurrence after resolution receives a new id.",
@@ -231,10 +235,7 @@
       "type": "string"
     },
     "severity": {
-      "enum": [
-        "delayed",
-        "action_required"
-      ]
+      "$ref": "#/definitions/ReportingStatusSeverity"
     }
   },
   "required": [

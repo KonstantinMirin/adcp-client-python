@@ -239,13 +239,15 @@ def test_a_constraint_sibling_of_a_local_reference_is_the_stated_ceiling() -> No
 #: ``#/properties/duration_ms_range/items``).
 BARE_TYPES = {"oneOf": [{"type": "boolean"}, {"type": "number"}, {"type": "string"}]}
 NULL_ARM = {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}
-#: THE SAME TWO UNIONS AS A REFERENCING DOCUMENT CARRIES THEM.  The resolver
-#: writes a finite type out as its members while inlining, so a document that
-#: references one of the shapes above states its boolean branch as
-#: ``{"enum": [false, true]}`` and its null branch as ``{"const": null}``.
-#: Measured: the fold fired on the 2 documents that STATE
-#: ``creative/creative-feature-result.json#/properties/value`` and on none of the
-#: 3 that reference it, and those 3 reported the model's type list as ``added``.
+#: THE TWO UNIONS AS THE DELEGATED RESOLVER USED TO WRITE THEM.  It wrote a finite
+#: type out as its members while inlining, so a document REFERENCING one of the
+#: shapes above arrived with its boolean branch as ``{"enum": [false, true]}`` and its
+#: null branch as ``{"const": null}`` -- and ``_normalize`` restored each branch before
+#: folding.  ``bundle.record`` copies the branch the document writes, so all five of
+#: the ``creative/creative-feature-result.json#/properties/value`` documents now carry
+#: the one shape and the restoration is DELETED (``docs/plan/architecture.md`` §9).
+#: These two stay as the NEGATIVE case: a document stating either in its own text is
+#: left alone and compared, which is what the deleted fold must not come back to do.
 BARE_TYPES_INLINED = {"oneOf": [{"enum": [False, True]}, {"type": "number"}, {"type": "string"}]}
 NULL_ARM_INLINED = {"anyOf": [{"type": "integer", "minimum": 0}, {"const": None}]}
 
@@ -286,27 +288,30 @@ def test_a_faithful_class_over_a_folded_document_union_adds_nothing() -> None:
     [(BARE_TYPES_INLINED, FaithfulBareTypes), (NULL_ARM_INLINED, FaithfulNullArm)],
     ids=["bare-types", "null-arm"],
 )
-def test_the_fold_reads_a_branch_the_resolver_rewrote(node: dict, model: Any) -> None:
-    """A referencing document spells the same union differently, and the fold has
-    to read both -- or it fires on the documents that STATE a shape and not on the
-    ones that reference it, which is the reading half-done.
+def test_a_branch_the_resolver_used_to_rewrite_is_now_compared_as_written(
+    node: dict, model: Any
+) -> None:
+    """The restoration is DELETED, so these two shapes no longer fold into a type list.
 
-    The restoration is the third canonicalization (``_uncanonicalized``) applied
-    to the BRANCH, not a new rule: ``enum: [false, true]`` IS ``type: boolean``
-    and ``const: null`` IS ``type: null``, same accepted set either way.
+    The fold existed because the delegated resolver gave one union two shapes depending
+    on whether the document stated it or referenced one that did.  ``bundle.record``
+    copies the branch, so the two shapes stop being one union said two ways -- and a
+    document that states ``{"enum": [false, true]}`` as a branch in its OWN text states
+    an ``enum``, which §9's own rule says is a fact to compare rather than a type to
+    restore.  So the node stays a combinator, states no fact in the compared set, and
+    the model's type list is REPORTED: visible, which is the safe direction.
     """
     res = graded(holder(node), model)
-    assert (res.added, res.missing, res.differs) == ([], [], []), res
-    assert res.outcome == "pass", res
+    assert res.added, f"a branch the document itself writes must not fold: {res}"
 
 
 def test_a_rewritten_branch_does_not_make_the_fold_a_licence() -> None:
-    """The restoration folds the two shapes the resolver writes and NOTHING else.
+    """A union whose branch states anything but a bare ``type`` is left alone.
 
-    A one-member ``enum`` and a three-member one are not finite TYPES, so a union
-    carrying either is left alone and a model stating a type list over it is
-    reported -- which is what keeps this from excusing a model that invented a
-    type.
+    The surviving arm folds only where EVERY branch is a bare ``{"type": X}`` -- §9's
+    "a type list rendered as a union" -- so a union carrying a value set in any branch
+    is left alone and a model stating a type list over it is reported, which is what
+    keeps the arm from excusing a model that invented a type.
     """
     for branch in ({"enum": [False]}, {"enum": ["a", "b"]}, {"const": "x"}):
         node = {"oneOf": [branch, {"type": "number"}]}
@@ -503,39 +508,26 @@ def test_the_root_reaches_the_comparison_through_check_pair() -> None:
     assert without.comparison.added, "the default must not resolve a sibling definition"
 
 
-def test_a_one_member_enum_is_the_const_it_spells_and_a_wider_set_is_not() -> None:
-    """``salesagent-j3k2l.33`` pinned this symptom as a RENDERING question; §6
-    settles it the other way, and ``salesagent-j3k2l.28`` is where it was reached.
+def test_a_wider_or_different_value_set_is_reported_in_the_documents_own_word() -> None:
+    """§6 forbids a report about the TEXT ("A test that fails while the emitted
+    behaviour is unchanged is grading a spelling"), and D14 the same of every check
+    here ("A check asserts what a class accepts, refuses, or states about itself --
+    never the text that expresses it").  What must still report is a different
+    ACCEPTED SET, and that is what this pins.
 
-    ``const: x`` and ``enum: [x]`` admit exactly the same instance, so a report of a
-    difference between them is a report about the TEXT -- which §6 forbids in as many
-    words ("A test that fails while the emitted behaviour is unchanged is grading a
-    spelling, and it is the test that is wrong"), and D14 the same of every check here
-    ("A check asserts what a class accepts, refuses, or states about itself -- never
-    the text that expresses it").
-
-    **It is also not separable after resolution, which is the measurement that forced
-    it.**  ``canonicalish`` rewrites a one-member ``enum`` into a ``const`` while
-    inlining a remote ``$ref``, and it drops the node's ``type`` and ``description``
-    doing it -- so a document that wrote ``const: x`` and one that wrote
-    ``enum: [x]`` reach the comparison as the same bytes, and no gate can ask which it
-    was.  Live instance: ``creative/audit-observation.json``'s own resolved ``code``
-    node is ``{"type": "string", "enum": ["OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"],
-    "description": ...}`` and the copy inlined into
-    ``creative/get-creative-features-terminal-success.json`` is
-    ``{"const": "OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"}``.  The model is faithful to
-    the spelling its OWN document wrote, and no emitter change can make the referrer's
-    pair green, because that pair grades another document's resolved copy.
-
-    What must still report is a different ACCEPTED SET, and that is what this pins.
+    **The respelling that used to make the two words interchangeable is deleted
+    (architecture §9).**  It existed because ``canonicalish`` rewrote a one-member
+    ``enum`` into a ``const`` while inlining a remote ``$ref``, so a document that
+    wrote ``const: x`` and one that wrote ``enum: [x]`` reached the comparison as the
+    same bytes and no gate could ask which it was.  ``bundle.record`` copies the node,
+    so the question is answerable again and each side is graded in the word its own
+    document wrote -- which is what the section below asserts.  Here the subject is
+    the accepted SET, and every one of these reports whichever word carries it.
     """
     root = document({"const": "x"}, {"type": "string"})
 
     class Literally(Base):
         v: Literal["x"]
-
-    class OneMember(Base):
-        v: Annotated[str, Field(json_schema_extra={"enum": ["x"]})]
 
     class TwoMembers(Base):
         v: Annotated[str, Field(json_schema_extra={"enum": ["x", "y"]})]
@@ -543,15 +535,11 @@ def test_a_one_member_enum_is_the_const_it_spells_and_a_wider_set_is_not() -> No
     class TheWrongMember(Base):
         v: Literal["y"]
 
-    # A `Literal` renders `const` and a one-member enumeration renders `enum`; both
-    # admit the string "x" and nothing else, so both agree with the document.
+    # A `Literal` renders `const`, which is what this document states.
     assert graded(root, Literally).outcome == "pass", graded(root, Literally)
-    assert graded(root, OneMember).outcome == "pass", graded(root, OneMember)
 
     # Two members is a WIDER set, and one member that is not the document's is a
-    # different one.  Neither is a spelling and both are reported -- the first as the
-    # pin the model drops beside the enumeration it invents, because two members have
-    # no ``const`` spelling to be folded into and so the two words stay separate.
+    # different one.  Neither is a spelling and both are reported.
     two = graded(root, TwoMembers)
     assert "/properties/v/const" in keys(two.missing), two
     assert "/properties/v/enum" in keys(two.added), two
@@ -565,20 +553,19 @@ def test_a_one_member_enum_is_the_const_it_spells_and_a_wider_set_is_not() -> No
 
 
 # --------------------------------------------------------------------------- #
-# reading three: a CONJUNCT the resolver rewrote (salesagent-j3k2l.28)
+# reading three: a CONJUNCT, read as the DOCUMENT writes it (row .3)
 #
-# `_composed` folds an `allOf` conjunct's facts into the node, and the conjunct
-# arrives already resolved -- so the resolver's finite-type rewrite has dropped
-# the `type` off any boolean the inlined base declared.  Gap-filling that
-# conjunct's `enum` left the merged node with an enum and no type, which is
-# neither spelling of the fact and a shape no document states: measured at 9
-# facts over 5 `formats/canonical` documents, each restating an inherited
-# boolean with nothing but a `default` and a `description`, where the enum read
-# as `missing` against a model stating exactly the accepted set the base does.
+# `_composed` folds an `allOf` conjunct's facts into the node.  The conjunct used to
+# arrive through the delegated resolver, whose finite-type rewrite had dropped the
+# `type` off any boolean an inlined base declared -- so the fold was handed
+# `{"enum": [false, true]}` and gap-filling left the merged node with an enum and no
+# type, a shape no document states: 9 facts over 5 `formats/canonical` documents, each
+# restating an inherited boolean with nothing but a `default` and a `description`.
 #
-# The conjunct is now read through the same `_uncanonicalized` the node is read
-# through, BEFORE its facts are folded in.  Same discipline as above: the tests
-# that matter are the ones that must still REPORT.
+# `bundle.record` copies the base's `{"type": "boolean"}`, so the conjunct arrives in
+# the document's own spelling and both the restoration and the one-member respelling
+# are DELETED (architecture §9).  Same discipline as above: the tests that matter are
+# the ones that must still REPORT.
 # --------------------------------------------------------------------------- #
 def composing(own: dict, conjunct: dict, *, required: bool = True) -> dict:
     """A holder restating ``v`` itself beside an ``allOf`` conjunct declaring it.
@@ -599,20 +586,23 @@ def composing(own: dict, conjunct: dict, *, required: bool = True) -> dict:
     return root
 
 
-#: The resolver's spelling of a base's ``{"type": "boolean", "description": ...}``:
-#: the members written out and every annotation at the node dropped.
-REWRITTEN_BOOLEAN = {"enum": [False, True]}
+#: A base's boolean AS THE BUNDLE WRITES IT, which is what ``bundle.record`` now
+#: copies into the conjunct.  The delegated resolver wrote it ``{"enum": [false,
+#: true]}`` with every annotation at the node dropped, and that is the shape
+#: :data:`RESOLVER_SPELLING` keeps as the negative case below.
+DOCUMENTS_BOOLEAN = {"type": "boolean", "description": "d"}
+RESOLVER_SPELLING = {"enum": [False, True]}
 
 
-def test_a_conjunct_the_resolver_rewrote_is_read_as_the_type_it_spells() -> None:
+def test_a_conjuncts_own_type_is_folded_in_and_the_pair_grades_the_accepted_set() -> None:
     """The 9 facts, as a pair: a faithful class over the real shape reports nothing.
 
-    ``enum: [false, true]`` IS ``type: boolean`` -- the same accepted set, and the
-    second is the document's own spelling -- so the fold receives a typed node and
-    the pair grades the accepted set as a ``type``.
+    The conjunct carries the base's ``{"type": "boolean"}`` because the record copies
+    it, so the fold receives a typed node and the pair grades the accepted set as a
+    ``type`` -- with no restoration between the document and the comparison.
     """
     own = {"default": True, "description": "d"}
-    root = composing(own, REWRITTEN_BOOLEAN, required=False)
+    root = composing(own, DOCUMENTS_BOOLEAN, required=False)
 
     class Faithful(Base):
         v: bool = Field(default=True, description="d")
@@ -620,24 +610,42 @@ def test_a_conjunct_the_resolver_rewrote_is_read_as_the_type_it_spells() -> None
     res = graded(root, Faithful)
     assert (res.added, res.missing, res.differs) == ([], [], []), res
     assert res.outcome == "pass", res
-    # The fold happens in the canonicalization that OWNS the rewrite, not in
-    # `_constrains_nothing`, whose gate is never asked: there is no enum at the
-    # merged node to ask about.  Asserted so a later change that routes this
-    # through the fold instead is visible rather than silently equivalent.
+    # Nothing is folded by ``_constrains_nothing`` here either: its gate is never
+    # asked, because there is no enum at the merged node to ask about.  Asserted so a
+    # later change that routes this through the fold instead is visible rather than
+    # silently equivalent.
     assert res.constrains_nothing == [], res.constrains_nothing
 
 
-def test_the_restored_type_is_graded_and_not_merely_dropped() -> None:
-    """The rewrite is undone, NOT discarded.  A model whose type disagrees with the
-    conjunct's restored one is still reported -- which is what makes the fold
-    lossless rather than a hole one fact wide."""
-    root = composing({"description": "d"}, REWRITTEN_BOOLEAN)
+def test_the_conjuncts_type_is_graded_and_not_merely_dropped() -> None:
+    """A model whose type disagrees with the conjunct's is still reported, which is
+    what makes the gap-fill lossless rather than a hole one fact wide."""
+    root = composing({"description": "d"}, DOCUMENTS_BOOLEAN)
 
     class WrongType(Base):
         v: str = Field(description="d")
 
     res = graded(root, WrongType)
     assert "/properties/v/type" in keys(res.differs), res
+
+
+def test_the_resolvers_own_spelling_of_a_boolean_is_now_compared_as_an_enum() -> None:
+    """The DELETED restoration, from the side that proves it is gone.
+
+    A conjunct stating ``{"enum": [false, true]}`` used to be restored to
+    ``{"type": "boolean"}`` before its facts were folded in.  No document of the bundle
+    writes that shape -- 0 raw nodes, measured -- so the only thing the restoration
+    could still fire on is a document that states it itself, where §9 says the enum is
+    a fact to compare.  So it is compared: the faithful-boolean model states the
+    ``type`` and not the ``enum``, and the ``enum`` is reported ``missing``.
+    """
+    root = composing({"description": "d"}, RESOLVER_SPELLING)
+
+    class StatesTheType(Base):
+        v: bool = Field(description="d")
+
+    res = graded(root, StatesTheType)
+    assert "/properties/v/enum" in keys(res.missing), res
 
 
 def test_a_conjunct_stating_a_fact_the_model_lacks_is_still_missing() -> None:
@@ -666,8 +674,8 @@ class StatesAString(Base):
 @pytest.mark.parametrize(
     ("conjunct", "model", "keyword", "why"),
     [
-        ({"enum": [False]}, StatesABoolean, "const", "one member PINS the value to false"),
-        ({"enum": [True]}, StatesABoolean, "const", "and the other one pins it to true"),
+        ({"enum": [False]}, StatesABoolean, "enum", "one member PINS the value to false"),
+        ({"enum": [True]}, StatesABoolean, "enum", "and the other one pins it to true"),
         (
             {"enum": [False, True, None]},
             StatesABoolean,
@@ -681,24 +689,16 @@ class StatesAString(Base):
 def test_a_conjunct_enum_outside_the_boolean_DOMAIN_still_compares(
     conjunct: dict, model: Any, keyword: str, why: str
 ) -> None:
-    """**The test that distinguishes this reading from widening the fold.**
+    """**The test that says a conjunct's value set is never excused.**
 
-    ``_constrains_nothing`` folds ``enum: [false, true]`` at a node the document
-    declares ``boolean`` because the two members are the whole of that domain.
-    Widening it to fold an UNTYPED ``enum: [false, true]`` would fold a real
-    constraint wherever no base supplies the type, and
-    ``tests/test_comparison_folds.py`` carries 12 negative cases against that.
-    This reading does not touch the gate: it undoes a rewrite the resolver
-    performed, and a conjunct's enum that is not one of the two rewritten shapes
-    reaches the comparison untouched and is reported.
+    A conjunct is the document, so its vocabulary is the document's and a model that
+    drops it is reported.  No shape of ``enum`` folds anywhere now --
+    ``_constrains_nothing``'s boolean-pair arm and ``_one_member_enum``'s respelling
+    both went with the delegated resolver (§9) -- so every case here reports under the
+    keyword the DOCUMENT wrote, which is why ``keyword`` is ``enum`` throughout.
 
-    ``keyword`` is which word the fact is REPORTED under, and the two one-member
-    cases say ``const`` rather than ``enum`` because :func:`harness._one_member_enum`
-    writes a one-member set as the ``const`` it is -- on the conjunct too, which is
-    what keeps that spelling the same on both sides (``salesagent-j3k2l.28``).  The
-    fact is still compared and still missing either way, which is what this test is
-    for; a parameter rather than a looser assertion, so a case that stopped being
-    reported at all still fails.
+    ``keyword`` stays a parameter rather than becoming a looser assertion so that a
+    case which stopped being reported at all still fails here.
     """
     res = graded(composing({"description": "d"}, conjunct), model)
     assert f"/properties/v/{keyword}" in keys(res.missing), f"{why}: {res}"
@@ -706,24 +706,26 @@ def test_a_conjunct_enum_outside_the_boolean_DOMAIN_still_compares(
 
 
 # --------------------------------------------------------------------------- #
-# reading four: a ONE-MEMBER value set, which draft-07 spells two ways
-# (salesagent-j3k2l.28)
+# reading four, DELETED: the ONE-MEMBER respelling (architecture §9)
 #
-# `const: v` and `enum: [v]` admit exactly the same instance.  Each side reaches
-# a node by its own route and picks its own spelling: a document states either,
-# `canonicalish` rewrites a one-member `enum` into a `const` while INLINING a
-# remote `$ref`, and the model states whichever its own lowering chose -- D2's
-# `const` row renders a `Literal` and so a `const`, a one-member enum node
-# becomes a one-member `StrEnum` and so an `enum`.  So a faithful class read as
-# both dropping a `const` and adding an `enum` at a node where nothing disagreed:
-# 3 facts in each direction over
-# `creative/get-creative-features-terminal-success.json`.
+# `const: v` and `enum: [v]` admit exactly the same instance, and `_one_member_enum`
+# wrote the second as the first on BOTH sides.  It existed because `canonicalish`
+# rewrote a one-member `enum` into a `const` WHILE INLINING a remote `$ref` and
+# dropped the node's `type` and `description` doing it -- so `creative/audit-
+# observation.json`'s own resolved `code` node read `{"type": "string", "enum":
+# ["OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"], "description": ...}` while the copy
+# inlined into `creative/get-creative-features-terminal-success.json` read
+# `{"const": "OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED"}`, and a faithful class read as
+# both dropping a `const` and adding an `enum`: 3 facts in each direction.
 #
-# `_one_member_enum` writes the one-member spelling as the `const` it is, on BOTH
-# sides and on an `allOf` conjunct too.  Same discipline as the sections above:
-# the tests that matter are the ones that must still REPORT, and they are in
-# `test_a_one_member_enum_is_the_const_it_spells_and_a_wider_set_is_not` above
-# and in the three negatives at the end of this one.
+# `bundle.record` copies the node, so the referrer's copy spells what the target
+# spells, and §4's rows pick the same word on the model's side -- a `const` node
+# renders a `Literal` and so a `const`, an `enum` node renders a `StrEnum` and so an
+# `enum`.  The two sides reach the node with the same keyword, there is nothing to
+# respell, and the fold is gone.
+#
+# What is left to assert is that EACH SPELLING IS GRADED AS THE DOCUMENT WRITES IT,
+# and that every disagreement about the accepted set still reports.
 # --------------------------------------------------------------------------- #
 # No docstring: a model's docstring IS its root `description`, and the document
 # the probe grades against states none.
@@ -731,108 +733,71 @@ class EnumeratesX(Base):  # `enum: ['x']` -- a one-member enumeration's spelling
     v: Annotated[str, Field(json_schema_extra={"enum": ["x"]})]
 
 
-def test_the_fold_fires_on_the_DOCUMENT_side() -> None:
-    """The document writes the one-member ``enum`` and the model writes the ``const``.
+def test_each_spelling_of_a_one_member_set_is_graded_as_the_document_writes_it() -> None:
+    """A ``const`` document against a ``const`` model, an ``enum`` one against an
+    ``enum`` model, and both pass -- with no respelling in between.
 
-    Nothing is folded on the model's side here -- it has no ``enum`` to fold -- so a
-    pass is the document's node having been rewritten.  Probed directly as well as
-    through the pair, so a green that came from somewhere else is not read as this.
+    This is the pairing the record produces: §4's enumeration row lowers an ``enum``
+    node and §4's ``const`` row lowers a ``const`` one, so the word the model renders
+    is the word its own document wrote, at the referrer as much as at the target.
     """
-    from codegen.harness import _one_member_enum  # noqa: PLC0415
+    res = graded(holder({"type": "string", "enum": ["x"]}), EnumeratesX)
+    assert (res.added, res.missing, res.differs) == ([], [], []), res
 
-    node = {"type": "string", "enum": ["x"], "description": "d"}
-    assert _one_member_enum(node) == {"type": "string", "const": "x", "description": "d"}
+    class Literally(Base):
+        v: Literal["x"]
 
-    class Faithful(Base):
-        v: Annotated[Literal["x"], Field(description="d")]
-
-    res = graded(holder(node), Faithful)
+    res = graded(holder({"const": "x"}), Literally)
     assert (res.added, res.missing, res.differs) == ([], [], []), res
     assert res.outcome == "pass", res
 
 
-def test_the_fold_fires_on_the_MODEL_side() -> None:
-    """The document writes the ``const`` and the model writes the one-member ``enum``.
+def test_a_cross_spelling_pair_is_REPORTED_and_no_longer_folded() -> None:
+    """The deleted fold, from the side that proves it is gone.
 
-    The live shape: the document's own copy of the node writes ``enum`` and the
-    referrer's resolved copy writes ``const``, so the class generated from the first
-    is graded against the second.
+    A document writing ``enum: ["x"]`` against a model rendering ``const: "x"`` is the
+    pair the respelling made green.  It is now reported in both halves -- the
+    document's ``enum`` missing, the model's ``const`` added -- and that is the right
+    report, because nothing in the record produces the mismatch: the respelling's only
+    source was the delegated resolver, and a mismatch that survives it is the EMITTER
+    choosing a word its document did not.
     """
-    from codegen.harness import _one_member_enum  # noqa: PLC0415
 
-    assert _one_member_enum({"enum": ["x"], "type": "string"}) == {
-        "const": "x",
-        "type": "string",
-    }
-    res = graded(holder({"const": "x"}), EnumeratesX)
-    assert (res.added, res.missing, res.differs) == ([], [], []), res
-    assert res.outcome == "pass", res
+    class Literally(Base):
+        v: Literal["x"]
+
+    res = graded(holder({"type": "string", "enum": ["x"]}), Literally)
+    assert "/properties/v/enum" in keys(res.missing), res
+    assert "/properties/v/const" in keys(res.added), res
 
 
-def test_the_fold_fires_on_a_CONJUNCT_one_level_down() -> None:
-    """§6's "including one level down, inside a branch it folded".
+def test_a_conjuncts_one_member_set_is_compared_in_its_own_spelling() -> None:
+    """§6's "including one level down, inside a branch it folded", after the deletion.
 
-    ``_composed`` folds an ``allOf`` conjunct's facts into the node and the conjunct
-    arrives already resolved, so its spelling is whichever the resolver left -- and
-    the conjunct is read through this fold before its facts are folded in, exactly as
-    it is read through ``_uncanonicalized``.  Without that, a base declaring a
-    one-member ``enum`` inlined as a conjunct would report against a model that
-    spells the same pin as a ``const``.
+    ``_composed`` folds an ``allOf`` conjunct's facts into the node, and the conjunct
+    now carries the word the base wrote.  A base declaring ``enum: ["x"]`` against a
+    model that enumerates one member agrees; against a ``Literal`` it reports.
     """
     root = composing({"description": "d"}, {"enum": ["x"]})
 
+    class EnumeratesXWithDescription(Base):
+        v: Annotated[str, Field(description="d", json_schema_extra={"enum": ["x"]})]
+
+    res = graded(root, EnumeratesXWithDescription)
+    assert (res.added, res.missing, res.differs) == ([], [], []), res
+
     class Faithful(Base):
         v: Annotated[Literal["x"], Field(description="d")]
 
-    res = graded(root, Faithful)
-    assert (res.added, res.missing, res.differs) == ([], [], []), res
-
-
-@pytest.mark.parametrize(
-    ("node", "why"),
-    [
-        ({"type": "boolean", "enum": [False, True]}, "two members, and the boolean rewrite"),
-        ({"type": "string", "enum": ["x", "y"]}, "two members have no const spelling"),
-        ({"const": "x", "enum": ["x"]}, "a node stating BOTH: draft-07 conjoins them"),
-        ({"type": "string", "const": "x"}, "already a const: there is nothing to rewrite"),
-        ({"type": "string"}, "no value set at all"),
-    ],
-    ids=["boolean-pair", "two-strings", "both-keywords", "already-const", "neither"],
-)
-def test_the_fold_fires_on_NEITHER_side_outside_its_shape(node: dict, why: str) -> None:
-    """The control: the fold is the identity everywhere but a one-member ``enum``.
-
-    Asserted on the node itself rather than through a pair, because a pair that
-    happens to pass says nothing about which rewrite produced the pass.
-    """
-    from codegen.harness import _one_member_enum  # noqa: PLC0415
-
-    assert _one_member_enum(node) == node, why
-
-
-def test_the_boolean_rewrite_still_reaches_its_own_restoration() -> None:
-    """The two folds meet at ``{"enum": [null]}`` and must not fight.
-
-    ``_uncanonicalized`` restores ``{"const": null}`` as ``{"type": "null"}`` and
-    ``{"enum": [false, true]}`` as ``{"type": "boolean"}``.  A one-member ``enum`` of
-    ``null`` is the first one's shape reached by the other spelling, so this fold runs
-    FIRST and hands it over rather than leaving a third spelling nothing restores.
-    """
-    from codegen.harness import _one_member_enum, _uncanonicalized  # noqa: PLC0415
-
-    assert _uncanonicalized(_one_member_enum({"enum": [None]}))[0] == {"type": "null"}
-    assert _uncanonicalized(_one_member_enum({"const": None}))[0] == {"type": "null"}
-    # and the boolean pair is untouched by this fold and restored by that one
-    assert _one_member_enum({"enum": [False, True]}) == {"enum": [False, True]}
-    assert _uncanonicalized({"enum": [False, True]})[0] == {"type": "boolean"}
+    assert "/properties/v/enum" in keys(graded(root, Faithful).missing)
 
 
 def test_a_model_pinning_a_DIFFERENT_member_is_still_reported() -> None:
-    """The fold rewrites a spelling and excuses no accepted set.
+    """The deletion excuses no accepted set: the document pins ``x``, the model ``y``.
 
-    Both spellings of the disagreement: the document pins ``x`` and the model pins
-    ``y``, written once as a ``Literal`` and once as a one-member enumeration, and
-    both are reported at the ``const`` the two sides are now compared under.
+    Written once as a one-member enumeration, where the two sides share the keyword and
+    the fact ``differs``, and once as a ``Literal``, where they do not and the document's
+    ``enum`` is ``missing`` -- both reported, which is the half that matters.
     """
 
     class EnumeratesY(Base):
@@ -841,20 +806,153 @@ def test_a_model_pinning_a_DIFFERENT_member_is_still_reported() -> None:
     class PinsY(Base):
         v: Literal["y"]
 
-    for model in (EnumeratesY, PinsY):
-        res = graded(holder({"type": "string", "enum": ["x"]}), model)
-        assert "/properties/v/const" in keys(res.differs), (model.__name__, res)
+    res = graded(holder({"type": "string", "enum": ["x"]}), EnumeratesY)
+    assert "/properties/v/enum" in keys(res.differs), res
+    res = graded(holder({"type": "string", "enum": ["x"]}), PinsY)
+    assert "/properties/v/enum" in keys(res.missing), res
+    res = graded(holder({"const": "x"}), PinsY)
+    assert "/properties/v/const" in keys(res.differs), res
 
 
 def test_a_model_that_pins_NOTHING_is_still_reported() -> None:
     """The other must-report half: a model that drops the pin entirely.
 
     ``str`` admits every string and the document admits one, so the model is WIDER
-    than its document -- which is the ``missing`` the fold must not swallow.
+    than its document -- which is the ``missing`` no fold may swallow, in either of
+    the document's two spellings.
     """
 
     class AnyString(Base):
         v: str
 
     res = graded(holder({"type": "string", "enum": ["x"]}), AnyString)
+    assert "/properties/v/enum" in keys(res.missing), res
+    res = graded(holder({"type": "string", "const": "x"}), AnyString)
     assert "/properties/v/const" in keys(res.missing), res
+
+
+# --------------------------------------------------------------------------- #
+# reading five: a MAPPING's `additionalProperties: true` is the silence it is
+# (adcp-client-python-10l.3)
+#
+# Section 4's mapping row renders a property-less object as `dict[K, V]`, and pydantic
+# 2.13.5 has no spelling of `dict[str, Any]` that omits `additionalProperties: true`.
+# draft-07's `additionalProperties` constrains the keys a schema does not declare, and
+# `true` admits every one of them -- which is what silence admits -- so the two spellings
+# are ONE acceptance fact and a faithful mapping states a keyword its document does not.
+# 23 pairs of the committed tree, measured, every one of whose documents writes
+# `{"type": "object"}` in the RAW bundle.
+#
+# `harness._silent_about_extras` reads it as silence on BOTH sides, which is §9's "the
+# readings this pipeline's own output forces ... each applied to both sides".  What it
+# REPLACED was a model-only admission -- `_narrows_nothing`'s
+# `keyword == "additionalProperties" and value is True`, justified by a ONE-site
+# measurement of the delegated resolver's redundant-key drop and silently absorbing
+# these 23.  So the tests that matter here are the ones that say the SCOPE holds: a node
+# with `properties`, a `false`, and a typed value are each untouched, and each still
+# reports.
+# --------------------------------------------------------------------------- #
+class OpenMapping(Base):  # `dict[str, Any]` -- section 4's mapping row with no value type
+    v: dict[str, Any]
+
+
+class ClosedInner(Base):  # pydantic renders `{"additionalProperties": false, "properties": {}}`
+    pass
+
+
+class ClosedMapping(Base):
+    v: ClosedInner
+
+
+class TypedMapping(Base):
+    v: dict[str, str]
+
+
+def test_a_mappings_additional_properties_true_is_read_as_silence_on_both_sides() -> None:
+    """The live shape, in both directions, and the function on its own beside it.
+
+    A document writing ``{"type": "object"}`` against a model rendering
+    ``dict[str, Any]``, and the same document writing ``additionalProperties: true``
+    against a model that is silent -- one accepted set either way, so neither direction
+    reports.  Probed on the function too, because a pair that happens to pass says
+    nothing about which reading produced the pass.
+    """
+    from codegen.harness import _silent_about_extras  # noqa: PLC0415
+
+    assert _silent_about_extras({"type": "object", "additionalProperties": True}) == {
+        "type": "object"
+    }
+    assert _silent_about_extras({"type": "object"}) == {"type": "object"}
+
+    for node in ({"type": "object"}, {"type": "object", "additionalProperties": True}):
+        res = graded(holder(node), OpenMapping)
+        assert (res.added, res.missing, res.differs) == ([], [], []), (node, res)
+        assert res.outcome == "pass", (node, res)
+
+
+@pytest.mark.parametrize(
+    ("node", "why"),
+    [
+        (
+            {"type": "object", "properties": {"k": {"type": "string"}}, "additionalProperties": True},
+            "a node declaring properties is a CLASS, where D8 makes the distinction "
+            "load-bearing: silence is extra=ignore and true is extra=allow",
+        ),
+        (
+            {"type": "object", "additionalProperties": False},
+            "false FORBIDS what silence permits, so the two are different accepted sets",
+        ),
+        (
+            {"type": "object", "additionalProperties": {"type": "string"}},
+            "a typed value restricts the VALUE schema, which silence does not",
+        ),
+    ],
+    ids=["declares-properties", "closed", "typed"],
+)
+def test_the_mapping_reading_fires_on_NEITHER_side_outside_its_shape(node: dict, why: str) -> None:
+    """The control, and the whole of this reading's correctness.
+
+    The arm it replaced was blanket -- any model-only ``additionalProperties: true``,
+    whatever the node -- so the scope is what keeps one blanket predicate from becoming
+    another.  Asserted on the node itself rather than through a pair, because a pair that
+    happens to report says nothing about which gate held.
+    """
+    from codegen.harness import _silent_about_extras  # noqa: PLC0415
+
+    assert _silent_about_extras(node) == node, why
+
+
+def test_a_model_that_CLOSES_a_mapping_its_document_leaves_open_is_still_reported() -> None:
+    """The narrowing direction, which is the one that matters.
+
+    ``additionalProperties: false`` on the model at a mapping the document leaves open
+    refuses keys the document admits -- a model NARROWER than its schema, and the reading
+    above must not touch it.  Both spellings of the document's openness are asked, so a
+    reading that normalised ``false`` into silence by accident reddens here.
+    """
+
+    for node in ({"type": "object"}, {"type": "object", "additionalProperties": True}):
+        res = graded(holder(node), ClosedMapping)
+        # By NAME and not by ``outcome``: a model that happened to differ on some other
+        # keyword would satisfy "not pass" and say nothing about this reading.
+        assert "/properties/v/additionalProperties" in keys(res.added), (node, res)
+
+
+def test_a_document_that_CLOSES_a_mapping_the_model_leaves_open_is_still_reported() -> None:
+    """The other direction: the document forbids an extra key and the model admits one,
+    which is the model being WIDER and is reported as ``missing``."""
+
+    res = graded(holder({"type": "object", "additionalProperties": False}), OpenMapping)
+    assert "/properties/v/additionalProperties" in keys(res.missing), res
+
+
+def test_a_model_that_TYPES_a_mapping_whose_document_says_true_is_still_reported() -> None:
+    """A typed value is a restriction the document does not state, so it is reported.
+
+    This is the case the reading could most easily swallow -- the document's ``true`` is
+    normalised to silence, so the model's value schema has nothing to be compared
+    against and reads as ``added``.  Asserted rather than left to the gate's wording.
+    """
+
+    res = graded(holder({"type": "object", "additionalProperties": True}), TypedMapping)
+    assert "/properties/v/additionalProperties" in keys(res.added), res

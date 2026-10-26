@@ -4,20 +4,38 @@
   "description": "Event-anchored content tied to a real-world event or occasion. When present on a collection, indicates the collection is a special. When present on an installment, indicates that specific installment is event-anchored (overrides or supplements the collection-level special).",
   "properties": {
     "category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Category of the event",
       "enum": [
-        "gala",
         "awards",
+        "championship",
         "concert",
-        "holiday",
-        "reunion",
-        "tribute",
+        "conference",
         "election",
         "festival",
+        "gala",
+        "holiday",
         "premiere",
-        "conference",
-        "championship",
-        "product_launch"
-      ]
+        "product_launch",
+        "reunion",
+        "tribute"
+      ],
+      "enumDescriptions": {
+        "awards": "Awards ceremony (Grammys, Emmys, Oscars)",
+        "championship": "Championship or tournament event (Super Bowl, World Cup, Olympics)",
+        "concert": "Live concert or music event",
+        "conference": "Industry conference or summit",
+        "election": "Election coverage or political event",
+        "festival": "Festival event (film, music, cultural)",
+        "gala": "Gala, fundraiser, or formal event",
+        "holiday": "Holiday special or seasonal event",
+        "premiere": "Premiere or launch event",
+        "product_launch": "Product reveal or launch event",
+        "reunion": "Reunion or anniversary special",
+        "tribute": "Tribute or memorial special"
+      },
+      "title": "Special Category",
+      "type": "string"
     },
     "ends": {
       "description": "When the event ends (ISO 8601). Omit for single-day events.",

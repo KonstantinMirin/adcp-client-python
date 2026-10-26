@@ -4,46 +4,63 @@
   "description": "Fine-grained action template advertised on a compact product. The resulting MediaBuy exposes the authoritative routed task in available_actions.",
   "properties": {
     "action": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Fine-grained MediaBuy action vocabulary for compact product and lifecycle surfaces. Deprecated coarse 3.x actions are absent.",
       "enum": [
         "pause",
-        "cancel",
         "resume",
-        "add_packages",
+        "cancel",
         "extend_flight",
-        "update_pacing",
         "shorten_flight",
-        "update_bidding",
-        "decrease_budget",
-        "increase_budget",
-        "remove_creative",
-        "remove_packages",
-        "update_keywords",
-        "replace_creative",
-        "update_targeting",
-        "reallocate_budget",
         "update_flight_dates",
-        "update_spend_target",
-        "update_frequency_caps",
-        "update_impression_goal",
+        "increase_budget",
+        "decrease_budget",
+        "reallocate_budget",
         "update_budget_allocation",
-        "update_reporting_webhook",
-        "update_optimization_goals",
+        "update_targeting",
+        "update_pacing",
+        "update_bidding",
+        "update_frequency_caps",
+        "update_media_buy_frequency_cap",
         "update_catalog_assignments",
+        "update_keywords",
+        "update_optimization_goals",
+        "update_impression_goal",
+        "update_spend_target",
+        "update_reporting_webhook",
+        "replace_creative",
         "update_creative_assignments",
-        "update_media_buy_frequency_cap"
-      ]
+        "remove_creative",
+        "add_packages",
+        "remove_packages"
+      ],
+      "title": "Canonical Media Buy Action Name",
+      "type": "string"
     },
     "allowed_statuses": {
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Status of a media buy.",
         "enum": [
+          "pending_creatives",
+          "pending_start",
           "active",
           "paused",
-          "canceled",
-          "rejected",
           "completed",
-          "pending_start",
-          "pending_creatives"
-        ]
+          "rejected",
+          "canceled"
+        ],
+        "enumDescriptions": {
+          "active": "Media buy is currently running",
+          "canceled": "Media buy was terminated before natural completion. Check cancellation.canceled_by to determine whether the buyer or seller initiated.",
+          "completed": "Media buy has finished running",
+          "paused": "Media buy is temporarily paused",
+          "pending_creatives": "**Buyer-side action required.** The media buy is approved by the seller and has no creatives assigned \u2014 the buyer must attach creatives via `sync_creatives` before the buy can serve. Not to be confused with a publisher-side or governance-side approval queue: the seller has already accepted the buy; only the buyer's creative submission is missing. Naming convention: `pending_X` names the lifecycle phase that is next required (here, `creatives`), not a state of waiting on seller/operator approval \u2014 consistent with `pending_start` (waiting for the flight date to begin).",
+          "pending_start": "Media buy is ready to serve and waiting for its flight date to begin.",
+          "rejected": "Media buy was declined by the seller after creation"
+        },
+        "title": "Media Buy Status",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -77,81 +94,111 @@
       },
       "oneOf": [
         {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "anyOf": [
             {
               "required": [
-                "earliest_effective_at"
+                "max_delta_amount"
               ]
             },
             {
               "required": [
-                "latest_effective_at"
+                "max_delta_percent"
               ]
             },
             {
               "required": [
-                "minimum_notice"
+                "min_result_amount"
+              ]
+            },
+            {
+              "required": [
+                "max_result_amount"
               ]
             }
           ],
-          "maxProperties": 4,
           "properties": {
-            "earliest_effective_at": {
-              "format": "date-time",
-              "type": "string"
-            },
             "kind": {
-              "const": "effective_timing"
-            },
-            "latest_effective_at": {
-              "format": "date-time",
+              "const": "budget",
               "type": "string"
             },
-            "minimum_notice": {
-              "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
-              "description": "Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.",
-              "maxProperties": 2,
+            "max_delta_amount": {
+              "additionalProperties": false,
+              "description": "Maximum absolute amount by which the affected budget may change in the direction named by the action.",
               "properties": {
-                "interval": {
-                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
-                  "minimum": 1,
-                  "type": "integer"
+                "amount": {
+                  "minimum": 0,
+                  "type": "number"
                 },
-                "unit": {
-                  "enum": [
-                    "days",
-                    "hours",
-                    "minutes",
-                    "seconds",
-                    "campaign"
-                  ]
+                "currency": {
+                  "pattern": "^[A-Z]{3}$",
+                  "type": "string"
                 }
               },
               "required": [
-                "interval",
-                "unit"
+                "amount",
+                "currency"
               ],
-              "title": "Duration",
+              "type": "object"
+            },
+            "max_delta_percent": {
+              "description": "Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.",
+              "minimum": 0,
+              "type": "number"
+            },
+            "max_result_amount": {
+              "additionalProperties": false,
+              "description": "Maximum resulting committed value after the change.",
+              "properties": {
+                "amount": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "currency": {
+                  "pattern": "^[A-Z]{3}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "currency"
+              ],
+              "type": "object"
+            },
+            "min_result_amount": {
+              "additionalProperties": false,
+              "description": "Minimum resulting committed value after the change.",
+              "properties": {
+                "amount": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "currency": {
+                  "pattern": "^[A-Z]{3}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "currency"
+              ],
               "type": "object"
             }
           },
           "required": [
             "kind"
           ],
-          "title": "Effective timing constraints",
+          "title": "Budget change constraints",
           "type": "object"
         },
         {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "anyOf": [
+            {
+              "required": [
+                "max_change"
+              ]
+            },
             {
               "required": [
                 "earliest_result"
@@ -164,16 +211,10 @@
             },
             {
               "required": [
-                "max_change"
-              ]
-            },
-            {
-              "required": [
                 "minimum_notice"
               ]
             }
           ],
-          "maxProperties": 5,
           "properties": {
             "earliest_result": {
               "description": "Earliest resulting start or end timestamp accepted for this action.",
@@ -181,7 +222,8 @@
               "type": "string"
             },
             "kind": {
-              "const": "flight"
+              "const": "flight",
+              "type": "string"
             },
             "latest_result": {
               "description": "Latest resulting start or end timestamp accepted for this action.",
@@ -190,11 +232,8 @@
             },
             "max_change": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "Maximum extension, shortening, or shift in the direction named by the action.",
-              "maxProperties": 2,
               "properties": {
                 "interval": {
                   "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -202,13 +241,15 @@
                   "type": "integer"
                 },
                 "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
                   "enum": [
-                    "days",
-                    "hours",
-                    "minutes",
                     "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
                     "campaign"
-                  ]
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -220,11 +261,8 @@
             },
             "minimum_notice": {
               "$schema": "http://json-schema.org/draft-07/schema#",
-              "additionalProperties": {
-                "not": {}
-              },
+              "additionalProperties": false,
               "description": "Minimum elapsed notice before the requested flight change may take effect.",
-              "maxProperties": 2,
               "properties": {
                 "interval": {
                   "description": "Number of time units. Must be 1 when unit is 'campaign'.",
@@ -232,13 +270,15 @@
                   "type": "integer"
                 },
                 "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
                   "enum": [
-                    "days",
-                    "hours",
-                    "minutes",
                     "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
                     "campaign"
-                  ]
+                  ],
+                  "type": "string"
                 }
               },
               "required": [
@@ -256,9 +296,7 @@
           "type": "object"
         },
         {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "anyOf": [
             {
               "required": [
@@ -276,10 +314,10 @@
               ]
             }
           ],
-          "maxProperties": 4,
           "properties": {
             "kind": {
-              "const": "package_count"
+              "const": "package_count",
+              "type": "string"
             },
             "max_additions": {
               "description": "Maximum packages that may be added by one exercise of the right.",
@@ -304,112 +342,71 @@
           "type": "object"
         },
         {
-          "additionalProperties": {
-            "not": {}
-          },
+          "additionalProperties": false,
           "anyOf": [
             {
               "required": [
-                "max_delta_amount"
+                "minimum_notice"
               ]
             },
             {
               "required": [
-                "max_delta_percent"
+                "earliest_effective_at"
               ]
             },
             {
               "required": [
-                "max_result_amount"
-              ]
-            },
-            {
-              "required": [
-                "min_result_amount"
+                "latest_effective_at"
               ]
             }
           ],
-          "maxProperties": 5,
           "properties": {
+            "earliest_effective_at": {
+              "format": "date-time",
+              "type": "string"
+            },
             "kind": {
-              "const": "budget"
+              "const": "effective_timing",
+              "type": "string"
             },
-            "max_delta_amount": {
-              "additionalProperties": {
-                "not": {}
-              },
-              "description": "Maximum absolute amount by which the affected budget may change in the direction named by the action.",
-              "maxProperties": 2,
+            "latest_effective_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "minimum_notice": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": false,
+              "description": "Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.",
               "properties": {
-                "amount": {
-                  "minimum": 0,
-                  "type": "number"
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
                 },
-                "currency": {
-                  "pattern": "^[A-Z]{3}$",
+                "unit": {
+                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.",
+                  "enum": [
+                    "seconds",
+                    "minutes",
+                    "hours",
+                    "days",
+                    "campaign"
+                  ],
                   "type": "string"
                 }
               },
               "required": [
-                "amount",
-                "currency"
+                "interval",
+                "unit"
               ],
-              "type": "object"
-            },
-            "max_delta_percent": {
-              "description": "Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.",
-              "minimum": 0,
-              "type": "number"
-            },
-            "max_result_amount": {
-              "additionalProperties": {
-                "not": {}
-              },
-              "description": "Maximum resulting committed value after the change.",
-              "maxProperties": 2,
-              "properties": {
-                "amount": {
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "currency": {
-                  "pattern": "^[A-Z]{3}$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "currency"
-              ],
-              "type": "object"
-            },
-            "min_result_amount": {
-              "additionalProperties": {
-                "not": {}
-              },
-              "description": "Minimum resulting committed value after the change.",
-              "maxProperties": 2,
-              "properties": {
-                "amount": {
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "currency": {
-                  "pattern": "^[A-Z]{3}$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "currency"
-              ],
+              "title": "Duration",
               "type": "object"
             }
           },
           "required": [
             "kind"
           ],
-          "title": "Budget change constraints",
+          "title": "Effective timing constraints",
           "type": "object"
         }
       ],
@@ -417,12 +414,22 @@
     },
     "modes": {
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "How a seller honors a routed compact-lifecycle action.",
         "enum": [
           "self_serve",
+          "conditional_self_serve",
           "seller_managed",
-          "requires_approval",
-          "conditional_self_serve"
-        ]
+          "requires_approval"
+        ],
+        "enumDescriptions": {
+          "conditional_self_serve": "The declared task completes synchronously inside seller tolerances and may become asynchronous outside them.",
+          "requires_approval": "Legacy 3.x mode indicating an approval-dependent async path. New proposal-bound terms SHOULD use seller_managed so they do not expose an internal implementation.",
+          "self_serve": "The declared task completes synchronously without approval.",
+          "seller_managed": "The seller processes the action through the standard async lifecycle. The internal use of people, models, queues, or other controls is intentionally opaque."
+        },
+        "title": "Canonical Media Buy Action Mode",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
@@ -430,11 +437,8 @@
     },
     "sla": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "description": "Service-level commitment a seller declares for a given action. Optional throughout: absence means no commitment, not zero commitment \u2014 buyers querying SLA fields via #4425's `requires` predicate grammar MUST compose with `present` to avoid silently matching sellers who never declared one. Durations are ISO 8601 duration strings (e.g., `PT4H`, `PT24H`, `P1D`). Predicate evaluators that compare durations MUST normalize before comparison; `P1D` and `PT24H` are equal.",
-      "maxProperties": 2,
       "properties": {
         "completion_max": {
           "description": "Maximum elapsed time from buyer issuing the action to the seller completing it (mutation applied, proposal finalized, or seller-managed decision resolved). Sellers include weekends and non-working periods in the maximum. ISO 8601 duration.",

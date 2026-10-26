@@ -59,132 +59,81 @@
   "properties": {
     "affected_resource": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": {
-        "not": {}
-      },
+      "additionalProperties": false,
       "allOf": [
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "resource_type": {
-                    "const": "creative"
-                  }
-                },
-                "required": [
-                  "resource_type"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "resource_type": {
+                "const": "media_buy"
+              }
             },
-            {
-              "properties": {
-                "resource_type": {
-                  "const": "creative"
-                }
-              },
-              "required": [
-                "creative_id",
-                "resource_type"
-              ]
-            }
-          ]
+            "required": [
+              "resource_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "media_buy_id"
+            ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "resource_type": {
-                    "const": "creative_assignment"
-                  }
-                },
-                "required": [
-                  "resource_type"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "resource_type": {
+                "const": "package"
+              }
             },
-            {
-              "properties": {
-                "resource_type": {
-                  "const": "creative_assignment"
-                }
-              },
-              "required": [
-                "creative_id",
-                "media_buy_id",
-                "package_id",
-                "resource_type"
-              ]
-            }
-          ]
+            "required": [
+              "resource_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "media_buy_id",
+              "package_id"
+            ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "resource_type": {
-                    "const": "media_buy"
-                  }
-                },
-                "required": [
-                  "resource_type"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "resource_type": {
+                "const": "creative"
+              }
             },
-            {
-              "properties": {
-                "resource_type": {
-                  "const": "media_buy"
-                }
-              },
-              "required": [
-                "media_buy_id",
-                "resource_type"
-              ]
-            }
-          ]
+            "required": [
+              "resource_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "creative_id"
+            ]
+          }
         },
         {
-          "anyOf": [
-            {
-              "not": {
-                "properties": {
-                  "resource_type": {
-                    "const": "package"
-                  }
-                },
-                "required": [
-                  "resource_type"
-                ],
-                "type": "object"
-              },
-              "type": "object"
+          "if": {
+            "properties": {
+              "resource_type": {
+                "const": "creative_assignment"
+              }
             },
-            {
-              "properties": {
-                "resource_type": {
-                  "const": "package"
-                }
-              },
-              "required": [
-                "media_buy_id",
-                "package_id",
-                "resource_type"
-              ]
-            }
-          ]
+            "required": [
+              "resource_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "media_buy_id",
+              "package_id",
+              "creative_id"
+            ]
+          }
         }
       ],
       "description": "Resource or relationship affected by this warning. Required so multi-package and multi-creative responses remain machine-joinable.",
-      "maxProperties": 4,
       "properties": {
         "creative_id": {
           "type": "string",
@@ -200,11 +149,12 @@
         },
         "resource_type": {
           "enum": [
+            "media_buy",
             "package",
             "creative",
-            "media_buy",
             "creative_assignment"
-          ]
+          ],
+          "type": "string"
         }
       },
       "required": [
@@ -214,11 +164,20 @@
       "type": "object"
     },
     "code": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Closed warning vocabulary for the negotiated AdCP release. A non-blocking condition observed while an operation still succeeded. New values are added through normal protocol releases; buyers validate against the negotiated release.",
       "enum": [
         "inventory_shortfall_forecast",
-        "fields_ignored_due_to_precedence",
-        "flight_change_creates_pacing_risk"
-      ]
+        "flight_change_creates_pacing_risk",
+        "fields_ignored_due_to_precedence"
+      ],
+      "enumDescriptions": {
+        "fields_ignored_due_to_precedence": "The operation succeeded, but one or more submitted fields were intentionally ignored because another field has defined precedence, such as canceled: true overriding other media-buy updates. details SHOULD list the ignored field paths.",
+        "flight_change_creates_pacing_risk": "The requested flight change was accepted, but the seller projects material over- or under-delivery risk. If the condition remains current, the seller also exposes pacing_risk on the affected package read.",
+        "inventory_shortfall_forecast": "The operation succeeded, but the seller's current forecast is materially below the requested delivery goal. If the condition remains current, the seller also exposes inventory_shortfall_forecast on the affected package read."
+      },
+      "title": "Warning Code",
+      "type": "string"
     },
     "details": {
       "additionalProperties": true,
@@ -227,6 +186,7 @@
     },
     "ext": {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
       "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
       "title": "Extension Object",
       "type": "object"

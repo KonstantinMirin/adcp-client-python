@@ -91,13 +91,17 @@
         },
         "properties": {
           "system": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Metro area classification systems for geographic targeting",
             "enum": [
-              "custom",
+              "nielsen_dma",
               "uk_itl1",
               "uk_itl2",
-              "nielsen_dma",
-              "eurostat_nuts2"
-            ]
+              "eurostat_nuts2",
+              "custom"
+            ],
+            "title": "Metro Area System",
+            "type": "string"
           }
         },
         "required": [
@@ -124,6 +128,69 @@
               {
                 "properties": {
                   "country": {
+                    "const": "US"
+                  },
+                  "system": {
+                    "enum": [
+                      "zip",
+                      "zip_plus_four"
+                    ]
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "const": "GB"
+                  },
+                  "system": {
+                    "enum": [
+                      "outward",
+                      "full"
+                    ]
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "const": "CA"
+                  },
+                  "system": {
+                    "enum": [
+                      "fsa",
+                      "full"
+                    ]
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "enum": [
+                      "DE",
+                      "CH",
+                      "AT"
+                    ]
+                  },
+                  "system": {
+                    "const": "plz"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
+                    "const": "FR"
+                  },
+                  "system": {
+                    "const": "code_postal"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "country": {
                     "const": "AU"
                   },
                   "system": {
@@ -144,59 +211,10 @@
               {
                 "properties": {
                   "country": {
-                    "const": "CA"
-                  },
-                  "system": {
-                    "enum": [
-                      "fsa",
-                      "full"
-                    ]
-                  }
-                }
-              },
-              {
-                "properties": {
-                  "country": {
-                    "const": "FR"
-                  },
-                  "system": {
-                    "const": "code_postal"
-                  }
-                }
-              },
-              {
-                "properties": {
-                  "country": {
-                    "const": "GB"
-                  },
-                  "system": {
-                    "enum": [
-                      "full",
-                      "outward"
-                    ]
-                  }
-                }
-              },
-              {
-                "properties": {
-                  "country": {
                     "const": "IN"
                   },
                   "system": {
                     "const": "pin"
-                  }
-                }
-              },
-              {
-                "properties": {
-                  "country": {
-                    "const": "US"
-                  },
-                  "system": {
-                    "enum": [
-                      "zip",
-                      "zip_plus_four"
-                    ]
                   }
                 }
               },
@@ -213,40 +231,26 @@
               {
                 "properties": {
                   "country": {
-                    "enum": [
-                      "AT",
-                      "CH",
-                      "DE"
-                    ]
-                  },
-                  "system": {
-                    "const": "plz"
-                  }
-                }
-              },
-              {
-                "properties": {
-                  "country": {
                     "not": {
                       "enum": [
+                        "US",
+                        "GB",
+                        "CA",
+                        "DE",
+                        "CH",
                         "AT",
+                        "FR",
                         "AU",
                         "BR",
-                        "CA",
-                        "CH",
-                        "DE",
-                        "FR",
-                        "GB",
                         "IN",
-                        "US",
                         "ZA"
                       ]
                     }
                   },
                   "system": {
                     "enum": [
-                      "custom",
-                      "postal_code"
+                      "postal_code",
+                      "custom"
                     ]
                   }
                 }
@@ -260,31 +264,35 @@
                 "type": "string"
               },
               "system": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Country-local postal code system.",
                 "enum": [
-                  "cep",
-                  "fsa",
-                  "pin",
-                  "plz",
-                  "zip",
-                  "full",
-                  "at_plz",
-                  "ca_fsa",
-                  "ch_plz",
-                  "custom",
-                  "de_plz",
-                  "us_zip",
-                  "ca_full",
-                  "gb_full",
-                  "outward",
-                  "postcode",
-                  "gb_outward",
-                  "au_postcode",
-                  "code_postal",
                   "postal_code",
+                  "zip",
                   "zip_plus_four",
+                  "outward",
+                  "full",
+                  "fsa",
+                  "plz",
+                  "code_postal",
+                  "postcode",
+                  "cep",
+                  "pin",
+                  "custom",
+                  "us_zip",
+                  "us_zip_plus_four",
+                  "gb_outward",
+                  "gb_full",
+                  "ca_fsa",
+                  "ca_full",
+                  "de_plz",
                   "fr_code_postal",
-                  "us_zip_plus_four"
-                ]
+                  "au_postcode",
+                  "ch_plz",
+                  "at_plz"
+                ],
+                "title": "Postal Code System",
+                "type": "string"
               }
             },
             "required": [
@@ -302,19 +310,24 @@
             },
             "properties": {
               "system": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "deprecated": true,
+                "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
                 "enum": [
-                  "at_plz",
-                  "ca_fsa",
-                  "ch_plz",
-                  "de_plz",
                   "us_zip",
-                  "ca_full",
-                  "gb_full",
+                  "us_zip_plus_four",
                   "gb_outward",
-                  "au_postcode",
+                  "gb_full",
+                  "ca_fsa",
+                  "ca_full",
+                  "de_plz",
                   "fr_code_postal",
-                  "us_zip_plus_four"
-                ]
+                  "au_postcode",
+                  "ch_plz",
+                  "at_plz"
+                ],
+                "title": "Country-Fused Postal Code System",
+                "type": "string"
               }
             },
             "required": [
@@ -337,12 +350,16 @@
       "type": "string"
     },
     "geo_level": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Geographic level for this forecast point.",
       "enum": [
-        "metro",
-        "region",
         "country",
+        "region",
+        "metro",
         "postal_area"
-      ]
+      ],
+      "title": "Geographic Targeting Level",
+      "type": "string"
     },
     "geo_name": {
       "description": "Human-readable geographic name (e.g., 'United States', 'California', 'New York DMA').",

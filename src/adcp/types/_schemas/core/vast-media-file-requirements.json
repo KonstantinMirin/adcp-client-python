@@ -26,10 +26,14 @@
     "delivery_methods": {
       "description": "Accepted values of the required `MediaFile@delivery` attribute. `progressive` identifies a directly downloadable media file; `streaming` identifies a streaming media resource.",
       "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Delivery method declared by the required VAST MediaFile `delivery` attribute.",
         "enum": [
-          "streaming",
-          "progressive"
-        ]
+          "progressive",
+          "streaming"
+        ],
+        "title": "VAST Media Delivery Method",
+        "type": "string"
       },
       "minItems": 1,
       "type": "array",
