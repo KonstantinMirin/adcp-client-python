@@ -462,9 +462,24 @@ There is an IR between a decided node and emitted text, and it is complete: noth
 **Rules are the runtime's own dataclasses.** A `ClassDecl.rules` tuple holds instances of
 `adcp.types._runtime.RequiredGroups`, `ConditionalRequired`, `Dependencies`, `PropertyCount`,
 `UniqueItems`, `ForbiddenGroups`, `NegatedConditional`, built by `lower/rules.py` from the rule
-sources on the node. The renderer writes each one's `repr`, which for a frozen dataclass is a
-constructor expression. One declaration of what a rule is, written once as §2 of the semantics
-document asks, and the walk composes values rather than formatting strings.
+sources on the node. The renderer writes each one as a **constructor expression over the rule's
+own `dataclasses.fields`**, so the names and the order are read off the declaration and not
+restated. One declaration of what a rule is, written once as §2 of the semantics document asks,
+and the walk composes values rather than formatting strings.
+
+*This sentence said `repr` and now does not, settled 2026-10-25.* `repr` is one way to spell a
+constructor expression and it was named here as the mechanism rather than the goal. It is
+keyword-form, while the committed tree's rule calls are positional, so taking it literally
+rewrites 432 of the tree's 444 rule lines across 169 modules — measured on §14 step 4's branch.
+That step is marked *bytes* precisely because it is the largest relocation in the plan, and a
+cosmetic argument spelling that moves text in 169 modules would blind the one check able to
+prove the relocation decided nothing. Keyword and positional arguments to a frozen dataclass
+construct the same object, so the spelling carries no meaning to trade for that.
+
+What the structure requires is therefore the obligation and not the spelling: the call is
+derived from the dataclass's own fields, and the one rule for spelling it lives in `render.py`
+and nowhere else. Normalising that spelling later is legitimate as a DELIBERATE, stated text
+delta with its own row; it is not something a relocation does on the way past.
 
 *Why a complete IR and not the present economy.* Today the decision layer produces class-body
 lines, rule tuples and module trailers as text, and a `Module` accumulates text blocks beside
