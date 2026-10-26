@@ -1,12 +1,12 @@
-"""The compiler half: a class declaration in, Python out -- and the machinery a
-lowering is handed to build one.
+"""The decision machinery a lowering is handed: a node in, a declaration out.
 
-``docs/plan/rebuild-plan.md`` §1 splits the pipeline at a DECISION rather than at
-a translation.  Our walk reads the JSON Schema and decides what each node becomes -- a class, an
-annotation, an enumeration or a rule -- what it is called, which fields it has
-and what constrains them.  This module takes that declaration and nothing else,
-and hands it to
-``datamodel-code-generator``'s pydantic-v2 MODEL layer, which writes the Python.
+``docs/plan/rebuild-plan.md`` §1 splits the pipeline at a DECISION rather than at a
+translation.  Our walk reads the JSON Schema and decides what each node becomes -- a
+class, an annotation, an enumeration or a rule -- what it is called, which fields it has
+and what constrains them.  This module is the shared half of that walk, and what it
+produces is ``codegen.ir``: **nothing here holds a string of Python**
+(``docs/plan/architecture.md`` §7), and ``codegen.render`` is the one module that turns a
+declaration into text.
 
 **D13 puts the shared machinery here and not in ``codegen.emit``**, and the reason
 is an import rule rather than a preference.  A lowering under ``codegen/lower/``
@@ -19,7 +19,7 @@ codegen.emit`` resolves into TWO module objects rather than into an ``ImportErro
 it, because the lowering needs the machinery at RUN time.  So the machinery moves,
 which is what makes the one-directional import true rather than intended.
 
-What moved, in D13's own terms: the field builder (:func:`fields`), the class
+What is here, in D13's own terms: the field builder (:func:`fields`), the class
 declarer (:func:`declare_object`, and :func:`declare_alias` beside it for a root
 D2 makes an alias), and the carriers a lowering is handed (:class:`Module`,
 :class:`Shape`, :class:`Target`, :class:`Decided`), with the keyword screen
@@ -35,589 +35,36 @@ name was forbidden while ``python -m codegen.emit`` bound that file twice under
 ``runpy``.  ``codegen/__main__.py`` ended that, and :func:`decide` is the name:
 one function, one deferred import, and a :class:`Module` carrying data.
 
-**dmcg's parser never runs.**  The parser is the half that decides names and
-structure from a schema, and that is our half -- it is where every judgement
-about AdCP's bundle lives, and no library has that knowledge.  What dmcg has that
-we would otherwise rewrite is the rendering: annotated constraints, defaults,
-descriptions, aliases, ``ConfigDict``, the ``| None`` branch of an optional, and the
-import set each of those needs.  A hand-rolled text emitter dropped three of
-three schema defaults and all 142 property descriptions in the population it
-covered, not because anyone decided to, but because carrying them is rendering
-work and rendering work was being rewritten.
-
-**Two gates, both silent, both measured.  Neither is a reason to avoid the
-compiler; they are how it is driven.**
-
-1. **Constraints are spelled in JSON Schema, not pydantic.**  ``Constraints``
-   declares every field under its JSON-Schema alias with no
-   ``populate_by_name``, so ``Constraints(ge=1, le=100)`` sets NOTHING -- empty
-   ``model_fields_set``, empty dump, and a rendered class with no bound on the
-   field.  ``Constraints(minimum=1, maximum=100)`` renders ``Field(ge=1,
-   le=100)``.  :data:`CONSTRAINTS` is therefore the document's own vocabulary,
-   passed through unchanged.
-2. **``extras`` cannot carry a constraint.**  dmcg's ``_EXCLUDE_FIELD_KEYS``
-   strips ``gt ge lt le multiple_of min_length max_length pattern`` out of
-   ``extras`` on the way to ``Field(...)``.  A constraint goes through
-   ``constraints=`` and nowhere else; ``extras`` carries the description.
-
-A third gate, found here: **``class_body_lines`` is reserved.**  Passing it in
-``extra_template_data`` raises ``Error: class_body_lines is reserved for
-generator-owned built-in template data``, so the ``__adcp_schema__`` line reaches
-the class body through ``_append_internal_template_data``, which is dmcg's own
-channel for a project-produced line a built-in template renders as code.  The
-alternative is a vendored copy of ``BaseModel.jinja2``, which is a template that
-drifts from the pinned compiler on every upgrade for one line of output.  A dmcg
-release that renames the method fails loudly: a class with no ``__adcp_schema__``
-has no schema, so every grade of it fails rather than quietly passing.
+**§14 steps 5 and 7 dissolve this module.**  The node kinds and the one parser take
+:func:`check_keywords`, the applied-type reading and the per-node dispatch
+(``codegen/schema/``); the naming pass takes :func:`class_name`, :func:`field_name` and
+:attr:`Module.declared` (``codegen/lower/names.py``); the handlers take
+:func:`lower_object` and :func:`lower_composition` (``codegen/lower/<kind>.py``).  Two
+things follow that are named rather than hidden: :attr:`Module.bind` is still a CLOSURE
+over the run, which step 7 replaces with a dependency-ordered ``targets`` map; and
+:func:`field_name` still reads what pydantic's ``BaseModel`` carries, which is the one
+model-layer import left outside ``codegen.render`` and which step 7 has to answer when
+the name rules move into ``lower/`` -- ``tests/test_import_rule.py`` names it and the
+set it sits in may only shrink.
 """
 
 from __future__ import annotations
 
 import keyword
-from collections import defaultdict
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from datamodel_code_generator import PythonVersion
-from datamodel_code_generator.model import DataModelFieldBase
-from datamodel_code_generator.model.enum import Enum as DmcgEnum
-from datamodel_code_generator.model.enum import EnumMemberValue, IntEnum, StrEnum
-from datamodel_code_generator.model.pydantic_v2 import BaseModel, DataModelField
-from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
-from datamodel_code_generator.model.pydantic_v2.types import DataTypeManager
-from datamodel_code_generator.reference import Reference
-from datamodel_code_generator.types import DataType
 from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._base import SchemaRef
-from codegen import keywords, refusal
+from adcp.types._runtime import Rule
+from codegen import ir, keywords, refusal
+from codegen.ir import MISSING
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 
-#: The import path of the hand-written base every emitted module imports from.
-#: Here rather than in ``emit`` because :func:`declare_alias` writes the two
-#: statements a root alias needs and a lowering calls it (D13's import rule).
-BASE_MODULE = "adcp.types._base"
-
 SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool"}
-
-#: The floor of ``requires-python``.  It decides the rendered spelling of an
-#: optional (``T | None`` rather than ``Optional[T]``), so it is named once here
-#: and never inferred from the interpreter running the emitter -- the output is a
-#: function of (bundle, document set, this package) and of nothing else (P7).
-#:
-#: It MOVED with the floor rather than being left behind: D2's ``StrEnum`` is
-#: 3.11, so ``pyproject`` raised ``requires-python`` and this would otherwise
-#: have stated a floor the project no longer has.  Measured byte-neutral over the
-#: whole emitted population -- 0 of 575 files differ between PY_310 and PY_311 --
-#: so the two can be kept in agreement for free, which is the only reason to
-#: touch it at all.
-TARGET = PythonVersion.PY_311
-
-#: The JSON Schema keywords this module passes to ``constraints=``, in the
-#: document's own spelling, which is gate 1.  Everything else a document can say
-#: about a value is either a type (and so part of the decided ``Type``), an
-#: annotation (and so part of ``extras``), or a keyword our walk refuses.
-CONSTRAINTS = (
-    "minimum",
-    "maximum",
-    "exclusiveMinimum",
-    "exclusiveMaximum",
-    "multipleOf",
-    "minLength",
-    "maxLength",
-    "pattern",
-    "minItems",
-    "maxItems",
-    "uniqueItems",
-)
-
-#: **The one keyword pair whose pydantic spelling the document does not share**, so it
-#: is translated here rather than passed through.  A mapping's key COUNT is
-#: ``min``/``maxProperties`` in the document and ``min_length``/``max_length`` in
-#: pydantic, and dmcg's ``Constraints`` has no field for the document's spelling at
-#: all: ``Constraints(minProperties=1)`` constructs and sets NOTHING, which is the
-#: silent drop gate 1 exists to prevent.
-#:
-#: Measured on pydantic 2.13.5, which is why it is a translation and not a refusal:
-#: ``Annotated[dict[str, int], Field(min_length=1, max_length=4)]`` renders
-#: ``{"type": "object", "minProperties": 1, "maxProperties": 4}`` -- the document's own
-#: spelling back again, so the symmetric comparison gains and drops nothing -- and
-#: enforces the bound (``{}`` refused, one key accepted, five refused).
-#:
-#: It is HERE and not in ``lower.containers`` for the reason the module docstring gives
-#: for gate 1: a row states the document's keyword, and translating one into pydantic's
-#: vocabulary is the compiler's half of the seam.  The array row relies on the same
-#: seam without needing an entry, because dmcg's ``Constraints`` happens to alias
-#: ``minItems`` itself.  A node carries at most one of the two pairs -- a string's
-#: ``minLength`` and an object's ``minProperties`` are keywords of different types, and
-#: ``containers.ARM`` is what keeps a multi-type node's arms apart -- so the
-#: translation cannot collide with a spelling already present.
-KEY_COUNT = {"minProperties": "minLength", "maxProperties": "maxLength"}
-
-#: Absent is not the same as ``None``: a property whose schema declares
-#: ``default: null`` has a default and it is ``None``.
-MISSING = object()
-
-_TYPES = DataTypeManager(
-    python_version=TARGET,
-    use_union_operator=True,
-    use_standard_collections=True,
-)
-
-
-@dataclass(frozen=True)
-class Type:
-    """What our walk decided a node's Python type is.
-
-    ``path`` is a dotted path the compiler resolves to a type and an import
-    (``"int"``, ``"datetime.date"``, ``"pydantic.AnyUrl"``, ``"typing.Any"``), or
-    a bare symbol when ``local`` -- a class declared in the same module, or a
-    symbol the module writer imports from a sibling module because the document
-    referenced another document (P2).  The compiler adds no import for a local
-    symbol, which is right in both cases: a sibling class needs none, and a
-    cross-document import is the module writer's, derived from the two document
-    paths.
-
-    A local symbol is a REFERENCE to another model and not a custom type, and
-    that distinction decides a config: ``is_custom_type`` makes dmcg add
-    ``arbitrary_types_allowed=True`` to the class's ``ConfigDict``, which is a
-    relaxation of pydantic nobody decided and which D7 does not derive.  Every
-    local symbol here is something this pipeline emitted -- a sibling class or an
-    ``Annotated`` alias -- so pydantic resolves all of them and the relaxation is
-    both unasked for and untrue.
-
-    A CONTAINER is the same vocabulary one level up: ``container`` names the shape
-    and ``of`` carries the types inside it.  It is here rather than in the
-    container lowering because deciding ``list[X]`` is the walk's judgement and
-    writing ``list[X]`` is the compiler's rendering -- a lowering that assembled
-    the annotation text itself would be the second half of the seam doing the
-    first half's job, and the text is exactly what §1 says the compiler is for.
-
-    ``of`` is deliberately one field for three shapes, because the compiler reads
-    all three out of dmcg's single ``data_types``: the element of a list, the
-    VALUE of a mapping, and the arms of a union.  A mapping's key is the one type
-    that is not in it, because dmcg carries it in its own ``dict_key`` slot --
-    which is what makes D5's typed key expressible at all.
-
-    **A container carries no constraints of its own here.**  A bound on a list is
-    a bound on the FIELD holding it (``Property.constraints``, rendered
-    ``Field(min_length=...)``), and a bound on what is INSIDE a container has no
-    slot in dmcg's ``DataType`` -- which is the gap D5 closes by naming the
-    inner type rather than the gap it looks like.  :func:`carried` is where a
-    position with no field asks for that name, and what still reaches it unnamed
-    refuses instead of being dropped.
-
-    ``container="alias"`` is the one shape dmcg cannot render itself and the one the
-    naming answer needs: a GENERIC alias applied to its arguments, ``path`` naming the
-    alias and ``of`` carrying them.  ``NonEmptyList[MediaBuyStatus]`` is what a bounded
-    array on a union BRANCH lowers to, and dmcg's ``DataType`` has no slot for it --
-    probed on the pinned version: a ``reference`` beside ``data_types`` renders the
-    ARGUMENT alone (``str``), and a ``reference`` alone renders the alias alone
-    (``NonEmptyList``), so either spelling silently loses half the type.  The
-    subscript is therefore composed HERE, which keeps section 1's seam: the walk
-    decides the alias and the arguments, and the compiler writes the text.
-    """
-
-    path: str = ""
-    local: bool = False
-    #: ``"list"``, ``"dict"`` or ``"union"`` when this type is a container.
-    container: str = ""
-    #: A list's element, a mapping's value, or a union's arms.
-    of: tuple[Type, ...] = ()
-    #: A mapping's key, and only a mapping has one (D5 types it from the document).
-    key: Type | None = None
-    #: D2's ``const`` row: the one value the node PINS, as a 1-tuple, and ``()`` for
-    #: every other node.  The walk decides the value and the compiler writes the
-    #: ``Literal``, which is §1's seam -- and here it is load-bearing rather than
-    #: tidy.  Written as ``Type("Literal[%r]" % value, local=True)`` instead, the
-    #: annotation reached dmcg as a ``Reference`` PATH, and ``treat_dot_as_module``
-    #: read the dot in a value like ``account.status_changed`` as a module qualifier
-    #: and kept the last segment: ``Literal['account.status_changed']`` rendered as
-    #: ``status_changed']``, a module that does not parse.  dmcg's own ``literals``
-    #: carrier renders the value, escapes it (``"quo'te"`` comes back
-    #: ``Literal["quo'te"]``) and reports the ``typing.Literal`` import itself.
-    #:
-    #: A tuple and not a bare value because ``const: null`` is a pinnable value, so
-    #: a ``None`` default could not be told from an absent one.  One member is all
-    #: a ``const`` has; the plural is dmcg's spelling of the slot.
-    literals: tuple[Any, ...] = ()
-
-    def data_type(self) -> Any:
-        if self.literals:
-            return _TYPES.data_type(literals=list(self.literals))
-        if self.container == "list":
-            return _TYPES.data_type(is_list=True, data_types=[t.data_type() for t in self.of])
-        if self.container == "dict":
-            return _TYPES.data_type(
-                is_dict=True,
-                data_types=[t.data_type() for t in self.of],
-                dict_key=self.key.data_type() if self.key is not None else None,
-            )
-        if self.container == "union":
-            return _TYPES.data_type(data_types=[t.data_type() for t in self.of])
-        if self.container == "alias":
-            outer = _TYPES.get_data_type_from_full_path(self.path, is_custom_type=False)
-            args = ", ".join(t.data_type().type_hint for t in self.of)
-            return _TYPES.data_type(
-                type=f"{outer.type_hint}[{args}]", import_=outer.import_
-            )
-        if self.path == "None":
-            return _TYPES.data_type(type="None")
-        if self.local:
-            return _TYPES.data_type(
-                reference=Reference(path=f"#/{self.path}", original_name=self.path, name=self.path)
-            )
-        return _TYPES.get_data_type_from_full_path(self.path, is_custom_type=False)
-
-
-@dataclass(frozen=True)
-class Property:
-    """One decided field.
-
-    ``name`` is the Python attribute and ``wire`` the document's property key.
-    They differ only when pydantic cannot carry a field under the key's own
-    spelling, and then ``wire`` becomes an ``alias`` -- the only accepted
-    spelling, because nothing here sets ``populate_by_name``.
-    """
-
-    name: str
-    wire: str
-    type: Type
-    required: bool
-    default: Any = MISSING
-    description: str | None = None
-    #: JSON Schema spelling, per gate 1.
-    constraints: Mapping[str, Any] = field(default_factory=dict)
-    #: The document's ``format``, where the walk did NOT turn it into a type.
-    #: D5 lets a format select one (``emit.FORMAT_TYPES``), and a selected type
-    #: states the format in its own rendered schema -- so this field is the other
-    #: case, and it rides as ``json_schema_extra`` so the fact reaches the
-    #: model's schema where the comparison grades it.  The two are exclusive by
-    #: construction (``emit.Decided``): a format is in the type or in here, and
-    #: never in both and never nowhere.  Dropping it would lose a fact the
-    #: document states.
-    format: str | None = None
-    #: D6's ``uniqueItems`` on the array this field holds.  The RULE is what enforces
-    #: it on the constructor (``adcp.types._runtime.UniqueItems``); this flag is the
-    #: other half, and it rides the same ``json_schema_extra`` channel as
-    #: :attr:`format` and for the same reason -- pydantic removed ``unique_items`` in
-    #: v2, so no annotation states the fact, and the schema comparison reads
-    #: ``uniqueItems`` off a model's rendered schema (``harness.FACTS``).  Rendering
-    #: it where the document states it is what keeps the comparison symmetric: the
-    #: fact is TRUE of the model, because the schema half and the rule both enforce
-    #: it, so no admission row is needed in either direction.
-    distinct: bool = False
-
-
-@dataclass(frozen=True)
-class Class:
-    """One decided class.  ``ref`` is the schema it will carry and grade against."""
-
-    name: str
-    ref: SchemaRef
-    properties: tuple[Property, ...]
-    description: str | None = None
-    #: D8: ``forbid``, ``allow``, or ``None`` to leave the base's default.
-    extra: str | None = None
-    #: D7: the symbols this class's document COMPOSES, in the conjunct order the
-    #: document lists them.  Empty leaves ``custom_base_class``, which is
-    #: ``AdCPBaseModel`` and is every class with nothing to compose; a non-empty
-    #: tuple replaces it, and ``AdCPBaseModel`` arrives through the bases because
-    #: every base is itself an emitted class.  The symbols are names the module
-    #: writer has already imported -- the compiler adds no import for a base, for
-    #: the same reason ``Type.local`` adds none: a cross-document import is
-    #: derived from the two document paths (D1) and is the module writer's.
-    #: §4's union row derives them from the SHAPE rather than from a composition --
-    #: a base is ``(BranchDispatchMixin, AdCPBaseModel)`` and a branch is its base --
-    #: so naming any of them replaces ``custom_base_class`` and a caller that wants
-    #: ``AdCPBaseModel`` in the list says so.
-    bases: tuple[str, ...] = ()
-    #: Lines appended to the class body verbatim, after ``__adcp_schema__``.  The channel
-    #: for a fact the emitter has to write onto a class because it is not recoverable at
-    #: run time (``_branch_models``, ``_ROOT_REQUIRED``, ``_branch_combinator``), and the
-    #: one thing in this module that is text rather than a decision -- which is why it is a
-    #: parameter here rather than a second renderer somewhere else.
-    body_lines: tuple[str, ...] = ()
-    #: D8's typed row: the type of a property the class does not DECLARE, which
-    #: pydantic validates through ``__pydantic_extra__``.  It is a mapping, because
-    #: ``additionalProperties`` types the values under keys the document does not
-    #: name -- D5 types the key too, so it is the same ``dict[K, V]`` a mapping node
-    #: lowers to and is decided by the same row.
-    extra_type: Type | None = None
-
-
-@dataclass
-class Rendered:
-    text: str
-    #: ``(module, name)`` pairs the rendered text needs, which the module writer
-    #: merges with its own and sorts.
-    imports: set[tuple[str, str]] = field(default_factory=set)
-
-
-def _field(prop: Property) -> DataModelField:
-    extras: dict[str, Any] = {}
-    if prop.description:
-        extras["description"] = prop.description
-    # One ``json_schema_extra`` dict, two facts that can both be true of one field:
-    # a ``format`` no type was selected for, and D6's ``uniqueItems``.  Assigning
-    # rather than merging dropped whichever came second.
-    extra_schema = {
-        **({"format": prop.format} if prop.format else {}),
-        **({"uniqueItems": True} if prop.distinct else {}),
-    }
-    if extra_schema:
-        extras["json_schema_extra"] = extra_schema
-    constraints = {
-        KEY_COUNT.get(k, k): v
-        for k, v in prop.constraints.items()
-        if k in CONSTRAINTS or k in KEY_COUNT
-    }
-    kwargs: dict[str, Any] = {}
-    if prop.default is not MISSING:
-        # ``has_default`` is what the template reads; the value alone is not
-        # enough, because ``None`` is a legitimate default.
-        kwargs["default"] = prop.default
-        kwargs["has_default"] = True
-    if prop.wire != prop.name:
-        kwargs["alias"] = prop.wire
-        kwargs["original_name"] = prop.wire
-    return DataModelField(
-        name=prop.name,
-        data_type=prop.type.data_type(),
-        required=prop.required,
-        constraints=Constraints(**constraints) if constraints else None,
-        extras=extras,
-        use_annotated=True,
-        target_python_version=TARGET,
-        **kwargs,
-    )
-
-
-def render_alias(
-    symbol: str,
-    type_: Type,
-    constraints: Mapping[str, Any],
-    *,
-    description: str | None = None,
-    format: str | None = None,  # noqa: A002 -- the JSON Schema keyword's own name
-) -> Rendered:
-    """``<symbol> = <annotation>`` for D2's root-scalar row.
-
-    A scalar root has no class to hang itself on, so it is a module-level
-    ``Annotated`` alias.  The ANNOTATION is still the compiler's -- the same
-    ``DataModelField`` a class property gets, read off the field rather than out
-    of a class body -- so a ``minLength`` on an alias and a ``minLength`` on a
-    property cannot come to be spelled two different ways, and gate 1 applies to
-    both.  The statement around it is the module writer's, because no template
-    has a slot for a line beside an alias.
-
-    ``required=True``: an alias is the document's own type, with no presence
-    question to answer.  The ``| None`` branch belongs to an optional PROPERTY, and
-    a property referencing this alias gets it from its own field.
-
-    The description rides in ``Field`` and not in a docstring, because an alias
-    has no docstring slot: five of this step's documents are scalar roots whose
-    root ``description`` was dropped for exactly that reason, and a
-    ``Field(description=...)`` puts it in the alias's own JSON schema where the
-    schema comparison finds it.
-    """
-    fld = _field(
-        Property(
-            name=symbol,
-            wire=symbol,
-            type=type_,
-            required=True,
-            constraints=constraints,
-            description=description,
-            format=format,
-        )
-    )
-    out = Rendered(text=f"{symbol} = {fld.annotated or fld.type_hint}")
-    for imp in fld.imports:
-        if imp.from_ and imp.import_:
-            out.imports.add((imp.from_, imp.import_))
-    out.imports.add(("adcp.types._base", "SchemaRef"))
-    return out
-
-
-#: D2's two enumeration bases, keyed by the member type the WALK decided, in the
-#: document's own vocabulary (``codegen.lower.enum.BASES`` produces the key).
-#:
-#: The class is chosen rather than derived from a ``type_`` argument: dmcg's
-#: ``Enum.__init__`` reads ``type_`` only to ADD a ``str``/``int`` base class
-#: beside the enumeration one, so passing it renders ``class X(str, StrEnum)`` --
-#: which is the pre-3.11 spelling ``StrEnum`` exists to replace, and whose members
-#: ``str()`` as ``"X.BROAD"`` rather than as ``"broad"``.
-#:
-#: ``boolean`` and ``number`` are absent because the compiler has no base for
-#: them; ``codegen.lower.enum`` refuses such a node by name, with ``bool``
-#: carrying its own reason.
-_ENUM_BASES: dict[str, type[DmcgEnum]] = {"string": StrEnum, "integer": IntEnum}
-
-
-@dataclass(frozen=True)
-class Member:
-    """One decided enumeration member: the name the walk chose, and its value."""
-
-    name: str
-    value: Any
-    #: The document's ``enumDescriptions`` entry for this value, where it has one.
-    #: It reaches the rendered class as the member's own docstring, which is the
-    #: compiler's own slot for it -- 137 of the bundle's enum nodes carry the
-    #: block and a previous attempt dropped every one of them, for the same
-    #: reason the hand-rolled renderer dropped 142 property descriptions: nothing
-    #: compares an annotation that changes no accepted set.
-    description: str | None = None
-
-
-@dataclass(frozen=True)
-class Enumeration:
-    """One decided enumeration.  ``kind`` names the base, in JSON Schema's words.
-
-    No ``ref``, and that is the one place an enumeration differs from
-    :class:`Class`: ``Enum.jinja2`` has no ``class_body_lines`` slot, so an
-    ``__adcp_schema__`` line cannot reach an enum's class body through the
-    compiler at all -- and D9 forbids writing it in afterwards.  A ROOT enum
-    therefore binds the reference and ``strict_validate`` at module level, which
-    is what D2's root-scalar row already does for the same reason (a node with no
-    ``AdCPBaseModel`` to hang a classmethod on).  An INLINE enum is a type its
-    parent's field names, like any annotation.
-    """
-
-    name: str
-    kind: str
-    members: tuple[Member, ...]
-    description: str | None = None
-
-
-def _member(member: Member) -> DataModelFieldBase:
-    """One member as the compiler's field.
-
-    ``EnumMemberValue`` is dmcg's own carrier for a string member, and it is what
-    renders the value as a Python literal with the escaping the compiler owns
-    (quotes, backslashes, newlines, the null byte).  A bare ``str`` would reach
-    the template as that text and would be read as a rendered default.
-
-    ``use_inline_field_description`` is what puts the description in the class
-    body: a single-line one becomes ``\"\"\"text\"\"\"`` under the member, and a
-    multi-line one an indented triple-quoted block.
-    """
-    return DataModelFieldBase(
-        name=member.name,
-        data_type=DataType(),
-        default=EnumMemberValue(member.value) if isinstance(member.value, str) else member.value,
-        required=True,
-        extras={"description": member.description} if member.description else {},
-        use_inline_field_description=True,
-    )
-
-
-def render_enum(decided: Enumeration) -> Rendered:
-    """The Python for one decided enumeration, and the imports it needs.
-
-    The members' NAMES are rendered verbatim (``{{ field.name }}``): the compiler
-    names nothing here, which is why ``codegen.lower.enum`` owns the naming and
-    why the injectivity check binds to its function.
-    """
-    model = _ENUM_BASES[decided.kind](
-        reference=Reference(
-            path=f"#/{decided.name}", original_name=decided.name, name=decided.name
-        ),
-        fields=[_member(m) for m in decided.members],
-        description=decided.description or None,
-    )
-    out = Rendered(text=model.render().rstrip("\n"))
-    for imp in model.imports:
-        if imp.from_ and imp.import_:
-            out.imports.add((imp.from_, imp.import_))
-    return out
-
-
-def render(decided: Class) -> Rendered:
-    """The Python for one decided class, and the imports it needs."""
-    config = {"extra": decided.extra} if decided.extra else None
-    extra_template_data: defaultdict[str, Any] = defaultdict(dict)
-    if config:
-        extra_template_data[decided.name] = {"config": config}
-    model = BaseModel(
-        reference=Reference(
-            path=f"#/{decided.name}", original_name=decided.name, name=decided.name
-        ),
-        fields=[_field(p) for p in decided.properties],
-        base_classes=[Reference(path=f"#/{b}", original_name=b, name=b) for b in decided.bases],
-        custom_base_class="adcp.types._base.AdCPBaseModel",
-        description=decided.description or None,
-        extra_template_data=extra_template_data,
-    )
-    # Gate 3: the one line a built-in template renders from project-produced
-    # code.  ``repr`` of a ``SchemaRef`` is a valid Python expression naming the
-    # type, so there is no spelling of the ref in this module to drift from the
-    # one in ``_base``.
-    #
-    # ``_append_internal_template_data`` APPENDS to a list, measured on 0.86.0, so a
-    # caller's own lines follow the ref rather than replacing it.
-    body = [f"__adcp_schema__: ClassVar[SchemaRef] = {decided.ref!r}"]
-    extra_field = None
-    if decided.extra_type is not None:
-        # ``__pydantic_extra__`` is a dunder and not a field: declared as one it
-        # would be a model field named ``__pydantic_extra__``, which pydantic reads
-        # as the extras store rather than as a property, so it goes through the same
-        # channel the schema reference does.  The ANNOTATION is still the compiler's
-        # -- read off a ``DataModelField`` like every other type hint in this module
-        # -- so a mapping's rendering and an extras store's cannot come to be two
-        # spellings of one decision.  Only the ``name: hint`` line is ours.
-        extra_field = _field(
-            Property(
-                name="__pydantic_extra__",
-                wire="__pydantic_extra__",
-                type=decided.extra_type,
-                required=True,
-            )
-        )
-        body.append(f"__pydantic_extra__: {extra_field.type_hint}")
-    for line in (*body, *decided.body_lines):
-        model._append_internal_template_data("class_body_lines", line)  # noqa: SLF001 -- dmcg's own channel; see the module docstring
-    out = Rendered(text=model.render().rstrip("\n"))
-    for imp in model.imports:
-        if imp.from_ and imp.import_:
-            out.imports.add((imp.from_, imp.import_))
-    if extra_field is not None:
-        # The same rule as ``ConfigDict`` below, and for the same reason: dmcg reports
-        # the import for a type its ``DataType`` COULD render, while rendering the
-        # modern spelling -- ``dict[str, bool]`` with a reported ``typing.Dict``.  So
-        # the extras store's imports are filtered by the names its rendered ANNOTATION
-        # uses, read off the HINT rather than off ``out.text``, which contains
-        # ``ConfigDict(`` and would match ``Dict`` as a substring.  Measured: this is
-        # the tree's ONLY typed ``__pydantic_extra__``
-        # (``core/canonical-media-buy-features.json``, first reachable at
-        # ``salesagent-j3k2l.28``), and ``typing.Dict`` was the one name dmcg reported
-        # for it that the line does not use.  The direction is safe either way: a
-        # class name that merely CONTAINS a reported name keeps an import the line
-        # does not need, which is an unused import and never a ``NameError``.
-        used = {word for word in extra_field.type_hint.replace("[", " ").replace("]", " ")
-                .replace(",", " ").replace("|", " ").split()}
-        for imp in extra_field.imports:
-            if imp.from_ and imp.import_ and imp.import_ in used:
-                out.imports.add((imp.from_, imp.import_))
-    # ``ConfigDict`` is kept exactly when the rendered text uses the name, read
-    # off the text rather than off what we asked for.  dmcg reports the import
-    # for a model whose rendering MIGHT need one, and it also renders a config
-    # WE did not ask for: a class with a look-around ``pattern`` gets
-    # ``regex_engine="python-re"`` -- the same decision ``AdCPBaseModel`` makes,
-    # reached independently.  Deciding by our own ``config`` argument instead
-    # deleted the import that line needs, and the only class it affected
-    # (``core/sla-window.json``) happened to declare ``additionalProperties`` as
-    # well, so the module imported anyway and the defect was latent.  A
-    # perturbation that stopped deriving ``extra`` turned it into a NameError.
-    if "ConfigDict(" in out.text:
-        out.imports.add(("pydantic", "ConfigDict"))
-    else:
-        out.imports.discard(("pydantic", "ConfigDict"))
-    out.imports.add(("typing", "ClassVar"))
-    out.imports.add(("adcp.types._base", "SchemaRef"))
-    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -808,9 +255,9 @@ class Shape:
 
     properties: Mapping[str, dict]
     required: frozenset[str]
-    #: ``key -> Property``; see above.  Overlaid by :func:`declare_object` with the
+    #: ``key -> ir.Field``; see above.  Overlaid by :func:`declare_object` with the
     #: props it is handed, so every declaring row records it in one place.
-    decided: Mapping[str, "Property"] = field(default_factory=dict)
+    decided: Mapping[str, ir.Field] = field(default_factory=dict)
     #: The symbols the declaring module had declared; see above.
     declares: frozenset[str] = frozenset()
     #: The class's own ``description``, which is the description its NODE states.
@@ -859,7 +306,7 @@ class Decided:
     format is either in the type or in this field, and never nowhere.
     """
 
-    type: Type
+    type: ir.TypeRef
     constraints: dict[str, Any] = field(default_factory=dict)
     format: str | None = None
 
@@ -960,7 +407,16 @@ class Module:
     #: :func:`lower_object` did before this set existed.
     object_constrained: frozenset[str] = frozenset()
     imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
-    blocks: list[str] = field(default_factory=list)
+    #: **Every declaration this module holds, in DECLARATION ORDER**
+    #: (``docs/plan/architecture.md`` §7).  This was a list of rendered text BLOCKS, and
+    #: a module accumulating text beside its decision memo is the two-layers-one-object
+    #: shape §7 replaces: the renderer is the only reader of the model layer now, and a
+    #: change of rendering touches ``codegen.render`` alone.
+    #:
+    #: :meth:`declare` appends and records the symbol; a declaration that binds NO name
+    #: -- :class:`codegen.ir.UnionInstall`, whose two statements are about symbols the
+    #: module already declares -- is appended here directly.
+    declarations: list[ir.Declaration] = field(default_factory=list)
     names: set[str] = field(default_factory=set)
     #: class name -> its :class:`Shape`, for a class declared in THIS module.
     shapes: dict[str, Shape] = field(default_factory=dict)
@@ -1061,7 +517,16 @@ class Module:
         except Refusal:
             return None
 
-    def declare(self, name: str, pointer: str, block: str) -> None:
+    def declare(self, name: str, pointer: str, declaration: ir.Declaration) -> None:
+        """Record one declaration under its symbol and its pointer.
+
+        The two names a module can collide on are checked here, and nowhere else: a
+        SYMBOL already declared, and a POINTER already declared.  Taking the declaration
+        rather than its text is the whole of §7's gate at this seam -- the imports a
+        declaration needs are reported by ``render.declaration`` when the module is
+        written, so a caller cannot declare a block and forget to merge its imports
+        because there is no block to declare.
+        """
         if name in self.names:
             raise Refusal(
                 "title",
@@ -1086,17 +551,7 @@ class Module:
             )
         self.names.add(name)
         self.declared[pointer] = name
-        self.blocks.append(block)
-
-    def add(self, name: str, pointer: str, rendered: Rendered) -> None:
-        """Declare one rendered block and take its imports.
-
-        The two always happen together -- a block whose imports were not merged
-        renders a module that does not import -- so they are one call, and a
-        caller cannot do the first and forget the second.
-        """
-        self.imports |= rendered.imports
-        self.declare(name, pointer, rendered.text)
+        self.declarations.append(declaration)
 
 
 @dataclass(frozen=True)
@@ -1121,21 +576,24 @@ class Rules:
       today, so the object row's former unconditional admission was latent rather
       than live -- and this step makes more documents emit, which is what would have
       reached it.
-    * ``body`` is the class-body line binding ``_adcp_rules``, with its imports.
-      Empty text where the node states no rule this lowering can express, which D4
-      makes correct rather than a refusal (``codegen.lower.rules``' module docstring
-      is the one place that judgement is stated).
+    * ``rules`` are the INSTANCES of ``adcp.types._runtime``'s own frozen dataclasses
+      this node's rule sources come to (``docs/plan/architecture.md`` §7).  Empty where
+      the node states no rule this lowering can express, which D4 makes correct rather
+      than a refusal (``codegen.lower.rules``' module docstring is the one place that
+      judgement is stated).  It was the class-body LINE and its imports; the renderer
+      writes the constructor expressions and reports the names they use, so a rule kind
+      is declared once -- in the runtime -- and the walk composes values.
     * ``distinct`` are the property keys whose array this node states is DISTINCT.
       D6 has claimed their ``uniqueItems``, so :func:`fields` strips the keyword off
       the declaration before the array row sees it and renders the fact onto the
-      field instead (``Property.distinct``).  It travels on this carrier for the
+      field instead (``ir.Field.distinct``).  It travels on this carrier for the
       reason the other three do: a caller that reads the rule tuple and forgets the
       strip emits a class whose ``uniqueItems`` reaches a row that refuses it by
       name, which loses the document the rule was written for.
     """
 
     screen: frozenset[str]
-    body: Rendered
+    rules: tuple[Rule, ...]
     distinct: tuple[str, ...]
 
 
@@ -1159,7 +617,7 @@ def rules_at(node: dict, *also: dict, position: Position = Position.ROOT) -> Rul
     ``properties`` are this node's fields (:func:`lower_composition`).  They are one
     ``Rules`` and not one per node because a class body can bind ``_adcp_rules``
     ONCE -- two lines would make the second silently replace the first -- so the
-    sources are concatenated and the tuple is rendered once.
+    sources are concatenated and the tuple is written once.
 
     ``screen`` is ``node``'s alone and deliberately not merged: a keyword screen is
     asked about one node, and each conjunct is screened by its own call at its own
@@ -1171,16 +629,12 @@ def rules_at(node: dict, *also: dict, position: Position = Position.ROOT) -> Rul
     screen = rule_sources(position)
     if rules.presence_only(node):
         screen |= combinators(position)
-    sources = [source for one in lowered for source in one.rules]
     distinct: list[str] = []
     for one in lowered:
         distinct += [key for key in one.distinct if key not in distinct]
     return Rules(
         screen=frozenset(screen),
-        body=Rendered(
-            text=rules.block(sources),
-            imports=set().union(*(one.imports for one in lowered)),
-        ),
+        rules=tuple(rule for one in lowered for rule in one.rules),
         distinct=tuple(distinct),
     )
 
@@ -1227,7 +681,7 @@ NO_SUCH_KEYWORD = (
     "refuses by name rather than being emitted with it ignored"
 )
 
-def carried(decided: Decided, pointer: str, what: str, mod: Module) -> Type:
+def carried(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef:
     """The type of a node at a position with NO FIELD to carry its facts.
 
     Three positions ask: an array's ELEM and a mapping's MAPV
@@ -1268,7 +722,7 @@ def carried(decided: Decided, pointer: str, what: str, mod: Module) -> Type:
     raise Refusal(
         sorted(stated)[0],
         pointer,
-        f"{what} states {stated} and compiler.Type carries no constraint, so the "
+        f"{what} states {stated} and ir.TypeRef carries no constraint, so the "
         "keyword would reach the field holding this node and bind every other node "
         "under it; section 2 binds a constraint to the TYPE, and the alias module "
         "codegen.constraints has no spelling for this shape",
@@ -1363,8 +817,8 @@ def fields(
     inherited: Collection[str] = (),
     declared_at: Mapping[str, str] | None = None,
     distinct: Collection[str] = (),
-    reuse: Mapping[str, Property] | None = None,
-) -> list[Property]:
+    reuse: Mapping[str, ir.Field] | None = None,
+) -> list[ir.Field]:
     """The decided properties for one property map, children declared first.
 
     Shared with a composing row, which builds ONE property map out of a root's
@@ -1407,7 +861,7 @@ def fields(
     array D6's rule lowering has CLAIMED the ``uniqueItems`` of
     (``lower.rules._distinct``).  The keyword is stripped off the declaration here so
     the array row never sees it -- which is what leaves that row's screen refusing an
-    array no class holds rather than widening it -- and :attr:`Property.distinct`
+    array no class holds rather than widening it -- and :attr:`codegen.ir.Field.distinct`
     carries the fact onto the field, where ``_field`` renders it.  A key named here
     whose declaration is not an array with ``uniqueItems: true`` is a caller defect,
     so nothing is silently stripped: the strip is read off the declaration and the
@@ -1425,7 +879,7 @@ def fields(
             kind=Kind.DEFERRED,
         )
 
-    built: list[Property] = []
+    built: list[ir.Field] = []
     spelled: dict[str, str] = {}
     where = declared_at or {}
     reuse = reuse or {}
@@ -1447,10 +901,24 @@ def fields(
             sub = {k: v for k, v in sub.items() if k != "uniqueItems"}
         if key in reuse:
             held = reuse[key]
-            decided_type = Decided(held.type, dict(held.constraints), held.format)
+            # The REUSED field's type ALREADY states its bound and its format (§2, and
+            # :attr:`codegen.ir.TypeRef.facts`), so it is taken whole: splitting the
+            # three back out and recombining them is what two carriers of one fact
+            # invites, and the base decided this type at its own pointer.
+            field_type = held.type
             is_distinct = held.distinct
         else:
             decided_type = decide(sub, at, name + class_name(key), mod, Position.PROP)
+            # §2: **constraints bind to the TYPE, not the field.**  A :class:`Decided`
+            # carries the three apart because a format is either IN the type or beside
+            # it and never in both; the field carries one type that states all of them,
+            # so the same bound reached through a list, a mapping value or a union
+            # branch is the same value.
+            field_type = replace(
+                decided_type.type,
+                facts=decided_type.constraints,
+                format=decided_type.format,
+            )
         is_required = key in required
         default = MISSING
         if "default" in sub:
@@ -1481,15 +949,13 @@ def fields(
                 default = sub["default"]
         doc = sub.get("description")
         built.append(
-            Property(
+            ir.Field(
                 name=fname,
                 wire=key,
-                type=decided_type.type,
+                type=field_type,
                 required=is_required,
                 default=default,
                 description=doc if isinstance(doc, str) and doc else None,
-                constraints=decided_type.constraints,
-                format=decided_type.format,
                 distinct=is_distinct,
             )
         )
@@ -1501,19 +967,20 @@ def declare_object(
     name: str,
     pointer: str,
     mod: Module,
-    props: Sequence[Property],
+    props: Sequence[ir.Field],
     shape: Shape,
     position: Position = Position.ROOT,
     *,
     bases: tuple[str, ...] = (),
-    body_lines: tuple[str, ...] = (),
-    imports: set[tuple[str, str]] | None = None,
     rule_nodes: Sequence[dict] = (),
+    root_required: tuple[str, ...] | None = None,
+    discriminator: str | None = None,
+    combinator: str | None = None,
 ) -> str:
     """Assemble one class out of decided properties, and record what it declares.
 
     The other half shared with a composing row: D8's ``extra``, the description,
-    the ``__adcp_schema__`` the compiler writes, and the :class:`Shape` a later
+    the ``__adcp_schema__`` the renderer writes, and the :class:`Shape` a later
     subclass reads.  ``bases`` is empty for a node that composes nothing, and
     then the base is ``AdCPBaseModel``; a composing row passes the symbols its
     ``$ref`` conjuncts bound (D7 -- a base is DERIVED from what the document
@@ -1533,10 +1000,14 @@ def declare_object(
     ``rule_nodes`` are the OTHER nodes whose rules are this class's -- an ``allOf``
     conjunct, which draft-07 applies to the same instance.  Empty for every row but
     the composing one.
+
+    ``root_required``, ``discriminator`` and ``combinator`` are §4's three facts a UNION
+    BASE carries and no other class does, so all three are ``None`` for every row but
+    the union row.  They are declared on the class rather than formatted into a body
+    line, which is §7's gate at this seam: ``render._union_base_lines`` writes the four
+    statements and nothing before it holds one.
     """
     stated = rules_at(node, *rule_nodes, position=position)
-    body_lines = (*body_lines, *(line for line in (stated.body.text,) if line))
-    imports = (imports or set()) | stated.body.imports
     # D8's typed row: a property the class does not DECLARE is validated against
     # the document's own value schema, through pydantic's ``__pydantic_extra__``.
     # The TYPE is the same ``dict[K, V]`` a mapping node lowers to, decided by the
@@ -1561,21 +1032,22 @@ def declare_object(
             position,
         ).type
     description = node.get("description")
-    rendered = render(
-        Class(
-            name=name,
-            ref=schema_ref(mod.document, pointer),
-            properties=tuple(props),
-            description=description if isinstance(description, str) and description else None,
-            # D8; absent leaves the base's default in place.  A TYPED
-            # ``additionalProperties`` is ``allow`` with the type beside it: the
-            # properties are part of the document, so they are retained, and
-            # ``__pydantic_extra__`` is what validates them.
-            extra="allow" if extra_type is not None else {False: "forbid", True: "allow"}.get(ap),
-            extra_type=extra_type,
-            bases=bases,
-            body_lines=body_lines,
-        )
+    declaration = ir.ClassDecl(
+        name=name,
+        ref=schema_ref(mod.document, pointer),
+        fields=tuple(props),
+        description=description if isinstance(description, str) and description else None,
+        # D8; absent leaves the base's default in place.  A TYPED
+        # ``additionalProperties`` is ``allow`` with the type beside it: the
+        # properties are part of the document, so they are retained, and
+        # ``__pydantic_extra__`` is what validates them.
+        extra="allow" if extra_type is not None else {False: "forbid", True: "allow"}.get(ap),
+        extras=extra_type,
+        bases=bases,
+        rules=stated.rules,
+        root_required=root_required,
+        discriminator=discriminator,
+        combinator=combinator,
     )
     # :attr:`Shape.decided` and :attr:`Shape.declares` are written HERE and by no
     # caller, for the reason the rule tuple above is: this is the one funnel a class
@@ -1588,9 +1060,7 @@ def declare_object(
         declares=frozenset(mod.declared.values()) | {name},
         description=description if isinstance(description, str) and description else None,
     )
-    if imports:
-        mod.imports |= imports
-    mod.add(name, pointer, rendered)
+    mod.declare(name, pointer, declaration)
     return name
 
 
@@ -1602,15 +1072,16 @@ def lower_object(
     position: Position,
     *,
     bases: tuple[str, ...] = (),
-    body_lines: tuple[str, ...] = (),
 ) -> str:
     """Append the class for an object node, children first, and return its name.
 
-    The two keyword arguments are what a COMPOSITION needs and a leaf object does
-    not, and each defaults to the leaf's answer, so steps 1 and 2's call sites are
-    unchanged and so is every module they emit.  Both are :class:`Class`'s own.  A
-    third, ``decided``, is gone with the union row's private ``const`` lowering --
-    :func:`fields` says why.
+    ``bases`` is what a COMPOSITION and a union BRANCH need and a leaf object does not,
+    and it defaults to the leaf's answer -- no base, so the base is ``AdCPBaseModel`` --
+    so the object row's call sites are unchanged and so is every module they emit.  It is
+    :class:`codegen.ir.ClassDecl`'s own.  Two others are gone: ``decided``, with the union
+    row's private ``const`` lowering (:func:`fields` says why), and ``body_lines``, with
+    the text itself (§7) -- a rule is :attr:`Rules.rules` and a union base's facts are
+    :func:`declare_object`'s own three arguments.
     """
     # D6's six families are handled HERE and not refused: a rule attaches to the
     # nearest class, so a node with fields is the only node that can carry one.  The
@@ -1699,7 +1170,6 @@ def lower_object(
         Shape(props, frozenset(required)),
         position,
         bases=bases,
-        body_lines=body_lines,
     )
 
 
@@ -1914,7 +1384,7 @@ def lower_composition(
     #: The FIELD each inherited key came out as on the base that declares it, and the
     #: base it came from.  Read only by the annotation-only arm below, which re-uses
     #: the field rather than re-deciding the node; :attr:`Shape.decided` says why.
-    inherited_fields: dict[str, Property] = {}
+    inherited_fields: dict[str, ir.Field] = {}
     inherited_from: dict[str, Target] = {}
     #: Every LOCAL declaration that won its key, and where it was declared.  The
     #: root's own properties and an inline conjunct's land in the SAME map,
@@ -2214,7 +1684,7 @@ def lower_composition(
 
     own: dict[str, dict] = {}
     #: The keys whose field is the inherited one wearing this document's annotations.
-    reuse: dict[str, Property] = {}
+    reuse: dict[str, ir.Field] = {}
     #: The keys whose INTERSECTION took its ``uniqueItems`` from the base, so the rule
     #: families have already claimed the keyword on the class that decided the base's field and this
     #: subclass inherits that rule.  ``fields`` strips the keyword and renders the fact
@@ -2455,11 +1925,11 @@ def _required(node: dict, pointer: str) -> list[str]:
 
 def _reused(
     key: str,
-    inherited_fields: Mapping[str, Property],
+    inherited_fields: Mapping[str, ir.Field],
     inherited_from: Mapping[str, Target],
     pointer: str,
     mod: Module,
-) -> Property:
+) -> ir.Field:
     """The inherited field an annotation-only restatement re-states, importable here.
 
     A re-used type names symbols, and each one has to be IMPORTABLE from this module
@@ -2487,7 +1957,7 @@ def _reused(
             f"no type to re-use and lowering the restatement alone would type it Any",
             kind=Kind.VERDICT,
         )
-    wanted = _symbols(held.type)
+    wanted = ir.symbols(held.type)
     unplaceable = sorted(wanted - source.shape.declares) if source.shape else sorted(wanted)
     if unplaceable:
         raise Refusal(
@@ -2500,19 +1970,6 @@ def _reused(
         )
     mod.imports |= {(source.module, symbol) for symbol in wanted}
     return held
-
-
-def _symbols(decided: Type) -> set[str]:
-    """Every symbol a decided type names in the module that decided it.
-
-    Read off the :class:`Type` TREE rather than off its rendered text: a
-    local arm is marked ``local`` where it is decided, so this enumerates the symbols
-    instead of matching identifiers in an annotation and guessing which are types.
-    """
-    found = {decided.path} if decided.local and decided.path else set()
-    for inner in (*decided.of, *([decided.key] if decided.key is not None else [])):
-        found |= _symbols(inner)
-    return found
 
 
 def _constraining(node: dict) -> dict:
@@ -2862,7 +2319,9 @@ def _disagreeing(child: dict, base: dict) -> str:
     return min({k for k in set(c) | set(b) if c.get(k) != b.get(k)} or {"allOf"})
 
 
-def bind_without_a_model(mod: Module, symbol: str, rendered: Rendered) -> str:
+def bind_without_a_model(
+    mod: Module, symbol: str, declaration: ir.AliasDecl | ir.EnumDecl
+) -> str:
     """The module-level half of a root that is not an ``AdCPBaseModel``.
 
     D2 gives two root kinds no class to hang ``strict_validate`` on: a scalar root
@@ -2875,28 +2334,20 @@ def bind_without_a_model(mod: Module, symbol: str, rendered: Rendered) -> str:
     refuses through ``_refuse``, which is exactly what
     ``AdCPBaseModel.strict_validate`` does.
 
-    One function and not two, because the rows differ only in the rendered text
-    BETWEEN the statements.  ``tests/test_emit.py`` reads the pairing off the module
-    for both.
+    One function and not two, because the rows differ only in the DECLARATION between
+    the statements, which is why :class:`codegen.ir.RootBinding` carries it rather than
+    sitting beside it.  ``tests/test_emit.py`` reads the pairing off the module for both.
     """
-    ref = schema_ref(mod.document, "")
-    mod.imports.add((BASE_MODULE, "SchemaRef"))
-    mod.imports.add((BASE_MODULE, "strict_alias"))
-    mod.add(
+    mod.declare(
         symbol,
         "",
-        Rendered(
-            text=f"__adcp_schema__ = {ref!r}\n\n"
-            f"{rendered.text}\n\n\n"
-            f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
-            imports=rendered.imports,
-        ),
+        ir.RootBinding(schema_ref(mod.document, ""), symbol, declaration),
     )
     return symbol
 
 
-def _alias_for(symbol: str, node: dict, decided: Decided) -> Rendered:
-    """:func:`render_alias` over one node's own decision.
+def _alias_for(symbol: str, node: dict, decided: Decided) -> ir.AliasDecl:
+    """One node's own decision, as the alias that names it.
 
     Shared by the TWO rows that declare an alias -- a root (:func:`declare_alias`) and
     a node another document names (:func:`name_the_node`) -- because "the annotation
@@ -2904,14 +2355,16 @@ def _alias_for(symbol: str, node: dict, decided: Decided) -> Rendered:
     it is how the two come to carry a node's ``format`` or its ``description``
     differently.  They differ only in what wraps the statement, which is each row's
     own and stays there.
+
+    The bound and the ``format`` ride on the alias's own TYPE, exactly as a field's do
+    (§2, and :attr:`codegen.ir.TypeRef.facts`): one carrier, so an alias and a property
+    cannot come to spell one ``minLength`` two ways.
     """
     description = node.get("description")
-    return render_alias(
+    return ir.AliasDecl(
         symbol,
-        decided.type,
-        decided.constraints,
+        replace(decided.type, facts=decided.constraints, format=decided.format),
         description=description if isinstance(description, str) and description else None,
-        format=decided.format,
     )
 
 
@@ -2944,8 +2397,8 @@ def name_the_node(mod: Module, symbol: str, pointer: str, node: dict, decided: D
     ``pascal_case(property)``) already computed at the call site.  D3 says a name is an
     input to a lowering and is never computed inside one, so none is computed here.
     """
-    mod.add(symbol, pointer, _alias_for(symbol, node, decided))
-    return Decided(Type(symbol, local=True))
+    mod.declare(symbol, pointer, _alias_for(symbol, node, decided))
+    return Decided(ir.TypeRef(symbol, local=True))
 
 
 def local_reference(mod: Module, pointer: str, at: str) -> Decided:
@@ -3014,7 +2467,7 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided:
     Measured spellable for all 163 of the bundle's entry keys.
     """
     if pointer in mod.declared:
-        return Decided(Type(mod.declared[pointer], local=True))
+        return Decided(ir.TypeRef(mod.declared[pointer], local=True))
     if pointer in mod.resolving:
         raise Refusal(
             "$ref",
@@ -3044,7 +2497,7 @@ def declare_alias(mod: Module, symbol: str, doc: dict, decided: Decided) -> str:
     reference, the alias, and the bound ``strict_validate`` -- and two copies of it
     would be two places for the ``strict_validate`` line to drift.
 
-    The ANNOTATION is still the compiler's: the same field rendering a class
+    The ANNOTATION is still the renderer's: the same field rendering a class
     property gets, read off the field instead of out of a class body, so a
     constraint on an alias and a constraint on a property cannot come to be spelled
     two ways.  What is ours is the two module-level STATEMENTS, and §1 says why: no

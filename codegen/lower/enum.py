@@ -74,7 +74,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from codegen import compiler
+from codegen import compiler, ir
 from codegen.refusal import Kind, Refusal
 
 #: The cells an enum node CONSUMES -- this row's own coverage, which is what a
@@ -209,11 +209,11 @@ def literal(node: dict, pointer: str) -> compiler.Decided:
     the values before ``member_name`` runs rather than to copy the other three refusals.
     """
     return compiler.Decided(
-        compiler.Type(literals=tuple(m.value for m in decide(node, "", pointer).members))
+        ir.TypeRef(literals=tuple(m.value for m in decide(node, "", pointer).members))
     )
 
 
-def decide(node: dict, name: str, pointer: str) -> compiler.Enumeration:
+def decide(node: dict, name: str, pointer: str) -> ir.EnumDecl:
     """What one ``enum`` node IS: a named enumeration over its own members.
 
     ``name`` is an input (D3).  The base comes from the members' own type and not
@@ -253,7 +253,7 @@ def decide(node: dict, name: str, pointer: str) -> compiler.Enumeration:
     descriptions = node.get("enumDescriptions")
     seen: set[Any] = set()
     spelled: dict[str, Any] = {}
-    members: list[compiler.Member] = []
+    members: list[ir.Member] = []
     for value in values:
         if value in seen:
             raise Refusal(
@@ -275,7 +275,7 @@ def decide(node: dict, name: str, pointer: str) -> compiler.Enumeration:
         spelled[member] = value
         text = descriptions.get(str(value)) if isinstance(descriptions, dict) else None
         members.append(
-            compiler.Member(
+            ir.Member(
                 name=member,
                 value=value,
                 description=text if isinstance(text, str) and text else None,
@@ -283,7 +283,7 @@ def decide(node: dict, name: str, pointer: str) -> compiler.Enumeration:
         )
 
     description = node.get("description")
-    return compiler.Enumeration(
+    return ir.EnumDecl(
         name=name,
         kind=kind,
         members=tuple(members),

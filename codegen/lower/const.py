@@ -88,7 +88,7 @@ from __future__ import annotations
 
 import jsonschema
 
-from codegen import compiler
+from codegen import compiler, ir
 from codegen.refusal import Kind, Refusal
 
 #: The cells a ``const`` node CONSUMES -- this row's own coverage, which is what a
@@ -121,11 +121,11 @@ LITERALS = (bool, int, str)
 def decide(node: dict, pointer: str) -> compiler.Decided:
     """What one ``const`` node IS: the value it pins.
 
-    The ``Literal`` TEXT is the compiler's -- ``compiler.Type.literals`` carries the
-    value and dmcg writes the annotation, escapes the value and reports the
+    The ``Literal`` TEXT is the RENDERER's -- ``ir.TypeRef.literals`` carries the
+    value and the model layer writes the annotation, escapes the value and reports the
     ``typing.Literal`` import.  This row builds no annotation text and takes no
     ``Module``, which is also what fixed a mangling the hand-built spelling had: see
-    :attr:`codegen.compiler.Type.literals`.
+    :attr:`codegen.ir.TypeRef.literals`.
     """
     value = node["const"]
     if not isinstance(value, LITERALS):
@@ -144,4 +144,4 @@ def decide(node: dict, pointer: str) -> compiler.Decided:
             f"const {value!r} is not a {node.get('type')!r}: the node admits nothing",
             kind=Kind.VERDICT,
         )
-    return compiler.Decided(compiler.Type(literals=(value,)))
+    return compiler.Decided(ir.TypeRef(literals=(value,)))

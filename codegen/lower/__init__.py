@@ -2,9 +2,11 @@
 
 ``docs/plan/rebuild-plan.md`` D13 and §5 Layout put the pieces here:
 ``codegen/__main__.py`` holds the command and the refusal report;
-``codegen/emit.py`` holds the walk, the module writer and the dispatch table
-``ROWS``; ``codegen/compiler.py`` drives the compiler and holds the machinery a
-lowering is handed; and each lowering is a module in this package.
+``codegen/emit.py`` holds the run and the dispatch table ``ROWS``;
+``codegen/ir.py`` declares what a decision IS and ``codegen/render.py`` is the one
+module that turns one into text (``docs/plan/architecture.md`` §7 and §8);
+``codegen/compiler.py`` holds the machinery a lowering is handed; and each lowering
+is a module in this package.
 
 **A module here used to import ``codegen.compiler`` and ``codegen.refusal`` and
 nothing else of this package, and that rule is retired.**  It was never about
