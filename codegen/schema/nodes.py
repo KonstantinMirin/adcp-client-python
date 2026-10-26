@@ -170,9 +170,21 @@ class Conjunct:
     merged one back to the parser, so a conjunct is read as a declaration and the
     node it becomes is the composed node.  The pointer travels with it, so a refusal
     inside a conjunct names the conjunct's own node.
+
+    **:attr:`pointer` is EXCLUDED from equality, for the reason :attr:`Base.pointer` is**
+    (2026-10-26, found by the dedup check grading §4's equality).  It compared, and that
+    made two :class:`Composition` nodes whose conjunct DECLARATIONS are identical unequal
+    whenever the two sit at different pointers -- while ``emit.content_key``, the function
+    the collapse is actually keyed on, called them one node and collapsed them.  Two
+    instruments disagreeing about whether two nodes are identical is §9's own open
+    question, and the module docstring above already decides which way: "``pointer`` and
+    ``position`` are EXCLUDED from equality, so two nodes are equal exactly when they
+    state the same thing about an instance."  A conjunct's pointer is where it sits, not
+    something it states about an instance.  Excluding it costs the refusal nothing -- a
+    refusal READS the field, it does not compare it.
     """
 
-    pointer: str
+    pointer: str = field(compare=False)
     raw: Mapping[str, Any]
 
 
