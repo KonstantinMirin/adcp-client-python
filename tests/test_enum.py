@@ -131,7 +131,7 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
         {
             d
             for d in known
-            for _, uri in bundle.references(bundle.read(BUNDLE, d))
+            for _, uri, _ in bundle.references(bundle.read(BUNDLE, d))
             if bundle.document_for(uri, known) == "enums/task-type.json"
         }
     )
