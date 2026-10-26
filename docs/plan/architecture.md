@@ -719,8 +719,18 @@ at PROP, `<Parent>Item` at ELEM, `<Parent>Value` at MAPV, `<Root><Key>` at DEF; 
 title, then by the `const` it pins on the dispatch property, then by its sorted `required`
 set. Content dedup is this pass: declarations whose nodes are equal are one class, declared
 under the first pointer in document order, and every later pointer binds its own derived name
-to it by identity. Two pointers deriving one name, or a branch with no identity, are VERDICT
-refusals of the document. The walk computes no name, which is the semantics document's own
+to it by identity. Two pointers deriving one name is a VERDICT refusal of the document, because
+the document states two things one symbol cannot carry.
+
+*A branch with no identity is NOT a refusal, corrected 2026-10-26.* This sentence said it was,
+and §13 item 7 — closed the same day — gives §4 the fourth rule that retires it: a branch with
+no title, no pinned `const` and no `required` set takes its index among the branches,
+`<Base>Branch<i>`, and a missing or non-identifier root title takes the document's own file stem.
+A name is not an acceptance fact, so a fallback name neither widens nor narrows. The two
+sentences could not both stand, and row `.7` found them disagreeing in the sentence it was
+implementing. `<Base>Branch<i>` is the answer; the population is 0 today.
+
+The walk computes no name, which is the semantics document's own
 rule that a name is an input to a lowering and is never computed inside one — read strictly,
 it is not an input either: it is assigned after.
 
@@ -1182,9 +1192,26 @@ condition, below.
 
 7. **`lower/names.py` and the dependency-ordered run.** Move naming and dedup into the pass
    over the module; compute `edges`, the closure and the order in `emit.py` and pass `targets`
-   through the context; delete the binder closure, `inflight`, `resolving` on `Module`. *Bytes*
+   through the context; delete the binder closure and `inflight`. *Bytes*
    for the modules; the report's refusal order may change and must stay sorted by document.
    Completes §6, §7 and §10.
+
+   *This said "delete … `resolving` on `Module`" and that does not follow, corrected 2026-10-26.*
+   The dependency order is over DOCUMENTS; `resolving` guards a LOCAL cycle inside one document,
+   so computing the order retires nothing about it. §6 — settled the same day — gives
+   `ctx.resolving` an explicit job as a forward-reference marker rather than a refusal trigger, so
+   the step as written would have deleted a field two other sections rely on. It stays, as data.
+   The step's real content is that no CALLABLE survives on the context, and that is what the row
+   delivered.
+
+   *What the run WRITES is the set it owes, not the static closure (settled 2026-10-26).* §10's
+   justification is that a module cannot import from a module no run wrote. The static closure of
+   every `$ref` satisfies that and overshoots it: measured over the 991-document population, it
+   writes 11 modules nothing imports and nobody named, and adds two aliases to the public
+   `constraints.py`. So the run writes the documents it was named plus what an attempted lowering
+   actually referenced, as a fixed point over `Module.asked` — which satisfies §10's sentence
+   exactly, because every import resolves and nothing else is written. The closure is still what
+   the ORDER is computed over; it is not what the run emits.
 
 8. **The approximation, end to end, with no cell widened.** The instrument before the change.
    Add `Rung` and `widens_to` to the cell and retire `Effect.REFUSE`; add `Approximation` and
