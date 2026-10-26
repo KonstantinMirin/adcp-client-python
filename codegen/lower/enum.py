@@ -75,7 +75,9 @@ from __future__ import annotations
 from typing import Any
 
 from codegen import compiler, ir
+from codegen.compiler import Decided, Module
 from codegen.refusal import Kind, Refusal
+from codegen.schema import nodes
 
 #: The cells an enum node CONSUMES -- this row's own coverage, which is what a
 #: screen's second argument is once the table decides admission.  ``type`` agrees with
@@ -140,7 +142,35 @@ def member_name(value: Any) -> str:
 _BRANCH_OF = ("oneOf", "anyOf")
 
 
-def resolves_no_name(node: dict, pointer: str) -> bool:
+def lower(node: nodes.Enumeration, name_hint: str, mod: Module, *, of_a_root_union: bool = False) -> Decided:
+    """§4's enumeration row: a ``StrEnum``/``IntEnum`` where a name reaches the node, and
+    a ``Literal`` of its members where none does.
+
+    **``of_a_root_union`` is a fact this row is HANDED, and §6 settled that it must be.**
+    §6 said the pointer read ``hops[-2]`` "becomes ``node.position is BRANCH``" and then
+    said why that is the wrong fact: ``position is BRANCH`` says "a branch of SOME union",
+    while the predicate it replaces answers "a branch of a ROOT union", and the two
+    differ -- taking the shorter sentence literally turns
+    ``error-details/accessibility-violation.json``'s ``StrEnum`` into a ``Literal``, which
+    changes a module where a document emitted before.  "The fact belongs to the UNION, not
+    to the enum... §4 already gives the ``Union`` node the root's siblings when it is at
+    ROOT, so the union knows its own position; the branch lowering is told by its parent
+    rather than inferring it from itself."  So the enum handler reads a fact it is handed,
+    the union handler reads ``node.position``, and **no node parses a pointer**.
+
+    A branch under a ``properties`` segment takes that property's own derived name (§4's
+    nested rule), which nothing else wants, so a name reaches it and it keeps its
+    ``StrEnum``.  A branch of a ROOT union takes none, because the root's own class holds
+    the only name that position derives.
+    """
+    if resolves_no_name(node, of_a_root_union=of_a_root_union):
+        return literal(node)
+    declared = decide(node, name_hint)
+    mod.declare(name_hint, node.pointer, declared)
+    return Decided(ir.TypeRef(name_hint, local=True))
+
+
+def resolves_no_name(node: nodes.Enumeration, *, of_a_root_union: bool = False) -> bool:
     """Does the POSITION supply no name for this enum node?  Then D2 renders a
     ``Literal``.
 
@@ -184,14 +214,10 @@ def resolves_no_name(node: dict, pointer: str) -> bool:
     Of the 353 combinator-branch positions with no D3 identity of any shape, these 4 are
     the only enum nodes.
     """
-    if node.get("title"):
-        return False
-    hops = pointer.split("/")
-    # ``/<kw>/<i>`` and nothing deeper: ``["", kw, i]``.
-    return len(hops) == 3 and hops[-2] in _BRANCH_OF and hops[-1].isdigit()  # noqa: PLR2004
+    return not node.title and of_a_root_union
 
 
-def literal(node: dict, pointer: str) -> compiler.Decided:
+def literal(node: nodes.Enumeration) -> compiler.Decided:
     """D2's rendering for a value set no name reaches: a ``Literal`` of its members.
 
     **The value set is read by :func:`decide`, not by a second reading of it here.**
@@ -208,12 +234,10 @@ def literal(node: dict, pointer: str) -> compiler.Decided:
     nodes this reaches, 0 carry such a pair. The upgrade, at the first one, is to take
     the values before ``member_name`` runs rather than to copy the other three refusals.
     """
-    return compiler.Decided(
-        ir.TypeRef(literals=tuple(m.value for m in decide(node, "", pointer).members))
-    )
+    return compiler.Decided(ir.TypeRef(literals=tuple(m.value for m in decide(node, "").members)))
 
 
-def decide(node: dict, name: str, pointer: str) -> ir.EnumDecl:
+def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl:
     """What one ``enum`` node IS: a named enumeration over its own members.
 
     ``name`` is an input (D3).  The base comes from the members' own type and not
@@ -223,8 +247,9 @@ def decide(node: dict, name: str, pointer: str) -> ir.EnumDecl:
     rather than passing quietly.  (Measured: they agree at 1,069 of 1,069, so this
     is the faithful reading and not a workaround.)
     """
-    values = node.get("enum")
-    if not isinstance(values, list) or not values:
+    pointer = node.pointer
+    values = list(node.members)
+    if not isinstance(node.raw.get("enum"), list) or not values:
         raise Refusal(
             "enum",
             pointer,
@@ -250,7 +275,15 @@ def decide(node: dict, name: str, pointer: str) -> ir.EnumDecl:
             kind=Kind.VERDICT,
         )
 
-    descriptions = node.get("enumDescriptions")
+    # **BOTH spellings are read, which is §6's own sentence and a defect fix.**  §6 lists
+    # ``enumDescriptions`` and ``x-enum-descriptions`` in one row -- "Two spellings of one
+    # keyword; both are read" -- and this read the first alone, so
+    # ``enums/signal-value-type.json``, which states the second and only the second,
+    # emitted with no member docstrings.  ``nodes.Enumeration.descriptions`` is the merge
+    # the parser makes of the two, and §14's preamble settles the byte delta: a *bytes*
+    # mark forbids an UNDECLARED change and not conforming to a sentence the semantics
+    # document already decided.
+    descriptions = node.descriptions
     seen: set[Any] = set()
     spelled: dict[str, Any] = {}
     members: list[ir.Member] = []
@@ -273,7 +306,7 @@ def decide(node: dict, name: str, pointer: str) -> ir.EnumDecl:
                 kind=Kind.VERDICT,
             )
         spelled[member] = value
-        text = descriptions.get(str(value)) if isinstance(descriptions, dict) else None
+        text = descriptions.get(str(value))
         members.append(
             ir.Member(
                 name=member,
@@ -282,10 +315,6 @@ def decide(node: dict, name: str, pointer: str) -> ir.EnumDecl:
             )
         )
 
-    description = node.get("description")
     return ir.EnumDecl(
-        name=name,
-        kind=kind,
-        members=tuple(members),
-        description=description if isinstance(description, str) and description else None,
+        name=name, kind=kind, members=tuple(members), description=node.description
     )

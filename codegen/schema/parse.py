@@ -350,19 +350,7 @@ def _object(
     required = raw.get("required")
     key = _key(raw.get("propertyNames"), f"{pointer}/propertyNames", source)
     extra = raw.get("additionalProperties")
-    extras: nodes.Base | None = None
-    if isinstance(extra, Mapping) and extra:
-        extras = nodes.Mapping_(
-            document=source.document,
-            pointer=pointer,
-            position=position,
-            applied=common["applied"],
-            value=_value(extra, f"{pointer}/additionalProperties", source),
-            key=key,
-            extra=extra,
-            word="object",
-            raw={},
-        )
+    extras = extras_store(raw, pointer, position, source)
     return nodes.Object(
         properties=children,
         required=tuple(required) if isinstance(required, list) else (),
@@ -371,6 +359,43 @@ def _object(
         key=key,
         word=raw.get("type"),
         **common,
+    )
+
+
+def extras_store(
+    raw: Mapping[str, Any], pointer: str, position: Position, source: Source
+) -> nodes.Base | None:
+    """The extras STORE of a class with a typed ``additionalProperties``: §2's SECOND
+    node rewrite, retired.
+
+    ``compiler.declare_object`` synthesised ``{"type": "object", "additionalProperties":
+    ap, "propertyNames": ...}`` and handed it to the dispatch -- a node the document does
+    not have, which is exactly the defect §2 names.  The reading is the parser's and it is
+    made here: a typed ``additionalProperties`` on a class is the ``dict[K, V]`` §5 says a
+    typed one is, at the CLASS's own pointer and position (which is where the class's
+    ``__pydantic_extra__`` annotation sits), with its VALUE at MAPV and its KEY at KEY.
+
+    ``None`` for ``false``, ``true``, the empty schema and silence: §5 reads ``{}`` as
+    ``true`` everywhere, and ``true`` is the extra POLICY rather than a value type.
+
+    Public, because two callers meet the shape: :func:`_object`, which is the converted
+    reading, and ``compiler.declare_object`` for the composing row and the union branch
+    that still read their own declaration (§14 step 5's staging).  One construction, two
+    call sites -- never two constructions.
+    """
+    extra = raw.get("additionalProperties")
+    if not isinstance(extra, Mapping) or not extra:
+        return None
+    return nodes.Mapping_(
+        document=source.document,
+        pointer=pointer,
+        position=position,
+        applied="object" if pointer in source.applied_at else None,
+        value=_value(extra, f"{pointer}/additionalProperties", source),
+        key=_key(raw.get("propertyNames"), f"{pointer}/propertyNames", source),
+        extra=extra,
+        word="object",
+        raw={},
     )
 
 

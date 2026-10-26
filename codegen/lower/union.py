@@ -122,6 +122,7 @@ from typing import Any
 from adcp.types._base import applied_schema
 
 from codegen import compiler, ir, keywords
+from codegen.schema import nodes, parse as schema
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 
@@ -580,8 +581,14 @@ def _alias(doc: dict, symbol: str, pointer: str, kw: str, mod: compiler.Module) 
     two disagree.
     """
     applied = {kw: [applied_schema(doc, f"{pointer}/{kw}/{i}") for i in range(len(doc[kw]))]}
+    # ``declare_alias`` reads the root's own ``description`` off a NODE now
+    # (``compiler._alias_for``), so the root is parsed for it rather than read as a
+    # mapping.  The union's own branch plan is still the carrier's (§14 step 5).
     return compiler.declare_alias(
-        mod, symbol, doc, nested(applied, pointer, symbol, mod, Position.ROOT)
+        mod,
+        symbol,
+        schema.parse(doc, pointer=pointer, position=Position.ROOT, source=mod.source),
+        nested(applied, pointer, symbol, mod, Position.ROOT),
     )
 
 
@@ -975,8 +982,27 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
                 bases=(symbol, plan.inherits.symbol),
             )
             continue
-        lower = compiler.lower_composition if "allOf" in plan.node else compiler.lower_object
-        lower(plan.node, plan.name, plan.pointer, mod, Position.BRANCH, bases=(symbol,))
+        # **A branch of a ROOT union is a class whatever it states** (§4), so the branch
+        # is parsed ``objectish`` -- the union telling its branch what it knows about
+        # itself (§6) -- and the class rows take the NODE.  ``lower_composition`` still
+        # reads a declaration, which is §2's own decision about the conjunct merge.
+        if "allOf" in plan.node:
+            compiler.lower_composition(
+                plan.node, plan.name, mod, plan.pointer, Position.BRANCH, bases=(symbol,)
+            )
+        else:
+            compiler.lower_object(
+                schema.parse(
+                    plan.node,
+                    pointer=plan.pointer,
+                    position=Position.BRANCH,
+                    source=mod.source,
+                    objectish=True,
+                ),
+                plan.name,
+                mod,
+                bases=(symbol,),
+            )
 
     # §4's rebuild.  Two statements beside the classes -- the module writer's own text
     # (§3: no template has a slot for a line beside a class) -- and they declare no name,
@@ -1036,6 +1062,29 @@ _NESTED_SIBLING = (
 #:   :func:`branch_identity`, which reads ``discriminator.propertyName`` off the union's
 #:   own node (:func:`_const_pin`).
 
+
+
+def lower(node: "nodes.Union", name_hint: str, mod: compiler.Module) -> compiler.Decided:
+    """§4's union row, at the node's own POSITION: a base plus one class per branch at a
+    document ROOT, and one ``A | B`` type below it.
+
+    **Root and non-root are one path** (§5): what the position changes is this row's
+    ANSWER and not which row answers.  ``node.position`` is the field that says which --
+    the UNION knows its own position, which is also the fact §6 makes it TELL its enum
+    branches rather than have them read a pointer.
+
+    **This row still reads the CARRIER.**  Its own facts are the branch PLAN -- a
+    branch's ``const`` pin, its ``required`` set, its title, its conjunct list -- and
+    ``nodes.Union.branch_raw`` declares that a branch's DECLARATION is what §4's "Names"
+    rules and the dispatch derivation read.  What is still §14 step 5's to convert is the
+    other half: the branches as parsed NODES, so the row dispatches on a branch's own
+    kind, and the sibling screen, which the parser owns once a kind converts.
+    """
+    if node.position is Position.ROOT:
+        return compiler.Decided(
+            ir.TypeRef(lower_union(node.raw, name_hint, node.pointer, mod), local=True)
+        )
+    return nested(node.raw, node.pointer, name_hint, mod, node.position)
 
 
 def nested(
@@ -1123,7 +1172,25 @@ def nested(
                 kind=Kind.VERDICT,
             )
         hint = branch_identity(branch, name_hint, node) or name_hint
-        decided = compiler.decide(branch, at, hint, mod, Position.BRANCH)
+        # A NESTED union's branch is NOT ``objectish``: §4 makes a branch of a ROOT union
+        # a class whatever it states, and a nested union's branch is a member TYPE, so a
+        # branch stating ``properties`` with no ``type`` word is refused here exactly as
+        # any other nested node stating one is.  The union tells the branch (§6).
+        decided = compiler.decide(
+            branch,
+            at,
+            hint,
+            mod,
+            Position.BRANCH,
+            # **§6: the UNION knows its own position and TELLS the branch.**  "An untitled
+            # BRANCH of a root union -> a ``Literal`` of the members" is a statement about
+            # the enclosing union, so ``lower.enum.resolves_no_name`` is handed the fact
+            # rather than reconstructing it from ``pointer.split("/")``.  A branch under a
+            # ``properties`` segment takes that property's own derived name and keeps its
+            # ``StrEnum``; a branch of a root union takes none, because the root's own
+            # class holds the only name that position derives.
+            of_a_root_union=position is Position.ROOT,
+        )
         # **The branch's own bound rides on the branch's own TYPE, never on the field
         # holding the union** (section 5's ``minItems``/``maxItems`` row, and section
         # 2's reasoning for every constraint).  The field holds the other branches too,

@@ -32,13 +32,22 @@ from codegen.lower import composition, const, containers, enum, objects, referen
 from codegen.schema import nodes
 
 
-def decide(node: nodes.Node, name_hint: str, mod: Module) -> Decided:
-    """What one parsed node IS, routed by its kind."""
+def decide(
+    node: nodes.Node, name_hint: str, mod: Module, *, of_a_root_union: bool = False
+) -> Decided:
+    """What one parsed node IS, routed by its kind.
+
+    ``of_a_root_union`` is §6's one fact that travels DOWN: the enclosing UNION knows its
+    own position and tells its branches, because "a branch of a ROOT union" is a statement
+    about the union.  Only ``Enumeration`` reads it -- §4 of the semantics document gives
+    an untitled branch of a root union a ``Literal`` of its members -- and routing a fact
+    a parent handed down is not a decision this function makes.
+    """
     match node:
         case nodes.Reference():
             return references.lower(node, name_hint, mod)
         case nodes.Enumeration():
-            return enum.lower(node, name_hint, mod)
+            return enum.lower(node, name_hint, mod, of_a_root_union=of_a_root_union)
         case nodes.Constant():
             return const.lower(node, name_hint, mod)
         case nodes.Composition():

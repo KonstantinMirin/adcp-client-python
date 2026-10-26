@@ -98,7 +98,6 @@ from typing import Any
 from codegen import bundle, compiler, harness, ir, render
 from codegen.keywords import Position
 from codegen import constraints as constraints_module
-from codegen.ir import FACTS
 from codegen.compiler import (
     SCALAR,
     Decided,
@@ -118,6 +117,7 @@ from codegen.lower import rules as lower_rules
 from codegen.lower import union as lower_union
 from codegen import refusal
 from codegen.refusal import Kind, Refusal
+from codegen.schema import nodes, parse as schema
 
 #: Where a document's module lands, relative to the repository root.
 TREE = Path("src") / "adcp" / "types" / "_schemas"
@@ -141,99 +141,10 @@ PACKAGE = "adcp.types._schemas"
 #: produces.
 EMITTED_SUFFIXES = frozenset({".py", ".json"})
 
-#: **``format`` SELECTS A TYPE, and the schema half asserts it** (D5).
-#:
-#: ``format: date-time`` references RFC 3339, where the time offset is MANDATORY,
-#: so the document itself requires a timezone and ``AwareDatetime`` states the
-#: document's own rule rather than a stricter one.  That reading only holds
-#: because the schema half now PASSES A FORMAT CHECKER (``_base._refuse``,
-#: ``harness._validating``): a draft-07 ``format`` that nothing checks asserts
-#: nothing, and a type derived from one would be narrower than its document as
-#: graded -- which is the state a previous lane correctly backed these types out
-#: of, and the apparent disagreement was the grader rather than the types.
-#: Measured both ways on the same checker: of six RFC 3339 edge values --
-#: offsetless, lowercase ``t``/``z``, a leap second, a ``+05:30`` offset,
-#: nanosecond precision -- ``AwareDatetime`` and ``rfc3339-validator`` agree on
-#: all six, including refusing the leap second.
-#:
-#: A row exists only where the draft's own checker can DECIDE the format, which
-#: :func:`asserted_formats` reads off the document's declared draft.  So removing
-#: ``rfc3339-validator`` from the dependencies does not leave an unasserted
-#: narrowing behind: the row stops selecting and the node falls back to its own
-#: scalar type with the format as an annotation.
-#:
-#: **``uri`` SELECTS ITS TYPE FROM THE NODE, which is why this table holds
-#: choosers rather than paths.**  D5 makes a ``format: uri`` field's type follow the
-#: DOCUMENT'S OWN PATTERN -- ``AdCPUrl`` where the document restricts the scheme to
-#: https, ``HttpUrl`` everywhere else -- so the answer is a function of the node and
-#: not of the format alone.  ``date-time`` and ``date`` ignore their node, and they
-#: are expressed as choosers too rather than as a second shape beside one: a table
-#: with two kinds of value is a table every reader has to case-split.
-#:
-#: The former entry read ``uri`` -> ``AdCPUrl`` and it was WRONG, measured. D5 now
-#: records the whole of it; the short form is below.
-#:
-#: **``AdCPUrl`` everywhere narrowed the SDK below the pinned spec.**  ``format: uri``
-#: references RFC 3986, which admits every scheme, so a bare
-#: ``{"type": "string", "format": "uri"}`` admits ``https://``, ``http://``, ``urn:``
-#: and ``file:///`` alike -- and ``AdCPUrl`` refuses three of the four. Measured at
-#: **228 of the bundle's 300 ``uri`` positions, in 128 of 160 documents**, and at
-#: **26 of 27** positions in documents the emitter emits. End to end on a shipped
-#: class: ``core/placement-evidence.json#/properties/url`` states only the bare pair,
-#: the document admits ``{"url": "http://x.example/p"}``, and
-#: ``PlacementEvidence.strict_validate`` raised ``URL scheme should be 'https'``.
-#:
-#: **No check saw it**, which is why it stood: ``allowed_schemes`` has no rendering in
-#: pydantic's schema output, so the comparison has no keyword to compare; ``format``
-#: is not a step keyword, so ``steps()`` returns ``[]``; and
-#: ``hypothesis_jsonschema``'s ``uri`` strategy drew ``https`` in 200 of 200
-#: derandomized examples. That instrument gap is ``salesagent-j3k2l.10``'s, not this
-#: module's.
-#:
-#: **``HttpUrl``'s two ceilings are accepted deliberately and named at D5**: it still
-#: refuses ``urn:`` and ``file:``, so 227 of 300 positions stay narrower than their
-#: document, and it renders ``maxLength: 2083`` and ``minLength: 1`` that no document
-#: states -- which ``harness.compare_schema`` admits with one hand-written row per
-#: fact, each naming itself.
-#:
-#: What follows is the reasoning for the type being ours rather than pydantic's at
-#: the https branch, which the amendment did not change.  D5 admits
-#: a STANDARD type only when it states the document's own facts AND accepts the
-#: document's own set, and no pydantic URL type passes: ``AnyUrl`` and
-#: ``AnyHttpUrl`` both render a ``minLength: 1`` no ``format: uri`` document
-#: states, ``HttpUrl`` adds a ``maxLength: 2083`` as well, and all three admit
-#: ``http://``.  So the type is one we emit --
-#: ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``, declared once
-#: in ``codegen.constraints`` -- and the ``minLength: 1`` it renders is admitted
-#: by a comparison row of its own kind (``harness.compare_schema``) rather than
-#: hidden with a ``WithJsonSchema``, which would make the model's rendered schema
-#: a claim nobody graded.
-#:
-#: The document's own ``pattern`` stays with the SCHEMA half: the bundle states
-#: eight distinct patterns across 73 of its 300 ``uri`` uses and
-#: ``UrlConstraints`` expresses only the first (``^https://``, at 47 sites), so
-#: letting the field type vary by how strict a schema author happened to be is
-#: what this avoids.  ``strict_validate`` applies the document before the
-#: constructor runs, so nothing widens.
-#:
-#: Each value is ``(node) -> dotted path``.  ``date-time`` and ``date`` ignore the
-#: node; ``uri`` is ``constraints.url_type``, which reads the document's own
-#: ``pattern``.
-FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
-    "date-time": lambda node: "pydantic.AwareDatetime",
-    "date": lambda node: "datetime.date",
-    "uri": constraints_module.url_type,
-}
-
-#: The formats whose selected type is a URL type, which is what the one refusal
-#: below is gated on.  DERIVED by asking each chooser rather than listed: a format
-#: whose chooser answers inside the alias module's namespace is a URL format, and a
-#: second list to keep in step would be a second place for this to drift.
-URL_FORMATS = frozenset(
-    fmt
-    for fmt, choose in FORMAT_TYPES.items()
-    if choose({}).startswith(f"{constraints_module.MODULE}.")
-)
+# **``FORMAT_TYPES`` and ``URL_FORMATS`` are ``codegen/lower/scalars.py``'s now**, with
+# ``_named_alias`` and ``name_the_constraint``.  They were here because the SCALAR TAIL of
+# the per-node dispatch was, and section 14 step 5 makes each kind's row
+# ``lower/<kind>.py``; nothing about any of them changed in the move.
 
 
 def asserted_formats(doc: dict) -> frozenset[str]:
@@ -277,7 +188,7 @@ def relative_module(frm: str, to: str) -> str:
 # --------------------------------------------------------------------------- #
 # the walk: what each node IS
 # --------------------------------------------------------------------------- #
-def content_key(node: dict, pointer: str, mod: Module) -> str:
+def content_key(node: nodes.Base) -> str:
     """D3's content equality, AND the statement of where it cuts a reference cycle.
 
     Two nodes are the same node when this returns the same string for both.  It is
@@ -302,8 +213,8 @@ def content_key(node: dict, pointer: str, mod: Module) -> str:
     following the reference to compare the targets is the thing §9 says has to state
     its cut before anything does it.
 
-    **The POSITION bit is ``mod.object_constrained``, and the key is wrong without
-    it.**  ``bundle.constrained_to_object`` is a set of POINTERS: a node stating no
+    **The POSITION bit is :attr:`nodes.Base.applied`, and the key is wrong without it.**
+    The parser reads it off ``bundle.constrained_to_object``, a set of POINTERS: a node stating no
     ``type`` of its own is lowered as an object where an enclosing node applies
     ``type: "object"`` to the same instance, and is refused where none does.  So two
     nodes of byte-identical JSON at two such positions decide DIFFERENTLY, and a key
@@ -313,10 +224,17 @@ def content_key(node: dict, pointer: str, mod: Module) -> str:
     834 outside it, so both sides of the bit are populated.  Nothing else the decision
     reads is per-pointer: ``mod.asserted`` and ``mod.root`` are per document, and
     ``mod.named`` is handled by :func:`decide_type` itself.
+
+    **It still reads the CARRIER**, and §14 step 7 is where that ends.  §4 says the dedup
+    is "read off the type system rather than off a JSON serialisation with a position bit
+    appended" -- two nodes are equal exactly when they state the same thing about an
+    instance, which is what ``pointer`` and ``position`` being excluded from
+    :class:`nodes.Base`'s equality buys -- and §7 makes the dedup a pass over the finished
+    module in ``lower/names.py``.  Until the Composition and Union kinds carry their
+    children, a node's equality does not range over its subtree, so the declaration is
+    what can be compared and the position bit is read off the node's own field.
     """
-    return json.dumps(
-        [node, pointer in mod.object_constrained], sort_keys=True, separators=(",", ":")
-    )
+    return json.dumps([node.raw, node.applied], sort_keys=True, separators=(",", ":"))
 
 
 def bind_the_same_node(mod: Module, symbol: str, pointer: str, declared: str) -> Decided:
@@ -367,20 +285,21 @@ def bind_the_same_node(mod: Module, symbol: str, pointer: str, declared: str) ->
 
 
 def decide_type(
-    node: dict, pointer: str, name_hint: str, mod: Module, position: Position
+    node: nodes.Base, name_hint: str, mod: Module, *, of_a_root_union: bool = False
 ) -> Decided:
     """What one schema node IS, plus a SYMBOL where another document names the node.
 
-    The decision is :func:`_decide`'s, unchanged.  What is here is the two things a
+    The decision is ``lower.decide.decide``'s, unchanged.  What is here is the two things a
     node reached by a fragment reference or by a second parent needs and a node
     reached once by its own parent does not: a name in this module, so the referring
     module imports a symbol rather than copying a schema (section 2's rule), and D3's
     content dedup.
 
-    It wraps rather than living inside ``_decide`` because both apply to every arm
+    It wraps rather than living inside the dispatch because both apply to every arm
     equally -- an array, a scalar, a mapping and a multi-type node are all annotations
-    with no name -- and ``_decide`` returns from ten places, so putting the tests in
-    there would be twenty tests or one more wrapper.  A class or an enumeration comes
+    with no name -- and §5 says the dispatch "contains no decision beyond the route", so
+    the two tests sit outside it.  §14 step 7 moves both into ``lower/names.py`` as a pass
+    over the finished module.  A class or an enumeration comes
     back ``local`` already, having declared itself under this very ``name_hint``, so
     nothing is named twice and no second symbol appears for one node.
 
@@ -426,468 +345,20 @@ def decide_type(
       collapsed pointers are among the bundle's 216 named nodes, so the change closes a
       ceiling nothing reaches rather than moving a refusal.
     """
-    key = content_key(node, pointer, mod)
+    from codegen.lower.decide import decide
+
+    pointer = node.pointer
+    key = content_key(node)
     collapsed = mod.collapsed.get(key)
     if collapsed is not None:
         mod.adopted[pointer] = collapsed
         return bind_the_same_node(mod, name_hint, pointer, collapsed)
-    decided = _decide(node, pointer, name_hint, mod, position)
+    decided = decide(node, name_hint, mod, of_a_root_union=of_a_root_union)
     if pointer in mod.named and not decided.type.local:
         decided = compiler.name_the_node(mod, name_hint, pointer, node, decided)
     if mod.declared.get(pointer) == decided.type.path:
         mod.collapsed[key] = decided.type.path
     return decided
-
-
-def _decide(
-    node: dict, pointer: str, name_hint: str, mod: Module, position: Position
-) -> Decided:
-    """What one schema node IS: a Python type, and what constrains it.
-
-    Nullability is NOT a question here (D4).  This returns the node's own type,
-    and the compiler adds the ``| None`` branch an OPTIONAL property needs for the
-    value an omitted key leaves on the attribute -- which is a fact about
-    presence, not a claim that the document admits an explicit null.
-    ``AdCPBaseModel.strict_validate`` asks the document about that.
-
-    The constraints come back in the DOCUMENT'S spelling and are passed through
-    unchanged: ``codegen.render``'s gate 1 is that the renderer's
-    ``Constraints`` reads JSON Schema names and silently ignores pydantic ones.
-    """
-    if "$ref" in node:
-        # P2: a reference is a REFERENCE.  The target's own module declares its
-        # type once and this one names it; nothing of the target's own schema is read
-        # here, so nothing of it can be copied.
-        #
-        # **A CONSTRAINING sibling compiles to NOTHING and is REPORTED, and that is
-        # §5's ``$ref`` row as the design owner settled it on 2026-10-25.**  draft-07
-        # ignores every sibling of ``$ref``, so the keyword constrains no instance and
-        # the document's accepted set is the target's alone: the record keeps the key
-        # (§3 drops none), the cell says it compiles to nothing at this co-occurrence
-        # so §8 does not grade it, and the run names it because a key that reads as a
-        # constraint and is inert is worth reading once.  Refusing it instead refused a
-        # document whose accepted set its own draft decides -- which is the verdict the
-        # epic recorded as self-undermining, since the obstruction then belongs to
-        # neither the document, nor pydantic, nor the pointer space.
-        # ``compiler.inert_beside_a_reference`` is the one reading of the co-occurrence
-        # and the one that writes the report; the ``$ref``-conjunct arm of
-        # ``lower_composition`` reads the same one.  A key with NO ROW and a key whose
-        # cell is REFUSE still refuse, by name, through the screen below.
-        check_keywords(
-            node,
-            pointer,
-            position,
-            {"$ref", *compiler.inert_beside_a_reference(node, pointer, position, mod)},
-            "a sibling of $ref, which draft-07 ignores",
-            mod=mod,
-        )
-        # **The DOCUMENT HALF decides which of the two resolutions this is**, and the
-        # reading is ``bundle.split_ref``'s one reading of the ``#``.  An EMPTY half is
-        # a pointer into the document being written: there is no module to import from,
-        # and the symbol is one THIS module declares -- so it is a lookup in
-        # ``mod.declared`` rather than a binding, and ``compiler.local_reference`` declares
-        # the node if the walk has not reached it yet.  The branch is here and not
-        # inside ``emit.emit``'s binder, where it used to refuse, because a binder
-        # resolves a reference to a MODULE and a local reference names none; handing one
-        # to the binder was what made "a node of the module being written has no symbol
-        # to import yet" the answer for all 45 documents carrying one.
-        if position is Position.ROOT:
-            # **A root that is a bare ``$ref`` has no row in §4's table, and the one
-            # path is where that is now said.**  §5's ``$ref`` row makes a reference an
-            # IMPORT of the target's symbol, and a module whose ROOT symbol is another
-            # module's class is a second import path for that class -- which §1 refuses
-            # by name ("there is one import path per class, and never a second way to
-            # reach the same class").  The deleted ``ROWS`` said the same thing by
-            # having no selector claim such a root; this says it at the position, which
-            # is where §5 puts a position-dependent answer.
-            #
-            # A VERDICT, and the kind is the same one the table says: the obstruction
-            # is the POINTER SPACE -- the document names a node that already has a home
-            # -- and no row is waiting to be written for it.  Measured: 1 document,
-            # ``core/signal-pricing-option.json``, refused on ``$ref`` as a verdict
-            # before this row and after it.
-            raise Refusal(
-                "$ref",
-                pointer,
-                f"a root that is a bare reference to {node['$ref']!r} would bind this "
-                "module's own symbol to a class another module declares, which is a "
-                "second import path for one class (section 1); section 5's $ref row "
-                "makes a reference an import and section 4's table gives a root no such "
-                "shape",
-                kind=Kind.VERDICT,
-            )
-        head, into = bundle.split_ref(node["$ref"])
-        if not head:
-            return compiler.local_reference(mod, into, pointer)
-        target = mod.bind(node["$ref"], pointer)
-        mod.imports.add((target.module, target.symbol))
-        return Decided(ir.TypeRef(target.symbol, local=True))
-
-    if "enum" in node:
-        # D2's enumeration row, reached before ``type`` is read at all: the base
-        # comes from the members (``lower.enum.BASES``), which is what admits the
-        # bundle's 164 typeless enum nodes.  A root enum reaches the same row
-        # through the dispatch table below.
-        check_keywords(node, pointer, position, lower_enum.CLAIMS, mod=mod)
-        # **D2 gives an enum node TWO renderings and the NAME decides between them:**
-        # a ``StrEnum``/``IntEnum`` where a name reaches it, and a ``Literal`` of its
-        # members where none does.  The second claims no symbol, which is the rendering
-        # a ``const`` -- a one-member value set -- already takes.  The question is
-        # ``lower.enum.resolves_no_name``'s and is answerable from the node and its
-        # pointer, so the union row passes nothing down and there is one reading of it
-        # for every position.
-        if lower_enum.resolves_no_name(node, pointer):
-            return lower_enum.literal(node, pointer)
-        decided = lower_enum.decide(node, name_hint, pointer)
-        mod.declare(name_hint, pointer, decided)
-        return Decided(ir.TypeRef(name_hint, local=True))
-
-    if "const" in node:
-        # D2's ``const`` row, IN FULL, and reached before ``type`` is read for the
-        # enum branch's reason: a ``const`` pins the VALUE, and the value's own JSON
-        # type is what the node admits whether the document spells a ``type`` word or
-        # not -- 832 of the bundle's 1,486 const nodes spell none.  A ``const`` is a
-        # single-member enumeration in JSON Schema's vocabulary and nothing in this
-        # bundle writes both (0 of the 1,486 carry an ``enum`` beside it), so the two
-        # branches do not overlap and their order here is not a precedence.  The same
-        # holds against the composition arm below, measured over the portable
-        # population: 0 nodes carry both a ``const`` and an ``allOf``, so the order of
-        # the two moves no document.  It is written this way round because a ``const``
-        # pins the whole value and a conjunct list cannot widen a pinned value.
-        check_keywords(node, pointer, position, lower_const.CLAIMS, mod=mod)
-        return lower_const.decide(node, pointer)
-
-    if lower_union.keyword(node) is not None and not lower_rules.presence_only(node):
-        # **D2's union keyword, at EVERY position, in ONE arm.**  There were two
-        # readings of this: ``bundle.union_root`` selected the document for a table row
-        # and this line answered every other position, and both were
-        # ``lower_union.keyword`` plus ``rules.presence_only`` -- the selector was built
-        # on them precisely so the two could not disagree, which is what made it the
-        # SECOND COPY §11's repetition table names.  §14 step 5 deletes it.
-        #
-        # The measurement that justified asking the NODE rather than the document still
-        # holds and is why there was never a row to write here: of the 32 deferred
-        # nested combinators, **0 sit at a root** -- every one is at a ``properties``, an
-        # ``items``, a ``definitions`` entry or inside a branch.  Asked of the DOCUMENT
-        # the answer differs: 2 of the 32 have a root step 5's population counts
-        # (``core/creative-item.json``, whose combinator is at
-        # ``/oneOf/1/properties/content``, and ``core/placement-selection.json`` at
-        # ``/oneOf/0/properties/placement_refs/items``) and 14 have one step 4's counts.
-        # A measurement over a document says nothing about the position inside it.
-        #
-        # Read AFTER ``$ref``, ``enum``, ``const`` and ``allOf``, each of which closes
-        # the node ahead of it, and BEFORE ``type``: a union keyword beside a ``type``
-        # word is a CONJUNCTION with every branch, which ``nested``'s sibling screen
-        # refuses by name -- reading ``type`` first would lower the type and drop the
-        # branches, which is a model wider than its document.
-        #
-        # **``presence_only`` is the gate and it is the published step-5/step-7 boundary,
-        # not a precedence rule invented here.**  A combinator whose every branch is
-        # ``required``-only says which KEYS are present, which is D6's rule on the
-        # nearest class (``lower.rules``, reached through ``compiler.rules_at`` by the
-        # object row below) -- not a union of shapes.  ``tests/populations.py``'s
-        # ``states_an_object_rule`` asks the same predicate of a ROOT, so the two read
-        # one definition.
-        #
-        # Measured: without this gate the arm claimed every presence-only node too and
-        # **emitted fell 674 -> 620**, because a class-plus-rule became a union whose
-        # sibling ``properties`` then refused.  The predicate is read HERE, at the
-        # dispatch, because ``lower.union`` imports ``compiler`` and ``refusal`` and
-        # nothing else of this package (D13) and so cannot ask step 7's question.
-        #
-        # **ROOT and BELOW-ROOT are ONE ARM now, which is §5's "root and non-root are
-        # one path".**  They were two: ``populations.union_root`` selected the document and
-        # ``emit.ROWS`` routed it to ``lower_union.lower_union``, while this line
-        # answered every other position.  Both readings of "is this a union" were
-        # ``lower_union.keyword`` plus ``rules.presence_only`` -- the selector was built
-        # on them precisely so the two could not disagree -- so the SELECTOR was the
-        # second copy and the POSITION is what actually differs.  §5 names what ROOT
-        # adds and it is §4's own union row: a base plus one class per branch, rather
-        # than the one ``A | B`` type a nested union is.
-        if position is Position.ROOT:
-            return Decided(
-                ir.TypeRef(
-                    lower_union.lower_union(node, name_hint, pointer, mod), local=True
-                )
-            )
-        return lower_union.nested(node, pointer, name_hint, mod, position)
-
-    if isinstance(node.get("allOf"), list):
-        # **D7's composition, at EVERY position, in ONE arm.**  The conjunct list is
-        # the same list and the merge rule is the same rule at every depth, and a
-        # document ROOT reaches this very line -- §5's "root and non-root are one path".
-        # It used to reach ``lower_composition`` through ``bundle.composes_at_the_root``
-        # and a table row instead, which is §11's second reading of a root's kind.
-        # Measured on the 3.2 bundle: of the 67 documents whose composition the product
-        # row was deferring, 26 carry it at a property or deeper.
-        #
-        # Read BEFORE ``type``, for the reason ``populations.declares_its_own_root_kind``
-        # reads a root's ``allOf`` before its ``type``: a draft-07 ``allOf`` applies
-        # to the whole instance, so a node that composes is a composition whatever
-        # else it declares, and lowering the ``properties`` without the conjuncts
-        # would drop the bases.  After ``$ref`` and ``enum``, which both close the
-        # node ahead of it: a ``$ref``'s siblings are ignored by draft-07 (the branch
-        # above refuses one), and an ``enum`` closes the value set.
-        #
-        # **Every position this reaches is one whose INSTANCE is its own**, which is
-        # what makes reading the node here the node the DOCUMENT applies: a
-        # ``properties``, ``items`` or ``definitions`` entry is applied to a value one
-        # level down, where an ``allOf`` conjunct, a union branch and an ``if``/``then``
-        # position share the enclosing node's instance and so inherit its ``type``.
-        # Measured over the whole portable population: 307 compositions are lowered,
-        # 287 at a root and 20 below one, and **0 of the 20 sit at a shared-instance
-        # position** -- 12 at ``properties/<key>``, 7 at an ``items`` and 1 at a
-        # ``definitions`` entry.  The nearest miss is
-        # ``core/budget-allocation.json#/oneOf/1/properties/optimization_goals/items``,
-        # whose pointer crosses a branch two instances up and whose own node is an
-        # array element.
-        return Decided(
-            ir.TypeRef(
-                lower_composition(node, name_hint, pointer, mod, position), local=True
-            )
-        )
-
-    kind = node.get("type")
-
-    if kind is None:
-        if position is Position.ROOT:
-            # **The two root shapes a typeless node can be, at the one position where
-            # nothing encloses it.**
-            #
-            # ``properties`` beside no ``type`` is §5's ``type`` row -- "absent beside
-            # ``properties`` → an object, where an enclosing node applies ``type:
-            # object`` to the same instance, and refused otherwise" -- so the object
-            # lowering is what reads it, and at a ROOT nothing encloses the node, so it
-            # is that row's "refused otherwise" and ``lower_object`` says so by name.
-            # This is exactly what the deleted ``is_object_root`` claimed (``type in
-            # (None, "object")``) and what ``lower_object`` then refused, so no document
-            # moves.
-            #
-            # With no ``properties`` either, the root states no kind at all: §4's table
-            # has no row for it, and the keyword a reader needs is the one that WOULD
-            # have decided a kind.  Every kind-stating keyword but these two has been
-            # read by an arm above, so what can remain is a CONDITIONAL -- read off the
-            # table's descent column (``bundle.CONDITIONAL``) rather than named -- and
-            # otherwise nothing, which is reported on ``type``.  Both keep the kind the
-            # deleted ``lower_document`` arm minted, because both are properties of the
-            # document: measured, 4 documents, 2 on ``if`` and 2 on ``type``.
-            if "properties" in node:
-                return Decided(
-                    ir.TypeRef(
-                        lower_object(node, name_hint, pointer, mod, position), local=True
-                    )
-                )
-            kw = next((k for k in bundle.CONDITIONAL if k in node), None)
-            declared = sorted(compiler.declaring(node, position))
-            if kw is None:
-                raise Refusal(
-                    "type",
-                    pointer,
-                    f"the root declares no kind keyword at all: {declared} are data keys, "
-                    "not schema keywords, so there is no type, no properties and no "
-                    "composition to read -- and a class over them would state what no "
-                    "part of this document declares",
-                    kind=Kind.VERDICT,
-                )
-            raise Refusal(
-                kw,
-                pointer,
-                f"a root is exactly one kind and this one states {kw!r} (the root "
-                f"declares {declared}): a conditional describes what a rule TESTS, so "
-                "section 5 hangs it on the nearest class and this root declares no "
-                "properties for one -- there is no class, and no type, for the rule to "
-                "attach to",
-                kind=Kind.VERDICT,
-            )
-        # ``rules.ON_A_VALUE`` for the SCALAR arm's reason, which does not depend on the
-        # type word being present: a ``not`` is a statement about which VALUES the node
-        # admits, so D4 leaves it to the schema half, and a node with no ``type`` has no
-        # less of a value than a node with one.  The set was admitted on the scalar arm
-        # alone because every site measured for it spelled a type; this bundle has one
-        # that does not (``core/account.json#/properties/destination_billing_entity``,
-        # whose whole schema is ``{"not": {}}``), and refusing it there while carrying
-        # ``not: {"const": ...}`` here would be the same keyword read two ways by the
-        # presence of a word that changes nothing about it.
-        check_keywords(node, pointer, position, {*lower_rules.ON_A_VALUE}, mod=mod)
-        if set(node) & set(FACTS):
-            raise Refusal(
-                "type", pointer, "a typeless node carrying a constraint has nothing to apply it to"
-            , kind=Kind.VERDICT)
-        return Decided(ir.TypeRef("typing.Any"))  # D2's typeless row
-
-    if isinstance(kind, list):
-        return lower_containers.multi_type(node, pointer, name_hint, mod, position)
-
-    if kind == "null":
-        check_keywords(node, pointer, position, {"type"}, mod=mod)
-        return Decided(ir.TypeRef("None"))
-
-    if kind == "object":
-        if "properties" not in node:
-            return lower_containers.mapping(node, pointer, name_hint, mod, position)
-        return Decided(
-            ir.TypeRef(lower_object(node, name_hint, pointer, mod, position), local=True)
-        )
-
-    if kind == "array":
-        return lower_containers.array(node, pointer, name_hint, mod, position)
-
-    if kind not in SCALAR:
-        raise Refusal("type", pointer, f"unknown type {kind!r}", kind=Kind.VERDICT)
-
-    # ``rules.ON_A_VALUE`` is the step-7 keyword that can land on a node with no
-    # object to carry a rule tuple: a ``not`` over a ``const`` or an ``enum`` is an
-    # excluded VALUE, which D4 leaves to the schema half exactly as it leaves a
-    # conditional that narrows one.  Carrying it is not refusing it.
-    check_keywords(
-        node, pointer, position, {"type", "format", *FACTS, *lower_rules.ON_A_VALUE}, mod=mod
-    )
-    constraints = {k: node[k] for k in FACTS if k in node}
-    fmt = node.get("format") if isinstance(node.get("format"), str) else None
-    # A format SELECTS a type where one is named for it and the document's own
-    # draft can decide it (D5, and the comment above FORMAT_TYPES).  The type
-    # then states the format in its own rendered schema, so ``format`` is left
-    # unset here and the compiler adds no annotation -- which is what keeps the
-    # fact in exactly one place.  Where no type is selected the format rides as
-    # an annotation on the node's own scalar type, and the schema comparison
-    # grades it there.
-    if fmt is not None and fmt in mod.asserted and fmt in FORMAT_TYPES:
-        selected = FORMAT_TYPES[fmt](node)
-        if fmt in URL_FORMATS and constraints:
-            # **A URL type carries NO string constraint, and that is a measurement
-            # rather than a choice.**  ``Annotated[AnyUrl, Field(pattern=...)]``
-            # raises at validation -- "Unable to apply constraint 'pattern' ... for
-            # schema of type 'function-wrap'" -- so the class does not even build,
-            # which is how this was found: the module failed to import.  It is a
-            # loud failure and not a silent drop, so type-plus-pattern is genuinely
-            # unavailable.
-            #
-            # D5 decides the either/or: the ``pattern`` SELECTS the type (see
-            # ``constraints.url_type``) and then stays with the SCHEMA half, which
-            # ``strict_validate`` applies before the constructor runs.
-            # ``harness.compare_schema``'s URL-type rows grade the omission, and the
-            # one that admits a dropped keyword is gated on ``pattern`` ALONE -- so
-            # any OTHER string constraint has no decision covering it and refuses by
-            # name rather than going missing.
-            #
-            # Measured over the bundle's 300 ``uri`` positions: 227 state no string
-            # constraint, 69 state a ``pattern``, and **4 state a ``maxLength``
-            # beside the pattern** -- all four ``maxLength: 2048``, none of them in a
-            # document the emitter reaches today. Those four are what this refuses,
-            # and a ``maxLength: 2048`` document against ``HttpUrl``'s rendered
-            # ``maxLength: 2083`` would be a ``differs`` rather than a silent drop,
-            # so refusing is the only answer that is neither wrong nor invisible.
-            unowned = sorted(set(constraints) - {"pattern"})
-            if unowned:
-                raise Refusal(
-                    unowned[0],
-                    pointer,
-                    f"a format: uri node states {unowned}, and a URL type carries no "
-                    "string constraint at all -- pydantic refuses to apply one -- while "
-                    "the comparison's URL-type rows admit only a dropped pattern and "
-                    "the two bounds a URL type renders of its own, so this keyword "
-                    "would go missing or differ ungraded",
-                    kind=Kind.VERDICT,
-                )
-            return Decided(ir.TypeRef(selected))
-        return Decided(ir.TypeRef(selected), constraints)
-    # D5: **a constrained type is NAMED once and referenced.**  The name is a pure
-    # function of (the document's type word, its constraints) -- rung 2 where a
-    # pydantic type qualifies on both halves, rung 3 otherwise -- so the same shape
-    # in two documents is the same symbol without any census over the run, and the
-    # constraints then ride on the TYPE rather than on the field.  Two things follow
-    # from the constraints coming back empty, and both are D5's own point rather
-    # than a side effect: a bound inside ``list[...]`` or ``dict[str, ...]`` now has
-    # somewhere to go (``lower.containers._inner`` refused exactly this), and so
-    # does a bound on one arm of a multi-type node.
-    #
-    # ``resolve`` returns ``None`` for a shape it has no spelling for, and the site
-    # then stays inline, which is what every site did before this row existed.
-    path = constraints_module.resolve(kind, constraints)
-    if path is not None:
-        return Decided(_named_alias(path, kind, constraints, mod), format=fmt)
-    return Decided(ir.TypeRef(SCALAR[kind]), constraints, format=fmt)
-
-
-def _named_alias(
-    path: str,
-    kind: str,
-    constraints: Mapping[str, Any],
-    mod: compiler.Module,
-    fmt: str | None = None,
-) -> ir.TypeRef:
-    """One resolved shape's :class:`ir.TypeRef`, with the alias recorded.
-
-    The record and the type go together or they do not go: an alias referenced and not
-    recorded is an ``ImportError`` in the written tree, and one recorded and not
-    referenced is a line in a public module nothing reads.  Shared by the two callers
-    that resolve a shape -- the scalar tail of :func:`decide_type` and
-    :func:`name_the_constraint` -- so there is one place that pairs them.
-
-    Only an alias in ``adcp.types.constraints`` is recorded: rung 2 resolves to a
-    pydantic name, which that module does not declare and ``Type``'s dotted path
-    imports directly.
-
-    A CONTAINER alias is generic, so its arguments come with it
-    (``NonEmptyList[MediaBuyStatus]``): ``of`` carries the decided types and
-    ``ir.TypeRef``'s ``alias`` container writes the subscript.
-    """
-    if path.startswith(f"{constraints_module.MODULE}."):
-        constraints_module.record(mod.aliases, path.rsplit(".", 1)[1], kind, constraints, format=fmt)
-    return ir.TypeRef(path)
-
-
-def name_the_constraint(decided: Decided, mod: compiler.Module) -> ir.TypeRef | None:
-    """Section 2's NAMED carrier for a decided node whose position has no field.
-
-    ``compiler.carried`` asks this at the three positions that cannot hold a fact on a
-    field of their own -- an array's ELEM, a mapping's MAPV and a union BRANCH -- and
-    refuses when it answers ``None``.  It is HERE, and ``compiler.carried`` defers the
-    import of it to call time, because the names are ``codegen.constraints``'s and
-    that module imports ``compiler``: a module-level import from ``compiler`` would
-    close that cycle.  It used to be carried on :class:`compiler.Module` as a callable
-    for a second reason as well -- ``codegen.emit`` was unnameable while ``runpy``
-    bound it twice -- and ``codegen/__main__.py`` retired that half.
-
-    **It does not re-read the node, and that is deliberate.**  Everything it needs is
-    on the :class:`Decided` the walk already produced -- the scalar's own type word is
-    recoverable from :data:`SCALAR`, a container names itself in ``Type.container`` --
-    so there is no second reading of a node's constraints to disagree with
-    :func:`decide_type`'s.
-
-    Two shapes reach it, and they are the two that can arrive with a fact still on
-    them:
-
-    * a bare SCALAR carrying a ``format`` no type was selected for.  Constraints
-      alone never arrive here, because :func:`decide_type` has already resolved a
-      spellable scalar shape to an alias -- what arrives with constraints on it is a
-      shape the alias module declined, and the answer is the same ``None``.
-    * a CONTAINER carrying its own bound: ``minItems``/``maxItems`` on a list,
-      ``minProperties``/``maxProperties`` on a mapping.  The alias is GENERIC and the
-      container's own contents are its arguments, which is what lets it be named at
-      all (``constraints.CONTAINER``).
-    """
-    kind = _CONTAINER_WORD.get(decided.type.container) or _SCALAR_WORD.get(decided.type.path)
-    if kind is None:
-        return None
-    path = constraints_module.resolve(kind, decided.constraints, format=decided.format)
-    if path is None:
-        return None
-    inner = _named_alias(path, kind, decided.constraints, mod, fmt=decided.format)
-    if kind not in constraints_module.CONTAINER:
-        return inner
-    args = decided.type.of if decided.type.key is None else (decided.type.key, *decided.type.of)
-    return ir.TypeRef(path=inner.path, container="alias", of=args)
-
-
-#: The document's own type word for each container ``Type.container`` names, and for
-#: each scalar path :data:`SCALAR` maps to.  Both are inversions and both are written
-#: here rather than at the call site, so the two spellings of a type have ONE mapping
-#: between them (``constraints.SCALAR_PATH`` is the same arrangement one module over).
-#: ``union`` is absent: a union is not a node's own type word, so a union carrying a
-#: constraint has no shape for this module to name and refuses.
-_CONTAINER_WORD = {"list": "array", "dict": "object"}
-_SCALAR_WORD = {path: word for word, path in SCALAR.items()}
 
 
 def _local_symbols(t: ir.TypeRef) -> set[str]:
@@ -1049,20 +520,23 @@ def lower_document(
 
         object_constrained=bundle.constrained_to_object(doc),
     )
-    # **ONE PATH: the per-node decision, at ROOT.**  §5: "A document is ``parse(raw,
-    # position=ROOT)`` followed by ``decide``."  ``parse`` is §14 step 5's other half
-    # and is not written, so the raw document goes to the dispatch as every other node
-    # does; what has gone is the second dispatch on top of it.
+    # **ONE PATH, and it is now §5's sentence verbatim: "A document is ``parse(raw,
+    # position=ROOT)`` followed by ``decide``."**  The second dispatch on a root's KIND
+    # went in part two; the parser is what this commit adds, so the raw document is read
+    # ONCE, here, into a node tree, and the dispatch routes the root node by its kind.
     #
-    # :func:`_decide` and not :func:`decide_type`, and the difference is the two things
-    # a ROOT does not have.  ``mod.named`` never holds the root's pointer
-    # (``bundle.named_nodes`` skips a reference with no fragment), so there is nothing
-    # for :func:`compiler.name_the_node` to name; and the CONTENT MEMO is empty at the
-    # root and would be SEEDED with the whole document's content by the wrapper -- which
-    # §7 moves into ``lower/names.py`` as a pass over the finished module anyway.  So the
-    # wrapper's two jobs are both absent here and calling it would add one: a nested node
-    # of content identical to the document root would adopt the root's own symbol.
-    decided = _decide(doc, "", symbol, mod, Position.ROOT)
+    # :func:`decide` and not :func:`decide_type`, and the difference is the two things a
+    # ROOT does not have.  ``mod.named`` never holds the root's pointer
+    # (``bundle.named_nodes`` skips a reference with no fragment), so there is nothing for
+    # :func:`compiler.name_the_node` to name; and the CONTENT MEMO is empty at the root and
+    # would be SEEDED with the whole document's content by the wrapper -- which §7 moves
+    # into ``lower/names.py`` as a pass over the finished module anyway.  So the wrapper's
+    # two jobs are both absent here and calling it would add one: a nested node of content
+    # identical to the document root would adopt the root's own symbol.
+    from codegen.lower.decide import decide
+
+    root = schema.parse(doc, pointer="", position=Position.ROOT, source=mod.source)
+    decided = decide(root, symbol, mod)
 
     # **THE MODULE WRAPPER, which is the only thing ROOT adds** (§5).  A class carries
     # ``strict_validate`` by inheritance, so a root the dispatch declared under this
@@ -1084,7 +558,7 @@ def lower_document(
     # about what their own document accepts, which is what put the two statements in one
     # declaration in the first place.
     if mod.declared.get("") != symbol:
-        declare_alias(mod, symbol, doc, decided)
+        declare_alias(mod, symbol, root, decided)
         return mod, symbol
     held = next(
         (
