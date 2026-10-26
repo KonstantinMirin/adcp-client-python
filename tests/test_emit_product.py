@@ -1082,8 +1082,15 @@ def test_the_rule_is_symmetric_so_the_order_the_declarations_are_read_in_cannot_
 @pytest.mark.parametrize(
     ("conjunct", "keyword"),
     [
-        # a $ref with a sibling is not a base, and the SIBLING is the cause
-        ({"$ref": "x", "minimum": 1}, "minimum"),
+        # **A $ref with a CONSTRAINING sibling is a base again, and the sibling
+        # compiles to nothing and is REPORTED** -- §5's $ref row as the design owner
+        # settled it on 2026-10-25, and architecture §13 item 2's reasoning.  So the
+        # case that belongs here is the one that still refuses by NAME: a key the
+        # table gives NO ROW, which §9 keeps loud because a keyword the bundle did not
+        # use before could constrain anything.
+        # ``test_a_constraining_sibling_of_a_ref_conjunct_compiles_to_nothing``
+        # below is the other half, asserted on the reported line.
+        ({"$ref": "x", "notAKeyword": 1}, "notAKeyword"),
         ({"enum": ["a", "b"]}, "enum"),  # the enum narrowing: step 3's row
         # A combinator of SHAPES: D7's own third case, and the one conjunct part this
         # row still does not lower.  ``{"required": [...], "not": {...}}`` used to sit
@@ -1119,6 +1126,38 @@ def test_a_conjunct_this_row_does_not_lower_refuses_by_its_own_keyword(
         _lower(doc)
     assert caught.value.keyword == keyword, caught.value.detail
     assert caught.value.pointer == "/allOf/0"
+
+
+def test_a_constraining_sibling_of_a_ref_conjunct_compiles_to_nothing_and_is_reported() -> None:
+    """§5's ``$ref`` row, settled 2026-10-25: a CONSTRAINING sibling compiles to
+    NOTHING and is REPORTED, never refused.
+
+    draft-07 ignores every sibling of ``$ref``, so the keyword constrains no instance
+    and the document's accepted set is the target's alone.  Refusing it instead refused
+    a document whose accepted set its own draft decides -- which is the VERDICT the
+    epic recorded as self-undermining, since a verdict claims the obstruction belongs
+    to the document, to pydantic or to the pointer space and it belongs to none of the
+    three.  architecture §13 item 2 carries the reasoning and limits §13.2's "referring
+    node wins" to ANNOTATION siblings.
+
+    Both halves are asserted, because the report is not optional: the conjunct becomes
+    the BASE it would have been without the sibling, AND the run names the sibling by
+    pointer and keyword.  Silence is how a reader comes to believe the class carries it.
+    """
+    doc = {
+        "title": "Probe",
+        "type": "object",
+        "allOf": [{"$ref": "x", "minimum": 1}],
+    }
+    shape = compiler.Shape({"a": {"type": "string"}}, frozenset())
+    mod = emit.Module(
+        document="probe.json",
+        bind=lambda uri, pointer: emit.Target("..core.probe_base", "ProbeBase", shape),
+    )
+    compiler.lower_composition(doc, "Probe", "", mod, keywords.Position.ROOT)
+    assert "ProbeBase" in {symbol for _, symbol in mod.imports}
+    assert [line for line in mod.carries_nothing if "minimum" in line], mod.carries_nothing
+    assert "/allOf/0: minimum" in mod.carries_nothing[0], mod.carries_nothing
 
 
 def test_a_scalar_root_cannot_be_a_base_and_refuses_rather_than_writing_the_module() -> None:
