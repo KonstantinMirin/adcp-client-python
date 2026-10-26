@@ -120,9 +120,7 @@ CLAIMS = frozenset({"type", "const"})
 LITERALS = (bool, int, str)
 
 
-def lower(
-    node: nodes.Constant, name_hint: str, mod: compiler.Module
-) -> compiler.Decided | Refusal:
+def lower(node: nodes.Constant, mod: compiler.Module) -> compiler.Decided | Refusal:
     """What one ``const`` node IS: the value it pins.
 
     The ``Literal`` TEXT is the RENDERER's -- ``ir.TypeRef.literals`` carries the

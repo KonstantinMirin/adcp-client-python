@@ -91,7 +91,7 @@ from __future__ import annotations
 import functools
 import json
 from collections.abc import Callable, Collection, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace as dataclasses_replace
 from pathlib import Path
 from typing import Any
 
@@ -108,6 +108,7 @@ from codegen.compiler import (
     declare_alias,
 )
 from codegen.lower import const as lower_const
+from codegen.lower import names as lower_names
 from codegen.lower import enum as lower_enum
 from codegen.lower import containers as lower_containers
 from codegen.lower import rules as lower_rules
@@ -185,98 +186,17 @@ def relative_module(frm: str, to: str) -> str:
 # --------------------------------------------------------------------------- #
 # the walk: what each node IS
 # --------------------------------------------------------------------------- #
-def the_same_node(mod: Module, node: nodes.Node) -> str | None:
-    """The symbol an EQUAL node already declared in this module, or ``None``.
-
-    **D3's content dedup, read off the type system.**  §14 step 5 deletes
-    ``content_key`` -- ``json.dumps([the node's own mapping, node.applied])`` -- and §4 says what
-    replaces it: "two nodes are equal exactly when they state the same thing about an
-    instance, which is §4's content dedup read off the type system rather than off a
-    JSON serialisation with a position bit appended."  ``pointer`` and ``position`` are
-    excluded from the kinds' equality and everything a node STATES is compared,
-    including :attr:`nodes.Base.annotations` (a node differing only in a ``$comment``
-    states a different thing to a reader) and :attr:`nodes.Base.applied` (a node whose
-    enclosing type word differs decides differently -- which is the bit the old key
-    appended by hand, and 1,390 of the bundle's nodes declare ``properties`` with no
-    ``type``, 556 of them with that word applied and 834 without, so both sides are
-    populated).
-
-    :attr:`compiler.Module.collapsed` is where the equality's CUT at a ``$ref`` and the
-    reason the memo is a sequence are both written down.
-
-    **Measured over the memo's own population**, which is the nodes :func:`decide_type`
-    is called on: 7,250 nodes in 677 documents over the whole portable set, 283 groups of
-    more than one node by the deleted key and 283 by this equality, and 0 documents whose
-    partition differs.  So the replacement is a relocation and not a decision.
-
-    Asked of a WIDER population the two differ, and the reason says why the memo is the
-    right population to ask: a key whose cell LOWERS and whose kind does not consume it
-    survives on :attr:`nodes.Base.declares` as a NAME and not as a value, so two
-    ``Typeless`` nodes differing only in a ``required`` LIST are equal -- and a node like
-    that is one §3's admission screen refuses, so it never reaches the memo.  Every node
-    that does reach it has each key it states either in a field of its kind or admitted
-    as carrying nothing.  The 56 extra groups are all branches of a presence-only
-    combinator, which §4 makes a rule source on the enclosing node and never hands to
-    ``decide`` at all.
-    """
-    return next((symbol for other, symbol in mod.collapsed if other == node), None)
-
-
-def bind_the_same_node(
-    mod: Module, symbol: str, pointer: str, declared: str
-) -> Decided | Refusal:
-    """D3's content dedup, at the SECOND and later positions of one node: the class the
-    first position declared, under the name this position's own rule derives.
-
-    **One class, as many names as the node has positions.**  D3's dedup is a statement
-    about CLASSES -- one node yields one class -- and D3's nested rule derives a name per
-    POSITION, so a node at three positions has one class and three derived names.  An
-    alias is a NAME BOUND TO THAT CLASS and not a second class, which is why the two
-    rules do not collide and why nothing here is hand-assigned: every name is the walk's
-    own ``name_hint``, computed at the call site by the same rule that names a class
-    there, and there is no table and no exception.
-
-    What this refuses to do is type a field by a SIBLING POSITION's name. Binding
-    ``PreviewRenderHtml.dimensions`` to ``PreviewRenderUrlDimensions`` would read as the
-    html branch carrying the url branch's type, and it would make the public symbol a
-    function of which key the walk happened to reach first. The upstream v9 SDK is the
-    worked case of the opposite failure -- 1,092 of its 4,360 classes are numbered
-    variants of content it declares over and over, ``WholesaleFeedEvent1`` through
-    ``WholesaleFeedEvent9`` among them -- and the answer to that is one class aliased,
-    not one class renamed.
-
-    **The DECLARATION is an ``ir.AliasDecl``, the same statement D2's root-scalar
-    row emits**, so there is one alias spelling in the emitter and not a second one here.
-    It carries no constraints, no description and no format on purpose: the node
-    is byte-identical to the one the class already lowered, so every fact about it is
-    already stated on the class, and a ``Field(description=...)`` wrapper here would both
-    restate it and make the alias an ``Annotated`` object rather than the class itself --
-    which is the one thing a consumer must be able to rely on. ``X = TheClass`` is the
-    class by IDENTITY: ``X is TheClass``, ``isinstance`` works, and a type checker follows
-    it.
-
-    Two positions take the class symbol directly rather than an alias, and both are the
-    absence of a name rather than a choice: a position the walk reaches with an EMPTY
-    ``name_hint`` (a mapping's key type, ``lower.containers``' two key calls) has no name
-    to derive, and a position whose derived name IS the declared symbol would be
-    ``X = X``. ``mod.declare`` would refuse the second by name anyway.
-
-    This lives beside :func:`decide_type`, its one caller, rather than in
-    ``codegen/compiler.py`` beside :func:`compiler.name_the_node` -- which it otherwise
-    mirrors -- because D13 puts a lowering only one row reads in the module that reads it.
-    """
-    if not symbol or symbol == declared:
-        return Decided(ir.TypeRef(declared, local=True))
-    collision = mod.declare(
-        symbol, pointer, ir.AliasDecl(symbol, ir.TypeRef(declared, local=True))
-    )
-    if collision is not None:
-        return collision
-    return Decided(ir.TypeRef(symbol, local=True))
+# **``the_same_node`` and ``bind_the_same_node`` are ``codegen/lower/names.py``'s now**
+# (§14 step 7): §4's content dedup is part of the naming pass, so the equality lookup
+# (``names.same_node``) and the binding of a later position's own name to the first
+# position's class (``names.adopt``) live beside §4's name rules and the stated SCOPE.
+# What stays in the walk is the CALL, and it has to: a second occurrence's CHILDREN are
+# never lowered, so a declaration the walk did not make has no name for a pass to
+# derive, and the pruning is a decision about the walk.
 
 
 def decide_type(
-    node: nodes.Node, name_hint: str, mod: Module, *, of_a_root_union: bool = False
+    node: nodes.Node, mod: Module, *, of_a_root_union: bool = False
 ) -> Decided | Refusal:
     """What one schema node IS, plus a SYMBOL where another document names the node.
 
@@ -339,20 +259,21 @@ def decide_type(
     from codegen.lower.decide import decide
 
     pointer = node.pointer
-    collapsed = the_same_node(mod, node)
+    collapsed = lower_names.same_node(mod, node)
     if collapsed is not None:
         mod.adopted[pointer] = collapsed
-        return bind_the_same_node(mod, name_hint, pointer, collapsed)
-    decided = decide(node, name_hint, mod, of_a_root_union=of_a_root_union)
+        bound = lower_names.adopt(mod, pointer, collapsed)
+        return bound if isinstance(bound, Refusal) else Decided(bound)
+    decided = decide(node, mod, of_a_root_union=of_a_root_union)
     if isinstance(decided, Refusal):
         return decided
     if pointer in mod.named and not decided.type.local:
-        named = compiler.name_the_node(mod, name_hint, pointer, node, decided)
+        named = compiler.name_the_node(mod, pointer, node, decided)
         if isinstance(named, Refusal):
             return named
         decided = named
-    if mod.declared.get(pointer) == decided.type.path:
-        mod.collapsed.append((node, decided.type.path))
+    if decided.type.local and decided.type.path == pointer:
+        mod.collapsed.append((node, pointer))
     return decided
 
 
@@ -370,7 +291,9 @@ def _local_symbols(t: ir.TypeRef) -> set[str]:
     return out
 
 
-def exported(mod: Module, symbol: str, composed: frozenset[str] = frozenset()) -> list[str]:
+def exported(
+    mod: Module, named: ir.Module, composed: frozenset[str] = frozenset()
+) -> list[str]:
     """The names the module declares that another module can ask it for: the root, the
     symbol at every pointer the BUNDLE names, and the field types of a class the bundle
     COMPOSES.
@@ -421,19 +344,22 @@ def exported(mod: Module, symbol: str, composed: frozenset[str] = frozenset()) -
     class at the head of the list, and ``tests/test_emit.py`` reads the root off
     ``__all__``.
     """
-    rest = {mod.declared[p] for p in mod.named if p in mod.declared}
+    symbols = named.symbols
+    declared = set(symbols.values())
+    rest = {symbols[p] for p in mod.named if p in symbols}
     for pointer in composed:
-        base = mod.declared.get(pointer)
-        shape = mod.shapes.get(base or "")
+        shape = mod.shapes.get(pointer)
         if shape is None:
             continue
         rest |= {
             name
             for prop in shape.decided.values()
-            for name in _local_symbols(prop.type)
-            if name in mod.names
+            # The shape was recorded DURING the walk, so its decided fields name local
+            # declarations by pointer; the symbol table is what binds them (§7).
+            for name in _local_symbols(lower_names.resolved(prop.type, symbols))
+            if name in declared
         }
-    return [symbol, *sorted(rest - {symbol})]
+    return [named.root, *sorted(rest - {named.root})]
 
 
 # --------------------------------------------------------------------------- #
@@ -481,6 +407,7 @@ def lower_document(
     targets: Mapping[tuple[str, str], Target | Refusal] | None = None,
     named: frozenset[str] = frozenset(),
     roots: Mapping[str, dict] | None = None,
+    reserved: frozenset[str] = frozenset(),
 ) -> tuple[Module, str] | Refusal:
     """One document's module and root symbol, or the refusal the walk returned.
 
@@ -499,6 +426,7 @@ def lower_document(
         # cross-document reference is a lookup and never a callback.
         targets=targets if targets is not None else {},
         roots=roots if roots is not None else {},
+        reserved=reserved,
         asserted=asserted_formats(doc),
         named=named,
         # The SUBSCHEMA behind each named pointer, read off ``bundle.nodes`` -- the one
@@ -553,7 +481,14 @@ def lower_document(
             kind=Kind.VERDICT,
         )
     mod.root = symbol
-    decided = decide(root, symbol, mod)
+    # **§4's ROOT rule as a HOP**, and the root's is the only hop no parent records: the
+    # document has no enclosing node to hang off, so the title is the fact and
+    # ``lower/names.py`` is what applies ``pascal_case`` to it.  The identifier check
+    # stays here because it is a check on the DOCUMENT and the refusal is the document's
+    # -- and because every derived name is a concatenation onto this one, so the proof
+    # that a nested name is an identifier rests on it (``compiler.local_reference``).
+    mod.hops[""] = lower_names.Root(title)
+    decided = decide(root, mod)
     if isinstance(decided, Refusal):
         # §6, returned upward unchanged: the refusal names the innermost node that
         # carried the keyword, and this function adds nothing to it.  The module it was
@@ -581,8 +516,8 @@ def lower_document(
     # A class, an alias and an enumeration therefore cannot come to answer differently
     # about what their own document accepts, which is what put the two statements in one
     # declaration in the first place.
-    if mod.declared.get("") != symbol:
-        bound = declare_alias(mod, symbol, root, decided)
+    if "" not in mod.at:
+        bound = declare_alias(mod, "", root, decided)
         if isinstance(bound, Refusal):
             return bound
         return mod, symbol
@@ -595,15 +530,16 @@ def lower_document(
         (
             (i, d)
             for i, d in enumerate(mod.declarations)
-            if isinstance(d, ir.EnumDecl) and d.name == symbol
+            if isinstance(d, ir.EnumDecl) and d.name == ""
         ),
         None,
     )
     if held is not None:
         at, enumeration = held
         mod.declarations[at] = ir.RootBinding(
-            compiler.schema_ref(document, ""), symbol, enumeration
+            compiler.schema_ref(document, ""), "", enumeration
         )
+        mod.at[""] = mod.declarations[at]
     return mod, symbol
 
 
@@ -669,6 +605,25 @@ class Emitted:
 # edges, the record".  It also read every portable document a SECOND time, after
 # ``named_nodes``'s own pass, and the merge of the two scans its docstring named as the
 # upgrade path is ``bundle.edges``: both readings are projections of ONE scan now.
+
+
+def _bound_shape(shape: compiler.Shape, symbols: Mapping[str, str]) -> compiler.Shape:
+    """One :class:`compiler.Shape` with every symbol it carries bound by the declaring
+    module's own table.
+
+    A shape is recorded during the walk, where a local declaration is a POINTER (§7), and
+    it is read by ANOTHER document -- a composing row's re-used field, and the set of
+    symbols that row may import from the base.  The target was named before this document
+    was parsed (§10's order), so the binding is a lookup and never a second derivation.
+    """
+    return dataclasses_replace(
+        shape,
+        decided={
+            key: dataclasses_replace(f, type=lower_names.resolved(f.type, symbols))
+            for key, f in shape.decided.items()
+        },
+        declares=frozenset(symbols[p] for p in shape.declares if p in symbols),
+    )
 
 
 def closure(documents: Collection[str], sites: Mapping[str, Sequence[bundle.Edge]]) -> list[str]:
@@ -765,8 +720,14 @@ def decidable(
     targets: Mapping[tuple[str, str], Target | Refusal],
     named: frozenset[str],
     roots: Mapping[str, dict],
-) -> tuple[Module, str] | Refusal:
-    """One document lowered AND its carried record checked, as one value.
+    reserved: frozenset[str],
+) -> tuple[Module, ir.Module] | Refusal:
+    """One document lowered, NAMED, and its carried record checked, as one value.
+
+    **The naming pass runs here** (§7, §14 step 7): ``lower/names.py`` takes the module
+    the walk built -- declarations keyed by pointer, every local type naming one by
+    pointer -- and returns :class:`codegen.ir.Module` with §4's symbol table bound.  It
+    is one call and it is the only place a symbol of this module is decided.
 
     Split out of the fold so that the lowering and the two checks each read in one
     place, and what this returns is the document's whole outcome.  It was the body of a
@@ -775,9 +736,16 @@ def decidable(
     document is lowered once, when the order reaches it, so there is no memo to consult
     and no in-flight stack to push.
     """
-    outcome = lower_document(document, doc, targets, named, roots)
+    outcome = lower_document(document, doc, targets, named, roots, reserved)
     if isinstance(outcome, Refusal):
         return outcome
+    mod, _ = outcome
+    bound = lower_names.assign(mod)
+    if isinstance(bound, Refusal):
+        # §4's two naming refusals, both VERDICTS of the document: two pointers deriving
+        # one class name, and a branch with no identity.  Returned from here because this
+        # is where every other refusal of a document is recorded.
+        return bound
     # **The document the package will carry has to be DECIDABLE, and that is
     # checked here because a refusal belongs where every other one is.**  A
     # ``$ref`` at a position the package's own validation reaches is a schema
@@ -859,7 +827,7 @@ def decidable(
             "bundle.undecidable_references disagreeing about which positions validation "
             "reaches -- a defect in this compiler and not an outcome of this document"
         )
-    return outcome
+    return mod, bound
 
 
 def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
@@ -903,7 +871,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     for edge in found:
         sites.setdefault(edge.document, []).append(edge)
     ordered, refused = order(closure(documents, sites), sites)
-    lowered: dict[str, tuple[Module, str, dict]] = {}
+    lowered: dict[str, tuple[Module, ir.Module, dict]] = {}
     #: ``$ref`` URI -> the ROOT NODE of the document it names, for §2's intersection
     #: rule (:meth:`compiler.Module.resolve_node`).  **Run-level and not per document**,
     #: and the reason is whose declaration that rule reads: it compares two property
@@ -978,7 +946,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                     through=r,
                 )
                 continue
-            mod, symbol, _ = lowered[edge.target]
+            mod, bound, _ = lowered[edge.target]
+            symbol = bound.root
             if edge.into:
                 # The fragment names a NODE, so the symbol is the one the target
                 # module declared AT THAT POINTER rather than its root.  The target
@@ -998,7 +967,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                 #    refused on a keyword of their own -- so 0 are reachable and the
                 #    step whose population reaches one decides whether the chain is
                 #    followed to the declaring module.
-                if edge.into not in mod.declared:
+                if edge.into not in bound.symbols:
                     answers[site] = Refusal(
                         "$ref",
                         edge.pointer,
@@ -1009,14 +978,22 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                         kind=Kind.DEFERRED,
                     )
                     continue
-                symbol = mod.declared[edge.into]
+                symbol = bound.symbols[edge.into]
             # ``shape`` is ``None`` for a target that is not a class -- D2's
             # root-scalar alias, and a named node that is not one either -- which is
             # what lets a composing row refuse it as a base rather than writing a
             # module that cannot be imported.
             #
+            # **The SHAPE crosses the module boundary with its symbols BOUND**, which is
+            # what makes a shape recorded by pointer readable in another module: the
+            # target was named before this document was parsed (§10's order), so its own
+            # symbol table is what binds the re-used field's type and the set of symbols
+            # a composing subclass may import from it (``compiler._reused``).
+            shape = mod.shapes.get(edge.into)
             answers[site] = Target(
-                relative_module(document, edge.target), symbol, mod.shapes.get(symbol)
+                relative_module(document, edge.target),
+                symbol,
+                None if shape is None else _bound_shape(shape, bound.symbols),
             )
         return answers
 
@@ -1029,12 +1006,13 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             resolve(document),
             named.get(document, frozenset()),
             roots,
+            render.RESERVED,
         )
         if isinstance(outcome, Refusal):
             refused[document] = outcome
             continue
-        mod, symbol = outcome
-        lowered[document] = (mod, symbol, doc)
+        mod, bound = outcome
+        lowered[document] = (mod, bound, doc)
         # The target's own root node, for §2's intersection rule and for nothing else.
         # Written when the document FINISHES, so a refused document contributes none and
         # the rule treats such a pair as unordered -- which is the safe direction and is
@@ -1043,14 +1021,25 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             roots[uri] = doc
 
     for document in sorted(lowered):
-        mod, symbol, doc = lowered[document]
+        mod, bound, doc = lowered[document]
         rel = module_path(document)
         out.files[f"{rel}.py"] = render.module(
-            mod, exported(mod, symbol, composed.get(document, frozenset()))
+            bound, exported(mod, bound, composed.get(document, frozenset()))
         )
         out.emitted[document] = f"{PACKAGE}.{rel.replace('/', '.')}"
-        out.declared[document] = dict(mod.declared)
-        out.adopted[document] = dict(mod.adopted)
+        # **The two halves of what §4's dedup did, derived from one table.**  §7's symbol
+        # table holds every pointer a type resolves at, which is the DECLARED pointers
+        # plus the adopting ones that bound a class by identity with no declaration of
+        # their own -- and those are exactly the ones whose symbol IS the declaring
+        # pointer's.  So ``declared`` is the table minus them and needs no second record.
+        out.declared[document] = {
+            p: n
+            for p, n in bound.symbols.items()
+            if p not in bound.adopted or n != bound.symbols[bound.adopted[p]]
+        }
+        out.adopted[document] = {
+            p: bound.symbols[at] for p, at in bound.adopted.items() if at in bound.symbols
+        }
         if mod.drops:
             out.drops[document] = dict(mod.drops)
         if mod.carries_nothing:

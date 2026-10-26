@@ -247,7 +247,13 @@ class ClassDecl:
     #: a base is ``(BranchDispatchMixin, AdCPBaseModel)`` and a branch is its base --
     #: so naming any of them replaces ``custom_base_class`` and a caller that wants
     #: ``AdCPBaseModel`` in the list says so.
-    bases: tuple[str, ...] = ()
+    #:
+    #: **``TypeRef``s and not bare strings** (§7's table: "bases (``TypeRef``s)"), which
+    #: is what lets a base be a LOCAL declaration of this module -- carried by pointer
+    #: until ``lower/names.py`` binds it -- beside one another module declares, carried
+    #: as the symbol the module writer imported.  One slot, two kinds of name, and the
+    #: symbol table is what tells them apart.
+    bases: tuple[TypeRef, ...] = ()
     #: D8's typed row: the type of a property the class does not DECLARE, which
     #: pydantic validates through ``__pydantic_extra__``.  It is a mapping, because
     #: ``additionalProperties`` types the values under keys the document does not
@@ -272,6 +278,13 @@ class ClassDecl:
     root_required: tuple[str, ...] | None = None
     discriminator: str | None = None
     combinator: str | None = None
+    #: §7's fourth union-base slot: **the base's BRANCHES as ``TypeRef``s**.  Declared
+    #: in the IR and unwritten until §14 step 7; written by ``lower/union.py`` now, from
+    #: the same expression that builds :class:`UnionInstall`'s, so the two slots cannot
+    #: come to disagree about which classes are this base's branches.  ``None`` on every
+    #: class that is not a union base, which is what tells a reader the slot is not
+    #: merely empty.
+    branches: tuple[TypeRef, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -366,12 +379,50 @@ class UnionInstall:
     ``Module.declare``.
     """
 
-    base: str
-    branches: tuple[str, ...]
+    base: TypeRef
+    branches: tuple[TypeRef, ...]
 
 
 #: Every declaration a module can hold, which is what ``render.py`` dispatches on.
 Declaration = ClassDecl | EnumDecl | AliasDecl | RootBinding | UnionInstall
+
+
+@dataclass(frozen=True)
+class Module:
+    """One document's finished module: §7's last row, and the renderer's whole input.
+
+    "``Module`` | document, root symbol, declarations in declaration order, imports, the
+    symbol table pointer -> name, the adoption table pointer -> declaring pointer."
+
+    **It is the OUTPUT of ``codegen/lower/names.py`` and not the walk's accumulator**,
+    which is the split §7 draws and §14 step 7 is what lands.  The walk's own value --
+    ``compiler.Module`` -- carries the run's targets, the parser's source, the shapes a
+    composing row reads, the aliases and the reports, every one of which §11 keeps out
+    of this layer ("representation | the declarations and ``TypeRef`` | text, pydantic,
+    nodes").  What crosses the seam into ``render.py`` is this, and every symbol in it
+    is bound: a ``TypeRef`` marked ``local`` names a class and never a pointer, so the
+    renderer writes text and resolves nothing.
+
+    *Why this retires ``render.Written``.*  That Protocol existed because §11's arrows
+    run ``ir <- render <- emit`` and ``Module`` was in the decision layer, which the
+    renderer may not know; with ``Module`` here the renderer takes the type by name.
+    """
+
+    document: str
+    #: The symbol the document's ROOT binds, which is §4's ``pascal_case(title)``.
+    root: str
+    declarations: tuple[Declaration, ...]
+    imports: frozenset[tuple[str, str]]
+    #: **§7's symbol table**: JSON Pointer -> the symbol declared for the node at it.
+    #: This is how a ``$ref`` carrying a pointer finds the symbol to import, and it is
+    #: what ``emit.exported`` reads a module's public surface off.
+    symbols: Mapping[str, str] = field(default_factory=dict)
+    #: **§7's adoption table**: JSON Pointer -> the pointer whose class the node at it
+    #: ADOPTED under §4's content dedup, because an earlier node of identical content
+    #: declared it.  With :attr:`symbols` this is the whole of what the dedup did, and it
+    #: is what a check can grade it over in both directions -- an adoption whose two
+    #: nodes are NOT identical is the failure that matters more than a missed collapse.
+    adopted: Mapping[str, str] = field(default_factory=dict)
 
 
 def symbols(decided: TypeRef) -> set[str]:

@@ -19,7 +19,7 @@ from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 
 
-def lower(node: nodes.Reference, name_hint: str, mod: Module) -> Decided | Refusal:
+def lower(node: nodes.Reference, mod: Module) -> Decided | Refusal:
     """An IMPORT of the target's symbol, or the local entry's own declaration.
 
     **A CONSTRAINING sibling compiles to NOTHING and is REPORTED**, which is §5's ``$ref``
