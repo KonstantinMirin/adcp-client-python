@@ -88,10 +88,17 @@ from datamodel_code_generator.reference import Reference
 from datamodel_code_generator.types import DataType
 from pydantic import BaseModel as PydanticBaseModel
 
+from adcp.types._base import APPROXIMATIONS, Approximation, SchemaRef
 from adcp.types._runtime import Match, Rule
 from codegen import constraints as constraint_names
 from codegen import ir
 from codegen.ir import MISSING
+
+#: The runtime base §8 of the architecture document gives a root model, named here and
+#: imported by no emitted module until a handler declares one (§14 step 9).  A NAME and
+#: not an import of the class, for the reason every other emitted-module symbol is a name:
+#: the renderer writes text, and a symbol it names is not a Pydantic idiom (§8).
+ROOT_MODEL = "AdCPRootModel"
 
 #: The floor of ``requires-python``.  It decides the rendered spelling of an
 #: optional (``T | None`` rather than ``Optional[T]``), so it is named once here
@@ -429,8 +436,13 @@ def enum(decl: ir.EnumDecl) -> Rendered:
     return out
 
 
-def klass(decl: ir.ClassDecl) -> Rendered:
-    """The Python for one decided class, and the imports it needs."""
+def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendered:
+    """The Python for one decided class, and the imports it needs.
+
+    ``declared`` is §7's approximation declaration for this class's own node, already
+    narrowed by :func:`declared_at`.  Empty at §14 step 8 and for every faithful class
+    after it, which is why it defaults: a caller with nothing to declare says nothing.
+    """
     config = {"extra": decl.extra} if decl.extra else None
     extra_template_data: defaultdict[str, Any] = defaultdict(dict)
     if config:
@@ -478,9 +490,12 @@ def klass(decl: ir.ClassDecl) -> Rendered:
         )
         body.append(f"__pydantic_extra__: {extra_field.type_hint}")
     rule_lines, rule_imports = _rule_lines(decl.rules)
-    for line in (*body, *_union_base_lines(decl), *rule_lines):
+    approximation_lines = _approximation_lines(declared)
+    for line in (*body, *_union_base_lines(decl), *rule_lines, *approximation_lines):
         model._append_internal_template_data("class_body_lines", line)  # noqa: SLF001 -- the generator's own channel; see the module docstring
     out = Rendered(text=model.render().rstrip("\n"), imports=set(rule_imports))
+    if approximation_lines:
+        out.imports.add((ir.BASE_MODULE, Approximation.__name__))
     _reported(model.imports, out.imports)
     if extra_field is not None:
         # The same rule as ``ConfigDict`` below, and for the same reason: the generator
@@ -555,8 +570,14 @@ def _union_base_lines(decl: ir.ClassDecl) -> list[str]:
     ]
 
 
-def root_binding(decl: ir.RootBinding) -> Rendered:
+def root_binding(decl: ir.RootBinding, declared: Sequence[Approximation] = ()) -> Rendered:
     """The module-level half of a root that is not an ``AdCPBaseModel``.
+
+    ``declared`` is §7's "beside the module for an alias": an alias has no class body and
+    an enumeration has no ``class_body_lines`` slot at all, so the declaration binds at
+    module scope exactly where ``__adcp_schema__`` binds -- which is the same split §4 of
+    the semantics document already makes for ``strict_validate``, and so the same
+    reasoning.
 
     D2 gives two root kinds no class to hang ``strict_validate`` on: a scalar root is an
     ``Annotated`` alias, and an enumeration cannot carry a class-body line at all because
@@ -571,11 +592,17 @@ def root_binding(decl: ir.RootBinding) -> Rendered:
     the statements.  ``tests/test_emit.py`` reads the pairing off the module for both.
     """
     inner = declaration(decl.declaration)
+    imports = inner.imports | {(ir.BASE_MODULE, "SchemaRef"), (ir.BASE_MODULE, "strict_alias")}
+    lines = _approximation_lines(declared, annotated=False)
+    beside = ""
+    if lines:
+        imports.add((ir.BASE_MODULE, Approximation.__name__))
+        beside = f"\n{lines[0]}\n"
     return Rendered(
-        text=f"__adcp_schema__ = {decl.ref!r}\n\n"
+        text=f"__adcp_schema__ = {decl.ref!r}\n{beside}\n"
         f"{inner.text}\n\n\n"
         f'strict_validate = strict_alias(__adcp_schema__, "{decl.symbol}", {decl.symbol})',
-        imports=inner.imports | {(ir.BASE_MODULE, "SchemaRef"), (ir.BASE_MODULE, "strict_alias")},
+        imports=imports,
     )
 
 
@@ -593,19 +620,162 @@ def union_install(decl: ir.UnionInstall) -> Rendered:
     )
 
 
-def declaration(decl: ir.Declaration) -> Rendered:
-    """One declaration's text and imports: the ONE dispatch over ``codegen.ir``."""
+def root_model(decl: ir.RootModelDecl, declared: Sequence[Approximation] = ()) -> Rendered:
+    """§7's ``RootModelDecl``: a root that is neither a class nor an alias.
+
+    A ``RootModel`` subclass, written by this module rather than through the model layer's
+    ``BaseModel`` template, because the body is one ``root:`` annotation and not a field
+    list and no template of the pinned generator has that shape.  The ANNOTATION is still
+    a ``DataModelField``'s ``type_hint`` (:func:`_field`), so a root model's type and a
+    property's cannot come to be two spellings of one decision.
+
+    It carries the same three things a class carries -- ``__adcp_schema__``, the rule
+    tuple, and the dispatch facts for a mixed root union -- which is §8's own requirement:
+    "each must carry ``__adcp_schema__``, ``strict_validate`` and a rule tuple exactly as a
+    class does, or a root model and a class disagree about what their document accepts."
+    ``strict_validate`` arrives by inheritance from ``AdCPRootModel``, which §8 declares.
+
+    **No producer in the walk at §14 step 8**, which is the step's own exit condition: the
+    three rows that lower to one are step 9's.  ``tests/test_approximation.py`` renders a
+    hand-built declaration, so the path from the IR to text is graded before a handler
+    writes one.
+    """
+    annotation = _field(
+        ir.Field(name="root", wire="root", type=decl.type, required=True)
+    )
+    body = [
+        f"root: {annotation.type_hint}",
+        f"__adcp_schema__: ClassVar[SchemaRef] = {decl.ref!r}",
+    ]
+    rule_lines, rule_imports = _rule_lines(decl.rules)
+    approximation_lines = _approximation_lines(declared)
+    lines = "\n".join(
+        f"    {line}" for line in (*body, *rule_lines, *approximation_lines)
+    )
+    docstring = f'    """{decl.description}"""\n' if decl.description else ""
+    imports = {
+        ("typing", "ClassVar"),
+        (ir.BASE_MODULE, "SchemaRef"),
+        (ir.BASE_MODULE, ROOT_MODEL),
+        *rule_imports,
+    }
+    if approximation_lines:
+        imports.add((ir.BASE_MODULE, Approximation.__name__))
+    for imp in annotation.imports:
+        if imp.from_ and imp.import_:
+            imports.add((imp.from_, imp.import_))
+    return Rendered(
+        text=f"class {decl.name}({ROOT_MODEL}):\n{docstring}{lines}", imports=imports
+    )
+
+
+def declaration(
+    decl: ir.Declaration, approximations: Sequence[Approximation] = ()
+) -> Rendered:
+    """One declaration's text and imports: the ONE dispatch over ``codegen.ir``.
+
+    ``approximations`` is the MODULE's whole tuple and the three writers that carry one
+    narrow it themselves, through :func:`declared_at` at their own ``ref``.  Narrowed here
+    rather than by the caller, because which node a declaration's ``ref`` names is a fact
+    about the declaration and this is the one dispatch that holds every kind of it.
+
+    An ``EnumDecl``, an ``AliasDecl`` and a ``UnionInstall`` carry none and are handed
+    none: a nested enumeration has no ``class_body_lines`` slot at all (``EnumDecl``'s own
+    docstring), a nested alias binds no ``__adcp_schema__`` and is no pair, and a union
+    install declares no name.  Each is contained in a node that DOES carry one, by
+    :func:`declared_at`'s containment rule, so nothing is lost.
+    """
     if isinstance(decl, ir.ClassDecl):
-        return klass(decl)
+        return klass(decl, declared_at(approximations, decl.ref))
     if isinstance(decl, ir.EnumDecl):
         return enum(decl)
     if isinstance(decl, ir.AliasDecl):
         return alias(decl)
     if isinstance(decl, ir.RootBinding):
-        return root_binding(decl)
+        return root_binding(decl, declared_at(approximations, decl.ref))
+    if isinstance(decl, ir.RootModelDecl):
+        return root_model(decl, declared_at(approximations, decl.ref))
     if isinstance(decl, ir.UnionInstall):
         return union_install(decl)
     raise TypeError(f"no rendering for {type(decl).__name__}")
+
+
+# --------------------------------------------------------------------------- #
+# §7: the approximation declaration, written into the emitted module
+# --------------------------------------------------------------------------- #
+#: The annotation the class-body line carries, so the declaration is a ``ClassVar`` like
+#: ``__adcp_schema__`` beside it rather than a model field pydantic would try to validate.
+APPROXIMATIONS_HINT = f"ClassVar[tuple[{Approximation.__name__}, ...]]"
+
+
+def declared_at(approximations: Sequence[Approximation], ref: SchemaRef) -> tuple[Approximation, ...]:
+    """Every approximation at or INSIDE the node ``ref`` names, in document order.
+
+    **Containment and not the nearest declaration**, and the reason is the pairing §9
+    grades over.  A pair's comparison descends from its own node into the whole subtree --
+    a property's facts, an ``items``, a ``propertyNames`` -- so a root class's comparison
+    reports a fact at ``#/properties/x/maxLength`` as well as the nested class's own
+    comparison does.  A declaration carried only by the nearest enclosing class would
+    therefore leave the enclosing pair reporting that fact as *missing*, which is §8's
+    defect, for a widening the design declared.  Carrying it on every declaration whose
+    node contains it costs a repeated line in one module and makes both pairs read the
+    same answer.
+
+    Over-coverage in the other direction is harmless and measured: a root union's BASE is
+    at ``#`` and so contains ``#/oneOf/0/...``, which the base's own comparison never
+    visits because ``compare`` does not descend a combinator.  A declaration the
+    comparison does not reach is neither *approximated* nor *over-declared* at that pair;
+    the run-level equality (§8) ranges over the union of the pairs, where the branch pair
+    reports it.
+
+    The prefix test is on ONE spelling of a pointer -- ``SchemaRef``'s, which
+    ``compiler.schema_ref`` is the sole producer of -- and the separator is part of the
+    prefix, so ``#/properties/x`` does not contain ``#/properties/xy``.
+    """
+    prefix = ref.pointer if ref.pointer.endswith("/") else ref.pointer + "/"
+    return tuple(
+        a
+        for a in approximations
+        if a.document == ref.document and (a.pointer == ref.pointer or a.pointer.startswith(prefix))
+    )
+
+
+def _approximation_lines(
+    declared: Sequence[Approximation], *, annotated: bool = True
+) -> list[str]:
+    """The one declaration line, or no line at all where nothing was approximated.
+
+    ``annotated`` is the one difference between the two writers: inside a class body the
+    declaration is a ``ClassVar``, like ``__adcp_schema__`` and ``_adcp_rules`` beside it,
+    so pydantic reads it as a class attribute and not as a model field; at MODULE scope
+    there is no model for an annotation to be about, which is the same shape
+    ``__adcp_schema__`` already takes in a root binding (a ``ClassVar`` in a class, a bare
+    assignment beside a module).
+
+    The FIRST line carries no indentation and the continuation lines carry their own, for
+    :func:`_rule_lines`'s measured reason: the ``class_body_lines`` channel's template
+    indents the first line of an entry and passes the rest through verbatim.  At module
+    scope the first line is already at its own level, so one shape serves both.
+
+    **No line where the tuple is empty, which is §14 step 8's byte-exact check.**  The
+    step says the tree "changes by one line per module (``__adcp_approximations__ = ()``)",
+    and that is an allowance rather than an obligation: an ABSENT attribute and an empty
+    tuple are the same answer to the one question a consumer asks (``vars(cls).get(...,
+    ())``), so writing the empty case buys a reader nothing and costs the step its
+    strongest evidence -- an emitted tree that is byte-identical to the one before the
+    instrument existed.  The row that widens the first cell is where the line appears, in
+    the modules whose documents it widens and nowhere else.
+
+    ``repr`` of a tuple of ``NamedTuple``s is a valid Python expression naming the type,
+    which is how ``__adcp_schema__`` is written already; there is therefore no spelling of
+    an approximation in this module to drift from the one in ``adcp.types._base``.  One
+    entry per line, because a declaration is read by a human looking for a pointer.
+    """
+    if not declared:
+        return []
+    entries = "".join(f"        {a!r},\n" for a in declared)
+    hint = f": {APPROXIMATIONS_HINT}" if annotated else ""
+    return [f"{APPROXIMATIONS}{hint} = (\n{entries}    )"]
 
 
 # --------------------------------------------------------------------------- #
@@ -638,9 +808,11 @@ def _import_block(imports: Collection[tuple[str, str]]) -> list[str]:
     return out
 
 
-def blocks(declarations: Sequence[ir.Declaration]) -> list[Rendered]:
+def blocks(
+    declarations: Sequence[ir.Declaration], approximations: Sequence[Approximation] = ()
+) -> list[Rendered]:
     """Every declaration rendered, in declaration order."""
-    return [declaration(decl) for decl in declarations]
+    return [declaration(decl, approximations) for decl in declarations]
 
 
 def module(mod: ir.Module, exports: Sequence[str]) -> str:
@@ -659,7 +831,7 @@ def module(mod: ir.Module, exports: Sequence[str]) -> str:
     (``emit.exported``), because which names another module may ask for is a decision
     about the bundle and not about text.
     """
-    rendered = blocks(mod.declarations)
+    rendered = blocks(mod.declarations, mod.approximations)
     imports = set(mod.imports)
     for one in rendered:
         imports |= one.imports

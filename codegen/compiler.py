@@ -55,7 +55,7 @@ from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import Approximation, SchemaRef
 from adcp.types._runtime import Rule
 from codegen import ir, keywords, refusal
 from codegen.ir import MISSING
@@ -574,6 +574,31 @@ class Module:
     #: dataclass takes the second declaration silently, so the earlier writer's
     #: ``mod.drops[pointer] = value`` met a list.  One name per channel.
     carries_nothing: list[str] = field(default_factory=list)
+
+    #: **Section 2's approximations, accumulated in DOCUMENT ORDER.**  Every fact this
+    #: document's annotations do not carry, as :class:`adcp.types._base.Approximation`
+    #: values minted by :func:`codegen.lower.approximate.approximate` -- the one producer.
+    #:
+    #: ``docs/plan/architecture.md`` §2: "a refusal was an ABSORBING element -- anything
+    #: composed with one was that one, which is how a child's refusal killed a document --
+    #: and an approximation is an ADDITIVE one: composition is total, the parent always
+    #: gets a ``Lowering``, and what travels upward is accumulated rather than
+    #: propagated."  On this tree the accumulator is the module rather than a ``Lowering``
+    #: value, so "accumulated" is an append here and the order is the one §6 names: "the
+    #: parser built each node's children in document order, and concatenation preserves
+    #: it."
+    #:
+    #: **A THIRD channel beside :attr:`drops` and :attr:`carries_nothing`, and §10 says
+    #: why it may not be either of them**: "An approximation is NOT one of them: a
+    #: carries-nothing line says a keyword constrained nothing, and an approximation says
+    #: a keyword constrained something the annotation does not carry.  Printing them in
+    #: one list would sum two different things."  It is also the only one of the three the
+    #: GRADER reads, which is why it rides into the emitted module (§7) where the other
+    #: two ride out to the report.
+    #:
+    #: **Empty over the whole bundle at §14 step 8**, which is that step's exit condition:
+    #: no cell widens, so no handler mints one, and ``APPROXIMATED`` is 0.
+    approximations: list[Approximation] = field(default_factory=list)
 
     #: What the PARSER is handed about this document: its path and the pointers an
     #: enclosing node constrains to ``type: "object"``.  Built here rather than passed,

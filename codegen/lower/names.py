@@ -483,6 +483,23 @@ def _bound(declaration: ir.Declaration, symbols: Mapping[str, str]) -> ir.Declar
                 else replace(held, name=symbols[held.name])
             ),
         )
+    if isinstance(declaration, ir.RootModelDecl):
+        # §7's third root shape, whose name and whose wrapped type are bound exactly as a
+        # class's are.  An ARM of its own and not the fallthrough, because the fallthrough
+        # is what the type checker reads as "everything left", and adding a declaration to
+        # ``ir.Declaration`` without one here is how a new kind silently takes another
+        # kind's rewrite -- which is what mypy reported the moment ``RootModelDecl`` joined
+        # the union.
+        return replace(
+            declaration,
+            name=symbols[declaration.name],
+            type=resolved(declaration.type, symbols),
+            branches=(
+                None
+                if declaration.branches is None
+                else tuple(resolved(b, symbols) for b in declaration.branches)
+            ),
+        )
     return replace(
         declaration,
         base=resolved(declaration.base, symbols),
@@ -495,7 +512,9 @@ def _at(declaration: ir.Declaration) -> str | None:
     until this pass runs.  ``None`` for the one declaration that binds no name --
     :class:`codegen.ir.UnionInstall`, whose two statements are about symbols the module
     already declares."""
-    if isinstance(declaration, ir.ClassDecl | ir.EnumDecl | ir.AliasDecl):
+    if isinstance(
+        declaration, ir.ClassDecl | ir.EnumDecl | ir.AliasDecl | ir.RootModelDecl
+    ):
         return declaration.name
     if isinstance(declaration, ir.RootBinding):
         return declaration.symbol
@@ -570,4 +589,8 @@ def assign(mod: Module) -> ir.Module | Refusal:
         imports=frozenset(mod.imports),
         symbols=symbols,
         adopted=dict(mod.adopted),
+        # §7's ``approximations`` slot, carried through unchanged: this pass assigns
+        # SYMBOLS, and a declaration names a POINTER, which naming does not move.  It is a
+        # tuple here because the IR is immutable and the walk's accumulator is a list.
+        approximations=tuple(mod.approximations),
     )
