@@ -70,50 +70,15 @@ SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool
 # --------------------------------------------------------------------------- #
 # the machinery a lowering is handed (D13)
 # --------------------------------------------------------------------------- #
-#: **D6's six keyword families, as the set a keyword screen admits.**
-#:
-#: Derived from the table's cells: a rule source is a keyword whose cell at this
-#: position compiles to a RULE, and the two COMBINATORS join it only where every
-#: branch is ``required``-only -- which is a co-occurrence and not a position, so it is
-#: the caller's question (:func:`rules_at`) and not the cell's.  Written here rather
-#: than in ``codegen.lower.rules`` because ``compiler`` sits BELOW both
-#: ``codegen.lower`` and ``codegen.bundle``, so every reader can import it while a
-#: lowering may not import a sibling lowering (D13); ``codegen.lower.rules``
-#: re-exports it as its own ``KEYWORDS`` rather than restating it.
-def rule_sources(position: Position) -> frozenset[str]:
-    """The keywords whose cell at ``position`` compiles to a RULE."""
-    return frozenset(
-        k
-        for k in keywords.TABLE
-        if (c := keywords.cell(k, position)) is not None and c.effect is keywords.Effect.RULE
-    )
-
-
-def combinators(position: Position) -> frozenset[str]:
-    """``oneOf`` and ``anyOf``, read off the descent column rather than named.
-
-    They are the keywords whose subschemas occupy a BRANCH, which is what a
-    combinator IS -- so the pair is a reading of the declaration and not a literal.
-    """
-    return frozenset(
-        k
-        for k in keywords.TABLE
-        if (c := keywords.cell(k, position)) is not None and c.descends is Position.BRANCH
-    )
-
-
-def declares(keyword: str, position: Position) -> bool:
-    """Does this key STATE something about an instance at this position?
-
-    The question three readers ask -- ``lower.union._plan``, :func:`_constraining` and
-    ``lower.rules._own`` -- and the one the screen asks in the other direction.  A key
-    that annotates without constraining is not a declaration; a key with no row is,
-    because a keyword the bundle did not use before could constrain anything.
-    """
-    answer = keywords.cell(keyword, position)
-    if answer is None:
-        return not keywords.admitted_by_prefix(keyword)
-    return keywords.lowers(answer) or answer.effect is keywords.Effect.REFUSE
+# **``rule_sources``, ``combinators`` and ``declares`` are ``codegen/keywords.py``'s
+# now.**  Each is a predicate over a CELL, so each belongs to the layer §11 gives
+# "positions, keywords, cells, descent" -- and ``codegen/schema/parse.py``'s
+# classification (§4) asks all three while being forbidden to import this module: §11's
+# arrow is ``keywords <- ir <- schema <- lower``.  Re-bound here under their own names so
+# that every existing reader keeps one spelling of each.
+rule_sources = keywords.rule_sources
+combinators = keywords.combinators
+declares = keywords.declares
 
 
 def declaring(node: Mapping[str, Any], position: Position) -> dict[str, Any]:
