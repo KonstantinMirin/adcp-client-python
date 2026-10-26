@@ -758,6 +758,22 @@ Each step can be taken alone, is checked by a test that exists or is named, and 
 the emitted tree or the report changes. Steps marked *bytes* are checked by regenerating the
 tree and comparing it byte for byte with the committed one.
 
+**What a *bytes* mark forbids, and what it does not (2026-10-26).** It exists to prove a step
+is a RELOCATION and not a decision, so what it forbids is an UNDECLARED change: text that moved
+because the step chose something, with no sentence in either document behind the choice. It does
+not forbid fixing a defect the semantics document has already decided. Where a step's correct
+implementation makes the emitted tree conform to a sentence it was violating, the tree moves,
+and the step reports the change with the document, the pointer and the sentence that decides
+it — enumerated, never aggregated.
+
+The two cases are told apart by asking what is on the other side of the trade. Step 4 met a
+rendering whose spelling no sentence decides — keyword against positional arguments to a frozen
+dataclass, the same object either way — so *bytes* won and §7 gave up the word `repr`. Step 5
+meets `enum.decide` reading `enumDescriptions` alone while §6 of the semantics document says
+"two spellings of one keyword; both are read", so `enums/signal-value-type.json` emits with no
+member docstrings. That is a defect against a decided sentence, the fix changes one module where
+a document emitted before, and the fix wins. A gate that forbade it would be pinning the defect.
+
 1. **`codegen/__main__.py`.** Move `main` there; `python -m codegen` is the command. Delete the
    `__main__` re-entry in `emit.py`, the `decide`/`bind`/`name_constraint` callables on
    `Module` (lowerings import `decide` and `constraints.resolve` directly), and the lazy
@@ -798,6 +814,23 @@ tree and comparing it byte for byte with the committed one.
    carries it where today they name a rewritten node; the key-schema union and the empty-schema
    `additionalProperties` on a class stop refusing or crashing. *Tree unchanged where a
    document emitted before.* Unblocks §5 and §6 in full.
+
+   *How the conversion is STAGED, settled 2026-10-26 after two attempts measured the surface.*
+   The end state above is not negotiable: `parse` is the only reader of a raw mapping, and a
+   handler reads node fields. But the conversion to it is not one commit's worth of work — the
+   surface is 11 screen sites, 7 descent sites, roughly 2,100 lines of handler code and 32 test
+   call sites, all under a byte-exact check over the emitted tree. Two attempts each read the
+   gate as making the whole conversion atomic, landed valuable adjacent work, and stopped.
+
+   It is not atomic, and the reason is that §4's rule is about the WALK and not about field
+   access. "One parser is the one reading" forbids a second traversal of the raw document; it
+   does not forbid a half-migrated handler being handed the mapping its own node was built
+   from. So during this step a node may carry its originating mapping, `parse` performs the one
+   traversal, and each handler converts to node fields one kind at a time — each conversion its
+   own commit, each checked by the byte compare. **The step is not complete until that carrier
+   is deleted**, and its deletion is the step's last commit: a tree that still has it has not
+   finished step 5, and no later step may read it. Staging a refactor is not the same as
+   softening its end state.
 
    *The refusal ORDER is document order, and that settles what this step owes the old report
    (2026-10-26).* The first attempt at this step stalled on trying to reproduce the sequence six
