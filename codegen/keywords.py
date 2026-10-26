@@ -149,6 +149,42 @@ COMPILES = frozenset({Effect.TYPE, Effect.FIELD, Effect.RULE})
 LOWERED = frozenset({Effect.TYPE, Effect.RULE})
 
 
+class Rung(StrEnum):
+    """Section 2's LADDER, lowest first; ``TOP`` always terminates.
+
+    ``docs/plan/rebuild-plan.md`` section 2, "Direction: every approximation of
+    acceptance is a widening": a fact the annotation cannot carry is **dropped**, never
+    substituted, and the handler takes the lowest rung of this one ladder it can render.
+    "``Any`` admits everything, so the ladder always has a rung left and no node can run
+    out of renderings."
+
+    The order of the members is the ladder's own order and it is load-bearing: a rung is
+    compared to another rung to say which is lower, and section 2's monotonicity is the
+    claim that a widening only ever moves up it.
+    """
+
+    #: Drop the one keyword, keep the type.  ``uniqueItems`` where no class and no named
+    #: type hold the rule -> ``list[X]``.
+    KEYWORD = "KEYWORD"
+    #: Drop a type selection the constraints contradict, keep the constraints.
+    #: ``format: uri`` beside ``maxLength`` -> the constrained ``str``, the format riding
+    #: as ``json_schema_extra``.
+    TYPE = "TYPE"
+    #: Replace a shape with the union of the shapes it holds.  A list-valued ``items`` ->
+    #: ``list[A | B | ...]``, dropping position and arity.
+    JOIN = "JOIN"
+    #: Replace the node with its bare container: ``list[Any]``, ``dict[str, Any]``.
+    CONTAINER = "CONTAINER"
+    #: ``Any``.
+    TOP = "TOP"
+
+
+#: The rungs, lowest first, as a tuple -- so "lower than" is an index comparison and not
+#: a reading of the enum's declaration order by a caller.  Section 2's ladder is "finite,
+#: monotone and terminates", and this is the order those three words are about.
+LADDER = (Rung.KEYWORD, Rung.TYPE, Rung.JOIN, Rung.CONTAINER, Rung.TOP)
+
+
 class Cell(NamedTuple):
     """One keyword's answer at one position."""
 
@@ -161,6 +197,27 @@ class Cell(NamedTuple):
     #: The sentence the grid states for this keyword here; see the module docstring
     #: for the join rule and for what an empty one means.
     compiles: str
+    #: **Which rung of section 2's ladder a keyword the handler cannot render here drops
+    #: to** (``docs/plan/architecture.md`` section 3).  ``None`` where the keyword states
+    #: no fact about an instance -- ``$comment``, ``title``, ``errorMessage``, the
+    #: registry data keys -- "because there is nothing to drop and a rung would be a
+    #: decision about a non-decision".
+    #:
+    #: **A FIELD and not derived**, and section 3 gives the test of that: "``effect``,
+    #: ``rendered`` and ``descends`` do not determine it.  ``uniqueItems`` is RULE,
+    #: rendered, non-descending and drops its keyword (KEYWORD); a list-valued ``items``
+    #: is TYPE, rendered, descends to ELEM and drops to the union of its members (JOIN);
+    #: an unrowed key has no row at all and drops the node's whole type (TOP).  Cells
+    #: whose other three fields agree take different rungs."
+    #:
+    #: Its NONE-ness is the one half the effect does decide, and :func:`states_a_fact` is
+    #: that reading: a cell that compiles to a type, a field or a rule has a fact to drop
+    #: and carries a rung; one that compiles to a name, an annotation or nothing has none.
+    #: ``tests/test_keywords.py`` asserts the biconditional over every cell, so a row
+    #: added without a rung is a failing test rather than a silent ``None`` that
+    #: :func:`codegen.lower.approximate.approximate` would turn into a ``BuildFailure``
+    #: at the first document to need it.
+    widens_to: Rung | None = None
 
 
 class Row(NamedTuple):
@@ -1225,19 +1282,208 @@ for _name in _REGISTRY_KEYS:
     )
 
 
+# --------------------------------------------------------------------------- #
+# the rung each keyword drops to, and the pass that puts it in the cell
+# --------------------------------------------------------------------------- #
+def states_a_fact(effect: Effect) -> bool:
+    """Does a cell with this effect have a FACT a widening could drop.
+
+    ``docs/plan/architecture.md`` section 3: ``widens_to`` "is ``None`` for a keyword
+    that states no fact about an instance -- ``$comment``, ``title``, ``errorMessage``,
+    the registry data keys -- because there is nothing to drop and a rung would be a
+    decision about a non-decision."
+
+    That is exactly :data:`COMPILES`: section 6's preamble is this predicate's
+    complement ("none of these can constrain an instance, so none compiles to a type, a
+    rule or a base"), and a ``NAME`` is a symbol, an ``ANNOTATION`` is a description or
+    a deprecation, and a ``REFUSE`` cell refuses the document instead of widening it.
+    So the NONE-ness of ``widens_to`` is decided by the effect and its VALUE is not,
+    which is the division section 3 draws when it says the field is needed because
+    "cells whose other three fields agree take different rungs".
+    """
+    return effect in COMPILES
+
+
+#: **The rung each keyword drops to, one entry per keyword that states a fact anywhere**
+#: (``docs/plan/architecture.md`` section 3, "Where the RUNG of a widening comes from").
+#: Written per KEYWORD because section 2 says so -- "which rung a keyword takes is the
+#: keyword's decision and lives in its cell (section 5), never at the site that widens"
+#: -- and a keyword's reach is the same fact at every position except where
+#: :data:`_RUNG_AT` names one.
+#:
+#: **Four entries are section 5's own words and the rest are one stated rule.**  Section
+#: 5's "(b) Rows whose answer is a declared widening" names a rung for four cells, and
+#: each is here with that rung:
+#:
+#: * ``uniqueItems`` and ``contains`` -- "Rung KEYWORD: the array is ``list[X]`` and the
+#:   duplicate or existential check is the schema half's alone";
+#: * ``items`` -- "A list-valued ``items``.  Rung JOIN: ``list[A \\| B \\| ...]`` over the
+#:   positional schemas, dropping position and arity";
+#: * ``allOf`` -- "An ``allOf`` restatement that neither matches nor narrows.  Rung
+#:   KEYWORD: the field takes the base's declaration and the restatement's extra facts
+#:   are dropped."
+#:
+#: The rest take the rung that follows from WHAT THE KEYWORD CONSTRAINS, which is the
+#: only thing a rung can be a function of -- section 2's ladder is ordered by how much
+#: of a node a drop costs:
+#:
+#: * a keyword that SELECTS the type word drops that selection and keeps the
+#:   constraints, which is the ladder's own second rung and its own example
+#:   (``format: uri`` beside ``maxLength``): ``type``, ``format`` -> ``TYPE``;
+#: * a keyword holding ALTERNATIVE subschemas is replaced by the union of the shapes it
+#:   holds, the ladder's third rung: ``oneOf``, ``anyOf``, ``items`` -> ``JOIN``;
+#: * a keyword declaring the node's CONTAINER leaves the bare container, the ladder's
+#:   fourth rung (``dict[str, Any]``): ``properties``, ``additionalProperties``,
+#:   ``patternProperties``, ``propertyNames`` -> ``CONTAINER``;
+#: * a keyword whose reach is ANOTHER DOCUMENT's is unknown here, and section 6 of the
+#:   architecture document says what that costs -- a fragment the target declared no
+#:   symbol at widens "to the target's own root symbol where the fragment is reachable
+#:   under it and to TOP otherwise" -- so ``$ref`` -> ``TOP``, which is the rung that is
+#:   safe without knowing;
+#: * everything else is ONE CONSTRAINT among others on a type that survives the drop,
+#:   which is the ladder's first rung: every bound, every pattern, every pinned value,
+#:   every rule.
+#:
+#: **A fact-stating cell whose keyword is not here is a ``BuildFailure`` at import**
+#: (:func:`_with_rungs`), so a row added later cannot reach a handler with a ``None``
+#: rung and be told at that handler that it has no rung -- which is where
+#: ``approximate`` would report a decision nobody made as a compiler defect.
+_RUNG: Mapping[str, Rung] = {
+    # structure
+    "type": Rung.TYPE,
+    "properties": Rung.CONTAINER,
+    "required": Rung.KEYWORD,
+    "$ref": Rung.TOP,
+    # values
+    "const": Rung.KEYWORD,
+    "enum": Rung.KEYWORD,
+    "default": Rung.KEYWORD,
+    # strings
+    "pattern": Rung.KEYWORD,
+    "format": Rung.TYPE,
+    "minLength": Rung.KEYWORD,
+    "maxLength": Rung.KEYWORD,
+    # numbers
+    "minimum": Rung.KEYWORD,
+    "maximum": Rung.KEYWORD,
+    "exclusiveMinimum": Rung.KEYWORD,
+    "exclusiveMaximum": Rung.KEYWORD,
+    "multipleOf": Rung.KEYWORD,
+    # arrays
+    "items": Rung.JOIN,
+    "minItems": Rung.KEYWORD,
+    "maxItems": Rung.KEYWORD,
+    "uniqueItems": Rung.KEYWORD,
+    "contains": Rung.KEYWORD,
+    # objects
+    "additionalProperties": Rung.CONTAINER,
+    "patternProperties": Rung.CONTAINER,
+    "propertyNames": Rung.CONTAINER,
+    "minProperties": Rung.KEYWORD,
+    "maxProperties": Rung.KEYWORD,
+    "dependencies": Rung.KEYWORD,
+    # combinators and conditionals
+    "allOf": Rung.KEYWORD,
+    "oneOf": Rung.JOIN,
+    "anyOf": Rung.JOIN,
+    "if": Rung.KEYWORD,
+    "then": Rung.KEYWORD,
+    "else": Rung.KEYWORD,
+    "not": Rung.KEYWORD,
+}
+
+#: The positions whose rung differs from the keyword's own, with the sentence that
+#: decides each.  Section 5's "(b)" has one such row: "**An empty intersection** -- two
+#: disjoint type words, two disjoint enums.  The node admits nothing, which is a
+#: contradiction in the document.  Rung TOP, and this is the answer the ``not`` row
+#: already gives for ``not: {}``."
+#:
+#: A conjunct is at CONJ, so the cell that row names is ``type`` and ``enum`` THERE, and
+#: it differs from those keywords' own rungs (``TYPE`` and ``KEYWORD``) -- which is the
+#: test section 3 sets for a position override existing at all.
+#:
+#: Where the row has no override CELL at that position, :func:`_with_rungs` synthesises
+#: one from the default with an EMPTY ``compiles``, which is the module docstring's own
+#: rule for a cell that differs in nothing a grid line states: "An override whose
+#: ``compiles`` is EMPTY renders no clause: it records a cell the default sentence
+#: already covers in prose."  So the generated grids do not move for a rung.
+_RUNG_AT: Mapping[tuple[str, Position], Rung] = {
+    ("type", Position.CONJ): Rung.TOP,
+    ("enum", Position.CONJ): Rung.TOP,
+}
+
+
+def _with_rungs(table: dict[str, Row]) -> dict[str, Row]:
+    """Every cell of ``table``, with :attr:`Cell.widens_to` filled from the declaration.
+
+    One pass and not 107 positional arguments, for the reason the rung is declared per
+    keyword rather than per cell: a reader auditing "which rung does this keyword drop
+    to" reads one mapping with the rule beside it, where 107 trailing arguments can only
+    be audited by reading all of them.  The CELL is what carries the answer afterwards --
+    section 3's "``widens_to`` enters the cell" -- and
+    :func:`codegen.lower.approximate.approximate` reads it there and nowhere else.
+
+    Raises :class:`codegen.refusal.BuildFailure`'s own condition as a ``ValueError``
+    here, because this module imports nothing of this package (section 11: the
+    declaration layer is a leaf) and a malformed table is a defect in the compiler that
+    must stop the import rather than reach a handler.
+    """
+    out: dict[str, Row] = {}
+    for keyword, row in table.items():
+        rung = _RUNG.get(keyword)
+        compiling = any(states_a_fact(c.effect) for c in (row.default, *row.at.values()))
+        if rung is None and compiling:
+            raise ValueError(
+                f"{keyword!r} has a cell that compiles to a type, a field or a rule and "
+                "no entry in _RUNG: section 3 of the architecture document makes the "
+                "rung the keyword's own decision, so a keyword with a fact to drop has "
+                "to say which rung dropping it takes"
+            )
+        if rung is not None and not compiling:
+            raise ValueError(
+                f"{keyword!r} has an entry in _RUNG and no cell that compiles to "
+                "anything: a rung for a keyword with nothing to drop is a decision "
+                "about a non-decision (section 3), so the entry has to go"
+            )
+        at_cells = {
+            position: _filled(cell, _RUNG_AT.get((keyword, position), rung))
+            for position, cell in row.at.items()
+        }
+        for (kw, position), override in _RUNG_AT.items():
+            if kw != keyword or position in at_cells:
+                continue
+            if not states_a_fact(row.default.effect):
+                raise ValueError(
+                    f"_RUNG_AT names ({kw!r}, {position}) and the cell there compiles to "
+                    "nothing, so there is no fact for a rung to be about"
+                )
+            # The module docstring's own rule for a cell that differs in nothing a grid
+            # line states: an EMPTY ``compiles`` renders no clause.
+            at_cells[position] = row.default._replace(widens_to=override, compiles="")
+        out[keyword] = row._replace(default=_filled(row.default, rung), at=at_cells)
+    return out
+
+
+def _filled(cell: Cell, rung: Rung | None) -> Cell:
+    """``cell`` with its rung, or unchanged where it states no fact to drop."""
+    return cell._replace(widens_to=rung) if states_a_fact(cell.effect) else cell
+
+
 #: **The table.**  Insertion order is the document's own grid order, because a grid
 #: line's position in its sub-table is read off it.
-TABLE: Mapping[str, Row] = {
-    **_STRUCTURE,
-    **_VALUES,
-    **_STRINGS,
-    **_NUMBERS,
-    **_ARRAYS,
-    **_OBJECTS,
-    **_COMBINATORS,
-    **_ADMITTED,
-    **_REFUSED,
-}
+TABLE: Mapping[str, Row] = _with_rungs(
+    {
+        **_STRUCTURE,
+        **_VALUES,
+        **_STRINGS,
+        **_NUMBERS,
+        **_ARRAYS,
+        **_OBJECTS,
+        **_COMBINATORS,
+        **_ADMITTED,
+        **_REFUSED,
+    }
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -1367,3 +1613,39 @@ def grid_of(keyword: str) -> str:
     if any(c.descends is not None for c in cells):
         return row.grid
     return ADMITTED
+
+
+#: Which SECTION of the semantics document each grid is, so a cell's address names the
+#: section a reader goes to.  Section 5's seven sub-tables are all section 5; section 6
+#: is the admitted projection and section 7 the refused one (:func:`grid_of`).
+_SECTION: Mapping[str, int] = {**dict.fromkeys(SECTION_5, 5), ADMITTED: 6, REFUSED: 7}
+
+#: The one place the semantics document is named from this package, so a renamed
+#: document moves in one line.  An address is read by a human, which is what makes the
+#: file name part of it.
+DOCUMENT = "docs/plan/rebuild-plan.md"
+
+
+def address(keyword: str) -> str:
+    """**The cell's own address**: where the row that decided this keyword is written.
+
+    ``docs/plan/architecture.md`` section 3, on why the OURS attribution of a widening is
+    derived and not stored: "the attribution of a widening the design decided is 'the row
+    that decided it', and the cell IS that row: the generator already knows a cell's
+    section and keyword, because it writes the grid from them.  A field holding it would
+    be a second copy of the cell's own address."
+
+    So this is that derivation, and it is the whole of the ``Ours`` attribution -- section
+    2 of the semantics document: "The attribution is therefore the **cell's own address**
+    and is derived, not stored: a reader goes from a widened field to the row that decided
+    it, and that row says why."
+
+    A keyword with NO ROW has no address, and section 5's own answer for it is the one
+    thing that can be said -- it is in none of sections 5, 6 and 7 -- so that is what it
+    reads, with the keyword named.  Rung TOP and this address are the pair the semantics
+    document's section 7 gives the first document to carry a new keyword.
+    """
+    if keyword not in TABLE:
+        return f"{DOCUMENT} §7 (no row): {keyword}"
+    grid = grid_of(keyword)
+    return f"{DOCUMENT} §{_SECTION[grid]} {grid}/{keyword}"
