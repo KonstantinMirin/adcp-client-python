@@ -207,7 +207,7 @@ KEY_BOUNDS = ("minProperties", "maxProperties")
 ARM = nodes_parse.ARM
 
 
-def _inner(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef:
+def _inner(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef | Refusal:
     """The decided type of something INSIDE a container, named where it needs to be.
 
     A constraint or a format on an inner node has nowhere to go: the compiler's
@@ -221,7 +221,7 @@ def _inner(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef
     return compiler.carried(decided, pointer, what, mod)
 
 
-def _contents(node: nodes.Base, symbol: str, what: str, mod: Module) -> ir.TypeRef:
+def _contents(node: nodes.Node, symbol: str, what: str, mod: Module) -> ir.TypeRef | Refusal:
     """The type of a container's CONTENTS -- its element, or its mapping's value.
 
     One function for the two, because the two are the same question asked at two
@@ -265,6 +265,8 @@ def _contents(node: nodes.Base, symbol: str, what: str, mod: Module) -> ir.TypeR
     """
     pointer = node.pointer
     decided = compiler.lower_node(node, symbol, mod)
+    if isinstance(decided, Refusal):
+        return decided
     if not decided.type.local and node.description:
         # **The node's OWN name is asked for FIRST, and the order is the P2 rule rather
         # than a preference.**  A described node is named here anyway, and
@@ -275,14 +277,17 @@ def _contents(node: nodes.Base, symbol: str, what: str, mod: Module) -> ir.TypeR
         # nothing reads.  Measured on ``trusted-match/publisher-tmpx-config.json``,
         # whose described mapping value recorded ``DictMinProperties1MaxProperties2``
         # and then rendered its bound inline under its own name.
-        return compiler.name_the_node(mod, symbol, pointer, node, decided).type
+        named = compiler.name_the_node(mod, symbol, pointer, node, decided)
+        if isinstance(named, Refusal):
+            return named
+        return named.type
     return _inner(decided, pointer, what, mod)
 
 
 # --------------------------------------------------------------------------- #
 # the rows
 # --------------------------------------------------------------------------- #
-def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided:
+def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided | Refusal:
     """``list[X]``, with ``minItems``/``maxItems`` on the LIST and not on ``X``.
 
     The bound comes back in the document's own spelling and rides on the field
@@ -291,7 +296,9 @@ def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided:
     not, which is exactly why the two are decided here and spelled by the compiler.
     """
     pointer, position = node.pointer, node.position
-    compiler.check_keywords(node, _ARRAY_CLAIMS, mod=mod)  # the walk's own check
+    refused = compiler.check_keywords(node, _ARRAY_CLAIMS, mod=mod)  # the walk's own check
+    if refused is not None:
+        return refused
     if node.distinct and position is not Position.PROP:
         # AFTER the screen, so an array carrying BOTH this and a keyword no row lowers
         # is reported on the other one: this refusal is final and that one may not be.
@@ -307,7 +314,7 @@ def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided:
         # that reach this refusal are measured to be exactly the other positions: 4 at a
         # document root, 6 at a mapping value, 5 inside a combinator branch and 3 at a
         # ``definitions``/``$defs`` entry.
-        raise Refusal("uniqueItems", pointer, _DISTINCT_HAS_NOWHERE_TO_LIVE, kind=Kind.VERDICT)
+        return Refusal("uniqueItems", pointer, _DISTINCT_HAS_NOWHERE_TO_LIVE, kind=Kind.VERDICT)
     bounds = dict(node.bounds)
     if "items" not in node.declares:
         # ``{"type": "array"}`` admits a list of anything, and ``Any`` is that set --
@@ -315,7 +322,7 @@ def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided:
         # the list's, so it is carried.
         element = ir.TypeRef("typing.Any")
     elif node.element is None:
-        raise Refusal(
+        return Refusal(
             "items",
             pointer,
             "items is a list, which is draft-07 tuple validation: each position is its "
@@ -323,7 +330,10 @@ def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided:
             kind=Kind.VERDICT,
         )
     else:
-        element = _contents(node.element, name_hint + "Item", "the element", mod)
+        lowered = _contents(node.element, name_hint + "Item", "the element", mod)
+        if isinstance(lowered, Refusal):
+            return lowered
+        element = lowered
     if position is Position.ROOT:
         # **D2's root-array ``RootModel[list[X]]`` row, refused AT THE POSITION.**
         #
@@ -339,7 +349,7 @@ def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided:
         # rule, step 7) and ``media-buy/product-refinement.json`` refuses inside its
         # ``items``.  So a ``RootModel`` base would be a class no document reaches and no
         # pair grades -- a DEFERRAL, since the obstruction is unwritten code.
-        raise Refusal(
+        return Refusal(
             "type",
             pointer,
             f"a root array is D2's RootModel[list[X]] row and {element.path or '<a class>'}"
@@ -351,7 +361,7 @@ def array(node: nodes.Array, name_hint: str, mod: Module) -> Decided:
     return Decided(ir.TypeRef(container="list", of=(element,)), bounds)
 
 
-def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided:
+def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided | Refusal:
     """``dict[K, V]`` for an object node that declares no property.
 
     The node has no field to hang a class on and no property name to derive a class
@@ -365,15 +375,17 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided:
     this module goes.
     """
     pointer, position = node.pointer, node.position
-    compiler.check_keywords(  # the walk's own check
+    refused = compiler.check_keywords(  # the walk's own check
         node,
         {"type", "additionalProperties", "patternProperties", "propertyNames", *KEY_BOUNDS},
         mod=mod,
     )
+    if refused is not None:
+        return refused
     bounds = dict(node.bounds)
     if node.patterns is not None:
         if node.patterns != 1:
-            raise Refusal(
+            return Refusal(
                 "patternProperties",
                 pointer,
                 f"{node.patterns if node.patterns >= 0 else '?'} patterns, and a "
@@ -405,7 +417,7 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided:
             # ``core/creative-representation.json#/allOf/2/then/properties/assets``),
             # which §5 lowers to nothing anyway -- so the ABSENT arm costs no document
             # and closes a hole rather than refusing one.
-            raise Refusal(
+            return Refusal(
                 "additionalProperties",
                 pointer,
                 f"{stated_extra!r} beside patternProperties: a "
@@ -420,7 +432,7 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided:
             # ``patternProperties`` expression AS the key (below), so a
             # ``propertyNames`` beside it would be dropped in silence -- the model
             # wider than its document, which is §2's named failure.
-            raise Refusal(
+            return Refusal(
                 "propertyNames",
                 pointer,
                 "beside patternProperties, which is two statements about one key type; "
@@ -445,31 +457,48 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided:
         # ``harness`` reads both sides into that one shape so the value schema and the
         # key expression are each GRADED rather than excused.
         expr = node.pattern
+        if expr is None:
+            # **A crash is not an outcome** (§9), and this is the one place the row met
+            # that rule.  :attr:`nodes.Mapping_.pattern` is the parser's record of the
+            # single entry's key where that key is a STRING and ``None`` where it is not,
+            # so the two fields can disagree -- ``patterns == 1`` with no expression --
+            # and ``bundle.escape_key(None)`` was then a ``TypeError`` naming no
+            # document, pointer or keyword.  A malformed document is a property of the
+            # DOCUMENT (§4's shape-validation rule), so it is a VERDICT.  Population 0,
+            # necessarily: ``json.loads`` gives every object key as a string, so no
+            # bundle document can reach it and nothing moves -- what changes is that the
+            # unreachable arm names a document instead of stopping the run.
+            return Refusal(
+                "patternProperties",
+                pointer,
+                "its one entry's key is not a string, so there is no expression to "
+                "constrain the mapping's key type with",
+                kind=Kind.VERDICT,
+            )
         # ``bundle.escape_key``: §11 puts a pointer segment speller in the SOURCE
         # layer, and §14 step 5 moved it there out of ``compiler.py``.  The ONE
         # pointer this module spells, and the parser §4 declares is what retires it --
         # a node's pointer is assigned when the node is built.
         key = _key(node.key, mod)
+        if isinstance(key, Refusal):
+            return key
+        patterned = _value(
+            node.value,
+            f"{pointer}/patternProperties/{bundle.escape_key(expr)}",
+            name_hint,
+            mod,
+            keyword="patternProperties",
+        )
+        if isinstance(patterned, Refusal):
+            return patterned
         return Decided(
-            ir.TypeRef(
-                container="dict",
-                of=(
-                    _value(
-                        node.value,
-                        f"{pointer}/patternProperties/{bundle.escape_key(expr)}",
-                        name_hint,
-                        mod,
-                        keyword="patternProperties",
-                    ),
-                ),
-                key=key,
-            ),
+            ir.TypeRef(container="dict", of=(patterned,), key=key),
             bounds,
         )
 
     ap = True if node.extra is None else node.extra
     if ap is False:
-        raise Refusal(
+        return Refusal(
             "additionalProperties",
             pointer,
             "an object declaring no property and refusing every additional one admits "
@@ -477,19 +506,23 @@ def mapping(node: nodes.Mapping_, name_hint: str, mod: Module) -> Decided:
             kind=Kind.VERDICT,
         )
     key = _key(node.key, mod)
+    if isinstance(key, Refusal):
+        return key
     value = _value(node.value, f"{pointer}/additionalProperties", name_hint, mod, stated=ap)
+    if isinstance(value, Refusal):
+        return value
     return Decided(ir.TypeRef(container="dict", of=(value,), key=key), bounds)
 
 
 def _value(
-    node: nodes.Base | None,
+    node: nodes.Node | None,
     pointer: str,
     name_hint: str,
     mod: Module,
     *,
     keyword: str = "additionalProperties",
     stated: Any = None,
-) -> ir.TypeRef:
+) -> ir.TypeRef | Refusal:
     """A mapping's value type; ``Any`` for ``true`` and for the empty schema.
 
     ``true`` and ``{}`` are the same schema -- every value -- and ``Any`` is that set.
@@ -506,11 +539,11 @@ def _value(
         # schema refuses by the DOCUMENT'S OWN WORD, which is what ``keyword`` is for.
         if stated is True or stated == {} or stated is None:
             return ir.TypeRef("typing.Any")
-        raise Refusal(keyword, pointer, f"not a schema: {stated!r}", kind=Kind.VERDICT)
+        return Refusal(keyword, pointer, f"not a schema: {stated!r}", kind=Kind.VERDICT)
     return _contents(node, name_hint + "Value", "the value", mod)
 
 
-def _key(node: nodes.Base | None, mod: Module) -> ir.TypeRef:
+def _key(node: nodes.Node | None, mod: Module) -> ir.TypeRef | Refusal:
     """A mapping's key type, from the document (D5), with ``str`` the last resort.
 
     The order is the document's own: a ``$ref`` NAMES the key type, so the key is
@@ -555,9 +588,9 @@ def _key(node: nodes.Base | None, mod: Module) -> ir.TypeRef:
     if isinstance(node, nodes.Reference):
         # The one key kind that needs no alias: the bundle already names the type, so
         # P2 applies unchanged -- an import, and no constraint of the target copied.
-        return _inner(compiler.lower_node(node, "", mod), pointer, "the key", mod)
+        return _key_type(node, mod)
     if isinstance(node, nodes.Enumeration):
-        raise Refusal(
+        return Refusal(
             "enum",
             pointer,
             f"propertyNames closes the key set to {sorted(map(repr, node.members))}, which "
@@ -578,10 +611,22 @@ def _key(node: nodes.Base | None, mod: Module) -> ir.TypeRef:
     # and a JSON key is a string -- so this row no longer hands the dispatch a mapping the
     # document does not state, and §9's "never refuse a keyword the walk itself inserted"
     # is held by the reading being the parser's.
-    return _inner(compiler.lower_node(node, "", mod), pointer, "the key", mod)
+    return _key_type(node, mod)
 
 
-def multi_type(node: nodes.MultiType, name_hint: str, mod: Module) -> Decided:
+def _key_type(node: nodes.Node, mod: Module) -> ir.TypeRef | Refusal:
+    """The key's own decided type, named where its facts need a carrier.
+
+    One expression for the two arms of :func:`_key` that reach the walk -- a ``$ref``
+    key and a constrained one -- so the two cannot come to read a refusal differently.
+    """
+    decided = compiler.lower_node(node, "", mod)
+    if isinstance(decided, Refusal):
+        return decided
+    return _inner(decided, node.pointer, "the key", mod)
+
+
+def multi_type(node: nodes.MultiType, name_hint: str, mod: Module) -> Decided | Refusal:
     """``X | Y`` for a node whose ``type`` is a list, each keyword on its OWN arm.
 
     An arm is the node re-cut to one type, carrying only the keywords that type can
@@ -623,17 +668,19 @@ def multi_type(node: nodes.MultiType, name_hint: str, mod: Module) -> Decided:
     pointer, position = node.pointer, node.position
     kinds = list(node.words)
     if not kinds or len(set(kinds)) != len(kinds) or not all(isinstance(k, str) for k in kinds):
-        raise Refusal("type", pointer, f"not a set of type names: {kinds!r}", kind=Kind.VERDICT)
+        return Refusal("type", pointer, f"not a set of type names: {kinds!r}", kind=Kind.VERDICT)
     unknown = sorted(set(kinds) - set(ARM))
     if unknown:
-        raise Refusal("type", pointer, f"unknown type(s) {unknown}", kind=Kind.VERDICT)
+        return Refusal("type", pointer, f"unknown type(s) {unknown}", kind=Kind.VERDICT)
     carried = frozenset().union(*(ARM[k] for k in kinds))
-    compiler.check_keywords(  # the walk's own check
+    refused = compiler.check_keywords(  # the walk's own check
         node,
         {"type", *carried},
         f"no arm of {sorted(kinds)} can carry it, so it constrains nothing",
         mod=mod,
     )
+    if refused is not None:
+        return refused
     stated = list(node.stated)
     live = [k for k in kinds if k != "null"]
     if stated and len(live) > 1:
@@ -671,7 +718,7 @@ def multi_type(node: nodes.MultiType, name_hint: str, mod: Module) -> Decided:
         # with two live arms and a constraint sits in a document the emitter reaches.
         # It is lifted the rest of the way by teaching the comparison to compare a
         # constrained union branch-wise, which is the harness's row and not this one's.
-        raise Refusal(
+        return Refusal(
             stated[0],
             pointer,
             f"{sorted(kinds)} states {stated} with {len(live)} live arms, which D5's "
@@ -688,11 +735,20 @@ def multi_type(node: nodes.MultiType, name_hint: str, mod: Module) -> Decided:
     # it, and each member arrives here as a node of its own kind.  This row re-cut the
     # node and handed each piece back to the dispatch, which is the defect §2 names.
     arms: list[ir.TypeRef] = []
+    # **The arms are lowered in the document's own ``type`` order and the FIRST refusal
+    # returns** (§6), which is :func:`codegen.refusal.first_refusal` fused with the map:
+    # the parser cut the node into one member per word in the order the list states them
+    # (``schema.parse.ARM``), so the arm a refusal names is the earliest one in the
+    # document and not the one iteration happened to reach first.
     for kind, member in zip(kinds, node.members, strict=True):
         at = f"{pointer}/type/{kind}"  # not a real pointer; it names the ARM that refused
-        arms.append(
-            _inner(compiler.lower_node(member, name_hint, mod), at, f"the {kind!r} arm", mod)
-        )
+        decided = compiler.lower_node(member, name_hint, mod)
+        if isinstance(decided, Refusal):
+            return decided
+        arm = _inner(decided, at, f"the {kind!r} arm", mod)
+        if isinstance(arm, Refusal):
+            return arm
+        arms.append(arm)
     unique = ir.deduped(arms)  # document order, deduped; see ir.deduped for why not a hash
     if len(unique) == 1:
         return Decided(unique[0])

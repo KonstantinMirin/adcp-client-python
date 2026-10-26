@@ -12,9 +12,19 @@ from __future__ import annotations
 
 from codegen import compiler, ir
 from codegen.compiler import Decided, Module
+from codegen.refusal import Refusal
 from codegen.schema import nodes
 
 
-def lower(node: nodes.Object, name_hint: str, mod: Module) -> Decided:
-    """The class, declared under the name this position derives, as a local type."""
-    return Decided(ir.TypeRef(compiler.lower_object(node, name_hint, mod), local=True))
+def lower(node: nodes.Object, name_hint: str, mod: Module) -> Decided | Refusal:
+    """The class, declared under the name this position derives, as a local type.
+
+    The refusal the class declarer returns comes back out UNCHANGED (§6: "a handler that
+    receives a ``Refusal`` from a child returns it, unchanged, immediately"), so the
+    document is refused at the innermost node that carried the keyword and this row adds
+    no sentence of its own to it.
+    """
+    declared = compiler.lower_object(node, name_hint, mod)
+    if isinstance(declared, Refusal):
+        return declared
+    return Decided(ir.TypeRef(declared, local=True))

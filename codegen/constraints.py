@@ -78,6 +78,7 @@ from dataclasses import replace
 from typing import Any
 
 from codegen import compiler, ir
+from codegen.refusal import BuildFailure
 
 #: The module an emitted alias is reachable at, and the only path to one: there is
 #: no flat root and no second spelling.  PUBLIC, unlike ``adcp.types._schemas``,
@@ -363,7 +364,7 @@ def resolve(
     return None if name is None else f"{MODULE}.{name}"
 
 
-class AliasCollision(Exception):
+class AliasCollision(BuildFailure):
     """Two distinct constraints derive one alias name.
 
     A BUILD FAILURE and not a ``Refusal``, on ``emit.AmbiguousRoot``'s reasoning:
@@ -371,6 +372,12 @@ class AliasCollision(Exception):
     and this is the emitter disagreeing with itself about what a name MEANS.
     Recording it as a refusal would file it against a document, where it would
     read as the bundle's fault, and the build would pass.
+
+    **It is one of the two instances ``docs/plan/architecture.md`` §2 names**, which is
+    why it subclasses :class:`codegen.refusal.BuildFailure` rather than ``Exception``
+    directly: §2 gives the compiler ONE exception type for its own defects, and a reader
+    asking "what stops this build" reads one name.  The specific class is kept because
+    the message a reader of a collision needs is this one and a test names it.
     """
 
 
