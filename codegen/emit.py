@@ -95,6 +95,7 @@ from dataclasses import dataclass, field, replace as dataclasses_replace
 from pathlib import Path
 from typing import Any
 
+from adcp.types._base import Approximation
 from codegen import bundle, compiler, harness, ir, render
 from codegen.keywords import Position
 from codegen import constraints as constraints_module
@@ -603,6 +604,22 @@ class Emitted:
     #: Separate from :attr:`drops` for the reason
     #: :attr:`compiler.Module.carries_nothing` states: two channels, two names.
     carries_nothing: dict[str, list[str]] = field(default_factory=dict)
+    #: document -> §2's approximations for it, in document order.  A THIRD channel beside
+    #: :attr:`drops` and :attr:`carries_nothing`, and §10 forbids printing it with either:
+    #: "a carries-nothing line says a keyword constrained nothing, and an approximation
+    #: says a keyword constrained something the annotation does not carry.  Printing them
+    #: in one list would sum two different things."
+    #:
+    #: A document with none has no entry, so the mapping names exactly the documents
+    #: carrying one -- which is §10's ``D``, a different figure over a different
+    #: denominator from the ``K`` facts, and the report never adds them.
+    #:
+    #: **This is the report's copy and not the grader's.**  §9 forbids the verifier the
+    #: walk, so what the GRADER reads is ``__adcp_approximations__`` off the emitted class
+    #: (§7); this is the same data on the run's own channel, for the three figures the CLI
+    #: prints.  A disagreement between the two is a defect in ``render`` and
+    #: ``tests/test_approximation.py`` is where it is caught.
+    approximations: dict[str, list[Approximation]] = field(default_factory=dict)
 
 
 # **``_composed_nodes`` is ``bundle.composed`` now**, and the move is §11's row for it:
@@ -1124,6 +1141,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             out.drops[document] = dict(mod.drops)
         if mod.carries_nothing:
             out.carries_nothing[document] = list(mod.carries_nothing)
+        if bound.approximations:
+            out.approximations[document] = list(bound.approximations)
         # The document travels WITH the module, at its own bundle-relative path,
         # because ``__adcp_schema__`` names that path and ``strict_validate``
         # reads it to decide acceptance (D4).  The bundle is a build-time input
