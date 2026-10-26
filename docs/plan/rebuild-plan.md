@@ -3,7 +3,8 @@
 The AdCP schema bundle is a directory of JSON Schema draft-07 documents. This describes how we
 turn it into Pydantic models: what we produce, the principles that decide every case, how we walk
 a document, what we emit, and how each keyword compiles. Where a keyword compiles to nothing, or
-is refused, that is stated with the keyword.
+to an annotation that says less than the keyword does, that is stated with the keyword — and no
+keyword refuses a document (§2, §7).
 
 No site counts appear here. A count is a property of one bundle version and the method has to
 outlive it; the instruments under `survey/` and the test suite carry the measurements.
@@ -32,9 +33,17 @@ of application code sees what kind of thing it is without looking it up.
 
 There is **one import path per class**, and never a second way to reach the same class. Two
 spellings for one class is two things to keep in agreement, and it makes a reader unable to tell
-from the import which document a class came from. The one path is the domain surface's. Inside
-a private module, a second name bound to a class by identity (§4, two nodes of identical
-content) is that class and not a second one: `X is Y` holds, and the surface exports it once.
+from the import which document a class came from. The one path is the domain surface's. A second
+name bound to a class by identity (§4, two nodes of identical content) is that class and not a
+second one: `X is Y` holds, and the surface exports it once. **That carve-out reaches across
+modules as well as inside one (2026-10-26)**, because a document that is a bare `$ref` to another
+document states the same node, and §4's rule for the same node stated twice does not change at a
+file boundary. Where the target is a class the root is a subclass of it instead, which is one
+class per name and needs no carve-out at all; the identity binding is for a target that is an
+alias, an enumeration or a root model, where there is nothing to subclass.
+
+**Every portable document of the bundle contributes a symbol** — a class, a root model, an
+enumeration or an alias — because §2 admits no document without one.
 
 The bundle directory is an argument (`python -m codegen.emit --bundle <dir>`). Nothing reads a
 hard-coded path, so a second bundle version can be generated beside the first.
@@ -53,6 +62,12 @@ accepts; the document is.
 wins — it is what the other side of the wire was written against. A model may therefore be looser
 than its document without being wrong, because the schema half already refused the payload. It
 must never be *tighter*, because then we refuse something the protocol permits.
+
+This principle is what makes the widening rule at the end of this section possible, and the two
+are one statement read twice: if the document decides acceptance, then a fact the annotation
+drops costs precision and not correctness, and the only annotation that can be wrong is a tight
+one. Every approximation below is therefore a loosening, and the check that guards it (§8's
+accepts) is a check for tightness.
 
 ### Constraints bind to the type, not the field
 
@@ -165,15 +180,123 @@ keyword constrains instances and we have not implemented it". The first is corre
 a model looser than its document. Naming each one makes the first auditable and leaves the second
 loud.
 
-### A keyword we cannot express refuses the document
+### A keyword we cannot express widens the annotation
 
-Where a position carries a keyword we have no compilation for, the document is refused by name,
-pointer and keyword, and is not emitted. A partial model is worse than none: it would claim
-conformance to a document it does not enforce.
+**This replaces "a keyword we cannot express refuses the document", decided by the owner on
+2026-10-26:** *"We accept ZERO refusals as an outcome in the scope of this work. Every single
+schema should be represented as a Python class. And if it can't — then we look into the reasons
+and approximate it, and raise the upstream issues."*
 
-A refusal states which kind it is. Either the obstruction is permanent — a property of the
-document, of Pydantic, or of the pointer space — or the compilation for that position has not
-been written yet. The two are counted separately and never summed.
+What it replaced said: where a position carries a keyword we have no compilation for, the
+document is refused by name, pointer and keyword, and is not emitted — because "a partial model
+is worse than none: it would claim conformance to a document it does not enforce."
+
+*Why it is replaced: that sentence contradicts the first principle of this section.* The first
+principle says the model is not the authority on acceptance — `strict_validate` runs the
+document before anything is constructed, and the document decides. A model looser than its
+document therefore claims nothing it does not enforce, because the claim is not the
+annotation's to make: the schema half has already refused the payload. "It would claim
+conformance" presumes the annotation IS the conformance claim, which is the proposition the
+first principle denies. The two cannot both stand, and the first is the one every other
+decision in this document rests on. The widened annotation costs **static precision**, not
+runtime correctness, and the refusal was paying a document's whole typed surface for it.
+
+The refusal argument survives in exactly two places, and the design keeps both.
+
+- **A narrowing.** An annotation tighter than its document refuses a payload the protocol
+  permits, and `strict_validate` cannot repair it: the schema half admits the payload and the
+  construction then fails. A narrowing is the defect the old sentence was reaching for, and
+  nothing below widens into one.
+- **No document of record.** Where the record (§3) is undefined, there is no schema half at all,
+  so `strict_validate` has no authority to run and the annotation is the only claim there is.
+  That is the one case where a partial model really would claim conformance to a document it
+  does not enforce, and it is the one refusal this compiler can still mint. §7 names its three
+  shapes and says what each is measured at.
+
+#### Direction: every approximation of acceptance is a widening
+
+A fact the annotation cannot carry is **dropped**, never substituted. Dropping a constraint
+widens the admitted set and can do nothing else; substituting a "nearest expressible"
+constraint could narrow, so substitution is not available. The handler takes the lowest rung of
+one ladder it can render, and the ladder is finite, monotone and terminates:
+
+1. **KEYWORD** — drop the one keyword, keep the type. (`uniqueItems` where no class and no
+   named type hold the rule → `list[X]`.)
+2. **TYPE** — drop a type selection the constraints contradict, keep the constraints.
+   (`format: uri` beside `maxLength` → the constrained `str`, the format riding as
+   `json_schema_extra`.)
+3. **JOIN** — replace a shape with the union of the shapes it holds. (A list-valued `items` →
+   `list[A | B | …]`, dropping position and arity.)
+4. **CONTAINER** — replace the node with its bare container: `list[Any]`, `dict[str, Any]`.
+5. **TOP** — `Any`.
+
+`Any` admits everything, so the ladder always has a rung left and no node can run out of
+renderings. **Which rung a keyword takes is the keyword's decision and lives in its cell
+(§5), never at the site that widens.**
+
+A narrowing is not discouraged here; it is a **failing check**. §8's accepts draw covers the
+node's admissible space by constraint class, so a type that refuses any value the document
+admits is reported with the value. Where a widening would still leave a narrowing — the type
+word itself refusing what a constraint admits — the type widens by another rung, to `Any` if
+nothing else carries it.
+
+#### An approximation is declared, and it is local
+
+A refusal propagates: a parent returns it upward unchanged and the document emits nothing. An
+approximation does **not**. It is a property of one node, the document still emits, and the
+approximation travels upward only to be **accumulated** — a refusal is absorbing, an
+approximation is additive. Every one carries its document, its pointer, the keyword whose fact
+the annotation does not carry, the rung it took, that fact in the document's own spelling, and
+an **attribution**. Nothing is approximated by silence: an undeclared widening is a defect and
+§8 reports it as one.
+
+#### Two kinds of approximation, and they are never summed
+
+- **WIDENED** — the annotation admits a value the document refuses. The schema half refuses it,
+  so acceptance is unharmed; what is lost is what the type says. §8's comparison sees every one
+  of these, because the document states a fact the model does not.
+- **UNDERDETERMINED** — the annotation admits exactly what the document admits, and the VALUE it
+  constructs is not determined by the document. The only instance is a union whose branches
+  §4's dispatch cannot separate: `A | B` accepts the union of the branches either way, and
+  which branch an overlapping payload becomes is then a property of declaration order. No
+  comparison, draw or dump can see one, which is precisely why it is declared and why its
+  instrument is different (§8).
+
+#### Attribution: ours, or upstream's, and the issue is a reference
+
+§9's rule — "an exemption names an upstream issue, or it is this SDK's own decision and belongs
+in this document" — governs every approximation, and the attribution is a choice of two and not
+a free-text note:
+
+- **Ours.** The design decided this widening; the sentence is the keyword's own row in §5, §6 or
+  §7. The attribution is therefore the **cell's own address** and is derived, not stored: a
+  reader goes from a widened field to the row that decided it, and that row says why.
+- **Upstream.** The document could state the fact and does not, or states something no draft-07
+  reading can carry. The attribution is an **issue reference**, and it is a property of a
+  document and a pointer rather than of a keyword — the same keyword widens by our decision at
+  one site and by an upstream defect at another. It therefore lives in one registry keyed by
+  document, pointer and keyword, and an entry with no issue is a build failure rather than a
+  missing field.
+
+**Ours is work this project can do and must fall to zero. Upstream falls when an issue closes.**
+Summing them would report someone else's backlog as ours, which is the second half of §9's rule.
+
+#### What is counted, and over what
+
+Three figures, three denominators, never summed (§8 states the grading side of each):
+
+- **Emitted, over the population.** Every portable document of the bundle emits, and its
+  complement is the one irreducible class above — no document of record. This is a partition and
+  it is the directive's exit condition: *refused* is zero.
+- **Defects, over the facts compared.** *Missing*, *differs*, *added* and *over-declared* are
+  each pinned at zero.
+- **Approximations, over the facts compared**, split by kind and by attribution. This count
+  moves with emission, so §9 forbids pinning it; it is reported, and its `Ours` half ratchets
+  down.
+
+The approximation count is **not** a partition of the population the way *emitted / refused*
+was: one document carries many and most carry none. The number of documents carrying at least
+one is a different figure over a different denominator, and the two are never added.
 
 ---
 
@@ -201,8 +324,11 @@ A DEF entry is decided as its own kind under the name `<Root><Key>`, so a DEF an
 entry's own position's answer. An entry nothing references is not declared.
 
 One dispatch seam decides a node's kind, so every position reaches the same reader for the same
-shape. `Refusal` lives in the package every lowering imports, so any step can raise one without
-an import cycle.
+shape. **Every node reaches a lowering**: the seam is total, because a keyword the handler
+cannot render widens the annotation by §2 rather than refusing the document. The one refusal
+left is the record's own — a document whose references cannot be inlined has no record, so
+there is nothing for the walk to read and nothing for `strict_validate` to validate against.
+`Refusal` therefore lives with the bundle reader that mints it, not with the lowerings.
 
 ### The document of record
 
@@ -235,10 +361,36 @@ to draw from it; that copy is an instrument of one check, and it is not the docu
 | a scalar at a root | a module-level annotated alias, not a class |
 | a `oneOf` / `anyOf` of shapes | a base plus one class per branch |
 | a `oneOf` / `anyOf` of scalars at a root | a module-level alias over the union of their types |
+| a `oneOf` / `anyOf` at a root mixing a scalar branch with a class branch | a root model over the union of the branches' types |
+| a root stating no schema keyword at all | a permissive root model |
 
 A root scalar is an alias, so it has no class to carry `strict_validate`; its module binds the
 same validation as a module-level function over the same schema reference, so a class and an
 alias cannot disagree about what their document accepts.
+
+**The last two rows are new on 2026-10-26 and each replaces a refusal.**
+
+A root union mixing a scalar branch with a class branch used to refuse by name, on the reasoning
+that "the root symbol is a class or an alias, no shape here carries both". A **root model**
+carries both: its root type is the union of the branches' types, the scalar branch is a member
+type and the class branch is its own class, and the root model inherits `strict_validate` like
+any class. Nothing is dropped and nothing widens — the union admits exactly what the document
+admits — so this row costs no approximation. What it costs is ergonomics: a consumer writes
+`X(root=…)` where a base-plus-branches root takes the payload directly. That is a smaller price
+than a document with no type, and the row the old sentence was protecting — an all-scalar root
+union, which stays an alias — is untouched.
+
+A root stating no schema keyword at all is a registry's instance data sitting at a schema root,
+and §7 used to refuse it. Read by its own declared draft it is the **empty schema**: draft-07
+ignores an unknown key, so the document admits every instance, and a permissive root model is
+**faithful** to it rather than wide. Refusing it was never a statement about the document's
+accepted set; it was how the fact that the document is not really a schema showed up in the
+report. That fact now shows up where it belongs — as an approximation at the root with an
+upstream attribution, asking the registry either to drop its `$schema` or to declare a schema —
+and §7 says why the keyword half of that row is not a refusal either.
+
+Every one of these shapes carries `strict_validate` against its own document by one mechanism,
+so a class, a root model and an alias cannot disagree about what their document accepts.
 
 Two nodes with identical content emit one class. Two nodes with different content never do. The
 class is declared under the name of the position the walk reaches first, and every later
@@ -249,12 +401,23 @@ reached first.
 
 ### Names
 
-- **Root**: `pascal_case(title)`, acronyms kept. A missing or non-identifier title refuses.
+- **Root**: `pascal_case(title)`, acronyms kept; where the title is missing or derives no
+  identifier, `pascal_case` of the document's own file stem.
 - **Nested**: `pascal_case(property)` — `<Property>` for a property, `<Property>Item` for an array
   element, `<Property>Value` for a mapping value, `<Root><Key>` for a `definitions` entry. The
   module path already carries the document, so a nested name does not repeat it.
 - **Union branch**: its own `title`; else the `const` it pins on the discriminating property; else
-  its sorted `required` set.
+  its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
+
+**The two fallbacks are new on 2026-10-26, and each replaces a refusal with a derivation.** A
+missing root title used to refuse, and a branch with no identity used to refuse. Neither is an
+acceptance fact: a symbol is not something a document states about an instance, so deriving one
+from the document's own path or from its own branch order neither widens nor narrows, and it
+costs no approximation. Both fallbacks are functions of the one document — the file stem is the
+same whichever documents the run includes, and the branch index is document order — so §9's rule
+against deciding a document's output by a census over the run holds. A title is still preferred
+wherever one exists, because a derived name reads worse; what changes is that its absence is no
+longer fatal.
 
 ### A union root: the base, the branches, and how a payload reaches its branch
 
@@ -281,10 +444,11 @@ Four mechanics make it work, each because one of the others does not reach a pat
 The emitter writes three facts onto the base that are not recoverable at runtime: `_ROOT_REQUIRED`,
 the fields the root requires as opposed to the ones that select a branch; `_BRANCH_DISCRIMINATOR`,
 the property every branch pins a `const` on (the first dispatch source below), which the mixin
-reads to build the discriminated union, and which is empty where dispatch is the third source;
-and `_branch_combinator()`, `anyOf` or `oneOf`, because a refusal has to name a JSON Schema
-keyword and a document satisfying no branch fails each branch at field validation, where
-Pydantic reports `missing`.
+reads to build the discriminated union, and which is empty where dispatch is the third source or
+is declaration order; and `_branch_combinator()`, `anyOf` or `oneOf`, because a **validation
+error** has to name a JSON Schema keyword and a payload satisfying no branch fails each branch at
+field validation, where Pydantic reports `missing`. (That is a runtime refusal of a payload, not
+§2's refusal of a document — the compiler refuses no document for a union.)
 
 Branches subclass the base, so they do not exist while the base is built: the hook returns the
 base's own schema then, and the declaring module calls `model_rebuild(force=True)` afterwards.
@@ -315,18 +479,43 @@ sources, in order:
    overlapping, because admitting a union on an unproven disjointness is the defect this source
    exists to avoid.
 
-A union matching none of the three refuses, and what it refuses on is OVERLAP: a branch is never
-chosen by trying each and keeping the first that validates, because overlapping branches make
-that answer a property of declaration order rather than of the payload. Where nothing overlaps
-there is no order to depend on, which is why the third source is a dispatch and not a relaxation.
-A hand-written map per document is a fourth source and is refused: it is complete with respect to
-itself, so a branch added upstream leaves it silently wrong.
+A union matching none of the three emits a plain `A | B` over its branches and **declares an
+UNDERDETERMINED approximation at the union's pointer, attributed upstream.**
+
+*This replaces a refusal on OVERLAP, 2026-10-26.* The old sentence said a branch is never chosen
+by trying each and keeping the first that validates, because overlapping branches make that
+answer a property of declaration order rather than of the payload — and that reasoning is
+unchanged and is exactly what the approximation now records. What changes is that the
+order-dependence is no longer worth a document. `A | B` admits the union of the branches, which
+is what the document admits, so **nothing widens and nothing narrows**; for `oneOf` the schema
+half still enforces exclusivity, as it already does for every nested union. The whole of the
+loss is that an overlapping payload's branch is decided by declaration order, and the document
+does not say which branch it should be. That is the UNDERDETERMINED kind of §2, and it is the
+only instance of it.
+
+The attribution is upstream because a union whose branches are not separable is a defect in the
+union: the bundle already writes the idiom that separates them — each branch forbidding a name
+the other requires — so the fix is a copy from elsewhere in the same bundle, and the issue says
+so. Where nothing overlaps there is no order to depend on and no approximation, which is why the
+third source is a dispatch and not a relaxation.
+
+A hand-written map per document is still not a dispatch source: it is complete with respect to
+itself, so a branch added upstream leaves it silently wrong — and unlike declaration order it
+would be wrong without saying so, where an approximation says so by construction.
 
 ---
 
 ## 5. How each keyword compiles
 
 The draft-07 keywords the bundle uses. An answer is given per position where the positions differ.
+
+**The grids in this section are generated from `codegen/keywords.py` and are the cells as they
+stand before §2's widening rule lands.** Every clause reading "→ refused" in them is a decision
+§2 replaced on 2026-10-26, and the cell that carries it has not yet been rewritten. *"The
+widening each row takes"* at the end of this section is the hand-written half and states the cell
+each such row takes; the generator writes those sentences into the grids when the cells change,
+and until then the grids and that subsection are read together. Nothing hand-edits a grid: a cell
+is the one place a keyword decision lives, and a grid is its rendering.
 
 ### Structure
 
@@ -405,12 +594,116 @@ The draft-07 keywords the bundle uses. An answer is given per position where the
 | `not` | `not: {required: …}`, and `anyOf` / `allOf` of those → a `ForbiddenGroups` rule. Over a `const` or `enum` → a `NotValue` after-validator on the value's own annotated type. Any other shape → nothing on the model; the schema half answers and the ceiling is named. `not: {}` admits nothing, which the typeless `Any` carries. |
 <!-- end generated -->
 
+### The widening each row takes
+
+Every "→ refused" clause above becomes one of three answers, and **the largest group is neither
+a refusal nor an approximation.** The rows sort as follows.
+
+**(a) Rows whose answer is already decided here and was never implemented.** These cost no
+approximation at all: the sentence that grades them exists, the compiler does not honour it, and
+the directive's first effect is to make it. They are the dominant class.
+
+- **A plain keyword beside a `oneOf` / `anyOf`.** §4's union section already decides it — "every
+  keyword beside the combinator compiles onto the base, and every branch inherits it" — and §8
+  already decides how the result is graded, against the branch node read under the root's
+  siblings. The refusals reading "there is no pointer to the conjunction for it to name" predate
+  that pairing rule and are answered by it. No widening; the keyword compiles.
+- **`propertyNames` with an `enum`, and `enum` at KEY.** Both rows refuse "by name with the key
+  set". A `Literal` of the members is the key type, and Pydantic renders `dict[Literal[…], V]`
+  back as `propertyNames: {enum: […]}` — the document's own keyword, rendered and gradable.
+  Faithful, not wide. Where the key node is named, the `StrEnum` is the key type and renders the
+  same way.
+- **`format` beside another string constraint.** The `format` row refuses a `uri` beside a
+  string constraint because a URL type carries none. The row's own fallback already answers it:
+  the type is the constrained `str` and the `format` rides as
+  `json_schema_extra={"format": "uri"}`. Both facts are kept and neither half narrows; what is
+  given up is the URL type's parsing, which is not an acceptance fact.
+- **A local `$ref` cycle.** The `$ref` row says "a cycle refuses". A cycle is not an obstruction
+  in Python: a forward reference under a string annotation plus `model_rebuild()` after the
+  module's declarations represents it exactly, and §4 already calls `model_rebuild(force=True)`
+  for union branches. The cell's answer becomes the forward reference. A *cross-document* cycle
+  is a different thing and is not this row's: the record cannot be built for it, so it is §2's
+  one irreducible refusal, and the difference between the two cycles is the record and not the
+  type.
+- **A root that is a bare `$ref`.** Refused because binding this module's symbol to another
+  module's class would be a second way to reach one class, against §1. Where the target is a
+  class the answer is a **subclass** of it, which is one class per name and accepts exactly what
+  the base accepts, so §1 is untouched. Where the target is an alias, an enumeration or a root
+  model there is nothing to subclass and the symbol is bound to the target **by identity**, which
+  §1's own carve-out already admits inside a module and now admits across one: `X is Y` holds and
+  the domain surface exports it once.
+- **A scalar, enum, container or union target as a conjunct of an `allOf`.** The `$ref` row
+  already decides it — "the target is this node's own TYPE, and the other conjuncts and the
+  `allOf`'s siblings constrain it" — and the refusals reading "*X* is not a class, so it cannot
+  be a base" are the unimplemented half of that sentence.
+- **`uniqueItems` and `contains` where no class holds the value.** §2 already decides it: where
+  no class sits above the value, the rule hangs off the value's own annotated type. A root array
+  is a root model, and a root model carries a rule tuple exactly as a class does, so `Distinct`
+  and `AtLeastOne` reach it. The keyword is enforced, not dropped.
+- **A root stating only `if` / `then`.** Refused because "a root is exactly one kind and this one
+  states `if`". The conditional is a rule, and §2 hangs a rule with no class above it on the
+  value's own type: the root is a permissive root model carrying `ConditionalRequired`. The
+  document states a conditional and nothing else, and so does the model.
+
+**(b) Rows whose answer is a declared widening.** Each names its rung (§2's ladder) and its
+attribution.
+
+- **`uniqueItems` and `contains` where even a named type cannot hold the rule.** Rung KEYWORD:
+  the array is `list[X]` and the duplicate or existential check is the schema half's alone.
+  Attribution ours. These keywords are RULE-effect, so §8 grades them against the class's rule
+  tuple and the approximation is declared against that tuple rather than against a schema fact.
+  **`contains` keeps its own refusal of transcription and drops only the document.** The row
+  declines to transcribe a `contains` subschema into a validator, and that decision stands —
+  what it may no longer do is refuse the document for it. Dropping the keyword widens the array
+  (a list with no matching element is accepted by the model and refused by the schema half) and
+  transcribes nothing, so the row gets both of the things it wanted.
+- **A list-valued `items`.** Rung JOIN: `list[A | B | …]` over the positional schemas, dropping
+  position and arity, with the element type collapsing to `Any` where `additionalItems` is
+  absent or `true`. **The arity bound is not derived.** `additionalItems: false` implies
+  `maxItems: len(items)`, and §3 forbids deriving a keyword the bundle does not state, so the
+  bound stays with the schema half and the model does not restate it. Attribution ours.
+  Unexercised: bundle 3.2 states no list-valued `items` and no `additionalItems`, so this row
+  decides a shape before it arrives rather than after.
+- **An `allOf` restatement that neither matches nor narrows.** §2's intersection is the document's
+  own accepted set, and the refusal exists where the intersection of two object or two array
+  declarations is not computable. Rung KEYWORD: the field takes the base's declaration and the
+  restatement's extra facts are dropped. That widens relative to the intersection and cannot
+  narrow, because the base is one conjunct and the intersection is a subset of it. Attribution
+  ours.
+- **An empty intersection** — two disjoint type words, two disjoint enums. The node admits
+  nothing, which is a contradiction in the document. Rung TOP, and this is the answer the `not`
+  row already gives for `not: {}`: "admits nothing, which the typeless `Any` carries", with the
+  schema half refusing every payload. Attribution upstream, because a conjunction admitting
+  nothing is a defect in the conjunction.
+- **A keyword in none of §5, §6 or §7.** Rung TOP: the node is `Any`. Draft-07 ignores an
+  unknown key, so the document may be narrower than `Any` but can never be wider, which makes
+  `Any` the one safe rung when the keyword's reach is unknown. §2's by-name principle is intact
+  — the key is not silently ignored, it costs a declared approximation at the top rung and a loud
+  report line — and the node losing its whole type is exactly as visible as a refusal was.
+  Attribution ours.
+- **A union whose branches §4's dispatch cannot separate.** The one UNDERDETERMINED row; §4 states
+  it.
+- **A root stating no schema keyword.** §4 states it: a permissive root model, faithful to a
+  document that admits everything, with an upstream attribution carrying what the document
+  should have said.
+
+**(c) Rows that refuse nothing because there is no fact to approximate.** `errorMessage` and the
+registry data keys constrain no instance, so no annotation drops anything for them. They move to
+§6 — admitted by name, compiling to nothing, reported — and §7 says what becomes of its own set.
+
 ---
 
 ## 6. Keywords we admit and do not compile
 
 None of these can constrain an instance, so none compiles to a type, a rule or a base. Each is
 admitted **by name**. Several carry something anyway, and the table says what.
+
+**`errorMessage` and the registry data keys join this section on 2026-10-26**, from §7. Neither
+constrains an instance — `errorMessage` customises an `ajv-errors` message and the registry keys
+are a registry's own instance data — so no annotation drops a fact for them and there is nothing
+to widen. They are admitted by name, compile to nothing, and are reported, which is the answer
+`$comment` already gets. The grid below is generated and does not yet carry their rows; §7 says
+what refusing them was buying and where that now shows up.
 
 <!-- generated from codegen/keywords.py -->
 | keyword | what it does, or why nothing |
@@ -464,7 +757,51 @@ Four need a reason beyond that:
 
 ---
 
-## 7. Keywords we refuse
+## 7. Keywords we refuse — the set is empty
+
+**Emptied on 2026-10-26 by the owner's directive (§2).** No keyword's presence refuses a
+document. The section stays, with its membership still a projection of the declaration, because
+a reader looking for "which keywords refuse" has to find the answer, and because the one
+refusal left in the compiler is not a keyword's at all.
+
+Both rows below move to §6. Each was refused for a reason that was never about the document's
+accepted set:
+
+- **`errorMessage`** has no Pydantic rendering, and never needed one: it customises a validator's
+  message and constrains no instance, so an annotation that omits it omits no fact. The drop is
+  reported, as it was.
+- **The registry data keys** — `version`, `lastUpdated`, `vocabulary`, `_generated`,
+  `_generatedAt`, `adcp_version`, `architecture`, `asset_types`, `baseUrl`, `extensions`,
+  `governance`, `last_updated`, `mappings`, `prerelease`, `protocol_layers`, `published_version`,
+  `stability`, `usage_notes`, `versioning` — are a registry's own instance data at a schema root.
+  The old row's reasoning was that "admitting them by name would be admitting data as vocabulary"
+  and that "the documents carrying them are registries rather than schemas, and refusing them is
+  how that shows up". The first half was answering a question nobody asked: admitting a key by
+  name says it carries no acceptance meaning, which for instance data is simply true, and
+  draft-07 says the same thing by ignoring it. The second half was real — the refusal was a
+  SIGNAL about the document, not a statement about its accepted set — and a refusal is the wrong
+  instrument for a signal, because it costs the document its type to carry it. The signal moves
+  to the approximation record: a root stating only these keys is a permissive root model (§4)
+  with an upstream attribution asking the registry either to drop its `$schema` or to declare a
+  schema. A document that states these keys *beside* a real schema — a `type` and `properties`
+  at its root — emits normally, with the data keys compiling to nothing.
+
+**The one refusal the compiler can still mint is not a keyword's.** Where the document of record
+(§3) is undefined, there is no schema for `strict_validate` to validate against and no document
+for §8 to grade against, so §2's partial-model objection applies with nothing to answer it. The
+principle is that **the document has no defined accepted set**, and three shapes reach it:
+
+- a `$ref` whose target is not a bundle document;
+- a cross-document reference cycle, which the inliner cannot resolve. A LOCAL cycle is not one
+  of these — it is never inlined and renders as a forward reference (§5);
+- a document that fails its own declared draft's meta-schema, so it is not a schema at all and
+  has no accepted set to be faithful to.
+
+Measured over bundle 3.2's 1,054 portable documents, **all three are empty**: 0 undefined
+records, 0 meta-schema failures. That is why "zero refusals" is reachable for this bundle rather
+than aspirational, and it is the figure to re-measure on every bundle version. The refusal stays
+in the compiler regardless, because a bundle that grows one must report it rather than crash on
+it (§9).
 
 <!-- generated from codegen/keywords.py -->
 | keyword | why |
@@ -473,8 +810,15 @@ Four need a reason beyond that:
 | `version`, `lastUpdated`, `vocabulary`, and the registry payload keys | A registry's own instance data sitting at a schema root: `_generated`, `_generatedAt`, `adcp_version`, `architecture`, `asset_types`, `baseUrl`, `extensions`, `governance`, `last_updated`, `mappings`, `prerelease`, `protocol_layers`, `published_version`, `stability`, `usage_notes`, `versioning`. Not annotations and not schema keywords, so admitting them by name would be admitting data as vocabulary. The documents carrying them are registries rather than schemas, and refusing them is how that shows up. |
 <!-- end generated -->
 
+The grid above is generated and still carries both rows; the cells move when §6's do.
+
 A keyword in none of §5, §6 or §7 is one the bundle does not use. The first document to carry one
-refuses by name, so a new keyword is loud rather than ignored.
+**widens its node to `Any`** — §5's rung TOP — and declares the approximation, so a new keyword
+is loud rather than ignored. `Any` and not a narrower rung, because an unrowed keyword's reach is
+unknown: draft-07 ignores it, so the document may be narrower than `Any` and can never be wider,
+and `Any` is the one rung that is safe without knowing what the keyword does. A node that loses
+its whole type is as visible in the report and in the emitted module as a refused document was,
+which is what the old sentence was buying.
 
 ---
 
@@ -484,6 +828,14 @@ Three checks, run once per emitted class against the schema document it names.
 
 - **Accepts.** Draw payloads the document accepts and construct the class from each. A refusal
   here means the model is tighter than its document, which is the defect that matters.
+
+  **An approximation is a claim about this check, and this check is what proves it.** §2 says
+  every approximation of acceptance is a widening. A widening is therefore not a thing a
+  declaration asserts and a reader believes: for every fact an approximation drops, the draw
+  takes the values that keyword distinguishes — the same coverage classes below — and the class
+  must accept every one of them. An approximation that still refuses a value the document admits
+  is a NARROWING wearing a declaration, and it fails here, by value and by pointer. This is
+  what keeps "approximated" from being an allowlist.
 
   **The draw COVERS the node's admissible space by constraint class; it does not sample it.**
   "Never tighter" is a claim about every value the document admits, and a sampling draw reports
@@ -496,12 +848,40 @@ Three checks, run once per emitted class against the schema document it names.
 - **Dump.** Serialize the instance and validate the dump against the document. A failure means we
   emit something our own schema refuses.
 - **Compare.** Compare the class's `model_json_schema()` against the document of record (§3),
-  fact by fact. Three outcomes are distinguished: a fact the document states and the model does
-  not (*missing*), a fact both state differently (*differs*), and a fact the model states and
-  the document does not (*added*). The comparison is symmetric by construction, so neither
-  direction can be silently unexamined. It reads the document, never the payload generator's
-  canonicalisation of it: a canonicalised view states facts the document does not, and a
-  comparison reading it has to undo each of them, fact by fact, to report what the document says.
+  fact by fact. Outcomes are distinguished: a fact both state identically (*matched*), a fact the
+  document states and the model does not (*missing*), a fact both state differently (*differs*),
+  and a fact the model states and the document does not (*added*). The comparison is symmetric by
+  construction, so neither direction can be silently unexamined. It reads the document, never the
+  payload generator's canonicalisation of it: a canonicalised view states facts the document does
+  not, and a comparison reading it has to undo each of them, fact by fact, to report what the
+  document says.
+
+  **A fifth and a sixth outcome, added 2026-10-26 with §2's widening rule.** Under §2 every
+  unexpressed keyword widens instead of refusing, so the *missing* bucket would fill with facts
+  the design decided to drop, and a grader that cannot tell a decided widening from a defect
+  grades nothing. The split is the approximation declaration, read off the emitted class:
+
+  - ***approximated*** — the document states the fact, the model does not, and an approximation at
+    that pointer and keyword declares it, names its rung and carries an attribution. Not a
+    defect. Counted, listed, and proved wide by the accepts draw above.
+  - ***over-declared*** — an approximation is declared at a pointer and keyword where the model
+    DOES state the fact. A defect, and the mirror of *missing*. Without it the declarations rot:
+    a cell gets written, the widening stops happening, the declaration stays, and it then hides
+    the next real gap at the same pointer behind a stale excuse.
+
+  *missing* keeps its old meaning exactly — the document states a compared fact, the model does
+  not, and nothing declares it — and it is **the only one of the six that the directive leaves
+  as a defect in the undeclared direction.** So the directive does not loosen this check; it
+  moves its subject from "is the fact there" to "is its absence declared, attributed and proved
+  wide".
+
+  **An UNDERDETERMINED approximation (§2) is invisible to all three checks**, and that is why it
+  needs an instrument of its own. The comparison matches, the draw accepts and the dump
+  validates, because the annotation admits exactly what the document admits; the only thing
+  wrong is that the document does not decide which branch an overlapping payload becomes. Its
+  check is §4's disjointness derivation: **the set of unions declaring one equals the set the
+  derivation cannot separate**, in both directions, so a union that becomes separable loses its
+  declaration and a union that stops being separable gains one.
 
 **The comparison is GENERIC, and its keyword set is DERIVED from one declaration.** One
 declaration in the compiler holds every keyword's decision — what it compiles to, and whether the
@@ -521,17 +901,52 @@ comparison grades it against the class's rule tuple, which is the fact the emitt
 a rule keyword the document states and the tuple does not carry is *missing*, and a clause the
 document does not state is *added*.
 
-So one check stands above the three: **the comparison's keyword set equals the set the
-declaration renders.** A keyword the declaration renders and the comparison does not carry is a
-defect in the comparison. Nothing else in this section means anything until that holds, because
-every other check inherits its reach.
+So two checks stand above the three, and each is an **equality between two sets neither of which
+is hand-written**. Nothing else in this section means anything until both hold, because every
+other check inherits their reach.
+
+1. **The comparison's keyword set equals the set the declaration renders.** A keyword the
+   declaration renders and the comparison does not carry is a defect in the comparison.
+2. **The approximated set equals the declared set.** Every *approximated* fact has a declaration
+   (or it is *missing*), and every declaration has an *approximated* fact (or it is
+   *over-declared*). Both directions, for the reason the first equality has them: a set checked
+   in one direction is complete with respect to itself, and what it omits passes.
+
+*Why the second is not a weaker version of an allowlist.* An allowlist is a set a human writes
+and a check consults. These are two sets a machine derives — one from the document against the
+model, one from the emitter's own record of what it could not render — and the check is that
+they agree. Nobody can add an entry to make a failure go away without the model actually
+widening at that pointer, because the accepts draw then has to accept the values the keyword
+distinguishes. A declaration is a claim with two instruments pointed at it.
+
+**What is pinned, and what is only reported.** §9's rule that a pin with no denominator is not a
+ratchet decides this. *Missing*, *differs*, *added* and *over-declared* are pinned at zero: none
+of them moves with emission, because each is a disagreement between a model and its document and
+a correct emitter produces none however many documents it emits. The approximation count is
+**not pinned** — it rises when a document starts emitting, which would oblige every later change
+to loosen the pin, the opposite of a ratchet — and is instead reported with its denominator (the
+facts compared) and split by attribution, with the *ours* half ratcheting down as §5's cells
+land.
+
+*The worked example, which is why the split is necessary rather than tidy.* One keyword's gap —
+`deprecated`, rendered by its §6 row and not yet written through — moves *missing* from 0 to 57
+facts. Under the directive, without the split, every keyword's gap does that at once and the pin
+is abandoned on the first wave. With the split, those 57 are *approximated* against one cell-level
+attribution, *missing* stays 0, and the figure that moves is the one that is supposed to move.
+A grader whose pin survives the directive is the test of this section, and this is how it
+survives it.
 
 Pydantic is deliberately less strict than JSON Schema, so a payload the *document* refuses tells
 us nothing about the generated class on either route. There is therefore no "refuses" check on
 the model; the equivalent check confirms the schema half is wired to the class at all.
 
-Every class and alias the tree carries is paired with the schema node it names, and all three
-checks run over that pairing. A branch class of a root union is paired with its branch node read
+Every class, root model and alias the tree carries is paired with the schema node it names, and
+all three checks run over that pairing. **The population every check ranges over is every
+portable document of the bundle**, and under §2 every one of them emits, so there is no second
+set to reason about: a document that does not appear in the pairing is a defect in the run,
+where it used to be a refusal with a reason.
+
+A branch class of a root union is paired with its branch node read
 under the root's siblings: draft-07 applies every keyword beside the combinator to the same
 instance the branch describes, so a field the branch inherits from the base is a fact its node
 states and not one it added. A pair the payload generator cannot draw for still has to pass the
@@ -546,9 +961,24 @@ enumerates a subset reports on that subset only, and says so.
 
 Each is one sentence and its reason.
 
-- **A refusal for code nobody has written is a DEFERRAL, never a verdict.** A verdict says the
-  obstruction belongs to the document, to Pydantic, or to the pointer space, and is therefore
-  permanent. Minting one for unwritten code reports clearable work as finished.
+- **Code nobody has written is an APPROXIMATION, never a refusal.** *This replaces "a refusal for
+  code nobody has written is a DEFERRAL, never a verdict" on 2026-10-26.* The old rule separated
+  two kinds of refusal because minting the permanent kind for unwritten code reports clearable
+  work as finished. §2 now says unwritten code costs a declared widening and never a document, so
+  the DEFERRAL has nothing left to be the kind of: the two kinds collapse to one, and the one
+  that survives is the record's own (§7). The rule is the same rule one level stronger — do not
+  charge a document for work we have not done — and the thing that must not be lost is what the
+  deferral was carrying: *clearable* work stays visible, as the *ours* half of the approximation
+  count, which ratchets down.
+- **An approximation that narrows is not an approximation.** It is a model tighter than its
+  document wearing a declaration, and §8's accepts draw is pointed at exactly that. Widen by
+  another rung — to `Any` if nothing else carries it — rather than declaring the narrowing.
+- **A declared approximation the model does not make is a stale excuse.** §8 reports it as
+  *over-declared* and it is a defect, because a declaration that outlives its widening hides the
+  next real gap at the same pointer.
+- **Do not pin the approximation count.** It rises whenever the emitted set grows, which is the
+  next rule in this list. Pin the four disagreement counts, which do not, and ratchet the *ours*
+  split down.
 - **Do not hand-write the set a generic check ranges over.** Derive it from the declaration the
   tables are read against (§8). A hand-written set is complete with respect to itself, so what it
   omits passes in both directions and nothing says so.
@@ -561,10 +991,16 @@ Each is one sentence and its reason.
 - **A pin with no denominator is not a ratchet.** A count that rises whenever the emitted set
   grows obliges every later change to loosen it, which is the opposite of what a
   ratchet is for. Pin what does not move with emission and derive the rest.
-- **Never refuse a keyword the walk itself inserted.** A refusal must name something the document
-  states, or the document is blamed for the compiler's own rewriting.
-- **A crash is not an outcome.** Every node reaches emission or a refusal that names its document,
-  pointer and keyword. An unhandled type error names nothing and stops the run.
+- **Never approximate on a keyword the walk itself inserted.** An approximation must name
+  something the document states, or the document is blamed for the compiler's own rewriting —
+  and the declaration then cannot be checked, because §8 looks for the fact in the document and
+  does not find it.
+- **A crash is not an outcome.** Every node reaches a lowering, and the document reaches emission
+  or the one refusal §7 names. An unhandled type error names nothing and stops the run. Under §2
+  the walk is total, so this rule loses the type checker that used to enforce it — a handler had
+  to answer the refusal branch — and what replaces it is that `approximate` is the one function a
+  handler calls when it cannot render, reached by its own final arm. A handler that raises
+  instead is the defect this rule is now about.
 - **Do not decide one document's output by a census over the run.** A name, a shape or an
   import that depends on which other documents the run includes makes a one-document emission
   and a whole-bundle emission disagree about the same document; §2 names every constrained
