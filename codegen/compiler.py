@@ -232,42 +232,14 @@ def schema_ref(document: str, pointer: str) -> SchemaRef:
     return SchemaRef(document, f"#{pointer}")
 
 
-def escape_key(key: str) -> str:
-    """One JSON Pointer segment from a document KEY (RFC 6901's two escapes).
-
-    Named here, in the module every walk and both halves of the harness import,
-    because a pointer segment is spelled by FOUR readers -- ``bundle.nodes``,
-    ``harness._nodes``, ``harness.compare_schema``'s property descent, and the
-    mapping row's ``patternProperties`` pointer -- and the inverse is already
-    spelled once here (:func:`local_reference`'s caller).  A ``patternProperties``
-    expression is the first key in this bundle that actually NEEDS it: the
-    ``media-buy/get-products-response.json`` extension pattern is
-    ``^https?://[^@]+@sha256:[a-f0-9]{64}$``, whose two slashes would otherwise
-    read as two pointer hops and make the refusal's own pointer undereferenceable.
-    """
-    return key.replace("~", "~0").replace("/", "~1")
-
-
-def node_at(root: object, pointer: str) -> object:
-    """The node a JSON Pointer names in ``root``.  The INVERSE of :func:`escape_key`.
-
-    Beside its inverse for the same reason that one is here: a pointer segment is
-    spelled and read by more than one module, and ``bundle.record`` dereferences the
-    fragment half of a ``$ref`` while ``harness.at`` dereferences a pointer on the
-    document side.  Two readings of RFC 6901's two escapes is how an inliner and a
-    grader come to disagree about which node a reference names.
-
-    Raises ``KeyError``, ``IndexError``, ``TypeError`` or ``ValueError`` for a pointer
-    that names no node, which is what lets ``bundle.record`` turn one into a refusal
-    naming the reference rather than letting it crash the run.
-    """
-    cur = root
-    for part in pointer.lstrip("/").split("/"):
-        if part == "":
-            continue
-        part = part.replace("~1", "/").replace("~0", "~")
-        cur = cur[int(part)] if isinstance(cur, list) else cur[part]  # type: ignore[index]
-    return cur
+# **``escape_key`` and ``node_at`` are ``codegen/bundle.py``'s now.**  A JSON Pointer
+# segment speller and its inverse are the SOURCE layer's, which is where
+# ``docs/plan/architecture.md`` §11 puts them, and they sat here only because this
+# module is the one every walk and both halves of the verifier already imported.
+# That accident was the one import the VERIFIER made of the WALK, which §9 forbids
+# outright, and §14 step 5 is the row that moves the pair: the move is correct only
+# once ``bundle.py`` imports no lowering, which is what deleting the root selectors
+# did.
 
 
 # --------------------------------------------------------------------------- #
@@ -395,19 +367,21 @@ def decide(
     This used to be a callable carried on :attr:`Module.decide`, because reaching
     ``emit`` by name was forbidden: ``python -m codegen.emit`` executed that file as
     ``__main__`` under ``runpy``, so an importer of ``codegen.emit`` held a SECOND
-    module object with a second :data:`emit.ROWS` and a second decider.
+    module object with a second dispatch table and a second decider.
     ``codegen/__main__.py`` is the fix -- no module of this compiler is ever bound as
     ``__main__`` -- so the decision is a function with one name again and the
     :class:`Module` carries data rather than functions.
 
-    **The import is function-scope, and that is forced rather than cosmetic.**
-    ``emit.ROWS`` reads ``bundle``'s root selectors at MODULE level and ``bundle``
-    imports the lowerings, so a module-level import of ``emit`` from anywhere the
-    lowerings reach makes ``import codegen.bundle`` an ``AttributeError`` on a
-    partially initialised ``bundle`` -- measured, not theorised.  ``docs/plan``'s §14
-    step 5 moves ``decide`` and the dispatch table into ``lower/`` together, which is
-    what retires this shim; until then the one deferred import is here rather than at
-    each of its call sites.
+    **The import is function-scope, and the cycle that forced it is GONE.**
+    ``emit.ROWS`` read ``bundle``'s root selectors at MODULE level and ``bundle``
+    imported the lowerings for two of them, so a module-level import of ``emit`` from
+    anywhere the lowerings reach made ``import codegen.bundle`` an ``AttributeError`` on
+    a partially initialised ``bundle`` -- measured, not theorised.  §14 step 5 deleted
+    the table and moved those two predicates to ``tests/populations.py``, so ``bundle``
+    imports nothing of ``lower`` and nothing of ``emit``.  What still retires the shim
+    is the other half of that step: ``decide`` becomes ``lower/decide.py``'s exhaustive
+    ``match`` over ``schema/nodes.py``'s kinds, and a lowering then imports it directly.
+    Until then the one deferred import is here rather than at each of its call sites.
     """
     from codegen.emit import decide_type
 
@@ -1300,7 +1274,7 @@ def _refuse_a_combinator_of_shapes(doc: dict, pointer: str, screen: frozenset[st
     and its two branches are ``{"required": [...], "not": {...}}`` -- every one of which
     constrains only which keys are present, so what sends it down this path is
     ``rules._required_only`` admitting ``{"required"}`` ALONE.  Widening that predicate
-    moves ``rules.presence_only``, which ``bundle.states_an_object_rule`` is BUILT ON as a
+    moves ``rules.presence_only``, which ``populations.states_an_object_rule`` is BUILT ON as a
     row's selector, so it is a change to a population and not to this row.
     """
     for keyword in _COMBINATORS:
@@ -1341,15 +1315,15 @@ def lower_composition(
     ``isinstance`` depends on FIRST and gains whatever it composes after it.
 
     **The node need not be a root**, and this never asked that it be one: it takes
-    ``(node, name, pointer, module)`` like every other row (D13), reads the pointer
-    it is handed, and ``declare_object`` names
-    whatever node that is.  A document ROOT reaches it through ``emit.ROWS``; a
-    composition at a property or deeper reaches it through ``emit._decide``'s own branch,
-    because ``ROWS`` dispatches on ROOT KIND and a node that is not a root has no row
-    to be and no selector to select it.  Measured over the 3.2 bundle: of the 67
-    documents whose composition this step was deferring, 41 carry it at a root -- all
-    41 claimed by ``union_root``, not by this step's selector -- 10 at a property and
-    16 deeper.
+    ``(node, name, pointer, module)`` like every other lowering (D13), reads the pointer
+    it is handed, and ``declare_object`` names whatever node that is.  A document ROOT
+    and a composition at a property or deeper reach it through the SAME arm of
+    ``emit._decide``, which is §5's "root and non-root are one path": there was a table
+    of root selectors above this and §14 step 5 deleted it, because dispatching on a
+    root's KIND is the second reading of the one the walk makes per node (§11).
+    Measured over the 3.2 bundle: of the 67 documents whose composition this step was
+    deferring, 41 carry it at a root -- all 41 counted by step 5's population and not by
+    this step's -- 10 at a property and 16 deeper.
 
     Two things come out of one conjunct list, and a third is deliberately absent:
 
@@ -1726,7 +1700,7 @@ def lower_composition(
             # through ``rules._required_groups`` today, which is the same row's cheaper
             # answer -- a ``RequiredGroups`` rule -- blocked only by
             # ``rules._required_only`` admitting ``{"required"}`` ALONE.  Widening it
-            # moves ``bundle.states_an_object_rule``, a row's selector, which is why
+            # moves ``populations.states_an_object_rule``, a row's selector, which is why
             # that is a change to a population rather than to this reader (the
             # measurement is :func:`_refuse_a_combinator_of_shapes`' docstring, taken
             # for this exact branch shape).

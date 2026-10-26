@@ -151,7 +151,7 @@ ROOT_CLAIMS = frozenset({"type", "properties", "required", "additionalProperties
 #: classes states facts its own ``#/<kw>/<i>`` node does not, and there is no pointer to
 #: the conjunction for it to name.  It sat outside this tuple and refused through the
 #: keyword screen with "a later D2 row does", which pointed at step 4's product row;
-#: measured, that row claims 0 of these documents -- ``bundle.composes_at_the_root``
+#: measured, that row claims 0 of these documents -- ``populations.composes_at_the_root``
 #: excludes a root carrying a union -- so the deferral named a row that was never going
 #: to see them.
 #:
@@ -238,7 +238,7 @@ def keyword(doc: dict) -> str | None:
     """The union keyword at this document's ROOT, or ``None``.
 
     ONE reading, and it lives HERE because the DISPATCH SELECTOR
-    (``bundle.union_root``) is built on it: the selector is this step's population
+    (``populations.union_root``) is built on it: the selector is this step's population
     test, so a row cannot claim a document its lowering reads differently.  The lane
     had this function in ``codegen.bundle`` and the lowering importing it from there,
     which D13's import rule forbids -- a lowering imports ``compiler`` and
@@ -254,7 +254,7 @@ def keyword(doc: dict) -> str | None:
     of ``required`` GROUPS carries one of these keywords and is a RULE on one class
     (D6, step 7) rather than a union: a branch declaring no property has no shape to
     subclass, which :func:`_plan` refuses by name.  Which ROW owns such a document is
-    a fact about the selectors and is decided in ``bundle.union_root``, where both
+    a fact about the selectors and is decided in ``populations.union_root``, where both
     steps' readings can be consulted -- a lowering imports ``compiler`` and
     ``refusal`` and nothing else of this package (D13), so it cannot read step 7's.
     """
@@ -519,7 +519,7 @@ def declares_a_class(doc_branch: Any, doc: dict, pointer: str, kw: str, i: int) 
     neither shape -- no alias holds a class, and no base is a string -- and it must not
     silently take either.  Such a root keeps the class path, where the scalar branch's
     own ``type`` check refuses it by name and pointer.  Measured over the 1,054 portable
-    documents: of the 126 ``bundle.union_root`` claims, **0 mix the two**, so this guard
+    documents: of the 126 ``populations.union_root`` claims, **0 mix the two**, so this guard
     moves no document today and is what makes the first one that appears loud.
     """
     if not isinstance(doc_branch, dict):
@@ -930,8 +930,37 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
             # transitive record ``lower_composition`` writes for a ``$ref`` conjunct.
             # ``declare_object`` rather than ``lower_object``: there is no property map
             # here to read and an object node with none refuses there, correctly.
+            #
+            # **§6 clause 3, "silence inherits", at a BRANCH.**  A branch class whose own
+            # node states no ``description`` states the one its base does, because that
+            # is what the composed document states at the branch's own pointer and
+            # ``harness._normalize`` resolves a local ``$ref`` on the document side to
+            # read it.  pydantic cannot be left to do it: ``cls.__doc__`` is ``None`` for
+            # a subclass with no docstring of its own, so the fact reaches
+            # ``model_json_schema()`` only if the emitter writes it.
+            #
+            # This is bead ``adcp-client-python-10l.19``'s ``/description`` half.  Its
+            # population is a branch that is a bare LOCAL reference: the branch node is
+            # ``{"$ref": "#/definitions/X"}`` and carries no annotation of its own, while
+            # the entry declares a ``description`` -- so the two branch pairs of
+            # ``core/requirements/catalog-field-binding.json`` reported it ``missing``.
+            # ``compiler.fields`` transcribes a ``$ref`` sibling's description onto a
+            # FIELD, and a branch class named off a reference has no such carrier.
+            #
+            # The same clause and the same spelling as ``lower_composition``'s, which
+            # merges its base's description into the declaration when the composing
+            # node's own is silent: a branch with two bases IS a composition of the union
+            # base and the target, so one reading for both.  ``nodes.Reference`` carries
+            # the annotation siblings (§4's node table), so once ``schema/parse.py``
+            # lands the merge is the parser's one reading rather than this rewrite.
+            inherited = plan.inherits.shape.description
+            node = (
+                plan.node
+                if plan.node.get("description") or inherited is None
+                else {**plan.node, "description": inherited}
+            )
             compiler.declare_object(
-                plan.node,
+                node,
                 plan.name,
                 plan.pointer,
                 mod,
@@ -940,6 +969,7 @@ def lower_union(doc: dict, symbol: str, pointer: str, mod: compiler.Module) -> s
                     plan.inherits.shape.properties,
                     plan.inherits.shape.required,
                     decided=plan.inherits.shape.decided,
+                    description=inherited,
                 ),
                 Position.BRANCH,
                 bases=(symbol, plan.inherits.symbol),
@@ -1021,18 +1051,20 @@ def nested(
     ``lower.containers.multi_type`` already builds for a ``type`` LIST, through the same
     ``ir.TypeRef(container="union", ...)``.
 
-    It is reached from ``emit.decide_type`` and NOT through ``emit.ROWS``, for the
-    reason the nested ``allOf`` arm beside it is: ``ROWS`` dispatches on ROOT KIND and
-    is a partition by it, so a keyword at a position no root selector sees has no row to
-    be and no selector to select it.  Measured on the 3.2 bundle, of the NODE'S POSITION
-    and not of the document: of the 32 deferred nested combinators **0 sit at a root**,
-    so no root selector sees one and a row would have claimed none.  (Asked of the
-    document instead, 2 of the 32 have a root ``bundle.union_root`` already claims and 14
-    have one ``composes_at_the_root`` claims -- a row claiming the document says nothing
-    about the position inside it, which is the whole of why ``ROWS`` partitions by root
-    kind.)  The other 4 of the 48 deferrals that DO sit at a root are all on
-    ``uniqueItems`` at a root ARRAY, a kind ``bundle.is_container_root`` already claims.
-    So ``ROWS`` stays six.
+    It is the SAME ARM of ``emit._decide`` that :func:`lower_union` is, reached at a
+    position that is not ROOT -- §5's "root and non-root are one path", so what the
+    position changes is the arm's ANSWER and not which arm answers.  There was a table
+    of root selectors above this and §14 step 5 deleted it: dispatching on a root's KIND
+    is the second reading of the one the walk makes per node (§11), and both readings
+    were ``lower.union.keyword`` plus ``rules.presence_only`` anyway.
+
+    Measured on the 3.2 bundle, of the NODE'S POSITION and not of the document: of the
+    32 deferred nested combinators **0 sit at a root**.  (Asked of the DOCUMENT instead
+    the answer differs, which is why it is asked of the node: 2 of the 32 have a root
+    step 5's population counts and 14 have one step 4's counts -- a measurement over a
+    document says nothing about the position inside it.)  The other 4 of the 48
+    deferrals that DO sit at a root are all on ``uniqueItems`` at a root ARRAY, which
+    ``containers.array`` refuses at ROOT.
 
     **Each branch is decided by the same walk as any other node**, at its own
     ``<pointer>/<kw>/<i>``, which is what gives a branch that becomes a CLASS its own

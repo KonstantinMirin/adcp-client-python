@@ -52,10 +52,16 @@ class CatalogFieldBinding(BranchDispatchMixin, AdCPBaseModel):
 
 
 class CatalogFieldBindingScalar(CatalogFieldBinding, CatalogFieldBindingScalarBinding):
+    """
+    Maps an individual format asset to a catalog item field via dot-notation path.
+    """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/catalog-field-binding.json', pointer='#/oneOf/0')
 
 
 class CatalogFieldBindingAssetPool(CatalogFieldBinding, CatalogFieldBindingAssetPoolBinding):
+    """
+    Maps an individual format asset to a typed asset pool on the catalog item (e.g., images_landscape, images_vertical, logo). The format slot receives the first item in the pool.
+    """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/catalog-field-binding.json', pointer='#/oneOf/1')
 
 
