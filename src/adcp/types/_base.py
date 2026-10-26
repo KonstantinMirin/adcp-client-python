@@ -255,6 +255,95 @@ def _document(document: str) -> dict:
 SAME_INSTANCE_LIST = ("allOf", "anyOf", "oneOf")
 SAME_INSTANCE_ONE = ("then", "else")
 
+#: The keywords an enclosing node states ABOUT THE SAME INSTANCE beside its ``type``
+#: word, conjoined into the node below it by :func:`_conjunction`.
+#:
+#: **These four and no others, because §5's union row compiles exactly these onto a
+#: union base** -- "every keyword beside the combinator compiles onto the base, and
+#: every branch inherits it.  Draft-07 applies a root's ``properties``, ``required``,
+#: ``additionalProperties``, ``allOf`` and rule keywords to the same instance a branch
+#: describes" -- and §8 grades a branch class "against its branch node read under the
+#: root's siblings".  ``allOf`` is not in this tuple because it is already a conjunct
+#: LIST and is spliced rather than wrapped; the three here are the node's own
+#: assertions and become ONE conjunct.
+#:
+#: A rule keyword (``not``, ``dependencies``, ``minProperties``, ``if``/``then``) is
+#: NOT here, and the reason is the one ``if`` and ``not`` are excluded from
+#: :data:`SAME_INSTANCE_LIST` for: §5 compiles it to a RULE, which renders nothing in a
+#: model's JSON schema, so there is no fact for §8's comparison to find at the branch's
+#: pointer and conjoining it would state one the model cannot carry.  The rule itself
+#: reaches every branch the way the fields do -- it is written on the base and
+#: inherited -- which is class inheritance and needs no reading here.
+SAME_INSTANCE_FACTS = ("properties", "required", "additionalProperties")
+
+#: What a node says to a READER rather than about an instance, dropped from an
+#: enclosing node's conjunct before :func:`_conjunction` splices it into a node below.
+#:
+#: **§6's description-authority rule answers an annotation AT THE POINTER THAT STATES
+#: IT**, and the enclosing node is that pointer: a root composing
+#: ``core/version-envelope.json`` states its own ``description`` beside the conjunct,
+#: so the root's wins at the root -- which is what both halves already do, the
+#: comparison by starting from the node and the emitter by
+#: ``compiler.lower_composition``'s ``inherited_description``.  Spliced into a BRANCH
+#: with its annotations intact, the conjunct's description arrives at a pointer the
+#: root has already answered it at, and a branch class that is silent -- as a subclass
+#: with no docstring of its own is -- reads as dropping a fact 14 pairs over 7
+#: documents reported, every one the envelope's own root description.
+#:
+#: The keys are the two §6's rule is about.  A CONSTRAINING key is never dropped, which
+#: is the whole point of the splice; ``title`` rides with ``description`` because §6
+#: gives the pair one row and §8 compares neither a title nor anything derived from one.
+_ANNOTATES_THE_POINTER_THAT_STATES_IT = ("title", "description")
+
+
+def _conjunction(node: dict, through: str) -> list:
+    """What ``node`` asserts about the same instance, as draft-07's own conjunct list.
+
+    **A conjunction is spelled the way draft-07 spells one -- an ``allOf`` member --
+    and not merged keyword by keyword.**  Merging needs a rule per keyword (which
+    ``properties`` map wins a shared key, which ``required`` list, what a second
+    ``additionalProperties`` means) and every one of those rules would be a second copy
+    of §2's intersection, living in the runtime where no cell can reach it.  As a
+    conjunct the statement is exact: ``jsonschema`` applies it as draft-07 does, and
+    §8's comparison already folds a document's conjuncts into the node
+    (``codegen.harness._composed``), which is the same reading the model's own
+    inheritance makes.
+
+    ``through`` is the keyword the walk is descending BY, and it is why an ``allOf``
+    is not conjoined into one of its own members: at an ``allOf`` hop the list the
+    walk is entering is this node's own, and splicing it in would state every
+    sibling conjunct at a pointer inside one of them.  The two union keywords are
+    never spliced at all -- a branch is satisfied by SOME instance, so the other
+    branches assert nothing about this one -- which is why only ``allOf`` is read
+    here.
+
+    ``properties: {}`` and ``required: []`` are left out, because §4 says a root
+    ``properties: {}`` beside a union "declares no field and contributes nothing" and
+    §5's ``required`` row says ``required: []`` compiles to nothing.  A node asserting
+    none of the four contributes no conjunct at all, which is what keeps the node
+    returned UNCHANGED at the 7,987 pointers that reach nothing.
+    """
+    own: dict = {}
+    for keyword in SAME_INSTANCE_FACTS:
+        if keyword not in node:
+            continue
+        if keyword in ("properties", "required") and not node[keyword]:
+            continue
+        own[keyword] = node[keyword]
+    # The node's OWN statement first and its conjuncts after, which is the order the
+    # node itself is read in: ``harness._composed`` starts from the node and folds each
+    # conjunct into it, so a fact the node states wins a gap-fill over a conjunct's.
+    # Reproducing that order here is what keeps one reading of the enclosing node at the
+    # enclosing pointer and at a pointer below it.
+    out: list = [own] if own else []
+    if through != "allOf" and isinstance(node.get("allOf"), list):
+        out.extend(
+            {k: v for k, v in c.items() if k not in _ANNOTATES_THE_POINTER_THAT_STATES_IT}
+            for c in node["allOf"]
+            if isinstance(c, dict)
+        )
+    return out
+
 
 def applied_schema(root: dict, pointer: str) -> dict:
     """The node at ``pointer``, carrying the ``type`` the document applies to it.
@@ -269,16 +358,34 @@ def applied_schema(root: dict, pointer: str) -> dict:
     ``accepts:model_refused_valid`` and ``model_adds_a_fact`` at ``/type`` with the
     bare node, and pass with this.
 
-    **``type`` is the ONE fact conjoined, and the population says why that is
-    exhaustive rather than a selection.**  The only nodes this changes anything for
-    are the ones whose own ``type`` is absent and whose enclosing node asserts one,
-    and every such node a class is declared at today is a union branch --
-    ``lower.union.ROOT_CONJUNCTS`` refuses a union root that carries ``properties``,
-    ``required`` or ``additionalProperties``, so ``type`` is the only assertion such a
-    root can make about the instance.  KNOWN CEILING: a row whose root asserts more
-    than a type about the same instance needs this extended, and the node's own facts
-    always win -- a node declaring ``string`` under a root declaring ``object`` keeps
-    ``string`` and is refused for stating a contradiction, not silently rewritten.
+    **``type`` WAS the one fact conjoined, and the KNOWN CEILING this paragraph named
+    is now closed** (``docs/plan/architecture.md`` §13 item 3, settled by the design
+    owner).  It read: "a row whose root asserts more than a type about the same
+    instance needs this extended", and ``lower.union.ROOT_CONJUNCTS`` was what kept
+    the population at zero -- a union root carrying ``properties``, ``required``,
+    ``additionalProperties`` or ``allOf`` refused, so ``type`` was the only assertion
+    such a root could make.  §14 step 9 emits those 61 documents, so the four
+    keywords arrive, and §8's pairing rule is what they are graded by: "a branch class
+    of a root union is paired with its branch node read UNDER THE ROOT'S SIBLINGS:
+    draft-07 applies every keyword beside the combinator to the same instance the
+    branch describes, so a field the branch inherits from the base is a fact its node
+    states and not one it added."
+
+    So the conjunction is :data:`SAME_INSTANCE_FACTS` plus the enclosing node's own
+    ``allOf``, spliced into the node's conjunct list by :func:`_conjunction`, and
+    ``type`` keeps the spelling it already had.  **This is draft-07's own semantics
+    applied at a pointer the document HOLDS and not a view of one** (§9's "do not
+    decide a position the bundle does not hold from a view of it"): the branch node is
+    the document's, every conjoined statement is the document's, and the conjunction is
+    written as the document's own ``allOf`` rather than as a merge this function
+    invents.
+
+    **The node's own facts always win**, which is what makes the extension safe in
+    the same direction the ``type`` half already is: a node declaring ``string`` under
+    a root declaring ``object`` keeps ``string`` and is refused for stating a
+    contradiction, and a branch declaring a property the root also declares keeps its
+    own declaration with the root's conjoined beside it, so the intersection is what
+    the pair is graded against rather than either view alone.
 
     The node is returned UNCHANGED, as the same object, wherever nothing is
     conjoined, so every pointer that resolved to a document's own node before this
@@ -286,6 +393,8 @@ def applied_schema(root: dict, pointer: str) -> dict:
     """
     node: Any = root
     enclosing: str | None = None  # the type an enclosing node asserts about THIS instance
+    #: What the enclosing nodes assert about THIS instance, in outer-to-inner order.
+    conjoined: list = []
     parts = [p for p in pointer.lstrip("#").lstrip("/").split("/") if p != ""]
     for part in parts:
         if isinstance(node, list):
@@ -297,14 +406,24 @@ def applied_schema(root: dict, pointer: str) -> dict:
             # INHERITED through a chain of such hops: a node asserting nothing passes
             # its own enclosing assertion down.
             enclosing = declared if isinstance(declared, str) else enclosing
+            if isinstance(node, dict):
+                conjoined += _conjunction(node, part)
         else:
             enclosing = None  # the hop moves to a different instance
+            conjoined = []
         node = node[part.replace("~1", "/").replace("~0", "~")]
     if not isinstance(node, dict):
         raise LookupError(f"{pointer} is {type(node).__name__}, not a schema")
-    if "type" in node or enclosing is None:
+    if ("type" in node or enclosing is None) and not conjoined:
         return node
-    return {**node, "type": enclosing}
+    applied = node if "type" in node or enclosing is None else {**node, "type": enclosing}
+    if not conjoined:
+        return applied
+    # The enclosing statements come FIRST and the node's own conjuncts after, so the
+    # node's own are folded last and win a keyword §2's intersection cannot order --
+    # the same direction as the ``type`` clause above, where the node's own word wins.
+    own = applied.get("allOf")
+    return {**applied, "allOf": [*conjoined, *(own if isinstance(own, list) else [])]}
 
 
 def schema_at(ref: SchemaRef) -> dict:

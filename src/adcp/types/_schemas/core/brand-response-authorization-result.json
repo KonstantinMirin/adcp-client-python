@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Verifier-local result of the additive 3.2 brand.json authorization cross-check for a cryptographically valid verify_brand_claim or verify_brand_claims signed response. This object is produced by the verifier and is not a field asserted by the responding brand agent.",
+  "oneOf": [
+    {
+      "not": {
+        "required": [
+          "reason"
+        ]
+      },
+      "properties": {
+        "trust": {
+          "const": "trusted",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trust",
+        "kid",
+        "jwks_uri"
+      ]
+    },
+    {
+      "properties": {
+        "trust": {
+          "const": "untrusted",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trust",
+        "reason"
+      ]
+    }
+  ],
+  "properties": {
+    "jwks_uri": {
+      "description": "JWKS URI selected only from the matched brand.json agent entry, or its same-origin default.",
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    },
+    "kid": {
+      "description": "JWS kid evaluated by the cross-check.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "reason": {
+      "description": "Machine-readable reason for an untrusted result.",
+      "enum": [
+        "brand_json_unavailable",
+        "agent_not_authorized",
+        "agent_authorization_ambiguous",
+        "jwks_unavailable",
+        "kid_not_authorized",
+        "kid_authorization_ambiguous",
+        "key_material_mismatch",
+        "key_purpose_invalid"
+      ],
+      "type": "string"
+    },
+    "trust": {
+      "description": "Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.",
+      "enum": [
+        "trusted",
+        "untrusted"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "trust"
+  ],
+  "title": "Brand Response Authorization Result",
+  "type": "object"
+}

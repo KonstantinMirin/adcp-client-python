@@ -1875,7 +1875,18 @@ def _silent_about_extras(node: Any) -> Any:
     two spellings admit the same keys, and for a non-object the keyword constrains
     nothing either way.
     """
-    if not isinstance(node, Mapping) or "properties" in node:
+    # **"Declares no ``properties``" means an EMPTY map as well as an absent one**, and
+    # the two sides spell that difference without meaning it: a document that declares
+    # no property writes no ``properties`` key, and pydantic renders ``properties: {}``
+    # for a model with no field -- so the membership test read one side as a mapping and
+    # the other as a class.  Measured at §14 step 9, where a union base over a root that
+    # declares no property of its own is the first such node to emit:
+    # ``core/format-option-ref.json#`` and the two pairs that reach it through a ``$ref``
+    # reported ``/additionalProperties: the model says True, the document nothing`` for a
+    # model whose accepted set is its document's.  The gate is the docstring's own words
+    # and the direction is unchanged -- ``false`` and a typed value are still untouched
+    # on both sides.
+    if not isinstance(node, Mapping) or node.get("properties"):
         return node
     if node.get("additionalProperties") is not True:
         return node

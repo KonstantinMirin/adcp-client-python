@@ -624,6 +624,11 @@ def _union(
             for i, branch in enumerate(branches)
         ),
         branch_raw=tuple(branches),
+        # §5's ``required`` row at ROOT beside a union -- "required on the base's
+        # fields, and the names recorded in ``_ROOT_REQUIRED``" -- read the way every
+        # other kind that can state one reads it, so ``compiler.lower_composition``
+        # takes the node's requiredness off one field name whatever kind it is handed.
+        required=tuple(raw["required"]) if isinstance(raw.get("required"), list) else (),
         siblings={
             k: raw[k]
             for k in ("allOf", "properties", "required", "additionalProperties")
