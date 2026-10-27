@@ -46,10 +46,10 @@ from adcp.types._base import (
     SchemaRef,
     schema_at,
 )
-from codegen import attribution, harness, ir, keywords, render
+from codegen import attribution, compiler, harness, ir, keywords, render
 from codegen.harness import Pair
 from codegen.keywords import Effect, Position, Rung
-from codegen.lower.approximate import approximate, attribution_for, rung_for
+from codegen.lower.approximate import approximate, attribution_for, declare, rung_for
 from codegen.refusal import BuildFailure
 
 DOC = "core/probe.json"
@@ -260,6 +260,40 @@ def test_an_approximation_is_minted_in_one_place_and_reads_its_rung_off_the_cell
     assert one.kind in KINDS
     with pytest.raises(BuildFailure, match="not one of section 2's two kinds"):
         approximate(_ref(), "uniqueItems", Position.PROP, True, kind="PROBABLY_FINE")
+
+
+def test_a_handler_reaches_the_one_producer_through_one_accumulator() -> None:
+    """Section 2's other half: "a refusal is absorbing, an approximation is ADDITIVE".
+
+    :func:`codegen.lower.approximate.declare` is the call a handler makes, and it is
+    :func:`approximate` plus the accumulation -- so the minting stays in one function and
+    the append stays in one function beside it.  Section 6 names the order the accumulator
+    has to keep: "the parser built each node's children in document order, and
+    concatenation preserves it", which is a property of the walk and not of any handler,
+    and it only stays one if there is one appender.
+
+    The pointer is spelled through ``compiler.schema_ref`` -- the sole producer of the
+    spelling ``__adcp_schema__`` uses -- so what a handler passes is its NODE's pointer
+    and the ``#`` is not a handler's to write.
+    """
+    mod = compiler.Module(document=DOC)
+    assert mod.approximations == []
+    declare(mod, "/properties/tags", "uniqueItems", Position.PROP, True)
+    declare(mod, "/properties/other", "maxLength", Position.PROP, 4)
+    assert mod.approximations == [
+        approximate(_ref("#/properties/tags"), "uniqueItems", Position.PROP, True),
+        approximate(_ref("#/properties/other"), "maxLength", Position.PROP, 4),
+    ], mod.approximations
+    # The ``#`` and the document are the one spelling's, not the caller's.
+    assert [a.pointer for a in mod.approximations] == [
+        "#/properties/tags",
+        "#/properties/other",
+    ]
+    assert {a.document for a in mod.approximations} == {DOC}
+    # A kind travels through unchanged, which is what the UNDERDETERMINED row needs: it is
+    # the one caller that does not take the default (section 2 gives it one instance).
+    declare(mod, "/oneOf", "oneOf", Position.ROOT, OVERLAPPING["oneOf"], kind=UNDERDETERMINED)
+    assert mod.approximations[-1].kind == UNDERDETERMINED
 
 
 def test_the_declaration_renders_as_a_constructor_expression_the_consumer_reads_back() -> None:
@@ -578,6 +612,62 @@ def test_the_declared_set_equals_the_approximated_set_in_both_directions() -> No
     assert nowhere.stale == [(DOC, "#/definitions/dead", "uniqueItems")]
     assert nowhere.over_declared == [], nowhere.over_declared
     assert "no pair graded that pointer" in nowhere.undeclared_widenings[0]
+
+
+def test_an_underdetermined_declaration_is_not_stale_for_being_invisible() -> None:
+    """Section 8 exempts the one kind no comparison can report, and this holds that.
+
+    "An UNDERDETERMINED approximation (section 2) is invisible to all three checks, and
+    that is why it needs an instrument of its own ... The comparison matches, the draw
+    accepts and the dump validates, because the annotation admits exactly what the
+    document admits."
+
+    :func:`harness.census` is computed FROM the comparison's output, so a kind the
+    comparison cannot report could never enter its *approximated* half.  Read without the
+    exemption, every UNDERDETERMINED declaration is *over-declared* at every pair forever
+    -- which is the one kind section 8 removes from that outcome by name, and the kind
+    whose own instrument (:func:`harness.underdetermined_census`) holds it in both
+    directions instead.
+
+    **Both directions, and the second is what keeps the exemption from being a hole**: a
+    WIDENED declaration at the SAME pointer that no pair reports is still stale, so the
+    exemption is about the KIND and not about the pointer.  ``check_widening`` already
+    draws this exact line one function away, with this same sentence of section 8 quoted
+    at it.
+    """
+    invisible = approximate(
+        _ref("#/oneOf"), "oneOf", Position.ROOT, OVERLAPPING["oneOf"], kind=UNDERDETERMINED
+    )
+    exempt = harness.census(
+        [
+            (
+                _pair(Wide, (invisible,)),
+                _report(harness.compare_schema(WIDE_DOCUMENT, Wide, declared=(invisible,))),
+            )
+        ]
+    )
+    assert exempt.stale == [], exempt.stale
+    assert exempt.undeclared_widenings == [], exempt.undeclared_widenings
+    assert exempt.outcome == "pass", exempt
+    # It is still DECLARED, so the figures and the UNDERDETERMINED equality both see it:
+    # the exemption is from the *over-declared* outcome and from nothing else.
+    assert set(exempt.declared) == {(DOC, "#/oneOf", "oneOf")}
+    assert exempt.documents == 1
+
+    # The same pointer, the other kind: a WIDENED declaration no pair reports is stale.
+    # Without this the exemption could be read as "a declaration at a combinator is
+    # excused", which is a hole of the shape the first direction of this equality closes.
+    widened = invisible._replace(kind=WIDENED)
+    not_exempt = harness.census(
+        [
+            (
+                _pair(Wide, (widened,)),
+                _report(harness.compare_schema(WIDE_DOCUMENT, Wide, declared=(widened,))),
+            )
+        ]
+    )
+    assert not_exempt.stale == [(DOC, "#/oneOf", "oneOf")], not_exempt.stale
+    assert not_exempt.outcome != "pass"
 
 
 def test_an_attribution_the_registry_does_not_hold_is_a_defect() -> None:
