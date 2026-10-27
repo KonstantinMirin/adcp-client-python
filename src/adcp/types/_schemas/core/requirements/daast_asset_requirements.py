@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 
 from ...enums.daast_version import DAASTVersion
@@ -22,6 +22,9 @@ class DAASTAssetRequirements(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/daast-asset-requirements.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('daast_version', 'daast_versions'),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/requirements/daast-asset-requirements.json', pointer='#/properties/daast_versions', keyword='uniqueItems', kind='WIDENED', rung='KEYWORD', fact=True, attribution='docs/plan/rebuild-plan.md §5 arrays/uniqueItems'),
     )
     daast_version: Annotated[DAASTVersion | None, Field(description='Deprecated one-element alias for `daast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.')] = None
     daast_versions: Annotated[DAASTTrackerConstraintsDaastVersions | None, Field(description='Accepted DAAST version set for this asset requirement.')] = None
