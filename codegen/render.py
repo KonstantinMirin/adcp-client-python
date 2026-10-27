@@ -89,7 +89,7 @@ from datamodel_code_generator.types import DataType
 from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._base import APPROXIMATIONS, Approximation, SchemaRef
-from adcp.types._runtime import Match, Rule, UniqueItems
+from adcp.types._runtime import Distinct, Match, Rule, UniqueItems
 from codegen import constraints as constraint_names
 from codegen import ir
 from codegen.ir import MISSING
@@ -155,6 +155,8 @@ class Rendered:
 # --------------------------------------------------------------------------- #
 def _data_type(decided: ir.TypeRef) -> Any:
     """One :class:`codegen.ir.TypeRef` as the model layer's ``DataType``."""
+    if decided.validators:
+        return _bound_to_the_type(decided)
     if decided.literals:
         return _TYPES.data_type(literals=list(decided.literals))
     if decided.container == "list":
@@ -196,6 +198,70 @@ def _data_type(decided: ir.TypeRef) -> Any:
             )
         )
     return _TYPES.get_data_type_from_full_path(decided.path, is_custom_type=False)
+
+
+#: **The fact a value rule STATES in the model's rendered schema**, keyed by the kind,
+#: and the reason it is DERIVED from the rule rather than carried beside it: a rule and
+#: the ``json_schema_extra`` that makes it gradable are ONE claim, so a tree in which the
+#: two disagree should not be spellable.  ``render.root_model`` already derives the same
+#: fact from a root array's rule tuple, for the same reason and in the same words.
+#:
+#: ``Distinct`` is the only entry because it is the only one of the three whose keyword a
+#: faithful model states as a FACT: ``uniqueItems`` is ``rendered=True`` in
+#: ``codegen.keywords`` (pydantic v2 has no annotation for it, so it rides the
+#: ``json_schema_extra`` channel), while ``contains`` and ``not`` are ``rendered=False``
+#: -- the model enforces each as a rule and renders nothing for it, which is §8's own
+#: answer for a keyword a rule carries.  So this map is the table's ``rendered`` column
+#: read at the three kinds, not a second decision about them.
+VALUE_RULE_FACTS: dict[str, Mapping[str, Any]] = {Distinct.__name__: {"uniqueItems": True}}
+
+
+def _bound_to_the_type(decided: ir.TypeRef) -> Any:
+    """§2's rule on a VALUE: the node's own type wrapped in the rules bound to it.
+
+    "Where no class sits above the value -- a root array, a mapping value, a
+    ``definitions`` entry, a union branch -- the rule hangs off the value's own
+    annotated type as an after-validator (``AtLeastOne``, ``NotValue``, ``Distinct``)."
+    ``Annotated[list[X], Field(json_schema_extra=…), AfterValidator(Distinct())]`` is the
+    whole of that, and it is composed HERE for the reason the generic-alias arm above is:
+    the model layer's ``DataType`` has no carrier for "this type with this metadata", so
+    the subscript is TEXT in the one module §8 lets hold pydantic's spellings, and the
+    walk composes the rule as a VALUE.
+
+    **The parts are PASSED as well as spelled**, which is the alias arm's measured rule:
+    a model's import set is collected off ``data_types``, so a part named only in the
+    text reaches the module as a ``NameError``.  ``Annotated``, ``AfterValidator``,
+    ``Field`` and each rule kind are therefore resolved through the model layer and their
+    own ``type_hint`` is what the text uses -- so there is no second spelling of any of
+    them here.
+
+    The inner type is the same :class:`codegen.ir.TypeRef` with the rules taken off, so
+    every other arm of :func:`_data_type` decides it exactly as it would with no rule
+    bound: a rule on a value changes what the annotation ENFORCES and not what it IS.
+    """
+    inner = _data_type(dataclasses.replace(decided, validators=()))
+    annotated = _TYPES.get_data_type_from_full_path("typing.Annotated", is_custom_type=False)
+    after = _TYPES.get_data_type_from_full_path("pydantic.AfterValidator", is_custom_type=False)
+    carried = [inner, annotated, after]
+    parts = [inner.type_hint]
+    stated = {
+        keyword: value
+        for rule in decided.validators
+        for keyword, value in VALUE_RULE_FACTS.get(type(rule).__name__, {}).items()
+    }
+    if stated:
+        marker = _TYPES.get_data_type_from_full_path("pydantic.Field", is_custom_type=False)
+        carried.append(marker)
+        parts.append(f"{marker.type_hint}(json_schema_extra={stated!r})")
+    for rule in decided.validators:
+        carried += [
+            _TYPES.get_data_type_from_full_path(f"{ir.RUNTIME_MODULE}.{name}", is_custom_type=False)
+            for name in sorted(_named_by(rule))
+        ]
+        parts.append(f"{after.type_hint}({_rule(rule)})")
+    return _TYPES.data_type(
+        type=f"{annotated.type_hint}[{', '.join(parts)}]", data_types=carried
+    )
 
 
 #: **What the MODEL LAYER carries, derived and never listed by hand**: every attribute

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._runtime import Distinct
 from adcp.types.constraints import NonEmptyList, StrMinLen1
 
 from ..core.media_buy_change_term_id import MediaBuyChangeTermID
@@ -20,10 +21,7 @@ class RequoteRequiredDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/requote-required.json', pointer='#')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='error-details/requote-required.json', pointer='#/properties/envelope_field/oneOf/1', keyword='uniqueItems', kind='WIDENED', rung='KEYWORD', fact=True, attribution='docs/plan/rebuild-plan.md §5 arrays/uniqueItems'),
-    )
-    envelope_field: Annotated[StrMinLen1 | NonEmptyList[StrMinLen1] | None, Field(description='Buyer-visible request field path or paths that breached the accepted commercial envelope. Values MUST NOT name seller-internal objects or identifiers. New emitters SHOULD use the array form even for one path; the scalar form remains valid for compatibility with existing 3.x sellers.')] = None
+    envelope_field: Annotated[StrMinLen1 | Annotated[NonEmptyList[StrMinLen1], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())] | None, Field(description='Buyer-visible request field path or paths that breached the accepted commercial envelope. Values MUST NOT name seller-internal objects or identifiers. New emitters SHOULD use the array form even for one path; the scalar form remains valid for compatibility with existing 3.x sellers.')] = None
     change_term_id: Annotated[MediaBuyChangeTermID | None, Field(description='Accepted proposal change term whose typed constraint the request exceeded.')] = None
     decline_reason: Annotated[SellerPolicyDeclineReason | None, Field(description='Coarse seller-policy dimension that declined the requested shape. Sellers SHOULD populate this when they have a structured reason and disclosure does not expose private thresholds or enforcement controls. When present, it MUST be consistent with the enclosing error.recovery classification.')] = None
 

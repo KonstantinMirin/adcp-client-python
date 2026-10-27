@@ -82,7 +82,7 @@ from typing import Any
 
 from adcp.types._runtime import UniqueItems
 from codegen import bundle, compiler, ir
-from codegen.lower import approximate, names
+from codegen.lower import approximate, names, rules
 from codegen.schema import nodes
 from codegen.schema import parse as nodes_parse
 from codegen.keywords import Position
@@ -99,8 +99,12 @@ from codegen.refusal import Kind, Refusal
 #: says what the alternative costs.
 #:
 #: It is absent from this set and ADMITTED BY THE SCREEN anyway
-#: (:data:`_ARRAY_CLAIMS`), so that :data:`_DISTINCT_HAS_NOWHERE_TO_LIVE` is what
-#: reports it -- the ``union.ROOT_CLAIMS`` shape, and for that comment's reason.
+#: (:data:`_ARRAY_CLAIMS`), because the keyword is a RULE at every position and never a
+#: bound: on a class it is ``UniqueItems``, on a root model the same rule keyed on
+#: ``root``, and anywhere else a ``Distinct`` on the array's own annotated type
+#: (``lower.rules.on_a_value``).  The ``json_schema_extra`` the renderer derives from the
+#: rule is what puts the FACT back in the model's schema, which is the channel
+#: ``constraints=`` could not be.
 BOUNDS = ("minItems", "maxItems")
 
 #: The cells the array row CONSUMES, plus the two it claims in order to refuse or
@@ -108,29 +112,22 @@ BOUNDS = ("minItems", "maxItems")
 #: table admits every annotation, the definition sections and the ``x-`` namespace at
 #: every position, so none of them is named here.
 #:
-#: ``uniqueItems`` is in here and lowered nowhere: left out, it
-#: refused through ``compiler.check_keywords``, whose answer for a draft-07 keyword is
-#: ``DEFERRED_TO_A_LATER_ROW`` -- a promise of a later row, which the two measurements
-#: in :data:`_DISTINCT_HAS_NOWHERE_TO_LIVE` say will never be written.  Admitted here,
-#: the explicit refusal below is what reports it, with the reason.
+#: ``uniqueItems`` and ``contains`` are both in here and both LOWERED, by
+#: ``lower.rules.on_a_value``: §2's second place a rule hangs is the value's own
+#: annotated type, and this row is what reaches it for an array.  Each was carried and
+#: dropped before -- ``uniqueItems`` with an approximation declared for it, ``contains``
+#: silently -- and what changed is not the position but that the three value-rule kinds
+#: exist.
 #:
-#: ``contains`` is in here and lowered nowhere either, and for the OPPOSITE reason to
-#: ``uniqueItems``: it is CARRIED rather than refused.  ``contains: S`` says at least one
-#: element matches ``S``, which is a statement about which VALUES the array admits -- so
-#: D4 leaves it to the schema half exactly as ``lower.rules.ON_A_VALUE`` leaves a ``not``
-#: over a ``const`` and ``lower/rules.py`` leaves a conditional that narrows one.
-#: ``strict_validate`` validates the payload against the document's own schema and
-#: therefore enforces it; it is not in ``harness.FACTS``, so there is no fact for the
-#: comparison to find missing; and pydantic has no spelling for it, so there is nothing
-#: to render and nothing to drop.
-#:
-#: **The ceiling, named here rather than discovered later.**  The ``model_validate``
-#: CONSTRUCTOR does not enforce it, and no D6 rule can: ``RuleBound`` reads
-#: ``__pydantic_fields_set__``, which answers which KEYS are present, and ``contains``
-#: is about an array's elements.  So ``X.model_validate(["a"])`` builds for a document
-#: whose ``contains`` demands a ``"b"`` while ``X.strict_validate`` of the same payload
-#: refuses -- the identical pair ``lower/rules.py`` records for
-#: ``core/canvas-constraint.json``.
+#: **``contains`` keeps the row's refusal of TRANSCRIPTION, which is a different
+#: ceiling.**  §5's row states the PREDICATE and never the subschema, so a ``contains``
+#: whose predicate is a bound, a pattern, a nested ``contains`` or a ``$ref`` reaches
+#: ``contains_predicate`` and comes back ``None`` -- and then it is CARRIED exactly as
+#: every one of them was: ``strict_validate`` enforces the keyword from the document, it
+#: is not in ``harness.FACTS`` so there is no fact for the comparison to find missing,
+#: and the constructor is wider.  ``X.model_validate(["a"])`` builds for such a document
+#: while ``X.strict_validate`` of the same payload refuses -- the identical pair
+#: ``lower/rules.py`` records for ``core/canvas-constraint.json``.
 #:
 #: Measured over every node of every portable document: 120 ``contains`` sites in 46
 #: documents, **18 on a node whose ``type`` is ``array``** -- what this set admits -- and
@@ -138,42 +135,6 @@ BOUNDS = ("minItems", "maxItems")
 #: inside another ``contains``.  Those 102 are not admitted here and are not this row's
 #: position; no document of the deferred population is blocked at one.
 _ARRAY_CLAIMS = frozenset({"type", "items", "uniqueItems", "contains", *BOUNDS})
-
-#: Why ``uniqueItems`` on an array NO CLASS HOLDS is a VERDICT and not a deferral.
-#:
-#: D6's rule is where the keyword lives (``lower.rules._distinct``), and a rule lives on
-#: a CLASS: ``compiler.fields`` strips the keyword off a property's declaration and
-#: carries it on ``Property.distinct``, so 467 of the bundle's 485 sites never reach this
-#: row at all.  The 18 that do are the positions with no class above them -- a document
-#: root, a ``definitions`` entry, a mapping value, a combinator branch -- and
-#: ``lower/rules.py``'s own docstring already states that those keep refusing by name
-#: "because a rule has nowhere to live there".
-#:
-#: The other half is this module's :data:`BOUNDS` comment, measured on the pinned
-#: compiler: pydantic v2 removed ``unique_items``, so ``Constraints(uniqueItems=True)``
-#: renders bare ``list[str]`` and carrying the keyword through ``constraints=`` would be
-#: a model wider than its document, silently.
-#:
-#: So there is no row to schedule: the one mechanism that enforces the keyword needs a
-#: class the position does not have, and the one annotation channel drops it. Measured
-#: over every node of every portable document: 485 sites, **all 485 state ``True``**, so
-#: there is no ``uniqueItems: false`` arm here and none is written -- a ``false`` is the
-#: keyword's own default and would state nothing, and a branch for it would be a
-#: derivation matching nothing (D14).  The 18 break down as **4 at a document root, 6 at
-#: a mapping value, 5 inside a combinator branch and 3 at a ``definitions``/``$defs``
-#: entry**, which is the position list this refusal names, measured rather than copied
-#: from ``lower/rules.py``.  19 documents report it as their first refusal.
-_DISTINCT_HAS_NOWHERE_TO_LIVE = (
-    "uniqueItems is enforced by D6's rule on the CLASS holding the array "
-    "(lower.rules._distinct, and compiler.fields strips the keyword off the "
-    "declaration to carry it there), and this array has no class above it -- it is a "
-    "document root, a definitions entry, a mapping value or a combinator branch, which "
-    "is 18 of the bundle's 485 sites.  The one other channel is the annotation, and "
-    "pydantic v2 removed unique_items: Constraints(uniqueItems=True) renders bare "
-    "list[X], so carrying it there would be a model wider than its document and "
-    "silently so.  Neither mechanism reaches this position, so this is a keyword no "
-    "row lowers rather than one a later row will"
-)
 
 #: A MAPPING's own bounds -- how many keys it may carry -- in the document's spelling,
 #: and the ones a field holding the mapping can carry.  The same shape as
@@ -302,49 +263,41 @@ def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
     refused = compiler.check_keywords(node, _ARRAY_CLAIMS, mod=mod)  # the walk's own check
     if refused is not None:
         return refused
-    if node.distinct and position is Position.ROOT:
-        # **§5's ``uniqueItems`` row where no CLASS holds the array and a ROOT MODEL
-        # does** (§14 step 9, and §5's group (a): "A root array is a root model, and a
-        # root model carries a rule tuple exactly as a class does, so ``Distinct`` and
-        # ``AtLeastOne`` reach it.  The keyword is enforced, not dropped.")
-        #
-        # So the position is checked for ROOT *before* the refusal below, and what the
-        # refusal is left with is the three positions that have neither a class nor a
-        # root model: a mapping value, a ``definitions`` entry and a combinator branch.
-        # Those are the ones §7's ``ir.TypeRef.validators`` slot answers and no row has
-        # written; this arm is the one of the four §14 step 9 names.
-        pass
-    elif node.distinct and position is not Position.PROP:
-        # AFTER the screen, so an array carrying BOTH this and a keyword no row lowers
-        # is reported on the other one: this refusal is final and that one may not be.
-        #
-        # **The gate is the POSITION and no longer a stripped keyword**, which is the
-        # fourth of §2's node rewrites retired.  ``compiler.fields`` used to cut
-        # ``uniqueItems`` out of a property's declaration before this row saw it, so the
-        # array was decided from a mapping the document does not state; the fact is
-        # :attr:`nodes.Array.distinct` now, read once by the parser, and what this row
-        # needs to know is whether a CLASS is above the array to hang D6's rule on.  A
-        # PROP array always has one -- the class whose field holds it, which is the class
-        # ``lower.rules._distinct`` writes the ``UniqueItems`` rule on -- and the 18 sites
-        # that reach this refusal are measured to be exactly the other positions: 4 at a
-        # document root, 6 at a mapping value, 5 inside a combinator branch and 3 at a
-        # ``definitions``/``$defs`` entry.
-        # **§5(b): "``uniqueItems`` and ``contains`` where even a named type cannot hold
-        # the rule.  Rung KEYWORD: the array is ``list[X]`` and the duplicate or
-        # existential check is the schema half's alone.  Attribution ours."**  The
-        # paragraph above is the measurement that says this position has no mechanism;
-        # what §2's ladder adds is that a position with no mechanism DROPS the keyword and
-        # DECLARES the drop, rather than refusing the document.
-        #
-        # The fact is the document's own ``uniqueItems`` value, which is ``true`` at all
-        # 485 of the bundle's sites (the paragraph above), so :attr:`nodes.Array.distinct`
-        # being set IS the document stating it -- §9's "never approximate on a keyword the
-        # walk itself inserted" holds, because the parser read it off the document and
-        # nothing here inserted it.
-        #
-        # ``strict_validate`` still enforces it from the document, which is what makes
-        # the drop a WIDENING of the annotation and not of the accepted set.
-        approximate.declare(mod, pointer, "uniqueItems", position, True)
+    # **§2's rules on the VALUE, where no class above the array can hold one.**  The
+    # reading is ``lower.rules.on_a_value``'s -- §2's second half, in the module that
+    # holds its first half -- and what this row decides is the POSITION gate on
+    # ``uniqueItems``, because this row is what knows which positions have a class or a
+    # root model above the array:
+    #
+    # * PROP -- the class whose field holds the array states it, as
+    #   :class:`adcp.types._runtime.UniqueItems` written by ``lower.rules._distinct``.
+    #   467 of the bundle's 485 sites.
+    # * ROOT -- a root model, which "carries a rule tuple exactly as a class does" (§5's
+    #   group (a)), so the ``UniqueItems(ir.ROOT_FIELD)`` written at the end of this
+    #   function is the answer and no validator is needed.  4 sites.
+    # * everything else -- a mapping value, a ``definitions`` entry, a combinator branch
+    #   -- has neither, so §2's other half applies and the rule hangs off the array's own
+    #   annotated type.  **14 sites, measured: 6 at a mapping value, 5 inside a
+    #   combinator branch and 3 at a ``definitions``/``$defs`` entry.**
+    #
+    # **This arm used to DECLARE AN APPROXIMATION** -- §5(b)'s "``uniqueItems`` and
+    # ``contains`` where even a named type cannot hold the rule", withdrawn 2026-10-27 --
+    # and it was 13 of the tree's 17 declarations.  A named type holds the rule perfectly
+    # well; the three kinds simply had not been written, so "we cannot express it" was
+    # standing in for "nobody wrote it".  The keyword is enforced now, not dropped, and
+    # ``render._bound_to_the_type`` writes the ``json_schema_extra={"uniqueItems": true}``
+    # beside it from the rule itself, so §8 grades the fact at the array's own pointer.
+    #
+    # ``contains`` is passed at EVERY position and is not gated, because there is no
+    # class-level kind for it: §5's row puts an ``AtLeastOne`` on the array's own
+    # annotated type at a field position too.  A predicate the row declines to transcribe
+    # comes back ``None`` and the keyword is CARRIED exactly as it was before this row,
+    # which is this module's own ``_ARRAY_CLAIMS`` comment and D4.
+    bound = rules.on_a_value(
+        node.rules,
+        distinct=node.distinct and position not in (Position.ROOT, Position.PROP),
+        contains=node.contains,
+    )
     bounds = dict(node.bounds)
     if "items" not in node.declares:
         # ``{"type": "array"}`` admits a list of anything, and ``Any`` is that set --
@@ -398,10 +351,10 @@ def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
             mod,
             pointer,
             node,
-            ir.TypeRef(container="list", of=(element,), facts=bounds),
+            ir.TypeRef(container="list", of=(element,), facts=bounds, validators=bound),
             rules=(UniqueItems(ir.ROOT_FIELD),) if node.distinct else (),
         )
-    return Decided(ir.TypeRef(container="list", of=(element,)), bounds)
+    return Decided(ir.TypeRef(container="list", of=(element,), validators=bound), bounds)
 
 
 def mapping(node: nodes.Mapping_, mod: Module) -> Decided | Refusal:
