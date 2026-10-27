@@ -1083,6 +1083,27 @@ ROUND_TRIPS_NOTHING = ("no_instrument",)
 #:   ``content-standards/update-content-standards-request.json``, plus
 #:   ``registries/v1-canonical-mapping.json``'s ``v1_pattern``.
 DECLARED_WIDENINGS = {
+    # **ONE arrived at ``adcp-client-python-10l.34``, and it is §4's own UNDERDETERMINED
+    # row reached at a position that had no classes before.**  §8's composition rule frees
+    # ``account/sync-accounts-request.json#/properties/accounts/items``, which declares a
+    # base plus one class per branch -- so there ARE branch classes for a declaration
+    # order to choose between, which is the whole of what the kind names, and
+    # ``harness.inseparable_unions`` puts the pointer in its set for the same reason.
+    #
+    # The pair genuinely is not separated BY THE DERIVATION, and the reason is worth the
+    # line: each branch forbids every name the other requires, which is §4's second
+    # separator exactly -- but it spells each ``not`` as an ``allOf`` CONJUNCT of the
+    # branch, and ``compiler.rules_at`` reads a node's OWN rule sources, so
+    # ``Branch.forbids`` is empty on both sides.  §4 is explicit that "a pair the
+    # derivation cannot separate is treated as overlapping, because admitting a union on
+    # an unproven disjointness is the defect this source exists to avoid", so the
+    # declaration is the admitted answer and not a gap papered over.  Both halves of §8's
+    # third equality agree about it, in both directions, which is asserted below.
+    (
+        "account/sync-accounts-request.json",
+        "#/properties/accounts/items/oneOf",
+        "oneOf",
+    ),
     ("content-standards/calibrate-content-response.json", "#/oneOf", "oneOf"),
     (
         "content-standards/create-content-standards-request.json",
@@ -4162,7 +4183,13 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         # document reports its own next obstruction -- a restatement of ``payload`` at
         # ``/definitions/signed_response/allOf/1`` that neither matches nor narrows.
         "brand/verify-brand-claims-response.json": "$ref",
-        "compliance/comply-test-controller-response.json": "additionalProperties",
+        # ``additionalProperties`` -> ``maxLength`` at ``adcp-client-python-10l.34``: the
+        # nested union at ``/oneOf/6/properties/recorded_calls/items`` carried
+        # ``properties``, ``required`` and ``additionalProperties`` beside the combinator
+        # and §8's composition rule now gives all three a base to live on, so the document
+        # reports its own next obstruction -- §5(b)'s ``maxLength`` row at
+        # ``.../items/properties/payload``, which nobody has written.
+        "compliance/comply-test-controller-response.json": "maxLength",
         "compliance/task-completion-data.json": "$ref",
         "content-standards/get-content-standards-response.json": "$ref",
         "content-standards/list-content-standards-response.json": "$ref",
@@ -4186,7 +4213,13 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "core/tracker-execution-selector.json": "$ref",
         "core/wholesale-feed-event.json": "$ref",
         "creative/get-creative-features-response.json": "title",
-        "creative/preview-creative-response.json": "properties",
+        # ``properties`` -> ``$ref`` at ``adcp-client-python-10l.34``: the nested union at
+        # ``/oneOf/1/properties/results/items`` composes its siblings now, so the document
+        # reports a CHAIN instead -- its ``/oneOf/2/properties/manifest`` references
+        # ``core/creative-manifest.json``, which is refused through
+        # ``core/rights-constraint.json``.  The site itself composed; what is left is
+        # another document's obstruction.
+        "creative/preview-creative-response.json": "$ref",
         "creative/sync-creatives-response.json": "$ref",
         "error-details/vast-version-mismatch.json": "required",
         "media-buy/build-creative-response.json": "$ref",
@@ -8266,6 +8299,27 @@ VERDICTS = frozenset(
         'property/property-list.json',
         'property/update-property-list-response.json',
         'trusted-match/provider-registration.json',
+        # **ONE joined at ``adcp-client-python-10l.34``, and it is a document GETTING
+        # FURTHER rather than a document finishing.**  §8's composition rule reaches a
+        # union at ANY position now, so
+        # ``formats/canonical/seller_rendered_stateful_display.json`` stops refusing on
+        # the sibling carrier at ``/properties/transitions/items`` and declares a base
+        # plus one class per branch -- and TWO NODES OF THE DOCUMENT then derive one
+        # class name.  §4 "Names"'s second branch rule names a branch after the ``const``
+        # it pins on the derived dispatch property, which for ``/oneOf/5`` is
+        # ``trigger: "media_event"``, so the branch is
+        # ``...TransitionsItemMediaEvent``; the base's own property ``media_event``
+        # derives that same name by §4's nested rule.  ``names.assign`` refuses it at
+        # ``/properties/transitions/items/oneOf/5``, which is the right ANSWER -- §1 gives
+        # a class ONE import path, and which of the two a referrer imported would
+        # otherwise be decided by the order the walk reached them in -- so the verdict is
+        # attributable and §8's own note applies: the figure to drive to zero is
+        # ``refused``, and this document's obstruction moved from a missing carrier to a
+        # naming collision between two of §4's own rules.  Measured: the other five
+        # branches pin ``timer``, ``in_view_timer``, ``scroll_threshold``,
+        # ``scroll_progress`` and ``user_action``, none of which is a property key of the
+        # base, so this is one collision and not five behind one report.
+        'formats/canonical/seller_rendered_stateful_display.json',
     }
 )
 

@@ -91,6 +91,46 @@ conjuncts' own bases after.  The branch's ``type`` is still read BEFORE its conj
 list, because a branch whose type is not an object cannot be a class whatever else it
 states -- see :func:`_plan`.
 
+THE SHAPE IS THE SIBLINGS' AND NOT THE POSITION'S (§8, widened 2026-10-27;
+``adcp-client-python-10l.34``).  "A sibling beside a union lowers by COMPOSITION, and
+nothing is approximated.  The siblings become a base class; each branch becomes a
+subclass narrowing what it narrows; the union is over the subclasses."  That is the
+shape this module has always written at a ROOT, and the ROOT was never the reason for
+it: the reason §8 gives is draft-07's evaluation rule, which does not care where the
+union sits.  So :func:`lower` reaches :func:`lower_union` for a union at ANY position
+that states a sibling a class carries (:func:`composes_its_siblings`), and
+:func:`nested`'s one type is what is left for a union that states none.  Nothing in
+:func:`lower_union` was per-position to begin with -- the branch readers take the
+node's own position off the node -- which is why the widening is a dispatch and not a
+second reader.
+
+The GRADER half needed nothing either, and that was measured rather than assumed:
+``_base.applied_schema`` conjoins :data:`adcp.types._base.SAME_INSTANCE_FACTS` at every
+``allOf``/``anyOf``/``oneOf``/``then``/``else`` hop of the pointer it walks, and it never
+asked whether the hop was a root one.  So a branch class at
+``#/properties/accounts/items/oneOf/0`` is paired against its node read under the
+``items`` node's ``properties``, ``required`` and ``additionalProperties``, and an
+inherited field is a fact its own node states.
+
+``account/sync-accounts-request.json`` at ``/properties/accounts/items`` is §8's own
+measured case and the one document of 3.2 this frees: ``type: object``,
+``additionalProperties: true``, 16 declared ``properties``, 2 ``dependencies``, and two
+``oneOf`` branches that declare NO properties and differ only in ``required`` --
+``[brand, operator, billing]`` against ``[account]``, each with an ``allOf`` of
+``not: {"required": [...]}``.  The base carries the 16 fields and the two
+``Dependencies`` rules; ``ProvisioningMode`` and ``SettingsUpdateMode`` restate the
+three and the one as REQUIRED over the base's own decided types and carry their
+``ForbiddenGroups``.  Every fact is kept and nothing is declared but the UNDERDETERMINED
+the dispatch derivation already owes (the ``not``s sit in the branches' CONJUNCTS, where
+``compiler.rules_at`` of the branch node does not read them, so §4's third source cannot
+separate the pair and §8's third equality holds in both directions).
+
+A CONFLICT, recorded and not resolved: §5's ``oneOf``/``anyOf`` cell still reads "Shapes
+nested -> one type ``A | B``; a sibling beside it refuses", which is the narrower reading
+§8 widened.  The cell's text is ``codegen/keywords.py``'s and §5's grid is generated from
+it, so the two sides disagree in one document.  Neither is edited here: §8 is the later
+decision, dated, with its reason and its measured case, and this module implements it.
+
 WHAT THE ROOT MAY NOT CARRY, and this is the one refusal that is about the GRADER rather
 than about a missing lowering.  A root ``allOf``, ``properties``, ``required`` or
 ``additionalProperties`` applies to the whole document in draft-07, so it is a
@@ -1284,6 +1324,25 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
 #: ``not``-beside-a-conjoined-type deferral, ``media-buy/get-products-request.json`` to a
 #: chain).  **No module the tree already carried changed by one byte**, which is what
 #: says the word was being dropped at those 12 nodes and nowhere else.
+#:
+#: **THE OTHER 9 ARE GONE, and this sentence no longer reaches them**
+#: (``adcp-client-python-10l.34``).  Every one of those 9 states a sibling a CLASS
+#: carries, and §8 decides it at a union in ANY position: "a sibling beside a union
+#: lowers by COMPOSITION, and nothing is approximated.  The siblings become a base
+#: class; each branch becomes a subclass narrowing what it narrows; the union is over
+#: the subclasses."  :func:`composes_its_siblings` is the selector and
+#: :func:`lower_union` is the reader -- the ROOT position's own, unchanged -- so the
+#: fact HAS a carrier and the second half of the sentence below no longer holds for it
+#: either: the branch class's pair reads the branch node under those siblings
+#: (``_base.applied_schema``, which conjoins at every combinator hop it walks and never
+#: asked whether the hop was a root one), so the inherited field is a fact the branch's
+#: own node states.
+#:
+#: What is LEFT for this sentence is a sibling no class carries -- a value constraint
+#: beside a combinator of shapes.  The bundle states **0** of them, so the text is
+#: reached by no document of 3.2 and by one fixture in
+#: ``tests/test_nested_union_sibling.py``; it is written anyway, because the first
+#: document to state one must refuse by name rather than have the keyword dropped.
 _NESTED_SIBLING = (
     "a sibling of a nested oneOf/anyOf is a CONJUNCTION with every branch (draft-07), "
     "and a nested union lowers to one type -- A | B -- which has no slot for a fact of "
@@ -1315,6 +1374,48 @@ _NESTED_SIBLING = (
 
 
 
+def carried_by_a_class(node: "nodes.Union") -> frozenset[str]:
+    """The siblings of this union a composed CLASS consumes, DERIVED (§8).
+
+    Two readings and neither is retyped here.  :data:`compiler.COMPOSING` is the one
+    declaration of what a composing node carries beside its conjunct list -- fields, a
+    requiredness, an extra policy, a conjunct list -- and ``compiler.rules_at``'s
+    ``screen`` is D6's one reading of the rule sources THIS node states at THIS position,
+    which is where ``dependencies`` arrives.  So the set is a function of the table and of
+    the node, and a keyword §5 later compiles onto a class joins it without a second
+    edit; a hand-written set beside this is the defect §9 names.
+
+    The combinator and ``type`` come OUT, because the ``A | B`` arm already answers for
+    both: the combinator is the node's own kind, and the parser has handed the ``type``
+    word to every branch (``schema.parse._union``'s ``applied=``), so neither is a
+    sibling with nowhere to go.  What is left is exactly the siblings §8 says become a
+    base.
+    """
+    claimed = compiler.COMPOSING | compiler.rules_at(node, position=node.position).screen
+    return frozenset(claimed) - {node.combinator, "type"}
+
+
+def composes_its_siblings(node: "nodes.Union") -> bool:
+    """Does this union state a sibling that a CLASS carries?  §8's composition rule.
+
+    **"A sibling beside a union lowers by COMPOSITION, and nothing is approximated"**
+    (§8, widened 2026-10-27): the siblings become a base class, each branch becomes a
+    subclass narrowing what it narrows, and the union is over the subclasses.  A branch
+    class is then paired against its branch node read UNDER those siblings -- which
+    ``_base.applied_schema`` already reads at every position, conjoining
+    :data:`adcp.types._base.SAME_INSTANCE_FACTS` at each combinator hop it walks -- so an
+    inherited field is a fact the branch's own node states and not one it added.  That is
+    the objection :data:`_NESTED_SIBLING` raised, answered.
+
+    Asked of the DECLARATION the node states and not of its position, because the rule
+    is a statement about the siblings: a union stating none of them is one type at any
+    pointer, and a union stating one is a base plus subclasses at any pointer.  The ROOT
+    position composes regardless (§4 makes a document export one importable symbol), so
+    :func:`lower` asks both questions and this one answers for the rest.
+    """
+    return bool(frozenset(node.declares) & carried_by_a_class(node))
+
+
 def lower(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refusal:
     """§4's union row, at the node's own POSITION: a base plus one class per branch at a
     document ROOT, and one ``A | B`` type below it.
@@ -1324,6 +1425,14 @@ def lower(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refus
     the UNION knows its own position, which is also the fact §6 makes it TELL its enum
     branches rather than have them read a pointer.
 
+    **A union carrying a SIBLING takes the base-plus-subclasses answer wherever it sits**
+    (§8, widened 2026-10-27; :func:`composes_its_siblings`).  The position decides whether
+    a document must export one symbol; the SIBLINGS decide whether there is a fact that
+    needs a class to carry it.  Those are two questions and this asks both, which is why
+    the dispatch is a disjunction and not a position test with a second branch inside it:
+    a nested union stating ``properties`` and a root union stating none reach the same
+    reader for opposite reasons.
+
     **CONVERTED to node fields.**  The branch PLAN -- a branch's ``const`` pin, its
     ``required`` set, its title, its conjunct list -- is read off
     :attr:`nodes.Union.branch_raw`, which §6 keeps at the declaration level, and a
@@ -1331,7 +1440,7 @@ def lower(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refus
     BRANCH.  The sibling screen is :attr:`nodes.Base.declares` at the node's own
     position, which is the parser's classification read by the table.
     """
-    if node.position is Position.ROOT:
+    if node.position is Position.ROOT or composes_its_siblings(node):
         base = lower_union(node, mod)
         if isinstance(base, Refusal):
             return base
@@ -1340,7 +1449,15 @@ def lower(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refus
 
 
 def nested(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refusal:
-    """``A | B`` for a ``oneOf``/``anyOf`` at a pointer that is NOT a document root.
+    """``A | B`` for a ``oneOf``/``anyOf`` at a pointer that is NOT a document root AND
+    that states nothing beside the combinator.
+
+    **A nested union carrying a SIBLING does not arrive here at all**
+    (:func:`composes_its_siblings`, ``adcp-client-python-10l.34``).  §8 reaches a union at
+    any position, so the siblings become a base and each branch a subclass of it, which
+    is :func:`lower_union`'s answer and not this one.  What this function is for is the
+    union that states NOTHING a class carries: there is no fact to give a class, so there
+    is no class, and the union is one type.
 
     **It is not the root row's shape and must not be.**  A root union emits a base
     carrying ``BranchDispatchMixin`` and one subclass per branch because a DOCUMENT must
