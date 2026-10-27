@@ -96,7 +96,7 @@ from pathlib import Path
 from typing import Any
 
 from adcp.types._base import Approximation
-from codegen import bundle, compiler, harness, ir, render
+from codegen import bundle, compiler, harness, ir, keywords, render
 from codegen.keywords import Position
 from codegen import constraints as constraints_module
 from codegen.compiler import (
@@ -621,6 +621,20 @@ class Emitted:
     #: prints.  A disagreement between the two is a defect in ``render`` and
     #: ``tests/test_approximation.py`` is where it is caught.
     approximations: dict[str, list[Approximation]] = field(default_factory=dict)
+    #: document -> the reference SITES its walk asked about, each ``(uri, pointer)``.  The
+    #: walk's OWN record of which references it lowered a type or an import from, which is
+    #: what §10's prune is already computed over: "a run owes the documents it was NAMED,
+    #: and every document one of those actually REFERENCED, transitively -- and the sites a
+    #: walk asked about are the record of that".
+    #:
+    #: It is on the result because the STATIC reading the closure and the order range over
+    #: (``bundle.lowered_references``) is an OVER-APPROXIMATION of it, and a reader that
+    #: wants the ImportError claim -- every cross-document reference the walk lowers names
+    #: an emitted document -- has to range over the walk's record and not over the static
+    #: one.  Two things make the static reading wider: a document that REFUSES stops before
+    #: its later sites, and §5(b)'s ``patternProperties`` widening drops a value schema, so
+    #: a ``$ref`` inside it is at a position no class names and emits no import.
+    asked: dict[str, set[tuple[str, str]]] = field(default_factory=dict)
 
 
 # **``_composed_nodes`` is ``bundle.composed`` now**, and the move is §11's row for it:
@@ -659,6 +673,14 @@ def _bound_shape(shape: compiler.Shape, symbols: Mapping[str, str]) -> compiler.
 #: at an unstated depth disagrees with its own reader about node identity (§9).
 _TRAVEL_DEPTH = 8
 
+#: The keywords whose subschemas are CONJUNCTS, DERIVED from the descent column rather
+#: than named: ``keywords.descends_at`` is "the ONE descent table", and a keyword whose
+#: subschemas sit at CONJ is exactly what a conjunction is.  Read at ROOT, where the
+#: derivation enters; the column's answer is the same at every position that gives one.
+_CONJUNCTS = frozenset(
+    k for k, p in keywords.descends_at(Position.ROOT).items() if p is Position.CONJ
+)
+
 
 def _under(pointer: str, into: str) -> bool:
     """Whether ``pointer`` names the node at fragment ``into`` or one inside it.
@@ -696,11 +718,54 @@ def _travelled(document: str, one: Approximation, referrer: str, into: str) -> A
     )
 
 
+def _folded(document: str, one: Approximation, declared: Collection[str]) -> Approximation:
+    """``one`` re-pointed off any ``allOf`` CONJUNCT the walk composed into a class.
+
+    The third of §8's four resolutions, under the same rule as the other two: a conjunct's
+    facts are the composed node's -- ``compiler.lower_composition`` folds them into one
+    class and the comparison's ``harness._composed`` folds them on the document side -- so
+    a declaration about one of those facts belongs at the composed node's pointer, or the
+    comparison reports the fact *missing* at a pointer no declaration is at.  Measured:
+    ``core/account-with-authorization.json`` and ``account/list-accounts-response.json``
+    both reported ``missing`` for a widening declared one ``allOf/1`` hop away.
+
+    **The evidence that the walk composed is the walk's own symbol table**, and that is why
+    ``declared`` is a parameter: a conjunct hop whose PREFIX is a pointer this module
+    declared a class at is a conjunct that was folded into that class.  A hop with no class
+    above it was not folded and keeps its pointer, which is the fail-safe direction -- the
+    declaration then stands where it was minted and *over-declared* reports it if no pair
+    reaches it.
+    """
+    segments = [s for s in one.pointer.lstrip("#").split("/") if s]
+    for _ in range(_TRAVEL_DEPTH):
+        hop = next(
+            (
+                i
+                for i in range(len(segments) - 1)
+                if segments[i] in _CONJUNCTS
+                and segments[i + 1].isdigit()
+                and "".join(f"/{s}" for s in segments[:i]) in declared
+            ),
+            None,
+        )
+        if hop is None:
+            break
+        segments = [*segments[:hop], *segments[hop + 2 :]]
+    pointer = "#" + "".join(f"/{s}" for s in segments)
+    if pointer == one.pointer:
+        return one
+    return one._replace(
+        pointer=pointer,
+        attribution=lower_approximate.attribution_for(document, pointer, one.keyword),
+    )
+
+
 def repointed(
     document: str,
     own: Sequence[Approximation],
     edges: Sequence[bundle.Edge],
     finished: Mapping[str, Sequence[Approximation]],
+    declared: Collection[str] = (),
 ) -> tuple[Approximation, ...]:
     """**§8: a declaration travels with the fact it is about.**
 
@@ -758,7 +823,13 @@ def repointed(
             if _under(one.pointer, edge.into):
                 travelled = _travelled(document, one, edge.pointer, edge.into)
                 out.setdefault((travelled.pointer, travelled.keyword), travelled)
-    return tuple(out.values())
+    # LAST, because a reference's own site may sit INSIDE a conjunct: the fold is one hop
+    # further up than the re-pointing and reads its output.
+    folded: dict[tuple[str, str], Approximation] = {}
+    for one in out.values():
+        travelled = _folded(document, one, declared)
+        folded.setdefault((travelled.pointer, travelled.keyword), travelled)
+    return tuple(folded.values())
 
 
 def closure(documents: Collection[str], sites: Mapping[str, Sequence[bundle.Edge]]) -> list[str]:
@@ -1217,6 +1288,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                 bound.approximations,
                 lowering.get(document, ()),
                 {d: held[1].approximations for d, held in lowered.items()},
+                frozenset(bound.symbols),
             ),
         )
         lowered[document] = (mod, bound, doc)
@@ -1282,6 +1354,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             out.carries_nothing[document] = list(mod.carries_nothing)
         if bound.approximations:
             out.approximations[document] = list(bound.approximations)
+        out.asked[document] = set(asked.get(document, ()))
         # The document travels WITH the module, at its own bundle-relative path,
         # because ``__adcp_schema__`` names that path and ``strict_validate``
         # reads it to decide acceptance (D4).  The bundle is a build-time input

@@ -120,8 +120,9 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from codegen import compiler, ir, keywords
-from codegen.lower import names
+from codegen.lower import approximate, names
 from codegen.schema import nodes
+from codegen.schema import parse as schema
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal, first_refusal
 
@@ -746,6 +747,30 @@ def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
                 f"one branch requires {forbidden} and the other declares no such "
                 "property and admits no name outside its own map"
             )
+    for one, other in ((a, b), (b, a)):
+        # **§4's FOURTH separator, added 2026-10-27: one branch forbids a VALUE another
+        # pins.**  It exists because neither separator above was sound for a real union:
+        # ``media-buy/sync-catalogs-response.json`` has a branch forbidding
+        # ``status == "submitted"`` and a branch pinning ``status`` to that very
+        # ``const``, so every instance of the second carries a value the first forbids --
+        # disjoint in fact, and reached by no other separator, because the pinned-``const``
+        # separator needs BOTH branches to pin and the required/forbidden one needs the
+        # NAME forbidden outright.
+        #
+        # The pinning branch must also REQUIRE the key, or an instance of it omitting the
+        # key satisfies the forbidding branch too and the pair is not separated.
+        values = schema.forbidden_values(other.node, Position.BRANCH)
+        pinned = pins(one.properties)
+        named = sorted(
+            key
+            for key, value in pinned.items()
+            if key in values and values[key] == value and key in requires(one)
+        )
+        if named:
+            return (
+                f"one branch pins {named} to a value the other forbids outright "
+                f"({ {k: pinned[k] for k in named} })"
+            )
     scalars = a_type not in (None, "object") and b_type not in (None, "object")
     if scalars and a_type != b_type:
         return f"the branches are scalars of type {a_type!r} and {b_type!r}"
@@ -913,23 +938,35 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
         # instead of on a structural union, and the other 4 carry
         # ``_BRANCH_DISCRIMINATOR = ""`` and reach their branches through §4's third
         # source.
-        return Refusal(
+        # **§4's own answer, WRITTEN (2026-10-27): "A union matching none of the three
+        # emits a plain ``A | B`` over its branches and declares an UNDERDETERMINED
+        # approximation at the union's pointer."**  So the refusal above is gone and what
+        # stands in its place is the declaration: the branches are emitted in the
+        # document's own order, a payload reaches the first branch that validates, and
+        # WHICH branch an overlapping payload becomes is the fact dropped.
+        #
+        # **UNDERDETERMINED and not WIDENED**, which is §2's one instance of the kind: no
+        # comparison, draw or dump can see it, because the annotation admits exactly what
+        # the document admits.  Its instrument is §8's third equality --
+        # ``harness.underdetermined_census``, over §4's disjointness derivation in both
+        # directions -- so a union that becomes separable loses its declaration and one
+        # that stops being separable gains it.
+        #
+        # Declared at ``<pointer>/<kw>``, which is the UNION's pointer and the spelling
+        # ``harness.inseparable_unions`` yields: the combinator is what is
+        # underdetermined, not the node that holds it, and the two sides of an equality
+        # over pointers have to agree on one spelling.
+        #
+        # 18 roots reach this over the 1,054 portable documents and 13 of them report
+        # their own deeper obstruction once the dispatch stops refusing, each by name,
+        # keyword and pointer -- so the declaration frees 5 and is a step for the rest.
+        approximate.declare(
+            mod,
+            f"{pointer}/{kw}",
             kw,
-            pointer,
-            "no branch dispatch is derivable and the branches OVERLAP: §4's three "
-            "sources are a const every branch pins on one shared property to a distinct "
-            "value, a key the bundle's manifest states, and branches no instance "
-            "satisfies twice.  The branches confirm no such property "
-            f"({_why_no_pin(planned)}), and these pairs are separated by no pinned const, "
-            f"no required name the other forbids and no scalar type: {overlaps}.  So a "
-            "branch could only be reached by trying each and keeping the first that "
-            "validates, which makes the answer a property of declaration order rather "
-            "than of the payload.  The manifest source is the row for a union whose "
-            "discriminant is in the envelope (salesagent-j3k2l.60), which emits such a "
-            "root as a MAPPING keyed by that field rather than as the base plus branches "
-            "here, and a lowering cannot read the manifest to ask whether this document "
-            "is one",
-            kind=Kind.DEFERRED,
+            node.position,
+            node.branch_raw,
+            kind=ir.UNDERDETERMINED,
         )
     # **§4 "Names"'s branch rules as HOPS, one per branch** (§14 step 7).  The three
     # inputs the rules read are recorded here -- the branch's own declaration, the

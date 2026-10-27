@@ -27,10 +27,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import jsonschema
 
 from codegen import bundle, emit
+from codegen.ir import MISSING
 
 from tests.nodeset import claimed, partitions
 
@@ -89,9 +91,35 @@ def test_a_default_is_dropped_where_the_property_is_required_and_kept_where_it_i
     ]
 
 
+def _stated_default(document: str, root: Any, sub: Any) -> Any:
+    """The ``default`` a property's declaration states, THROUGH a local ``$ref``.
+
+    Draft-07 replaces a ``$ref`` node with its target, so the target's ``default`` IS the
+    referring node's -- which is ``adcp-client-python-10l.26``'s own sentence and what
+    ``compiler.local_reference`` now carries (``compiler.Module.referred``).  So the
+    derivation this check ranges over has to follow the same resolution, or the emitter
+    reports a drop the derivation calls invented.
+
+    The node's OWN ``default`` wins where it states one, which is the precedence §5's
+    ``$ref`` row gives a ``description`` sibling and the same order ``compiler.fields``
+    reads the two in.  ``MISSING`` where neither states one, so a ``default: null`` -- a
+    legal JSON value, and in this bundle -- is not read as an absence.
+    """
+    if not isinstance(sub, dict):
+        return MISSING
+    if "default" in sub:
+        return sub["default"]
+    ref = sub.get("$ref")
+    if not isinstance(ref, str) or not ref.startswith("#"):
+        return MISSING
+    target = dict(bundle.nodes(root)).get(ref[1:])
+    return target["default"] if isinstance(target, dict) and "default" in target else MISSING
+
+
 def _defaults_on_required_properties() -> set[tuple[str, str]]:
-    """Every (document, pointer) in the bundle where a property's own node states a
-    ``default`` and its enclosing object REQUIRES the key.
+    """Every (document, pointer) in the bundle where a property's declaration states a
+    ``default`` -- its own, or its local ``$ref`` target's -- and its enclosing object
+    REQUIRES the key.
 
     Read off the documents rather than off the run, so the set this check ranges over
     is a property of the bundle and the emitter's own record is what gets compared to
@@ -108,7 +136,7 @@ def _defaults_on_required_properties() -> set[tuple[str, str]]:
             if not isinstance(props, dict) or not isinstance(demanded, list):
                 continue
             for key, sub in props.items():
-                if isinstance(sub, dict) and "default" in sub and key in demanded:
+                if key in demanded and _stated_default(document, bundle.read(BUNDLE, document), sub) is not MISSING:
                     found.add((document, f"{pointer}/properties/{key}"))
     return found
 
@@ -135,10 +163,14 @@ def test_every_drop_the_run_reports_is_a_default_on_a_property_its_document_requ
     assert reported <= stated, sorted(reported - stated)
     partitions(stated, reported=reported, never_reached=stated - reported)
     for document, pointer in sorted(reported):
-        node = bundle.read(BUNDLE, document)
+        root = bundle.read(BUNDLE, document)
+        node = root
         for step in [s for s in pointer.split("/") if s]:
             node = node[step] if not isinstance(node, list) else node[int(step)]
-        assert out.drops[document][pointer] == node["default"], (document, pointer)
+        assert out.drops[document][pointer] == _stated_default(document, root, node), (
+            document,
+            pointer,
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -185,9 +217,15 @@ RELEASED: dict[str, tuple[str, ...]] = {
 #: and it is now ``$ref`` at ``/properties/budget_allocation/allOf/0``, a CHAIN through
 #: ``core/budget-allocation.json``.  The document got FURTHER and named its next
 #: obstruction, which is the direction this map is pinned for.
+#:
+#: **TWO ENTRIES LEFT AT ``adcp-client-python-10l.21``, which is the SHRINK this map is
+#: pinned for.**  ``account/list-accounts-response.json`` and
+#: ``core/account-with-authorization.json`` both chained through
+#: ``core/account-authorization.json``, whose ``#/properties/field_scopes
+#: /additionalProperties`` carries a ``uniqueItems`` at a mapping value -- §5(b)'s row,
+#: which this row's second instalment lands as a DECLARED WIDENING rather than a verdict.
+#: All three emit.
 STILL_REFUSED: dict[str, str] = {
-    "account/list-accounts-response.json": "$ref",
-    "core/account-with-authorization.json": "$ref",
     "core/assets/pixel-tracker-asset.json": "additionalProperties",
     "core/assets/url-asset.json": "additionalProperties",
     "core/media-buy.json": "$ref",

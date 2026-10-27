@@ -363,8 +363,16 @@ def _required_groups(sub: Any) -> list[tuple[str, ...]] | None:
     the same ``not`` to classify a branch, and §11's "nothing repeats" makes one keyword
     one reduction.  This is the name the three readers in this module call it by, and
     the position they ask at.
+
+    ``partial=True``, which is ``adcp-client-python-10l.27``'s settled fix: both callers
+    here read a ``not``, where every group dropped forbids LESS, so a disjunct the
+    reduction cannot read contributes none and the ones it can read still contribute
+    theirs.  All-or-nothing dropped the whole ``not`` and
+    ``media-buy/sync-audiences-response.json``'s branches then carried no
+    ``ForbiddenGroups``, so §4's second separator could not see a union the document
+    separates.
     """
-    return schema.required_groups(sub, Position.RULE)
+    return schema.required_groups(sub, Position.RULE, partial=True)
 
 
 def _clauses(sub: Any) -> list[tuple[str, bool, tuple[Any, ...] | None]] | None:
