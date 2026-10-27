@@ -35,13 +35,16 @@ import functools
 import importlib
 import json
 import socket
+import sys
 from pathlib import Path
+from typing import Any
 
 import jsonschema
 import pytest
 from pydantic import ValidationError
 
-from codegen import bundle, emit
+from codegen import bundle, compiler, emit
+from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
 import populations
 from conftest import refusal_from
@@ -1553,3 +1556,203 @@ def test_a_property_named_definitions_is_a_property_and_not_a_section(tmp_path: 
     body = carried["properties"]["definitions"]["properties"]["body"]
     assert "$ref" not in body, body
     assert set(body["properties"]) == set(TARGET["properties"]), body
+
+
+# --------------------------------------------------------------------------- #
+# §5(a)'s bare-`$ref` ROOT: a subclass where the target is a class
+# --------------------------------------------------------------------------- #
+#: Every portable document whose ROOT is a bare ``$ref`` -- the whole population of
+#: §5(a)'s bare-``$ref`` root row, read off the document rather than off a refusal, so
+#: it stays the population once the row stops refusing.  ``1`` at §14 step 9.
+BARE_REF_ROOTS = 1
+
+#: A document whose ROOT is a bare ``$ref`` and a title, which is the live site's own
+#: shape (``core/signal-pricing-option.json`` states ``title``, ``description`` and the
+#: reference).  The title is not optional: §4 names a root off it and a document stating
+#: none refuses on ``title`` before this row is reached.
+BARE_REF_ROOT = {
+    "title": "Alias Like",
+    "description": "A deprecated alias of the target.",
+    "$ref": f"{BASE}core/target.json",
+}
+
+
+def bare_ref_roots() -> list[str]:
+    """The portable documents whose root states a ``$ref`` and nothing constraining.
+
+    ``compiler.declaring`` at ROOT is the one reading of "which keys does this node
+    state about an instance", so the population is the screen's own answer and not a
+    second list of annotation keys.
+    """
+    return sorted(
+        document
+        for document in bundle.portable(BUNDLE)
+        if set(compiler.declaring(bundle.read(BUNDLE, document), Position.ROOT)) == {"$ref"}
+    )
+
+
+def written(at: Path, out: object) -> Any:
+    """Write an emitted run as a package under ``at``, import it, and return the module
+    namespace -- ``tests/test_ref_branch_union.py``'s own helper, for its reason: a
+    subclass across a module boundary is exactly the shape that can render and not
+    import, and that is not visible in a string."""
+    package = at / "pkg"
+    emit.write(out, package, None)
+    sys.path.insert(0, str(at))
+    try:
+        for name in [n for n in sys.modules if n == "pkg" or n.startswith("pkg.")]:
+            del sys.modules[name]
+        return (
+            importlib.import_module("pkg.core.alias"),
+            importlib.import_module("pkg.core.target"),
+        )
+    finally:
+        sys.path.remove(str(at))
+
+
+def test_a_bare_ref_root_is_a_subclass_of_its_target(tmp_path: Path) -> None:
+    """§5(a): "Where the target is a class the answer is a **subclass** of it."
+
+    "Refused because binding this module's symbol to another module's class would be a
+    second way to reach one class, against §1.  Where the target is a class the answer
+    is a subclass of it, which is one class per name and accepts exactly what the base
+    accepts, so §1 is untouched."
+
+    Graded on a constructed bundle because the one live site's TARGET refuses on a
+    keyword of its own -- see the live half below -- so the bundle reaches the emitting
+    path zero times.  Three facts, and each one fails on its own:
+
+    * the root symbol is a class this module DECLARES, whose base is the imported
+      symbol: ``X is Y`` does NOT hold, which is the §1 objection the refusal stood on;
+    * it declares no field: the target supplies every one of them by inheritance and
+      nothing of the target is copied (P2);
+    * it accepts exactly what the target accepts, through its own
+      ``strict_validate`` -- which is what makes the subclass faithful rather than a
+      second name for a looser class.
+    """
+    root = write_bundle(
+        tmp_path,
+        {"core/target.json": TARGET, "core/alias.json": BARE_REF_ROOT},
+    )
+    out = emit.emit(root, ["core/alias.json"])
+    assert out.refusals == {}, out.refusals
+    assert sorted(out.emitted) == ["core/alias.json", "core/target.json"], out.emitted
+
+    tree = ast.parse(out.files["core/alias.py"])
+    imported = {
+        a.name
+        for n in ast.walk(tree)
+        if isinstance(n, ast.ImportFrom)
+        for a in n.names
+    }
+    assert "CatalogLike" in imported, imported
+    declared = [c for c in tree.body if isinstance(c, ast.ClassDef)]
+    assert [c.name for c in declared] == ["AliasLike"], [c.name for c in declared]
+    assert [b.id for b in declared[0].bases] == ["CatalogLike"], ast.dump(declared[0])
+    # No field of its own, and the ``__adcp_schema__`` of its OWN document: the class
+    # grades against the document of record, where §3 inlines the target unchanged, so
+    # there is a pointer for every inherited fact.
+    assert [
+        t.target.id for t in declared[0].body if isinstance(t, ast.AnnAssign)
+    ] == ["__adcp_schema__"], ast.dump(declared[0])
+    assert "core/alias.json" in out.files["core/alias.py"]
+
+
+#: The target for the RUN, as opposed to the one for the text: its facts are a
+#: ``required`` and a closed object, so the written package imports nothing from
+#: ``constraints.py`` -- D5's alias module is a whole-run artifact and a part-run does
+#: not write it, so a constrained scalar in a fixture target makes the import fail on
+#: a name the installed module does not carry.
+RUN_TARGET = {
+    "title": "Target Like",
+    "type": "object",
+    "properties": {"label": {"type": "string"}, "n": {"type": "integer"}},
+    "required": ["label"],
+    "additionalProperties": False,
+}
+
+
+def test_a_bare_ref_root_accepts_exactly_what_its_target_accepts(tmp_path: Path) -> None:
+    """The subclass's accepted set, RUN rather than read: §1 is untouched because the
+    two classes accept the same payloads and are still two classes.
+
+    Written as a package and imported, for ``test_ref_branch_union``'s reason: a
+    subclass across a module boundary is exactly the shape that can render and not
+    import, and that is not visible in a string.
+    """
+    root = write_bundle(
+        tmp_path,
+        {
+            "core/target.json": RUN_TARGET,
+            "core/alias.json": {**BARE_REF_ROOT, "$ref": f"{BASE}core/target.json"},
+        },
+    )
+    out = emit.emit(root, ["core/alias.json"])
+    assert out.refusals == {}, out.refusals
+    alias, target_module = written(tmp_path, out)
+    subclass, target = alias.AliasLike, target_module.TargetLike
+    # One class per name, and it is NOT the target: that is the §1 objection the
+    # refusal stood on, and a subclass answers it.
+    assert issubclass(subclass, target) and subclass is not target
+    assert subclass.model_validate({"label": "x", "n": 1}).label == "x"
+    # Every fact the target states is enforced through the subclass, and nothing of the
+    # target is copied: the ``required`` and the closed object are the TARGET's.
+    for payload in ({"n": 1}, {"label": "x", "beyond": 1}):
+        with pytest.raises(ValidationError):
+            subclass.model_validate(payload)
+    # ``model_validate`` and not ``strict_validate``: the schema half reads the
+    # PACKAGED document off the installed ``adcp.types._schemas`` resource, and a
+    # fixture bundle has no installed package -- which is why every constructed-bundle
+    # test here grades the annotation half (``test_ref_branch_union`` does the same).
+    # The schema half is graded over the real bundle by the three checks.
+
+
+def test_the_identity_half_of_the_bare_ref_root_is_unwritten_and_says_so(
+    tmp_path: Path,
+) -> None:
+    """§5(a)'s OTHER half -- "bound to the target **by identity**" -- has population 0.
+
+    "Where the target is an alias, an enumeration or a root model there is nothing to
+    subclass and the symbol is bound to the target by identity."  Measured: the one
+    bare-``$ref`` root in the portable set names a class, so this arm has no live site
+    and it is DEFERRED by name rather than written against nothing -- which is what the
+    row does for every arm whose population is 0 (§4's mixed root union is the other).
+
+    ``Target.shape`` is the reading of "is a class", and it is ``None`` for a union ROOT
+    as well: ``emit.resolve`` declines to hand a union base's shape across a module
+    boundary, and §4 part 3 is why that matters here -- a subclass of a union base
+    declared elsewhere keeps its OWN schema, so it would accept none of the branches.
+    """
+    root = write_bundle(
+        tmp_path,
+        {
+            "core/scalar.json": {"title": "Scalar", "type": "string"},
+            "core/alias.json": {**BARE_REF_ROOT, "$ref": f"{BASE}core/scalar.json"},
+        },
+    )
+    r = refusal_for(root, "core/alias.json")
+    assert (r["keyword"], r["pointer"]) == ("$ref", "/"), r
+    assert r["resolved"] is Kind.DEFERRED, r
+    assert "identity half is unwritten" in r["detail"], r
+    assert "population 0" in r["detail"], r
+
+
+def test_the_one_bare_ref_root_in_the_bundle_reports_its_targets_refusal(tmp_path: Path) -> None:
+    """The LIVE half: the row's own refusal is retired and what is left is the target's.
+
+    ``core/signal-pricing-option.json`` is a deprecated alias of
+    ``core/vendor-pricing-option.json`` and the only bare-``$ref`` root in the portable
+    set.  Its own obstruction -- "a root that is a bare reference ... would bind this
+    module's own symbol to a class another module declares" -- is gone, and the document
+    now reports a CHAIN through its target, which refuses on §5's ``$ref`` row at CONJ
+    (its conjunct's target ``VendorPricing`` is a union root, and the node declares
+    fields of its own).  So this row is landed and the document's remaining distance is
+    its target's, enumerated here rather than left looking like this row's.
+    """
+    assert len(bare_ref_roots()) == BARE_REF_ROOTS, bare_ref_roots()
+    assert bare_ref_roots() == ["core/signal-pricing-option.json"], bare_ref_roots()
+    out = emit.emit(BUNDLE, bare_ref_roots())
+    r = out.refusals["core/signal-pricing-option.json"]
+    assert r["kind"] == "chained", r
+    assert "core/vendor-pricing-option.json is refused" in r["detail"], r
+    assert "bind this module's own symbol" not in r["detail"], r
