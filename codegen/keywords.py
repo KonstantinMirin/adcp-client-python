@@ -970,7 +970,12 @@ _COMBINATORS: dict[str, Row] = {
             False,
             Position.BRANCH,
             "Presence-only, every branch `required`-only → a `RequiredGroups` rule "
-            "naming the combinator. Shapes at ROOT → the base plus one class per "
+            "naming the combinator. Presence-only where a branch also `not`s a group of "
+            "`required` → a `PresenceGroups` rule naming the combinator, whose clauses "
+            "are the branches: each clause carries its OWN required group and its own "
+            "forbidden groups, because the `not` is per branch — a `ForbiddenGroups` "
+            "over the union of them forbids every group unconditionally and refuses a "
+            "payload the document admits. Shapes at ROOT → the base plus one class per "
             "branch. Shapes nested → one type `A \\| B`; a sibling beside it refuses. "
             "For `oneOf`, `A \\| B` admits an instance satisfying two branches and the "
             "schema half enforces exclusivity. A union whose branches declare the same "
@@ -1601,8 +1606,9 @@ def combinators(position: Position) -> frozenset[str]:
 def declares(keyword: str, position: Position) -> bool:
     """Does this key STATE something about an instance at this position?
 
-    The question the parser's classification asks of a branch (``parse._required_only``)
-    and of a node's annotations, and the one the screen asks in the other direction.  A
+    The question the parser's classification asks of a branch
+    (``parse.presence_clause``) and of a node's annotations, and the one the screen asks
+    in the other direction.  A
     key that annotates without constraining is not a declaration; a key with no row is,
     because a keyword the bundle did not use before could constrain anything.
     """

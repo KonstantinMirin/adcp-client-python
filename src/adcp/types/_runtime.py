@@ -225,6 +225,92 @@ class RequiredGroups:
             )
 
 
+@dataclass(frozen=True)
+class Presence:
+    """One branch of a presence-only union, BOTH halves of it: the names the branch
+    requires, and the groups it forbids.
+
+    A clause and not a rule -- it has no ``errors`` -- for :class:`Match`'s reason: a
+    branch is not violated on its own, and only the combinator above it decides how many
+    branches an instance may satisfy.
+
+    ``forbid`` holds GROUPS and not names, because ``not: {"required": [a, b]}`` forbids
+    the PAIR and says nothing about either name alone.  A single-name group is the
+    ``anyOf``-of-``required`` spelling, where each name is forbidden on its own.
+    """
+
+    require: tuple[str, ...] = ()
+    forbid: tuple[tuple[str, ...], ...] = ()
+
+    def holds(self, keys: frozenset[str]) -> bool:
+        return all(name in keys for name in self.require) and not any(
+            group and all(name in keys for name in group) for group in self.forbid
+        )
+
+    def spelled(self) -> str:
+        """The clause as text, for the detail of a refusal."""
+        parts = []
+        if self.require:
+            parts.append(f"{', '.join(repr(n) for n in self.require)} present")
+        for group in self.forbid:
+            if len(group) == 1:
+                parts.append(f"{group[0]!r} absent")
+            elif group:
+                parts.append(f"not all of {', '.join(repr(n) for n in group)}")
+        return " and ".join(parts) or "nothing"
+
+
+@dataclass(frozen=True)
+class PresenceGroups:
+    """``oneOf`` / ``anyOf`` whose every branch states ``required`` AND a ``not`` over
+    ``required``: one rule whose CLAUSES are the branches.
+
+    **The two halves stay paired per clause, and that is the whole of this kind.** A
+    :class:`RequiredGroups` over the branches' ``required`` beside a root-level
+    :class:`ForbiddenGroups` over their ``not``\\ s says something else entirely: it
+    forbids every group UNCONDITIONALLY, where the document forbids each one only to the
+    branch that states it.  Measured on ``core/catchment.json``, which states three
+    methods -- ``travel_time``+``transport_mode``, ``radius``, ``geometry`` -- and whose
+    each branch forbids the other two: the union of the three ``not``\\ s forbids all
+    three names, so the hoisted pair refuses every payload the document admits.  Neither
+    :class:`RequiredGroups` (groups and a combinator) nor :class:`ForbiddenGroups`
+    (groups alone) has a slot for the other half, which is why this is a kind and not a
+    field.
+
+    ``RequiredGroups`` stays, and is this kind's ``forbid``-free case: where no branch
+    forbids anything the pairing has nothing to hold, and ``codegen.lower.rules`` writes
+    the narrower kind so the 3.2 bundle's existing rule tuples are unchanged.
+
+    ``anyOf`` is AT LEAST ONE clause satisfied; ``oneOf`` is EXACTLY ONE -- the
+    combinator as a parameter, for :class:`RequiredGroups`' reason.
+    """
+
+    clauses: tuple[Presence, ...]
+    combinator: str = "anyOf"
+
+    def errors(self, keys: frozenset[str], values: Mapping[str, Any]) -> Iterator[Error]:
+        satisfied = [c for c in self.clauses if c.holds(keys)]
+        spelled = "; ".join(c.spelled() for c in self.clauses)
+        if self.combinator == "oneOf":
+            if len(satisfied) != 1:
+                yield (
+                    "oneOf",
+                    (),
+                    f"{len(satisfied)} of these clauses hold, the document admits "
+                    f"exactly one: {spelled}",
+                    None,
+                )
+            return
+        if not satisfied:
+            yield (
+                "anyOf",
+                (),
+                f"none of these clauses holds, the document requires at least one: "
+                f"{spelled}",
+                None,
+            )
+
+
 def _same(a: Any, b: Any) -> bool:
     """Are these the same JSON value?  draft-07's equality, not Python's.
 

@@ -51,8 +51,17 @@ def declares_its_own_root_kind(doc: dict) -> bool:
 
     Measured, so each clause is known to be load-bearing rather than defensive: without
     the union clause :func:`is_object_root` and :func:`union_root` both answer yes for
-    35 documents and :func:`is_scalar_root` and :func:`union_root` both for 1; without
-    the ``allOf`` clause the object predicate overlaps step 4's.
+    **16 documents** and :func:`is_scalar_root` and :func:`union_root` both for 1;
+    without the ``allOf`` clause the object predicate overlaps step 4's.
+
+    **Re-measured at ``adcp-client-python-onq``, 19 -> 16.**  §5's "A union of
+    presence-only branches that also forbid" (2026-10-27) made a branch stating
+    ``required`` plus a ``not`` over ``required`` a presence clause, so
+    ``core/catchment.json``, ``core/frequency-cap-impression-constraints.json`` and
+    ``core/frequency-cap-interval-constraints.json`` stopped being union roots and
+    became object roots with a rule.  The clause is still load-bearing by 16 documents
+    and the entry is left here rather than only in a note, because the number is the
+    whole of what says so.
     """
     return is_enum_root(doc) or isinstance(doc.get("allOf"), list) or union_root(doc)
 
@@ -140,7 +149,14 @@ def union_root(doc: dict) -> bool:
     """A document whose root carries ``oneOf`` or ``anyOf`` over SHAPES.
 
     156 of the 3.2 bundle's 1,054 portable documents carry one of the keywords, and 0 of
-    them carry both.
+    them carry both.  **120 of those 156 are unions of SHAPES and so members here**,
+    re-measured at ``adcp-client-python-onq``: it was 126, and the six §5's "A union of
+    presence-only branches that also forbid" (2026-10-27) decides are the difference --
+    ``core/audience-characteristic.json``, ``core/catchment.json``,
+    ``core/creative-asset.json``, ``core/creative-manifest.json``,
+    ``core/frequency-cap-impression-constraints.json`` and
+    ``core/frequency-cap-interval-constraints.json``, each a combinator whose every
+    branch states ``required`` plus a ``not`` over ``required``.
 
     ONE implementation of the keyword read, and it is the LOWERING'S:
     ``lower.union.keyword`` is what ``emit._decide``'s union arm reads the keyword with,
@@ -169,9 +185,14 @@ def states_an_object_rule(doc: dict) -> bool:
       ``uniqueItems`` do NOT appear in that clause on purpose: ``is_leaf_object``
       already counts a document carrying only those.  ``core/format-id.json`` is such a
       document -- step 1's population, refused there until step 7, emitted now.
-    * every combinator in it is ``required``-only (``rules.presence_only``).  That is
-      the step-5 boundary: a combinator of SHAPES is a union root and step 5's, a
-      combinator of ``required`` groups has no shape to subclass and is a rule.  The
+    * every combinator in it states which keys are PRESENT (``rules.presence_only``).
+      That is the step-5 boundary: a combinator of SHAPES is a union root and step 5's,
+      a combinator of presence clauses has no shape to subclass and is a rule.  **The
+      predicate moved at ``adcp-client-python-onq`` -- a branch may now state a ``not``
+      over ``required`` beside its ``required`` -- and THIS POPULATION DID NOT: 5
+      documents before and after.  All six documents §5's "A union of presence-only
+      branches that also forbid" releases carry a ``$ref`` or an ``allOf``, so the first
+      clause excludes every one of them.**  The
       test is the lowering's own reading, so this cannot count a document the walk
       cannot lower.
     """
