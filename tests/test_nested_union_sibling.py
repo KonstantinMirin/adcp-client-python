@@ -38,6 +38,28 @@ That mechanism does not reach this keyword, and both halves are graded here:
 
 A constraining sibling still refuses, which is the perturbation under each assertion: the
 screen was narrowed by two names and not opened.
+
+**AND A THIRD ANSWER, which is neither an admission nor a refusal**
+(``adcp-client-python-10l.34``).  §8 widened its union-branch pairing rule to a union at
+ANY position on 2026-10-27, and with it: "a sibling beside a union lowers by COMPOSITION,
+and nothing is approximated.  The siblings become a base class; each branch becomes a
+subclass narrowing what it narrows; the union is over the subclasses."  So a sibling a
+CLASS carries does not reach this screen's sentence at all -- ``union.lower`` sends the
+node to ``union.lower_union``, the ROOT position's own reader -- and what the screen is
+left refusing is a sibling no class carries.  Four things are graded below and each is a
+different claim:
+
+* the SELECTOR is derived and not listed (``union.carried_by_a_class`` is
+  ``compiler.COMPOSING`` plus the node's own rule sources, minus the two the ``A | B``
+  arm answers for), so a keyword §5 later compiles onto a class joins it with no edit
+  here;
+* the 9 documents the old sentence refused are exactly the bundle's population for it,
+  derived off the bundle, and NONE of them refuses on a sibling carrier any more;
+* ``account/sync-accounts-request.json`` -- §8's own measured case -- emits the shape §8
+  names, and its branch classes are graded against their nodes read UNDER the siblings
+  by the production comparison rather than by reading the compared set;
+* a sibling no class carries still refuses on the screen's own sentence, which is the
+  perturbation: the screen was narrowed by a derived set and not opened.
 """
 
 from __future__ import annotations
@@ -50,6 +72,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from adcp.types._base import schema_at
 from codegen import bundle, compiler, emit, harness, keywords
 from codegen.lower import names
 from codegen.lower import union as lower_union
@@ -500,3 +523,276 @@ def test_the_screen_admits_exactly_the_one_name() -> None:
     # The other direction: this module holds no keyword set for a screen to read, so
     # there is no second place for §6's row to drift to.
     assert not [name for name in vars(lower_union) if name.endswith("_HANDLED")]
+
+
+# --------------------------------------------------------------------------- #
+# the third answer: a sibling a CLASS carries, which COMPOSES (§8)
+# --------------------------------------------------------------------------- #
+#: Every SITE of the bundle at which §8's composition rule fires, as a SET of
+#: ``(document, pointer)`` pairs (§8's own instrument for a figure that is not monotone:
+#: "what is pinned instead is the SET, named by document").  It is pinned here and
+#: DERIVED below off the bundle, in both directions, which is what makes a nineteenth
+#: site loud rather than silently absent -- a list of paths is complete with respect to
+#: itself.
+#:
+#: 18 sites over 15 documents.  **The 9 of :data:`THE_NINE` are the subset whose
+#: document's EARLIEST obstruction was the sibling carrier**; the other 6 documents
+#: refuse earlier on something else and reach the site only once those rows land, which
+#: is why the two sets are different sizes and why neither is the other's measure.
+COMPOSING_SITES = frozenset(
+    {
+        ("account/sync-accounts-request.json", "/properties/accounts/items"),
+        ("brand.json", "/definitions/color_ref"),
+        (
+            "compliance/comply-test-controller-response.json",
+            "/oneOf/6/properties/recorded_calls/items",
+        ),
+        ("core/canonical-forecast-point.json", "/properties/viewability"),
+        ("core/forecast-point.json", "/properties/viewability"),
+        ("core/format.json", "/properties/renders/items"),
+        ("core/format.json", "/properties/assets/items/oneOf/0"),
+        ("creative/preview-creative-response.json", "/oneOf/1/properties/results/items"),
+        ("creative/validate-input-request.json", "/properties/targets/items"),
+        ("formats/canonical/coordinated_placements.json", "/properties/components/items"),
+        (
+            "formats/canonical/coordinated_placements.json",
+            "/properties/components/items/anyOf/1",
+        ),
+        (
+            "formats/canonical/seller_rendered_stateful_display.json",
+            "/properties/transitions/items",
+        ),
+        ("governance/sync-plans-request.json", "/properties/plans/items/properties/budget"),
+        ("media-buy/decline-proposals-response.json", "/properties/results/items"),
+        ("media-buy/get-reporting-status-response.json", "/oneOf/0"),
+        ("media-buy/get-reporting-status-response.json", "/oneOf/1"),
+        ("media-buy/proposal-refinement.json", "/oneOf/1"),
+        ("media-buy/refine-proposals-response.json", "/properties/results/items"),
+    }
+)
+
+#: The 9 documents whose refusal WAS the sibling carrier -- group G2 of
+#: ``docs/plan/reasons-vs-rows.md``, 42 documents blocked and 34 of them chained.  They
+#: are the 9 of the 21 nodes reaching this screen that state a sibling beyond the ``type``
+#: word, and every one of them is a site of :data:`COMPOSING_SITES`, asserted below.
+THE_NINE = frozenset(
+    {
+        "account/sync-accounts-request.json",
+        "compliance/comply-test-controller-response.json",
+        "core/canonical-forecast-point.json",
+        "core/forecast-point.json",
+        "core/format.json",
+        "creative/preview-creative-response.json",
+        "formats/canonical/coordinated_placements.json",
+        "formats/canonical/seller_rendered_stateful_display.json",
+        "governance/sync-plans-request.json",
+    }
+)
+
+#: §8's own measured case, and the one document of 3.2 the widening EMITS.  The other 8
+#: each report a next obstruction of their own, by name, keyword and pointer, and which
+#: one is those rows' fact rather than this one's -- so it is not pinned here.
+MEASURED_CASE = "account/sync-accounts-request.json"
+AT = "/properties/accounts/items"
+
+#: The four keywords whose subtree is a RULE position, excluded from the derivation
+#: below for ``harness.inseparable_unions``' own reason: §3 of the semantics document
+#: says that under a conditional "a keyword describes what a rule tests, so no type is
+#: lowered from it", so the walk never lowers a union there and no sibling of one needs a
+#: carrier.  Measured: 4 of the 22 sites the derivation finds without this clause sit
+#: inside a ``then``, and 2 of their documents emit today.
+_A_RULE_POSITION = ("if", "then", "else", "not")
+
+
+def _composing_nested_sites() -> dict[str, list[str]]:
+    """Every NESTED union of the bundle stating a sibling a CLASS carries.
+
+    DERIVED, by asking :func:`union.composes_its_siblings` of the node the production
+    parser builds for it -- the predicate under test, over the bundle's own text, so the
+    population is a property of the bundle and not of what the run happened to reach.
+    Parsed at ``PROP`` for ``_union_node``'s reason: the position reaches the predicate
+    only through ``compiler.rules_at``, whose rule cells are the same at every position a
+    class can sit at, and the ROOT position is excluded by the pointer because §4 gives a
+    root the base-plus-subclasses shape whatever it states beside the combinator.
+    """
+    out: dict[str, list[str]] = {}
+
+    def walk(node: Any, pointer: str, found: list[str], document: str) -> None:
+        if isinstance(node, dict):
+            if pointer != "" and any(isinstance(node.get(kw), list) for kw in UNION):
+                parsed = schema_parse.parse(
+                    node,
+                    pointer=pointer,
+                    position=keywords.Position.PROP,
+                    source=schema_parse.Source(document=document),
+                )
+                if isinstance(parsed, nodes.Union) and lower_union.composes_its_siblings(
+                    parsed
+                ):
+                    found.append(pointer)
+            for key, value in node.items():
+                if key in _A_RULE_POSITION:
+                    continue
+                walk(value, f"{pointer}/{key}", found, document)
+        elif isinstance(node, list):
+            for i, value in enumerate(node):
+                walk(value, f"{pointer}/{i}", found, document)
+
+    for document in sorted(bundle.portable(BUNDLE)):
+        found: list[str] = []
+        walk(bundle.read(BUNDLE, document), "", found, document)
+        if found:
+            out[document] = found
+    return out
+
+
+def test_the_population_the_widening_is_about_is_derived_off_the_bundle() -> None:
+    """The sites, DERIVED, and the sibling carrier gone from the whole run's report.
+
+    Three claims.  The derived site set equals the pinned one, in both directions, so a
+    nineteenth site reddens here instead of being quietly absent from a list.  The 9
+    documents the carrier refused are a subset of its documents, which is what says the
+    pinned nine name real sites rather than a group somebody wrote down.  And no document
+    of the run -- chains included -- is refused on the sentence any more, which is the
+    exit condition: the fact has a carrier rather than those 9 having moved somewhere the
+    report cannot see.
+    """
+    sites = _composing_nested_sites()
+    documents = claimed("documents whose nested union composes a sibling", set(sites))
+    pairs = claimed(
+        "composing nested union sites",
+        [(d, p) for d, ps in sites.items() for p in ps],
+    )
+    assert pairs == COMPOSING_SITES, {
+        "derived and not pinned": sorted(pairs - COMPOSING_SITES),
+        "pinned and not derived": sorted(COMPOSING_SITES - pairs),
+    }
+    assert THE_NINE <= documents, sorted(THE_NINE - documents)
+    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    assert [
+        d
+        for d, r in out.refusals.items()
+        if "no slot for a fact of its own" in r["detail"]
+    ] == []
+    # Partitioned rather than summed: one of the nine emits and the other eight report a
+    # next obstruction that belongs to another row.
+    partitions(
+        THE_NINE,
+        emits=THE_NINE & set(out.emitted),
+        refuses_on_its_own_next_obstruction=THE_NINE - set(out.emitted),
+    )
+    assert MEASURED_CASE in out.emitted, out.refusals.get(MEASURED_CASE)
+    # And each of the eight is refused somewhere OTHER than its own union node, which is
+    # the per-document form of the exit condition above: the carrier is not what stops it.
+    for document in sorted(THE_NINE - set(out.emitted)):
+        at = {p for d, p in COMPOSING_SITES if d == document}
+        assert out.refusals[document]["pointer"] not in at, out.refusals[document]
+
+
+def test_the_selector_is_derived_from_two_declarations_and_not_listed_here() -> None:
+    """``union.carried_by_a_class`` reads the TABLE and the NODE, and nothing retyped.
+
+    Both sources are load-bearing and each is graded on a keyword only it supplies:
+    ``properties`` is in :data:`compiler.COMPOSING`, which is the one declaration of what
+    a composing class consumes, and ``dependencies`` is NOT -- it reaches the set only
+    because ``compiler.rules_at`` reads it off this node as a rule source.  §8's measured
+    case states both, so a selector that dropped either source would answer differently
+    about the one document the widening emits.
+
+    The two names the ``A | B`` arm answers for come OUT, asserted directly: the
+    combinator is the node's own kind and the ``type`` word is in every branch already
+    (the first half of this module).
+    """
+    node = _union_node(bundle.node_at(bundle.read(BUNDLE, MEASURED_CASE), AT))
+    assert isinstance(node, nodes.Union), type(node).__name__
+    carried = lower_union.carried_by_a_class(node)
+    assert "properties" in compiler.COMPOSING
+    assert "properties" in carried
+    assert "dependencies" not in compiler.COMPOSING
+    assert "dependencies" in carried, sorted(carried)
+    assert node.combinator not in carried and "type" not in carried, sorted(carried)
+    # A value constraint beside a combinator of shapes is in NEITHER source, which is
+    # what leaves the screen's own sentence a reachable answer.
+    assert "minLength" not in carried
+    assert lower_union.composes_its_siblings(node)
+    # And the other direction, over a nested union of the SAME bundle that states nothing
+    # beside the combinator: the predicate says no, so such a node keeps the one type.
+    bare = _union_node({"oneOf": [{"$ref": "#/definitions/a"}, {"$ref": "#/definitions/b"}]})
+    assert isinstance(bare, nodes.Union)
+    assert not lower_union.composes_its_siblings(bare), sorted(
+        lower_union.carried_by_a_class(bare)
+    )
+
+
+def test_the_measured_case_emits_the_shape_section_8_names() -> None:
+    """§8's decided lowering, read off the classes the run WROTE.
+
+    "The siblings become a base class; each branch becomes a subclass narrowing what it
+    narrows; the union is over the subclasses."  Each clause is asserted on the imported
+    classes rather than on the rendered text, for ``_declared``'s reason -- a class
+    carrying a union is exactly the shape that can render and not import:
+
+    * the base names the union's own node, carries every one of the 16 declared
+      properties as a field, and states the node's ``additionalProperties: true``;
+    * each branch is a SUBCLASS of that base and names its own ``#/<kw>/<i>`` pointer;
+    * the branch narrows requiredness and nothing else -- the three names its own
+      ``required`` lists are required on it, and it declares no field the base does not;
+    * the union is installed, so a payload comes back as the arm it satisfies and not as
+      the base.
+    """
+    read = bundle.read(BUNDLE, MEASURED_CASE)
+    node = bundle.node_at(read, AT)
+    out = emit.emit(BUNDLE, [MEASURED_CASE])
+    assert MEASURED_CASE in out.emitted, out.refusals.get(MEASURED_CASE)
+    classes = {c.__adcp_schema__.pointer: c for c in _declared(out, MEASURED_CASE)}
+    base = classes[f"#{AT}"]
+    assert set(node["properties"]) <= set(base.model_fields), sorted(
+        set(node["properties"]) - set(base.model_fields)
+    )
+    assert base.model_config.get("extra") == "allow", base.model_config
+    # No field of the base is REQUIRED: the node states no ``required`` of its own, so
+    # every one of the 16 is optional there and requiredness is each branch's own fact.
+    assert [n for n, f in base.model_fields.items() if f.is_required()] == []
+    for i, branch in enumerate(node["oneOf"]):
+        arm = classes[f"#{AT}/oneOf/{i}"]
+        assert issubclass(arm, base) and arm is not base, arm
+        assert set(arm.model_fields) == set(base.model_fields), arm
+        required = {n for n, f in arm.model_fields.items() if f.is_required()}
+        assert required == set(branch["required"]), (arm, sorted(required))
+    arms = tuple(classes[f"#{AT}/oneOf/{i}"] for i in range(len(node["oneOf"])))
+    assert base._branch_models == arms, base._branch_models
+
+
+def test_the_branch_pairs_are_graded_under_the_siblings_and_report_nothing() -> None:
+    """§8's pairing rule at a NESTED union, RUN rather than read.
+
+    "A branch class of a union is paired with its branch node read under the union's
+    siblings ... so a field the branch inherits from the base is a fact its node states
+    and not one it added", and "at a union in ANY position, not only a root one".  The
+    harness half needed no change for the widening and this is what says so: the pairs
+    are built the way the tree's own are, and the direction that would catch the fact
+    being stated at a pointer the document does not -- ``added`` -- is silent, as are the
+    other three.
+
+    Asserted on the BASE's pair as well, because the base is the class that names the
+    node the siblings are stated at: a sibling dropped instead of composed would be
+    ``missing`` there.
+    """
+    out = emit.emit(BUNDLE, [MEASURED_CASE])
+    assert MEASURED_CASE in out.emitted, out.refusals.get(MEASURED_CASE)
+    resolved = bundle.record(BUNDLE, MEASURED_CASE)
+    at = {f"#{AT}", f"#{AT}/oneOf/0", f"#{AT}/oneOf/1"}
+    graded = claimed(
+        "pairs of the composed nested union",
+        [c for c in _declared(out, MEASURED_CASE) if c.__adcp_schema__.pointer in at],
+    )
+    assert {c.__adcp_schema__.pointer for c in graded} == at
+    for model in graded:
+        report = harness.compare_schema(
+            schema_at(model.__adcp_schema__), model, document=resolved
+        )
+        where = model.__adcp_schema__.pointer
+        assert report.compared, where
+        assert not report.missing, (where, report.missing)
+        assert not report.differs, (where, report.differs)
+        assert not report.added, (where, report.added)

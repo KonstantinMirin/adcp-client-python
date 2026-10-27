@@ -383,8 +383,22 @@ def test_what_is_conjoined_at_a_constrained_node_is_its_object_type_and_its_root
 #: Measured directly, the same way the three below were:
 #: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False`` for all 11
 #: and ``True`` for the other 43 rows.
+#:
+#: **TWO more at ``adcp-client-python-10l.34``, by that same mechanism at a NESTED
+#: union.**  §8's composition rule reaches a union at any position, so
+#: ``account/sync-accounts-request.json``'s ``/properties/accounts/items`` emits a base
+#: plus one subclass per branch, and the two branches join this population because the
+#: node their enclosing ``items`` constrains to an object is the one each class names.
+#: Each branch's ``allOf`` conjuncts are ``not: {"required": [...]}`` and nothing else, so
+#: a string satisfies each inner ``required`` vacuously, every negation fails, and the
+#: BARE node refuses the string -- the same reading as the 11 above and measured the same
+#: way: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False`` for both.
+#: What does hold for them, measured directly, is the clause the per-row loop is about:
+#: the schema each class NAMES refuses a string and ``accept("a string")`` raises.
 ALREADY_AN_OBJECT_ITSELF = frozenset(
     {
+        "account/sync-accounts-request.json#/properties/accounts/items/oneOf/0",
+        "account/sync-accounts-request.json#/properties/accounts/items/oneOf/1",
         "core/canonical-media-buy-action.json#/oneOf/0",
         "core/canonical-media-buy-action.json#/oneOf/1",
         "core/canonical-media-buy-action.json#/oneOf/2",
