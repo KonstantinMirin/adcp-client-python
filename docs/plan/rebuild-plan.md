@@ -48,6 +48,38 @@ enumeration or an alias — because §2 admits no document without one.
 The bundle directory is an argument (`python -m codegen.emit --bundle <dir>`). Nothing reads a
 hard-coded path, so a second bundle version can be generated beside the first.
 
+### A patched bundle is a legitimate input, and the test is the RECORD (decided 2026-10-27)
+
+Upstream repairs land on upstream's schedule, and some of them cost this SDK a type name at
+hundreds of sites. So the bundle we hand the compiler may be a PATCHED copy of the published
+one — but only under a condition that makes the patch provable rather than a judgement:
+
+**A patch is admissible exactly when every patched document's RECORD is byte-identical to the
+published document's record.**
+
+That is not a convention, it is a mechanical check with the machinery §3 already builds.
+`record` inlines every cross-document `$ref`, so extracting a repeated subschema into its own
+document and referencing it is the INVERSE of what `record` does: resolve the patch and the
+original comes back. Measured — a record carries zero cross-document references, so the two
+resolve to the same mapping or the check fails and says which pointer differs.
+
+What that admits, and it is the whole of the ergonomic win: **naming.** Extracting
+`{"type": "string", "pattern": "^[A-Z]{3}$"}` into a titled `core/currency-code.json` and
+referencing it at all 86 sites changes no instance's validity, so `strict_validate` still
+decides exactly what the published protocol decides — and §5's `$ref` row turns those sites into
+an import of one named type instead of 86 copies of a digest.
+
+What it forbids, and this is the line the condition draws: **anything that moves the accepted
+set.** Adding the `minItems: 1` that five documents omit changes the record, fails the check,
+and must go upstream — because `strict_validate` would then accept or refuse differently from
+the protocol, which is the one thing §2's first principle cannot survive. A patch that changes
+acceptance is not a patch, it is a fork of the protocol.
+
+**Every patch is also the upstream pull request.** The patch set is the diff we ask upstream to
+take, so carrying one is a way of shipping the fix early rather than a way of living without it,
+and the patch disappears when the backport lands. A patch with no filed issue behind it is the
+same defect as an exemption with no issue behind it, which §9 already names.
+
 ---
 
 ## 2. Design principles
