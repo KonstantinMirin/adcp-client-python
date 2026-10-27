@@ -41,10 +41,18 @@ same payload on ``maximum``.
 ``uniqueItems`` is :class:`UniqueItems`, and it is the one family of the six whose
 keyword sits on a node BELOW the class that carries the rule -- the array held by a
 field, which is where 467 of the bundle's 485 occurrences are.  D2 says the rule is
-*on the nearest class*, so the class that holds the array is the one that states it,
-and an array with no class above it (a mapping value, a document root, a combinator
-branch) is refused by name rather than carried.  This module had no such kind while
-there was no array lowering to reach one; there is now.
+*on the nearest class*, so the class that holds the array is the one that states it.
+
+**AND THERE IS A SECOND PLACE A RULE HANGS, which §2 always named and this module did
+not have.**  "Where no class sits above the value -- a root array, a mapping value, a
+``definitions`` entry, a union branch -- the rule hangs off the value's own annotated
+type as an after-validator (``AtLeastOne``, ``NotValue``, ``Distinct``)."  Those three
+are declared here now, beside the class-level kinds and under :class:`ValueRule`, and
+``Annotated[list[X], AfterValidator(Distinct())]`` is the whole mechanism.  While they
+did not exist the compiler read "we cannot express it" off their absence and DECLARED
+an approximation for each such array -- 13 of 17 -- which is worse than a refusal,
+because an approximation looks accounted for.  Nothing about a named alias ever
+prevented a rule from living on it; nobody had written the kinds.
 """
 
 from __future__ import annotations
@@ -364,6 +372,191 @@ class UniqueItems:
                     item,
                 )
                 return  # one refusal per field: the keyword bit, and where
+
+
+# --------------------------------------------------------------------------- #
+# the rules that hang on a VALUE, where no class sits above it
+# --------------------------------------------------------------------------- #
+class ValueRule(Protocol):
+    """What a rule bound to a TYPE is, and all it is: a callable on the value.
+
+    §2 of the semantics document, "Where a rule hangs": "on the nearest class if there
+    is one, because a class can read sibling fields.  Where no class sits above the
+    value -- a root array, a mapping value, a ``definitions`` entry, a union branch --
+    the rule hangs off the value's own annotated type as an after-validator
+    (``AtLeastOne``, ``NotValue``, ``Distinct``)."
+
+    So this is :class:`Rule`'s sibling and NOT a narrower version of it.  A
+    :class:`Rule` reads the keys an instance supplied and yields refusals; a value rule
+    is handed ONE value, the one its annotation is about, and either returns it or
+    raises.  The two cannot be one protocol because they are asked different questions
+    at different places: pydantic calls a value rule through ``AfterValidator`` while it
+    is building the value, and :class:`RuleBound` calls a :class:`Rule` after the model
+    is built.
+
+    The three kinds take no model and no field name, which is the whole point of the
+    position they serve: the same ``Annotated[list[X], ...]`` is correct inside
+    ``dict[K, V]``, inside a union arm and as a module-level alias, so a rule written
+    onto it travels with the type exactly as a bound does (§2, "constraints bind to the
+    type, not the field").
+
+    **Written once, like every other rule here.**  A handler composes the VALUE -- the
+    kind and its data -- and ``codegen.render`` writes the constructor expression into
+    the annotation; no validator BODY is generated, which is §2's "a generated validator
+    body is code we would generate and then be unable to review".
+    """
+
+    def __call__(self, value: Any) -> Any: ...
+
+
+def _violation(keyword: str, detail: str) -> PydanticCustomError:
+    """The ONE refusal a value rule raises, in :func:`refuse`'s own shape.
+
+    ``PydanticCustomError`` is a ``ValueError``, so pydantic catches it inside an
+    ``AfterValidator``, and it is the only way a name from another vocabulary reaches
+    ``errors()[0]["type"]`` -- which is what makes a value rule's refusal read the same
+    as a class rule's: the JSON Schema keyword as the error ``type``.  The ``loc`` is
+    pydantic's own here and not ours, and that is the better answer: the validator sits
+    on a type that can be reached through a field, a mapping key and a union arm, so the
+    path to the value is the thing the validator cannot know and the caller can.
+
+    The template is fixed and the text is context, for the reason :func:`refuse` gives:
+    a message used AS the template would have its braces read as placeholders.
+    """
+    return PydanticCustomError(keyword, "{detail}", {"detail": detail})
+
+
+@dataclass(frozen=True)
+class Distinct:
+    """``uniqueItems: true`` on an array NO CLASS sits above: its members are distinct.
+
+    :class:`UniqueItems` read the same keyword off a sibling field; this reads the value
+    itself, so the two are the same statement at the two places §2 puts a rule.  467 of
+    the bundle's 485 ``uniqueItems`` sites are at a ``properties/<name>`` slot and take
+    the class-level kind; the 18 that are not -- a document root, a ``definitions``
+    entry, a mapping value, a combinator branch -- take this one.
+
+    A root ARRAY is the one of the four that takes neither: it is a ``RootModel``, which
+    carries a rule tuple exactly as a class does, so ``UniqueItems('root')`` reaches it
+    and ``codegen.lower.containers.array`` writes that.
+
+    KNOWN CEILING, and it is :class:`UniqueItems`' own: the comparison is PAIRWISE and
+    so O(n^2), because an item can be a model or a ``dict`` and neither is hashable.
+    One instrument, both kinds -- :func:`_same` is draft-07's equality and is shared.
+
+    A value that is not a list is returned untouched, for :class:`UniqueItems`' reason:
+    the annotated type can be one arm of a union whose other arms are not arrays, and a
+    rule that refused there would be stronger than the document, which applies
+    ``uniqueItems`` to an array alone.
+    """
+
+    def __call__(self, value: Any) -> Any:
+        if not isinstance(value, list):
+            return value
+        for i, item in enumerate(value):
+            if any(_same(item, earlier) for earlier in value[:i]):
+                raise _violation(
+                    "uniqueItems",
+                    f"item {i} repeats an earlier one, and the document requires the "
+                    "items of this array to be distinct",
+                )
+        return value
+
+
+@dataclass(frozen=True)
+class NotValue:
+    """``not`` over a ``const`` or an ``enum``: the value is none of ``excluded``.
+
+    The one shape of ``not`` that is about a VALUE rather than about which keys are
+    present -- :class:`ForbiddenGroups` is the other half of the keyword and reads
+    ``not`` over ``required``.  Measured over the 1,054 portable documents, every
+    ``not`` that lands on a node with no object to carry a rule tuple is one of these
+    two spellings (``codegen.lower.rules.ON_A_VALUE``), and a ``const`` is the
+    one-member case of an ``enum``, so one kind carries both.
+
+    ``excluded`` is a TUPLE and not a set: a JSON value need not be hashable -- an
+    ``enum`` of objects is legal draft-07 -- and the comparison is :func:`_same`'s for
+    :class:`Distinct`'s reason, so ``true`` and ``1`` stay different values.
+    """
+
+    excluded: tuple[Any, ...]
+
+    def __call__(self, value: Any) -> Any:
+        if any(_same(value, one) for one in self.excluded):
+            raise _violation(
+                "not",
+                f"{value!r} is a value the document excludes: "
+                f"{', '.join(repr(one) for one in self.excluded)}",
+            )
+        return value
+
+
+@dataclass(frozen=True)
+class AtLeastOne:
+    """``contains``: at least one element of the array matches the predicate.
+
+    An existential quantifier, which is what makes it a rule rather than an element
+    type: ``items`` constrains EVERY element and is the element's own annotation, and
+    ``contains`` says only that ONE matches, so no annotation of the element can carry
+    it.
+
+    **The model states the PREDICATE and never a transcription of the subschema**, which
+    is §5's ``contains`` row and the reason this kind has exactly two fields.  A richer
+    predicate -- a bound, a pattern, a nested ``contains``, a ``$ref`` -- has no decided
+    rendering, so the row declines it and the schema half answers alone;
+    ``codegen.lower.rules.contains_predicate`` is the reading that decides which case a
+    subschema is, and it is the only one.
+
+    ``values`` is the bare-value predicate: ``contains: {"const": v}`` or a one-member
+    ``enum``, satisfied by an element EQUAL to one of them.  ``pinned`` is the object
+    predicate: ``contains: {"required": [...], "properties": {k: {"const": v}}}``,
+    satisfied by an element that carries every ``k`` with that ``v``.  A predicate
+    states one or the other, never both, and a kind with a slot for each is what lets
+    one reading answer for both without the caller choosing a class.
+
+    ``pinned`` is a tuple of PAIRS rather than a mapping, for two reasons that both
+    bite: a frozen dataclass has to hash, and a JSON property name is not required to be
+    a Python identifier -- so the keyword-argument spelling an earlier draft of §5's row
+    gave this kind (``AtLeastOne(**{property: const})``) is not a spelling every document
+    can take.
+
+    An element is read as a MAPPING or as a model: ``model_validate`` builds the inner
+    class before the outer annotation's after-validator runs, so by the time this is
+    asked the element is usually an ``AdCPBaseModel`` and ``getattr`` is the reading.
+    Both are tried, because a ``dict[str, Any]`` element never becomes one.
+    """
+
+    values: tuple[Any, ...] = ()
+    pinned: tuple[tuple[str, Any], ...] = ()
+
+    def __call__(self, value: Any) -> Any:
+        if not isinstance(value, list):
+            return value
+        if any(self._matches(item) for item in value):
+            return value
+        raise _violation(
+            "contains",
+            f"no element matches {self._spelled()}, and the document requires at "
+            "least one that does",
+        )
+
+    def _matches(self, item: Any) -> bool:
+        if self.values:
+            return any(_same(item, one) for one in self.values)
+        return all(_same(_read(item, key), pin) for key, pin in self.pinned)
+
+    def _spelled(self) -> str:
+        """The predicate as text, for the detail of a refusal."""
+        if self.values:
+            return " or ".join(repr(one) for one in self.values)
+        return ", ".join(f"{key}={pin!r}" for key, pin in self.pinned) or "nothing"
+
+
+def _read(item: Any, key: str) -> Any:
+    """One property of an element, whichever of the two shapes it arrived as."""
+    if isinstance(item, Mapping):
+        return item.get(key)
+    return getattr(item, key, None)
 
 
 @dataclass(frozen=True)
