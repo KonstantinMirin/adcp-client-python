@@ -395,3 +395,122 @@ def _reaching(population: list[str]) -> tuple[Any, set[str | None]]:
         return emit.emit(BUNDLE, population), seen
     finally:
         lower_union.overlapping = real  # type: ignore[assignment]
+
+
+# --------------------------------------------------------------------------- #
+# §4's SECOND dispatch source: a key the bundle's manifest states
+# --------------------------------------------------------------------------- #
+#: Every portable document declaring a ``task_type`` property -- the field
+#: ``manifest.task_result_resolution`` names as its discriminator -- at any pointer.
+#: Read off the documents, so it is the population of §4's second source and not a
+#: reading of a refusal.
+MANIFEST_DISCRIMINATED = 7
+#: Union roots the walk cannot separate: §4's three sources all answer no, so the union
+#: is step 10's UNDERDETERMINED row.  18 = the 2 that overlapped before §14 step 9
+#: (``adagents.json``, ``brand.json``) plus the 16 the root-siblings row let reach the
+#: derivation for the first time.
+OVERLAPPING_ROOTS = 18
+
+
+def _declares(node: Any, field: str, pointer: str = "") -> list[str]:
+    """Every pointer at which ``node`` declares ``field`` as a property."""
+    found = []
+    if isinstance(node, dict):
+        if field in (node.get("properties") or {}):
+            found.append(pointer or "/")
+        for key, value in node.items():
+            found += _declares(value, field, f"{pointer}/{key}")
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            found += _declares(value, field, f"{pointer}/{i}")
+    return found
+
+
+def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle() -> None:
+    """§4's SECOND source, measured rather than left looking unattempted (§14 step 9).
+
+    "A key the bundle's manifest states.  ``manifest.task_result_resolution`` names the
+    discriminator field and a template resolving a schema from it, and ``manifest.tools``
+    is the table.  Such a union emits as a mapping keyed by that field: its discriminant
+    is in the envelope, not in the payload."
+
+    **Its population over bundle 3.2 is 0, and the reason is the SHAPE of the
+    resolution rather than the count.**  The template is
+    ``/tools/{task_type}/response_schema``: it resolves a DOCUMENT from a task field.  So
+    the manifest's key is spent selecting the document, and a union INSIDE the document it
+    selects has no discriminant left in the envelope to be told apart by.  Measured three
+    ways here, each of which fails on its own:
+
+    * every document declaring the manifest's discriminator field states NO union at
+      all, at any pointer -- so there is nothing for the second source to dispatch;
+    * no branch of any overlapping root declares that field, and no branch of one is a
+      ``$ref`` to a schema the manifest resolves;
+    * 13 of the 18 overlapping roots ARE a schema the manifest's own template resolves,
+      which is the measurement that settles it: the manifest names the document and the
+      overlap is a union inside it.
+
+    So the overlapping set is **step 10's UNDERDETERMINED row** and not this one's.  §4
+    decides what becomes of it -- "a union matching none of the three emits a plain
+    ``A | B`` over its branches and declares an UNDERDETERMINED approximation at the
+    union's pointer, attributed upstream" -- and the DECLARATION is what puts it there:
+    the faithful rows cost none.
+    """
+    manifest = bundle.read(BUNDLE, "manifest.json")
+    resolution = manifest["task_result_resolution"]
+    field = resolution["discriminator_field"]
+    key = resolution["terminal_schema_pointer_template"].strip("/").split("/")[-1]
+    # The set the template can name, derived from the manifest's own table and overrides
+    # rather than listed: a tool added upstream moves it.
+    resolves = {tool[key] for tool in manifest["tools"].values() if key in tool}
+    resolves |= set(resolution["terminal_schema_overrides"].values())
+    assert (field, key) == ("task_type", "response_schema"), resolution
+    assert len(manifest["tools"]) == 78, len(manifest["tools"])
+
+    # 1. Every document carrying the manifest's key, and whether it states a union.
+    carrying = [
+        document
+        for document in bundle.portable(BUNDLE)
+        if _declares(bundle.read(BUNDLE, document), field)
+    ]
+    named = claimed(
+        "documents declaring the manifest's discriminator field",
+        carrying,
+        inside=bundle.portable(BUNDLE),
+    )
+    assert len(named) == MANIFEST_DISCRIMINATED, sorted(named)
+    for document in sorted(named):
+        # A combinator ANYWHERE in the document, read off the text: the claim is that
+        # there is no union here at any pointer, and a walk that descended only the
+        # positions a union root can sit at would be making the weaker claim.
+        stated = [kw for kw in ("oneOf", "anyOf") if f'"{kw}"' in json.dumps(bundle.read(BUNDLE, document))]
+        assert stated == [], (document, stated)
+
+    # 2 and 3. The overlapping set, and what the manifest says about each one.
+    out, _ = _reaching(sorted(bundle.portable(BUNDLE)))
+    overlapping = sorted(
+        d
+        for d, row in out.refusals.items()
+        if "branches OVERLAP" in row.get("detail", "") and row["kind"] is not Kind.CHAINED
+    )
+    assert len(overlapping) == OVERLAPPING_ROOTS, overlapping
+    resolved_overlaps = [d for d in overlapping if d in resolves]
+    for document in overlapping:
+        row = out.refusals[document]
+        node = bundle.read(BUNDLE, document)
+        for segment in [s for s in row["pointer"].split("/") if s]:
+            node = node[int(segment)] if isinstance(node, list) else node[segment]
+        branches = [b for b in (node.get(row["keyword"]) or []) if isinstance(b, dict)]
+        assert branches, (document, row["pointer"])
+        # No branch carries the envelope's key, and no branch is one of the schemas the
+        # manifest resolves -- the two shapes the second source would read.
+        assert not any(field in (b.get("properties") or {}) for b in branches), document
+        assert not {
+            b["$ref"].rsplit("/", 1)[-1] for b in branches if "$ref" in b
+        } & {r.rsplit("/", 1)[-1] for r in resolves}, document
+    # The decisive one: most of them ARE what the manifest resolves TO, so the key is
+    # spent before the branch choice is reached.
+    claimed(
+        "overlapping roots the manifest's template resolves", resolved_overlaps,
+        inside=overlapping,
+    )
+    assert len(resolved_overlaps) == 13, resolved_overlaps
