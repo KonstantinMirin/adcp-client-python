@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
-from adcp.types.constraints import AdCPUrl, DictMinProperties1, DictMinProperties1MaxProperties1, HttpUrl, IntMin100Max900, NonEmptyList, StrMatching83577F62, StrMatchingEFC12812, StrMatchingF01B4765, StrMaxLen100, StrMinLen1
+from adcp.types.constraints import AdCPUrl, DictMinProperties1, DictMinProperties1MaxProperties1, IntMin100Max900, NonEmptyList, StrMatching83577F62, StrMatchingEFC12812, StrMatchingF01B4765, StrMaxLen100, StrMinLen1
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -89,7 +89,7 @@ class GetBrandIdentitySuccessLogosItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items')
-    url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
+    url: Annotated[str, Field(description='URL to the logo asset', json_schema_extra={'format': 'uri'})]
     orientation: Annotated[GetBrandIdentitySuccessLogosItemOrientation | None, Field(description='Logo aspect ratio orientation')] = None
     background: Annotated[GetBrandIdentitySuccessLogosItemBackground | None, Field(description='Background compatibility')] = None
     variant: Annotated[GetBrandIdentitySuccessLogosItemVariant | None, Field(description='Logo variant type')] = None
@@ -199,7 +199,7 @@ class GetBrandIdentitySuccessAssetsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/assets/items')
     asset_id: Annotated[str, Field(description='Unique identifier')]
     asset_type: Annotated[AssetContentType, Field(description='Type of asset content')]
-    url: Annotated[HttpUrl, Field(description='URL to CDN-hosted asset file')]
+    url: Annotated[str, Field(description='URL to CDN-hosted asset file', json_schema_extra={'format': 'uri'})]
     tags: Annotated[list[str] | None, Field(description='Tags for discovery')] = None
     name: Annotated[str | None, Field(description='Human-readable name')] = None
     description: Annotated[str | None, Field(description='Asset description or usage notes')] = None

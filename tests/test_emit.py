@@ -1770,15 +1770,24 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     sides and this grades both, over a population selected off the bundle:
 
     * a format the document's own draft can DECIDE and for which a type is named
-      selects that type, asserted on the AST by the type's import being present
-      and by no ``json_schema_extra`` carrying that format in the same module --
-      so the fact lives in exactly one place;
+      AND whose node states what the choice is made from selects that type,
+      asserted on the AST by the type's import being present -- so the fact lives
+      in exactly one place;
     * every other format rides on the node's own scalar type, so the first side
       cannot be satisfied by dropping the format.  WHERE it rides is the POSITION's
       answer and not the format's: ``json_schema_extra`` on the field, or -- at an
       ELEM, a MAPV or a union BRANCH, which have no field -- a named alias in
       ``adcp.types.constraints``.  Both are asserted, because either one dropped is
       a model wider than its document and silently so.
+
+    **``uri`` is on BOTH sides within one module now, and that is the rule and not an
+    exception** (``adcp-client-python-10l.10``).  §5's ``format`` row chooses the URL
+    type from the document's own ``pattern``, so a node stating none has nothing to
+    choose from and takes the second side; ``brand/get-brand-identity-response.json``
+    states both shapes.  "The fact lives in exactly one place" is therefore asserted
+    per module as ``annotated_formats <= fell_back`` after the node loop rather than
+    as "a selecting format is never annotated here", which the mixed module makes
+    false while the obligation it stood for is untouched.
 
     And in both cases the format reaches the model's OWN schema, asserted site by
     site against the document, which is where the schema comparison grades it.
@@ -1808,6 +1817,10 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     #: than one means the DOCUMENT chose, which is D5's `uri` row.
     arms: dict[str, set[str]] = {}
     for document in sorted({g.ref.document for g in graded()}):
+        #: The formats some node of THIS module took the row's own fallback at, which
+        #: is what explains an annotation the module writes.  Per module, because the
+        #: question is per module: an annotation is a line in one file.
+        fell_back: set[str] = set()
         tree = ast.parse(_source(document))
         imported = {
             ("." * n.level + (n.module or ""), a.name)
@@ -1934,12 +1947,33 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                     fmt,
                     alias,
                 )
+                fell_back.add(fmt)
             else:
                 selected = choose(node)
                 module, name = selected.rsplit(".", 1)
                 assert (module, name) in imported, (document, pointer, selected)
-                assert fmt not in annotated_formats, (document, pointer, fmt)
                 arms.setdefault(fmt, set()).add(name)
+        # **"The fact lives in exactly one place", asserted as what EXPLAINS each
+        # annotation** (``adcp-client-python-10l.10``).  This read ``fmt not in
+        # annotated_formats`` inside the selecting branch, which says a format that
+        # ever selects in a module never also rides there -- true only while ``uri``
+        # was uniform per module, and false by construction now that the URL type is
+        # chosen from the document's own ``pattern``: ``brand/get-brand-identity-
+        # response.json`` states a patterned ``uri`` that SELECTS and a bare one that
+        # RIDES, and both readings are correct at their own node.
+        #
+        # The obligation that survives is the one the row is about: an annotation the
+        # module writes is explained by a node that took the fallback.  A format the
+        # module only ever SELECTS may not be annotated anywhere in it -- the old
+        # assertion, unchanged in strength wherever a module is uniform -- and a
+        # ``json_schema_extra`` for a format no node fell back on reddens, which is
+        # the double-statement this guards against.  It is asserted here rather than
+        # inside the loop because ``fell_back`` is only complete once the module's
+        # nodes have all been read.
+        assert annotated_formats <= fell_back, (
+            document,
+            sorted(annotated_formats - fell_back),
+        )
 
     # WHICH formats the population reaches, as the set of format names, with every one
     # of them non-empty so no row of the table above is graded by a loop that met none
@@ -4752,23 +4786,39 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
                 if keyword in sub:
                     bounded.add((row.ref, key, keyword))
             item = _unwrap(mine.get("items") or {}, emitted.get("$defs", {}))
-            declared = sub.get("items") or {}
-            # **THIS IS RED AT 64131600f AND IT IS RIGHT TO BE.**  Not a stale
-            # constant: 4 mismatches over 2 properties of
-            # ``core/attestation-capabilities.json``, whose elements state
-            # ``{"type": "string", "format": "uri"}`` and nothing about length,
-            # while the model's element carries ``minLength: 1, maxLength: 2083``.
-            # Those are pydantic ``HttpUrl``'s own bounds, which D5's format row
-            # brings in with the type, and they make the model NARROWER than its
-            # document.  Proved through the production entry point rather than
-            # inferred from the rendered schema: on an instance drawn from the
-            # document by ``hypothesis_jsonschema`` with one 2,220-character https
-            # URI substituted, ``jsonschema`` with the draft's own format checker
-            # reports no error and ``strict_validate`` refuses with
-            # ``url_too_long``.  The owner is D5's ``FORMAT_TYPES`` in
-            # ``codegen/emit.py``, not this test, and re-pointing the assertion
-            # would hide a live narrowing -- so it stays as written and
-            # ``salesagent-j3k2l.29`` carries the finding.
+            # **The SAME fold on both sides, and the second half arrived with the
+            # first half's fix** (``adcp-client-python-10l.10``).  The model's
+            # element is hoisted into ``$defs`` and unwrapped above; a document's
+            # element can be a local ``$ref`` into its own ``definitions``, which the
+            # packaged form keeps -- ``core/reporting-coverage.json``'s seven id
+            # arrays and three more documents, 15 element nodes.  Reading the
+            # ``$ref`` stub as the declaration compares the model's resolved facts
+            # against a node that states none, so the declared side takes the fold
+            # the model side already takes.  Not a relaxation: at all 15 the
+            # resolved declaration equals the model's element keyword for keyword,
+            # which is what makes this a fold and not a waiver.
+            declared = _unwrap(sub.get("items") or {}, doc.get("definitions", {}))
+            # **THE NARROWING THIS ASSERTION WAS RED ON IS FIXED, in the row the
+            # assertion named** (``adcp-client-python-10l.10``).  It was 4
+            # mismatches over 2 properties of ``core/attestation-capabilities.json``,
+            # whose elements state ``{"type": "string", "format": "uri"}`` and
+            # nothing about length while the model's element carried
+            # ``minLength: 1, maxLength: 2083`` -- pydantic ``HttpUrl``'s own bounds,
+            # which §5's ``format`` row brought in with the type, making the model
+            # NARROWER than its document.  Measured through the production entry
+            # point rather than inferred from the rendered schema: on an instance
+            # drawn from the document by ``hypothesis_jsonschema`` with one
+            # 2,220-character https URI substituted, ``jsonschema`` with the draft's
+            # own format checker reports no error and ``strict_validate`` refused
+            # with ``url_too_long``.
+            #
+            # The owner was ``lower.scalars.FORMAT_TYPES`` (``codegen/emit.py`` in the
+            # sentence this replaces, which rows .5 and .6 made a dead address), and
+            # the fix is there: §5's ``format`` row reads "``uri`` -> a URL type
+            # chosen by ``pattern``", so a node stating no ``pattern`` has nothing to
+            # choose a URL type from and takes the row's own otherwise branch -- the
+            # ``str`` with the format riding as ``json_schema_extra``.  The element is
+            # ``StrFormatUri`` now and carries no length fact at all.
             for keyword in ("minLength", "maxLength", "minItems", "maxItems"):
                 assert item.get(keyword) == declared.get(keyword), (row.ref, key, keyword, item)
     # The denominator is TOP-LEVEL array properties of an emitted root, not every

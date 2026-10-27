@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin1, IntMin1Max90, StrMatching59861E88, StrMatchingA828669D, StrMatchingEFC12812, StrMaxLen2000, StrMaxLen253, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255
+from adcp.types.constraints import AdCPUrl, IntMin1, IntMin1Max90, StrMatching59861E88, StrMatchingA828669D, StrMatchingEFC12812, StrMaxLen2000, StrMaxLen253, StrMaxLen500, StrMinLen1, StrMinLen1MaxLen255
 
 from ..enums.audience_resolution_method import AudienceResolutionMethod
 from ..enums.audience_subject_type import AudienceSubjectType
@@ -70,7 +70,7 @@ class SignalDefinitionTaxonomy(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/taxonomy')
-    ref: Annotated[HttpUrl, Field(description='URI identifying the taxonomy or taxonomy documentation.')]
+    ref: Annotated[str, Field(description='URI identifying the taxonomy or taxonomy documentation.', json_schema_extra={'format': 'uri'})]
     version: Annotated[str | None, Field(description='Version identifier for the taxonomy when the taxonomy has versioned definitions.')] = None
     segtax: Annotated[IntMin1 | None, Field(description='OpenRTB segtax code when the taxonomy maps to an OpenRTB segment taxonomy.')] = None
     etag: Annotated[str | None, Field(description='Optional validator for custom taxonomy definitions so consumers can detect drift between signal publication and taxonomy resolution.')] = None
@@ -311,7 +311,7 @@ class SignalDefinition(AdCPBaseModel):
     range: Annotated[SignalDefinitionRange | None, Field(description='For numeric signals, the valid value range')] = None
     taxonomy: Annotated[SignalDefinitionTaxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy. Taxonomy metadata does not create a new value_type and does not change package targeting grammar: buyers still target the named signal according to value_type. When a taxonomy value is a parent node, parent/descendant expansion is seller behavior and must be declared through parent_match_behavior rather than assumed.')] = None
     segmentation_criteria: Annotated[StrMaxLen500 | None, Field(description='Rules governing inclusion of identifiers in the segment. Aligns with IAB Data Transparency Standard audience criteria disclosure.')] = None
-    criteria_url: Annotated[HttpUrl | None, Field(description='Optional URL to a longer-form methodology or criteria document. This is a disclosure pointer; buyers should not branch programmatically on the linked content.')] = None
+    criteria_url: Annotated[str | None, Field(description='Optional URL to a longer-form methodology or criteria document. This is a disclosure pointer; buyers should not branch programmatically on the linked content.', json_schema_extra={'format': 'uri'})] = None
     data_sources: Annotated[list[SignalDefinitionDataSourcesItem] | None, Field(description="Origin categories of the raw data used to compile the signal, aligned with IAB Data Transparency Standard source disclosure. Use 'panel' for respondent-panel or JIC-style audience sources. Offline and public-record sources require onboarder disclosure. Co-viewing projection and reconciliation of seller claims against a JIC or measurement vendor belong in measurement reporting/vendor metrics rather than package signal targeting.", min_length=1)] = None
     methodology: Annotated[SignalDefinitionMethodology | None, Field(description="How the signal's audience membership or attribute was determined. 'modeled' requires the modeling block.")] = None
     audience_expansion: Annotated[bool | None, Field(description='Whether look-alike or similar-audience expansion was used to include additional identifiers. When true, modeling is required.')] = None
