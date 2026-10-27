@@ -412,6 +412,7 @@ def lower_document(
     roots: Mapping[str, dict] | None = None,
     reserved: frozenset[str] = frozenset(),
     asked: set[tuple[str, str]] | None = None,
+    inherited: Mapping[str, Target | Refusal] | None = None,
 ) -> tuple[Module, str] | Refusal:
     """One document's module and root symbol, or the refusal the walk returned.
 
@@ -429,6 +430,10 @@ def lower_document(
         # document before parsing it, in the dependency order §10 computes, so a
         # cross-document reference is a lookup and never a callback.
         targets=targets if targets is not None else {},
+        # §2's intersection rule: the sites this document's BASES spell, resolved for
+        # this document and keyed by URI (``inherited_sites``).  Empty for a document
+        # lowered outside a run, exactly as ``targets`` is.
+        inherited_targets=inherited if inherited is not None else {},
         roots=roots if roots is not None else {},
         reserved=reserved,
         # The run's own record of which sites this walk asked about, handed IN so that
@@ -957,6 +962,7 @@ def decidable(
     roots: Mapping[str, dict],
     reserved: frozenset[str],
     asked: set[tuple[str, str]],
+    inherited: Mapping[str, Target | Refusal],
 ) -> tuple[Module, ir.Module] | Refusal:
     """One document lowered, NAMED, and its carried record checked, as one value.
 
@@ -972,7 +978,7 @@ def decidable(
     document is lowered once, when the order reaches it, so there is no memo to consult
     and no in-flight stack to push.
     """
-    outcome = lower_document(document, doc, targets, named, roots, reserved, asked)
+    outcome = lower_document(document, doc, targets, named, roots, reserved, asked, inherited)
     if isinstance(outcome, Refusal):
         return outcome
     mod, _ = outcome
@@ -1166,6 +1172,151 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         if edge.target is not None and not edge.into:
             spellings.setdefault(edge.target, set()).add(edge.uri)
 
+    def answer(document: str, edge: bundle.Edge) -> Target | Refusal:
+        """What ONE reference site resolves to, for the document that is about to
+        write the import.
+
+        ``document`` is the REFERRING document and is a parameter rather than the
+        edge's own, because the two differ at exactly the sites §2's intersection rule
+        reaches: a declaration a composing document inherits carries the BASE's
+        references, and the module spelling and the importables are then a function of
+        the composing document and the base's target (D1).  Everything else is read off
+        the edge.
+        """
+        if edge.local:
+            # A LOCAL reference names a node of the document being written, so there
+            # is no module to import from and nothing for a binding to resolve:
+            # ``references.lower`` branches on the empty document half first and asks
+            # ``compiler.local_reference`` for the symbol this module declares.  This
+            # stays as the loud answer for the one caller that reaches a reference
+            # another way -- ``compiler.lower_composition``'s conjunct arm -- rather
+            # than being left out and reporting a pointer as a document the bundle
+            # does not hold.
+            return Refusal(
+                "$ref",
+                edge.pointer,
+                f"{edge.uri} is a pointer into this document, which is not a binding "
+                "at all -- the walk resolves one through compiler.local_reference and "
+                "never through a binder",
+                kind=Kind.VERDICT,
+            )
+        if edge.target is None:
+            return Refusal(
+                "$ref",
+                edge.pointer,
+                f"{edge.uri} names no document of this bundle",
+                kind=Kind.VERDICT,
+            )
+        if edge.target not in lowered and edge.target not in refused:
+            # **A target the order has not reached, which happens at exactly the
+            # sites the walk lowers NOTHING from.**  The closure and the order range
+            # over ``bundle.lowered_references``, so a site outside that reading --
+            # a reference at a RULE position, or one inside a ``definitions`` entry
+            # nothing names -- constrains no order and its target may come later.
+            # The walk never asks at such a site; this is the loud answer if it ever
+            # does, because the two readings of which positions lower a type would
+            # then disagree, which is a defect in this compiler and not in any
+            # document.
+            return Refusal(
+                "$ref",
+                edge.pointer,
+                f"{edge.uri}: the dependency order has not reached its target, "
+                "because no reference the walk lowers a type or an import from "
+                "reaches this position (bundle.lowered_references: a reference at a "
+                "RULE position lowers nothing, and one inside a definitions entry "
+                "nothing names is at a position no class names)",
+                kind=Kind.VERDICT,
+            )
+        if edge.target in refused:
+            r = refused[edge.target]
+            # **The fragment is NAMED here, not only the document.**  A message
+            # naming only the document sends the reader to a file without saying
+            # which of its nodes was wanted.  Bundle-relative, so it reads as a
+            # pointer into this bundle rather than as the URI's own base; a
+            # reference with no fragment is unchanged.
+            #
+            # **``through=r`` is the classification and the quoted text is for the
+            # reader.**  Whether this document is pending or final is not a property
+            # of its own sentence at all, it is whatever the target's is --
+            # ``Refusal.resolved`` takes the target's, so a chain of any depth is one
+            # attribute read and no sentence is parsed.
+            wanted = f"{edge.target}#{edge.into}" if edge.into else edge.target
+            return Refusal(
+                "$ref",
+                edge.pointer,
+                f"its target {wanted} is refused: {r}",
+                kind=Kind.CHAINED,
+                through=r,
+            )
+        mod, bound, _ = lowered[edge.target]
+        symbol = bound.root
+        if edge.into:
+            # The fragment names a NODE, so the symbol is the one the target
+            # module declared AT THAT POINTER rather than its root.  The target
+            # declares one because ``bundle.named`` told it to.
+            #
+            # Two kinds of pointer have no symbol, and both are REFUSED with the
+            # fragment named rather than bound to the root -- binding to the root
+            # would import a class for the WHOLE document where the document names
+            # one node of it, which is a model wider than its schema and silent:
+            #
+            #  * a pointer the target's walk never reaches.  17 of the bundle's 76
+            #    named nodes are ``definitions`` entries, which no row descends.
+            #  * a pointer whose node is ITSELF a ``$ref``.  The symbol there is
+            #    one the target module IMPORTED rather than declared, so binding it
+            #    would make this a re-export, and section 2's rule is an import of a
+            #    symbol the target DECLARES.  10 of the 76, in 3 documents, all 3
+            #    refused on a keyword of their own -- so 0 are reachable and the
+            #    step whose population reaches one decides whether the chain is
+            #    followed to the declaring module.
+            if edge.into not in bound.symbols:
+                return Refusal(
+                    "$ref",
+                    edge.pointer,
+                    f"{edge.uri}: its target {edge.target} declares no symbol at "
+                    f"{edge.into} (the walk either does not reach that node, or the "
+                    "node is itself a $ref whose symbol that module imports rather "
+                    "than declares)",
+                    kind=Kind.DEFERRED,
+                )
+            symbol = bound.symbols[edge.into]
+        # ``shape`` is ``None`` for a target that is not a class -- D2's
+        # root-scalar alias, and a named node that is not one either -- which is
+        # what lets a composing row refuse it as a base rather than writing a
+        # module that cannot be imported.
+        #
+        # **The SHAPE crosses the module boundary with its symbols BOUND**, which is
+        # what makes a shape recorded by pointer readable in another module: the
+        # target was named before this document was parsed (§10's order), so its own
+        # symbol table is what binds the re-used field's type.  WHERE each of those
+        # symbols is importable from crosses beside it (:func:`_importable`), which
+        # is the same table ``symbol`` above is read off and the record of what the
+        # target imported -- so a composing subclass takes each symbol from its
+        # declarer, which is §1's one import path per class.
+        #
+        # **A UNION BASE's shape does not cross, and §5's ``$ref`` row at CONJ is
+        # the sentence** (§14 step 9): "where it is not a class declaring fields --
+        # a scalar, an enum, a container, or a UNION ROOT, whose instance is one of
+        # its branches -- it is not a class a model can extend: the target is this
+        # node's own TYPE."  A base records a shape like any other class now,
+        # because §4's "a branch composes its own with them" needs it INSIDE the
+        # declaring module, so the reading that keeps a union root out of a
+        # reuser's bases is here, where the :class:`Target` is built -- and it is
+        # read off ``ClassDecl.branches``, the fact that says the instance is one of
+        # the branches, rather than off a second flag.  Before step 9 the union row
+        # declared its base outside ``declare_object`` and so recorded nothing,
+        # which is the same answer this gives.
+        declared = mod.at.get(edge.into)
+        dispatches = isinstance(declared, ir.ClassDecl) and declared.branches is not None
+        shape = None if dispatches else mod.shapes.get(edge.into)
+        return Target(
+            relative_module(document, edge.target),
+            symbol,
+            None if shape is None else _bound_shape(shape, bound.symbols),
+            edge.target,
+            _importable(document, edge.target, bound.symbols, mod.imported),
+        )
+
     def resolve(document: str) -> dict[tuple[str, str], Target | Refusal]:
         """This document's reference sites, resolved: §5's ``targets``.
 
@@ -1174,148 +1325,69 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         target is either in ``lowered`` or in ``refused``, so nothing recurses and no
         stack says which documents are in flight.
         """
-        answers: dict[tuple[str, str], Target | Refusal] = {}
-        for edge in sites.get(document, ()):
-            site = (edge.uri, edge.pointer)
-            if edge.local:
-                # A LOCAL reference names a node of the document being written, so there
-                # is no module to import from and nothing for a binding to resolve:
-                # ``references.lower`` branches on the empty document half first and asks
-                # ``compiler.local_reference`` for the symbol this module declares.  This
-                # stays as the loud answer for the one caller that reaches a reference
-                # another way -- ``compiler.lower_composition``'s conjunct arm -- rather
-                # than being left out and reporting a pointer as a document the bundle
-                # does not hold.
-                answers[site] = Refusal(
-                    "$ref",
-                    edge.pointer,
-                    f"{edge.uri} is a pointer into this document, which is not a binding "
-                    "at all -- the walk resolves one through compiler.local_reference and "
-                    "never through a binder",
-                    kind=Kind.VERDICT,
-                )
-                continue
-            if edge.target is None:
-                answers[site] = Refusal(
-                    "$ref",
-                    edge.pointer,
-                    f"{edge.uri} names no document of this bundle",
-                    kind=Kind.VERDICT,
-                )
-                continue
-            if edge.target not in lowered and edge.target not in refused:
-                # **A target the order has not reached, which happens at exactly the
-                # sites the walk lowers NOTHING from.**  The closure and the order range
-                # over ``bundle.lowered_references``, so a site outside that reading --
-                # a reference at a RULE position, or one inside a ``definitions`` entry
-                # nothing names -- constrains no order and its target may come later.
-                # The walk never asks at such a site; this is the loud answer if it ever
-                # does, because the two readings of which positions lower a type would
-                # then disagree, which is a defect in this compiler and not in any
-                # document.
-                answers[site] = Refusal(
-                    "$ref",
-                    edge.pointer,
-                    f"{edge.uri}: the dependency order has not reached its target, "
-                    "because no reference the walk lowers a type or an import from "
-                    "reaches this position (bundle.lowered_references: a reference at a "
-                    "RULE position lowers nothing, and one inside a definitions entry "
-                    "nothing names is at a position no class names)",
-                    kind=Kind.VERDICT,
-                )
-                continue
-            if edge.target in refused:
-                r = refused[edge.target]
-                # **The fragment is NAMED here, not only the document.**  A message
-                # naming only the document sends the reader to a file without saying
-                # which of its nodes was wanted.  Bundle-relative, so it reads as a
-                # pointer into this bundle rather than as the URI's own base; a
-                # reference with no fragment is unchanged.
-                #
-                # **``through=r`` is the classification and the quoted text is for the
-                # reader.**  Whether this document is pending or final is not a property
-                # of its own sentence at all, it is whatever the target's is --
-                # ``Refusal.resolved`` takes the target's, so a chain of any depth is one
-                # attribute read and no sentence is parsed.
-                wanted = f"{edge.target}#{edge.into}" if edge.into else edge.target
-                answers[site] = Refusal(
-                    "$ref",
-                    edge.pointer,
-                    f"its target {wanted} is refused: {r}",
-                    kind=Kind.CHAINED,
-                    through=r,
-                )
-                continue
-            mod, bound, _ = lowered[edge.target]
-            symbol = bound.root
-            if edge.into:
-                # The fragment names a NODE, so the symbol is the one the target
-                # module declared AT THAT POINTER rather than its root.  The target
-                # declares one because ``bundle.named`` told it to.
-                #
-                # Two kinds of pointer have no symbol, and both are REFUSED with the
-                # fragment named rather than bound to the root -- binding to the root
-                # would import a class for the WHOLE document where the document names
-                # one node of it, which is a model wider than its schema and silent:
-                #
-                #  * a pointer the target's walk never reaches.  17 of the bundle's 76
-                #    named nodes are ``definitions`` entries, which no row descends.
-                #  * a pointer whose node is ITSELF a ``$ref``.  The symbol there is
-                #    one the target module IMPORTED rather than declared, so binding it
-                #    would make this a re-export, and section 2's rule is an import of a
-                #    symbol the target DECLARES.  10 of the 76, in 3 documents, all 3
-                #    refused on a keyword of their own -- so 0 are reachable and the
-                #    step whose population reaches one decides whether the chain is
-                #    followed to the declaring module.
-                if edge.into not in bound.symbols:
-                    answers[site] = Refusal(
-                        "$ref",
-                        edge.pointer,
-                        f"{edge.uri}: its target {edge.target} declares no symbol at "
-                        f"{edge.into} (the walk either does not reach that node, or the "
-                        "node is itself a $ref whose symbol that module imports rather "
-                        "than declares)",
-                        kind=Kind.DEFERRED,
-                    )
-                    continue
-                symbol = bound.symbols[edge.into]
-            # ``shape`` is ``None`` for a target that is not a class -- D2's
-            # root-scalar alias, and a named node that is not one either -- which is
-            # what lets a composing row refuse it as a base rather than writing a
-            # module that cannot be imported.
-            #
-            # **The SHAPE crosses the module boundary with its symbols BOUND**, which is
-            # what makes a shape recorded by pointer readable in another module: the
-            # target was named before this document was parsed (§10's order), so its own
-            # symbol table is what binds the re-used field's type.  WHERE each of those
-            # symbols is importable from crosses beside it (:func:`_importable`), which
-            # is the same table ``symbol`` above is read off and the record of what the
-            # target imported -- so a composing subclass takes each symbol from its
-            # declarer, which is §1's one import path per class.
-            #
-            # **A UNION BASE's shape does not cross, and §5's ``$ref`` row at CONJ is
-            # the sentence** (§14 step 9): "where it is not a class declaring fields --
-            # a scalar, an enum, a container, or a UNION ROOT, whose instance is one of
-            # its branches -- it is not a class a model can extend: the target is this
-            # node's own TYPE."  A base records a shape like any other class now,
-            # because §4's "a branch composes its own with them" needs it INSIDE the
-            # declaring module, so the reading that keeps a union root out of a
-            # reuser's bases is here, where the :class:`Target` is built -- and it is
-            # read off ``ClassDecl.branches``, the fact that says the instance is one of
-            # the branches, rather than off a second flag.  Before step 9 the union row
-            # declared its base outside ``declare_object`` and so recorded nothing,
-            # which is the same answer this gives.
-            declared = mod.at.get(edge.into)
-            dispatches = isinstance(declared, ir.ClassDecl) and declared.branches is not None
-            shape = None if dispatches else mod.shapes.get(edge.into)
-            answers[site] = Target(
-                relative_module(document, edge.target),
-                symbol,
-                None if shape is None else _bound_shape(shape, bound.symbols),
-                edge.target,
-                _importable(document, edge.target, bound.symbols, mod.imported),
-            )
-        return answers
+        return {(e.uri, e.pointer): answer(document, e) for e in sites.get(document, ())}
+
+    def inherited_sites(document: str) -> dict[str, Target | Refusal]:
+        """The reference sites this document inherits from the classes it COMPOSES,
+        resolved for this document and keyed by URI alone.
+
+        **§2's intersection rule is what asks for it, and ``roots`` already carries the
+        other half of the same answer.**  That map's own reason -- "the URI it asks
+        about is a site of the base's document and not of the one being lowered" -- is
+        this one's: where a conjunct restates a property the base declares, the field
+        carries the INTERSECTION, so every key the base alone declares reaches the
+        composed node, and a key the base declares as a ``$ref`` carries a reference
+        the composing document does not spell.  The site is real -- draft-07 applies
+        both conjuncts to the same instance, so the composed class holds that property
+        and must import its type -- and it is the base's, which is why it is keyed by
+        the URI and not by a pointer: the pointer it arrives at is the COMPOSING
+        document's, derived from the restating conjunct, and no edge of either document
+        carries it.
+
+        Keyed by URI alone is sound because a no-fragment URI resolves to one target
+        and a fragment URI to one node of one target, so the answer is a function of
+        the URI and the referring document -- the pointer appears in this map's answers
+        only inside a refusal's text, and a refused base is a refused composition.
+
+        **CONJ and not every reference**, read off :attr:`bundle.Edge.position` rather
+        than recovered from a pointer string: a base is what a conjunct names, so the
+        declarations this document inherits are the ones its ``allOf`` conjuncts' targets
+        declare -- transitively, because :class:`compiler.Shape` is transitive and a
+        base's own base contributes keys to it. A reference at any other position names
+        a target this document holds as a TYPE, and a type crosses as an import the
+        walk already has a site for.
+        """
+        out: dict[str, Target | Refusal] = {}
+        for base in sorted(composes.get(document, ())):
+            for uri, edge in sorted(composes_sites.get(base, {}).items()):
+                out.setdefault(uri, answer(document, edge))
+        return out
+
+    #: document -> the documents its ``allOf`` conjuncts compose, transitively.  Filled
+    #: as the order finishes each document, which is early enough by construction: a
+    #: base precedes the document composing it.
+    composes: dict[str, frozenset[str]] = {}
+    #: document -> every non-local reference site of its own text, by URI.  What a
+    #: composing document inherits one of (:func:`inherited_sites`).
+    composes_sites: dict[str, dict[str, bundle.Edge]] = {
+        document: {e.uri: e for e in edges if not e.local and e.target is not None}
+        for document, edges in sites.items()
+    }
+    for document, edges in sites.items():
+        direct = {e.target for e in edges if e.position is Position.CONJ and e.target}
+        composes[document] = frozenset(direct)
+    # The transitive step, taken to a fixed point: a base's own bases contribute keys to
+    # the :class:`compiler.Shape` a composing document reads, so their sites are
+    # inherited too.  Over this bundle it settles in a handful of passes.
+    while True:
+        grown = {
+            d: b | frozenset().union(*(composes.get(t, frozenset()) for t in b))
+            for d, b in composes.items()
+        }
+        if grown == composes:
+            break
+        composes = grown
+
 
     for document in ordered:
         doc = bundle.read(bundle_dir, document)
@@ -1328,6 +1400,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             roots,
             render.RESERVED,
             asked.setdefault(document, set()),
+            inherited_sites(document),
         )
         if isinstance(outcome, Refusal):
             refused[document] = outcome

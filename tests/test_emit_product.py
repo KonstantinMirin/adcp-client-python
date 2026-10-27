@@ -407,6 +407,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # of document arriving.  It held at .28, at .29 and at .21, every time as the four
     # names and not as the difference of two counts.
     assert sorted(cleared - set(composing())) == [
+        # **ONE MORE at ``adcp-client-python-10l.21``'s FIFTH instalment, and it is a
+        # RELEASE of the same kind.**  ``core/assets/url-asset.json`` composes nothing at
+        # its own root -- its ``allOf`` is at
+        # ``/properties/macro_declarations/items`` -- so it is not in ``composing()``.
+        # Its own blocker was that conjunct's restatement of ``location``, which §5's
+        # ``properties`` row at CONJ composes per key now, and what it still needs is
+        # THIS row: its conjunct references ``core/macro-declaration.json``, which
+        # composes at ITS root, so with the root ``allOf`` arm stubbed out the target
+        # refuses and the chain takes this document with it.  Named here so this row's own
+        # credit stays separate from the release.
+        "core/assets/url-asset.json",
         # **TWO MORE at ``adcp-client-python-10l.21``'s third instalment, and both are
         # RELEASES of the same kind -- 12 - 227 is still the composing half growing.**
         # Neither composes at its own root.

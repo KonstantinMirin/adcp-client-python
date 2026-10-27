@@ -431,25 +431,69 @@ def applied_schema(root: dict, pointer: str) -> dict:
     enclosing: str | None = None  # the type an enclosing node asserts about THIS instance
     #: What the enclosing nodes assert about THIS instance, in outer-to-inner order.
     conjoined: list = []
+    #: §8's THIRD pairing rule, for a node at a CONJUNCT of an ``allOf`` (added
+    #: 2026-10-27): the SIBLING conjuncts, carried down the same path the walk takes.
+    #: Draft-07 holds every conjunct against the same instance, so a sibling's fact is
+    #: one this instance must satisfy and not one the class added -- and where the
+    #: pointer continues below the conjunct, the sibling's declaration AT THE SAME KEYS
+    #: is what holds against the same instance the node describes.
+    siblings: list = []
+    #: The conjunct list the next index hop is cutting one member out of.
+    cutting: list | None = None
     parts = [p for p in pointer.lstrip("#").lstrip("/").split("/") if p != ""]
     for part in parts:
         if isinstance(node, list):
             # the index half of a combinator hop, whose keyword was read already
-            node = node[int(part)]
+            index = int(part)
+            if cutting is not None:
+                # Stripped of the two keys §6 answers at the pointer that states them,
+                # exactly as :func:`_conjunction` strips a spliced conjunct: a sibling's
+                # ``description`` is the SIBLING's pointer's answer, and spliced here it
+                # would arrive at a pointer the document has already answered.
+                siblings = [
+                    {k: v for k, v in c.items() if k not in _ANNOTATES_THE_POINTER_THAT_STATES_IT}
+                    for i, c in enumerate(cutting)
+                    if i != index and isinstance(c, dict)
+                ]
+                cutting = None
+            node = node[index]
             continue
-        if part in SAME_INSTANCE_LIST or part in SAME_INSTANCE_ONE:
+        same_instance = part in SAME_INSTANCE_LIST or part in SAME_INSTANCE_ONE
+        if same_instance:
             declared = node.get("type") if isinstance(node, dict) else None
             # INHERITED through a chain of such hops: a node asserting nothing passes
             # its own enclosing assertion down.
             enclosing = declared if isinstance(declared, str) else enclosing
             if isinstance(node, dict):
                 conjoined += _conjunction(node, part)
+            # **A second cut DROPS the first one's siblings rather than guessing how
+            # the two compose.**  A conjunct of a conjunct, or a branch below one, would
+            # need a reading of which of the outer siblings' nodes answers the inner
+            # hop, and this rule makes none.  Dropped rather than carried, so such a
+            # pair reports a fact the model states and the document does not -- loud --
+            # rather than passing for nothing.
+            siblings = []
+            cutting = node.get("allOf") if part == "allOf" and isinstance(node, dict) else None
         else:
             enclosing = None  # the hop moves to a different instance
             conjoined = []
-        node = node[part.replace("~1", "/").replace("~0", "~")]
+            cutting = None
+        key = part.replace("~1", "/").replace("~0", "~")
+        if not same_instance:
+            # The hop moves to a different instance, and it moves every sibling conjunct
+            # to THAT SAME instance: draft-07 applies ``allOf/0/properties/x`` and
+            # ``allOf/1/properties/x`` to one value.  A sibling silent at this key says
+            # nothing about it and drops out.
+            siblings = [
+                s[key] for s in siblings if isinstance(s, dict) and isinstance(s.get(key), dict)
+            ]
+        node = node[key]
     if not isinstance(node, dict):
         raise LookupError(f"{pointer} is {type(node).__name__}, not a schema")
+    # A sibling conjunct is a conjunct of THIS node, so it joins the enclosing
+    # statements: both are read before the node's own ``allOf`` and after the node's own
+    # keys, which is the order ``harness._composed`` folds in.
+    conjoined = [*conjoined, *siblings]
     # §8's DUAL, applied FIRST: it reads the node's OWN ``type``, so it is a statement
     # about this node and not about anything enclosing it, and the clause below -- which
     # conjoins an enclosing word only where the node states none -- then sees the word

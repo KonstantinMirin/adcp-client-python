@@ -4149,8 +4149,19 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # ``core/evaluator-spec.json`` and ``error-details/governance-agent-not-accepted.json``
     # behind a ``type`` word beside a NESTED combinator.  49 -> 44 refused, and the
     # emitted half rose with it.
+    # **ONE LEFT AND TWO MOVED their keyword at ``adcp-client-python-10l.21``'s FIFTH
+    # instalment**, and all three are §5's ``properties`` row at CONJ.
+    # ``account/list-account-changes-response.json`` EMITS: it refused on a ``$ref`` the
+    # intersection of two composed declarations produced, at a pointer no edge of its own
+    # text carries, and ``emit.inherited_sites`` resolves that site now.  The two
+    # ``*-asset`` roots move from ``items`` to ``properties``: their branch's restatement
+    # of ``macro_declarations`` stopped being "neither matches nor narrows" and the
+    # document now reports the obstruction behind it -- the merged ``items`` node is
+    # typeless, because ``_intersection`` drops a base's whole-content ``$ref`` rather
+    # than writing a node draft-07 reads as the target alone, so no row lowers its
+    # ``properties``.  That is the second of this row's three pointer shapes and it is
+    # named in the delivery as unfinished.
     assert refused_on == {
-        "account/list-account-changes-response.json": "$ref",
         "account/sync-accounts-response.json": "$ref",
         "adagents.json": "anyOf",
         "brand.json": "$ref",
@@ -4168,9 +4179,9 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "content-standards/list-content-standards-response.json": "$ref",
         "core/account-identity-change-preview.json": "$ref",
         "core/assets/asset-union.json": "$ref",
-        "core/assets/daast-asset.json": "items",
+        "core/assets/daast-asset.json": "properties",
         "core/assets/display-tag-asset.json": "items",
-        "core/assets/vast-asset.json": "items",
+        "core/assets/vast-asset.json": "properties",
         "core/async-response-data.json": "$ref",
         "core/canonical-placement.json": "$ref",
         "core/postal-area.json": "$ref",
@@ -8176,6 +8187,22 @@ def test_the_first_refusal_is_the_earliest_in_the_document_and_not_in_the_sort()
 #: to be read as that claim rather than absorbed by a number.
 VERDICTS = frozenset(
     {
+        # **49 -> 46 at ``adcp-client-python-10l.21``'s FIFTH instalment: FOUR LEFT by
+        # EMITTING and ONE JOINED by getting further.**  §5's ``properties`` row at CONJ
+        # is written now, so a conjunct restating a property the base declares composes
+        # per key instead of refusing, and ``emit.inherited_sites`` resolves the
+        # reference sites §2's intersection carries in from a base.  The four that left
+        # are ``account/list-account-changes-response.json`` and
+        # ``core/package-delivery-metric-value.json``, each of which refused on a ``$ref``
+        # the intersection produced at a pointer no edge of its own text carries, plus
+        # ``media-buy/get-media-buy-delivery-response.json`` and
+        # ``media-buy/media-buy-delivery-webhook-result.json``, both chained behind the
+        # second of them.  The one that joined is
+        # ``media-buy/get-media-buys-response.json``: its own restatement of
+        # ``indicators`` stopped refusing, so it reaches a chain through
+        # ``core/canonical-proposal.json`` -- a verdict this set already names -- and it
+        # arrives as that document's claim and not as a new one.
+        #
         # **83 -> 49 at ``adcp-client-python-10l.21``'s FOURTH instalment, and all 34 that
         # left are ONE CLAIM BEING WITHDRAWN rather than 34 documents clearing.**  Nothing
         # emitted that did not emit before -- emitted is 885 on both trees, over the same
@@ -8218,21 +8245,18 @@ VERDICTS = frozenset(
         # ``media-buy/get-products-request.json`` reaches its chain only because its own
         # worded nested union stopped refusing.
         "media-buy/update-media-buy-request.json",
-        "media-buy/media-buy-delivery-webhook-result.json",
         "media-buy/get-products-request.json",
-        "media-buy/get-media-buy-delivery-response.json",
         "core/requirements/offering-asset-constraint.json",
         "core/requirements/catalog-requirements.json",
         "core/requirements/asset-requirements.json",
-        "core/package-delivery-metric-value.json",
         "content-standards/list-content-standards-response.json",
         "content-standards/get-content-standards-response.json",
         "content-standards/content-standards.json",
-        'account/list-account-changes-response.json',
         'account/sync-accounts-response.json',
         'brand.json',
         'core/account-identity-change-preview.json',
         'core/canonical-proposal.json',
+        'media-buy/get-media-buys-response.json',
         'core/package-signal-targeting-group.json',
         'core/package-signal-targeting-groups.json',
         'core/package-signal-targeting.json',
@@ -8474,7 +8498,19 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # carry the target's new answer through ``through=``.  ``len(chained)`` is 109 on both
     # trees and the DEFERRED half rose by the same 11, which is what tells this apart from
     # a target emitting: a chain that leaves the refusal set leaves ``chained`` with it.
-    assert split[refusal_module.Kind.VERDICT] >= 33, dict(split)
+    #
+    # **33 -> 32 AT THE FIFTH INSTALMENT, AND THE MOVE IS EMISSION**, which the two
+    # counts beside it say together.  ``len(chained)`` is 109 on the base tree and 107
+    # on this one: four chains LEFT because their targets emit --
+    # ``core/assets/card-asset.json`` and ``core/product-card-reference-asset.json``
+    # (deferred), ``media-buy/get-media-buy-delivery-response.json`` and
+    # ``media-buy/media-buy-delivery-webhook-result.json`` (verdict, both behind
+    # ``core/package-delivery-metric-value.json``) -- and two JOINED, because
+    # ``media-buy/get-media-buys-response.json`` (verdict) and
+    # ``signals/get-signals-response.json`` (deferred) cleared their OWN restatement
+    # obstruction and re-rooted onto a chain through a target refused for another row's
+    # reason.  Verdict 33 - 2 + 1 = 32, deferred 76 - 2 + 1 = 75.
+    assert split[refusal_module.Kind.VERDICT] >= 32, dict(split)
     assert split[refusal_module.Kind.DEFERRED] >= 1, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (

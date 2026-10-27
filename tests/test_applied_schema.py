@@ -399,6 +399,11 @@ ALREADY_AN_OBJECT_ITSELF = frozenset(
         "brand/search-brands-response.json#/oneOf/0",
         "brand/search-brands-response.json#/oneOf/1",
         "core/brand-response-authorization-result.json#/oneOf/0",
+        # ``adcp-client-python-10l.21``'s fifth instalment: the document emits now, and
+        # its first branch ``not``s a ``required`` group, so a non-object satisfies the
+        # negated group vacuously and the BARE node already refuses the string.  Its
+        # second branch states no ``not`` and is a row.
+        "account/list-account-changes-response.json#/oneOf/0",
     }
 )
 
@@ -439,6 +444,16 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
     # documents they come from is the fact worth pinning and it is named below.
     claimed("pairs at a node its own document constrains", {g.ref for g in rows})
     assert {g.ref.document for g in rows} == {
+        # **ONE more at ``adcp-client-python-10l.21``'s FIFTH instalment**, and it arrives
+        # by that row's emission rather than by anything about this mechanism:
+        # ``account/list-account-changes-response.json`` is a union root that refused on a
+        # ``$ref`` §2's intersection produced at a pointer no edge of its own text carries,
+        # ``emit.inherited_sites`` resolves that site now, and both of its branch classes
+        # sit at a node its own root constrains.  The FIRST of the two is in
+        # ``ALREADY_AN_OBJECT_ITSELF`` -- it ``not``s a ``required`` group and so refuses a
+        # non-object on its own -- so the document contributes one row.  The per-row loop
+        # grades all 60 and reported nothing new.
+        "account/list-account-changes-response.json",
         # **SEVEN more at ``adcp-client-python-10l.21``'s third instalment**, and all
         # seven arrive by one of that row's two shapes rather than by anything about this
         # mechanism.  Six are §14 step 9's first faithful row -- a ``type`` word beside a
