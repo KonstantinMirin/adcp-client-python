@@ -18,6 +18,7 @@ why it is here beside the resolution it shares rather than in the module that as
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from typing import Any
 
 from codegen import compiler, ir
@@ -227,9 +228,17 @@ def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
     if word not in SCALAR:
         return Refusal("type", node.pointer, f"unknown type {word!r}", kind=Kind.VERDICT)
     # ``rules.ON_A_VALUE`` is the step-7 keyword that can land on a node with no object to
-    # carry a rule tuple: a ``not`` over a ``const`` or an ``enum`` is an excluded VALUE,
-    # which D4 leaves to the schema half exactly as it leaves a conditional that narrows
-    # one.  Carrying it is not refusing it.
+    # carry a rule tuple: a ``not`` over a ``const`` or an ``enum`` is an excluded VALUE.
+    # **It is ENFORCED now and no longer only carried**, which is §5's ``not`` row -- "Over
+    # a ``const`` or ``enum`` → a ``NotValue`` after-validator on the value's own annotated
+    # type" -- and §2's "where no class sits above the value": there is no class-level kind
+    # for a statement about a VALUE, so this is the only half of §2 the shape can take, at
+    # every position.  :class:`adcp.types._runtime.ForbiddenGroups` is the keyword's other
+    # shape and reads ``not`` over ``required``.
+    #
+    # Nothing is RENDERED for it: ``not``'s cell is ``rendered=False``, so §8 compares no
+    # fact here and the validator narrows the CONSTRUCTOR alone, which is the direction D4
+    # permits.  ``strict_validate`` enforced it from the document all along.
     from codegen.lower import rules as lower_rules
 
     refused = check_keywords(
@@ -237,6 +246,7 @@ def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
     )
     if refused is not None:
         return refused
+    bound = lower_rules.on_a_value(node.rules)
     constraints = dict(node.facts)
     fmt = node.format
     # A format SELECTS a type where one is named for it and the document's own draft can
@@ -274,12 +284,19 @@ def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
     ):
         selected = FORMAT_TYPES[fmt](node.facts)
         if fmt in URL_FORMATS:
-            return Decided(ir.TypeRef(selected))
-        return Decided(ir.TypeRef(selected), constraints)
+            return Decided(ir.TypeRef(selected, validators=bound))
+        return Decided(ir.TypeRef(selected, validators=bound), constraints)
     path = constraints_module.resolve(word, constraints)
     if path is not None:
-        return Decided(_named_alias(path, word, constraints, mod), format=fmt)
-    return Decided(ir.TypeRef(SCALAR[word]), constraints, format=fmt)
+        # **The rule goes on THIS SITE's type and never on the shared alias.**  An alias
+        # in ``adcp.types.constraints`` names a CONSTRAINT and is reached by every node
+        # stating that constraint, so a validator written into its declaration would
+        # narrow every other site -- which is the one direction D4 does not permit.  The
+        # alias is the inner type and the ``Annotated`` around it is this node's own.
+        return Decided(
+            replace(_named_alias(path, word, constraints, mod), validators=bound), format=fmt
+        )
+    return Decided(ir.TypeRef(SCALAR[word], validators=bound), constraints, format=fmt)
 
 
 def selects_a_url_type(fmt: str | None, constraints: Mapping[str, Any]) -> bool:
@@ -387,4 +404,8 @@ def typeless(node: nodes.Typeless, mod: Module) -> Decided | Refusal:
     refused = check_keywords(node, {*lower_rules.ON_A_VALUE}, mod=mod)
     if refused is not None:
         return refused
-    return Decided(ir.TypeRef("typing.Any"))  # §4's typeless row
+    # §4's typeless row, with §5's ``not`` row on it where the document states one: a
+    # typeless node is ``Any``, and ``Annotated[Any, AfterValidator(NotValue(…)))]`` is
+    # ``Any`` minus the values the document excludes, which is the document's own reading
+    # -- ``{"not": {"const": v}}`` admits every instance but ``v``.
+    return Decided(ir.TypeRef("typing.Any", validators=lower_rules.on_a_value(node.rules)))

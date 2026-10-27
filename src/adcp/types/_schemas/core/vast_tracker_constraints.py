@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import AfterValidator, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
+from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
 from adcp.types.constraints import StrMatching38E7F7CC
 
 from ..enums.vast_version import VASTVersion
@@ -52,7 +52,7 @@ class VASTTrackerConstraintsVastTarget(StrEnum):
 VASTTrackerConstraintsVastOffset = StrMatching38E7F7CC
 
 
-VASTTrackerConstraintsVastVersions = Annotated[list[VASTVersion], Field(min_length=1)]
+VASTTrackerConstraintsVastVersions = Annotated[Annotated[list[VASTVersion], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
 
 
 class VASTTrackerConstraints(AdCPBaseModel):
@@ -63,9 +63,6 @@ class VASTTrackerConstraints(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('vast_event', True, ('progress',)),), require=('offset',), forbid=()),
         NegatedConditional((Match('vast_event', True, ('progress',)),), require=(), forbid=('offset',)),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/vast-tracker-constraints.json', pointer='#/properties/vast_versions', keyword='uniqueItems', kind='WIDENED', rung='KEYWORD', fact=True, attribution='docs/plan/rebuild-plan.md §5 arrays/uniqueItems'),
     )
     vast_event: VASTTrackerConstraintsVastEvent | None = None
     target: VASTTrackerConstraintsVastTarget | None = 'linear'

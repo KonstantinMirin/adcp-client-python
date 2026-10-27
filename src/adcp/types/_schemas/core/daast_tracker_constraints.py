@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import AfterValidator, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
+from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._runtime import ConditionalRequired, Distinct, Match, NegatedConditional, Rule
 from adcp.types.constraints import StrMatching38E7F7CC
 
 from ..enums.daast_version import DAASTVersion
@@ -38,7 +38,7 @@ class DAASTTrackerConstraintsDaastTarget(StrEnum):
 DAASTTrackerConstraintsDaastOffset = StrMatching38E7F7CC
 
 
-DAASTTrackerConstraintsDaastVersions = Annotated[list[DAASTVersion], Field(min_length=1)]
+DAASTTrackerConstraintsDaastVersions = Annotated[Annotated[list[DAASTVersion], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())], Field(min_length=1)]
 
 
 class DAASTTrackerConstraints(AdCPBaseModel):
@@ -49,9 +49,6 @@ class DAASTTrackerConstraints(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('daast_event', True, ('progress',)),), require=('offset',), forbid=()),
         NegatedConditional((Match('daast_event', True, ('progress',)),), require=(), forbid=('offset',)),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/daast-tracker-constraints.json', pointer='#/properties/daast_versions', keyword='uniqueItems', kind='WIDENED', rung='KEYWORD', fact=True, attribution='docs/plan/rebuild-plan.md §5 arrays/uniqueItems'),
     )
     daast_event: DAASTTrackerConstraintsDaastEvent | None = None
     target: DAASTTrackerConstraintsDaastTarget | None = 'linear'

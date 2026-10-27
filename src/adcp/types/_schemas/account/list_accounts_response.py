@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import SchemaRef
 
 from ..core.account_with_authorization import AccountWithAuthorization
 from ..core.context import ContextObject
@@ -24,9 +24,6 @@ class ListAccountsResponse(AdCPVersionEnvelope, ProtocolEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/list-accounts-response.json', pointer='#')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='account/list-accounts-response.json', pointer='#/properties/accounts/items/properties/authorization/properties/field_scopes/additionalProperties', keyword='uniqueItems', kind='WIDENED', rung='KEYWORD', fact=True, attribution='docs/plan/rebuild-plan.md §5 arrays/uniqueItems'),
-    )
     accounts: Annotated[list[AccountWithAuthorization], Field(description='Array of accounts accessible to the authenticated agent. Each entry is the full Account object plus optional authorization. Buyer-declared entries include brand, operator, and any operator_unit, fixed currency, buyer-selected account timezone, and sandbox qualifiers so the natural AccountRef round-trips after a cold start.')]
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings')] = None
     pagination: PaginationResponse | None = None

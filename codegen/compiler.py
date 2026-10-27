@@ -912,7 +912,14 @@ def carried(decided: Decided, pointer: str, what: str, mod: Module) -> ir.TypeRe
 
     named = name_the_constraint(decided, mod)
     if named is not None:
-        return named
+        # **The rules bound to the type survive the naming**, which is the whole of why
+        # they are on the :class:`codegen.ir.TypeRef` and not beside it: a bound is
+        # carried by a SHARED alias (``NonEmptyList[T]``, reached by every node stating
+        # ``minItems: 1``) and a rule is this SITE's, so the alias becomes the inner type
+        # and this node's ``Annotated`` wraps it.  Written into the alias's own
+        # declaration instead, one document's ``uniqueItems`` would narrow every other
+        # node that happens to share its bound.
+        return replace(named, validators=decided.type.validators)
     stated = {
         **decided.constraints,
         **({"format": decided.format} if decided.format else {}),
@@ -1658,12 +1665,15 @@ def _the_conjuncts_own_type(
       over the population; written so the first one is loud.
     * **A conjunct stating a RULE beside the type** is §2's "where a rule hangs": with no
       class above the value the rule hangs off the value's own annotated type, which is
-      :attr:`codegen.ir.TypeRef.validators` -- the slot §7 declares for ``AtLeastOne``,
-      ``NotValue`` and ``Distinct`` and which no row has written.  2 nodes over the
-      population, both ``core/agent-notification-config*.json``'s ``event_types``
-      items, whose conjuncts are a ``$ref`` to an enumeration beside a
-      ``not: {enum: [...]}``.  The refusal is a DEFERRAL, because what obstructs it is
-      unwritten code and not a property of the document (§9).
+      :attr:`codegen.ir.TypeRef.validators`.  **The slot and the three kinds exist now**
+      (``adcp-client-python-10l.29``) and the array and scalar rows write them; what is
+      unwritten is the reading at CONJ, where the rule is stated by a CONJUNCT and the
+      type by another, so §2's intersection has to compose the two before either reaches
+      a ``TypeRef``.  2 nodes over the population, both
+      ``core/agent-notification-config*.json``'s ``event_types`` items, whose conjuncts
+      are a ``$ref`` to an enumeration beside a ``not: {enum: [...]}``.  The refusal is a
+      DEFERRAL, because what obstructs it is unwritten code and not a property of the
+      document (§9).
     """
     if len(conjoined) > 1:
         return Refusal(
@@ -1696,8 +1706,9 @@ def _the_conjuncts_own_type(
             f"{symbol} is this node's own TYPE (section 5's $ref row at CONJ) and a "
             f"conjunct states {rules_beside} beside it: section 2 hangs a rule with no "
             "class above the value off the value's own annotated type, which is "
-            "ir.TypeRef.validators -- the slot section 7 declares for AtLeastOne, "
-            "NotValue and Distinct and which no row has written",
+            "ir.TypeRef.validators -- the slot and its three kinds exist and the array "
+            "and scalar rows write them, and what is unwritten is the reading at CONJ, "
+            "where one conjunct states the rule and another the type",
             kind=Kind.DEFERRED,
         )
     return Decided(ir.TypeRef(symbol, local=True))

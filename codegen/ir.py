@@ -31,11 +31,13 @@ because the walk computes one today; §7 and §14 step 7 move naming into
 ``codegen/lower/names.py`` as a pass over the finished module, keyed by POINTER.  This
 layer is what that pass will rewrite, not where it lives.
 
-Two slots §7 names are declared by the rows that write them and not here:
-``TypeRef.validators`` (``AtLeastOne``, ``NotValue``, ``Distinct`` -- type-bound rules
-for a value no class holds), whose runtime classes §14 step 8 declares; and a
-union base's ``branches`` as ``TypeRef``s, which §14 step 7's symbol table supplies.
-:class:`UnionInstall` carries the branch SYMBOLS the walk has today.
+``TypeRef.validators`` is the same arrangement one level down: ``AtLeastOne``,
+``NotValue`` and ``Distinct`` are declared in ``adcp.types._runtime`` beside the
+class-level kinds, and this layer carries INSTANCES of them on the type they constrain.
+§2 is why there are two slots and not one -- "on the nearest class if there is one ...
+where no class sits above the value, the rule hangs off the value's own annotated type"
+-- and ``codegen.lower.rules`` writes both halves, so one module decides which of the
+two a document's statement reaches.
 """
 
 from __future__ import annotations
@@ -45,7 +47,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from adcp.types._base import KINDS, UNDERDETERMINED, WIDENED, Approximation, SchemaRef
-from adcp.types._runtime import Rule
+from adcp.types._runtime import Rule, ValueRule
 
 #: **Section 7's ``Approximation``, bound here and declared in the artifact's own
 #: package.**  The section's table puts it in this layer -- "document, pointer, keyword,
@@ -211,6 +213,22 @@ class TypeRef:
     #: never in both and never nowhere.  Dropping it would lose a fact the
     #: document states.
     format: str | None = None
+    #: **§7's ``validators`` slot: the rules bound to THIS TYPE, as INSTANCES of the
+    #: runtime's own frozen value-rule kinds** (``AtLeastOne``, ``NotValue``,
+    #: ``Distinct``).  §2's "Where a rule hangs": on the nearest class if there is one,
+    #: and "where no class sits above the value -- a root array, a mapping value, a
+    #: ``definitions`` entry, a union branch -- the rule hangs off the value's own
+    #: annotated type as an after-validator".
+    #:
+    #: The same carrier as :attr:`facts` and for the same reason: a rule on a type
+    #: travels with it into ``list[...]``, into a mapping value and into a union branch,
+    #: which is exactly the set of places that have no field and no class.  Declared as
+    #: VALUES, like :attr:`ClassDecl.rules`, so the kinds are declared once in
+    #: ``adcp.types._runtime`` and ``codegen.render`` writes the call.
+    #:
+    #: A tuple and not a set: the order is the document's, so the rendered annotation is
+    #: a function of the document's content (P7).
+    validators: tuple[ValueRule, ...] = ()
 
 
 @dataclass(frozen=True)

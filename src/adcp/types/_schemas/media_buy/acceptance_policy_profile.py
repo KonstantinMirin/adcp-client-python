@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
+from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._runtime import ConditionalRequired, Distinct, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import NonEmptyList, StrMatching3CBDBB74, StrMatching4BFFD9A4, StrMatching4D6E1599, StrMatching71E52EB8, StrMatchingEFC12812, StrMinLen1
 
 from ..core.ext import ExtensionObject
@@ -75,16 +75,13 @@ class AcceptancePolicyProfile(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('coverage', True, ('complete',)),), require=('scope',), forbid=()),
     )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/acceptance-policy-profile.json', pointer='#/properties/region_aliases/additionalProperties', keyword='uniqueItems', kind='WIDENED', rung='KEYWORD', fact=True, attribution='docs/plan/rebuild-plan.md §5 arrays/uniqueItems'),
-    )
     profile_id: StrMatching71E52EB8
     version: StrMinLen1
     content_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 digest of the RFC 8785 JCS serialization of this profile with content_digest omitted. A profile_id/version pair is immutable; consumers reject a resolved profile whose digest differs.')]
     policy_refs: Annotated[list[AcceptancePolicyProfilePolicyRefsItem], Field(description='Exact registry policy versions from which this profile was derived. Consumers MUST NOT silently substitute a different version.', min_length=1)]
     coverage: Annotated[AcceptancePolicyProfileCoverage, Field(description='partial means additional unpublished rules may apply and omission is unknown. complete means this profile is exhaustive only for its declared scope and version.')]
     scope: Annotated[AcceptancePolicyProfileScope | None, Field(description='The boundary within which a complete profile claims exhaustiveness. It is informative for partial profiles and mandatory for complete profiles.')] = None
-    region_aliases: Annotated[dict[StrMatching4BFFD9A4, NonEmptyList[StrMatchingEFC12812]] | None, Field(description='Profile-local named country groups. Rules may reference only keys declared here; consumers expand them before matching.')] = None
+    region_aliases: Annotated[dict[StrMatching4BFFD9A4, Annotated[NonEmptyList[StrMatchingEFC12812], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]] | None, Field(description='Profile-local named country groups. Rules may reference only keys declared here; consumers expand them before matching.')] = None
     description: StrMinLen1 | None = None
     rules: Annotated[list[AcceptancePolicyRule], Field(min_length=1)]
     ext: ExtensionObject | None = None

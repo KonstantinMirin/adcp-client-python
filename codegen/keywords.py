@@ -779,14 +779,17 @@ _ARRAYS: dict[str, Row] = {
             Position.ELEM,
             "An existential quantifier — `items` constrains every element, `contains` "
             "says at least one matches — and the model states the **predicate**, not "
-            "a transcription of the subschema. A field position → an `AtLeastOne` "
-            "after-validator on the array's own annotated type: "
-            "`AtLeastOne(**{property: const})` where the subschema requires "
-            "properties pinned to a const, `AtLeastOne(value)` where it is a bare "
-            "`const` or a one-member `enum`. Any other predicate at a field position "
-            "— a bound, a pattern, a nested `contains`, a `$ref` — → refused by name: "
-            "a transcription of the subschema is the thing this row declines to emit, "
-            "and the first document to state such a predicate decides its rendering.",
+            "a transcription of the subschema. Every position → an `AtLeastOne` "
+            "after-validator on the array's own annotated type, because no class has "
+            "a kind for it: `AtLeastOne(pinned=((property, const), …))` where the "
+            "subschema requires properties pinned to a const, `AtLeastOne(values=("
+            "value,))` where it is a bare `const` or a one-member `enum`. A property "
+            "KEY is not required to be a Python identifier, so the predicate is a "
+            "tuple of pairs and not keyword arguments. Any other predicate — a bound, "
+            "a pattern, a nested `contains`, a `$ref` — → the keyword is CARRIED and "
+            "the schema half answers alone: a transcription of the subschema is the "
+            "thing this row declines to emit, and the first document to state such a "
+            "predicate decides its rendering.",
         ),
         {
             Position.RULE: Cell(
