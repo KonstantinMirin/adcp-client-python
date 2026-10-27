@@ -1273,6 +1273,23 @@ condition, below.
     predicate no `AtLeastOne` carries; a keyword with no row; a list-valued `items`; a root
     stating no schema keyword.
 
+    *One more shape, added 2026-10-27, because `refused == 0` had no answer for it.* **A `$ref`
+    conjunct whose target is NOT a class, beside a node that declares fields of its own.** §5's
+    `$ref` row at CONJ says the target becomes this node's own TYPE where it is a scalar, an
+    enum, a container or a union root — and that clause is scoped, in its own words, to "a node
+    that declares no fields of its own". These nodes declare some, so the node is at once a class
+    (it has fields) and a type (the target), and §5 answers neither. Row `.20` found it by
+    landing the bare-`$ref` root and reported it rather than choosing; measured at **3 documents**,
+    all verdicts, all on `allOf`: `core/package-signal-targeting.json`,
+    `core/product-filters.json`, `core/vendor-pricing-option.json`.
+
+    It is a WIDENED row and not a faithful one. Carrying it faithfully means the instance must
+    satisfy the node's fields AND one of the target union's branches, and "also satisfies this
+    imported union" is not one of §2's rule families — adding one is a larger decision than this
+    shape earns at three sites. So the conjunct's union membership is DROPPED, the class emits
+    with its own fields, and the gap is declared. The widening is safe in the usual way:
+    `strict_validate` still enforces the union from the document, so only the annotation loosens.
+
     *The upstream issues do NOT block this step, corrected 2026-10-26.* This said they must be
     filed first, because `attribution.py` admits no entry without a reference. That makes the
     compiler's own completion wait on a third party's issue tracker, and the thing being built
