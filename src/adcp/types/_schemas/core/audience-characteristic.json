@@ -1,0 +1,170 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "dimension": {
+            "const": "age"
+          }
+        },
+        "required": [
+          "dimension"
+        ]
+      },
+      "then": {
+        "properties": {
+          "range": {
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+              "max": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "min": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "items": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "anyOf": [
+    {
+      "not": {
+        "required": [
+          "range"
+        ]
+      },
+      "required": [
+        "value"
+      ]
+    },
+    {
+      "not": {
+        "required": [
+          "value"
+        ]
+      },
+      "required": [
+        "range"
+      ]
+    }
+  ],
+  "description": "A machine-comparable audience dimension and value or numeric range used in population-level audience evidence. The built-in `age` dimension uses completed years: scalar and set values and range bounds MUST be non-negative integers, and a range's min MUST be less than or equal to its max. Provider-defined dimensions SHOULD use an HTTPS URI and SHOULD identify their taxonomy so two similarly named dimensions are not assumed equivalent.",
+  "properties": {
+    "dimension": {
+      "anyOf": [
+        {
+          "const": "age"
+        },
+        {
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      ],
+      "description": "Canonical dimension name or HTTPS URI. AdCP 3.2 defines `age`; other values remain provider- or taxonomy-scoped.",
+      "type": "string"
+    },
+    "label": {
+      "description": "Human-readable display label; never the comparison key.",
+      "type": "string"
+    },
+    "range": {
+      "additionalProperties": false,
+      "description": "Inclusive numeric interval. For dimension `age`, values are completed years and MUST be non-negative integers, and min MUST be less than or equal to max. JSON Schema enforces the age value and bound types; implementations enforce the relational min <= max constraint.",
+      "minProperties": 1,
+      "properties": {
+        "max": {
+          "type": "number"
+        },
+        "min": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "taxonomy": {
+      "additionalProperties": false,
+      "description": "External system that defines the dimension or value. Taxonomy metadata is descriptive and does not create exact demographic targeting semantics.",
+      "properties": {
+        "system": {
+          "format": "uri",
+          "pattern": "^https://",
+          "type": "string"
+        },
+        "value_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "system"
+      ],
+      "type": "object"
+    },
+    "value": {
+      "description": "Scalar or set value for the dimension.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      ]
+    }
+  },
+  "required": [
+    "dimension"
+  ],
+  "title": "Audience Characteristic",
+  "type": "object"
+}

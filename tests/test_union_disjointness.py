@@ -193,7 +193,7 @@ def test_scalar_branches_of_different_type_separate_a_pair_and_the_walk_delivers
 def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_the_rest() -> (
     None
 ):
-    """The population, named and partitioned: 7 roots reach the hand-off from §4's first
+    """The population, named and partitioned: 41 roots reach the hand-off from §4's first
     source, and each one is either pairwise disjoint or refused on overlap.
 
     The partition is the assertion, because the two outcomes are different facts and
@@ -213,6 +213,15 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
             # base and the walk gets as far as asking §4's question about the branches.
             # The derivation itself is unchanged in substance; what changed is its
             # denominator, which is the number this set exists to carry.
+            # **One more at ``adcp-client-python-10l.21``'s third instalment**: §14 step
+            # 9's first faithful row -- a ``type`` word beside a NESTED combinator is in
+            # every branch already -- freed the chain this root sat behind, so it reaches
+            # the derivation now.  It is in the DISJOINT half and still refuses, one
+            # pointer on, at ``/anyOf/0`` on ``title``: a branch with no identity to
+            # derive a name from, which is D3's row.  That is the same shape
+            # ``core/postal-area.json`` has and the reason the disjoint half is not "the
+            # emitted half".
+            "core/requirements/asset-requirements.json",
             "a2ui/bound-value.json",
             "account/get-account-financials-response.json",
             "account/sync-accounts-response.json",
@@ -287,11 +296,13 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
     )
     # Every root the derivation cannot separate either EMITS with the declaration or
     # refuses further on, on another row's keyword -- and never on the overlap.
+    # **At a ROOT pointer, for :func:`_reaching`'s reason**: ``lower.union._undetermined``
+    # declares §4's row at a NESTED union as well, and this module's sets are roots.
     declaring = {
         d
         for d, declared in out.approximations.items()
         for one in declared
-        if one.kind == UNDERDETERMINED
+        if one.kind == UNDERDETERMINED and one.pointer in ("#/oneOf", "#/anyOf")
     }
     assert declaring <= overlapping, sorted(declaring - overlapping)
     assert declaring == overlapping - set(out.refusals), sorted(declaring)
@@ -402,7 +413,15 @@ def _reaching(population: list[str]) -> tuple[Any, set[str | None]]:
     real = lower_union.overlapping
 
     def traced(planned: Any, node: Any) -> list[str]:
-        seen.add(node.annotations.get("title"))
+        # **ROOTS ONLY, and the scoping arrived with a caller rather than with this
+        # test** (``adcp-client-python-10l.21``'s third instalment).  §4's derivation is
+        # asked at a NESTED union too now -- ``lower.union._undetermined``, which is §4's
+        # UNDERDETERMINED row at the other position -- so the raw call set is no longer
+        # the roots this module is about, and a nested union inside an untitled node put
+        # a ``None`` in a set of titles.  The node knows its own position (§6), so this
+        # reads it rather than inferring it from the pointer.
+        if node.position is keywords.Position.ROOT:
+            seen.add(node.annotations.get("title"))
         return real(planned, node)
 
     lower_union.overlapping = traced  # type: ignore[assignment]
@@ -551,11 +570,13 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
     # is the two halves together -- each half derived from the run and neither from the
     # other.
     out, _ = _reaching(sorted(bundle.portable(BUNDLE)))
+    # **At a ROOT pointer, for :func:`_reaching`'s reason**: ``lower.union._undetermined``
+    # declares §4's row at a NESTED union as well, and this module's sets are roots.
     declaring = {
         d
         for d, declared in out.approximations.items()
         for one in declared
-        if one.kind == UNDERDETERMINED
+        if one.kind == UNDERDETERMINED and one.pointer in ("#/oneOf", "#/anyOf")
     }
     assert not any("branches OVERLAP" in r.get("detail", "") for r in out.refusals.values())
     deeper = {d for d in OVERLAPPING_ROOTS if d in out.refusals}

@@ -79,8 +79,13 @@ DRAFT = "http://json-schema.org/draft-07/schema#"
 #: The documents the fix moved from refused to emitted, re-measured at 16052ffb0.
 #: It began as three -- two refused at a branch their own root constrains to an
 #: object, and ``core/deployment.json`` chaining off the first through a ``$ref`` --
-#: and the later rows named under ``STILL_REFUSED`` have grown it to ten.
+#: and the later rows named under ``STILL_REFUSED`` have grown it to ten, then to
+#: ELEVEN, which is all of them.
 NOW_EMITTED = (
+    # The eleventh, at ``adcp-client-python-10l.21``'s third instalment: it left
+    # ``STILL_REFUSED`` below when the ``type`` word beside a nested union stopped
+    # refusing its chain target.
+    "error-details/governance-agent-not-accepted.json",
     "core/account-ref.json",
     "core/activation-key.json",
     "core/canonical-account-ref.json",
@@ -100,20 +105,17 @@ NOW_EMITTED = (
 #: rather than as a silent change of population.  It held 8, then 5, and holds 1 at
 #: 16052ffb0: the four ``$ref`` rows left because each one's target emits now.
 #:
-#: **RE-MEASURED at ``adcp-client-python-10l.20``, and the one entry moved rather than
-#: left.**  §5's ``format`` row's own fallback keeps a ``uri`` beside a bound -- the type
-#: is the constrained ``str`` and the format rides as ``json_schema_extra`` -- so this
-#: document's ``maxLength`` verdict at ``/oneOf/0/properties/attempted_agent_origin``
-#: cleared.  What is left is a CHAIN: its ``/oneOf/0/properties/accepted_governance_agents``
-#: references ``governance/accepted-governance-agents.json``, whose own obstruction is a
-#: sibling of a NESTED union -- §14 step 10's ground, not step 9's.  That is the entry
-#: going stale in the honest direction, which is what this set is pinned for.
-STILL_REFUSED = {
-    "error-details/governance-agent-not-accepted.json": (
-        "$ref",
-        "/oneOf/0/properties/accepted_governance_agents",
-    ),
-}
+#: **EMPTY at ``adcp-client-python-10l.21``'s third instalment, and the last entry left
+#: by the row it was waiting on.**  It held
+#: ``error-details/governance-agent-not-accepted.json``, chained through
+#: ``/oneOf/0/properties/accepted_governance_agents`` to
+#: ``governance/accepted-governance-agents.json``, whose own obstruction was a sibling of
+#: a NESTED union.  That sibling is the ``type`` word, §5(a)'s first bullet and §14 step
+#: 9's first faithful row -- the parser hands it to every branch already -- so the target
+#: emits and this document emits behind it.  The residue reaching zero is what the set
+#: was pinned for, and the set STAYS, empty, because a document arriving here is the
+#: honest direction and has to be visible.
+STILL_REFUSED: dict[str, tuple[str, str]] = {}
 
 
 def _node(doc: object, pointer: str) -> dict:
@@ -433,10 +435,34 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
         if f"{g.ref.document}{g.ref.pointer}" not in ALREADY_AN_OBJECT_ITSELF
     ]
     # The pairs at a constrained node, non-empty -- the per-row loop below is the
-    # obligation and 35 was the number of rows one emitted tree gave it.  WHICH
+    # obligation and 59 is the number of rows this emitted tree gives it.  WHICH
     # documents they come from is the fact worth pinning and it is named below.
     claimed("pairs at a node its own document constrains", {g.ref for g in rows})
     assert {g.ref.document for g in rows} == {
+        # **SEVEN more at ``adcp-client-python-10l.21``'s third instalment**, and all
+        # seven arrive by one of that row's two shapes rather than by anything about this
+        # mechanism.  Six are §14 step 9's first faithful row -- a ``type`` word beside a
+        # NESTED combinator is in every branch already, so the document's own worded union
+        # stops refusing it -- and each contributes a class at a node its own root
+        # constrains: ``brand/verify-brand-claims-request.json``,
+        # ``core/performance-feedback.json``,
+        # ``core/requirements/image-asset-requirements.json``,
+        # ``governance/accepted-governance-agents.json``,
+        # ``media-buy/product-refinement.json``,
+        # ``registries/v1-canonical-mapping.json``, plus
+        # ``error-details/governance-agent-not-accepted.json`` chained behind the fourth
+        # of them.  The seventh is the OTHER shape: ``core/delivery-metric-aggregate.json``
+        # emits because a ``not`` beside a conjoined type is now a ``NotValue`` on the
+        # value's own annotated type.  The per-row loop grades all 59 and reported
+        # nothing new.
+        "brand/verify-brand-claims-request.json",
+        "core/delivery-metric-aggregate.json",
+        "core/performance-feedback.json",
+        "core/requirements/image-asset-requirements.json",
+        "error-details/governance-agent-not-accepted.json",
+        "governance/accepted-governance-agents.json",
+        "media-buy/product-refinement.json",
+        "registries/v1-canonical-mapping.json",
         # **TWO more at ``adcp-client-python-10l.20``, out of six that joined and four
         # that the exclusion above takes** (§14 step 9).  Six union roots whose own
         # siblings now compile onto the base emit, each having refused as
@@ -485,24 +511,24 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
             g.accept("a string")
 
 
-def test_ten_of_the_eleven_emit_and_the_last_one_refuses_on_another_rows_keyword() -> None:
-    """The outcome, with the honest residue.
+def test_all_eleven_emit_and_the_residue_is_empty() -> None:
+    """The outcome, and the residue is now empty.
 
-    10 documents were refused at a node their own root constrains to an object.
-    **10 of the 11 named here now emit and 1 still refuses** -- on a keyword of a
-    later row, measured here by name.  "Every document whose root constrains the
-    instance to an object emits" is therefore true of THIS refusal and not of that
-    one document, and that distinction is the content of this assertion.
+    11 documents were refused at a node their own root constrains to an object, and
+    **all 11 named here emit**.  "Every document whose root constrains the instance to an
+    object emits" is therefore true without qualification, which it was not before.
 
     It was 3 and 8, then 6 and 5 once `salesagent-j3k2l.19` lowered `uniqueItems` on
-    the class holding the array, and it is 10 and 1 at 16052ffb0: the four `$ref`
-    rows left the residue because each one's target emits now.  The residue
-    shrinking is what a later row landing looks like from here, which is why this is
-    pinned by NAME rather than by a count alone -- and the test's own name carries
-    the two numbers, so it moved with them.
+    the class holding the array, then 10 and 1 at 16052ffb0 when the four `$ref` rows
+    left, and it is 11 and 0 at ``adcp-client-python-10l.21``'s third instalment: the
+    last entry's chain target was refused for a ``type`` word beside a NESTED union, which
+    §14 step 9's first faithful row answers.  The residue reaching zero is what a later
+    row landing looks like from here, which is why this is pinned by NAME rather than by a
+    count alone -- and the test's own name carries the two numbers, so it moved with them.
 
     The partition is closed below rather than left as two subset checks: a document
-    the emitter neither built nor refused would otherwise satisfy both halves.
+    the emitter neither built nor refused would otherwise satisfy both halves.  The
+    residue is still a PART of it, empty, so a document arriving in it reddens here.
     """
     eleven = sorted(set(NOW_EMITTED) | set(STILL_REFUSED))
     # The two named sets are DISJOINT and together are the population this test grades,
@@ -708,8 +734,16 @@ def test_a_conditional_or_negated_position_carries_nothing(keyword: str) -> None
     # Over the pairs the tree carries, which is named non-empty first: "no pair sits at
     # a conditional position" is free over an empty set of pairs, and the tree is
     # imported at module scope so an import that half-failed would give exactly that.
+    #
+    # **A SEGMENT and not a substring, fixed at ``adcp-client-python-10l.21``.**  The
+    # reading was ``f"/{keyword}" in ref.pointer``, and ``not`` is a prefix of a property
+    # name: ``protocol/sync-agent-notification-configs-request.json`` began emitting and
+    # its pair at ``#/properties/notification_configs/items`` read as a pair sitting
+    # under a ``not``.  The test one row below already splits the pointer into segments
+    # for the same four keywords, so this is the two readings agreeing rather than a new
+    # one.
     pairs = claimed("graded pairs", {g.ref for g in test_emit.graded()})
-    at = [ref for ref in pairs if f"/{keyword}" in ref.pointer]
+    at = [ref for ref in pairs if keyword in ref.pointer.split("/")]
     assert at == [], at
 
 
@@ -874,6 +908,16 @@ def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
     # eighteen more documents under it, and every reference in all 21 resolves through
     # ``applied_schema`` above.
     assert set(per_document) == {
+        # **Two more at ``adcp-client-python-10l.21``'s third instalment**, both §14 step
+        # 9's first faithful row: a ``type`` word beside a NESTED combinator is in every
+        # branch already (``union.nested``'s screen claims it), so these two emit and the
+        # pairs that reach this loop are their own nodes.
+        # ``brand/verify-brand-claims-request.json`` states ``#/definitions/claim_entry``
+        # and ``content-standards/artifact.json`` ``#/$defs/asset_access`` -- each the
+        # very node whose worded union was being refused -- and both resolve through the
+        # widened scope exactly as the rest do.
+        "brand/verify-brand-claims-request.json",
+        "content-standards/artifact.json",
         # **Three more at ``adcp-client-python-10l.21``'s second instalment**, and all
         # three are §5(b)'s ``uniqueItems`` row becoming a declared WIDENING rather than
         # a verdict.  ``core/daast-tracker-constraints.json`` and

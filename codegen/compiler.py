@@ -1731,17 +1731,31 @@ def _the_conjuncts_own_type(
       computes an intersection over DECLARATIONS rather than over decided types -- there
       is no slot on an :class:`codegen.ir.TypeRef` for the conjunction of two.  0 nodes
       over the population; written so the first one is loud.
-    * **A conjunct stating a RULE beside the type** is §2's "where a rule hangs": with no
-      class above the value the rule hangs off the value's own annotated type, which is
-      :attr:`codegen.ir.TypeRef.validators`.  **The slot and the three kinds exist now**
-      (``adcp-client-python-10l.29``) and the array and scalar rows write them; what is
-      unwritten is the reading at CONJ, where the rule is stated by a CONJUNCT and the
-      type by another, so §2's intersection has to compose the two before either reaches
-      a ``TypeRef``.  2 nodes over the population, both
-      ``core/agent-notification-config*.json``'s ``event_types`` items, whose conjuncts
-      are a ``$ref`` to an enumeration beside a ``not: {enum: [...]}``.  The refusal is a
-      DEFERRAL, because what obstructs it is unwritten code and not a property of the
-      document (§9).
+    * **A conjunct stating a RULE beside the type** is §2's "where a rule hangs", and it
+      is WRITTEN: with no class above the value the rule hangs off the value's own
+      annotated type, which is :attr:`codegen.ir.TypeRef.validators`, and ``lower.rules``
+      is asked both of §2's questions so that nothing here decides which half a keyword
+      takes.  Measured over the 1,054 portable documents, 9 of the 30 nodes that reach
+      this row state a rule beside the type and every one of them is a ``not``, in three
+      shapes §5's ``not`` row already separates:
+
+      - **6 over a ``const`` or an ``enum``** -- a ``$ref`` to an enumeration beside
+        ``not: {enum: [...]}`` -- which is a ``NotValue`` on the value's own type and the
+        half this row writes.  ``core/agent-notification-config.json`` and
+        ``core/agent-notification-config-state.json`` (``event_types`` items),
+        ``core/assets/vast-tracker-asset.json``, ``core/assets/daast-tracker-asset.json``,
+        ``core/macro-resolution-capability.json`` and
+        ``core/delivery-metric-aggregate.json``.
+      - **2 over ``required``** -- ``core/canonical-product.json`` and
+        ``core/product.json``, whose ``publisher_properties`` items state
+        ``not: {"required": ["publisher_domains"]}`` beside a union root -- which §5's row
+        decides as ``ForbiddenGroups``, a rule on a CLASS this node does not have.  §2's
+        three value-rule kinds are each about a VALUE, so a statement about which KEYS an
+        instance supplied has no kind to be, and the refusal says exactly that.
+      - **1 over another shape** -- ``core/budget-allocation.json``'s
+        ``optimization_goals`` items -- which is §5's ``not`` row's own last clause,
+        "nothing on the model; the schema half answers and the ceiling is named", and the
+        same answer ``lower.scalars`` gives the same statement beside a scalar's own type.
     """
     if len(conjoined) > 1:
         return Refusal(
@@ -1766,18 +1780,87 @@ def _the_conjuncts_own_type(
             "properties, and a Python type that IS the target has no slot for a property",
             kind=Kind.VERDICT,
         )
-    rules_beside = sorted({k for one in rule_nodes for k in one})
-    if rules_beside:
-        return Refusal(
-            "allOf",
-            where,
-            f"{symbol} is this node's own TYPE (section 5's $ref row at CONJ) and a "
-            f"conjunct states {rules_beside} beside it: section 2 hangs a rule with no "
-            "class above the value off the value's own annotated type, which is "
-            "ir.TypeRef.validators -- the slot and its three kinds exist and the array "
-            "and scalar rows write them, and what is unwritten is the reading at CONJ, "
-            "where one conjunct states the rule and another the type",
-            kind=Kind.DEFERRED,
+    # **§2's "Where a rule hangs", read at CONJ**: one conjunct states the TYPE and
+    # another a RULE, so §2's intersection has to compose the two before either reaches
+    # a :class:`codegen.ir.TypeRef` -- and with no class above the value, the half that
+    # answers is "the rule hangs off the value's own annotated type as an
+    # after-validator", which is :attr:`codegen.ir.TypeRef.validators`.
+    #
+    # **``lower.rules`` is asked BOTH of §2's questions and nothing here decides which
+    # half a keyword takes**, which is that module's own rule ("one reader decides which
+    # of the two a document's statement reaches and the two cannot both claim it") and
+    # is why there is no reading of the ``not`` in this function: :func:`rules_at` is the
+    # class half and ``on_a_value`` is the value half, and the answer is which of them
+    # came back non-empty.  The deferred import is :func:`rules_at`'s own, for the cycle
+    # D13 fixes.
+    from codegen.lower import rules as lower_rules
+
+    beside: dict[str, Any] = {}
+    for one in rule_nodes:
+        for key, stating in one.items():
+            if key == "additionalProperties" and stating is True:
+                # §5's ``additionalProperties`` row at CONJ: "``true`` is the identity and
+                # contributes nothing".  The conjunct arm above admits no other value.
+                continue
+            if key in beside:
+                # Two conjuncts stating one rule keyword: the merge is §2's intersection
+                # of two rule statements, which no row writes -- and taking either would
+                # DROP the other silently, which §2 forbids ("nothing is approximated by
+                # silence").  0 sites over the portable population; written so the first
+                # one is loud.
+                return Refusal(
+                    "allOf",
+                    where,
+                    f"two conjuncts state {key!r} beside {symbol}, this node's own TYPE "
+                    "(section 5's $ref row at CONJ): the conjunction of two rule "
+                    "statements about one value is section 2's intersection, which is "
+                    "computed over DECLARATIONS, and reading either alone would drop the "
+                    "other without declaring it",
+                    kind=Kind.DEFERRED,
+                )
+            beside[key] = stating
+    if beside:
+        on_a_class = rules_at(node, *rule_nodes, position=node.position).rules
+        if on_a_class:
+            # §2's FIRST half, at a node that has no class: the statement is about which
+            # KEYS are present (``not`` over ``required`` -> ``ForbiddenGroups``), and
+            # the three value-rule kinds §2 names -- ``AtLeastOne``, ``NotValue``,
+            # ``Distinct`` -- are all about a VALUE.  So the rule has somewhere to live
+            # and no kind to live as, which is a different obstruction from the one above
+            # and is reported as itself rather than folded into it.
+            #
+            # 2 sites over the portable population, both a ``$ref`` to
+            # ``core/publisher-property-selector.json`` beside
+            # ``not: {"required": ["publisher_domains"]}``:
+            # ``core/canonical-product.json`` and ``core/product.json``, at
+            # ``/properties/publisher_properties/items/allOf/0``.
+            return Refusal(
+                "allOf",
+                where,
+                f"{symbol} is this node's own TYPE (section 5's $ref row at CONJ) and a "
+                f"conjunct states {sorted(beside)} beside it, which section 5's not row "
+                f"decides as {', '.join(sorted(type(r).__name__ for r in on_a_class))} -- "
+                "a rule on a CLASS, and this node has none.  Section 2 hangs a rule with "
+                "no class above the value off the value's own annotated type, and the "
+                "three kinds it names there (AtLeastOne, NotValue, Distinct) are each "
+                "about a VALUE: a statement about which KEYS an instance supplied has "
+                "nowhere on an ir.TypeRef to live, so the faithful answer needs a "
+                "value-level presence kind that section 2 does not name",
+                kind=Kind.DEFERRED,
+            )
+        # §2's SECOND half, which is the one this position takes: the rule hangs off the
+        # value's own annotated type.  An empty tuple here is §5's ``not`` row's own last
+        # clause -- "Any other shape -> nothing on the model; the schema half answers and
+        # the ceiling is named" -- and is the same answer ``lower.scalars`` already gives
+        # for the same statement beside a scalar's own type: ``not``'s cell is
+        # ``rendered=False``, so section 8 compares no fact at this pointer and the
+        # document's own ``strict_validate`` is what enforces it.
+        return Decided(
+            ir.TypeRef(
+                symbol,
+                local=True,
+                validators=lower_rules.on_a_value(beside, contains=beside.get("contains")),
+            )
         )
     return Decided(ir.TypeRef(symbol, local=True))
 

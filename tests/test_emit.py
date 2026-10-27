@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import ast
 import collections
+import enum
 import functools
 import importlib
 import importlib.util
@@ -329,6 +330,53 @@ def graded() -> list[Graded]:
             (symbol,) = module.__all__
             out.append(Graded(ref, getattr(module, symbol), module.strict_validate, info.name))
     return out
+
+
+#: **The ``format`` strategies the LIBRARY does not ship**, handed to ``check_pair`` as
+#: ``custom_formats``, which is the channel ``harness.missing_formats`` exists to point
+#: at: "hypothesis_jsonschema ignores a ``format`` it does not know, silently and without
+#: a warning, which turns an unsupported format into arbitrary text and so into a false
+#: direction-1 failure.  A caller supplies a strategy per format its documents use."
+#:
+#: **EMPTY until ``adcp-client-python-10l.21``'s third instalment**, and it is the row's
+#: own emission that filled it: the bundle uses 3 formats at a schema position in the
+#: graded tree -- ``uri`` (35 sites), ``date-time`` (27) and ``uuid`` (1) -- and
+#: ``hypothesis_jsonschema``'s ``STRING_FORMATS`` ships the first two and not the third.
+#: The one ``uuid`` site is ``trusted-match/context-match-request.json``, which emits
+#: behind ``content-standards/artifact.json`` once a ``type`` word beside a NESTED
+#: combinator stops refusing it, and the pair reported ``missing_formats: ['uuid']`` --
+#: the instrument saying so, which is exactly what it is for.
+#:
+#: Each entry is GRADED before it is trusted, by
+#: ``test_every_format_strategy_is_graded_before_it_is_trusted`` through
+#: ``harness.check_format_strategy``: a strategy emitting values the format refuses makes
+#: every site using it pass vacuously, and a vacuous pass is reported by nothing.
+FORMAT_STRATEGIES: dict[str, Any] = {"uuid": st.uuids().map(str)}
+
+
+def test_every_format_strategy_is_graded_before_it_is_trusted() -> None:
+    """Both answers required of every entry, which is ``check_format_strategy``'s rule.
+
+    "The values it produces are admitted by the format; a deliberately malformed value of
+    the same shape is REFUSED."  The second is not redundant: a validator with no checker
+    for the format answers ``True`` for every input, and that case is reported
+    ``unchecked``, which is not a pass.
+
+    The counterexample is of the SAME SHAPE as what the strategy emits -- a
+    dash-separated hex-ish string that is not a UUID -- so a checker that merely
+    pattern-sniffs is not what makes the second answer green.
+    """
+    counterexamples = {"uuid": "123e4567-e89b-12d3-a456-42661417400"}  # one digit short
+    named = claimed("format strategies", set(FORMAT_STRATEGIES))
+    assert named == set(counterexamples), sorted(named ^ set(counterexamples))
+    for fmt, strategy in sorted(FORMAT_STRATEGIES.items()):
+        verdict = harness.check_format_strategy(
+            fmt, strategy, counterexample=counterexamples[fmt]
+        )
+        assert verdict.checked, (fmt, "no checker: the format cannot be graded by checking")
+        assert verdict.examples, (fmt, verdict.detail)
+        assert verdict.accepted == verdict.examples, (fmt, verdict.rejected)
+        assert verdict.counterexample_refused, (fmt, counterexamples[fmt])
 
 
 def pair_of(g: Graded) -> Pair:
@@ -1007,16 +1055,64 @@ ROUND_TRIPS_NOTHING = ("no_instrument",)
 #:
 #: What is left, each with the sentence that keeps it:
 #:
-#: * three ``oneOf``\\ s that are UNDERDETERMINED -- §4's dispatch cannot separate their
+#: * FIVE ``oneOf``\\ s that are UNDERDETERMINED -- §4's dispatch cannot separate their
 #:   branches, which is the one kind §8 gives an instrument of its own
 #:   (``underdetermined_census``) and the one the comparison cannot see;
 #: * one ``patternProperties`` beside a non-``false`` ``additionalProperties``, whose
 #:   faithful answer is a rule family for "keys matching this pattern take this type" --
 #:   a different thing from the three value rules, and no row has written it.
+#:
+#: **THREE -> TEN on the UNDERDETERMINED half at ``adcp-client-python-10l.21``'s third
+#: instalment, and the set grew because the TREE grew.**  §9 forbids pinning the
+#: approximation COUNT for exactly this reason -- it "rises whenever the emitted set
+#: grows" -- and what the ratchet is on is the *ours* backlog, which this is.  Not one of
+#: the seven is this row's own widening; this row dropped NOTHING.  They arrive two ways
+#: and both are §4's own row:
+#:
+#: * **two at a ROOT, behind a document that began emitting.**
+#:   ``content-standards/get-media-buy-artifacts-response.json`` and
+#:   ``core/evaluator-spec.json`` emit behind a ``type`` word beside a NESTED combinator
+#:   (§5(a)'s first bullet), and each is a response ``oneOf`` whose success and error
+#:   branches §4's dispatch cannot separate -- the same shape as the three above them.
+#: * **five at a NESTED position, where §4's own answer was unwritten**, found by §8's
+#:   third equality in the SILENT direction: ``harness.inseparable_unions`` draws no
+#:   root/nested distinction and must not, and ``lower.union.nested`` declared nothing.
+#:   ``lower.union._undetermined`` is that row at the other position, and the five are
+#:   the two ``calibration_exemplars`` unions of
+#:   ``content-standards/create-content-standards-request.json`` and of
+#:   ``content-standards/update-content-standards-request.json``, plus
+#:   ``registries/v1-canonical-mapping.json``'s ``v1_pattern``.
 DECLARED_WIDENINGS = {
     ("content-standards/calibrate-content-response.json", "#/oneOf", "oneOf"),
+    (
+        "content-standards/create-content-standards-request.json",
+        "#/properties/calibration_exemplars/properties/fail/items/oneOf",
+        "oneOf",
+    ),
+    (
+        "content-standards/create-content-standards-request.json",
+        "#/properties/calibration_exemplars/properties/pass/items/oneOf",
+        "oneOf",
+    ),
     ("content-standards/create-content-standards-response.json", "#/oneOf", "oneOf"),
+    ("content-standards/get-media-buy-artifacts-response.json", "#/oneOf", "oneOf"),
+    (
+        "content-standards/update-content-standards-request.json",
+        "#/properties/calibration_exemplars/properties/fail/items/oneOf",
+        "oneOf",
+    ),
+    (
+        "content-standards/update-content-standards-request.json",
+        "#/properties/calibration_exemplars/properties/pass/items/oneOf",
+        "oneOf",
+    ),
     ("content-standards/validate-content-delivery-response.json", "#/oneOf", "oneOf"),
+    ("core/evaluator-spec.json", "#/oneOf", "oneOf"),
+    (
+        "registries/v1-canonical-mapping.json",
+        "#/properties/mappings/items/properties/v1_pattern/oneOf",
+        "oneOf",
+    ),
     ("core/creative-assets.json", "#", "patternProperties"),
 }
 
@@ -1127,7 +1223,7 @@ def graded_reports() -> list[tuple[Graded, PairReport]]:
     ``functools.cache`` and not a fixture, because ``graded()`` and ``pair_of``
     are module functions and the reports are a pure function of the emitted tree.
     """
-    return [(g, check_pair(pair_of(g))) for g in graded()]
+    return [(g, check_pair(pair_of(g), custom_formats=FORMAT_STRATEGIES)) for g in graded()]
 
 
 def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for() -> None:
@@ -1249,7 +1345,7 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
     while the three tests reading a population TOTAL are one item each.
     """
     pair = pair_of(row)
-    rep = check_pair(pair)
+    rep = check_pair(pair, custom_formats=FORMAT_STRATEGIES)
     assert rep.missing_formats == []
     assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
     if rep.accepts.outcome != "strategy_error":
@@ -1719,11 +1815,24 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             if isinstance(n, ast.ImportFrom)
             for a in n.names
         }
+        # **Read off the ``json_schema_extra=`` ARGUMENT and not off every dict literal
+        # in the module**, fixed at ``adcp-client-python-10l.21``'s third instalment.
+        # The reading walked every ``ast.Dict`` and took any ``"format": <const>`` pair,
+        # which is the module's annotation channel AND the document's own spelling:
+        # §7 puts an approximation's ``fact`` into the module verbatim, so a declaration
+        # quoting a node that states a ``format`` read as the MODULE annotating one.
+        # Measured on ``content-standards/get-media-buy-artifacts-response.json``, whose
+        # UNDERDETERMINED declaration at ``#/oneOf`` quotes a branch containing
+        # ``{'type': 'string', 'format': 'date-time'}`` while the module also SELECTS
+        # ``AwareDatetime`` at that very pointer -- so the "a selected format does not
+        # also ride as an annotation" assertion reddened against a faithful module.
         annotated_formats = {
             value.value
             for n in ast.walk(tree)
-            if isinstance(n, ast.Dict)
-            for key, value in zip(n.keys, n.values, strict=True)
+            if isinstance(n, ast.Call)
+            for kw in n.keywords
+            if kw.arg == "json_schema_extra" and isinstance(kw.value, ast.Dict)
+            for key, value in zip(kw.value.keys, kw.value.values, strict=True)
             if isinstance(key, ast.Constant) and key.value == "format"
             if isinstance(value, ast.Constant)
         }
@@ -1839,7 +1948,21 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     # moves two or three of these at once -- ``date-time`` went 190 -> 194 -> 196 and
     # ``uri`` 131 -> 133 -> 135 over two rows, each a correct move, neither predictable
     # from the other.
-    assert set(seen) == {"date-time", "uri", "date", "email", "hostname", "uri-template"}, seen
+    # **``uuid`` joins at ``adcp-client-python-10l.21``'s third instalment**, one site,
+    # and it is the row's own emission: ``trusted-match/context-match-request.json``
+    # emits behind ``content-standards/artifact.json``.  It has no ``FORMAT_TYPES`` row,
+    # so it rides the second arm -- and it is also the entry that filled
+    # :data:`FORMAT_STRATEGIES`, because ``hypothesis_jsonschema`` ships no strategy for
+    # it and the pair reported ``missing_formats: ['uuid']`` until one was supplied.
+    assert set(seen) == {
+        "date-time",
+        "uri",
+        "date",
+        "email",
+        "hostname",
+        "uri-template",
+        "uuid",
+    }, seen
     assert all(seen.values()), seen
     # The excluded population, named and sized -- and it is SIX sites, not the one
     # that reddened.  **The other five were passing by accident**, which is the finding:
@@ -4018,6 +4141,14 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # ``core/postal-area.json`` is not one of them -- it stays -- while
     # ``account/sync-accounts-response.json``, ``core/async-response-data.json`` and
     # ``media-buy/list-products-response.json`` moved with their chains.
+    # **FIVE LEFT THE SET at ``adcp-client-python-10l.21``'s third instalment**, each one
+    # a union root that now EMITS: ``core/budget-allocation.json`` and
+    # ``core/delivery-metric-aggregate.json`` by a ``not`` beside a conjoined type
+    # becoming a ``NotValue`` on the value's own annotated type, and
+    # ``content-standards/get-media-buy-artifacts-response.json``,
+    # ``core/evaluator-spec.json`` and ``error-details/governance-agent-not-accepted.json``
+    # behind a ``type`` word beside a NESTED combinator.  49 -> 44 refused, and the
+    # emitted half rose with it.
     assert refused_on == {
         "account/list-account-changes-response.json": "$ref",
         "account/sync-accounts-response.json": "$ref",
@@ -4026,11 +4157,14 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "brand/acquire-rights-response.json": "$ref",
         "brand/update-rights-response.json": "$ref",
         "brand/verify-brand-claim-response.json": "$ref",
-        "brand/verify-brand-claims-response.json": "type",
+        # ``type`` -> ``$ref`` at ``adcp-client-python-10l.21``'s third instalment: the
+        # worded nested union at ``/definitions/result_entry`` stopped refusing, so the
+        # document reports its own next obstruction -- a restatement of ``payload`` at
+        # ``/definitions/signed_response/allOf/1`` that neither matches nor narrows.
+        "brand/verify-brand-claims-response.json": "$ref",
         "compliance/comply-test-controller-response.json": "additionalProperties",
         "compliance/task-completion-data.json": "$ref",
         "content-standards/get-content-standards-response.json": "$ref",
-        "content-standards/get-media-buy-artifacts-response.json": "$ref",
         "content-standards/list-content-standards-response.json": "$ref",
         "core/account-identity-change-preview.json": "$ref",
         "core/assets/asset-union.json": "$ref",
@@ -4038,21 +4172,22 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "core/assets/display-tag-asset.json": "items",
         "core/assets/vast-asset.json": "items",
         "core/async-response-data.json": "$ref",
-        "core/budget-allocation.json": "allOf",
         "core/canonical-placement.json": "$ref",
-        "core/delivery-metric-aggregate.json": "allOf",
-        "core/evaluator-spec.json": "$ref",
         "core/postal-area.json": "$ref",
         "core/postal-country-system.json": "pattern",
         "core/product-format-declaration.json": "required",
         "core/registry-event.json": "$ref",
-        "core/requirements/asset-requirements.json": "$ref",
+        # ``$ref`` -> ``title`` at ``adcp-client-python-10l.21``'s third instalment: its
+        # chain target ``core/requirements/image-asset-requirements.json`` emits now (a
+        # ``type`` word beside a NESTED combinator), so the root reports its OWN
+        # obstruction -- 12 bare ``$ref`` branches with no title and no pin, which is
+        # D3's row and the shape that function's own docstring already names.
+        "core/requirements/asset-requirements.json": "title",
         "core/tracker-execution-selector.json": "$ref",
         "core/wholesale-feed-event.json": "$ref",
         "creative/get-creative-features-response.json": "title",
         "creative/preview-creative-response.json": "properties",
         "creative/sync-creatives-response.json": "$ref",
-        "error-details/governance-agent-not-accepted.json": "$ref",
         "error-details/vast-version-mismatch.json": "required",
         "media-buy/build-creative-response.json": "$ref",
         "media-buy/buy-products-request.json": "required",
@@ -4777,9 +4912,15 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
         },
         inside=set(out.emitted),
     )
+    # **TWO MORE at ``adcp-client-python-10l.21``'s third instalment**, both documents
+    # released by §5(a)'s first bullet -- a ``type`` word beside a NESTED combinator is in
+    # every branch already -- and each carries a ``uniqueItems`` at one of the four
+    # positions §2 names for the value-level half rather than a new kind of position.
     assert enforcing == {
         "core/account-authorization.json",  # a mapping value
+        "core/audience-characteristic.json",  # a oneOf branch
         "core/daast-tracker-constraints.json",  # a definitions entry
+        "core/postal-area-support.json",  # a mapping value (its typed extras store)
         "core/vast-tracker-constraints.json",  # a definitions entry
         "error-details/requote-required.json",  # a oneOf branch
         "media-buy/acceptance-policy-profile.json",  # a mapping value
@@ -4794,9 +4935,12 @@ def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rul
     a later step, so a ``RootModel`` base would be a class no document reaches and no
     pair grades" -- and the keyword in question was this row's own ``uniqueItems``,
     which §5's group (a) answers with the root model's rule tuple.  So the two halves
-    land together and the measurement is the partition below: four of the five root
-    arrays EMIT, and the fifth refuses inside its own ``items``, where its obstruction
-    is.
+    land together and the measurement is the partition below: **all five root arrays
+    EMIT** at ``adcp-client-python-10l.21``'s third instalment.  It was four, with the
+    fifth refusing inside its own ``items`` -- which is where a root array's obstruction
+    lands, because the row lowers the element first -- and that fifth was
+    ``media-buy/product-refinement.json``, released when a ``type`` word beside a NESTED
+    combinator stopped refusing.
 
     Three facts per emitted root array, each the half the old refusal was paying for:
 
@@ -4823,12 +4967,19 @@ def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rul
         emitted_as_a_root_model={d for d in roots if d not in out.refusals},
         refused_inside_its_items={d for d in roots if d in out.refusals},
     )
-    # The odd one out is named, and the refusal is INSIDE its element rather than at the
-    # shape: the row lowers the element first, so a document whose own element is
-    # unlowerable reports its own blocker and not the root array shape.
-    (odd,) = [d for d in roots if d in out.refusals]
-    assert odd == "media-buy/product-refinement.json"
-    assert out.refusals[odd]["pointer"].startswith("/items"), out.refusals[odd]
+    # **The residue is EMPTY at ``adcp-client-python-10l.21``'s third instalment, and
+    # ALL FIVE root arrays emit.**  It held ``media-buy/product-refinement.json``, whose
+    # ``/items`` is a worded nested union -- ``type: object`` beside a ``oneOf`` -- which
+    # §5(a)'s first bullet answers and §14 step 9 lists first among the faithful rows, so
+    # the fifth array's element lowers and the document emits.  The docstring's "four of
+    # the five" is now five of the five.
+    #
+    # The clause STAYS, over whatever the part holds, because a root array arriving with
+    # an unlowerable element is the thing it reads for: the refusal is INSIDE the element
+    # rather than at the shape, since the row lowers the element first.  The partition
+    # above is what reddens when the part fills again, with the document named.
+    for odd in sorted(d for d in roots if d in out.refusals):
+        assert out.refusals[odd]["pointer"].startswith("/items"), out.refusals[odd]
 
     # The hand-built control: nothing else wrong with it, so it reaches the shape.
     built = emit.lower_document(
@@ -4988,8 +5139,16 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     # ``str`` -- which is §5(b)'s reading and the one the branch below is for: a
     # non-``false`` ``additionalProperties`` admits every key already, so the key is
     # faithful and the pattern's VALUE typing is the fact dropped and declared.
+    #
+    # **10 -> 11 AT ``adcp-client-python-10l.21``'s THIRD INSTALMENT.**
+    # ``core/geo-breakdown-support.json`` emits behind
+    # ``core/postal-area-support.json``, whose ``/propertyNames`` is a worded nested
+    # union -- the ``type`` word §5(a)'s first bullet puts in every branch -- and its
+    # ``/properties/metro`` is a mapping whose key states a ``pattern``, so it joins by
+    # the mechanism the other ten joined by and not by a change to what the test means.
     assert constrained == [
         ("core/creative-assets.json#", "/"),
+        ("core/geo-breakdown-support.json#", "/properties/metro"),
         ("core/geo-region-support.json#", "/properties/countries"),
         ("core/product-change-map.json#", "/"),
         ("core/store-item.json#", "/properties/hours"),
@@ -5045,6 +5204,37 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         # lowers to ``Literal`` of the members, in the document's own order.
         if "enum" in key:
             members = ", ".join(repr(m) for m in key["enum"])
+            # **A NAMED key enumeration is its own symbol and not a ``Literal``**, which
+            # is the second half of §5's ``propertyNames`` row: "where the key node
+            # carries a ``title`` the ``StrEnum`` is the key type and renders the same
+            # way".  The two arms are told apart by the document's own ``title``, and the
+            # SYMBOL is read off the emitted module rather than spelled here -- the same
+            # rule the alias name below follows -- so a rename moves this with it.
+            #
+            # First reached at ``adcp-client-python-10l.21``'s third instalment:
+            # ``core/geo-breakdown-support.json``'s ``/properties/metro`` states
+            # ``propertyNames: {"$ref": <enums/metro-system.json>}``, which
+            # ``bundle.record`` inlines into the key node -- so the node carries the
+            # enum AND the target's title, and the module imports ``MetroAreaSystem``.
+            if "title" in key:
+                module = importlib.import_module(
+                    emit.PACKAGE + "." + emit.module_path(path).replace("/", ".")
+                )
+                named = claimed(
+                    f"{document} key enumerations stating {pointer}'s members",
+                    [
+                        value.__name__
+                        for value in vars(module).values()
+                        if isinstance(value, type)
+                        and issubclass(value, enum.Enum)
+                        and [m.value for m in value] == list(key["enum"])
+                    ],
+                )
+                assert any(f"dict[{one}," in _source(path) for one in named), (
+                    document,
+                    sorted(named),
+                )
+                continue
             assert f"dict[Literal[{members}]," in _source(path), (document, members)
             continue
         facts = {k: v for k, v in key.items() if k in spelled}
@@ -5541,9 +5731,18 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         "core/account-authorization.json",
         "core/account-change.json",
         "core/canonical-media-buy-features.json",
+        # **TWO MORE at ``adcp-client-python-10l.21``'s third instalment**, and both
+        # arrive behind §5(a)'s first bullet: ``core/postal-area-support.json``'s
+        # ``/propertyNames`` is a worded nested union, so the document emits and its
+        # typed extras store is the one whose rendered annotation found the import
+        # filter's bug (``render.klass``); ``core/geo-breakdown-support.json`` emits
+        # behind it, and its ``/properties/metro`` is a MAPPING with a typed
+        # ``additionalProperties`` rather than a store.  Named rather than counted.
+        "core/geo-breakdown-support.json",
         "core/geo-place-area.json",
         "core/geo-region-support.json",
         "core/media-buy-features.json",
+        "core/postal-area-support.json",
         "core/product-change-map.json",
         "core/reporting-file-entry.json",
         "core/store-item.json",
@@ -5588,10 +5787,18 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # ``core/format-option-ref.json``, which the same row cleared.  The mechanism is
     # unchanged; what grew is the population it is graded over, which is what this list
     # is for.
+    # **A FIFTH emitted store site at ``adcp-client-python-10l.21``'s third instalment**,
+    # and it is the one that found ``render.klass``' import filter: the root of
+    # ``core/postal-area-support.json`` declares ``properties`` AND a typed
+    # ``additionalProperties`` whose value is a ``uniqueItems`` array no class sits above,
+    # so the store's annotation carries ``AfterValidator(Distinct())`` -- the first store
+    # in the tree whose annotation holds a CALL, which the four-character split hid every
+    # name inside.
     assert [row for row in store if row[0] in out.emitted] == [
         ("brand/get-brand-identity-response.json", "/oneOf/0/properties/fonts"),
         ("core/canonical-media-buy-features.json", "/"),
         ("core/media-buy-features.json", "/"),
+        ("core/postal-area-support.json", "/"),
         ("governance/reported-outcome-error.json", "/"),
     ], store
     # and it really does carry the store, read off the emitted module
@@ -5620,6 +5827,54 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     model.model_validate({"a": "x", "extra": 3})
     with pytest.raises(ValidationError):
         model.model_validate({"a": "x", "extra": "not an int"})
+
+
+def test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined() -> None:
+    """Every file of the tree IMPORTED, which is one obligation and not a derivation.
+
+    ``graded()`` imports the tree too, but at COLLECTION time and only for the modules
+    that bind a pair -- so a module whose annotation names a symbol it does not import
+    takes the whole test file down with an ``ImportError`` before a single assertion
+    runs, and a module that imports but leaves a class unresolved reports
+    ``harness_error`` on every pair of it.  Neither reads as the one-line defect it is.
+
+    **Measured at ``adcp-client-python-10l.21``, which is why this exists.**
+    ``render.klass`` filters the typed ``__pydantic_extra__`` annotation's reported
+    imports by the names the rendered line uses, and the filter split the hint on four
+    characters -- ``[``, ``]``, ``,`` and ``|`` -- so a CALL inside the annotation hid
+    every name in it.  ``core/postal-area-support.json``'s extras store holds a
+    ``uniqueItems`` array, which §2 renders as
+    ``Annotated[…, Field(json_schema_extra={…}), AfterValidator(Distinct())]``, and none
+    of ``Field``, ``AfterValidator`` or ``Distinct`` was imported: the module raised
+    ``PydanticUserError: not fully defined`` on first touch and 11 pairs reported
+    ``harness_error`` three test files away.
+
+    ``model_json_schema()`` is what asks the second half: an unresolved forward reference
+    survives the import and fails only when pydantic is asked to build the schema, which
+    is exactly the shape ``__pydantic_extra__`` produced.
+    """
+    modules = claimed(
+        "modules of the emitted tree",
+        [
+            info.name
+            for info in pkgutil.walk_packages([str(TREE)], "adcp.types._schemas.")
+            if not info.ispkg
+        ],
+    )
+    unresolved: list[tuple[str, str]] = []
+    for name in sorted(modules):
+        module = importlib.import_module(name)
+        for value in vars(module).values():
+            if (
+                isinstance(value, type)
+                and issubclass(value, BaseModel)
+                and value.__module__ == name
+            ):
+                try:
+                    value.model_json_schema()
+                except Exception as why:  # noqa: BLE001 -- the failure is the finding
+                    unresolved.append((f"{name}.{value.__name__}", str(why)[:200]))
+    assert unresolved == [], unresolved
 
 
 def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
@@ -6841,7 +7096,16 @@ VALUE_RULE_CARRIERS: dict[str, list[tuple[str, str]]] = {
         ("core/daast-tracker-constraints.json", "DEF"),
         ("error-details/requote-required.json", "BRANCH"),
     ],
-    "NotValue": [("core/iana-timezone.json", "ROOT")],
+    #: ``NotValue`` carries TWO rows because its two positions are two different
+    #: readings of §2's second half.  ROOT is a root alias: the node's own ``not`` beside
+    #: its own type.  **CONJ is one conjunct stating the TYPE and another the RULE**
+    #: (``adcp-client-python-10l.21``, ``compiler._the_conjuncts_own_type``), so §2's
+    #: intersection has to compose the two before either reaches an ``ir.TypeRef`` -- and
+    #: that reading was the unwritten half, which is why 9 nodes refused there.
+    "NotValue": [
+        ("core/iana-timezone.json", "ROOT"),
+        ("core/delivery-metric-aggregate.json", "CONJ"),
+    ],
     "AtLeastOne": [("core/product-execution-requirement.json", "PROP")],
 }
 
@@ -6907,6 +7171,9 @@ def test_every_value_rule_kind_is_enforced_by_the_class_the_tree_emitted() -> No
     """
     from adcp.types._schemas.core.account_authorization import AccountAuthorization
     from adcp.types._schemas.core.daast_tracker_constraints import DAASTTrackerConstraints
+    from adcp.types._schemas.core.delivery_metric_aggregate import (
+        DeliveryMetricAggregateStandard,
+    )
     from adcp.types._schemas.core.iana_timezone import IANATimezoneIdentifier
     from adcp.types._schemas.core.product_execution_requirement import (
         DownstreamConnectionExecutionRequirementConnection,
@@ -6942,6 +7209,17 @@ def test_every_value_rule_kind_is_enforced_by_the_class_the_tree_emitted() -> No
             TypeAdapter(IANATimezoneIdentifier).validate_python,
             "inventory_local",
             "America/New_York",
+        ),
+        (
+            # §5's ``$ref`` row at CONJ: ``metric_id`` is ``allOf: [{$ref: <an enum>},
+            # {not: {enum: [...]}}]``, so the enumeration is the field's own TYPE and the
+            # ``not`` is the rule on it.  Both payloads are the DOCUMENT's own answer --
+            # ``Draft7Validator`` admits the first and refuses the second.
+            "NotValue",
+            "core/delivery-metric-aggregate.json",
+            DeliveryMetricAggregateStandard.model_validate,
+            {"scope": "standard", "metric_id": "viewability", "value": 1.0},
+            {"scope": "standard", "metric_id": "impressions", "value": 1.0},
         ),
         (
             "AtLeastOne",
@@ -7715,7 +7993,25 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     # row that emitted a module -- ``declared`` went 1413 -> 1426 at
     # ``salesagent-j3k2l.21`` alone -- and none of them is a fact the four clauses do
     # not already assert per member.
-    assert unverifiable == set(), sorted(unverifiable)
+    # **ONE member at ``adcp-client-python-10l.21``'s third instalment, and it is the
+    # TWO-POPULATION gap the clause above already names rather than a group going
+    # unchecked.**  This loop ranges over ``bundle.portable`` and the committed tree is
+    # written from ``population()``, which is the narrower of the two -- so a document
+    # that begins emitting OUTSIDE that population has no module for clause 2 to import.
+    # ``core/targeting-overlay-support.json`` is that document: a ``type`` word beside a
+    # NESTED combinator stopped refusing it (§5(a)'s first bullet), and it is not in
+    # ``population()`` because none of the seven step selectors claims it.
+    #
+    # Asserted as the DERIVED containment plus the name, which is what keeps it from
+    # becoming an allowlist: the containment says the skip can only ever be a document
+    # the tree is not written from, and the name says which -- so a group skipped for any
+    # OTHER reason still reddens, and this one leaves the moment the populations meet.
+    outside = claimed(
+        "documents this loop reaches that the tree is not written from",
+        set(out.emitted) - set(population()),
+    )
+    assert unverifiable <= outside, sorted(unverifiable - outside)
+    assert unverifiable == {"core/targeting-overlay-support.json"}, sorted(unverifiable)
     claimed("declared (document, pointer) names", declared)
     claimed("content groups reached", groups)
     claimed("adoptions", adoptions)
@@ -7855,6 +8151,34 @@ def test_the_first_refusal_is_the_earliest_in_the_document_and_not_in_the_sort()
 #: to be read as that claim rather than absorbed by a number.
 VERDICTS = frozenset(
     {
+        # **69 -> 80 at ``adcp-client-python-10l.21``'s third instalment, and the set is
+        # named in BOTH directions because a verdict count is not monotone under
+        # progress.**  THREE LEFT -- ``core/assets/card-asset.json``,
+        # ``core/offering.json`` and ``core/signal-pricing-option.json``, each a chain
+        # whose target now emits.  FOURTEEN JOINED, and not one of them is a new KIND of
+        # verdict: every one is a document that got FURTHER and reached a verdict another
+        # row already owns.  Eleven resolve to §5(b)'s restatement row (an ``allOf``
+        # restatement that neither matches nor narrows, which §5(b) decides as a declared
+        # widening and nobody has written) or to D3's branch-identity row; two are
+        # ``core/package-delivery-metric-value.json`` and
+        # ``media-buy/get-products-request.json``, which carry the
+        # unresolved-target sentence filed as ``adcp-client-python-g31``; and
+        # ``media-buy/get-products-request.json`` reaches its chain only because its own
+        # worded nested union stopped refusing.
+        "media-buy/update-media-buy-request.json",
+        "media-buy/media-buy-delivery-webhook-result.json",
+        "media-buy/get-products-request.json",
+        "media-buy/get-media-buy-delivery-response.json",
+        "core/requirements/offering-asset-constraint.json",
+        "core/requirements/catalog-requirements.json",
+        "core/requirements/asset-requirements.json",
+        "core/package-delivery-metric-value.json",
+        "core/assets/vast-tracker-asset.json",
+        "core/assets/daast-tracker-asset.json",
+        "content-standards/list-content-standards-response.json",
+        "content-standards/get-content-standards-response.json",
+        "content-standards/content-standards.json",
+        "brand/verify-brand-claims-response.json",
         'account/list-account-changes-response.json',
         'account/sync-accounts-response.json',
         'brand.json',
@@ -8107,7 +8431,14 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # read at the one quantity in this test that moves with emission.  The floor is
     # therefore re-measured on the tree, and what it still catches is the defect it was
     # written for: a run that stops minting CHAINED at all, which would read 0.
-    assert len(chained) >= 127, len(chained)
+    # **127 -> 105 AT ``adcp-client-python-10l.21``'s THIRD INSTALMENT, AND THE MOVE IS
+    # EMISSION.**  Two of §14 step 9's rows landed -- a ``type`` word beside a NESTED
+    # combinator is in every branch already, and a ``not`` beside a conjoined type hangs
+    # off the value's own annotated type -- and 37 documents left the refusal set over
+    # the portable population (845 -> 885).  26 of the 37 were reached only through a
+    # chain, so 26 chains left with them, and four more re-rooted onto their own
+    # documents' obstructions.
+    assert len(chained) >= 105, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
     # **50 -> 44 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and this floor
     # falls for the reason the one above it does.**  It is a floor on the VERDICT half of

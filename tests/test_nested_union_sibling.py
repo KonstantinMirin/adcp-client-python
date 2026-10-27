@@ -1,5 +1,25 @@
-"""§6's ``discriminator`` row at a NESTED union, and the sibling screen that admits it.
+"""The sibling screen of a NESTED union: §6's ``discriminator`` row, and the ``type`` word.
 
+Two names are not refused beside a nested ``oneOf``/``anyOf`` and each is here for its
+own reason, which is why both are graded in this one module -- the screen is one line and
+a reader who changes it has to meet both.
+
+**``type``, and §5(a)'s first bullet is the decision** (``adcp-client-python-10l.21``):
+"A plain keyword beside a ``oneOf``/``anyOf``.  §4's union section already decides it --
+*every keyword beside the combinator compiles onto the base, and every branch inherits
+it* ... No widening; the keyword compiles."  §14 step 9 lists it first among the faithful
+rows.  The screened sentence says a sibling has "no slot for a fact of its own" on an
+``ir.TypeRef`` -- true, and it does not reach this keyword, because the word is never
+carried on the union's type at all: ``schema.parse._union`` hands every branch
+``applied=<the word>``, so the fact is IN THE BRANCHES.  Both halves are graded below --
+the word reaching every branch node, and the comparison finding it at the union's own
+pointer -- and neither is read off the table.
+
+Measured over the 1,054 portable documents at ``9e759de``: 21 nodes reach this screen and
+**12 state the word and nothing else beside the combinator**; admitting it took ``emitted``
+845 -> 871 with no module of the tree changing by one byte.
+
+**``discriminator``**:
 ``salesagent-j3k2l.67``.  ``union.ROOT_CLAIMS`` admitted the keyword at a root union
 with the reason written beside it -- it constrains nothing, so ignoring it cannot make
 the model wider than its document, and it is READ there as the property §4 "Names" takes
@@ -17,7 +37,7 @@ That mechanism does not reach this keyword, and both halves are graded here:
   comparison over a real pair, not by reading the compared set.
 
 A constraining sibling still refuses, which is the perturbation under each assertion: the
-screen was narrowed by one name and not opened.
+screen was narrowed by two names and not opened.
 """
 
 from __future__ import annotations
@@ -33,7 +53,7 @@ from typing import Any
 from codegen import bundle, compiler, emit, harness, keywords
 from codegen.lower import names
 from codegen.lower import union as lower_union
-from codegen.schema import parse as schema_parse
+from codegen.schema import nodes, parse as schema_parse
 
 from nodeset import claimed, partitions
 
@@ -323,6 +343,142 @@ def test_the_refusal_sentence_names_no_owner_for_the_position() -> None:
     assert "needs a row" not in lower_union._NESTED_SIBLING
     assert "ROOT_CONJUNCTS" not in lower_union._NESTED_SIBLING
     assert lower_union._NESTED_SIBLING.endswith("missing fact at this very pointer")
+
+
+# --------------------------------------------------------------------------- #
+# the second name: ``type``, which the parser puts in every branch
+# --------------------------------------------------------------------------- #
+def _typed_nested_sites() -> dict[str, list[str]]:
+    """Every NESTED union of the bundle stating a ``type`` word beside the combinator.
+
+    Read off each document as the bundle states it, so the population is a property of
+    the bundle and not of what the run happened to reach -- a document refused one
+    pointer earlier still carries the site.
+    """
+    out: dict[str, list[str]] = {}
+
+    def walk(node: Any, pointer: str, found: list[str]) -> None:
+        if isinstance(node, dict):
+            if (
+                any(isinstance(node.get(kw), list) for kw in UNION)
+                and isinstance(node.get("type"), str)
+                and pointer != ""
+            ):
+                found.append(pointer)
+            for key, value in node.items():
+                walk(value, f"{pointer}/{key}", found)
+        elif isinstance(node, list):
+            for i, value in enumerate(node):
+                walk(value, f"{pointer}/{i}", found)
+
+    for document in sorted(bundle.portable(BUNDLE)):
+        found: list[str] = []
+        walk(bundle.read(BUNDLE, document), "", found)
+        if found:
+            out[document] = found
+    return out
+
+
+def test_the_type_word_beside_a_nested_union_reaches_every_branch() -> None:
+    """The MECHANISM, through the production parser: the union tells every branch.
+
+    §5(a)'s first bullet is the decision and ``schema.parse._union`` is the whole of the
+    implementation -- ``applied=<the word>`` per branch, which is §6's "a child never
+    reconstructs its parent" and ``_base.applied_schema``'s own rule.  So what is graded
+    is that the word is ON each branch node, which is why nothing has to be conjoined at a
+    pointer the document does not state and why the union's own ``ir.TypeRef`` needs no
+    slot for it.
+
+    Asserted over the BUNDLE's own sites rather than over a fixture, and in both
+    directions: a branch stating its own word keeps it (``applied_schema``'s "a node's own
+    ``type`` always wins"), and a branch stating none takes the union's.
+
+    **No branch of this population states a DIFFERENT word, measured**: over the records
+    of the 1,054 portable documents, 21,498 branches of a worded union state no word, 5,661
+    restate the same one and **0 state another**.  So the empty intersection §5(b) decides
+    (two disjoint type words) has no site here and no arm is written for it.
+    """
+    sites = _typed_nested_sites()
+    claimed("documents with a worded nested union", set(sites), inside=set(bundle.portable(BUNDLE)))
+    pairs = claimed(
+        "worded nested union sites", [(d, p) for d, ps in sites.items() for p in ps]
+    )
+    told: list[tuple[str, str]] = []
+    kept: list[tuple[str, str]] = []
+    unions: list[tuple[str, str]] = []
+    a_rule: list[tuple[str, str]] = []
+    for document, pointer in sorted(pairs):
+        node = bundle.node_at(bundle.read(BUNDLE, document), pointer)
+        parsed = schema_parse.parse(
+            node,
+            pointer=pointer,
+            position=keywords.Position.PROP,
+            source=schema_parse.Source(document=document),
+        )
+        if not isinstance(parsed, nodes.Union):
+            # A combinator whose every branch constrains only key PRESENCE is a RULE and
+            # not a union at all (§5's ``oneOf``/``anyOf`` row, ``rules.presence_only``),
+            # so the parser's arm order classifies the node on what is left -- and this
+            # screen never sees it.  Partitioned below rather than filtered silently.
+            a_rule.append((document, pointer))
+            continue
+        unions.append((document, pointer))
+        for branch in parsed.branches:
+            # The union TOLD it, whatever the branch states: ``applied`` is the enclosing
+            # assertion and is the same field at every branch.
+            assert branch.applied == node["type"], (document, pointer, branch.pointer)
+            own = bundle.node_at(bundle.read(BUNDLE, document), branch.pointer).get("type")
+            (kept if own is not None else told).append((document, branch.pointer))
+            assert own in (None, node["type"]), (document, branch.pointer, own)
+    # Every site accounted for by exactly one answer: the parser read it as a union, or
+    # the combinator was a presence rule and this screen is not the reader.
+    partitions(pairs, a_nested_union=unions, a_presence_rule=a_rule)
+    # And every BRANCH of the union sites accounted for by which half of
+    # ``applied_schema``'s rule answered it.
+    partitions(
+        set(told) | set(kept),
+        takes_the_enclosing_word=told,
+        states_its_own=kept,
+    )
+    assert told, "no branch takes the word, so the clause above holds vacuously"
+
+
+def test_the_comparison_finds_the_type_word_at_the_union_s_own_pointer() -> None:
+    """The harness half, RUN rather than read off the compared set.
+
+    This is the half :data:`union._NESTED_SIBLING` claimed could not hold: "the document
+    states the sibling at this pointer and ``harness.compare_schema`` looks for it here,
+    so a model whose node is a bare ``anyOf`` reports it ``missing``".  It holds for
+    ``type`` because the model's node is NOT a bare ``anyOf`` -- every arm carries the
+    word -- so there is a fact at that pointer for the comparison to find.
+
+    ``media-buy/product-refinement.json`` is the document: its root is an array whose
+    ``/items`` is ``{"type": "object", "discriminator": ..., "oneOf": [...]}``, which is
+    this population's own shape with both admitted names on one node.
+    """
+    document = "media-buy/product-refinement.json"
+    read = bundle.read(BUNDLE, document)
+    at = claimed(f"{document}'s worded nested union sites", _typed_nested_sites()[document])
+    assert at == {"/items"}, sorted(at)
+    assert read["items"]["type"] == "object", read["items"].get("type")
+
+    out = emit.emit(BUNDLE, [document])
+    assert document in out.emitted, out.refusals.get(document)
+    resolved = bundle.record(BUNDLE, document)
+    root = claimed(
+        "classes naming the document root",
+        [
+            c
+            for c in _declared(out, document)
+            if c.__adcp_schema__.pointer in ("#", "#/")
+        ],
+    )
+    (model,) = root
+    report = harness.compare_schema(resolved, model, document=resolved)
+    assert report.compared, report
+    assert not report.missing, report.missing
+    assert not report.differs, report.differs
+    assert not report.added, report.added
 
 
 def test_the_screen_admits_exactly_the_one_name() -> None:

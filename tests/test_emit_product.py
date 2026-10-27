@@ -407,6 +407,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # of document arriving.  It held at .28, at .29 and at .21, every time as the four
     # names and not as the difference of two counts.
     assert sorted(cleared - set(composing())) == [
+        # **TWO MORE at ``adcp-client-python-10l.21``'s third instalment, and both are
+        # RELEASES of the same kind -- 12 - 227 is still the composing half growing.**
+        # Neither composes at its own root.
+        # ``core/canonical-audience-evidence-selection.json`` was chained behind
+        # ``content-standards/artifact.json``, whose worded nested union §5(a)'s first
+        # bullet answers, and ``core/principal-state.json`` behind
+        # ``core/agent-notification-config.json``, whose ``not`` beside a conjoined type
+        # is now a ``NotValue`` on the value's own annotated type.  Each then still needs
+        # THIS row, because with the root ``allOf`` arm stubbed out its other target
+        # refuses.  Named here so this row's own credit stays separate from the release.
+        "core/canonical-audience-evidence-selection.json",
         "core/catalog.json",
         # **One more since ``adcp-client-python-10l.20``, and it is a RELEASE of the same
         # kind.**  ``core/forecast-point-dimensions.json`` is a root ARRAY and composes
@@ -439,6 +450,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         # stubbed out the middle hop refuses, which is what puts this document here.
         "core/media-buy-support.json",
         "core/package-targeting-resolution.json",
+        "core/principal-state.json",
         "core/reporting-delivery-ready-webhook.json",
         # **TWO MORE at ``adcp-client-python-10l.21``'s second instalment, and both are
         # RELEASES of the same kind.**  Neither composes at its own root.

@@ -1792,10 +1792,45 @@ def _entails_type(doc: dict, value: Any) -> bool:
         # ``type`` word equals, so a mixed vocabulary never reaches one answer.
         implied = {_JSON_TYPE.get(type(m)) for m in members}
         return len(implied) == 1 and value in implied
+    # **The two combinators are OR-ed and the first one present no longer decides
+    # alone.**  ``oneOf`` and ``anyOf`` are independent assertions about the same
+    # instance, so a node stating both must satisfy both and either one forcing the type
+    # is enough.  The loop returned on the first it found, which read a node whose
+    # ``anyOf`` entails the type and whose ``oneOf`` does not as entailing nothing.
     for combinator in ("oneOf", "anyOf"):
         branches = doc.get(combinator)
-        if isinstance(branches, list) and branches:
-            return all(isinstance(b, dict) and b.get("type") == value for b in branches)
+        if (
+            isinstance(branches, list)
+            and branches
+            and all(isinstance(b, dict) and b.get("type") == value for b in branches)
+        ):
+            return True
+    # **An ``allOf`` where ANY conjunct entails it, which is the DUAL of the arm above
+    # and the fourth shape of the same question** (``adcp-client-python-10l.21``).  A
+    # draft-07 conjunct applies to the SAME instance, so an instance must satisfy every
+    # one of them: where a branch list needs EVERY branch to force the type, a conjunct
+    # list needs only ONE.  §2's "composition merges by intersection" is the same
+    # sentence read on the document side.
+    #
+    # Recursive, and that is what the shape needs rather than a convenience: the
+    # conjunct is itself a union root whose branches carry the ``type``, so the
+    # entailment is two readings deep -- ``allOf`` then ``oneOf`` -- and a single level
+    # would answer ``False`` for a document that types the instance three times over.
+    #
+    # Measured over the graded population at ``ad0a48cc``: the arm decides a model-only
+    # ``type`` at **4 pairs**, all of them §5's ``$ref``-row-at-CONJ shape where the
+    # conjunct resolves to a UNION ROOT -- so the model is that root's base class, which
+    # is a pydantic model and renders ``type: object``, while the document states the
+    # word only inside the conjunct's own branches.  ``core/budget-allocation.json
+    # #/oneOf/1`` at ``/properties/optimization_goals/items``,
+    # ``core/planned-delivery.json#`` at ``/properties/budget_allocation``, and the two
+    # pairs of ``governance/report-plan-outcome-request.json`` that reach the same node
+    # through ``seller_response``.  Every one was reported ``added`` -- "the model says
+    # 'object', the document nothing" -- against a model stating exactly what its
+    # document states.
+    conjuncts = doc.get("allOf")
+    if isinstance(conjuncts, list) and conjuncts:
+        return any(isinstance(c, dict) and _entails_type(c, value) for c in conjuncts)
     return False
 
 
@@ -2945,6 +2980,36 @@ def _composed(doc: Any, depth: int = 0) -> Any:
                 out["items"] = {**mine_items, "allOf": [*pending, c["items"]]}
             else:
                 out["items"] = c["items"]
+    # **A conjunct whose own statement is a COMBINATOR is KEPT and not dropped**
+    # (``adcp-client-python-10l.21``).  The clause above says a branch list is "left
+    # alone, and must be" -- a branch's properties are satisfied by SOME branch, so
+    # folding them in would state a fact the document does not -- and that is right about
+    # FOLDING and was wrong about dropping: the conjunct applies to the whole instance,
+    # so its combinator is an assertion the composed node makes, and removing ``allOf``
+    # from the merged node took the assertion with it.  The conjunct states nothing in
+    # ``FOLDED_FACTS``, so it folded to NOTHING and the merged node read as typeless.
+    #
+    # Kept by the SAME mechanism ``properties`` and ``items`` already use -- stashed
+    # under ``allOf`` on the merged node, folded again when the comparison descends --
+    # and ``allOf`` is not in ``compared_facts``, so a kept conjunct is inert to every
+    # direction of the comparison except the one reading that needs it:
+    # :func:`_entails_type`'s own ``allOf`` arm, which asks whether the document already
+    # admits only instances of the model's type word.
+    #
+    # Measured over the graded tree at ``ad0a48cc``: 4 pairs, all §5's
+    # ``$ref``-row-at-CONJ shape where the conjunct resolves to a UNION ROOT.  The model
+    # is that root's base class, which is a pydantic model and renders ``type: object``;
+    # the document types the instance twice over -- every branch of the conjunct's own
+    # ``oneOf`` says ``object`` -- and all four were reported ``added``, "the model says
+    # 'object', the document nothing", against a model stating exactly what its document
+    # states.  A conjunct whose facts DO fold is unaffected: an ``enum`` conjunct's
+    # ``enum`` and ``type`` are in ``FOLDED_FACTS``, which is why the other five sites of
+    # the same row compare green without this.
+    kept = [
+        c for c in conjuncts if isinstance(c, dict) and ("oneOf" in c or "anyOf" in c)
+    ]
+    if kept:
+        out["allOf"] = kept
     return out
 
 

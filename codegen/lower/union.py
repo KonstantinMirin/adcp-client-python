@@ -1253,6 +1253,37 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
 #: fact for the comparison to miss.  The TABLE is the set of those: a sibling whose
 #: cell carries nothing is admitted, and a sibling whose cell lowers is a constraining
 #: one and reaches this refusal.
+#:
+#: **``type`` IS NOT ONE OF THEM, and the reason is that the fact does not need a slot
+#: on the union's own type: it is already in every branch.**  §5(a)'s first bullet
+#: decides it -- "A plain keyword beside a ``oneOf``/``anyOf``.  §4's union section
+#: already decides it -- *every keyword beside the combinator compiles onto the base,
+#: and every branch inherits it* ... No widening; the keyword compiles" -- and §14 step 9
+#: lists it first among the faithful rows ("root siblings onto a union base, and the
+#: ``applied_schema`` extension of §13 item 3").  The MECHANISM is the parser's, written
+#: for the root position and unconditional: ``schema.parse._union`` hands every branch
+#: ``applied=<the word>``, which is §6's "the union tells the branch" and
+#: ``_base.applied_schema``'s own rule -- the same rule the SCHEMA half of each graded
+#: pair reads.  So the word reaches each branch's own node, decides the kind of a branch
+#: stating none (§5's ``type`` row: "absent beside ``properties`` -> an object, where an
+#: enclosing node applies ``type: object`` to the same instance"), and a branch stating
+#: its own word keeps it.  Nothing is conjoined at a pointer the document does not state,
+#: because nothing is stated anywhere: the word travels as a node field.
+#:
+#: It is CLAIMED and not admitted by the table, which is :func:`compiler.check_keywords`'
+#: own division -- ``handled`` is "the cells this handler writes" -- and this handler
+#: writes the word by handing it down.  ``discriminator`` is the other kind of admission
+#: and stays in the TABLE, because its cell carries nothing at every position.
+#:
+#: Measured over the 1,054 portable documents at ``9e759de``: **21 nodes reach this
+#: screen, 12 of them stating the word and nothing else beside the combinator** (10
+#: ``object``, 2 ``string``).  Admitting it took ``emitted`` 845 -> 871 and ``refused``
+#: 209 -> 183: 9 of the 12 emit, 17 documents chained behind them are freed, and 3 of
+#: the 12 move to their own next obstruction (``brand/verify-brand-claims-response.json``
+#: to a restatement verdict, ``protocol/get-adcp-capabilities-response.json`` to the
+#: ``not``-beside-a-conjoined-type deferral, ``media-buy/get-products-request.json`` to a
+#: chain).  **No module the tree already carried changed by one byte**, which is what
+#: says the word was being dropped at those 12 nodes and nowhere else.
 _NESTED_SIBLING = (
     "a sibling of a nested oneOf/anyOf is a CONJUNCTION with every branch (draft-07), "
     "and a nested union lowers to one type -- A | B -- which has no slot for a fact of "
@@ -1372,10 +1403,128 @@ def nested(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refu
     # ``$ref`` arm's "a sibling of $ref, which draft-07 ignores" -- and the same line
     # that arm draws between an annotation sibling and a constraining one, which is what
     # the TABLE's cells carry.
-    refused = compiler.check_keywords(node, {node.combinator}, _NESTED_SIBLING, mod=mod)
+    #
+    # ``type`` is CLAIMED beside the combinator, and :data:`_NESTED_SIBLING` carries the
+    # whole reason: the parser has already handed the word to every branch
+    # (``schema.parse._union``'s ``applied=``), so the fact is in the branches and needs
+    # no slot on the union's own ``ir.TypeRef``.  §5(a)'s first bullet, §14 step 9's first
+    # faithful row.
+    refused = compiler.check_keywords(node, {node.combinator, "type"}, _NESTED_SIBLING, mod=mod)
     if refused is not None:
         return refused
-    return _arms(node, mod)
+    # **Asked AFTER the arms, and the order is §6's pure-map rule rather than taste.**
+    # The derivation resolves a bare ``$ref`` branch's target (:func:`_targeted`), and
+    # ``Module.target`` RECORDS the site it was asked at -- which is how the run decides
+    # which documents it owes -- so asking first put one module into the tree that the
+    # arms had not reached, measured as 866 -> 867 over ``test_emit.population()``.
+    # Asked after, every target it reads has already been asked by the branch that holds
+    # it, so the derivation adds no site and the emitted set is a function of the walk
+    # and not of this question.  A refusal takes the document with it and there is
+    # nothing to declare about a document nobody emits.
+    decided = _arms(node, mod)
+    if isinstance(decided, Refusal):
+        return decided
+    _undetermined(node, mod)
+    return decided
+
+
+def _targeted(raw: Mapping[str, Any], at: str, mod: compiler.Module) -> Inherited | None:
+    """The CLASS a bare ``$ref`` branch names, or ``None`` where it names none.
+
+    :func:`_inherited`'s reading without its refusals, for the one caller that is asking
+    a QUESTION about the branches rather than declaring them: §4's dispatch derivation
+    needs the target's property map and nothing else, and a target that is not a class --
+    or a reference the run did not resolve -- is simply not a shape, which the caller's
+    own gate already answers for.  Refusing here instead would refuse a document for a
+    derivation that is allowed to answer "I cannot separate these".
+    """
+    if set(raw) - {"description", "deprecated"} != {"$ref"}:
+        return None
+    target = mod.target(raw["$ref"], at)
+    if isinstance(target, Refusal) or target.shape is None:
+        return None
+    return Inherited(symbol=target.symbol, shape=target.shape)
+
+
+def _undetermined(node: "nodes.Union", mod: compiler.Module) -> None:
+    """§4's UNDERDETERMINED row at a NESTED union, which is the ROOT's own answer here.
+
+    "A union matching none of the three emits a plain ``A | B`` over its branches and
+    declares an UNDERDETERMINED approximation at the union's pointer" -- and a nested
+    union IS a plain ``A | B`` over its branches, so §5's "root and non-root are one
+    path" applies to the DECLARATION exactly as it applies to the type.  Each branch of
+    shapes is a class at its own ``#/<kw>/<i>`` pointer (:func:`_arms`), the arms are
+    tried in the document's order, and WHICH branch an overlapping payload becomes is
+    then a property of declaration order: the same fact dropped, at the other position.
+
+    **Found by §8's third equality, in the SILENT direction**
+    (``adcp-client-python-10l.21``'s third instalment).
+    ``harness.inseparable_unions`` draws no distinction between a root and a nested
+    pointer and must not: its ONE exclusion is a union "whose branches are NOT all
+    shapes", because then "there are no branch classes to order", and a nested union of
+    shapes has them.  5 pointers reported "the derivation cannot separate these branches
+    and nothing declares it" once the documents holding them began emitting --
+    ``content-standards/create-content-standards-request.json`` and
+    ``content-standards/update-content-standards-request.json`` at both
+    ``/properties/calibration_exemplars/properties/{pass,fail}/items/oneOf``, and
+    ``registries/v1-canonical-mapping.json`` at
+    ``/properties/mappings/items/properties/v1_pattern/oneOf``.
+
+    **The derivation is the ROOT's, called with the branches this position has**, which
+    is what keeps one reading of §4's three sources rather than a second:
+    :func:`discriminator` is the first source, :func:`overlapping` the third, and both
+    take a :class:`Branch` list.  The plan is lighter than :func:`_plan`'s and
+    deliberately so -- a bare ``$ref`` branch of a NESTED union is a member TYPE and not
+    a class with two bases, so there is nothing to resolve and ``inherits`` is ``None``
+    for every branch.  The SHAPE gate is what makes that sound and it is the harness's
+    own test, read on this side: a branch whose applied type is not an object has no
+    class, so such a union is not in the set either half ranges over.
+
+    Returns ``None`` and writes on the module, because an approximation is ADDITIVE (§2):
+    a refusal propagates and this does not, so a branch that refuses below simply takes
+    the document with it and the declaration goes with the module nobody emits.
+    """
+    kw, pointer = node.combinator, node.pointer
+    if len(node.branches) < 2 or not all(isinstance(b, Mapping) for b in node.branch_raw):  # noqa: PLR2004
+        return
+    planned = [
+        Branch(
+            pointer=parsed.pointer,
+            node=raw,
+            parsed=parsed,
+            # **A bare ``$ref`` branch's fields are the TARGET's, resolved the way
+            # :func:`_inherited` resolves them**, because §4's derivation reads a pin off
+            # a property map and a reference has none of its own.  ``mod.target`` is the
+            # run's finished lookup and this call has no effect of its own -- the import
+            # is ``_arms``'s to record when it lowers the branch -- so the derivation
+            # cannot reorder what the run emits (§6's pure-map rule).  A target with no
+            # :class:`compiler.Shape` is not a class, so ``inherits`` stays ``None`` and
+            # the shape gate below drops the whole union.
+            inherits=_targeted(raw, parsed.pointer, mod),
+            forbids=compiler.rules_at(parsed, position=Position.BRANCH).forbids,
+        )
+        for parsed, raw in zip(node.branches, node.branch_raw, strict=True)
+    ]
+    applied = [applied_type(node, i) for i in range(len(planned))]
+    if not all(
+        plan.inherits is not None
+        or word == "object"
+        or (word is None and plan.node.get("properties"))
+        for word, plan in zip(applied, planned, strict=True)
+    ):
+        return
+    if discriminator(planned, dispatch_key(node)):
+        return
+    if not overlapping(planned, node):
+        return
+    approximate.declare(
+        mod,
+        f"{pointer}/{kw}",
+        kw,
+        node.position,
+        node.branch_raw,
+        kind=ir.UNDERDETERMINED,
+    )
 
 
 def _arms(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refusal:
