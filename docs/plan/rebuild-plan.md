@@ -54,14 +54,30 @@ Upstream repairs land on upstream's schedule, and some of them cost this SDK a t
 hundreds of sites. So the bundle we hand the compiler may be a PATCHED copy of the published
 one — but only under a condition that makes the patch provable rather than a judgement:
 
-**A patch is admissible exactly when every patched document's RECORD is byte-identical to the
-published document's record.**
+**A patch is admissible exactly when no patched document's record differs from the published
+document's record at a key that decides acceptance.** A key decides acceptance when the keyword
+table says it does: `bundle.is_an_annotation(keyword, position)` is the predicate, and it is the
+one `record` already reads to settle a `$ref`'s sibling, so the line is the table's and not a
+second judgement.
 
-That is not a convention, it is a mechanical check with the machinery §3 already builds.
-`record` inlines every cross-document `$ref`, so extracting a repeated subschema into its own
-document and referencing it is the INVERSE of what `record` does: resolve the patch and the
-original comes back. Measured — a record carries zero cross-document references, so the two
-resolve to the same mapping or the check fails and says which pointer differs.
+That is a mechanical check with the machinery §3 already builds. `record` inlines every
+cross-document `$ref`, so extracting a repeated subschema into its own document and referencing
+it is the INVERSE of what `record` does: resolve the patch and the original comes back at every
+key a validator can act on, or the check names the pointer and the keyword.
+
+*This said "byte-identical" until 2026-10-27, and that rule forbade its own purpose.* `record`
+inlines a reference's target WHOLE, so a site that comes to reference a **titled**
+`core/currency-code.json` takes that document's `title` and `$schema` into the record where the
+published site had neither. The sentence demanding byte-identity and the sentence asking for a
+titled document could not both hold, and the row that built the patch measured the gap rather
+than quietly widening the tolerance: over the 1,054 portable documents, **22,337 record
+differences across 429 documents, every one a GAIN of `$schema`, `title` or `description`, and
+zero differences a validator can act on — nothing lost or changed at any pointer.**
+
+Byte-identity was the wrong instrument because it measures the record's bytes when what it is
+protecting is the accepted set. The accepted set is exactly the keys the table calls
+acceptance-deciding, so that is what the check compares. A patch that adds a name is admitted; a
+patch that moves one acceptance key is not, and that line is where it always should have been.
 
 What that admits, and it is the whole of the ergonomic win: **naming.** Extracting
 `{"type": "string", "pattern": "^[A-Z]{3}$"}` into a titled `core/currency-code.json` and
