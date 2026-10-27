@@ -614,6 +614,62 @@ def test_the_declared_set_equals_the_approximated_set_in_both_directions() -> No
     assert "no pair graded that pointer" in nowhere.undeclared_widenings[0]
 
 
+def test_an_underdetermined_declaration_is_not_stale_for_being_invisible() -> None:
+    """Section 8 exempts the one kind no comparison can report, and this holds that.
+
+    "An UNDERDETERMINED approximation (section 2) is invisible to all three checks, and
+    that is why it needs an instrument of its own ... The comparison matches, the draw
+    accepts and the dump validates, because the annotation admits exactly what the
+    document admits."
+
+    :func:`harness.census` is computed FROM the comparison's output, so a kind the
+    comparison cannot report could never enter its *approximated* half.  Read without the
+    exemption, every UNDERDETERMINED declaration is *over-declared* at every pair forever
+    -- which is the one kind section 8 removes from that outcome by name, and the kind
+    whose own instrument (:func:`harness.underdetermined_census`) holds it in both
+    directions instead.
+
+    **Both directions, and the second is what keeps the exemption from being a hole**: a
+    WIDENED declaration at the SAME pointer that no pair reports is still stale, so the
+    exemption is about the KIND and not about the pointer.  ``check_widening`` already
+    draws this exact line one function away, with this same sentence of section 8 quoted
+    at it.
+    """
+    invisible = approximate(
+        _ref("#/oneOf"), "oneOf", Position.ROOT, OVERLAPPING["oneOf"], kind=UNDERDETERMINED
+    )
+    exempt = harness.census(
+        [
+            (
+                _pair(Wide, (invisible,)),
+                _report(harness.compare_schema(WIDE_DOCUMENT, Wide, declared=(invisible,))),
+            )
+        ]
+    )
+    assert exempt.stale == [], exempt.stale
+    assert exempt.undeclared_widenings == [], exempt.undeclared_widenings
+    assert exempt.outcome == "pass", exempt
+    # It is still DECLARED, so the figures and the UNDERDETERMINED equality both see it:
+    # the exemption is from the *over-declared* outcome and from nothing else.
+    assert set(exempt.declared) == {(DOC, "#/oneOf", "oneOf")}
+    assert exempt.documents == 1
+
+    # The same pointer, the other kind: a WIDENED declaration no pair reports is stale.
+    # Without this the exemption could be read as "a declaration at a combinator is
+    # excused", which is a hole of the shape the first direction of this equality closes.
+    widened = invisible._replace(kind=WIDENED)
+    not_exempt = harness.census(
+        [
+            (
+                _pair(Wide, (widened,)),
+                _report(harness.compare_schema(WIDE_DOCUMENT, Wide, declared=(widened,))),
+            )
+        ]
+    )
+    assert not_exempt.stale == [(DOC, "#/oneOf", "oneOf")], not_exempt.stale
+    assert not_exempt.outcome != "pass"
+
+
 def test_an_attribution_the_registry_does_not_hold_is_a_defect() -> None:
     """Section 2: the attribution "is a choice of two and not a free-text note".
 
