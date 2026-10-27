@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import DictMinProperties1, HttpUrl, StrMatchingEFC12812
+from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -156,7 +157,7 @@ class SearchBrandsSuccess(SearchBrandsResponse):
     ext: ExtensionObject | None = None
 
 
-class SearchBrandsError(SearchBrandsResponse):
+class SearchBrandsError(SearchBrandsResponse, FailedResponse):
     model_config = ConfigDict(
         extra='allow',
     )

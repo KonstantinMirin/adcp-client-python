@@ -7,6 +7,7 @@ from pydantic import Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import FloatMin0Max1
+from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -70,7 +71,7 @@ class ValidateContentDeliveryResponseResultsSummary(ValidateContentDeliveryRespo
     ext: ExtensionObject | None = None
 
 
-class ValidateContentDeliveryResponseErrors(ValidateContentDeliveryResponse):
+class ValidateContentDeliveryResponseErrors(ValidateContentDeliveryResponse, FailedResponse):
     """
     Error response
     """

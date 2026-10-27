@@ -271,10 +271,26 @@ class Field:
 
 @dataclass(frozen=True)
 class ClassDecl:
-    """One decided class.  ``ref`` is the schema it will carry and grade against."""
+    """One decided class.  ``ref`` is the schema it will carry and grade against.
+
+    **``ref`` is ``None`` for a class that names no document**, and that is the whole of
+    ``codegen/lower/envelope.py``'s row: a base synthesised for a family of nodes that
+    do NOT share an accepted set carries ``context``, ``errors`` and ``ext`` for a
+    consumer to program against and claims nothing about any document.  §9 of the
+    architecture document pairs a class with "the node its ``__adcp_schema__`` names", so
+    a class with no reference is not in the pairing at all -- it is not graded, nothing
+    draws for it, and ``strict_validate`` does not resolve on it.  The concrete classes
+    of the family keep their own ``ref`` and remain the things §8 grades, which is what
+    makes the base safe: the authority stays with the document.
+
+    ``AdCPBaseModel``, ``BranchDispatchMixin`` and ``RuleBound`` are the precedent --
+    three bases the tree already carries, none of which names a document -- and the one
+    thing this slot adds is that the compiler can now DERIVE such a base rather than only
+    inherit a hand-written one.
+    """
 
     name: str
-    ref: SchemaRef
+    ref: SchemaRef | None
     fields: tuple[Field, ...]
     description: str | None = None
     #: D8: ``forbid``, ``allow``, or ``None`` to leave the base's default.

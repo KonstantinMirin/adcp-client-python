@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import AdCPUrl
+from adcp.types.envelopes import FailedResponse
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -78,7 +79,7 @@ class SyncGovernanceSuccess(SyncGovernanceResponse):
     ext: ExtensionObject | None = None
 
 
-class SyncGovernanceError(SyncGovernanceResponse):
+class SyncGovernanceError(SyncGovernanceResponse, FailedResponse):
     """
     Operation failed completely, no accounts were processed
     """

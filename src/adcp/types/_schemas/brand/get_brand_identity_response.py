@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import AdCPUrl, DictMinProperties1, DictMinProperties1MaxProperties1, HttpUrl, IntMin100Max900, NonEmptyList, StrMatching83577F62, StrMatchingEFC12812, StrMatchingF01B4765, StrMaxLen100, StrMinLen1
+from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -268,7 +269,7 @@ class GetBrandIdentitySuccess(GetBrandIdentityResponse):
     ext: ExtensionObject | None = None
 
 
-class GetBrandIdentityError(GetBrandIdentityResponse):
+class GetBrandIdentityError(GetBrandIdentityResponse, FailedResponse):
     model_config = ConfigDict(
         extra='allow',
     )
