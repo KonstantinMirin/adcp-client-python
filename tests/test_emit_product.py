@@ -427,6 +427,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         # reason the four below do -- the row cleared them without claiming them -- and
         # they are named here so the row's own credit stays separate from the release.
         "core/media-buy-support-requirements.json",
+        # **One more at ``adcp-client-python-onq``, and a RELEASE for the same reason.**
+        # ``core/media-buy-support.json`` states ``dependencies``, ``minProperties`` and
+        # ``not`` at its root and composes nothing, so it is not in ``composing()``.  Its
+        # only blocker was a chain: ``/properties/frequency_cap_constraints`` references
+        # ``core/media-buy-frequency-cap-support.json``, which composes
+        # ``core/frequency-cap-constraints.json``, which references
+        # ``core/frequency-cap-impression-constraints.json`` -- one of the six documents
+        # §5's "A union of presence-only branches that also forbid" releases.  With the
+        # ``PresenceGroups`` rule that chain emits, and with the root ``allOf`` arm
+        # stubbed out the middle hop refuses, which is what puts this document here.
+        "core/media-buy-support.json",
         "core/package-targeting-resolution.json",
         "core/reporting-delivery-ready-webhook.json",
         "error-details/authorization-required.json",

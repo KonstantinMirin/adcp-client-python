@@ -739,8 +739,8 @@ def _rule_sources(raw: Mapping[str, Any], position: Position) -> dict[str, Any]:
     combinator the node states only to say which KEYS are present.
 
     §4: a node at RULE is "kept on the enclosing node as a rule source", and this is the
-    carrier.  The combinators join the set only where every branch is ``required``-only --
-    a CO-OCCURRENCE and not a position, so the cell cannot answer it and
+    carrier.  The combinators join the set only where every branch states which keys are
+    PRESENT -- a CO-OCCURRENCE and not a position, so the cell cannot answer it and
     :func:`presence_only` is the parser's own classification (§11: "the kind read in
     ``_decide``, in the root selectors, in ``union.keyword``, in ``rules.presence_only`` |
     ``parse``'s classification").
@@ -754,14 +754,16 @@ def _rule_sources(raw: Mapping[str, Any], position: Position) -> dict[str, Any]:
 def presence_only(raw: Mapping[str, Any], position: Position = Position.ROOT) -> bool:
     """Is every combinator at this node a statement about key PRESENCE?
 
-    §5's ``oneOf``/``anyOf`` row: "Presence-only, every branch ``required``-only → a
-    ``RequiredGroups`` rule naming the combinator"; a combinator of SHAPES is a union.
-    Both predicates are read off the same branches, so no node satisfies both and the
-    classification has nothing to arbitrate.
+    §5's ``oneOf``/``anyOf`` row: a branch stating only which keys are present → one
+    rule naming the combinator; a combinator of SHAPES is a union.  Both predicates are
+    read off the same branches, so no node satisfies both and the classification has
+    nothing to arbitrate.
 
     It is the PARSER's because the classification is (§11), and ``lower/rules.py`` reads
     it from here rather than restating it -- a lowering importing the reading layer is the
-    direction §11's arrow points.
+    direction §11's arrow points.  :func:`presence_clause` is the whole of the reading and
+    this is its quantifier, so the predicate that selects the row and the values the row
+    lowers cannot come apart.
     """
     for combinator in UNION:
         branches = raw.get(combinator)
@@ -769,17 +771,88 @@ def presence_only(raw: Mapping[str, Any], position: Position = Position.ROOT) ->
             continue
         if not isinstance(branches, list) or not branches:
             return False
-        if not all(_required_only(branch, position) for branch in branches):
+        if not all(presence_clause(branch, position) is not None for branch in branches):
             return False
     return True
 
 
-def _required_only(branch: Any, position: Position) -> bool:
-    """A branch that says nothing but which keys are present."""
+#: One branch read as a presence statement: the names it REQUIRES, and the groups it
+#: FORBIDS.  A plain pair and not a runtime dataclass, because ``schema/`` reads the
+#: document and ``adcp.types._runtime`` is the model layer's side of the seam -- the
+#: lowering builds :class:`adcp.types._runtime.Presence` out of this.
+Clause = tuple[tuple[str, ...], tuple[tuple[str, ...], ...]]
+
+
+def presence_clause(branch: Any, position: Position) -> Clause | None:
+    """``branch`` as a presence statement, or ``None`` if it says anything else.
+
+    **§5, "A union of presence-only branches that also forbid" (decided 2026-10-27).** A
+    branch of a presence-only union states ``required`` and, optionally, a ``not`` over
+    ``required`` groups: "every name in R present and no group of F present in full".
+    Both halves belong to the SAME branch, which is why they are read together and
+    returned paired -- a ``not`` lifted off its branch and stated beside the combinator
+    forbids its groups unconditionally, and ``core/catchment.json`` is the measurement:
+    it states three methods and forbids the other two per method, so a rule holding the
+    union of the three ``not``\\ s forbids all three and refuses every payload the
+    document admits.
+
+    A branch whose ``not`` does not reduce to groups is NOT a presence clause: it
+    constrains something a rule cannot say, so the node is a combinator of shapes and
+    §5's union row answers it.  Reading it as a clause and dropping the ``not`` would
+    make the rule say less than the branch with nothing to report it.
+    """
     if not isinstance(branch, Mapping):
-        return False
+        return None
     declared = {k for k in branch if keywords.declares(k, position)}
-    return declared == {"required"} and isinstance(branch["required"], list)
+    if not declared <= {"required", "not"} or "required" not in declared:
+        return None
+    if not isinstance(branch["required"], list):
+        return None
+    require = tuple(n for n in branch["required"] if isinstance(n, str))
+    if "not" not in declared:
+        return (require, ())
+    forbid = required_groups(branch["not"], position)
+    if forbid is None:
+        return None
+    return (require, tuple(forbid))
+
+
+def required_groups(sub: Any, position: Position) -> list[tuple[str, ...]] | None:
+    """``sub`` as a set of key groups, or ``None`` if it says anything else.
+
+    A group is a set of names whose simultaneous presence satisfies ``sub``, so an
+    enclosing ``not`` forbids it.  ``anyOf`` of branches is the union of their groups
+    (any branch satisfied satisfies ``sub``); ``allOf`` of single-group branches is one
+    group, the union of their names.  ``oneOf`` is deliberately absent: its negation is
+    "not exactly one", which no list of forbidden groups expresses.
+
+    The PARSER's, because :func:`presence_clause` is the classification and needs it, and
+    ``lower/rules.py`` reads it from here for its ``not`` and its ``then``/``else`` --
+    one reduction of one keyword, which is what §11's "nothing repeats" asks of it.
+    """
+    if not isinstance(sub, Mapping):
+        return None
+    keys = {k for k in sub if keywords.declares(k, position)}
+    if keys == {"required"} and isinstance(sub["required"], list):
+        names = tuple(n for n in sub["required"] if isinstance(n, str))
+        return [names] if names else None
+    if keys == {"anyOf"} and isinstance(sub["anyOf"], list):
+        out: list[tuple[str, ...]] = []
+        for branch in sub["anyOf"]:
+            groups = required_groups(branch, position)
+            if groups is None:
+                return None
+            out.extend(groups)
+        return out or None
+    if keys == {"allOf"} and isinstance(sub["allOf"], list):
+        merged: list[str] = []
+        for branch in sub["allOf"]:
+            groups = required_groups(branch, position)
+            if groups is None or len(groups) != 1:
+                return None
+            merged.extend(groups[0])
+        return [tuple(merged)] if merged else None
+    return None
 
 
 #: The type words whose ARM row holds constraints of a VALUE: the four scalars and the

@@ -3915,9 +3915,20 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     #
     # * ``oneOf``/``anyOf`` (16) -- §4's third dispatch source cannot separate the
     #   branches, which is the UNDERDETERMINED row step 10 owns;
-    # * ``required`` (11) -- a branch declaring no property constrains only key presence,
-    #   which is step 7's row and is blocked on ``rules._required_only`` admitting more
-    #   than ``{"required"}`` alone (a change to a POPULATION, not to a lowering);
+    # * ``required`` (11, now **5**) -- a branch declaring no property constrains only
+    #   key presence, which is step 7's row.  **6 of the 11 left the population entirely
+    #   at ``adcp-client-python-onq``**, which is the only way an entry leaves this
+    #   profile other than by emitting: §5's "A union of presence-only branches that also
+    #   forbid" (2026-10-27) makes a branch stating ``required`` plus a ``not`` over
+    #   ``required`` a presence CLAUSE, so ``core/audience-characteristic.json``,
+    #   ``core/catchment.json``, ``core/creative-asset.json``,
+    #   ``core/creative-manifest.json``,
+    #   ``core/frequency-cap-impression-constraints.json`` and
+    #   ``core/frequency-cap-interval-constraints.json`` are no longer union roots at all
+    #   -- ``populations.union_root`` reads 126 -> 120 -- and this census is stated over
+    #   union roots.  Three of the six EMIT and three report their own next keyword, each
+    #   named in that row's delivery note.  The remaining 5 are the shape §5 still does
+    #   not decide, which is step 7's row;
     # * ``items``/``properties``/``additionalProperties`` on a restatement (4) -- §5's
     #   ``properties`` row, "two object declarations compose as an ``allOf`` of the two at
     #   that property", decided and unwritten;
@@ -3948,16 +3959,10 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "core/assets/display-tag-asset.json": "items",
         "core/assets/vast-asset.json": "items",
         "core/async-response-data.json": "$ref",
-        "core/audience-characteristic.json": "required",
         "core/budget-allocation.json": "allOf",
         "core/canonical-placement.json": "$ref",
-        "core/catchment.json": "required",
-        "core/creative-asset.json": "required",
-        "core/creative-manifest.json": "required",
         "core/delivery-metric-aggregate.json": "allOf",
         "core/evaluator-spec.json": "oneOf",
-        "core/frequency-cap-impression-constraints.json": "required",
-        "core/frequency-cap-interval-constraints.json": "required",
         "core/postal-area.json": "$ref",
         "core/postal-country-system.json": "anyOf",
         "core/product-format-declaration.json": "required",
@@ -4789,14 +4794,13 @@ def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rul
 def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     """D5's key rule, and the honest denominator for it.
 
-    **THREE mapping sites in the emitted population constrain their key, and D5's
-    alias module names every one.**  This read "no mapping site ... constrains its
-    key", with the zero asserted so the key rule could not be read as covered by the
-    bundle; the zero inverted to one at ``salesagent-j3k2l.29``
-    (``core/product-change-map.json``'s root ``propertyNames: {"minLength": 1}``),
-    and to three at ``salesagent-j3k2l.64``, which lowers a key's PATTERN as well --
-    so the sites are asserted BY NAME with the key type each one emits, which is what
-    a count could not say.
+    **EIGHT mapping sites in the emitted population constrain their key, and each one's
+    key TYPE is named.**  This read "no mapping site ... constrains its key", with the
+    zero asserted so the key rule could not be read as covered by the bundle; the zero
+    inverted to one at ``salesagent-j3k2l.29`` (``core/product-change-map.json``'s root
+    ``propertyNames: {"minLength": 1}``), and to three at ``salesagent-j3k2l.64``, which
+    lowers a key's PATTERN as well -- so the sites are asserted BY NAME with the key type
+    each one emits, which is what a count could not say.
 
     Every OTHER mapping the committed tree carries is still ``dict[str, ...]``, which
     is the document's own reading rather than a default -- silence about keys means
@@ -4804,9 +4808,19 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
 
     The one key kind that needs no name is the one that is graded behaviourally: a
     ``propertyNames`` ``$ref`` NAMES the key type, so the key is that type, the module
-    IMPORTS it, and the model then refuses a key the key type refuses.  A closed key
-    set is a MODEL and not a mapping and still refuses by name, and so does a second
-    pattern -- that is two value schemas for one mapping value.
+    IMPORTS it, and the model then refuses a key the key type refuses.  A second pattern
+    still refuses by name -- that is two value schemas for one mapping value.
+
+    **A CLOSED key set is the eighth site and the first of its kind, at
+    ``adcp-client-python-onq``.**  This read "a closed key set is a MODEL and not a
+    mapping and still refuses by name", which ``adcp-client-python-10l.20`` retired:
+    ``propertyNames: {"enum": […]}`` is ``dict[Literal[…], V]``, and pydantic renders
+    that back as the document's own keyword.  Its one site in the bundle --
+    ``core/store-item.json`` ``/properties/hours`` -- was behind the chain through
+    ``core/catchment.json`` until §5's "A union of presence-only branches that also
+    forbid" (2026-10-27) decided it, so the arm had no live site and this list no entry
+    of that kind.  It names a ``Literal`` and not an alias, which is why the loop below
+    branches on the document's keyword.
     """
     constrained: list[tuple[str, str]] = []
     mappings: set[tuple[str, str]] = set()
@@ -4839,9 +4853,19 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     # is the honest denominator this test's own docstring asks for.  The key type is
     # still graded at each of them, and ``test_a_local_reference_is_left_in_the_record``
     # in ``tests/test_fragment_ref.py`` is what says the references survive.
+    #
+    # **7 -> 8 AT ``adcp-client-python-onq``, and the eighth is the first CLOSED key set
+    # in the emitted population.**  ``core/store-item.json`` ``/properties/hours`` states
+    # ``propertyNames: {"enum": [...]}``, which §5's group (a) lowers to
+    # ``dict[Literal[…], V]`` -- §14 step 9's arm, which had no live site until this row
+    # released the document from its chain through ``core/catchment.json``.  It is a
+    # constrained key of a different KIND from the other seven: those name an
+    # ``adcp.types.constraints`` alias, and a closed set names a ``Literal`` instead, so
+    # the loop below branches on the document's own keyword rather than on a count.
     assert constrained == [
         ("core/geo-region-support.json#", "/properties/countries"),
         ("core/product-change-map.json#", "/"),
+        ("core/store-item.json#", "/properties/hours"),
         ("governance/reported-outcome-error.json#", "/definitions/bounded_object"),
         ("trusted-match/identity-match-response.json#", "/properties/tmpx_providers"),
         ("trusted-match/publisher-targeting-kv-config.json#", "/properties/targeting_kv_mapping"),
@@ -4869,6 +4893,14 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         # (``governance/reported-outcome-error.json``, ``salesagent-j3k2l.41``).
         node = harness.at(schema_at(SchemaRef(path, "#")), pointer if pointer != "/" else "")
         key = node.get("propertyNames") or {"pattern": next(iter(node["patternProperties"]))}
+        # **A CLOSED key set is a ``Literal`` and not an alias**, so it is read off the
+        # document's own keyword: ``constraints.symbol`` answers for a BOUND on a string
+        # and an ``enum`` is not one -- it closes the value set, which §5's group (a)
+        # lowers to ``Literal`` of the members, in the document's own order.
+        if "enum" in key:
+            members = ", ".join(repr(m) for m in key["enum"])
+            assert f"dict[Literal[{members}]," in _source(path), (document, members)
+            continue
         facts = {k: v for k, v in key.items() if k in spelled}
         named = constraints_module.symbol("string", facts)
         assert named is not None, (document, facts)
@@ -5063,35 +5095,31 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     assert field.type.container == "dict", field.type
     assert field.type.key == ir.TypeRef(literals=("mon", "tue")), field.type.key
 
-    # And the bundle's one type-position site, which is still refused -- through a chain
-    # and not on its own key set.  Named, because the arm above is now graded on a
-    # constructed document and this is what says WHY: the site's document is behind
-    # another row, so the emitted population does not reach the arm yet.
+    # **AND THE BUNDLE'S ONE TYPE-POSITION SITE, WHICH IS NOW LIVE.**  §14 step 9's
+    # ``Literal``/``StrEnum`` key at KEY was graded on the constructed document above and
+    # on nothing else, because its one real site -- ``core/store-item.json``
+    # ``#/properties/hours`` -- was refused through a CHAIN: the document references
+    # ``core/catchment.json``, whose three branches each state ``required`` plus a ``not``
+    # of required groups, which §5 decided nowhere.
     #
-    # **The row it is behind is NAMED here and re-measured, which is what closes §14
-    # step 9's entry for this arm** (``adcp-client-python-10l.20``, third instalment).
-    # The blocker MOVED once: it was ``core/catchment.json``'s root-sibling verdict and
-    # is now ``core/catchment.json``'s own union, whose three branches each state
-    # ``required`` plus a ``not`` of required groups.  §5's presence clause reads "every
-    # branch ``required``-only" and these are not, so no sentence decides them --
-    # **filed as adcp-client-python-onq**, with the measurement that a root-level
-    # ``ForbiddenGroups`` over the branches' ``not`` groups refuses a payload the
-    # document admits.  So the chain target is asserted by NAME: when ``onq`` lands,
-    # this assertion is what reddens, and the arm gets its live site.
+    # ``adcp-client-python-onq`` decided it (§5, "A union of presence-only branches that
+    # also forbid", 2026-10-27) and the chain released with it.  So the arm is graded at
+    # its LIVE site here: the key type is the ``propertyNames`` enum as a ``Literal``, in
+    # the module the run writes, with every member of the document's own enum in it.
     hours = bundle.read(BUNDLE, "core/store-item.json")
-    assert "enum" in hours["properties"]["hours"]["propertyNames"]
+    members = hours["properties"]["hours"]["propertyNames"]["enum"]
     out = emit.emit(BUNDLE, ["core/store-item.json"])
-    refused_site = out.refusals["core/store-item.json"]
-    assert refused_site["kind"] == refusal_module.Kind.CHAINED, refused_site
-    assert refused_site["keyword"] == "$ref", refused_site
-    assert "core/catchment.json is refused" in refused_site["detail"], refused_site
-    blocker = out.refusals["core/catchment.json"]
-    assert (blocker["keyword"], blocker["pointer"]) == ("required", "/oneOf/0"), blocker
-    assert "constrains only requiredness" in blocker["detail"], blocker
-    # and the shape ``onq`` owns, read off the document: every branch states ``required``
-    # and a ``not`` and no property, which is why §5's presence clause does not reach it.
+    assert "core/store-item.json" not in out.refusals, out.refusals
+    assert "core/catchment.json" not in out.refusals, out.refusals
+    written = out.files["core/store_item.py"]
+    key = f"dict[Literal[{', '.join(repr(m) for m in members)}], "
+    assert key in written, written
+    # and the shape that released it, read off the document beside the rule it became:
+    # every branch states ``required`` and a ``not`` and no property.
     branches = bundle.read(BUNDLE, "core/catchment.json")["oneOf"]
     assert [sorted(b) for b in branches] == [["not", "required"]] * 3, branches
+    catchment = out.files["core/catchment.py"]
+    assert "PresenceGroups((Presence(require=('travel_time', 'transport_mode')," in catchment
 
 
 def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() -> None:
@@ -5306,6 +5334,16 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # ``core/format-option-ref.json``, which the same row cleared.  Two of the four are
     # a STORE site rather than the mapping path, which is the first time this population
     # has moved the store list below -- and that list names them.
+    #
+    # **20 -> 21 at ``adcp-client-python-onq``, and the twenty-first is NAMED.**
+    # ``core/store-item.json`` was chained to ``core/catchment.json``, whose three
+    # branches each state ``required`` plus a ``not`` over ``required`` -- §5's "A union
+    # of presence-only branches that also forbid" (2026-10-27) decides them and the
+    # chain released.  Its typed ``additionalProperties`` is at
+    # ``/properties/hours/additionalProperties``, a node with NO ``properties`` beside
+    # it, so it is the MAPPING path and the store list below is unchanged by it.  (It is
+    # also §14 step 9's one live ``Literal``-at-KEY site, graded in
+    # ``test_a_mapping_is_a_dict_whose_key_comes_from_the_document``.)
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
         "a2ui/component.json",
@@ -5319,6 +5357,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         "core/media-buy-features.json",
         "core/product-change-map.json",
         "core/reporting-file-entry.json",
+        "core/store-item.json",
         "core/tasks-list-response.json",
         "error-details/vendor-error-codes.json",
         "governance/reported-outcome-error.json",
@@ -6393,7 +6432,7 @@ def test_only_the_model_validate_path_observes_a_rule() -> None:
 #: how many of those are a node ``lower_object`` can reach today (an object node
 #: with ``properties``).  The second number is why three kinds have no emitted
 #: carrier in this tree: a node inside an ``allOf`` conjunct is not a class here.
-#: **THE SEVEN RULE KINDS, BY NAME.**  The claim is that every kind the lowering can
+#: **THE EIGHT RULE KINDS, BY NAME.**  The claim is that every kind the lowering can
 #: write IS written from a real bundle node -- a kind nothing writes is dead code -- and
 #: that is a statement about the NAMES.  The three counts each kind used to carry
 #: (sites, documents, reachable sites) were a reading of one bundle version, and two of
@@ -6409,6 +6448,10 @@ RULE_KINDS = frozenset(
         "UniqueItems",
         "ForbiddenGroups",
         "RequiredGroups",
+        # §5's "A union of presence-only branches that also forbid" (2026-10-27): the
+        # kind whose clauses ARE the branches, each carrying its own required group and
+        # its own forbidden groups.  Its carrier is ``core/catchment.json``.
+        "PresenceGroups",
         "ConditionalRequired",
         "PropertyCount",
         "Dependencies",
@@ -6492,6 +6535,8 @@ def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
         ForbiddenGroups,
         Match,
         NegatedConditional,
+        Presence,
+        PresenceGroups,
         PropertyCount,
         RequiredGroups,
         UniqueItems,
@@ -6512,6 +6557,41 @@ def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
         (RequiredGroups((("a",), ("b",)), "oneOf"), {"a", "b"}, "oneOf"),
         (RequiredGroups((("a",), ("b",)), "oneOf"), {"a"}, None),
         (RequiredGroups((("a",), ("b",)), "oneOf"), set(), "oneOf"),
+        # ``PresenceGroups``: the two halves are PAIRED, so a name one clause forbids is
+        # only forbidden to that clause.  ``{"b"}`` satisfies the second clause and the
+        # first forbids ``b`` -- which a root-level ``ForbiddenGroups`` over the union of
+        # the ``not``s would refuse, and which the document admits.
+        (
+            PresenceGroups(
+                (Presence(("a",), (("b",),)), Presence(("b",), (("a",),))), "oneOf"
+            ),
+            {"b"},
+            None,
+        ),
+        (
+            PresenceGroups(
+                (Presence(("a",), (("b",),)), Presence(("b",), (("a",),))), "oneOf"
+            ),
+            {"a", "b"},
+            "oneOf",  # 0 clauses hold: each forbids the other's name
+        ),
+        (
+            PresenceGroups(
+                (Presence(("a",), (("b",),)), Presence(("b",), (("a",),))), "oneOf"
+            ),
+            set(),
+            "oneOf",
+        ),
+        (
+            PresenceGroups((Presence(("a",), (("b", "c"),)),), "anyOf"),
+            {"a", "b"},
+            None,  # a multi-name group forbids the GROUP, not either name alone
+        ),
+        (
+            PresenceGroups((Presence(("a",), (("b", "c"),)),), "anyOf"),
+            {"a", "b", "c"},
+            "anyOf",
+        ),
         (ConditionalRequired((Match("u", True, ("p",)),), require=("x",)), {"u"}, "required"),
         (ConditionalRequired((Match("u", True, ("p",)),), require=("x",)), {"u", "x"}, None),
         (ConditionalRequired((Match("u", True, ("p",)),), forbid=("x",)), {"u", "x"}, "not"),
@@ -6544,6 +6624,77 @@ def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
         seen.add(type(rule).__name__)
 
     assert seen == set(RULE_KINDS), seen
+
+
+def test_a_presence_clause_keeps_its_two_halves_paired_to_its_own_branch() -> None:
+    """``core/catchment.json``: the measurement that chose ``PresenceGroups``.
+
+    §5, "A union of presence-only branches that also forbid" (2026-10-27).  The
+    document states three catchment methods and each branch forbids the other two, so
+    the ``not`` is PER BRANCH.  The decision was that one rule carries the branches as
+    clauses with both halves paired, and the alternative -- a ``RequiredGroups`` over
+    the R*ᵢ* beside a root-level ``ForbiddenGroups`` over the union of the F*ᵢ* --
+    is wrong because the hoisted ``not`` forbids every group unconditionally.
+
+    Three assertions and the third is the one that banks the design:
+
+    1. the DOCUMENT's own verdict on two payloads, from ``jsonschema`` over the
+       ``oneOf`` itself -- which is the whole of what the rule renders, and carries no
+       ``$ref``, so the claim "the document admits this" is checked and not asserted;
+    2. the RULE the walk writes, on the same two payloads, agreeing with it;
+    3. the PERTURBATION: the hoisted pair, with both halves DERIVED from the same
+       document rather than written out, refuses the payload the document admits.
+
+    A later row that "simplifies" the paired clauses back into two rules reddens (3).
+    """
+    doc = bundle.read(BUNDLE, "core/catchment.json")
+    branches = doc["oneOf"]
+    admitted = {"catchment_id": "drive", "radius": {"value": 1, "unit": "km"}}
+    refused = {**admitted, "geometry": {"type": "Polygon", "coordinates": []}}
+
+    # (1) the document's own verdict, on the statement the rule renders.
+    validator = jsonschema.Draft7Validator({"oneOf": branches})
+    assert validator.is_valid(admitted), sorted(validator.iter_errors(admitted))
+    assert not validator.is_valid(refused)
+
+    # (2) the rule the walk writes for it, on the same two payloads.
+    (rule,) = [
+        r
+        for r in rules.lower_declaration(doc, keywords.Position.ROOT).rules
+        if type(r).__name__ == "PresenceGroups"
+    ]
+    assert rule.combinator == "oneOf", rule
+    assert len(rule.clauses) == len(branches), rule
+    for payload, refuses in ((admitted, False), (refused, True)):
+        keys = frozenset(payload)
+        got = [e[0] for e in rule.errors(keys, payload)]
+        assert got == (["oneOf"] if refuses else []), (payload, got)
+
+    # (3) **THE PERTURBATION.**  Both halves of the hoisted pair are read off the same
+    # document: the required groups are the branches' ``required``, the forbidden
+    # groups are the union of the branches' ``not``s, in document order and
+    # deduplicated.  Neither is hand-written, so this measures the design and not a
+    # fixture.
+    from adcp.types._runtime import ForbiddenGroups, RequiredGroups
+
+    hoisted_required = tuple(tuple(b["required"]) for b in branches)
+    hoisted_forbidden: list[tuple[str, ...]] = []
+    for branch in branches:
+        for group in schema_parse.required_groups(branch["not"], keywords.Position.RULE) or []:
+            if group not in hoisted_forbidden:
+                hoisted_forbidden.append(group)
+    assert sorted(hoisted_forbidden) == [("geometry",), ("radius",), ("travel_time",)]
+    pair = (
+        RequiredGroups(hoisted_required, "oneOf"),
+        ForbiddenGroups(tuple(hoisted_forbidden)),
+    )
+    keys = frozenset(admitted)
+    hoisted_says = [e[0] for rule_ in pair for e in rule_.errors(keys, admitted)]
+    # The ``RequiredGroups`` half is content -- one group is satisfied -- and the
+    # ``ForbiddenGroups`` half refuses on ``radius``, which is the very name the
+    # satisfied branch REQUIRES.  So the hoisted pair refuses a payload the document
+    # admits, which is the fact ``PresenceGroups`` exists to avoid.
+    assert hoisted_says == ["not"], hoisted_says
 
 
 def test_a_conditional_that_narrows_a_value_is_the_schemas_and_not_a_rules() -> None:
@@ -7665,11 +7816,56 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # obstruction as the document's, so a verdict becoming a deferral is a claim being
     # withdrawn.  The figure that may not rise is the VERDICT count, which fell by 85,
     # and §9's "do not pin the approximation count" is the same reasoning one step on.
-    assert resolved[refusal_module.Kind.DEFERRED] <= 153, resolved[refusal_module.Kind.DEFERRED]
+    #
+    # **153 -> 130 AT ``adcp-client-python-onq``, and that half is EMISSION.**  §5's "A
+    # union of presence-only branches that also forbid" (2026-10-27) decides the six
+    # documents whose combinator states ``required`` plus a per-branch ``not``, and
+    # ``PresenceGroups`` carries them: over the portable set, emitted 818 -> 825 and
+    # refused 236 -> 229, so 23 deferrals left -- 7 as emissions and 16 onto their next
+    # keyword.
+    assert resolved[refusal_module.Kind.DEFERRED] <= 130, resolved[refusal_module.Kind.DEFERRED]
     # And the half that MAY NOT RISE, pinned at the measurement §14 step 9 left it at:
     # a verdict says the obstruction belongs to the document, so a row that mints one
     # where a deferral stood is charging a document for work nobody has done (§9).
-    assert resolved[refusal_module.Kind.VERDICT] <= 83, resolved[refusal_module.Kind.VERDICT]
+    #
+    # **83 -> 99 AT ``adcp-client-python-onq``, AND THIS CEILING GOING UP HAS TO BE
+    # GRADED AGAINST THE SENTENCE ABOVE RATHER THAN ALLOWED.**  The test of the guarded
+    # event is whether a RAISE SITE or a CELL changed its answer.  Neither did: that row
+    # adds a rule kind, a branch reading and one §5 cell (``oneOf``/``anyOf``'s
+    # ``compiles``), and it changes no cell's ``effect`` and no site's ``kind``.  What
+    # moved is WHICH obstruction each document reaches first, because the deferral in
+    # front of it is answered -- and the 16 documents are named, with the verdict each
+    # now reports:
+    #
+    # * 15 resolve to §5's own DECIDED verdict at ``core/creative-asset.json`` and
+    #   ``core/creative-manifest.json`` ``#/properties/assets``: an
+    #   ``additionalProperties`` that is not ``false`` beside ``patternProperties``,
+    #   where "the model would be narrower than its document" and the obstruction is the
+    #   DOCUMENT's -- ``lower/containers.py`` states that decision and 7 bundle sites
+    #   already carried it.  They are the two documents themselves plus
+    #   ``core/creative-representation.json``,
+    #   ``core/creative-representation-set.json``, ``core/creative-variant.json``,
+    #   ``creative/get-creative-delivery-response.json``,
+    #   ``creative/get-creative-features-request.json``,
+    #   ``creative/list-creatives-response.json``,
+    #   ``creative/preview-creative-request.json``,
+    #   ``creative/sync-creatives-request.json``,
+    #   ``creative/validate-input-request.json``,
+    #   ``media-buy/build-creative-request.json``,
+    #   ``trusted-match/context-match-response.json``, ``trusted-match/offer.json`` and
+    #   ``trusted-match/provider-context-match-response.json``.
+    # * 1 is ``core/media-buy-frequency-cap-capability.json``, which reaches the
+    #   RE-EXPORT verdict at ``/properties/max_impressions_constraints``: a restated
+    #   property re-uses a field whose type its base module imports rather than
+    #   declares.  ``core/product-signal-targeting-option.json`` already carried that
+    #   verdict, so this is a second instance of a decided shape and not a new claim.
+    #
+    # So every one of the 16 is a document moving ONTO a verdict already decided and
+    # already live in the tree, and none of them is a deferral re-minted as a verdict.
+    # The ceiling rises to the measurement, the direction is named, and what it still
+    # catches is the event it was written for: a row whose raise sites start charging
+    # documents for unwritten work.
+    assert resolved[refusal_module.Kind.VERDICT] <= 99, resolved[refusal_module.Kind.VERDICT]
     # **THE ``unresolved`` PIN IS GONE WITH THE KIND, AT ``adcp-client-python-10l.6``,
     # AND WHAT REPLACES IT IS THE RETIREMENT ITSELF.**  Architecture §3: "UNRESOLVED
     # disappears.  It named a reference the delegated resolver did not reach, and the

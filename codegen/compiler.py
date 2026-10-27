@@ -715,15 +715,17 @@ class Rules:
 
     * ``screen`` is what a keyword check may ADMIT at this node.  It is not
       :func:`rule_sources` flat, and the difference is load-bearing: a
-      ``oneOf``/``anyOf`` is a rule only where every branch is ``required``-only
-      (``rules.presence_only``, the published step-5/step-7 test).  A combinator of
-      SHAPES is a nested union, ``rules.lower`` writes nothing for it, and admitting
-      it would emit a class that drops the combinator silently -- a model wider than
-      its document.  Measured on the 3.2 bundle: 72 object nodes carry a
-      non-presence-only combinator, and 0 of them sit in a document that emits
-      today, so the object row's former unconditional admission was latent rather
-      than live -- and this step makes more documents emit, which is what would have
-      reached it.
+      ``oneOf``/``anyOf`` is a rule only where every branch states which keys are
+      PRESENT (``rules.presence_only``, the published step-5/step-7 test).  A
+      combinator of SHAPES is a nested union, ``rules.lower`` writes nothing for it,
+      and admitting it would emit a class that drops the combinator silently -- a model
+      wider than its document.  **Re-measured at ``adcp-client-python-onq``, with the
+      probe STATED so the next row can repeat it**: over the 1,054 portable documents,
+      every node carrying ``properties`` beside a combinator ``presence_only`` answers
+      no for is **68 nodes in 60 documents**, where the same probe read 77 in 69 before
+      §5's "A union of presence-only branches that also forbid" (2026-10-27) taught the
+      branch reading to carry a ``not``.  The screen is what keeps those refused BY
+      NAME rather than dropped.
     * ``rules`` are the INSTANCES of ``adcp.types._runtime``'s own frozen dataclasses
       this node's rule sources come to (``docs/plan/architecture.md`` §7).  Empty where
       the node states no rule this lowering can express, which D4 makes correct rather
@@ -1567,13 +1569,22 @@ def _refuse_a_combinator_of_shapes(
     **What this changes is the REASON and not the accepted set.**  A combinator the screen
     subtracted was already refused by ``check_keywords`` below -- with
     ``DEFERRED_TO_A_LATER_ROW``, which promises a row for a position that needs a
-    pointer no document has.  Measured: ``creative/list-creatives-response.json``
-    ``#/properties/creatives/items`` is the one document of the deferred population here,
-    and its two branches are ``{"required": [...], "not": {...}}`` -- every one of which
-    constrains only which keys are present, so what sends it down this path is
-    ``rules._required_only`` admitting ``{"required"}`` ALONE.  Widening that predicate
-    moves ``rules.presence_only``, which ``populations.states_an_object_rule`` is BUILT ON as a
-    row's selector, so it is a change to a population and not to this row.
+    pointer no document has.
+
+    **The one document this measured is gone, and §5's "A union of presence-only
+    branches that also forbid" (2026-10-27) is what took it.**
+    ``creative/list-creatives-response.json`` ``#/properties/creatives/items`` was the
+    deferred population here, and its two branches are ``{"required": [...], "not":
+    {...}}`` -- every one of which constrains only which keys are present, so what sent
+    it down this path was the branch reading admitting ``{"required"}`` ALONE.
+    ``schema.presence_clause`` now reads both halves of such a branch and the node is a
+    rule, which released the document onto its next keyword (a VERDICT at
+    ``#/properties/creatives/items/properties/assets`` on ``additionalProperties``).
+    The widening moved ``rules.presence_only`` and with it
+    ``populations.states_an_object_rule``, a row's selector, which is why it was a change
+    to a population rather than to this row -- it was made as one, and this row's
+    accepted set did not move: the refusal fires 0 times on the 1,054 portable documents
+    before and after.
     """
     for keyword in _COMBINATORS:
         if keyword in node.declares and keyword not in screen:
@@ -2170,20 +2181,22 @@ def lower_composition(
             # ``oneOf``/``anyOf`` row says CONJ -> one class per branch over the
             # composed bases, and writing the classes is not the half that blocks: a
             # payload reaches its branch only through a dispatch section 4 DERIVES, and
-            # measured over every such conjunct in this bundle -- 7 documents, 28
-            # branches -- **0 branches pin a const**, so ``union.discriminator``
-            # intersects empty pin maps and answers "" for all 7.  Section 4's third
-            # source, branches no instance satisfies twice, is what decides 6 of them
-            # and it lives in ``codegen/lower/union.py``.
+            # measured over every ``allOf`` conjunct of the 1,054 portable documents
+            # carrying a combinator ``schema.presence_only`` answers no for -- **7
+            # sites in 6 documents, 24 branches, and 0 branches pin a const** -- so
+            # ``union.discriminator`` intersects empty pin maps and answers "" for every
+            # one.  Section 4's third source, branches no instance satisfies twice, is
+            # what decides them and it lives in ``codegen/lower/union.py``.
             #
-            # 5 of the 7 have every branch constraining only key presence and reducible
-            # through ``rules._required_groups`` today, which is the same row's cheaper
-            # answer -- a ``RequiredGroups`` rule -- blocked only by
-            # ``rules._required_only`` admitting ``{"required"}`` ALONE.  Widening it
-            # moves ``populations.states_an_object_rule``, a row's selector, which is why
-            # that is a change to a population rather than to this reader (the
-            # measurement is :func:`_refuse_a_combinator_of_shapes`' docstring, taken
-            # for this exact branch shape).
+            # **Re-measured at section 5's "A union of presence-only branches that also
+            # forbid" (2026-10-27), which moved three of them off this reader.**  The
+            # probe read 10 sites in 8 documents and 35 branches before:
+            # ``formats/canonical/seller_rendered_stateful_display.json`` (two sites, 6
+            # branches) and ``media-buy/build-creative-request.json`` ``/allOf/4`` (5
+            # branches) state ``required`` plus a ``not`` over ``required`` on every
+            # branch, so ``schema.presence_clause`` reads them and the same row's rule
+            # answers them -- a ``PresenceGroups``, whose clauses keep each branch's two
+            # halves paired.  The live refusals here went 6 -> 4 with it.
             #
             # Reported on the combinator rather than on ``min(keys)``: attribution is
             # the point of a refusal report, and ``sorted`` put ``not`` and
@@ -2198,10 +2211,9 @@ def lower_composition(
                 "const, so section 4's first source derives none and the third -- "
                 "branches no instance satisfies twice -- is the one that decides them, "
                 "in codegen/lower/union.py (salesagent-j3k2l.60, salesagent-j3k2l.67).  "
-                "Where every branch constrains only key presence the same row's "
-                "RequiredGroups rule is the cheaper answer, and it needs "
-                "rules._required_only to admit more than {'required'} alone, which moves "
-                "bundle.states_an_object_rule (salesagent-j3k2l.58)",
+                "Where every branch constrains only key presence the same row's rule is "
+                "the cheaper answer and schema.presence_clause already reads it; these "
+                "branches constrain a value, so there is no clause to read",
                 kind=Kind.DEFERRED,
             )
         return Refusal(
