@@ -441,6 +441,24 @@ Four mechanics make it work, each because one of the others does not reach a pat
   finds the same union and recurses. So the serialization slot carries a wrap serializer built
   from the plain model schema the class would otherwise have had, which terminates.
 
+  *What that schema is, settled 2026-10-27, because the sentence above admits two readings and
+  both lose data.* Read as "the base's own plain schema, alone", a BRANCH reached through a
+  base-typed field serialises as the base's fields and the branch's own are dropped silently —
+  measured, it comes back as `{"shared": null}`. Read as a union of the branches plus that
+  schema, a BASE instance matches no arm under a smart union and the serialiser falls through to
+  the circular reference the mechanic exists to avoid. Both readings were live: the second is
+  what the code does, and it became reachable for the first time at §14 step 9, because while a
+  root declaring `properties` was refused every base had no fields and matched the plain arm
+  trivially.
+
+  **The serialiser dispatches on the instance's own class, and each class serialises through its
+  own plain model schema.** A branch serialises the branch's fields; a base serialises the base's.
+  That is not a union in the serializer slot at all, which is why it terminates — there is no
+  arm to fail to match and nothing to infer. It also states the obvious invariant the two
+  readings each broke in one direction: **a value serialises as what it is.** A base instance is
+  a legitimate value, because `__new__` covers `Base(**data)` and validates it, so the slot owes
+  it an answer rather than treating it as unreachable.
+
 The emitter writes three facts onto the base that are not recoverable at runtime: `_ROOT_REQUIRED`,
 the fields the root requires as opposed to the ones that select a branch; `_BRANCH_DISCRIMINATOR`,
 the property every branch pins a `const` on (the first dispatch source below), which the mixin
