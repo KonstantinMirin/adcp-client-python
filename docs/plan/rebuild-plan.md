@@ -261,6 +261,19 @@ The refusal argument survives in exactly two places, and the design keeps both.
   defect above. Each entry is compared by equality so it admits that fact and not its kind — a
   rule admitting "the sort of bound a URL type adds" would be invisible and permanent.
 
+  **A registry is a DECISION where no other check can report its edit, and a decision must be
+  read by a test (added 2026-10-27).** That is the discriminator between a decision and a
+  mechanical lookup, and it is the reason the distinction can be measured rather than argued:
+  a lookup's error surfaces somewhere else — a wrong `_TIGHTER_BOUND` direction loosens the
+  composed bound and the pair reports `added` — while a decision's edit is silent everywhere.
+  `tests/test_decision_set.py` holds the guard, with both sides of every pin derived.
+
+  **A per-pair comparison cannot see one of these edits, which is why the guard measures REACH.**
+  Measured: remove `maxLength` from `URL_IMPLIED` and `added` over all 1,571 graded pairs is
+  unchanged — every pair grades exactly as it did. That silence is the signature of the
+  incident this rule exists for, so the guard switches each admission mechanism off in turn and
+  pins which keywords reappear.
+
   There is one today: `harness.URL_IMPLIED`, the two facts a pydantic URL type renders of its
   own (`minLength: 1`, `maxLength: 2083`). `codegen/constraints.py`'s `url_type` decides which
   type each position takes and its docstring carries the measurement.
