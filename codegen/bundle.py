@@ -22,7 +22,7 @@ from typing import NamedTuple
 from adcp.types._base import applied_schema
 
 from codegen import keywords
-from codegen.refusal import Kind, Refusal
+from codegen.refusal import BuildFailure, Kind, Refusal
 
 #: Top-level directories holding projections of documents published elsewhere.
 PROJECTIONS = ("bundled", "mcp")
@@ -1108,3 +1108,179 @@ def _is_property_or_items(pointer: str) -> bool:
     return len(parts) == 2 or (len(parts) == 3 and parts[2] == "items")
 
 
+# --------------------------------------------------------------------------- #
+# a DRIFTED FAMILY: the one envelope the bundle repeats and spells many ways
+# --------------------------------------------------------------------------- #
+# ``docs/plan/architecture.md`` §11 puts these here: this module "owns every file read
+# and every fact derived from a document", and a family is a fact derived from every
+# document of the bundle.  The predicates above are the precedent -- ``is_leaf_object``,
+# ``references_a_property`` and ``carries_an_enum`` are shape predicates over a raw
+# document -- and §4's rule that ``schema/parse.py`` is the one reader of a raw mapping
+# is what keeps the derivation out of ``lower/``: a bundle-wide census cannot parse 1,054
+# documents, and ``codegen/lower/envelope.py`` turns these facts into a declaration
+# without holding a mapping.
+#
+# ``codegen/lower/envelope.py`` carries the whole of WHY the family earns a base; what is
+# here is WHICH nodes are in it and WHAT they agree on.
+
+#: **The family's defining statement, and the whole of its membership test.**  A node is a
+#: member when it declares exactly these property keys and requires exactly this one.
+#: Two facts and nothing else -- not a title, not a document path -- so membership is the
+#: SHAPE at one node and a 27th envelope upstream joins by stating it.  A hand-written
+#: list of member documents would be complete with respect to itself, which is the defect
+#: ``docs/plan/rebuild-plan.md`` §4 rejects for branch discrimination: what it omits
+#: passes in both directions and nothing says so.
+ENVELOPE_PROPERTIES = frozenset({"context", "errors", "ext"})
+ENVELOPE_REQUIRED = ("errors",)
+
+
+class Envelope(NamedTuple):
+    """One member of the family: the document that states it and the pointer it is at."""
+
+    document: str
+    pointer: str
+
+
+class Agreed(NamedTuple):
+    """What every member of the family states alike about one of its properties."""
+
+    key: str
+    required: bool
+    #: The descent path from the property's own node to the agreed reference, as the
+    #: POSITIONS the table's descent column assigned -- ``()`` where the property IS the
+    #: reference.
+    path: tuple[keywords.Position, ...]
+    #: The bundle document every member reaches at the end of :attr:`path`.
+    target: str
+
+
+def is_an_envelope(node: object) -> bool:
+    """**The membership test: the shape, never the name.**
+
+    A predicate over ONE node and nothing else, so it answers the same way whatever else
+    a run was named (``docs/plan/rebuild-plan.md`` §9), and the family is whatever states
+    the shape.
+    """
+    if not isinstance(node, Mapping):
+        return False
+    properties = node.get("properties")
+    if not isinstance(properties, Mapping) or frozenset(properties) != ENVELOPE_PROPERTIES:
+        return False
+    required = node.get("required")
+    if not isinstance(required, list):
+        return False
+    return tuple(required) == ENVELOPE_REQUIRED
+
+
+def envelopes(bundle_dir: Path) -> tuple[tuple[Envelope, dict], ...]:
+    """Every member of the family, in document order, with the node that states it.
+
+    A function of the BUNDLE and never of a run's document set, which is the property
+    :func:`named` is written for and for the same reason: the base derived from this is
+    the same text whichever documents a run was named, so a member's own module is too.
+    Read off :func:`nodes`, the one walk, so a member is a node at a SCHEMA position and
+    not a mapping that happens to hold the three keys.
+    """
+    return tuple(
+        (Envelope(document, pointer), node)
+        for document in portable(bundle_dir)
+        for pointer, node in nodes(read(bundle_dir, document))
+        if is_an_envelope(node)
+    )
+
+
+def _reaches(
+    node: object, documents: Collection[str], path: tuple[keywords.Position, ...] = ()
+) -> Iterator[tuple[tuple[keywords.Position, ...], str]]:
+    """Every ``(descent path, target document)`` a subschema references a type from.
+
+    Descends by :func:`subschemas` -- the one descent step -- so the path is the column's
+    own answer and no position is recovered from a pointer string
+    (``docs/plan/architecture.md`` §6).  A hop the column puts at RULE is not taken:
+    ``docs/plan/rebuild-plan.md`` §3 lowers no type from a rule position and nothing below
+    one is lowered either, so a reference there states no type a family could agree on --
+    which is :func:`lowers_no_type`'s rule, read as the walk takes it rather than as a
+    second pointer census.
+    """
+    if not isinstance(node, Mapping):
+        return
+    uri = node.get("$ref")
+    if isinstance(uri, str):
+        target = document_for(split_ref(uri)[0], documents)
+        if target is not None:
+            yield path, target
+    for _, _, sub, position in subschemas(node):
+        if position is keywords.Position.RULE:
+            continue
+        yield from _reaches(sub, documents, (*path, position))
+
+
+def _agreed(key: str, stated: list[object], documents: Collection[str]) -> Agreed:
+    """The shortest descent path at whose end every member reaches ONE document.
+
+    A candidate is a ``(path, target)`` pair every member reaches THROUGH: the member
+    states a reference to ``target`` at ``path`` or somewhere below it.  A member that
+    descends further says MORE about the property than the family agrees on, and §2's
+    ``allOf`` row makes saying more a SUBCLASS of what is said -- so the prefix is a
+    supertype of every member's own answer rather than a claim about it.
+
+    Only the MINIMAL candidates are kept, since an extension of a candidate every member
+    reaches is covered by the candidate.  Two minimal candidates means the family reaches
+    two unrelated types at one property and there is no agreed answer, which is a
+    ``BuildFailure``: the compiler has met a bundle its rule does not cover, which is
+    neither a document's outcome nor something to guess at.
+    """
+    reached = [frozenset(_reaches(one, documents)) for one in stated]
+    candidates = {
+        pair
+        for pair in frozenset().union(*reached)
+        if all(
+            any(p[: len(pair[0])] == pair[0] and t == pair[1] for p, t in one)
+            for one in reached
+        )
+    }
+    minimal = {
+        pair
+        for pair in candidates
+        if not any(
+            other != pair and pair[0][: len(other[0])] == other[0] and pair[1] == other[1]
+            for other in candidates
+        )
+    }
+    if len(minimal) != 1:
+        raise BuildFailure(
+            f"the envelope family's {key!r} reaches {sorted(minimal) or 'no'} agreed "
+            f"document over {len(stated)} members, and a base states one or none"
+        )
+    path, target = next(iter(minimal))
+    return Agreed(key, key in ENVELOPE_REQUIRED, path, target)
+
+
+def envelope_shape(
+    members: Collection[tuple[Envelope, dict]], documents: Collection[str]
+) -> tuple[Agreed, ...]:
+    """What every member of the family states alike, one entry per property.
+
+    The ORDER is the members' own and is itself an agreement: a family listing its keys in
+    two orders has no one order for a base to declare, and declaring one anyway would
+    reorder a member class's fields by a choice made here rather than by the documents.
+    Measured over bundle 3.2: all 26 state ``errors``, ``context``, ``ext``.
+
+    **A bundle stating no member has no family and the answer is empty**, which is not a
+    defect and must not be one: the family is DERIVED, so a bundle that does not repeat
+    the envelope simply earns no base, and every hand-built bundle a test hands this
+    package is in that position.  A ``BuildFailure`` here would make the compiler refuse
+    a bundle for not being 3.2, which is the opposite of deriving the set.
+    """
+    if not members:
+        return ()
+    orders = {tuple(node["properties"]) for _, node in members}
+    if len(orders) != 1:
+        raise BuildFailure(
+            f"the envelope family states its properties in {len(orders)} orders "
+            f"({sorted(orders)}), and a base declares one"
+        )
+    return tuple(
+        _agreed(key, [node["properties"][key] for _, node in members], documents)
+        for key in next(iter(orders))
+    )

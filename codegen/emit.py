@@ -110,6 +110,7 @@ from codegen.compiler import (
 )
 from codegen.lower import approximate as lower_approximate
 from codegen.lower import const as lower_const
+from codegen.lower import envelope as lower_envelope
 from codegen.lower import names as lower_names
 from codegen.lower import enum as lower_enum
 from codegen.lower import containers as lower_containers
@@ -1095,6 +1096,15 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     found = bundle.edges(bundle_dir)
     named = bundle.named(found)
     composed = bundle.composed(found)
+    # **The drifted envelope family, read off the BUNDLE for the reason the three
+    # readings above are** (``codegen/lower/envelope.py``): a member's class takes the
+    # family's base, so a set derived from the run's document set would make one
+    # document's module depend on who else was named, which is §9's own prohibition.
+    # Two readers, and both are here: :func:`_envelope_bases` writes the base, and
+    # ``lower_envelope.adopt`` gives it to the member classes of each module.
+    family = bundle.envelopes(bundle_dir)
+    envelope_shape = bundle.envelope_shape(family, known)
+    members = frozenset(site for site, _ in family)
     #: The reference sites of each document, in document order: every ``$ref`` the
     #: document states, including a LOCAL one.  A local reference is in the map so that
     #: the one caller that can meet one without going through ``nodes.Reference.head``
@@ -1340,6 +1350,14 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                 frozenset(bound.symbols),
             ),
         )
+        # **The drifted envelope family's base, given to every member class of this
+        # module** (``codegen/lower/envelope.py``).  A pass over the FINISHED module, in
+        # the shape ``lower/names.py``'s is one, and it runs here rather than inside a
+        # handler because the fact is a property of a class's whole node and not of any
+        # one keyword on it.  The membership test is the SHAPE at the node the
+        # declaration names, so this adds nothing that depends on which documents the run
+        # includes (§9), and a module with no member is returned unchanged.
+        bound = lower_envelope.adopt(bound, members)
         lowered[document] = (mod, bound, doc)
         # The target's own root node, for §2's intersection rule and for nothing else.
         # Written when the document FINISHES, so a refused document contributes none and
@@ -1470,6 +1488,18 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     out.beside[f"{constraints_module.MODULE.rsplit('.', 1)[1]}.py"] = render.constraints_module(
         aliases
     )
+    # **The envelope bases, over the BUNDLE and not over the run** -- which is the one
+    # way this artifact differs from the alias module beside it.  ``constraints.py``
+    # holds the shapes a run resolved, so it is a function of the run's document set;
+    # a family's base is derived from every node of the bundle that states the family's
+    # shape, so its text is the same whichever documents a run was named, and the
+    # member modules that import it are the same text too (§9).
+    #
+    # Written on every run for the reason the alias module's ``URL_LINE`` is: a consumer
+    # imports the base to annotate their own code, so it is declared whatever a run met.
+    out.beside[f"{lower_envelope.MODULE.rsplit('.', 1)[1]}.py"] = _envelope_bases(
+        bundle_dir, envelope_shape
+    )
     # The refusal REPORT is not a file in the tree.  It was, and the documented
     # one-document command then rewrote it with that run's refusals -- which are
     # none -- so running the command in the README damaged the committed tree and
@@ -1477,6 +1507,50 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     # has no place inside the shipped package anyway: `main` prints it, and the
     # suite reads `Emitted.refusals` from the run it just made.
     return out
+
+
+def _envelope_bases(bundle_dir: Path, shape: Sequence[bundle.Agreed]) -> str:
+    """The text of ``adcp/types/envelopes.py``: one base per family the bundle states.
+
+    The run's half of ``codegen/lower/envelope.py`` is the BINDING -- which module each
+    document the family reaches is written to, and which symbol it declares there -- and
+    this is the one place that knows both, because :func:`module_path` is this module's
+    and the symbol is §4's ``pascal_case(title)``.  The family is ``bundle.envelopes``',
+    the declaration is the lowering's, the path and the name are the run's, and none of
+    the three is derived twice.
+
+    **The symbol is read off the target document's own ``title``** and not off the run's
+    lowered modules, which is what keeps this artifact a function of the bundle: a run
+    over one document that happens not to reference ``core/error.json`` still writes the
+    same base.  It is the same expression :func:`lower_document` applies at every root, so
+    the two cannot name one document's class differently; a title that derives no
+    identifier is a ``BuildFailure``, because the run refuses that document and the base
+    would then name a symbol no module declares.
+
+    **An empty shape writes a module with no base**, because a bundle stating no member
+    of the family earns none (``bundle.envelope_shape``).  The file is still written, for
+    the reason the alias module beside it always is: ``write`` compares the set of files
+    a run intends, and an artifact that appears and disappears with the bundle's content
+    is one more thing for a reader to account for.
+    """
+    binding: dict[str, tuple[str, str]] = {}
+    for one in shape:
+        title = bundle.read(bundle_dir, one.target).get("title")
+        symbol = class_name(title) if isinstance(title, str) else ""
+        if not symbol.isidentifier():
+            raise BuildFailure(
+                f"the envelope family reaches {one.target} at {one.key!r} and its title "
+                f"{title!r} derives {symbol!r}, not an identifier, so no module declares "
+                "a symbol the base could name"
+            )
+        binding[one.target] = (
+            f"{PACKAGE}.{module_path(one.target).replace('/', '.')}",
+            symbol,
+        )
+    if not shape:
+        return render.envelopes_module((), frozenset())
+    declaration, imports = lower_envelope.base(shape, binding, render.RESERVED)
+    return render.envelopes_module([declaration], imports)
 
 
 def write(out: Emitted, tree: Path, package: Path | None = None) -> None:

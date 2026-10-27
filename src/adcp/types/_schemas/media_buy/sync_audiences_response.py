@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMaxLen2000
+from adcp.types.envelopes import FailedResponse
 
 from ..core.brand_ref import BrandReference
 from ..core.context import ContextObject
@@ -128,7 +129,7 @@ class SyncAudiencesSuccess(SyncAudiencesResponse):
     ext: ExtensionObject | None = None
 
 
-class SyncAudiencesError(SyncAudiencesResponse):
+class SyncAudiencesError(SyncAudiencesResponse, FailedResponse):
     """
     Error response - operation failed completely, no audiences were processed
     """

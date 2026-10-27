@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import HttpUrl
+from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -83,7 +84,7 @@ class CreativePendingReview(CreativeApprovalResponse):
     ext: ExtensionObject | None = None
 
 
-class CreativeApprovalError(CreativeApprovalResponse):
+class CreativeApprovalError(CreativeApprovalResponse, FailedResponse):
     model_config = ConfigDict(
         extra='allow',
     )

@@ -256,34 +256,17 @@ The refusal argument survives in exactly two places, and the design keeps both.
   construction then fails. A narrowing is the defect the old sentence was reaching for, and
   nothing below widens into one.
 
-  **One narrowing is DECLARED and taken on purpose, and this clause exists because the rule
-  above, read alone, says otherwise (added 2026-10-27).** The bundle spells "a URL" nine
-  different ways across 74 sites, and a bare `{"type": "string", "format": "uri"}` is RFC 3986:
-  it admits `urn:`, `file:///` and `http://` alongside `https://`. Honouring every spelling
-  means a typed surface that parses nothing. The owner's decision is to **normalise instead**:
-  `uri` selects a URL type, and the facts that type adds which no document states — pydantic's
-  `maxLength: 2083` and `minLength: 1` — are a narrowing we accept.
+  **A narrowing taken on purpose is admitted by an ENUMERATED registry and by nothing else.**
+  The registry is the authority, this sentence is not, and a narrowing absent from one is the
+  defect above. Each entry is compared by equality so it admits that fact and not its kind — a
+  rule admitting "the sort of bound a URL type adds" would be invisible and permanent.
 
-  It is bounded by four conditions, and a narrowing meeting fewer than all four is the defect
-  this section forbids:
+  There is one today: `harness.URL_IMPLIED`, the two facts a pydantic URL type renders of its
+  own (`minLength: 1`, `maxLength: 2083`). `codegen/constraints.py`'s `url_type` decides which
+  type each position takes and its docstring carries the measurement.
 
-  1. **The document's own statement of the fact is defective, and a live upstream issue says
-     so.** Here `adcontextprotocol/adcp#8398`, "URL validation is over-specified: eight patterns
-     where `^https://` is enough".
-  2. **It is ENUMERATED, never a rule.** `harness.compare_schema` carries one hand-written row
-     per added fact. A rule admitting "facts a URL type adds" would admit the next one unseen;
-     a row per fact means each is named, and a tenth spelling reddens until someone looks.
-  3. **The alternative is measured, not assumed.** `AdCPUrl` everywhere was tried and is worse:
-     it narrows 228 of 300 positions in 128 of 160 documents by refusing three schemes the
-     document admits, against `HttpUrl`'s 227 narrowed by refusing two.
-  4. **It is re-measured per bundle version.** The counts above are properties of 3.2 and
-     nothing reads them from a literal.
-
-  `codegen/constraints.py`'s `url_type` is where the decision lives and its docstring states it.
-  **A later reading that finds the code contradicting the rule above must report it, not
-  "repair" it** — row `.21`'s scalar lane read the rule alone, took the contradiction for a
-  defect, and degraded 86 modules from a URL type to `str` before the orchestrator reverted it.
-  The rule was incomplete; the code was right.
+  **A reading that finds code contradicting this section reports it and does not change either
+  side.** A registry entry is a decision even though it is not in this document.
 - **No document of record.** Where the record (§3) is undefined, there is no schema half at all,
   so `strict_validate` has no authority to run and the annotation is the only claim there is.
   That is the one case where a partial model really would claim conformance to a document it
@@ -1204,11 +1187,32 @@ portable document of the bundle**, and under §2 every one of them emits, so the
 set to reason about: a document that does not appear in the pairing is a defect in the run,
 where it used to be a refusal with a reason.
 
-A branch class of a root union is paired with its branch node read
-under the root's siblings: draft-07 applies every keyword beside the combinator to the same
+A branch class of a union is paired with its branch node read
+under the union's siblings: draft-07 applies every keyword beside the combinator to the same
 instance the branch describes, so a field the branch inherits from the base is a fact its node
 states and not one it added. A pair the payload generator cannot draw for still has to pass the
 comparison, and names the shape that blocked the draw.
+
+**At a union in ANY position, not only a root one (widened 2026-10-27).** This rule read "a
+branch class of a ROOT union … under the ROOT's siblings", and the restriction was never
+justified: the reason above is draft-07's evaluation rule, which does not care where the union
+sits. The cost of the narrower reading was 9 documents blocking 42 — group G2 of
+`docs/plan/reasons-vs-rows.md` — refused on the ground that pushing the sibling into each branch
+"states it at a pointer the document does not", which is the exact objection this rule exists to
+answer.
+
+**So a sibling beside a union lowers by COMPOSITION, and nothing is approximated.** The siblings
+become a base class; each branch becomes a subclass narrowing what it narrows; the union is over
+the subclasses. `account/sync-accounts-request.json` at `/properties/accounts/items` is the
+measured case: `type: object`, `additionalProperties: true`, 16 declared `properties` and 2
+`dependencies` at the node, and two `oneOf` branches that declare **no properties at all** and
+differ only in `required` — `[brand, operator, billing]` against `[account]`. Every fact is kept,
+the branches separate on disjoint `required`, and each branch class is paired against its node
+read under those siblings, so the inherited fields are facts its node states.
+
+Where a branch also *restates* a property the siblings declare, the restatement composes by the
+conjunct rule below; composition and intersection are the same operation reached from two
+directions.
 
 **The dual of that rule, for a node whose `type` is a LIST (added 2026-10-26).** A class cut
 out of a type list is paired with its node read at **its own type word**, not at the whole list.

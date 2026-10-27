@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMatching43E30B32
+from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -116,7 +117,7 @@ class SyncEventSourcesSuccess(SyncEventSourcesResponse):
     ext: ExtensionObject | None = None
 
 
-class SyncEventSourcesError(SyncEventSourcesResponse):
+class SyncEventSourcesError(SyncEventSourcesResponse, FailedResponse):
     """
     Error response - operation failed completely
     """

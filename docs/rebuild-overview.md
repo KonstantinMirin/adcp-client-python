@@ -9,6 +9,54 @@ versioned with the work instead, and the integration story is still open.
 ---
 
 
+## Why this is a rewrite and not a post-processing pass
+
+The obvious cheaper path is `datamodel-code-generator` plus a pass that repairs its output.
+**It was tried, at length, and it failed for a measured reason.** The attempt is
+`feat/type-lattice-and-subclasses` — 397 commits, 300 files, +15,867/−1,451 — and the reasons
+are recorded in its own commit messages rather than in anyone's recollection.
+
+**Unions and composition, which is the structural one.** From
+`fix(types): refuse to normalize a schema whose union arm is a bare $ref`:
+
+> "dmcg merges a root `properties` into every arm it builds, but a root `allOf` base reaches
+> only the arm built from the root object. Measured on the two pointer-ref proposals responses,
+> `RefineProposalsResponse2` went from 10 fields to 9 and `RequestProposalsResponse4` from 16 to
+> 15, both losing `adcp_version` under `extra=forbid` — so a seller echoing the version on the
+> submitted arm would have been rejected where it previously validated."
+
+A composition that must reach **every** arm cannot be re-attached once the generator has
+flattened the arms: by the time a post-processing pass runs, the arm that needed the base no
+longer exists as a thing to attach it to. That is group G2 of
+[`docs/plan/reasons-vs-rows.md`](plan/reasons-vs-rows.md), and it is the single shape that
+decides this question.
+
+**Classes the application can extend.** From
+`refactor(types)!: make every canonical model a subclass, not a runtime copy`:
+
+> "The canonical creative layer built its 32 public classes with `create_model`, copying
+> `model_fields` off the generated wire model and inheriting nothing from it. That is why an
+> injected generation-pass validator reaches the generated class and never the public one."
+
+A copy is not a subclass. Downstream code, injected validators and `isinstance` all see the
+generated class and not the public one.
+
+**What the other SDKs do with the same bundle**, measured rather than assumed. The TypeScript
+SDK gets families A and B nearly free, because TypeScript has a native intersection type and
+`allOf` maps onto `A & B`; Python has none, which is why those families cost us a compiler. It
+absorbs the rest silently: 126 empty `{} &` conjuncts, 128 `unknown`, 52 numbered artifacts. The
+v9 Python SDK ships 21,928 classes from `datamodel-code-generator`, pins its exact version
+because variant numbering (`CreateMediaBuyResponse1`) shifts between releases, carries 243
+`dict[str, Any]` and 263 `Any`, and waives whole classes of divergence with seven predicate
+lambdas in `tests/conformance/_schema_parity.py` — among them
+`conditional_subschema_is_not_generated`.
+
+v9 is not strictly worse, and the comparison should be made honestly: it computes the
+`url-asset` `allOf` intersection to `Literal['url']` with a default, for a document this
+compiler currently refuses. The difference is that its waivers are **predicates** over a
+`schema_path`, where this compiler enumerates each site — and that a predicate waiver is, in
+`harness.URL_IMPLIED`'s words, "invisible and permanent".
+
 ## The decision that changes the project (2026-10-26)
 
 **Zero refusals is the outcome.** Every schema document is represented as a Python class, root
@@ -163,16 +211,30 @@ than aspirational — and it is the first thing to re-measure on the next bundle
 
 Last full run: **`1 failed, 1637 passed`** (650s).
 
-The one failure is `test_an_arrays_bound_is_the_lists_and_not_its_elements`. For
-`core/attestation-capabilities.json`, property `accepted_claim_types`, the schema element states
-`{"type": "string", "format": "uri"}` and nothing about length, while the emitted element carries
-`minLength: 1, maxLength: 2083` — pydantic's `HttpUrl` bounds, which the schema never states. The
-model is therefore **tighter** than its document, which is the one defect the design says must
-never happen, and `strict_validate` cannot repair it: the document admits a 2,220-character URI
-and the construction then fails. The owner is `FORMAT_TYPES`, now in `codegen/lower/scalars.py`;
-it is tracked on row `.10` (wave 2, which carries `format`); the test states its own diagnosis in
-place and was
-left red deliberately. Narrowing its assertion to go green would pin the defect. The gate for this
-branch is "this one and no others".
+The one failure is `test_an_arrays_bound_is_the_lists_and_not_its_elements`, and **this passage
+first described it wrongly. The correction is the point, so it is made here rather than quietly
+deleted.**
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+It said: for `core/attestation-capabilities.json`'s `accepted_claim_types`, the schema element
+states `{"type": "string", "format": "uri"}` and nothing about length while the emitted element
+carries `minLength: 1, maxLength: 2083` — `HttpUrl`'s bounds — so the model is tighter than its
+document, "the one defect the design says must never happen", owned by `FORMAT_TYPES`.
+
+**Those bounds are a recorded decision, not a defect.** The bundle spells "a URL" nine different
+ways across 74 sites, and a bare `format: uri` is RFC 3986 — it admits `urn:`, `file:///` and
+`http://` beside `https://`. `codegen/constraints.py`'s `url_type` therefore normalises:
+`AdCPUrl` where the document pins `^https://`, `HttpUrl` elsewhere. `AdCPUrl` everywhere was
+tried first and measured worse — 228 of 300 positions narrowed against `HttpUrl`'s 227. The two
+facts the type adds are admitted by `harness.URL_IMPLIED`, by equality, one entry each.
+
+So the test is red for a reason that is not the compiler's. Its own subject, which its docstring
+states, is **which node a bound lands on** — the array or its elements — and it is tripped
+because `HttpUrl` renders `minLength` on the element and **this test does not read
+`URL_IMPLIED`**, while the comparison that grades every pair does. The fix is one test consulting
+the registry the rest of the system already honours.
+
+Reading this passage as written cost a lane: an agent was briefed from it, took the bounds for
+the defect it names, and degraded 86 modules from a URL type to `str` before the change was
+reverted. **A document that calls a decision a defect will be believed.** The gate for this
+branch is "this one and no others"; narrowing the test's assertion to go green would still be
+wrong, but so is changing the compiler to satisfy it.

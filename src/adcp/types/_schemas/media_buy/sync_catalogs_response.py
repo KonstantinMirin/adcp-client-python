@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1MaxLen255
+from adcp.types.envelopes import FailedResponse
 
 from ..core.catalog_item_availability_state import CatalogItemAvailabilityState
 from ..core.catalog_item_availability_update_result import CatalogItemAvailabilityUpdateResult
@@ -95,7 +96,7 @@ class SyncCatalogsErrorErrorsItem(Error):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-catalogs-response.json', pointer='#/oneOf/1/properties/errors/items')
 
 
-class SyncCatalogsError(SyncCatalogsResponse):
+class SyncCatalogsError(SyncCatalogsResponse, FailedResponse):
     """
     Error response - operation failed completely, no catalogs were processed
     """
