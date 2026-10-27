@@ -6841,7 +6841,16 @@ VALUE_RULE_CARRIERS: dict[str, list[tuple[str, str]]] = {
         ("core/daast-tracker-constraints.json", "DEF"),
         ("error-details/requote-required.json", "BRANCH"),
     ],
-    "NotValue": [("core/iana-timezone.json", "ROOT")],
+    #: ``NotValue`` carries TWO rows because its two positions are two different
+    #: readings of §2's second half.  ROOT is a root alias: the node's own ``not`` beside
+    #: its own type.  **CONJ is one conjunct stating the TYPE and another the RULE**
+    #: (``adcp-client-python-10l.21``, ``compiler._the_conjuncts_own_type``), so §2's
+    #: intersection has to compose the two before either reaches an ``ir.TypeRef`` -- and
+    #: that reading was the unwritten half, which is why 9 nodes refused there.
+    "NotValue": [
+        ("core/iana-timezone.json", "ROOT"),
+        ("core/delivery-metric-aggregate.json", "CONJ"),
+    ],
     "AtLeastOne": [("core/product-execution-requirement.json", "PROP")],
 }
 
@@ -6907,6 +6916,9 @@ def test_every_value_rule_kind_is_enforced_by_the_class_the_tree_emitted() -> No
     """
     from adcp.types._schemas.core.account_authorization import AccountAuthorization
     from adcp.types._schemas.core.daast_tracker_constraints import DAASTTrackerConstraints
+    from adcp.types._schemas.core.delivery_metric_aggregate import (
+        DeliveryMetricAggregateStandard,
+    )
     from adcp.types._schemas.core.iana_timezone import IANATimezoneIdentifier
     from adcp.types._schemas.core.product_execution_requirement import (
         DownstreamConnectionExecutionRequirementConnection,
@@ -6942,6 +6954,17 @@ def test_every_value_rule_kind_is_enforced_by_the_class_the_tree_emitted() -> No
             TypeAdapter(IANATimezoneIdentifier).validate_python,
             "inventory_local",
             "America/New_York",
+        ),
+        (
+            # §5's ``$ref`` row at CONJ: ``metric_id`` is ``allOf: [{$ref: <an enum>},
+            # {not: {enum: [...]}}]``, so the enumeration is the field's own TYPE and the
+            # ``not`` is the rule on it.  Both payloads are the DOCUMENT's own answer --
+            # ``Draft7Validator`` admits the first and refuses the second.
+            "NotValue",
+            "core/delivery-metric-aggregate.json",
+            DeliveryMetricAggregateStandard.model_validate,
+            {"scope": "standard", "metric_id": "viewability", "value": 1.0},
+            {"scope": "standard", "metric_id": "impressions", "value": 1.0},
         ),
         (
             "AtLeastOne",
