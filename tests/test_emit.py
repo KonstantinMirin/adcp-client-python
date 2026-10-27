@@ -3542,20 +3542,32 @@ def test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema() -> None:
         assert type(branch.model_validate(arm)) is branch, document
 
 
-def test_model_dump_json_on_a_union_base_instance_does_not_raise() -> None:
-    """§4's fourth part: the union is the validator and never the serializer.
+def test_a_union_base_instance_and_a_branch_each_serialise_as_what_they_are() -> None:
+    """§4's fourth mechanic, as the design owner settled it on 2026-10-27.
 
-    Put it in the serialization slot and the class has no serializer for an instance of
-    itself -- the union's serializer matches no branch, infers a model, finds the same
-    union and recurses.  Measured on a fixture while this was being built:
-    ``model_dump_json`` raises ``PydanticSerializationError: Circular reference detected``
-    and ``model_dump()`` silently returns the model INSTANCE instead of a dict, which is
-    the worse of the two because nothing reports it.
+    **The serialiser dispatches on the instance's own class and each class serialises
+    through its own plain model schema**: "a branch serialises the branch's fields; a
+    base serialises the base's ... a value serialises as what it is."  So the expectation
+    is DERIVED from each class's own field set rather than listed, and both directions
+    are graded on every emitted base.
 
-    Both halves are asserted, on a BASE instance (reached through ``model_construct``,
-    since every validating path returns a branch) and on a BRANCH reached through a
-    base-typed field -- the second is what fails if the wrap serializer holds the base's
-    model schema ALONE rather than the branches' union with the base last.
+    Both of the readings the old sentence admitted are what this test fails on, and both
+    were live on this tree:
+
+    * the base's model schema ALONE in the slot -- a BRANCH reached through a base-typed
+      field comes back as the base's fields and the arm's own are dropped silently
+      (the second arm below);
+    * the branches' union with that schema last -- a BASE instance matches no arm, the
+      fallback infers a model, finds the same class and recurses, and
+      ``model_dump_json`` raises ``PydanticSerializationError: Circular reference
+      detected`` while ``model_dump()`` returns the INSTANCE instead of a dict (the
+      first arm, and ``adcp-client-python-2fn``).  It was unreachable until §14 step 9:
+      while a root declaring ``properties`` refused, every base had NO fields and
+      matched the plain arm trivially.
+
+    A base instance is reached through ``model_construct``, since every validating path
+    returns a branch -- and it is a legitimate value either way, because ``__new__``
+    covers ``Base(**data)`` and validates it.
     """
     assert emitted_union_bases()
     for document in emitted_union_bases():
@@ -3564,8 +3576,15 @@ def test_model_dump_json_on_a_union_base_instance_does_not_raise() -> None:
         class Holder(BaseModel):
             v: base  # type: ignore[valid-type]
 
-        assert json.loads(base.model_construct().model_dump_json()) == {}
-        assert base.model_construct().model_dump() == {}
+        # **A base serialises the BASE's fields**, which is its own plain model schema
+        # and nothing else: no branch's field appears, and no field of its own is
+        # missing.  ``model_construct`` fills each field's default, so the key set is
+        # the base's own -- empty for a base whose root declares no property, which is
+        # what this read as a literal ``{}`` while every base was in that state.
+        held = base.model_construct()
+        assert json.loads(held.model_dump_json()) == held.model_dump(mode="json"), document
+        assert set(held.model_dump()) == set(held.__dict__), document
+        assert not set(held.model_dump()) - set(base.model_fields), document
 
         branch = base._branch_models[0]
         payload = _an_instance(
@@ -3573,10 +3592,13 @@ def test_model_dump_json_on_a_union_base_instance_does_not_raise() -> None:
                 schema_at(SchemaRef(branch.__adcp_schema__.document, "#")),
             )
         instance = base.strict_validate(payload)
-        # the arm's own fields survive the base-typed field, which is what the union in
-        # the serialization slot buys and the base's model schema alone loses
+        # **A branch serialises the BRANCH's fields**, through a base-typed field, in
+        # both modes -- the arm's own keys survive the dispatch and the payload's
+        # values arrive.
         dumped = json.loads(Holder(v=instance).model_dump_json())["v"]
         assert set(payload) <= set(dumped), (document, sorted(payload), sorted(dumped))
+        assert set(dumped) == set(type(instance).model_fields), document
+        assert Holder(v=instance).model_dump(mode="json")["v"] == dumped, document
 
 
 def test_a_payload_no_branch_admits_is_refused_in_the_documents_own_vocabulary() -> None:
@@ -5045,11 +5067,31 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     # and not on its own key set.  Named, because the arm above is now graded on a
     # constructed document and this is what says WHY: the site's document is behind
     # another row, so the emitted population does not reach the arm yet.
+    #
+    # **The row it is behind is NAMED here and re-measured, which is what closes §14
+    # step 9's entry for this arm** (``adcp-client-python-10l.20``, third instalment).
+    # The blocker MOVED once: it was ``core/catchment.json``'s root-sibling verdict and
+    # is now ``core/catchment.json``'s own union, whose three branches each state
+    # ``required`` plus a ``not`` of required groups.  §5's presence clause reads "every
+    # branch ``required``-only" and these are not, so no sentence decides them --
+    # **filed as adcp-client-python-onq**, with the measurement that a root-level
+    # ``ForbiddenGroups`` over the branches' ``not`` groups refuses a payload the
+    # document admits.  So the chain target is asserted by NAME: when ``onq`` lands,
+    # this assertion is what reddens, and the arm gets its live site.
     hours = bundle.read(BUNDLE, "core/store-item.json")
     assert "enum" in hours["properties"]["hours"]["propertyNames"]
-    refused_site = emit.emit(BUNDLE, ["core/store-item.json"]).refusals["core/store-item.json"]
+    out = emit.emit(BUNDLE, ["core/store-item.json"])
+    refused_site = out.refusals["core/store-item.json"]
     assert refused_site["kind"] == refusal_module.Kind.CHAINED, refused_site
     assert refused_site["keyword"] == "$ref", refused_site
+    assert "core/catchment.json is refused" in refused_site["detail"], refused_site
+    blocker = out.refusals["core/catchment.json"]
+    assert (blocker["keyword"], blocker["pointer"]) == ("required", "/oneOf/0"), blocker
+    assert "constrains only requiredness" in blocker["detail"], blocker
+    # and the shape ``onq`` owns, read off the document: every branch states ``required``
+    # and a ``not`` and no property, which is why §5's presence clause does not reach it.
+    branches = bundle.read(BUNDLE, "core/catchment.json")["oneOf"]
+    assert [sorted(b) for b in branches] == [["not", "required"]] * 3, branches
 
 
 def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() -> None:

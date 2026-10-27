@@ -26,13 +26,17 @@ assertions below are on the dispatch and not on the emitted set.
 
 from __future__ import annotations
 
+import importlib
 import json
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-from codegen import bundle, emit, keywords
+from pydantic import create_model
+
+from adcp.types._base import SchemaRef, schema_at
+from codegen import bundle, emit, harness, keywords
 from codegen.lower import union as lower_union
 from codegen.refusal import Kind
 from codegen.schema import nodes, parse as schema_parse
@@ -395,3 +399,390 @@ def _reaching(population: list[str]) -> tuple[Any, set[str | None]]:
         return emit.emit(BUNDLE, population), seen
     finally:
         lower_union.overlapping = real  # type: ignore[assignment]
+
+
+# --------------------------------------------------------------------------- #
+# §4's SECOND dispatch source: a key the bundle's manifest states
+# --------------------------------------------------------------------------- #
+#: Every portable document declaring a ``task_type`` property -- the field
+#: ``manifest.task_result_resolution`` names as its discriminator -- at any pointer.
+#: Read off the documents, so it is the population of §4's second source and not a
+#: reading of a refusal.  **By NAME and not as a count**, which is §8's rule for a set a
+#: check ranges over: a census equality is one tree's reading of a quantity an emitting
+#: row moves (``tests/test_every_check_names_its_set.py``).
+MANIFEST_DISCRIMINATED = frozenset(
+    {
+        "core/mcp-webhook-payload.json",
+        "core/tasks-get-response.json",
+        "core/tasks-list-request.json",
+        "core/tasks-list-response.json",
+        "protocol/get-task-status-response.json",
+        "protocol/list-tasks-request.json",
+        "protocol/list-tasks-response.json",
+    }
+)
+#: Union roots the walk cannot separate: §4's three sources all answer no, so the union
+#: is step 10's UNDERDETERMINED row.  ``adagents.json`` and ``brand.json`` overlapped
+#: before §14 step 9 and the root-siblings row let the other 16 reach the derivation for
+#: the first time, which reconciles the previous instalment's 16 with this set.
+OVERLAPPING_ROOTS = frozenset(
+    {
+        "adagents.json",
+        "brand.json",
+        "content-standards/calibrate-content-response.json",
+        "content-standards/create-content-standards-response.json",
+        "content-standards/get-content-standards-response.json",
+        "content-standards/get-media-buy-artifacts-response.json",
+        "content-standards/list-content-standards-response.json",
+        "content-standards/validate-content-delivery-response.json",
+        "core/evaluator-spec.json",
+        "core/postal-country-system.json",
+        "creative/get-creative-features-response.json",
+        "creative/sync-creatives-response.json",
+        "media-buy/build-creative-response.json",
+        "media-buy/create-media-buy-response.json",
+        "media-buy/sync-audiences-response.json",
+        "media-buy/sync-catalogs-response.json",
+        "media-buy/update-media-buy-response.json",
+        "trusted-match/provider-registration.json",
+    }
+)
+
+
+def _declares(node: Any, field: str, pointer: str = "") -> list[str]:
+    """Every pointer at which ``node`` declares ``field`` as a property."""
+    found = []
+    if isinstance(node, dict):
+        if field in (node.get("properties") or {}):
+            found.append(pointer or "/")
+        for key, value in node.items():
+            found += _declares(value, field, f"{pointer}/{key}")
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            found += _declares(value, field, f"{pointer}/{i}")
+    return found
+
+
+def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle() -> None:
+    """§4's SECOND source, measured rather than left looking unattempted (§14 step 9).
+
+    "A key the bundle's manifest states.  ``manifest.task_result_resolution`` names the
+    discriminator field and a template resolving a schema from it, and ``manifest.tools``
+    is the table.  Such a union emits as a mapping keyed by that field: its discriminant
+    is in the envelope, not in the payload."
+
+    **Its population over bundle 3.2 is 0, and the reason is the SHAPE of the
+    resolution rather than the count.**  The template is
+    ``/tools/{task_type}/response_schema``: it resolves a DOCUMENT from a task field.  So
+    the manifest's key is spent selecting the document, and a union INSIDE the document it
+    selects has no discriminant left in the envelope to be told apart by.  Measured three
+    ways here, each of which fails on its own:
+
+    * every document declaring the manifest's discriminator field states NO union at
+      all, at any pointer -- so there is nothing for the second source to dispatch;
+    * no branch of any overlapping root declares that field, and no branch of one is a
+      ``$ref`` to a schema the manifest resolves;
+    * 13 of the 18 overlapping roots ARE a schema the manifest's own template resolves,
+      which is the measurement that settles it: the manifest names the document and the
+      overlap is a union inside it.
+
+    So the overlapping set is **step 10's UNDERDETERMINED row** and not this one's.  §4
+    decides what becomes of it -- "a union matching none of the three emits a plain
+    ``A | B`` over its branches and declares an UNDERDETERMINED approximation at the
+    union's pointer, attributed upstream" -- and the DECLARATION is what puts it there:
+    the faithful rows cost none.
+    """
+    manifest = bundle.read(BUNDLE, "manifest.json")
+    resolution = manifest["task_result_resolution"]
+    field = resolution["discriminator_field"]
+    key = resolution["terminal_schema_pointer_template"].strip("/").split("/")[-1]
+    # The set the template can name, derived from the manifest's own table and overrides
+    # rather than listed: a tool added upstream moves it.
+    resolves = {tool[key] for tool in manifest["tools"].values() if key in tool}
+    resolves |= set(resolution["terminal_schema_overrides"].values())
+    assert (field, key) == ("task_type", "response_schema"), resolution
+    claimed("manifest tools", manifest["tools"])
+    claimed("schemas the manifest's template resolves", resolves)
+
+    # 1. Every document carrying the manifest's key, and whether it states a union.
+    carrying = [
+        document
+        for document in bundle.portable(BUNDLE)
+        if _declares(bundle.read(BUNDLE, document), field)
+    ]
+    named = claimed(
+        "documents declaring the manifest's discriminator field",
+        carrying,
+        inside=bundle.portable(BUNDLE),
+    )
+    assert named == set(MANIFEST_DISCRIMINATED), sorted(named)
+    for document in sorted(named):
+        # A combinator ANYWHERE in the document, read off the text: the claim is that
+        # there is no union here at any pointer, and a walk that descended only the
+        # positions a union root can sit at would be making the weaker claim.
+        stated = [kw for kw in ("oneOf", "anyOf") if f'"{kw}"' in json.dumps(bundle.read(BUNDLE, document))]
+        assert stated == [], (document, stated)
+
+    # 2 and 3. The overlapping set, and what the manifest says about each one.
+    out, _ = _reaching(sorted(bundle.portable(BUNDLE)))
+    overlapping = sorted(
+        d
+        for d, row in out.refusals.items()
+        if "branches OVERLAP" in row.get("detail", "") and row["kind"] is not Kind.CHAINED
+    )
+    assert set(overlapping) == set(OVERLAPPING_ROOTS), sorted(overlapping)
+    resolved_overlaps = [d for d in overlapping if d in resolves]
+    for document in overlapping:
+        row = out.refusals[document]
+        node = bundle.read(BUNDLE, document)
+        for segment in [s for s in row["pointer"].split("/") if s]:
+            node = node[int(segment)] if isinstance(node, list) else node[segment]
+        branches = [b for b in (node.get(row["keyword"]) or []) if isinstance(b, dict)]
+        assert branches, (document, row["pointer"])
+        # No branch carries the envelope's key, and no branch is one of the schemas the
+        # manifest resolves -- the two shapes the second source would read.
+        assert not any(field in (b.get("properties") or {}) for b in branches), document
+        assert not {
+            b["$ref"].rsplit("/", 1)[-1] for b in branches if "$ref" in b
+        } & {r.rsplit("/", 1)[-1] for r in resolves}, document
+    # The decisive one: most of them ARE what the manifest resolves TO, so the key is
+    # spent before the branch choice is reached.  Partitioned BY NAME, because the two
+    # halves are different facts and their sum is not one: the resolved half is where
+    # the manifest's key is spent on the document, and the other five are documents the
+    # manifest does not name at all.
+    partitions(
+        set(overlapping),
+        the_manifest_resolves_the_document=set(resolved_overlaps),
+        the_manifest_does_not_name_it=set(overlapping) - set(resolved_overlaps),
+    )
+    claimed(
+        "overlapping roots the manifest's template resolves",
+        resolved_overlaps,
+        inside=overlapping,
+    )
+    assert set(resolved_overlaps) == {
+        "content-standards/calibrate-content-response.json",
+        "content-standards/create-content-standards-response.json",
+        "content-standards/get-content-standards-response.json",
+        "content-standards/get-media-buy-artifacts-response.json",
+        "content-standards/list-content-standards-response.json",
+        "content-standards/validate-content-delivery-response.json",
+        "creative/get-creative-features-response.json",
+        "creative/sync-creatives-response.json",
+        "media-buy/build-creative-response.json",
+        "media-buy/create-media-buy-response.json",
+        "media-buy/sync-audiences-response.json",
+        "media-buy/sync-catalogs-response.json",
+        "media-buy/update-media-buy-response.json",
+    }, sorted(resolved_overlaps)
+
+
+# --------------------------------------------------------------------------- #
+# §5's PINNED-VALUE clause: one class and one rule, and why it is not landed
+# --------------------------------------------------------------------------- #
+#: Annotation keys: a branch differing in one of these does NOT "differ only in the
+#: `const` or `enum` each pins", and collapsing it would drop a fact §6 gives the
+#: document authority over -- a branch `title` is a class NAME (§4) and a branch
+#: `description` is its DOCSTRING.  The ``x-`` namespace joins them by prefix (§6).
+_ANNOTATIONS = frozenset(
+    {"title", "description", "$comment", "examples", "deprecated", "enumDescriptions"}
+)
+#: Sites where the branches differ in NOTHING but the pins: §5's pinned-value clause's
+#: whole population over the portable set.
+PINNED_VALUE_SITES = frozenset({"core/canonical-media-buy-action.json#"})
+#: Sites that match once annotations are ignored.  The difference between the two sets is
+#: the clause's own word "only", and both are named rather than counted: a reading that
+#: widened the clause to the other three would redden on a NAME here.
+PINNED_VALUE_SITES_IGNORING_ANNOTATIONS = PINNED_VALUE_SITES | {
+    "core/creative-localization-readback.json#/properties/variants/items",
+    "core/optimization-goal.json#/oneOf/0/properties/target",
+    "core/optimization-goal.json#/oneOf/2/properties/target",
+}
+
+
+def _constraining(declaration: dict) -> dict:
+    """``declaration`` without the keys that annotate rather than constrain."""
+    return {
+        k: v
+        for k, v in declaration.items()
+        if k not in _ANNOTATIONS and not k.startswith("x-")
+    }
+
+
+def _pins_only(branches: list[Any], *, annotations_count: bool) -> list[str] | None:
+    """The properties whose PIN is the only thing the branches differ in, or ``None``.
+
+    §5: "A union whose branches declare the same properties with the same ``required``,
+    and differ only in the ``const`` or ``enum`` each pins on some of them."  Read as
+    written: what the clause tests is DIFFERENCE, so a keyword every branch states
+    identically -- the three branches of ``core/canonical-media-buy-action.json`` state
+    one and the same ``allOf`` -- is not a difference and does not exclude the site.
+    """
+    read = (lambda d: d) if annotations_count else _constraining
+    views = [read(b) for b in branches]
+    if any(set(v) != set(views[0]) for v in views):
+        return None
+    for key in set(views[0]) - {"properties"}:
+        stated = [json.dumps(v.get(key), sort_keys=True) for v in views]
+        if any(s != stated[0] for s in stated):
+            return None
+    maps = [read(v.get("properties") or {}) for v in views]
+    if not maps[0] or any(set(m) != set(maps[0]) for m in maps):
+        return None
+    pinned = []
+    for key in sorted(maps[0]):
+        declarations = [read(m[key]) for m in maps]
+        rest = [{k: v for k, v in d.items() if k not in ("const", "enum")} for d in declarations]
+        if any(json.dumps(r, sort_keys=True) != json.dumps(rest[0], sort_keys=True) for r in rest):
+            return None
+        pins = [{k: v for k, v in d.items() if k in ("const", "enum")} for d in declarations]
+        if not all(pins):
+            if any(pins):
+                return None
+            continue
+        if any(json.dumps(p, sort_keys=True) != json.dumps(pins[0], sort_keys=True) for p in pins):
+            pinned.append(key)
+    return pinned or None
+
+
+def _union_sites(document: str) -> list[tuple[str, str, list[Any]]]:
+    """``(pointer, keyword, branches)`` for every combinator in ``document``."""
+    sites: list[tuple[str, str, list[Any]]] = []
+
+    def walk(node: Any, pointer: str) -> None:
+        if isinstance(node, dict):
+            for keyword in ("oneOf", "anyOf"):
+                branches = node.get(keyword)
+                if (
+                    isinstance(branches, list)
+                    and len(branches) > 1
+                    and all(isinstance(b, dict) for b in branches)
+                ):
+                    sites.append((f"#{pointer}", keyword, branches))
+            for key, value in node.items():
+                walk(value, f"{pointer}/{key}")
+        elif isinstance(node, list):
+            for i, value in enumerate(node):
+                walk(value, f"{pointer}/{i}")
+
+    walk(bundle.read(BUNDLE, document), "")
+    return sites
+
+
+def test_the_pinned_value_clauses_population_is_one_site_and_the_exclusion_is_measured() -> (
+    None
+):
+    """§5's pinned-value clause, measured at ``adcp-client-python-10l.20``'s close-out.
+
+    "A union whose branches declare the same properties with the same ``required``, and
+    differ only in the ``const`` or ``enum`` each pins on some of them → one class: each
+    such field admits the union of the branches' values, and one rule whose clauses are
+    the branches themselves."
+
+    **NOT LANDED, and filed as adcp-client-python-6zg** -- §8 has no pairing rule for a
+    class that is the union of its branches, and the companion test below measures what
+    collapsing the one site costs.  This one is the population, because the count is what
+    the previous instalment got wrong: it read 3 DOCUMENTS off nearby refusals, and the
+    clause's own shape holds at one site.
+
+    The exclusion is the interesting half and it is the clause's own word "only": 4 sites
+    match when annotations are ignored and 3 of them have branches differing in a
+    ``title``, a ``description`` or a ``deprecated``.  Those are facts §6 gives the
+    document authority over -- a branch ``title`` is a class NAME under §4 and a branch
+    ``description`` is its docstring -- so a branch carrying one does not differ ONLY in
+    its pin, and collapsing it would drop the fact.  Both counts are asserted, so a
+    reading that widened the clause to the other 3 would redden here rather than
+    silently drop two class names and two docstrings.
+    """
+    both = {}
+    for document in sorted(bundle.portable(BUNDLE)):
+        for pointer, keyword, branches in _union_sites(document):
+            ignoring = _pins_only(branches, annotations_count=False)
+            if ignoring is None:
+                continue
+            both[f"{document}{pointer}"] = (
+                keyword,
+                ignoring,
+                _pins_only(branches, annotations_count=True),
+            )
+    loose = claimed("pinned-value sites when annotations are ignored", both)
+    assert loose == set(PINNED_VALUE_SITES_IGNORING_ANNOTATIONS), sorted(loose)
+    strict = {site for site, (_, _, exact) in both.items() if exact is not None}
+    excluded = loose - strict
+    partitions(loose, differ_only_in_the_pin=strict, differ_in_an_annotation=excluded)
+    assert strict == set(PINNED_VALUE_SITES), sorted(strict)
+    # Each exclusion, with the annotation that makes it one -- named, so the three are
+    # not a residue.
+    assert excluded == set(PINNED_VALUE_SITES_IGNORING_ANNOTATIONS) - set(
+        PINNED_VALUE_SITES
+    ), sorted(excluded)
+    for site in sorted(excluded):
+        document, _, pointer = site.partition("#")
+        branches = next(b for p, _, b in _union_sites(document) if p == f"#{pointer}")
+        differing = {
+            key
+            for key in set().union(*(set(b) for b in branches))
+            if len({json.dumps(b.get(key), sort_keys=True) for b in branches}) > 1
+        }
+        assert differing & (_ANNOTATIONS | {"properties"}) - {"properties"}, (site, differing)
+
+
+def test_collapsing_the_one_pinned_value_site_reports_three_added_facts() -> None:
+    """What landing §5's clause costs TODAY, measured rather than forecast.
+
+    ``core/canonical-media-buy-action.json`` emits as a base and three branches and all
+    of its pairs pass all three checks.  Handed the merged class the clause asks for --
+    each pinned field admitting the union of the branches' values -- the comparison
+    reports ``model_adds_a_fact`` with three ``added`` facts, because the document's ROOT
+    states ``oneOf`` and no ``properties`` of its own.
+
+    That is not a defect in the comparison and ``harness._composed`` says why in as many
+    words: "``anyOf``/``oneOf`` at a root are left alone, and must be.  A branch's
+    properties are satisfied by SOME branch, not by every instance, so folding one in the
+    way a conjunct is folded would state a fact the document does not state."  What is
+    missing is the THIRD of §8's pairing rules for a class cut out of a combinator -- it
+    has the branch-under-the-root's-siblings rule and its type-list dual, and none for a
+    class that is the union of its branches.  **adcp-client-python-6zg**, reported rather
+    than chosen, which is what this row did for §4's fourth mechanic.
+
+    This test is what reddens when that sentence lands.
+    """
+    document = "core/canonical-media-buy-action.json"
+    doc = bundle.record(BUNDLE, document)
+    branches = doc["oneOf"]
+    tasks = tuple(b["properties"]["task"]["const"] for b in branches)
+    actions = tuple(sorted({a for b in branches for a in b["properties"]["action"]["enum"]}))
+    merged = create_model(
+        "CanonicalMediaBuyAction",
+        __doc__=doc["description"],
+        task=(Literal[tasks], ...),
+        action=(Literal[actions] | None, None),
+    )
+    res = harness.compare_schema(
+        doc, merged, document=doc, position=keywords.Position.ROOT, at="#"
+    )
+    assert res.outcome == "model_adds_a_fact", (res.outcome, res.detail)
+    assert sorted(f.split(":")[0] for f in res.added) == [
+        "/properties/action",
+        "/properties/task",
+        "/required",
+    ], res.added
+    assert (res.missing, res.differs) == ([], []), res
+
+    # The control: as a base and three branches, every pair the document emits PASSES.
+    for symbol in (
+        "CanonicalMediaBuyAction",
+        "CanonicalMediaBuyActionControlMediaBuy",
+        "CanonicalMediaBuyActionRefineProposals",
+        "CanonicalMediaBuyActionSyncCreatives",
+    ):
+        cls = getattr(
+            importlib.import_module("adcp.types._schemas.core.canonical_media_buy_action"),
+            symbol,
+        )
+        ref = cls.__adcp_schema__
+        node = schema_at(ref)
+        got = harness.compare_schema(
+            node, cls, document=schema_at(SchemaRef(ref.document, "#")), at=ref.pointer
+        )
+        assert got.outcome == "pass", (symbol, got)
