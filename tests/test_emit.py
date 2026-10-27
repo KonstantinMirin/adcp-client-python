@@ -8151,6 +8151,34 @@ def test_the_first_refusal_is_the_earliest_in_the_document_and_not_in_the_sort()
 #: to be read as that claim rather than absorbed by a number.
 VERDICTS = frozenset(
     {
+        # **69 -> 80 at ``adcp-client-python-10l.21``'s third instalment, and the set is
+        # named in BOTH directions because a verdict count is not monotone under
+        # progress.**  THREE LEFT -- ``core/assets/card-asset.json``,
+        # ``core/offering.json`` and ``core/signal-pricing-option.json``, each a chain
+        # whose target now emits.  FOURTEEN JOINED, and not one of them is a new KIND of
+        # verdict: every one is a document that got FURTHER and reached a verdict another
+        # row already owns.  Eleven resolve to §5(b)'s restatement row (an ``allOf``
+        # restatement that neither matches nor narrows, which §5(b) decides as a declared
+        # widening and nobody has written) or to D3's branch-identity row; two are
+        # ``core/package-delivery-metric-value.json`` and
+        # ``media-buy/get-products-request.json``, which carry the
+        # unresolved-target sentence filed as ``adcp-client-python-g31``; and
+        # ``media-buy/get-products-request.json`` reaches its chain only because its own
+        # worded nested union stopped refusing.
+        "media-buy/update-media-buy-request.json",
+        "media-buy/media-buy-delivery-webhook-result.json",
+        "media-buy/get-products-request.json",
+        "media-buy/get-media-buy-delivery-response.json",
+        "core/requirements/offering-asset-constraint.json",
+        "core/requirements/catalog-requirements.json",
+        "core/requirements/asset-requirements.json",
+        "core/package-delivery-metric-value.json",
+        "core/assets/vast-tracker-asset.json",
+        "core/assets/daast-tracker-asset.json",
+        "content-standards/list-content-standards-response.json",
+        "content-standards/get-content-standards-response.json",
+        "content-standards/content-standards.json",
+        "brand/verify-brand-claims-response.json",
         'account/list-account-changes-response.json',
         'account/sync-accounts-response.json',
         'brand.json',

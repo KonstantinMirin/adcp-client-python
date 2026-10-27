@@ -296,11 +296,13 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
     )
     # Every root the derivation cannot separate either EMITS with the declaration or
     # refuses further on, on another row's keyword -- and never on the overlap.
+    # **At a ROOT pointer, for :func:`_reaching`'s reason**: ``lower.union._undetermined``
+    # declares §4's row at a NESTED union as well, and this module's sets are roots.
     declaring = {
         d
         for d, declared in out.approximations.items()
         for one in declared
-        if one.kind == UNDERDETERMINED
+        if one.kind == UNDERDETERMINED and one.pointer in ("#/oneOf", "#/anyOf")
     }
     assert declaring <= overlapping, sorted(declaring - overlapping)
     assert declaring == overlapping - set(out.refusals), sorted(declaring)
@@ -411,7 +413,15 @@ def _reaching(population: list[str]) -> tuple[Any, set[str | None]]:
     real = lower_union.overlapping
 
     def traced(planned: Any, node: Any) -> list[str]:
-        seen.add(node.annotations.get("title"))
+        # **ROOTS ONLY, and the scoping arrived with a caller rather than with this
+        # test** (``adcp-client-python-10l.21``'s third instalment).  §4's derivation is
+        # asked at a NESTED union too now -- ``lower.union._undetermined``, which is §4's
+        # UNDERDETERMINED row at the other position -- so the raw call set is no longer
+        # the roots this module is about, and a nested union inside an untitled node put
+        # a ``None`` in a set of titles.  The node knows its own position (§6), so this
+        # reads it rather than inferring it from the pointer.
+        if node.position is keywords.Position.ROOT:
+            seen.add(node.annotations.get("title"))
         return real(planned, node)
 
     lower_union.overlapping = traced  # type: ignore[assignment]
@@ -560,11 +570,13 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
     # is the two halves together -- each half derived from the run and neither from the
     # other.
     out, _ = _reaching(sorted(bundle.portable(BUNDLE)))
+    # **At a ROOT pointer, for :func:`_reaching`'s reason**: ``lower.union._undetermined``
+    # declares §4's row at a NESTED union as well, and this module's sets are roots.
     declaring = {
         d
         for d, declared in out.approximations.items()
         for one in declared
-        if one.kind == UNDERDETERMINED
+        if one.kind == UNDERDETERMINED and one.pointer in ("#/oneOf", "#/anyOf")
     }
     assert not any("branches OVERLAP" in r.get("detail", "") for r in out.refusals.values())
     deeper = {d for d in OVERLAPPING_ROOTS if d in out.refusals}
