@@ -526,14 +526,32 @@ These are requests, not edits. Neither `rebuild-plan.md` nor `architecture.md` w
    schedules, which §9 names as the first mistake. **What breaks without it:** `accounted`
    (`emitted + verdicts`, 934 today) overstates by 30, and the next lane repeats the measurement.
 
-4. **`rebuild-plan.md` §8 needs a pairing rule for a CONJUNCT, and `6zg` and `zyn` and `97w` are all
-   waiting on one sentence.** §8 states a pairing rule for a union BRANCH ("a branch class of a root
-   union is paired with its branch node read under the root's siblings") and none for a conjunct or
-   for a type LIST. `10l.21`'s fourth instalment measured the consequence: 0 classes of the
-   committed tree carry a `SchemaRef` with an `allOf` segment, and `97w`'s faithful answer puts a
-   nested class at a conjunct pointer, where every base fact would read `added`. `zyn` is the same
-   gap at a type list; `6zg` is the same gap at a class that is the union of its branches. **What
-   breaks without it:** `97w` cannot land, so G1's 13 primary and 71 cascaded refusals stand.
+4. ~~**`rebuild-plan.md` §8 needs a pairing rule for a CONJUNCT…**~~ **WITHDRAWN by the
+   orchestrator, 2026-10-27: two thirds of this request are already in the file this audit read.**
+
+   The request claimed §8 "states a pairing rule for a union BRANCH … and none for a conjunct or
+   for a type LIST". Measured against the audit's own base blob
+   `bff3554f0e729d4a71ec873ab50549f28e7bf57f`, which is byte-identical to trunk's, §8 carries
+   **three** pairing rules:
+
+   | line | rule |
+   | --- | --- |
+   | 1190 | a branch class of a root union, read under the root's siblings |
+   | 1196 | the dual, for a node whose `type` is a LIST, read at its own type word (2026-10-26) |
+   | 1216 | the third, for a node at a CONJUNCT of an `allOf`, read as the composition (2026-10-27) |
+
+   So the conjunct half is written and `97w` is not waiting on a sentence — `10l.21`'s fifth
+   instalment is implementing against rule three right now. `zyn`'s type-list half is rule two.
+   The audit read a stale recollection of §8 rather than §8.
+
+   **What survives.** `6zg` is a different shape from either: a class that IS the union of its
+   branches, rather than a branch OF one, and no rule covers it. The row says so in its own title
+   — "the §8 pairing sentence it needs". That one sentence is still owed, and it is the
+   orchestrator's to write.
+
+   Recorded rather than deleted, because the audit's job was to catch exactly this class of drift
+   and it produced an instance of it. A report that re-derives every figure and then cites a
+   document from memory has one leg measured and one leg not.
 
 5. **`architecture.md` §14's note that the wave order is void should be carried into
    `docs/plan/execution-plan.md`, whose table still states the void order as fact.** That file is
