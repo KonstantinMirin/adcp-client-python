@@ -42,21 +42,7 @@ def lower(node: nodes.Reference, mod: Module) -> Decided | Refusal:
     if refused is not None:
         return refused
     if node.position is Position.ROOT:
-        # **A root that is a bare ``$ref`` has no row in §4's table.**  §5 makes a
-        # reference an IMPORT of the target's symbol, and a module whose ROOT symbol is
-        # another module's class is a second import path for that class -- which §1
-        # refuses by name.  A VERDICT, because the obstruction is the POINTER SPACE: the
-        # document names a node that already has a home, and no row is waiting for it.
-        return Refusal(
-            "$ref",
-            node.pointer,
-            f"a root that is a bare reference to {node.uri!r} would bind this "
-            "module's own symbol to a class another module declares, which is a "
-            "second import path for one class (section 1); section 5's $ref row "
-            "makes a reference an import and section 4's table gives a root no such "
-            "shape",
-            kind=Kind.VERDICT,
-        )
+        return _root(node, mod)
     # **The DOCUMENT HALF decides which of the two resolutions this is**, and the reading
     # is ``bundle.split_ref``'s one reading of the ``#``, made by the parser.  An EMPTY
     # half is a pointer into the document being written: there is no module to import
@@ -73,6 +59,75 @@ def lower(node: nodes.Reference, mod: Module) -> Decided | Refusal:
         return target
     mod.imports.add((target.module, target.symbol))
     return Decided(ir.TypeRef(target.symbol, local=True))
+
+
+def _root(node: nodes.Reference, mod: Module) -> Decided | Refusal:
+    """§5(a)'s bare-``$ref`` root: a SUBCLASS of the target where the target is a class.
+
+    "Refused because binding this module's symbol to another module's class would be a
+    second way to reach one class, against §1.  **Where the target is a class the answer
+    is a subclass of it**, which is one class per name and accepts exactly what the base
+    accepts, so §1 is untouched."  The subclass declares no field of its own: the
+    target supplies every one of them by inheritance, nothing of the target is copied
+    (P2), and the pair grades against the document of record -- where §3 inlines the
+    target unchanged, so there is a pointer for every inherited fact.
+
+    ``declare_object`` is the funnel, handed the target's :class:`compiler.Shape` as what
+    the class inherits and no props of its own, exactly as a composing node with one
+    ``$ref`` conjunct and no properties reaches it -- which is what a bare ``$ref`` root
+    IS, spelled without the ``allOf``.  So the ``extra``, the rule tuple, the
+    ``__adcp_schema__`` and the recorded shape are the ones every other class gets, and
+    there is no second reading of what a reference conjunct becomes.
+
+    **Where the target is not a class the symbol is bound BY IDENTITY and that arm is
+    unwired, which is reported rather than hidden.**  §5(a)'s other half -- "where the
+    target is an alias, an enumeration or a root model there is nothing to subclass and
+    the symbol is bound to the target by identity" -- has **population 0** over the
+    portable set: 1 document states a bare-``$ref`` root
+    (``core/signal-pricing-option.json``) and its target is a class.  ``Target.shape`` is
+    the reading of "is a class", and it is ``None`` for a union ROOT as well as for an
+    alias: ``emit.resolve`` declines to hand a union base's shape across a module
+    boundary, which is the answer §5's ``$ref`` row at CONJ already gives ("a union root,
+    whose instance is one of its branches ... is not a class a model can extend") and
+    which §4 part 3 makes load-bearing here -- a subclass of a union base declared
+    elsewhere keeps its OWN schema, so it would accept none of the branches.
+    """
+    target = mod.target(node.uri, node.pointer)
+    if isinstance(target, Refusal):
+        # The run's own refusal for this site, unchanged (§6), and the CHAIN is the
+        # run's to mint: the target is where the obstruction is.
+        return target
+    if target.shape is None:
+        return Refusal(
+            "$ref",
+            node.pointer,
+            f"a root that is a bare reference to {node.uri!r} whose target is not a "
+            "class declaring fields: section 5's bare-$ref root gives a subclass where "
+            "the target is a class and an IDENTITY binding where it is an alias, an "
+            "enumeration or a root model, and the identity half is unwritten -- "
+            "population 0 over the portable set, where the one bare-$ref root's target "
+            "is a class",
+            kind=Kind.DEFERRED,
+        )
+    mod.imports.add((target.module, target.symbol))
+    declared = compiler.declare_object(
+        node,
+        node.pointer,
+        mod,
+        (),
+        # What the class INHERITS, which is the whole of the target's own shape: this
+        # subclass declares nothing, so there is nothing to overlay.
+        target.shape,
+        bases=(ir.TypeRef(target.symbol, local=True),),
+        # §6's description-authority rule, clause 3: this node's own ``description``
+        # sibling where it states one -- §5's ``$ref`` row says the sibling's
+        # description wins -- and the target's where it is silent.  ``declare_object``
+        # reads the node's first and falls back to this.
+        description=target.shape.description,
+    )
+    if isinstance(declared, Refusal):
+        return declared
+    return Decided(ir.TypeRef(declared, local=True))
 
 
 #: Re-exported so ``emit`` keeps one spelling of the reading when it needs the two halves
