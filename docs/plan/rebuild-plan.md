@@ -492,10 +492,26 @@ sources, in order:
 3. **Branches no instance satisfies twice.** Where the branches are pairwise disjoint, the
    payload selects its own branch and the order they are tried in cannot change which one it
    reaches. Disjointness is derived from the branches themselves: one property pinned to
-   different `const` values, a `required` name one branch declares and another forbids, or
-   scalar branches of different `type`. A pair the derivation cannot separate is treated as
-   overlapping, because admitting a union on an unproven disjointness is the defect this source
-   exists to avoid.
+   different `const` values, a `required` name one branch declares and another forbids, **one
+   branch forbidding a VALUE another pins**, or scalar branches of different `type`. A pair the
+   derivation cannot separate is treated as overlapping, because admitting a union on an unproven
+   disjointness is the defect this source exists to avoid.
+
+   *The third separator is new on 2026-10-27, and it exists because neither of the others was
+   sound for a real union.* `media-buy/sync-catalogs-response.json` has a branch forbidding
+   `status == "submitted"` and a branch pinning `status` to that very `const`. Every instance of
+   the second carries a value the first forbids, so the two are disjoint in fact — and no
+   separator reached it: the pinned-`const` separator needs BOTH branches to pin and the first
+   pins nothing, while the required/forbidden separator needs the NAME forbidden outright and the
+   first forbids only the value.
+
+   The verifier reached the right answer by an unsound route, which is how this was found. It
+   collected every singleton `required` under a `not`, so it read
+   `{"properties": {"status": {"const": "submitted"}}, "required": ["status"]}` as forbidding
+   `status` by NAME — which the document does not say. Here the conclusion was right and the
+   reasoning wrong; at a branch pinning some other value it would be wrong in both directions,
+   separating a pair that overlaps. **That over-reading is a defect whether or not this separator
+   lands, and it goes either way.**
 
 A union matching none of the three emits a plain `A | B` over its branches and **declares an
 UNDERDETERMINED approximation at the union's pointer, attributed upstream.**
@@ -931,6 +947,22 @@ Three checks, run once per emitted class against the schema document it names.
   a `format` every shape the format's own checker admits rather than the shape a generator finds
   most likely. A Python type chosen for a node admits everything the node admits, or the choice is
   a narrowing and this check names it with the value.
+
+  **Every position a widening can land at has an instance location (settled 2026-10-27).** The
+  draw places a value at the instance location the node's pointer names, and a position with no
+  location makes a widening UNPROVABLE — which that check counts as a failure, correctly, since
+  an unproved widening is a claim with no instrument on it. Two positions had none, and §5(b)'s
+  `uniqueItems` row lands at both, so 4 of its 5 declarations were unprovable:
+
+  - **A mapping value** — `#/properties/x/additionalProperties`, and the same for
+    `patternProperties`. The location is `x` then any key the mapping admits; a key is a free
+    choice and the draw makes one, so the location exists and simply was not read.
+  - **A `definitions` entry** — `#/definitions/x`. This one has no location of its own and never
+    will: an entry is reachable only through a `$ref` that names it, and §5 declares no entry
+    nothing references. **It needs no new reading, because the rule that a declaration travels
+    with the fact already re-points it to the referring pointer**, which is a `properties`
+    segment the draw already places. The two settlements compose: one gives the declaration a
+    pointer the comparison reads, and that same pointer is one the draw can reach.
 - **Dump.** Serialize the instance and validate the dump against the document. A failure means we
   emit something our own schema refuses.
 - **Compare.** Compare the class's `model_json_schema()` against the document of record (§3),
