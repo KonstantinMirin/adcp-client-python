@@ -407,13 +407,46 @@ def _reaching(population: list[str]) -> tuple[Any, set[str | None]]:
 #: Every portable document declaring a ``task_type`` property -- the field
 #: ``manifest.task_result_resolution`` names as its discriminator -- at any pointer.
 #: Read off the documents, so it is the population of §4's second source and not a
-#: reading of a refusal.
-MANIFEST_DISCRIMINATED = 7
+#: reading of a refusal.  **By NAME and not as a count**, which is §8's rule for a set a
+#: check ranges over: a census equality is one tree's reading of a quantity an emitting
+#: row moves (``tests/test_every_check_names_its_set.py``).
+MANIFEST_DISCRIMINATED = frozenset(
+    {
+        "core/mcp-webhook-payload.json",
+        "core/tasks-get-response.json",
+        "core/tasks-list-request.json",
+        "core/tasks-list-response.json",
+        "protocol/get-task-status-response.json",
+        "protocol/list-tasks-request.json",
+        "protocol/list-tasks-response.json",
+    }
+)
 #: Union roots the walk cannot separate: §4's three sources all answer no, so the union
-#: is step 10's UNDERDETERMINED row.  18 = the 2 that overlapped before §14 step 9
-#: (``adagents.json``, ``brand.json``) plus the 16 the root-siblings row let reach the
-#: derivation for the first time.
-OVERLAPPING_ROOTS = 18
+#: is step 10's UNDERDETERMINED row.  ``adagents.json`` and ``brand.json`` overlapped
+#: before §14 step 9 and the root-siblings row let the other 16 reach the derivation for
+#: the first time, which reconciles the previous instalment's 16 with this set.
+OVERLAPPING_ROOTS = frozenset(
+    {
+        "adagents.json",
+        "brand.json",
+        "content-standards/calibrate-content-response.json",
+        "content-standards/create-content-standards-response.json",
+        "content-standards/get-content-standards-response.json",
+        "content-standards/get-media-buy-artifacts-response.json",
+        "content-standards/list-content-standards-response.json",
+        "content-standards/validate-content-delivery-response.json",
+        "core/evaluator-spec.json",
+        "core/postal-country-system.json",
+        "creative/get-creative-features-response.json",
+        "creative/sync-creatives-response.json",
+        "media-buy/build-creative-response.json",
+        "media-buy/create-media-buy-response.json",
+        "media-buy/sync-audiences-response.json",
+        "media-buy/sync-catalogs-response.json",
+        "media-buy/update-media-buy-response.json",
+        "trusted-match/provider-registration.json",
+    }
+)
 
 
 def _declares(node: Any, field: str, pointer: str = "") -> list[str]:
@@ -468,7 +501,8 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
     resolves = {tool[key] for tool in manifest["tools"].values() if key in tool}
     resolves |= set(resolution["terminal_schema_overrides"].values())
     assert (field, key) == ("task_type", "response_schema"), resolution
-    assert len(manifest["tools"]) == 78, len(manifest["tools"])
+    claimed("manifest tools", manifest["tools"])
+    claimed("schemas the manifest's template resolves", resolves)
 
     # 1. Every document carrying the manifest's key, and whether it states a union.
     carrying = [
@@ -481,7 +515,7 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         carrying,
         inside=bundle.portable(BUNDLE),
     )
-    assert len(named) == MANIFEST_DISCRIMINATED, sorted(named)
+    assert named == set(MANIFEST_DISCRIMINATED), sorted(named)
     for document in sorted(named):
         # A combinator ANYWHERE in the document, read off the text: the claim is that
         # there is no union here at any pointer, and a walk that descended only the
@@ -496,7 +530,7 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         for d, row in out.refusals.items()
         if "branches OVERLAP" in row.get("detail", "") and row["kind"] is not Kind.CHAINED
     )
-    assert len(overlapping) == OVERLAPPING_ROOTS, overlapping
+    assert set(overlapping) == set(OVERLAPPING_ROOTS), sorted(overlapping)
     resolved_overlaps = [d for d in overlapping if d in resolves]
     for document in overlapping:
         row = out.refusals[document]
@@ -512,12 +546,35 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
             b["$ref"].rsplit("/", 1)[-1] for b in branches if "$ref" in b
         } & {r.rsplit("/", 1)[-1] for r in resolves}, document
     # The decisive one: most of them ARE what the manifest resolves TO, so the key is
-    # spent before the branch choice is reached.
+    # spent before the branch choice is reached.  Partitioned BY NAME, because the two
+    # halves are different facts and their sum is not one: the resolved half is where
+    # the manifest's key is spent on the document, and the other five are documents the
+    # manifest does not name at all.
+    partitions(
+        set(overlapping),
+        the_manifest_resolves_the_document=set(resolved_overlaps),
+        the_manifest_does_not_name_it=set(overlapping) - set(resolved_overlaps),
+    )
     claimed(
-        "overlapping roots the manifest's template resolves", resolved_overlaps,
+        "overlapping roots the manifest's template resolves",
+        resolved_overlaps,
         inside=overlapping,
     )
-    assert len(resolved_overlaps) == 13, resolved_overlaps
+    assert set(resolved_overlaps) == {
+        "content-standards/calibrate-content-response.json",
+        "content-standards/create-content-standards-response.json",
+        "content-standards/get-content-standards-response.json",
+        "content-standards/get-media-buy-artifacts-response.json",
+        "content-standards/list-content-standards-response.json",
+        "content-standards/validate-content-delivery-response.json",
+        "creative/get-creative-features-response.json",
+        "creative/sync-creatives-response.json",
+        "media-buy/build-creative-response.json",
+        "media-buy/create-media-buy-response.json",
+        "media-buy/sync-audiences-response.json",
+        "media-buy/sync-catalogs-response.json",
+        "media-buy/update-media-buy-response.json",
+    }, sorted(resolved_overlaps)
 
 
 # --------------------------------------------------------------------------- #
@@ -532,10 +589,15 @@ _ANNOTATIONS = frozenset(
 )
 #: Sites where the branches differ in NOTHING but the pins: §5's pinned-value clause's
 #: whole population over the portable set.
-PINNED_VALUE_SITES = 1
-#: Sites that match once annotations are ignored, so the exclusion above is what the
-#: count turns on and is measured rather than assumed.
-PINNED_VALUE_SITES_IGNORING_ANNOTATIONS = 4
+PINNED_VALUE_SITES = frozenset({"core/canonical-media-buy-action.json#"})
+#: Sites that match once annotations are ignored.  The difference between the two sets is
+#: the clause's own word "only", and both are named rather than counted: a reading that
+#: widened the clause to the other three would redden on a NAME here.
+PINNED_VALUE_SITES_IGNORING_ANNOTATIONS = PINNED_VALUE_SITES | {
+    "core/creative-localization-readback.json#/properties/variants/items",
+    "core/optimization-goal.json#/oneOf/0/properties/target",
+    "core/optimization-goal.json#/oneOf/2/properties/target",
+}
 
 
 def _constraining(declaration: dict) -> dict:
@@ -644,19 +706,16 @@ def test_the_pinned_value_clauses_population_is_one_site_and_the_exclusion_is_me
                 _pins_only(branches, annotations_count=True),
             )
     loose = claimed("pinned-value sites when annotations are ignored", both)
-    assert len(loose) == PINNED_VALUE_SITES_IGNORING_ANNOTATIONS, sorted(loose)
+    assert loose == set(PINNED_VALUE_SITES_IGNORING_ANNOTATIONS), sorted(loose)
     strict = {site for site, (_, _, exact) in both.items() if exact is not None}
     excluded = loose - strict
     partitions(loose, differ_only_in_the_pin=strict, differ_in_an_annotation=excluded)
-    assert strict == {"core/canonical-media-buy-action.json#"}, sorted(strict)
-    assert len(strict) == PINNED_VALUE_SITES, sorted(strict)
+    assert strict == set(PINNED_VALUE_SITES), sorted(strict)
     # Each exclusion, with the annotation that makes it one -- named, so the three are
     # not a residue.
-    assert excluded == {
-        "core/creative-localization-readback.json#/properties/variants/items",
-        "core/optimization-goal.json#/oneOf/0/properties/target",
-        "core/optimization-goal.json#/oneOf/2/properties/target",
-    }, sorted(excluded)
+    assert excluded == set(PINNED_VALUE_SITES_IGNORING_ANNOTATIONS) - set(
+        PINNED_VALUE_SITES
+    ), sorted(excluded)
     for site in sorted(excluded):
         document, _, pointer = site.partition("#")
         branches = next(b for p, _, b in _union_sites(document) if p == f"#{pointer}")
@@ -703,7 +762,6 @@ def test_collapsing_the_one_pinned_value_site_reports_three_added_facts() -> Non
         doc, merged, document=doc, position=keywords.Position.ROOT, at="#"
     )
     assert res.outcome == "model_adds_a_fact", (res.outcome, res.detail)
-    assert len(res.added) == 3, res.added
     assert sorted(f.split(":")[0] for f in res.added) == [
         "/properties/action",
         "/properties/task",
