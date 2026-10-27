@@ -470,6 +470,10 @@ def _mapping(
             # implies it.
             key=_key({"pattern": expression}, f"{pointer}/patternProperties", source),
             pattern=expression if isinstance(expression, str) else None,
+            # The keyword's value as the document wrote it, for §5(b)'s widening: the
+            # expression alone is a projection of it and §9 asks the declared fact to be
+            # the document's own spelling.
+            patterned=patterned,
             patterns=1,
             bounds={k: raw[k] for k in _KEY_BOUNDS if k in raw},
             word=word,
@@ -817,7 +821,9 @@ def presence_clause(branch: Any, position: Position) -> Clause | None:
     return (require, tuple(forbid))
 
 
-def required_groups(sub: Any, position: Position) -> list[tuple[str, ...]] | None:
+def required_groups(
+    sub: Any, position: Position, *, partial: bool = False
+) -> list[tuple[str, ...]] | None:
     """``sub`` as a set of key groups, or ``None`` if it says anything else.
 
     A group is a set of names whose simultaneous presence satisfies ``sub``, so an
@@ -829,6 +835,25 @@ def required_groups(sub: Any, position: Position) -> list[tuple[str, ...]] | Non
     The PARSER's, because :func:`presence_clause` is the classification and needs it, and
     ``lower/rules.py`` reads it from here for its ``not`` and its ``then``/``else`` --
     one reduction of one keyword, which is what §11's "nothing repeats" asks of it.
+
+    **``partial`` makes the ``anyOf`` arm keep the disjuncts it CAN read**
+    (``adcp-client-python-10l.27``, settled 2026-10-27).  ``not (A or B or C)`` is
+    ``not A and not B and not C``, so a disjunct this reduction cannot read contributes
+    NO group and the others still contribute theirs -- which is a WEAKER rule, and §2
+    permits a model looser than its document while forbidding a tighter one.
+    All-or-nothing dropped the whole ``not``: measured at
+    ``media-buy/sync-audiences-response.json``, whose branch 1 forbids ``errors`` and
+    ``task_id`` beside one disjunct stating ``properties`` as well, so the branch carried
+    no ``ForbiddenGroups`` at all and §4's second separator could not see that branch 2
+    requires ``task_id``.
+
+    **It is a PARAMETER and not the rule, because the direction of safety depends on who
+    asks.**  Every reader of this function today asks about a ``not``, where fewer groups
+    forbid less; :func:`presence_clause` also uses the answer to CLASSIFY a branch, and a
+    branch whose ``not`` is only partly readable is a branch stating something a rule
+    cannot say -- reading it as a clause would drop that branch's shape precision with
+    nothing to report it, which is that function's own sentence.  The ``allOf`` arm never
+    takes it: ``not (A and B)`` with ``B`` dropped is ``not A``, which is STRONGER.
     """
     if not isinstance(sub, Mapping):
         return None
@@ -839,8 +864,10 @@ def required_groups(sub: Any, position: Position) -> list[tuple[str, ...]] | Non
     if keys == {"anyOf"} and isinstance(sub["anyOf"], list):
         out: list[tuple[str, ...]] = []
         for branch in sub["anyOf"]:
-            groups = required_groups(branch, position)
+            groups = required_groups(branch, position, partial=partial)
             if groups is None:
+                if partial:
+                    continue
                 return None
             out.extend(groups)
         return out or None
@@ -853,6 +880,58 @@ def required_groups(sub: Any, position: Position) -> list[tuple[str, ...]] | Non
             merged.extend(groups[0])
         return [tuple(merged)] if merged else None
     return None
+
+
+def forbidden_values(sub: Any, position: Position) -> dict[str, Any]:
+    """Each ``(key, value)`` pair ``sub``'s ``not`` forbids, read off a PINNED property.
+
+    **§4's FOURTH separator** (decided 2026-10-27): "one branch forbidding a VALUE another
+    pins".  ``not: {"properties": {"status": {"const": "submitted"}}, "required":
+    ["status"]}`` says no instance carries ``status == "submitted"`` -- the ``required``
+    is what makes the member a statement about the VALUE rather than one satisfied by the
+    key being absent -- and ``anyOf``/``allOf`` of such members forbid each of them,
+    because ``not (A or B)`` is ``not A and not B`` and every member of an ``allOf`` under
+    a ``not``... is NOT read, for the reason :func:`required_groups`' own ``allOf`` arm
+    gives: ``not (A and B)`` leaves either one, so a member of a conjunction forbids
+    nothing by itself.
+
+    A member pinning MORE than one property is read the same way, member by member: it
+    forbids the whole combination and not each pair, so it contributes nothing -- the same
+    distinction ``required_groups`` draws between a singleton group and a longer one.
+
+    The PARSER's, beside :func:`required_groups`, because it is the second reduction of
+    one keyword and §11's "nothing repeats" puts both where the first one is.  A member
+    the reading cannot take contributes nothing and the others still contribute theirs,
+    which is ``required_groups``' ``partial`` rule for the same reason: under a ``not``,
+    forbidding less is the safe direction.
+    """
+    out: dict[str, Any] = {}
+
+    def member(node: Any) -> None:
+        if not isinstance(node, Mapping):
+            return
+        keys = {k for k in node if keywords.declares(k, position)}
+        if keys == {"anyOf"} and isinstance(node["anyOf"], list):
+            for one in node["anyOf"]:
+                member(one)
+            return
+        if keys != {"properties", "required"} or not isinstance(node.get("properties"), Mapping):
+            return
+        required = node.get("required")
+        if not isinstance(required, list) or len(required) != 1:
+            return
+        (name,) = required
+        declaration = node["properties"].get(name)
+        if set(node["properties"]) != {name} or not isinstance(declaration, Mapping):
+            return
+        if "const" in declaration:
+            out[name] = declaration["const"]
+        elif isinstance(declaration.get("enum"), list) and len(declaration["enum"]) == 1:
+            out[name] = declaration["enum"][0]
+
+    if isinstance(sub, Mapping):
+        member(sub.get("not"))
+    return out
 
 
 #: The type words whose ARM row holds constraints of a VALUE: the four scalars and the

@@ -555,6 +555,7 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
     known = set(bundle.portable(BUNDLE))
     local_seen = 0
     unlowered = 0
+    unasked = 0
     for document in out.emitted:
         doc = bundle.read(BUNDLE, document)
         nodes = dict(bundle.nodes(doc))
@@ -562,6 +563,22 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
         for pointer_, uri, _ in bundle.references(doc):
             if (pointer_, uri) not in lowered:
                 unlowered += 1
+                continue
+            if (uri, pointer_) not in out.asked.get(document, frozenset()):
+                # **A site the STATIC reading reports and the WALK does not reach**, which
+                # ``emit``'s own prune is already written against: "that reading is an
+                # over-approximation of what the walk reaches".  The ImportError claim is
+                # about the references the walk LOWERS, so it ranges over the walk's own
+                # record (``emit.Emitted.asked``) and the static reading is what names
+                # this population rather than what the claim is taken over.
+                #
+                # §5(b)'s ``patternProperties`` widening is what first made this live on
+                # an EMITTED document: ``core/creative-assets.json`` drops the pattern's
+                # value typing, so the ``$ref`` inside that value schema is at a position
+                # no class names and the module imports nothing of its target.  Verified
+                # at the module: ``creative_assets.py`` imports only ``adcp.types._base``,
+                # so there is no ImportError and the closure is not broken.
+                unasked += 1
                 continue
             named, pointer = bundle.split_ref(uri)
             if not named:
@@ -589,6 +606,11 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
         "no reference was skipped as unlowered; the RULE-position and dead-section "
         "clauses graded nothing, so either the walk now lowers every reference or the "
         "predicate reads the whole document"
+    )
+    assert unasked, (
+        "no reference was skipped as unasked; the static reading and the walk's own "
+        "record agree everywhere, so either section 5(b)'s widening stopped dropping a "
+        "value schema or emit.Emitted.asked is not the walk's record"
     )
 
 
@@ -7490,6 +7512,92 @@ def test_the_first_refusal_is_the_earliest_in_the_document_and_not_in_the_sort()
     assert not isinstance(refusing("zz", "aa"), tuple)
 
 
+#: **§8's pinned VERDICT SET, by document**, which replaced the verdict CEILING on
+#: 2026-10-27 (``7c11a596``): "the count is not monotone under progress ... What is
+#: pinned instead is the SET, named by document, so a verdict arriving is attributable
+#: and a verdict arriving for a NEW reason reddens.  The figure to drive to zero is
+#: ``refused``, and the verdict column is a reading of it."
+#:
+#: Over the 1,054 PORTABLE documents, which is the population the test below emits.  A
+#: document leaving is a row clearing it; a document arriving is a claim that its
+#: obstruction belongs to the document, to pydantic or to the pointer space, and it has
+#: to be read as that claim rather than absorbed by a number.
+VERDICTS = frozenset(
+    {
+        'account/list-account-changes-response.json',
+        'account/sync-accounts-response.json',
+        'brand.json',
+        'brand/verify-brand-claim-response.json',
+        'core/account-identity-change-preview.json',
+        'core/app-item.json',
+        'core/assets/asset-union.json',
+        'core/assets/card-asset.json',
+        'core/assets/daast-asset.json',
+        'core/assets/display-tag-asset.json',
+        'core/assets/pixel-tracker-asset.json',
+        'core/assets/url-asset.json',
+        'core/assets/vast-asset.json',
+        'core/canonical-format-option.json',
+        'core/canonical-placement.json',
+        'core/canonical-proposal.json',
+        'core/creative-localization-readback.json',
+        'core/creative-localization.json',
+        'core/destination-item.json',
+        'core/education-item.json',
+        'core/flight-item.json',
+        'core/hotel-item.json',
+        'core/job-item.json',
+        'core/localized-creative-asset.json',
+        'core/media-buy-frequency-cap-capability.json',
+        'core/offering-asset-group.json',
+        'core/offering.json',
+        'core/package-signal-targeting-group.json',
+        'core/package-signal-targeting-groups.json',
+        'core/package-signal-targeting.json',
+        'core/product-card-reference-asset.json',
+        'core/product-filters.json',
+        'core/product-signal-targeting-option.json',
+        'core/real-estate-item.json',
+        'core/registry-event.json',
+        'core/registry-feed-response.json',
+        'core/signal-pricing-option.json',
+        'core/targeting-input.json',
+        'core/targeting.json',
+        'core/tracker-execution-contract.json',
+        'core/tracker-execution-selector.json',
+        'core/vehicle-item.json',
+        'core/vendor-pricing-option.json',
+        'creative/get-creative-features-response.json',
+        'creative/list-creatives-response.json',
+        'creative/sync-creatives-response.json',
+        'governance/check-governance-response.json',
+        'media-buy/accept-proposal-response.json',
+        'media-buy/buy-products-response.json',
+        'media-buy/commercial-terms.json',
+        'media-buy/control-media-buy-request.json',
+        'media-buy/get-media-buys-response.json',
+        'media-buy/get-products-targeting-resolution.json',
+        'media-buy/legacy-purchase-continuation-input.json',
+        'media-buy/media-buy-commitment-response.json',
+        'media-buy/package-control.json',
+        'media-buy/package-request.json',
+        'media-buy/package-update.json',
+        'media-buy/product-purchase-input.json',
+        'media-buy/product-purchase.json',
+        'media-buy/refine-proposals-request.json',
+        'media-buy/refine-proposals-response.json',
+        'media-buy/request-proposals-response.json',
+        'property/create-property-list-response.json',
+        'property/get-property-list-response.json',
+        'property/list-property-lists-response.json',
+        'property/property-list.json',
+        'property/update-property-list-response.json',
+        'signals/get-signals-response.json',
+        'trusted-match/provider-registration.json',
+    }
+)
+
+
 def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending() -> None:
     """The exit condition is ``emitted + VERDICTS``, and it is not ``emitted + refused``.
 
@@ -7671,7 +7779,15 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # written for: a run that stops minting CHAINED at all, which would read 0.
     assert len(chained) >= 127, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
-    assert split[refusal_module.Kind.VERDICT] >= 50, dict(split)
+    # **50 -> 44 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and this floor
+    # falls for the reason the one above it does.**  It is a floor on the VERDICT half of
+    # the chains, so it moves whenever a verdict stops being one -- and §8 retired the
+    # verdict ceiling on exactly that ground (``7c11a596``): the count "is not monotone
+    # under progress", so a pin in either direction on it obliges a row that clears a
+    # verdict to loosen one.  §5(b)'s ``patternProperties`` and ``uniqueItems`` rows are
+    # declared widenings now and 29 verdicts left the tree with them.  What this still
+    # catches is what it was written for: a run that stops minting the kind at all.
+    assert split[refusal_module.Kind.VERDICT] >= 44, dict(split)
     assert split[refusal_module.Kind.DEFERRED] >= 1, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
@@ -7823,7 +7939,17 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # ``PresenceGroups`` carries them: over the portable set, emitted 818 -> 825 and
     # refused 236 -> 229, so 23 deferrals left -- 7 as emissions and 16 onto their next
     # keyword.
-    assert resolved[refusal_module.Kind.DEFERRED] <= 130, resolved[refusal_module.Kind.DEFERRED]
+    #
+    # **130 -> 140 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and every one of
+    # the ten is a VERDICT BECOMING A DEFERRAL**, which is the move this ceiling's own
+    # sentence above calls the ratchet working: "a deferral records CLEARABLE work and a
+    # verdict records the obstruction as the document's, so a verdict becoming a deferral
+    # is a claim being withdrawn".  §5(b)'s ``patternProperties`` row moved 15 documents
+    # off the verdict column (7c11a596) and §5(b)'s ``uniqueItems`` row moved 8 more; 13
+    # of those emit and the rest get further and report their next obstruction, which is
+    # unwritten code in every case.  Measured over the portable set: emitted 825 -> 844,
+    # refused 229 -> 210, verdict 99 -> 70, deferred 130 -> 140.
+    assert resolved[refusal_module.Kind.DEFERRED] <= 140, resolved[refusal_module.Kind.DEFERRED]
     # And the half that MAY NOT RISE, pinned at the measurement §14 step 9 left it at:
     # a verdict says the obstruction belongs to the document, so a row that mints one
     # where a deferral stood is charging a document for work nobody has done (§9).
@@ -7865,7 +7991,31 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # The ceiling rises to the measurement, the direction is named, and what it still
     # catches is the event it was written for: a row whose raise sites start charging
     # documents for unwritten work.
-    assert resolved[refusal_module.Kind.VERDICT] <= 99, resolved[refusal_module.Kind.VERDICT]
+    #
+    # **THE CEILING IS RETIRED AT ``7c11a596`` AND THE NAMED SET REPLACES IT.**  §8: "the
+    # VERDICT count is not pinned either, and a ceiling on it was the wrong instrument.
+    # It is not monotone under progress, measured in both directions within one day:
+    # clearing ``union.ROOT_CONJUNCTS`` moved it DOWN 85 ... clearing ``onq``'s Group A
+    # moved it UP 16 ... Both moves are documents progressing, and a ceiling that forbids
+    # the second while rewarding the first is §9's pin with no denominator -- it would
+    # oblige a row that unblocks a document to loosen it.  What is pinned instead is the
+    # SET, named by document, so a verdict arriving is attributable and a verdict
+    # arriving for a NEW reason reddens."
+    #
+    # So this is the set and not the count, and a count below is derived from it rather
+    # than asserted beside it.  Measured at ``adcp-client-python-10l.21``'s second
+    # instalment, where the set FELL from 99 to 70: §5(b)'s ``patternProperties`` row
+    # (15 documents) and §5(b)'s ``uniqueItems`` row (8 and their chains) are declared
+    # widenings now, and a widening is not a verdict.
+    assert set(VERDICTS) == {
+        d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.VERDICT
+    }, sorted(
+        {d for d, r in out.refusals.items() if r["resolved"] is refusal_module.Kind.VERDICT}
+        ^ set(VERDICTS)
+    )
+    assert resolved[refusal_module.Kind.VERDICT] == len(VERDICTS), resolved[
+        refusal_module.Kind.VERDICT
+    ]
     # **THE ``unresolved`` PIN IS GONE WITH THE KIND, AT ``adcp-client-python-10l.6``,
     # AND WHAT REPLACES IT IS THE RETIREMENT ITSELF.**  Architecture §3: "UNRESOLVED
     # disappears.  It named a reference the delegated resolver did not reach, and the
