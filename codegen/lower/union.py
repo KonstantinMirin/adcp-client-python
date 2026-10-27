@@ -1253,6 +1253,37 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
 #: fact for the comparison to miss.  The TABLE is the set of those: a sibling whose
 #: cell carries nothing is admitted, and a sibling whose cell lowers is a constraining
 #: one and reaches this refusal.
+#:
+#: **``type`` IS NOT ONE OF THEM, and the reason is that the fact does not need a slot
+#: on the union's own type: it is already in every branch.**  §5(a)'s first bullet
+#: decides it -- "A plain keyword beside a ``oneOf``/``anyOf``.  §4's union section
+#: already decides it -- *every keyword beside the combinator compiles onto the base,
+#: and every branch inherits it* ... No widening; the keyword compiles" -- and §14 step 9
+#: lists it first among the faithful rows ("root siblings onto a union base, and the
+#: ``applied_schema`` extension of §13 item 3").  The MECHANISM is the parser's, written
+#: for the root position and unconditional: ``schema.parse._union`` hands every branch
+#: ``applied=<the word>``, which is §6's "the union tells the branch" and
+#: ``_base.applied_schema``'s own rule -- the same rule the SCHEMA half of each graded
+#: pair reads.  So the word reaches each branch's own node, decides the kind of a branch
+#: stating none (§5's ``type`` row: "absent beside ``properties`` -> an object, where an
+#: enclosing node applies ``type: object`` to the same instance"), and a branch stating
+#: its own word keeps it.  Nothing is conjoined at a pointer the document does not state,
+#: because nothing is stated anywhere: the word travels as a node field.
+#:
+#: It is CLAIMED and not admitted by the table, which is :func:`compiler.check_keywords`'
+#: own division -- ``handled`` is "the cells this handler writes" -- and this handler
+#: writes the word by handing it down.  ``discriminator`` is the other kind of admission
+#: and stays in the TABLE, because its cell carries nothing at every position.
+#:
+#: Measured over the 1,054 portable documents at ``9e759de``: **21 nodes reach this
+#: screen, 12 of them stating the word and nothing else beside the combinator** (10
+#: ``object``, 2 ``string``).  Admitting it took ``emitted`` 845 -> 871 and ``refused``
+#: 209 -> 183: 9 of the 12 emit, 17 documents chained behind them are freed, and 3 of
+#: the 12 move to their own next obstruction (``brand/verify-brand-claims-response.json``
+#: to a restatement verdict, ``protocol/get-adcp-capabilities-response.json`` to the
+#: ``not``-beside-a-conjoined-type deferral, ``media-buy/get-products-request.json`` to a
+#: chain).  **No module the tree already carried changed by one byte**, which is what
+#: says the word was being dropped at those 12 nodes and nowhere else.
 _NESTED_SIBLING = (
     "a sibling of a nested oneOf/anyOf is a CONJUNCTION with every branch (draft-07), "
     "and a nested union lowers to one type -- A | B -- which has no slot for a fact of "
@@ -1372,7 +1403,13 @@ def nested(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refu
     # ``$ref`` arm's "a sibling of $ref, which draft-07 ignores" -- and the same line
     # that arm draws between an annotation sibling and a constraining one, which is what
     # the TABLE's cells carry.
-    refused = compiler.check_keywords(node, {node.combinator}, _NESTED_SIBLING, mod=mod)
+    #
+    # ``type`` is CLAIMED beside the combinator, and :data:`_NESTED_SIBLING` carries the
+    # whole reason: the parser has already handed the word to every branch
+    # (``schema.parse._union``'s ``applied=``), so the fact is in the branches and needs
+    # no slot on the union's own ``ir.TypeRef``.  §5(a)'s first bullet, §14 step 9's first
+    # faithful row.
+    refused = compiler.check_keywords(node, {node.combinator, "type"}, _NESTED_SIBLING, mod=mod)
     if refused is not None:
         return refused
     return _arms(node, mod)
