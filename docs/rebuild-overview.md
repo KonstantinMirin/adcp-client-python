@@ -9,6 +9,54 @@ versioned with the work instead, and the integration story is still open.
 ---
 
 
+## Why this is a rewrite and not a post-processing pass
+
+The obvious cheaper path is `datamodel-code-generator` plus a pass that repairs its output.
+**It was tried, at length, and it failed for a measured reason.** The attempt is
+`feat/type-lattice-and-subclasses` — 397 commits, 300 files, +15,867/−1,451 — and the reasons
+are recorded in its own commit messages rather than in anyone's recollection.
+
+**Unions and composition, which is the structural one.** From
+`fix(types): refuse to normalize a schema whose union arm is a bare $ref`:
+
+> "dmcg merges a root `properties` into every arm it builds, but a root `allOf` base reaches
+> only the arm built from the root object. Measured on the two pointer-ref proposals responses,
+> `RefineProposalsResponse2` went from 10 fields to 9 and `RequestProposalsResponse4` from 16 to
+> 15, both losing `adcp_version` under `extra=forbid` — so a seller echoing the version on the
+> submitted arm would have been rejected where it previously validated."
+
+A composition that must reach **every** arm cannot be re-attached once the generator has
+flattened the arms: by the time a post-processing pass runs, the arm that needed the base no
+longer exists as a thing to attach it to. That is group G2 of
+[`docs/plan/reasons-vs-rows.md`](plan/reasons-vs-rows.md), and it is the single shape that
+decides this question.
+
+**Classes the application can extend.** From
+`refactor(types)!: make every canonical model a subclass, not a runtime copy`:
+
+> "The canonical creative layer built its 32 public classes with `create_model`, copying
+> `model_fields` off the generated wire model and inheriting nothing from it. That is why an
+> injected generation-pass validator reaches the generated class and never the public one."
+
+A copy is not a subclass. Downstream code, injected validators and `isinstance` all see the
+generated class and not the public one.
+
+**What the other SDKs do with the same bundle**, measured rather than assumed. The TypeScript
+SDK gets families A and B nearly free, because TypeScript has a native intersection type and
+`allOf` maps onto `A & B`; Python has none, which is why those families cost us a compiler. It
+absorbs the rest silently: 126 empty `{} &` conjuncts, 128 `unknown`, 52 numbered artifacts. The
+v9 Python SDK ships 21,928 classes from `datamodel-code-generator`, pins its exact version
+because variant numbering (`CreateMediaBuyResponse1`) shifts between releases, carries 243
+`dict[str, Any]` and 263 `Any`, and waives whole classes of divergence with seven predicate
+lambdas in `tests/conformance/_schema_parity.py` — among them
+`conditional_subschema_is_not_generated`.
+
+v9 is not strictly worse, and the comparison should be made honestly: it computes the
+`url-asset` `allOf` intersection to `Literal['url']` with a default, for a document this
+compiler currently refuses. The difference is that its waivers are **predicates** over a
+`schema_path`, where this compiler enumerates each site — and that a predicate waiver is, in
+`harness.URL_IMPLIED`'s words, "invisible and permanent".
+
 ## The decision that changes the project (2026-10-26)
 
 **Zero refusals is the outcome.** Every schema document is represented as a Python class, root
