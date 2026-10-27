@@ -266,6 +266,16 @@ class Union(Base):
     #: the semantics document: "every keyword beside the combinator compiles onto the
     #: base, and every branch inherits it."
     siblings: Mapping[str, Any] = field(default_factory=dict)
+    #: The node's own ``required``, in the document's own order.  Beside
+    #: :attr:`siblings` and not read out of it, for the reason :attr:`Base.declared`
+    #: and :attr:`Base.extra` are fields rather than entries there: §5's ``required``
+    #: row at ROOT beside a union is "required on the base's fields, and the names
+    #: recorded in ``_ROOT_REQUIRED``", and the reader of that is
+    #: ``compiler.lower_composition``, which takes this field off every kind that can
+    #: state one (:attr:`Composition.required`, :attr:`Object.required`).  So one
+    #: spelling serves the three kinds and the union's siblings carry what is left,
+    #: which is the conjunct list.
+    required: tuple[str, ...] = ()
     #: The node's own ``type`` word, where it states one.  §4 of the semantics document
     #: makes a root ``type`` an assertion about the same instance every branch sees, so
     #: this is what a branch stating none of its own inherits (``lower.union``'s applied

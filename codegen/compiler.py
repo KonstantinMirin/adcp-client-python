@@ -56,7 +56,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from adcp.types._base import Approximation, SchemaRef
-from adcp.types._runtime import Rule
+from adcp.types._runtime import ForbiddenGroups, Rule
 from codegen import ir, keywords, refusal
 from codegen.ir import MISSING
 from codegen.keywords import Position
@@ -743,6 +743,18 @@ class Rules:
     screen: frozenset[str]
     rules: tuple[Rule, ...]
     distinct: tuple[str, ...]
+    #: The names this node forbids ONE AT A TIME, read off the ``ForbiddenGroups`` the
+    #: rules above already reduced the node's ``not`` to: a SINGLETON group says the
+    #: name is not present at all, where a longer one says only that the group is not
+    #: present IN FULL and so forbids no single name.
+    #:
+    #: Read here and not in the lowering that needs it, for the reason the other four
+    #: are: §4's third dispatch source asks "a ``required`` name one branch declares and
+    #: another FORBIDS", and the reduction of ``not``/``anyOf``/``allOf`` over
+    #: ``required`` into groups is ``lower.rules``' one reading -- a lowering cannot
+    #: import it (§11) and a second reduction of the same keyword is the second copy §3
+    #: forbids.  So the dispatch derivation reads the rule the branch already carries.
+    forbids: frozenset[str] = frozenset()
 
 
 def rules_at(
@@ -793,10 +805,18 @@ def rules_at(
     distinct: list[str] = []
     for one in lowered:
         distinct += [key for key in one.distinct if key not in distinct]
+    written = tuple(rule for one in lowered for rule in one.rules)
     return Rules(
         screen=screen,
-        rules=tuple(rule for one in lowered for rule in one.rules),
+        rules=written,
         distinct=tuple(distinct),
+        forbids=frozenset(
+            group[0]
+            for rule in written
+            if isinstance(rule, ForbiddenGroups)
+            for group in rule.groups
+            if len(group) == 1
+        ),
     )
 
 
@@ -1296,6 +1316,18 @@ def declare_object(
     # with fields passes through, so a row cannot forget to record what it decided.
     # The caller's own ``decided`` is what the class INHERITS (a composing row passes
     # its bases'), and the props it is handed are this class's own and win the key.
+    #
+    # **A UNION BASE records one too, and what it is NOT allowed to do is CROSS A
+    # MODULE BOUNDARY.**  §5's ``$ref`` row at CONJ decides a union root by name --
+    # "where it is not a class declaring fields -- a scalar, an enum, a container, or a
+    # UNION ROOT, whose instance is one of its branches -- it is not a class a model can
+    # extend" -- and that is a statement about a REUSER in another document.  Inside the
+    # declaring module the base's shape is exactly what §4's "a branch composes its own
+    # with them" needs: a branch class subclasses the base, so the base's declarations
+    # and decided fields are what it inherits.  So the record is written here for every
+    # class and ``emit.resolve`` is what declines to hand a union base's across, keyed
+    # on :attr:`codegen.ir.ClassDecl.branches` -- the fact that says the instance is one
+    # of the branches, read where the :class:`Target` is built.
     mod.shapes[pointer] = replace(
         shape,
         decided={**shape.decided, **{p.wire: p for p in props}},
@@ -1483,6 +1515,35 @@ COMPOSING = frozenset({"type", "allOf", "properties", "required", "additionalPro
 _COMBINATORS = ("oneOf", "anyOf")
 
 
+@dataclass(frozen=True)
+class UnionBase:
+    """§4's facts a union BASE carries and no other class does, as one argument.
+
+    :func:`declare_object` already takes the four separately, because it is the one
+    funnel every class passes through and a union base is one of them.  This carries
+    them across :func:`lower_composition`, which is the reader §5's union row names for
+    the root's own siblings -- "every keyword beside the combinator compiles onto the
+    base ... so they compile as they would on any class -- fields, ``extra``, bases,
+    rules" -- and the ``allOf`` row's "beside a union → the same, onto the base".
+
+    One carrier rather than four parameters, for :class:`Rules`' reason: the four are
+    read off one reading of the union node, and a caller that passed three of them
+    would have declared a base that dispatches to nothing.  Its presence is also what
+    tells that function the combinator beside the conjuncts is the CALLER's business --
+    ``lower.union`` is declaring the branches -- rather than the unreportable
+    conjunction :func:`_refuse_a_combinator_of_shapes` refuses.
+    """
+
+    #: The names the ROOT requires, as opposed to the ones that select a branch.
+    root_required: tuple[str, ...]
+    #: §4's derived dispatch property, empty where the branches pin none.
+    discriminator: str
+    #: ``oneOf`` or ``anyOf`` -- the keyword a runtime refusal has to name.
+    combinator: str
+    #: The branch classes, by pointer until ``lower/names.py`` binds them.
+    branches: tuple[ir.TypeRef, ...]
+
+
 def _refuse_a_combinator_of_shapes(
     node: "nodes.Base", screen: frozenset[str]
 ) -> Refusal | None:
@@ -1615,6 +1676,9 @@ def lower_composition(
     mod: Module,
     *,
     bases: tuple[ir.TypeRef, ...] = (),
+    union: UnionBase | None = None,
+    inherits: Shape | None = None,
+    base_if_none_composes: ir.TypeRef | None = None,
 ) -> str | Decided | Refusal:
     """Append the class for an ``allOf`` node and return its POINTER.
 
@@ -1708,6 +1772,39 @@ def lower_composition(
     A property the node declares only inside a conditional is merged in for the
     reason :class:`Rules` states: a rule naming a key the class has no field for
     refuses a payload the document admits.
+
+    **``union`` and ``inherits`` are §14 step 9's union row, and both say that a UNION
+    is read here rather than beside here.**  §5's union row compiles the root's
+    ``properties``, ``required``, ``additionalProperties`` and ``allOf`` "onto the base
+    ... as they would on any class -- fields, ``extra``, bases, rules", so the base is a
+    class this function declares and :class:`UnionBase` is the four facts it carries
+    beyond one.  ``inherits`` is the other half of the same sentence -- "a branch
+    composes its own with them": a branch class's bases include the union base, so the
+    base's declarations and decided fields are INHERITED exactly as a ``$ref``
+    conjunct's are, and §2's restatement rule is what decides a branch that declares a
+    property the root also declares.  Without it a branch lowered from its own node
+    alone shadows the base's field, which is measurable and was measured: over the 61
+    documents §14 step 9 unblocks, 135 restatements drop a ``description`` the root
+    states and 79 drop a ``required`` the root states, in 14 and 4 documents.
+
+    ``inherits`` is a :class:`Shape` and not a :class:`Target` because the base is in
+    THIS module; :func:`_reused` says what that changes, which is one screen and
+    nothing else.
+
+    **``base_if_none_composes`` is :func:`declare_object`'s own sentence, made
+    available to a caller that supplies a base of its own.**  That sentence is "``bases``
+    is empty for a node that composes nothing, and then the base is ``AdCPBaseModel``; a
+    composing row passes the symbols its ``$ref`` conjuncts bound ... and
+    ``AdCPBaseModel`` arrives through them" -- and it holds because an empty ``bases``
+    is what the renderer's ``custom_base_class`` answers.  A union base is the one class
+    with a base of its OWN that is not a model class: ``BranchDispatchMixin`` has to come
+    FIRST, so its ``__get_pydantic_core_schema__`` is the one the MRO finds.  Passing the
+    model base beside it is what MRO-conflicts a root that also composes --
+    ``(BranchDispatchMixin, AdCPBaseModel, AdCPVersionEnvelope, ProtocolEnvelope)`` puts
+    a class before two of its own subclasses and Python refuses to build it, measured on
+    ``account/get-account-financials-response.json`` and nine more.  So the caller says
+    what the base would be if nothing composed, and this function -- the one place that
+    knows whether anything did -- writes it only there.
     """
     # Any kind may arrive -- a hand-written probe states ``allOf`` beside a combinator and
     # the parser classifies it a ``Union``, which is §5's own arm order -- so the fields
@@ -1744,10 +1841,19 @@ def lower_composition(
             kind=Kind.VERDICT,
         )
     stated = rules_at(node, position=position)
-    combinator_of_shapes = _refuse_a_combinator_of_shapes(node, stated.screen)
-    if combinator_of_shapes is not None:
-        return combinator_of_shapes
-    screened = check_keywords(node, COMPOSING | stated.screen, mod=mod)
+    if union is None:
+        # A node that composes AND carries a combinator of shapes, where nobody is
+        # declaring the branches: the conjunction of a conjunct list with a branch list
+        # has no pointer for a class to name.  With ``union`` supplied the caller IS
+        # declaring one class per branch (§4), each at its own ``#/<kw>/<i>`` pointer,
+        # and §8's pairing rule reads a branch node under the root's siblings -- so the
+        # conjunction has a pointer and a grader, which is exactly what the refusal said
+        # it lacked.
+        combinator_of_shapes = _refuse_a_combinator_of_shapes(node, stated.screen)
+        if combinator_of_shapes is not None:
+            return combinator_of_shapes
+    claimed = COMPOSING | stated.screen | ({union.combinator} if union is not None else set())
+    screened = check_keywords(node, claimed, mod=mod)
     if screened is not None:
         return screened
 
@@ -1764,6 +1870,16 @@ def lower_composition(
     #: the field rather than re-deciding the node; :attr:`Shape.decided` says why.
     inherited_fields: dict[str, ir.Field] = {}
     inherited_from: dict[str, Target] = {}
+    if inherits is not None:
+        # §4's "a branch composes its own with them", seeded before the conjunct list:
+        # the caller's own ``bases`` already declare these keys, so they are INHERITED
+        # in exactly the sense a ``$ref`` conjunct's are, and every reading below -- the
+        # restatement rule, the requiredness overlay, the re-use of a decided field --
+        # is the one §2 states for a base.  ``inherited_from`` is left empty on purpose:
+        # the base is in this module, so there is nothing to import (:func:`_reused`).
+        inherited.update(inherits.properties)
+        inherited_fields.update(inherits.decided)
+        inherited_required |= inherits.required
     #: Every LOCAL declaration that won its key, and where it was declared.  The
     #: root's own properties and an inline conjunct's land in the SAME map,
     #: because draft-07 applies both to the same instance.
@@ -2357,8 +2473,22 @@ def lower_composition(
             decided=inherited_fields,
         ),
         position,
-        bases=(*bases, *conjunct_bases),
+        extras=getattr(node, "extras", None),
+        # The model base only where NOTHING composes; see ``base_if_none_composes``.
+        bases=(
+            (*bases, *conjunct_bases)
+            if conjunct_bases or base_if_none_composes is None
+            else (*bases, base_if_none_composes)
+        ),
         rule_nodes=conjunct_rules,
+        # §4's three facts a union base carries and no other class does, and the
+        # branch list §7 gives the base's fourth slot: ``None`` for every node that is
+        # not one, which is what :func:`declare_object` reads to tell a base from a
+        # class (and, through ``branches``, what tells it to record no reusable shape).
+        root_required=None if union is None else union.root_required,
+        discriminator=None if union is None else union.discriminator,
+        combinator=None if union is None else union.combinator,
+        branches=None if union is None else union.branches,
         # §6's description-authority rule, clause 3, at a CLASS: this node's own
         # description where it states one, and the base's where it is silent.  The
         # composed document states the base's at this pointer -- ``harness._composed``
@@ -2431,7 +2561,7 @@ def _reused(
     reaches one.
     """
     held, source = inherited_fields.get(key), inherited_from.get(key)
-    if held is None or source is None:
+    if held is None:
         return Refusal(
             "properties",
             pointer,
@@ -2440,6 +2570,17 @@ def _reused(
             f"no type to re-use and lowering the restatement alone would type it Any",
             kind=Kind.VERDICT,
         )
+    if source is None:
+        # **The base is declared in THIS module**, which is §4's union base: a branch
+        # composes with it and the base is not a ``$ref`` conjunct, so there is no
+        # :class:`Target` for it and nothing to import -- the field's type names this
+        # module's own declarations by pointer and ``lower/names.py`` binds them.  The
+        # import screen below is about crossing a module boundary, and this does not
+        # cross one.  Measured over the 1,054 portable documents: **0 branches reach
+        # here**, because 0 of the 145 branch restatements of a root-declared property
+        # state nothing but annotations (139 narrow and 6 restate identically), so this
+        # arm is written for the first document that does rather than discovered by it.
+        return held
     wanted = ir.symbols(held.type)
     unplaceable = sorted(wanted - source.shape.declares) if source.shape else sorted(wanted)
     if unplaceable:
@@ -2764,6 +2905,36 @@ def _restatement(
     # nothing to say about a two-member vocabulary.
     if not c:
         return False
+    if "$ref" in b and b.get("$ref") != c.get("$ref"):
+        # **The base's whole constraining content is a ``$ref`` this predicate could
+        # NOT resolve, so whether the restatement narrows it is unanswerable** -- and
+        # :func:`_at_least_as_tight`'s own rule decides that: "a keyword this cannot
+        # read is not tight enough and the caller refuses -- never admitted on the
+        # ground that it is probably fine, which would be a model wider than its
+        # document at a keyword nobody looked at."  ``$ref`` was the one keyword that
+        # escaped it, because an unresolved reference leaves the two declarations
+        # SHARING NO KEYWORD at all: the loop below then has nothing to range over, the
+        # novelty test says the child adds something, and the field is decided from the
+        # child alone with every fact behind the reference dropped.
+        #
+        # Measured over the 1,054 portable documents: **1 site**,
+        # ``brand/verify-brand-claim-response.json#/definitions/signed_response``, whose
+        # conjunct restates ``payload`` with two properties over
+        # ``core/response-payload-jws-envelope.json``'s ``{"$ref":
+        # "#/definitions/response_payload"}`` -- a pointer into the BASE's own document,
+        # which ``Module.resolve_node`` answers by URI and so cannot reach.  Emitted, the
+        # class dropped 6 of the 8 properties that payload requires and the comparison
+        # reported 4 ``missing`` and 2 ``differs`` for it, which is a model wider than
+        # its document.
+        #
+        # It reports through the shared "neither matches nor narrows" arm and takes that
+        # arm's kind, which is the arm's own answer and not this clause's: what the
+        # document needs is §5's ``properties`` row -- "two object declarations compose
+        # as an ``allOf`` of the two at that property" -- which is decided and
+        # unimplemented, and which the same arm refuses the subschema-valued
+        # restatements of ``core/assets/*-asset.json`` for.  Filed rather than decided
+        # here.
+        return None
     if not all(_at_least_as_tight(k, c[k], b[k], resolve) for k in set(c) & set(b)):
         return None
     # It narrows when the INTERSECTION says more than the base does.  Asked of the

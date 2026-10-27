@@ -169,8 +169,24 @@ def _data_type(decided: ir.TypeRef) -> Any:
         return _TYPES.data_type(data_types=[_data_type(t) for t in decided.of])
     if decided.container == "alias":
         outer = _TYPES.get_data_type_from_full_path(decided.path, is_custom_type=False)
-        args = ", ".join(_data_type(t).type_hint for t in decided.of)
-        return _TYPES.data_type(type=f"{outer.type_hint}[{args}]", import_=outer.import_)
+        inner = [_data_type(t) for t in decided.of]
+        args = ", ".join(t.type_hint for t in inner)
+        # **The ARGUMENTS are passed as well as spelled, so their own imports reach the
+        # module.**  A generic alias's subscript is written as TEXT here, because the
+        # model layer has no carrier for "this alias applied to these types"; written as
+        # text alone, every argument's ``import_`` is dropped -- the model's import set
+        # is collected off ``data_types`` -- and the module names a symbol it does not
+        # import.  Latent until §14 step 9: an argument that is itself an alias needs a
+        # second name from ``adcp.types.constraints``, which only happens where a
+        # container alias's element is a constrained type, and
+        # ``brand/get-brand-identity-response.json``'s ``tagline`` --
+        # ``NonEmptyList[DictMinProperties1MaxProperties1[str, StrMinLen1]]`` -- is the
+        # first node in the emitted population to be one.  ``type`` is still what the
+        # hint is read off, so the text is unchanged wherever the arguments needed no
+        # import, which is every node the tree carried before (byte-compared).
+        return _TYPES.data_type(
+            type=f"{outer.type_hint}[{args}]", import_=outer.import_, data_types=inner
+        )
     if decided.path == "None":
         return _TYPES.data_type(type="None")
     if decided.local:

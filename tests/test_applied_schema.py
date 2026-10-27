@@ -224,7 +224,8 @@ def test_the_difference_between_the_two_halves_is_a_schema_fact() -> None:
 
     A string is the probe because the fact conjoined at every CONSTRAINED node is
     ``type: "object"``, which
-    :func:`test_the_only_fact_conjoined_at_a_constrained_node_is_its_object_type` is
+    :func:`test_what_is_conjoined_at_a_constrained_node_is_its_object_type_and_its_root_s_own_statement`
+    is
     what establishes.
     """
     constrained, loose = census()
@@ -258,6 +259,7 @@ def test_the_difference_between_the_two_halves_is_a_schema_fact() -> None:
 
     untouched: set[tuple[str, str]] = set()
     conjoined: dict[str, set[tuple[str, str]]] = {}
+    asserted: dict[str, set[tuple[str, str]]] = {}
     for document, pointers in loose.items():
         doc = bundle.read(BUNDLE, document)
         for pointer in pointers:
@@ -265,8 +267,20 @@ def test_the_difference_between_the_two_halves_is_a_schema_fact() -> None:
             assert applied.get("type") != "object", (document, pointer)
             if applied is bare:
                 untouched.add((document, pointer))
-            else:
+                continue
+            # **TWO things can be conjoined now and the loop counts each** (§13 item 3,
+            # settled): the ``type`` word an enclosing node applies, and the SAME-INSTANCE
+            # STATEMENT it makes -- its ``properties``, ``required``,
+            # ``additionalProperties`` and its own ``allOf`` -- spliced into this node's
+            # conjunct list.  A node that takes only the second has no ``type`` key at
+            # all, which is what the single-keyed reading here raised ``KeyError`` on.
+            if "type" in applied and "type" not in bare:
                 conjoined.setdefault(repr(applied["type"]), set()).add((document, pointer))
+            if applied.get("allOf") != bare.get("allOf"):
+                spliced = applied["allOf"][: len(applied["allOf"]) - len(bare.get("allOf") or [])]
+                for one in spliced:
+                    for key in one:
+                        asserted.setdefault(key, set()).add((document, pointer))
     # The loose half: almost every node is handed back UNTOUCHED, and the few that are
     # not take a type that is never ``object`` -- asserted just above, per node.  Which
     # TYPES get conjoined is the fact; how many nodes each one reaches is one bundle
@@ -274,12 +288,23 @@ def test_the_difference_between_the_two_halves_is_a_schema_fact() -> None:
     claimed("loose nodes handed back untouched", untouched)
     assert set(conjoined) == {"'string'", "'array'"}, {k: len(v) for k, v in conjoined.items()}
     assert all(conjoined.values()), conjoined
+    # And WHICH keywords reach a node as an enclosing node's statement, which is the
+    # set §5's union row compiles onto a base: the three it states inline, plus whatever
+    # the enclosing node's own conjuncts state, which is a conjunct's whole content and
+    # so is not a fixed set.  The three are asserted as a SUBSET-of relation in the
+    # direction that matters -- every one of them is reached, so no arm of
+    # ``_base._conjunction`` is graded by a loop that met none of it -- and ``title``
+    # and ``description`` are asserted ABSENT, because §6 answers an annotation at the
+    # pointer that states it and the splice drops them.
+    assert {"properties", "required", "additionalProperties"} <= set(asserted), sorted(asserted)
+    assert not {"title", "description"} & set(asserted), sorted(asserted)
+    assert all(asserted.values()), asserted
 
 
-def test_the_only_fact_conjoined_at_a_constrained_node_is_its_object_type() -> None:
-    """Every fact ``applied_schema`` conjoins at a CONSTRAINED node is
-    ``type: "object"``, it conjoins no other keyword, and it changes no fact the node
-    already states.
+def test_what_is_conjoined_at_a_constrained_node_is_its_object_type_and_its_root_s_own_statement() -> None:
+    """``applied_schema`` adds the enclosing ``type`` word and the enclosing node's own
+    SAME-INSTANCE STATEMENT, it adds nothing else, and it changes no fact the node
+    already states but its conjunct list.
 
     The structural half of the check above, over all 2,040 rather than the 1,541 a
     ``jsonschema`` call can reach offline -- and the reason the probe there may be a
@@ -287,17 +312,51 @@ def test_the_only_fact_conjoined_at_a_constrained_node_is_its_object_type() -> N
     enclosing ``["object", "null"]`` is not one and lands in the loose half; if a
     document ever states a different enclosing type this reports it rather than
     letting the string probe go quietly vacuous.
+
+    **This test said "``type: object`` is the ONLY fact conjoined" and §13 item 3
+    retires that sentence**, which ``_base.applied_schema``'s own KNOWN CEILING
+    forecast: "a row whose root asserts more than a type about the same instance needs
+    this extended".  §14 step 9 is that row, and §8's pairing rule is what the
+    extension is graded by -- "a branch class of a root union is paired with its branch
+    node read UNDER THE ROOT'S SIBLINGS".  So what this grades is the SHAPE of the
+    conjunction rather than its absence:
+
+    * the keys ADDED are ``type`` (always ``'object'`` at a constrained node, which is
+      what the string probe above depends on) and ``allOf``, the conjunct list;
+    * every other fact the node states is returned UNCHANGED, which is the half that
+      says the node's own statement always wins;
+    * the conjunct list is the node's OWN conjuncts with the enclosing statements
+      PREPENDED, so nothing of the node's is dropped or reordered, and no spliced
+      conjunct carries a ``title`` or a ``description`` -- §6 answers an annotation at
+      the pointer that states it.
     """
     constrained, _ = census()
     added: dict[str, set[str]] = {}
+    spliced_at: set[tuple[str, str]] = set()
     for document, pointers in constrained.items():
         doc = bundle.read(BUNDLE, document)
         for pointer in pointers:
             bare, applied = _node(doc, pointer), applied_schema(doc, pointer)
             for key in set(applied) - set(bare):
-                added.setdefault(key, set()).add(repr(applied[key]))
-            assert {k: v for k, v in applied.items() if k in bare} == bare, (document, pointer)
-    assert added == {"type": {"'object'"}}, added
+                added.setdefault(key, set()).add(key if key == "allOf" else repr(applied[key]))
+            own = bare.get("allOf") or []
+            if applied.get("allOf") != bare.get("allOf"):
+                spliced_at.add((document, pointer))
+                # The node's own conjuncts are the TAIL, untouched and in order.
+                assert applied["allOf"][len(applied["allOf"]) - len(own) :] == own, (
+                    document,
+                    pointer,
+                )
+                for one in applied["allOf"][: len(applied["allOf"]) - len(own)]:
+                    assert not {"title", "description"} & set(one), (document, pointer, one)
+            assert {k: v for k, v in applied.items() if k in bare and k != "allOf"} == {
+                k: v for k, v in bare.items() if k != "allOf"
+            }, (document, pointer)
+    assert added == {"type": {"'object'"}, "allOf": {"allOf"}}, added
+    # Non-empty, so the ``allOf`` arm is not graded by a loop that met none of it: the
+    # population is a branch of a root union whose root states a sibling, which is
+    # exactly what §14 step 9 made emittable.
+    claimed("constrained nodes a root's own statement is spliced into", spliced_at)
 
 
 #: Nodes the root constrains to an object that ALSO constrain themselves, so the
@@ -311,11 +370,33 @@ def test_the_only_fact_conjoined_at_a_constrained_node_is_its_object_type() -> N
 #: target's own root states ``type: object`` -- so the branch node refuses a string on
 #: its own, before anything enclosing it is applied.  Measured directly:
 #: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False``.
+#: **ELEVEN more at ``adcp-client-python-10l.20``, and the mechanism is the one this
+#: file's own earlier test already measured**: "326 of the 1,541 are in that second
+#: group, every one of them refusing a non-object for a reason of its own (a ``not`` over
+#: a ``required``, which a non-object satisfies vacuously, so the negation fails)".  Each
+#: of these is a branch of a root union §14 step 9 unblocked, each states
+#: ``not: {"required": [...]}`` -- the idiom §4's third dispatch source reads to separate
+#: them -- and a string satisfies the inner ``required`` vacuously, so the negation fails
+#: and the BARE node refuses the string before anything enclosing it is applied.
+#: Measured directly, the same way the three below were:
+#: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False`` for all 11
+#: and ``True`` for the other 43 rows.
 ALREADY_AN_OBJECT_ITSELF = frozenset(
     {
         "core/canonical-media-buy-action.json#/oneOf/0",
         "core/canonical-media-buy-action.json#/oneOf/1",
         "core/canonical-media-buy-action.json#/oneOf/2",
+        "brand/creative-approval-response.json#/oneOf/0",
+        "brand/creative-approval-response.json#/oneOf/1",
+        "brand/creative-approval-response.json#/oneOf/2",
+        "brand/creative-approval-response.json#/oneOf/3",
+        "brand/get-brand-identity-response.json#/oneOf/0",
+        "brand/get-brand-identity-response.json#/oneOf/1",
+        "brand/get-rights-response.json#/oneOf/0",
+        "brand/get-rights-response.json#/oneOf/1",
+        "brand/search-brands-response.json#/oneOf/0",
+        "brand/search-brands-response.json#/oneOf/1",
+        "core/brand-response-authorization-result.json#/oneOf/0",
     }
 )
 
@@ -356,6 +437,20 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
     # documents they come from is the fact worth pinning and it is named below.
     claimed("pairs at a node its own document constrains", {g.ref for g in rows})
     assert {g.ref.document for g in rows} == {
+        # **TWO more at ``adcp-client-python-10l.20``, out of six that joined and four
+        # that the exclusion above takes** (§14 step 9).  Six union roots whose own
+        # siblings now compile onto the base emit, each having refused as
+        # ``union.ROOT_CONJUNCTS`` -- "there is no pointer to the conjunction for a
+        # branch class to name" -- and §8's pairing rule is what answers it, so their
+        # branch classes reach this population by the mechanism the four below reached
+        # it by.  Four of the six contribute no ROW, because every one of their branches
+        # states a ``not`` over a ``required`` and so refuses a non-object on its own:
+        # they are in ``ALREADY_AN_OBJECT_ITSELF``, which says so and is measured there.
+        # ``core/brand-response-authorization-result.json`` contributes one of its two
+        # branches for that same reason, and ``brand/verify-brand-claim-request.json``
+        # both.  The per-row loop grades all 40 and reported nothing new.
+        "brand/verify-brand-claim-request.json",
+        "core/brand-response-authorization-result.json",
         "core/activation-key.json",
         "core/reporting-write-destination.json",
         # Four more at 16052ffb0, and they are the four documents that left
@@ -779,6 +874,12 @@ def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
     # eighteen more documents under it, and every reference in all 21 resolves through
     # ``applied_schema`` above.
     assert set(per_document) == {
+        # **Two more at ``adcp-client-python-10l.20``**: both are union roots §14 step 9
+        # unblocked, and both state a local ``$ref`` inside a branch -- so the pairs
+        # that reach this loop are their branch classes, and the references resolve
+        # through the widened scope exactly as the eighteen below do.
+        "brand/get-brand-identity-response.json",
+        "brand/search-brands-response.json",
         "aao/agent-publishers.json",
         "core/bidding-policy-capability.json",
         "core/placement-presentation.json",
