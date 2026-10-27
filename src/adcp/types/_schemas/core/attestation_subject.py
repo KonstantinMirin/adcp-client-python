@@ -51,8 +51,8 @@ class AttestationResourceSubject(AttestationSubject):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-subject.json', pointer='#/oneOf/2')
     type: Literal['resource']
-    resource_type: Annotated[str, Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.', json_schema_extra={'format': 'uri'})]
-    namespace: Annotated[str, Field(description='Absolute URI identifying the namespace in which id is unique. This may be an AdCP agent endpoint, a catalog origin, or a domain-specific namespace URI.', json_schema_extra={'format': 'uri'})]
+    resource_type: Annotated[HttpUrl, Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
+    namespace: Annotated[HttpUrl, Field(description='Absolute URI identifying the namespace in which id is unique. This may be an AdCP agent endpoint, a catalog origin, or a domain-specific namespace URI.')]
     id: Annotated[StrMinLen1MaxLen1024, Field(description='Stable identifier for the subject within namespace. It MUST NOT be compared without resource_type and namespace.')]
     content_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='Optional SHA-256 pin for the exact content or immutable snapshot identified by this resource subject. This is part of the complete typed subject identity and is distinct from AttestationReference.content_digest, which pins credential bytes.')] = None
     ext: ExtensionObject | None = None

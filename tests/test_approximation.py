@@ -46,7 +46,6 @@ from adcp.types._base import (
     SchemaRef,
     schema_at,
 )
-from adcp.types import constraints as public_constraints
 from codegen import attribution, bundle, compiler, emit, harness, ir, keywords, render
 from codegen.harness import Pair
 from codegen.keywords import Effect, Position, Rung
@@ -830,59 +829,51 @@ def test_the_accepts_obligation_passes_a_real_widening_and_fails_a_narrowing() -
     assert "the class refuses it" in caught.narrowings[0]
 
 
-#: **Row ``.10``'s narrowing, REPAIRED, and the node the repair is measured at.**
+#: **Row ``.10``'s LIVE NARROWING, and what this row's obligation measures about it.**
 #: The epic's note: ``core/attestation-capabilities.json``, property
 #: ``accepted_claim_types``: "the element states ``{"type":"string","format":"uri"}`` and
 #: nothing about length, while the model's element carries ``minLength: 1, maxLength:
 #: 2083``.  Those are pydantic ``HttpUrl``'s own bounds, which section 5's ``format`` row
 #: brings in with the type, and they make the model NARROWER than its document."
 #:
-#: Section 5's ``format`` row reads "``uri`` -> a URL type chosen by ``pattern``", so a
-#: node stating no ``pattern`` has nothing to choose a URL type from and takes the row's
-#: own otherwise branch -- the ``str`` with the format riding as ``json_schema_extra``.
-#: This element is ``StrFormatUri`` now, and the obligation below measures the repair at
-#: the same node, through the same entry point, on the same seven value classes.
+#: ``test_emit.py::test_an_arrays_bound_is_the_lists_and_not_its_elements`` is the
+#: known-red test that documents it and row ``.10`` owns the fix.  This is the measurement
+#: this row owes: does the accepts obligation CATCH it.
 NARROWED = "core/attestation-capabilities.json"
 NARROWED_AT = "#/properties/accepted_claim_types/items"
 
 
 def test_the_accepts_obligation_catches_row_10s_live_narrowing() -> None:
-    """**Row ``.10``'s narrowing is GONE, proved on the same obligation that caught it.**
+    """**It does, by value and by pointer, and it finds three more of the same shape.**
 
     Measured through the PRODUCTION entry point -- ``strict_validate`` on the emitted
-    class, against the document of record -- on the same declaration and the same node.
-    The four narrowings this function used to assert were:
+    class, against the document of record -- with the same declaration row ``.10`` would
+    write when its ``format`` cell widens.  The obligation reports four narrowings where
+    the document admits the value and the class refuses it:
 
-    * ``urn:ietf:rfc:3986``, ``file:///tmp/a`` and ``mailto:a@example.com`` --
-      ``url_scheme``.  These were the NAMED CEILING the alias module's docstring recorded:
+    * ``urn:ietf:rfc:3986``, ``file:///tmp/a`` and ``mailto:a@example.com`` -- ``url_scheme``.
+      These are the NAMED CEILING ``render.CONSTRAINTS_DOCSTRING`` already records:
       "``HttpUrl`` still refuses ``urn:`` and ``file:``, which is a named ceiling rather
-      than an oversight."  A named ceiling is still a narrowing, and section 2 forbids one
-      whatever it is called.
-    * a 2,220-character ``https`` URL -- ``url_too_long``, which was row ``.10``'s own
-      defect and the one ``test_emit.py::test_an_arrays_bound_is_the_lists_and_not_its_elements``
-      was red on.
+      than an oversight."  The obligation does not know a ceiling from a defect and should
+      not: it reports that the class refuses a value RFC 3986 admits, which is true of all
+      four, and whose of the four are decided is the reading a row makes of the report.
+    * a 2,220-character ``https`` URL -- ``url_too_long``, which is row ``.10``'s own
+      defect and the one the known-red test is about.
+    *
+    **Why the ANSWER IS NOT A PASS TODAY, and this test is green anyway.**  The obligation
+    fires only where a declaration claims something, and this row declares nothing: the
+    ``format`` cell is unwidened, ``APPROXIMATED`` is 0, and the four narrowings are
+    therefore not reported by any run.  What is asserted here is the INSTRUMENT: given the
+    declaration row ``.10`` will write, the obligation refuses it.  So the answer row
+    ``.10`` inherits is that it cannot declare this widening -- section 9's "an
+    approximation that narrows is not an approximation ... Widen by another rung -- to
+    ``Any`` if nothing else carries it -- rather than declaring the narrowing."
 
-    **All four were the selected TYPE and none was the document, so dropping the type
-    dropped all four at once.**  Section 5's ``format`` row chooses the URL type from the
-    document's ``pattern``; this node states no ``pattern``, so there is nothing to choose
-    from and the row's own otherwise branch answers -- the ``str`` with the format riding
-    as ``json_schema_extra``.  The element accepts every one of the seven shapes the
-    ``uri`` checker admits now, including the three schemes and the long URL, and the
-    obligation PASSES with nothing unproved.
-
-    **And no approximation is declared for the repair, which is the point of the rung it
-    took.**  The document states ``type: string`` and ``format: uri``; the model states
-    ``type: string`` and ``format: uri``.  Nothing is dropped, so section 8's
-    *over-declared* outcome would report a declaration -- the declaration built below is
-    this test's instrument and not something a run writes.
-
-    **The draw alone would never have reached three of the classes, which is the whole of
-    section 8's covering rule** and is why the pass is worth asserting rather than
-    assuming.  ``hypothesis_jsonschema`` honours ``format: uri`` and draws a short
-    ``http://``, which the class accepted even while refusing ``urn:``: "a sampling draw
-    reports only the values it drew -- so it can run green forever against a type that
-    refuses a whole class of admissible value."  The instrument's own CATCH is graded
-    above, on a model built to narrow, so retiring the narrowing here retires no coverage.
+    **And the three classes the draw alone would never have reached is the whole of section
+    8's covering rule.**  ``hypothesis_jsonschema`` honours ``format: uri`` and draws a
+    short ``http://``, which the class accepts: the accepts check has been green on this
+    node forever.  "A sampling draw reports only the values it drew -- so it can run green
+    forever against a type that refuses a whole class of admissible value."
     """
     record = schema_at(SchemaRef(NARROWED, "#"))
     node = harness.at(record, NARROWED_AT[1:])
@@ -903,16 +894,19 @@ def test_the_accepts_obligation_catches_row_10s_live_narrowing() -> None:
     res = harness.check_widening(
         drawn_from, model.strict_validate, (declaration,), instance=seen[0]
     )
-    assert res.outcome == "pass", (res.unproved, res.narrowings)
-    # Every shape the ``uri`` checker admits, not just the ones a draw reaches: the
-    # denominator is ``harness.FORMAT_SHAPES``'s own row, so a shape added there is
-    # covered here or this reddens.
-    assert res.accepted == len(harness.FORMAT_SHAPES["uri"]), (res.accepted, res.narrowings)
-    # And the element really is the ``str`` the row's otherwise branch names, read off the
-    # class rather than off the emitted source: a URL type would carry the four refusals
-    # back in, and no other annotation in this field's position could.
-    element = model.model_fields["accepted_claim_types"].annotation
-    assert element == list[public_constraints.StrFormatUri], element
+    assert res.outcome == "narrowing_wearing_a_declaration", (res.unproved, res.narrowings)
+    refused = {line.split(" -- ")[0].split(": ", 1)[1] for line in res.narrowings}
+    assert refused == {
+        "a URN (uri)",
+        "a file URL (uri)",
+        "a mailto URI (uri)",
+        "a URL longer than 2,083 characters (uri)",
+    }, sorted(refused)
+    # Row ``.10``'s own defect, named by the pydantic error the epic's note names.
+    assert [line for line in res.narrowings if "url_too_long" in line], res.narrowings
+    # And the pointer is the element's and not the list's, which is what the known-red
+    # test's own name is about.
+    assert all(NARROWED_AT in line for line in res.narrowings), res.narrowings
 
 
 def test_a_declaration_whose_classes_cannot_be_enumerated_is_unproved_and_not_a_pass() -> None:

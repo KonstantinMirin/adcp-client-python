@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types.constraints import HttpUrl
 
 
 class CreativeItem(BranchDispatchMixin, AdCPBaseModel):
@@ -29,7 +30,7 @@ class CreativeItemMedia(CreativeItem):
     asset_kind: Annotated[Literal['media'], Field(description='Discriminator indicating this is a media asset with content_uri')]
     asset_type: Annotated[str, Field(description='Type of asset. Common types: thumbnail_image, product_image, featured_image, logo')]
     asset_id: Annotated[str, Field(description='Unique identifier for the asset within the creative')]
-    content_uri: Annotated[str, Field(description='URL for media assets (images, videos, etc.)', json_schema_extra={'format': 'uri'})]
+    content_uri: Annotated[HttpUrl, Field(description='URL for media assets (images, videos, etc.)')]
 
 
 class CreativeItemText(CreativeItem):

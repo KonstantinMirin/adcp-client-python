@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import StrMatchingEFC12812, StrMaxLen2000
+from adcp.types.constraints import HttpUrl, StrMatchingEFC12812, StrMaxLen2000
 
 
 class SignalModelingDisclosureJurisdictionsItemAudience(StrEnum):
@@ -30,7 +30,7 @@ class SignalModelingDisclosureJurisdictionsItem(AdCPBaseModel):
     region: Annotated[str | None, Field(description='Provider-defined sub-national region code or name when the obligation is regional. No global canonical format is implied.')] = None
     regulation: Annotated[str, Field(description='Provider-supplied regulation identifier for the disclosure obligation.')]
     disclosure_text: Annotated[str | None, Field(description='Human-readable disclosure text or summary the provider expects buyers or reviewers to see.')] = None
-    disclosure_url: Annotated[str | None, Field(description="Optional URL to the provider's canonical disclosure or methodology page for this jurisdiction.", json_schema_extra={'format': 'uri'})] = None
+    disclosure_url: Annotated[HttpUrl | None, Field(description="Optional URL to the provider's canonical disclosure or methodology page for this jurisdiction.")] = None
     audience: Annotated[SignalModelingDisclosureJurisdictionsItemAudience | None, Field(description='Primary audience for this disclosure entry.')] = None
 
 

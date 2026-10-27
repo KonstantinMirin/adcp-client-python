@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen1MaxLen256
+from adcp.types.constraints import HttpUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen256
 
 from ..enums.cloud_storage_protocol import CloudStorageProtocol
 from .brand_ref import BrandReference
@@ -43,7 +43,7 @@ class TMPIdentityMatchBuyerAgent(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/1/properties/buyer_agent')
-    agent_url: Annotated[str, Field(description="Buyer agent's registered agent URL. Canonical identifier, mirroring trusted_match.providers[].agent_url.", json_schema_extra={'format': 'uri'})]
+    agent_url: Annotated[HttpUrl, Field(description="Buyer agent's registered agent URL. Canonical identifier, mirroring trusted_match.providers[].agent_url.")]
 
 
 class TMPIdentityMatch(AudienceActivationMethod):

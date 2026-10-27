@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import StrMinLen16, StrMinLen32
+from adcp.types.constraints import HttpUrl, StrMinLen16, StrMinLen32
 
 from ..enums.auth_scheme import AuthenticationScheme
 from ..enums.available_metric import AvailableMetric
@@ -46,7 +46,7 @@ class ReportingWebhook(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('requested_metrics'),
     )
-    url: Annotated[str, Field(description='Webhook endpoint URL for reporting notifications', json_schema_extra={'format': 'uri'})]
+    url: Annotated[HttpUrl, Field(description='Webhook endpoint URL for reporting notifications')]
     token: Annotated[StrMinLen16 | None, Field(description='Optional client-provided token for webhook validation. Echoed back in webhook payload to validate request authenticity.')] = None
     authentication: Annotated[ReportingWebhookAuthentication, Field(description="Legacy authentication configuration for webhook delivery (A2A-compatible). Opts the receiver into Bearer or HMAC-SHA256 signing. Both schemes are deprecated; the preferred signing profile for new integrations is RFC 9421, where the seller signs with a key published at its brand.json agents[] entry and the buyer verifies against the seller's JWKS — no shared secret crosses the wire (see docs/building/by-layer/L1/security.mdx#webhook-callbacks). This field is required in AdCP 3.x; the requirement is removed in AdCP 4.0 when the default RFC 9421 path becomes the only path.")]
     reporting_frequency: Annotated[ReportingWebhookReportingFrequency, Field(description='Frequency for automated reporting delivery. Must be supported by all products in the media buy.')]

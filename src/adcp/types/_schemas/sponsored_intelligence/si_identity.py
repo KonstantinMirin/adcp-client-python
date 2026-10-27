@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import HttpUrl
 
 
 class SIIdentityConsentScopeItem(StrEnum):
@@ -25,7 +26,7 @@ class SIIdentityPrivacyPolicyAcknowledged(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-identity.json', pointer='#/properties/privacy_policy_acknowledged')
-    brand_policy_url: Annotated[str | None, Field(description="URL to brand's privacy policy", json_schema_extra={'format': 'uri'})] = None
+    brand_policy_url: Annotated[HttpUrl | None, Field(description="URL to brand's privacy policy")] = None
     brand_policy_version: Annotated[str | None, Field(description='Version of policy acknowledged')] = None
 
 

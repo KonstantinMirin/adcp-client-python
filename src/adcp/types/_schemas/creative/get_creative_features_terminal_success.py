@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import StrMatching43E30B32, StrMinLen1
+from adcp.types.constraints import HttpUrl, StrMatching43E30B32, StrMinLen1
 
 from ..core.context import ContextObject
 from ..core.creative_consumption import CreativeConsumption
@@ -29,7 +29,7 @@ class GetCreativeFeaturesSuccess(AdCPBaseModel):
     )
     evaluation_id: Annotated[StrMinLen1 | None, Field(description='Provider-generated identity for this evaluation. Optional in AdCP 3.x and required in AdCP 4.0. Providers SHOULD emit it in 3.x. When present, it MUST be stable across exact response replays and, for async work whose submitted acknowledgement included evaluation_id, MUST be identical to that value. Used for result provenance, consumption and provider-cost reconciliation, and support; it is not an idempotency key or task identity.')] = None
     results: Annotated[list[CreativeFeatureResult], Field(description='Feature values for the evaluated creative')]
-    detail_url: Annotated[str | None, Field(description="URL to the vendor's full assessment report. The vendor controls what information is disclosed and access control.", json_schema_extra={'format': 'uri'})] = None
+    detail_url: Annotated[HttpUrl | None, Field(description="URL to the vendor's full assessment report. The vendor controls what information is disclosed and access control.")] = None
     audit_observations: Annotated[list[CreativeAuditObservation] | None, Field(description='Non-blocking audit observations from the governance agent. Observations surface audit-worthy claims that are not verifier refutations and are not rejection grounds by themselves.')] = None
     pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this evaluation. Present when the governance agent charges for evaluations and account was provided in the request.')] = None
     vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Cost incurred for this evaluation, denominated in currency.')] = None

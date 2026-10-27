@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
-from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import HttpUrl, StrMinLen16MaxLen255Matching1E5CF9EB
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -33,7 +33,7 @@ class UpdateContentStandardsRequestCalibrationExemplarsPassItemUrl(AdCPBaseModel
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/update-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/pass/items/oneOf/0')
     type: Annotated[Literal['url'], Field(description='Indicates this is a URL reference')]
-    value: Annotated[str, Field(description="Full URL to a specific page (e.g., 'https://espn.com/nba/story/_/id/12345/lakers-win')", json_schema_extra={'format': 'uri'})]
+    value: Annotated[HttpUrl, Field(description="Full URL to a specific page (e.g., 'https://espn.com/nba/story/_/id/12345/lakers-win')")]
     language: Annotated[str | None, Field(description='BCP 47 language tag for content at this URL')] = None
 
 
@@ -43,7 +43,7 @@ class UpdateContentStandardsRequestCalibrationExemplarsFailItemUrl(AdCPBaseModel
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/update-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/fail/items/oneOf/0')
     type: Annotated[Literal['url'], Field(description='Indicates this is a URL reference')]
-    value: Annotated[str, Field(description="Full URL to a specific page (e.g., 'https://news.example.com/controversial-article')", json_schema_extra={'format': 'uri'})]
+    value: Annotated[HttpUrl, Field(description="Full URL to a specific page (e.g., 'https://news.example.com/controversial-article')")]
     language: Annotated[str | None, Field(description='BCP 47 language tag for content at this URL')] = None
 
 

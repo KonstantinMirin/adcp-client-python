@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max1, HttpUrl, StrFormatUri
+from adcp.types.constraints import FloatMin0Max1, HttpUrl
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
@@ -114,7 +114,7 @@ class ProductAudienceEvidenceRequirements(AdCPBaseModel):
     methodology_documentation_required: bool | None = False
     independent_attestation_required: bool | None = False
     accepted_attestation_issuers: Annotated[list[ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemBrand | ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemAgent | ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemOrigin] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_attestation_claim_types: Annotated[list[StrFormatUri] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     ext: ExtensionObject | None = None
 
 

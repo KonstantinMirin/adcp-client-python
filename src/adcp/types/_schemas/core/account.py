@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
-from adcp.types.constraints import AdCPUrl, IntMin1, StrMatching32F5291C, StrMatching43E30B32, StrMaxLen512Matching7C270D5A, StrMaxLen64Matching2AA13120, StrMinLen1, StrMinLen3MaxLen63MatchingBF870236
+from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin1, StrMatching32F5291C, StrMatching43E30B32, StrMaxLen512Matching7C270D5A, StrMaxLen64Matching2AA13120, StrMinLen1, StrMinLen3MaxLen63MatchingBF870236
 
 from ..enums.account_scope import AccountScope
 from ..enums.account_status import AccountStatus
@@ -42,7 +42,7 @@ class AccountSetup(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account.json', pointer='#/properties/setup')
-    url: Annotated[str | None, Field(description='URL where the human can complete the required action (credit application, legal agreement, add funds).', json_schema_extra={'format': 'uri'})] = None
+    url: Annotated[HttpUrl | None, Field(description='URL where the human can complete the required action (credit application, legal agreement, add funds).')] = None
     message: Annotated[str, Field(description="Human-readable description of what's needed.")]
     expires_at: Annotated[AwareDatetime | None, Field(description='When this setup link expires.')] = None
 

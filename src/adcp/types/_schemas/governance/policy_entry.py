@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import StrMatchingA2A26C71, StrMaxLen500, StrMaxLen5000, StrMinLen1
+from adcp.types.constraints import HttpUrl, StrMatchingA2A26C71, StrMaxLen500, StrMaxLen5000, StrMinLen1
 
 from ..core.ext import ExtensionObject
 from ..enums.channels import MediaChannel
@@ -82,7 +82,7 @@ class PolicyEntry(AdCPBaseModel):
     governance_domains: Annotated[list[GovernanceDomain] | None, Field(description='Governance sub-domains this policy applies to. Determines which types of governance agents can declare registry:{policy_id} features. For example, a policy with domains ["creative", "property"] can be declared as a feature by both creative and property governance agents.')] = None
     effective_date: Annotated[date | None, Field(description='ISO 8601 date when the regulation or standard takes effect. Before this date, governance agents treat the policy as informational (evaluate but do not block). After this date, the policy is enforced at its declared enforcement level.')] = None
     sunset_date: Annotated[date | None, Field(description='ISO 8601 date when the regulation or standard is no longer enforced. After this date, governance agents stop evaluating this policy. Omit if the policy has no expiration.')] = None
-    source_url: Annotated[str | None, Field(description='Link to the source regulation, standard, or legislation.', json_schema_extra={'format': 'uri'})] = None
+    source_url: Annotated[HttpUrl | None, Field(description='Link to the source regulation, standard, or legislation.')] = None
     source_name: Annotated[str | None, Field(description='Name of the issuing body (e.g., "UK Food Standards Agency", "US Federal Trade Commission").')] = None
     issuer: Annotated[PolicyEntryIssuer | None, Field(description='Machine-readable identity of the regulator, standards body, or platform operator that issued the policy. Registry publishers SHOULD provide this when independently versioned issuer policies must be distinguished.')] = None
     acceptance_profile: Annotated[AcceptancePolicyProfile | None, Field(description='Optional reusable, machine-readable acceptance profile derived from this registry policy. Registry publishers MUST bind policy_refs to exact versions. Sellers adopt a profile explicitly; registry publication alone does not make it authoritative for a seller.')] = None

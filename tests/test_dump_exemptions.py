@@ -323,18 +323,9 @@ def test_the_bundles_uri_pattern_population_is_the_one_d5_states() -> None:
 #: At 40 draws two independent streams disagreed about how many of the eight patterns
 #: their own type's output refuses -- one said one, the other said two -- which is the
 #: same "passes by luck of the draw" failure the latent entry exists for, arriving in
-#: the instrument instead of in the dump half.  At 500 every pattern has a non-empty
-#: document-admitted population (27 to 322 round trips over the eight), which is the
-#: denominator the assertions need.
-#:
-#: **Raising it was the right move for the wrong reading, and the figures it was pinned
-#: on are gone** (``adcp-client-python-oxa``).  The two rates it recorded -- "one
-#: violates 96 of 96 and the other 15 of 348" -- were over values drawn from the
-#: pattern ALONE, and the second pattern's share of them is values its own document
-#: refuses, so it was a rate over a population no class can receive.  Over the values
-#: the document admits only one of the eight is violated, at 34 of 34, and that
-#: certainty is what :func:`test_every_violating_uri_pattern_that_reaches_a_pair_is_exempt`
-#: asserts.  The disagreement between streams at 40 draws was real and the raise stands.
+#: the instrument instead of in the dump half.  At 500 the two violating patterns are
+#: found by both, and the rates separate them: one violates 96 of 96 round-tripped
+#: values and the other 15 of 348.
 DRAWS = 500
 
 
@@ -345,60 +336,30 @@ class Roundtrip(NamedTuple):
     which D4 gives to the schema half -- and it is carried so ``round_tripped`` can be
     asserted non-empty.  A pattern whose every draw was refused on the way in would
     report zero violations while measuring nothing.
-
-    **``round_tripped`` and ``violated`` are over the values THE DOCUMENT ADMITS, and
-    ``off_document`` is the rest** (``adcp-client-python-oxa``).  A ``format: uri`` node
-    states the format and the pattern TOGETHER, and the schema half asserts both --
-    ``harness._validating`` hands the draft's own ``FORMAT_CHECKER`` to every validator,
-    so a string the ``uri`` checker refuses never reaches a constructor and no class
-    ever dumps one.  Drawing from the pattern alone therefore graded the type on values
-    the document refuses, and ``off_document`` keeps that population visible rather than
-    discarding it: it is the count of pattern-admitted draws the DOCUMENT refused, with
-    ``off_document_violated`` the part of it whose round trip the pattern then refused.
     """
 
     round_tripped: int
     violated: int
     refused_in: int
     examples: tuple[tuple[str, str], ...]
-    off_document: int = 0
-    off_document_violated: int = 0
 
 
 def _roundtrip(pattern: str, examples: int = DRAWS) -> Roundtrip:
-    """Values the DOCUMENT admits, round-tripped through the type the EMITTER chooses.
+    """Strings the pattern admits, round-tripped through the type the EMITTER chooses.
 
     Drawn rather than written: written candidates for eight patterns would be eight
     guesses about what each one means, and a wrong guess shows up as a pattern graded
     only on values that happen to round-trip.  The type comes from
-    ``constraints.url_type`` itself rather than from a restatement of its rule here, so
-    this grades the emitter's choice and not a type chosen here -- a second copy of that
-    rule is how a check comes to grade a document against a compiler nobody runs.
-    ``re.search`` and not ``fullmatch``, because search is what JSON Schema's ``pattern``
-    means.
-
-    **The node is the pattern AND the format, which is the correction this function
-    needed** (``adcp-client-python-oxa``).  ``st.from_regex`` reaches the pattern's own
-    space, and a draw from it is only a value a class can receive when the WHOLE node
-    admits it: the eight patterns all sit at ``format: uri`` nodes, the schema half
-    asserts that format (``harness.conforms`` -> ``harness._validating`` -> the draft's
-    own ``FORMAT_CHECKER``, with ``rfc3987`` deciding ``uri``), and ``strict_validate``
-    runs the document before anything is constructed.  So a string like
-    ``https://a.com/x{y}`` -- which ``^https://[!$&-;=@-~]+$`` admits and RFC 3986 does
-    not, ``{`` being no URI character -- is refused by the document, reaches no
-    constructor, and is dumped by nothing.  Counting its normalised form
-    ``https://a.com/x%7By%7D`` as a violation measured the generator, not the SDK.
-
-    The gate is ``harness.conforms`` on the node, which is the production instrument the
-    dump half itself uses, so the two cannot disagree about what the document admits.
+    ``constraints.url_type``'s own rule, so this grades the emitter's choice and not a
+    type chosen here.  ``re.search`` and not ``fullmatch``, because search is what
+    JSON Schema's ``pattern`` means.
     """
     adapter = TypeAdapter(
-        getattr(public_constraints, constraints.url_type({"pattern": pattern}).rsplit(".", 1)[1])
+        public_constraints.AdCPUrl
+        if pattern == constraints.HTTPS_ONLY
+        else public_constraints.HttpUrl
     )
-    node = {"type": "string", "format": "uri", "pattern": pattern}
-    counts = dict.fromkeys(
-        ("round_tripped", "violated", "refused_in", "off_document", "off_document_violated"), 0
-    )
+    counts = {"round_tripped": 0, "violated": 0, "refused_in": 0}
     bad: list[tuple[str, str]] = []
 
     @settings(
@@ -411,31 +372,20 @@ def _roundtrip(pattern: str, examples: int = DRAWS) -> Roundtrip:
     )
     @given(st.from_regex(pattern))
     def body(value: str) -> None:
-        admitted = harness.conforms(node, value) is True
         try:
             out = adapter.dump_python(adapter.validate_python(value), mode="json")
         except Exception:  # noqa: BLE001 -- refused on the way IN, which is D4's half
-            counts["refused_in"] += admitted
-            return
-        violated = re.search(pattern, out) is None
-        if not admitted:
-            counts["off_document"] += 1
-            counts["off_document_violated"] += violated
+            counts["refused_in"] += 1
             return
         counts["round_tripped"] += 1
-        if violated:
+        if re.search(pattern, out) is None:
             counts["violated"] += 1
             if len(bad) < 2:
                 bad.append((value, out))
 
     body()
     return Roundtrip(
-        counts["round_tripped"],
-        counts["violated"],
-        counts["refused_in"],
-        tuple(bad),
-        counts["off_document"],
-        counts["off_document_violated"],
+        counts["round_tripped"], counts["violated"], counts["refused_in"], tuple(bad)
     )
 
 
@@ -462,11 +412,11 @@ def test_every_violating_uri_pattern_that_reaches_a_pair_is_exempt() -> None:
     carry raw.  So a pattern that forbids what normalization PRODUCES cannot be
     satisfied by the type's output, whatever it was handed.
 
-    **ONE of the eight is violated, and the reading of "two" measured the GENERATOR
-    rather than the SDK** (``adcp-client-python-oxa``).  The property asserted is not a
-    count of violating patterns but the one that decides the SDK's output: every
-    violating pattern that reaches a packaged document is exempt, and every exempt
-    position belongs to a violating pattern.  Both directions redden.
+    **Two of the eight are violated, not one**, and the earlier reading of "exactly
+    one" was a 40-draw artifact.  The property asserted is therefore not a count of
+    violating patterns but the one that decides the SDK's output: every violating
+    pattern that reaches a packaged document is exempt, and every exempt position
+    belongs to a violating pattern.  Both directions redden.
 
     * A second violating pattern in a later bundle, at a position the emitter emits,
       reddens here rather than waiting for a draw to find it in the dump half.
@@ -474,35 +424,22 @@ def test_every_violating_uri_pattern_that_reaches_a_pair_is_exempt() -> None:
       ``test_every_entry_resolves_and_still_states_its_value`` reddens on the entry
       until it is removed.
 
-    ``^https://[!$&-;=@-~]+$`` NOW REACHES FOUR PACKAGED POSITIONS and is still not
-    exempt, and the reason changed from reach to measurement.  The sentence this
-    replaces said its one site was
-    ``core/agent-reporting-destination-state.json#/properties/setup/properties/setup_url``
-    in an unemitted document, so it reached no pair; that document emits now and the
-    record inlines the node into three more.  The old reading of the violation was that
-    the class forbids ``%`` while admitting ``{``, so percent-encoding a ``{`` breaks
-    it.  **Measured against the whole node, the violation is not the SDK's**: ``{`` is
-    not a URI character, the node states ``format: uri`` beside the pattern, and the
-    schema half asserts that format -- so ``https://a.com/x{y}`` is refused by the
-    document, reaches no constructor, and is dumped by nothing.  Over the values the
-    DOCUMENT admits the pattern is violated 0 times in 309 round trips, and the
-    pattern-only reading was stream-dependent besides (6 of 399 in one stream, 0 of 416
-    in another), which is exactly the "passes by luck of the draw" failure ``DRAWS``
-    was raised for, arriving in the instrument.  ``_roundtrip`` draws over the node
-    instead and keeps the off-document population visible, which is what the last two
-    assertions read.
-
-    ORIGIN_ONLY separates from it on the same measurement and not on a judgement:
-    ``https://x.example`` IS a valid URI, the document admits it, and its normalized
-    form ``https://x.example/`` is refused by the pattern -- 34 of 34 document-admitted
-    round trips, a certainty, in every stream.
+    ``^https://[!$&-;=@-~]+$`` is the second violator and it is deliberately NOT
+    exempt.  The class forbids ``%``, so percent-encoding a ``{`` or an ``@`` breaks
+    it -- measured at 4 of 380 round-tripped draws of this function's own stream, a
+    RATE where the first is a certainty.  **The reason it is not exempt is reach, not
+    rate**: its one site is ``core/agent-reporting-destination-state.json#/properties/
+    setup/properties/setup_url``, that document is not emitted, so it reaches no pair
+    and no class emits a value against it.  That is what the last assertion states,
+    and it is read off the packaged tree rather than off a draw.  If the emitter
+    starts emitting the document, the first assertion reddens and a human decides
+    whether the set grows.
 
     **No drawn RATE is asserted here, deliberately.**  A derandomized stream is a
     function of this function's identity and of the pinned ``hypothesis`` version, so
     a rate assertion would redden on a rename -- a defect in the instrument wearing
     the clothes of a defect in the SDK.  What is asserted is a certainty (every
-    document-admitted round trip refused), an absence of violation, and facts read off
-    documents.
+    round-tripped value refused) and two facts read off documents.
     """
     patterns = _uri_patterns()
     assert patterns, "the denominator is empty: no uri pattern would be graded"
@@ -518,32 +455,13 @@ def test_every_violating_uri_pattern_that_reaches_a_pair_is_exempt() -> None:
         "exempt": exempt,
     }
     # ORIGIN_ONLY is not violated at a RATE: it is unsatisfiable, and that is the
-    # ground D5 keeps the URL type on.  Every value the DOCUMENT admits and the type
-    # re-emits is refused by it, so no conforming URL library could satisfy it.
+    # ground D5 keeps the URL type on.  Every value the type accepts and re-emits is
+    # refused by it, so no conforming URL library could satisfy it.
     origin = measured[ORIGIN_ONLY]
     assert origin.violated == origin.round_tripped, origin
-    # **The pattern that used to be the second violator, asserted as the two facts that
-    # now decide it** rather than as the one that used to (``_packaged_positions(...)
-    # == []``, which said the document was not emitted).  It REACHES four packaged
-    # positions -- one authored node, inlined three more times by the record -- and no
-    # value its document admits violates it, so there is nothing for an exemption to
-    # excuse and the set does not grow.  The off-document population is asserted
-    # non-empty as well: it is where the apparent violation lived, and a zero there
-    # would mean this function stopped reaching the values that raised the question.
-    oxa = "^https://[!$&-;=@-~]+$"
-    assert _packaged_positions(oxa) == [
-        "core/agent-reporting-destination-state.json#/properties/setup/properties/setup_url",
-        "core/principal-state.json"
-        "#/properties/reporting_destinations/items/properties/setup/properties/setup_url",
-        "protocol/get-principal-response.json#/properties/result/oneOf/0/properties"
-        "/configuration/properties/reporting_destinations/items/properties/setup/properties"
-        "/setup_url",
-        "protocol/sync-principal-response.json#/properties/result/oneOf/0/properties"
-        "/configuration/properties/reporting_destinations/items/properties/setup/properties"
-        "/setup_url",
-    ], _packaged_positions(oxa)
-    assert measured[oxa].violated == 0, measured[oxa]
-    assert measured[oxa].off_document, measured[oxa]
+    # The second violator reaches no packaged document, which is why it is upstream's
+    # and not exempted here.  Read off the tree, so no draw decides it.
+    assert _packaged_positions("^https://[!$&-;=@-~]+$") == []
 
 
 # --------------------------------------------------------------------------- #

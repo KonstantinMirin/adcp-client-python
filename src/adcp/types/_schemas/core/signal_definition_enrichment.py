@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, IntMin1, IntMin1Max90, StrMatchingEFC12812, StrMaxLen253, StrMaxLen500, StrMinLen1
+from adcp.types.constraints import AdCPUrl, HttpUrl, IntMin1, IntMin1Max90, StrMatchingEFC12812, StrMaxLen253, StrMaxLen500, StrMinLen1
 
 from ..enums.consent_basis import ConsentBasis
 from ..enums.restricted_attribute import RestrictedAttribute
@@ -51,7 +51,7 @@ class SignalDefinitionEnrichmentTaxonomy(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/taxonomy')
-    ref: Annotated[str, Field(json_schema_extra={'format': 'uri'})]
+    ref: HttpUrl
     version: str | None = None
     segtax: IntMin1 | None = None
     etag: str | None = None
@@ -239,7 +239,7 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
     policy_categories: Annotated[list[str] | None, Field(description='Policy categories this signal is sensitive for.', min_length=1)] = None
     taxonomy: Annotated[SignalDefinitionEnrichmentTaxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.')] = None
     segmentation_criteria: StrMaxLen500 | None = None
-    criteria_url: Annotated[str | None, Field(json_schema_extra={'format': 'uri'})] = None
+    criteria_url: HttpUrl | None = None
     data_sources: Annotated[list[SignalDefinitionEnrichmentDataSourcesItem] | None, Field(min_length=1)] = None
     methodology: SignalDefinitionEnrichmentMethodology | None = None
     audience_expansion: bool | None = None
