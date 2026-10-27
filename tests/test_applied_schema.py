@@ -874,6 +874,18 @@ def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
     # eighteen more documents under it, and every reference in all 21 resolves through
     # ``applied_schema`` above.
     assert set(per_document) == {
+        # **Three more at ``adcp-client-python-10l.21``'s second instalment**, and all
+        # three are §5(b)'s ``uniqueItems`` row becoming a declared WIDENING rather than
+        # a verdict.  ``core/daast-tracker-constraints.json`` and
+        # ``core/vast-tracker-constraints.json`` are the pair whose ``*_versions``
+        # section entry carried that keyword, and each states four local ``$ref``\ s
+        # into its own ``definitions``; ``governance/policy-entry.json`` emits behind
+        # ``media-buy/acceptance-policy-profile.json`` for the same reason.  Every
+        # reference in all three resolves through the widened scope, which the loop
+        # above is what asserts.
+        "core/daast-tracker-constraints.json",
+        "core/vast-tracker-constraints.json",
+        "governance/policy-entry.json",
         # **Two more at ``adcp-client-python-10l.20``**: both are union roots §14 step 9
         # unblocked, and both state a local ``$ref`` inside a branch -- so the pairs
         # that reach this loop are their branch classes, and the references resolve

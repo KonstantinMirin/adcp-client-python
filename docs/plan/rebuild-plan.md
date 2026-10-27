@@ -734,10 +734,34 @@ attribution.
   row off the verdict column takes all 15 with it — the largest single correction available to
   `refused` after the root-siblings group.
 
-- **`uniqueItems` and `contains` where even a named type cannot hold the rule.** Rung KEYWORD:
-  the array is `list[X]` and the duplicate or existential check is the schema half's alone.
-  Attribution ours. These keywords are RULE-effect, so §8 grades them against the class's rule
-  tuple and the approximation is declared against that tuple rather than against a schema fact.
+- ~~**`uniqueItems` and `contains` where even a named type cannot hold the rule.**~~ **WRONG, and
+  withdrawn 2026-10-27: a named type holds the rule perfectly well, and §2 already said how.**
+  This row claimed the duplicate and existential checks are the schema half's alone where no
+  class sits above the array. §2 says the opposite and is right: "Where no class sits above the
+  value — a root array, a mapping value, a `definitions` entry, a union branch — the rule hangs
+  off the value's own annotated type as an after-validator (`AtLeastOne`, `NotValue`,
+  `Distinct`)." `Annotated[list[X], AfterValidator(…)]` carries a rule; nothing about a named
+  alias prevents it.
+
+  The reason this went unnoticed is that **those three validators were never declared.** §2 names
+  them and `src/adcp/types/_runtime.py` has no `AtLeastOne`, no `NotValue` and no `Distinct` —
+  emitted 0 times each, against `UniqueItems` at 212 and `ForbiddenGroups` at 64. So the
+  class-level path is well travelled and the value-level path had simply never been walked, and
+  "we cannot express it" was standing in for "nobody wrote it". That is §9's first mistake
+  wearing a different hat: not a verdict minted for unwritten code, but an APPROXIMATION declared
+  for it, which is worse because an approximation looks accounted for.
+
+  **The faithful answer:** declare the three in `_runtime.py` beside the other rule kinds, and
+  hang each on the value's own annotated type where no class holds it. Measured at the point this
+  was withdrawn, **13 of 17 declared approximations were `uniqueItems`** at exactly these
+  positions, so they become faithful and the *ours* backlog falls by 13 rather than being
+  reported forever.
+
+  `contains` keeps its own refusal of transcription — `AtLeastOne` takes the predicate §5's
+  `contains` row already decides (`AtLeastOne(**{property: const})`, or `AtLeastOne(value)` for a
+  bare `const` or one-member `enum`), and a richer predicate still widens rather than being
+  transcribed. The distinction is between a rule having nowhere to LIVE, which was never true, and
+  a predicate having no decided RENDERING, which is.
   **`contains` keeps its own refusal of transcription and drops only the document.** The row
   declines to transcribe a `contains` subschema into a validator, and that decision stands —
   what it may no longer do is refuse the document for it. Dropping the keyword widens the array

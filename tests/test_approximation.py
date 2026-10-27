@@ -46,7 +46,7 @@ from adcp.types._base import (
     SchemaRef,
     schema_at,
 )
-from codegen import attribution, compiler, harness, ir, keywords, render
+from codegen import attribution, bundle, compiler, emit, harness, ir, keywords, render
 from codegen.harness import Pair
 from codegen.keywords import Effect, Position, Rung
 from codegen.lower.approximate import approximate, attribution_for, declare, rung_for
@@ -393,6 +393,107 @@ def test_a_declaration_is_carried_by_every_declaration_whose_node_contains_it() 
     assert render.declared_at((inner,), _ref("#/properties/xy")) == ()
     # And a declaration of another document is never this one's.
     assert render.declared_at((inner,), SchemaRef("core/other.json", "#")) == ()
+
+
+def _edge(pointer: str, *, local: bool, target: str | None, into: str) -> bundle.Edge:
+    """One reference site, as ``bundle.edges`` records it."""
+    return bundle.Edge(
+        document=DOC,
+        pointer=pointer,
+        position=Position.PROP,
+        uri=("#" + into) if local else f"https://example/{target}#{into}",
+        local=local,
+        target=None if local else target,
+        into=into,
+        conjunct_of_root=False,
+    )
+
+
+def test_a_declaration_travels_with_the_fact_it_is_about() -> None:
+    """**§8, decided 2026-10-27**: "a reference carries its target's declarations to the
+    referring pointer, re-pointed by the same resolution that carried the facts."
+
+    "The second equality compares two sets of ``(pointer, keyword)`` pairs, so it holds
+    only while both sides agree on the pointer -- and they do not, by default.  A
+    declaration is minted at the NODE's pointer; the comparison reports a fact at the
+    pointer it WALKED."
+
+    **The two resolutions move a declaration differently and each one's own behaviour is
+    what decides it**, which is the whole of what is asserted here:
+
+    * a LOCAL reference is resolved by REPLACING the referring node with its target, so the
+      declaration MOVES -- an entry left at ``#/definitions/x`` is a declaration no pair
+      reaches, which §8 reports as *over-declared*;
+    * a REMOTE one is inlined by ``bundle.record`` as a deep COPY, so the declaration is
+      COPIED and the target document keeps its own for its own pairs.
+    """
+    entry = approximate(_ref("#/definitions/versions"), "uniqueItems", Position.DEF, True)
+    deeper = approximate(_ref("#/definitions/versions/items"), "pattern", Position.ELEM, "^a+$")
+    local = _edge("/properties/versions", local=True, target=None, into="/definitions/versions")
+
+    moved = emit.repointed(DOC, (entry, deeper), (local,), {})
+    assert [one.pointer for one in moved] == [
+        "#/properties/versions",
+        "#/properties/versions/items",
+    ]
+    # The suffix below the fragment is kept exactly, and so is the fact and the rung.
+    assert [one.keyword for one in moved] == ["uniqueItems", "pattern"]
+    assert [one.fact for one in moved] == [True, "^a+$"]
+    assert all(one.document == DOC for one in moved)
+    # MOVED and not copied: the entry's own pointer is gone, because the normalisation
+    # replaced the node and no pair reads the entry.
+    assert "#/definitions/versions" not in {one.pointer for one in moved}
+
+    # Two references to ONE entry carry it to BOTH, because both pointers are walked.
+    twice = emit.repointed(
+        DOC,
+        (entry,),
+        (local, _edge("/properties/also", local=True, target=None, into="/definitions/versions")),
+        {},
+    )
+    assert {one.pointer for one in twice} == {"#/properties/versions", "#/properties/also"}
+
+    # A REMOTE reference COPIES, and the target keeps its own -- it emits its own module
+    # and its own pairs grade it there.
+    target = "core/target.json"
+    theirs = Approximation(
+        document=target,
+        pointer="#/properties/tags",
+        keyword="uniqueItems",
+        kind=WIDENED,
+        rung=Rung.KEYWORD.value,
+        fact=True,
+        attribution=keywords.address("uniqueItems"),
+    )
+    carried = emit.repointed(
+        DOC,
+        (),
+        (_edge("/properties/held", local=False, target=target, into=""),),
+        {target: (theirs,)},
+    )
+    assert [(one.document, one.pointer) for one in carried] == [
+        (DOC, "#/properties/held/properties/tags")
+    ]
+    # A FRAGMENT reference re-points off the fragment and not off the root.
+    fragment = emit.repointed(
+        DOC,
+        (),
+        (_edge("/properties/held", local=False, target=target, into="/properties/tags"),),
+        {target: (theirs,)},
+    )
+    assert [one.pointer for one in fragment] == ["#/properties/held"]
+    # A target that REFUSED has no module and contributes nothing.
+    assert emit.repointed(
+        DOC, (), (_edge("/properties/held", local=False, target=target, into=""),), {}
+    ) == ()
+    # And a declaration outside the fragment does not travel: the resolution carried the
+    # node at the fragment and nothing else.
+    assert emit.repointed(
+        DOC,
+        (),
+        (_edge("/properties/held", local=False, target=target, into="/properties/other"),),
+        {target: (theirs,)},
+    ) == ()
 
 
 # --------------------------------------------------------------------------- #
@@ -839,6 +940,78 @@ def test_a_declaration_whose_classes_cannot_be_enumerated_is_unproved_and_not_a_
     )
     assert res.outcome == "unproved_widening"
     assert "no value class is derivable" in res.unproved[0]
+
+
+def test_a_mapping_value_has_an_instance_location_and_the_key_is_drawn() -> None:
+    """**§8: "Every position a widening can land at has an instance location."**
+
+    "A mapping value -- ``#/properties/x/additionalProperties``, and the same for
+    ``patternProperties``.  The location is ``x`` then any key the mapping admits; a key is
+    a free choice and the draw makes one, so the location exists and simply was not read."
+
+    Both halves are asserted, because a fixed key would satisfy the first and fail the
+    second: 4 of the bundle's 5 mapping-valued widening sites state
+    ``propertyNames: {"pattern": ...}``, so the key has to come off the document.  The
+    perturbation is the document's own key constraint -- the obligation PASSES where the
+    drawn key matches it and reports ``unproved`` where no key can be drawn at all.
+    """
+    patterned = {
+        "type": "object",
+        "properties": {
+            "scopes": {
+                "type": "object",
+                "propertyNames": {"pattern": "^[A-Z]{2}$"},
+                "additionalProperties": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "uniqueItems": True,
+                },
+            }
+        },
+    }
+
+    class Mapped(AdCPBaseModel, extra="forbid"):
+        __adcp_schema__: ClassVar[SchemaRef] = _ref()
+        scopes: dict[str, list[str]] | None = None
+
+    at = "#/properties/scopes/additionalProperties"
+    one = approximate(_ref(at), "uniqueItems", Position.MAPV, True)
+    # The location is the property then a key the mapping admits, and the key MATCHES.
+    path = harness.instance_path(at, patterned)
+    assert path, at
+    property_segment, key = path
+    assert property_segment == "scopes"
+    assert harness.conforms({"type": "string", "pattern": "^[A-Z]{2}$"}, key) is not False
+
+    proved = harness.check_widening(
+        patterned, Mapped.model_validate, (one,), instance={"scopes": {}}
+    )
+    assert proved.outcome == "pass", (proved.narrowings, proved.unproved)
+    assert proved.accepted >= 1
+
+    # **The perturbation, and it is the key and not the pointer**: with no schema to read
+    # the key constraint off, the pointer has no location and the widening is unproved
+    # rather than placed somewhere the document refuses.
+    assert harness.instance_path(at) == ("scopes", harness._ALIEN_KEY)
+    unreadable = {
+        **patterned,
+        "properties": {
+            "scopes": {
+                **patterned["properties"]["scopes"],
+                "propertyNames": {"pattern": "^[A-Z]{2}$", "maxLength": 1},
+            }
+        },
+    }
+    assert harness.instance_path(at, unreadable) is None
+    blind = harness.check_widening(
+        unreadable, Mapped.model_validate, (one,), instance={"scopes": {}}
+    )
+    assert blind.outcome == "unproved_widening"
+    assert "describes no instance location" in blind.unproved[0]
+
+    # A ``definitions`` entry still has none, and §8 says it needs none: the rule that a
+    # declaration travels with the fact re-points it to the referring pointer first.
+    assert harness.instance_path("#/definitions/versions", patterned) is None
 
 
 def test_an_underdetermined_declaration_is_not_claimed_by_the_accepts_obligation() -> None:

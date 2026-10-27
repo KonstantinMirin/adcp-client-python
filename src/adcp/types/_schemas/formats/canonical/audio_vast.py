@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import SchemaRef
-from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1
 
 from ...core.vast_media_file_requirements import VASTMediaFileRequirements
@@ -23,6 +23,7 @@ class CanonicalFormatVASTAudio(CanonicalFormatBase):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/audio_vast.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('vast_version', 'vast_versions'),)),
         UniqueItems('vast_versions'),
     )
     slots: Annotated[list[CanonicalFormatBaseSlotsItem] | None, Field(description='Default slots for the audio_vast canonical. The buyer supplies a VAST tag (URL or inline XML) plus an optional clickthrough URL, which falls back to the VAST ClickThrough when omitted. Tracking events and companion creatives carried by the VAST document do not require separate slots.')] = [{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]
