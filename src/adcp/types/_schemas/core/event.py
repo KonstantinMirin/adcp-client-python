@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import HttpUrl, StrMinLen1MaxLen256
+from adcp.types.constraints import StrMinLen1MaxLen256
 
 from ..enums.action_source import ActionSource
 from ..enums.event_type import EventType
@@ -35,7 +35,7 @@ class Event(AdCPBaseModel):
     custom_data: Annotated[EventCustomData | None, Field(description='Event-specific data (value, currency, items, etc.)')] = None
     action_source: Annotated[ActionSource | None, Field(description='Where the event originated')] = None
     surface: Annotated[EventSurface | None, Field(description='Optional structured surface context for the event, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements `action_source`; use it when optimization-relevant meaning would otherwise live only in platform-specific `ext` metadata.')] = None
-    event_source_url: Annotated[HttpUrl | None, Field(description="URL where the event occurred (required when action_source is 'website')")] = None
+    event_source_url: Annotated[str | None, Field(description="URL where the event occurred (required when action_source is 'website')", json_schema_extra={'format': 'uri'})] = None
     custom_event_name: Annotated[str | None, Field(description="Name for custom events (used when event_type is 'custom')")] = None
     ext: ExtensionObject | None = None
 
