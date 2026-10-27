@@ -34,11 +34,14 @@ So ``fact`` is a parameter and the caller passes what the DOCUMENT states, never
 the walk derived; :func:`approximate` cannot check that for the caller, which is what
 section 8's two set equalities are pointed at from the other side.
 
-**No handler calls this yet, and that is section 14 step 8's exit condition.**  The step
-is "the approximation, end to end, with no cell widened": the instrument exists and is
-graded, ``APPROXIMATED`` is 0, and the first call site is step 9's and step 10's.
-``tests/test_approximation.py`` exercises every arm here directly, because an instrument
-with no production call site is otherwise graded by nothing.
+**Step 10 is the first caller, and :func:`declare` is how a handler reaches it.**  The
+step before this one had no production call site at all -- "the approximation, end to
+end, with no cell widened" -- and ``tests/test_approximation.py`` exercises every arm
+here directly for that reason.  Section 14 step 10 widens the cells, so the handlers call
+:func:`declare`, which is :func:`approximate` plus the ACCUMULATION section 2 describes:
+"a refusal is absorbing, an approximation is additive", and on this tree the accumulator
+is :attr:`codegen.compiler.Module.approximations`.  Minting stays in one function and the
+append stays in one function beside it, so no handler spells either.
 """
 
 from __future__ import annotations
@@ -46,6 +49,7 @@ from __future__ import annotations
 from adcp.types._base import SchemaRef
 
 from codegen import attribution, ir, keywords
+from codegen.compiler import Module, schema_ref
 from codegen.keywords import Position, Rung
 from codegen.refusal import BuildFailure
 
@@ -139,4 +143,36 @@ def approximate(
         rung=rung_for(keyword, position).value,
         fact=fact,
         attribution=attribution_for(ref.document, ref.pointer, keyword),
+    )
+
+
+def declare(
+    mod: Module,
+    pointer: str,
+    keyword: str,
+    position: Position,
+    fact: object,
+    *,
+    kind: str = ir.WIDENED,
+) -> None:
+    """Mint the declaration for ``keyword`` at ``pointer`` and ACCUMULATE it on ``mod``.
+
+    The one call a handler makes, so that the two halves of section 2's rule stay in one
+    place each: :func:`approximate` is "the ONE place a widening is minted" and this is
+    the one place one is accumulated.  A handler that appended to
+    :attr:`codegen.compiler.Module.approximations` itself would be a second accumulator,
+    and the document order section 6 depends on -- "the parser built each node's children
+    in document order, and concatenation preserves it" -- would then be a property of
+    every handler rather than of the walk.
+
+    ``pointer`` is the NODE's own pointer, spelled through
+    :func:`codegen.compiler.schema_ref` exactly as ``__adcp_schema__`` spells it, which is
+    what lets ``render.declared_at`` pair a declaration with a class by a prefix test on
+    one spelling.
+
+    Returns nothing: an approximation is LOCAL and additive (section 2), so there is no
+    value for a caller to propagate and a handler goes on to answer for its node.
+    """
+    mod.approximations.append(
+        approximate(schema_ref(mod.document, pointer), keyword, position, fact, kind=kind)
     )
