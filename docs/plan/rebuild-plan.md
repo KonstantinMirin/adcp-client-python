@@ -1187,11 +1187,32 @@ portable document of the bundle**, and under §2 every one of them emits, so the
 set to reason about: a document that does not appear in the pairing is a defect in the run,
 where it used to be a refusal with a reason.
 
-A branch class of a root union is paired with its branch node read
-under the root's siblings: draft-07 applies every keyword beside the combinator to the same
+A branch class of a union is paired with its branch node read
+under the union's siblings: draft-07 applies every keyword beside the combinator to the same
 instance the branch describes, so a field the branch inherits from the base is a fact its node
 states and not one it added. A pair the payload generator cannot draw for still has to pass the
 comparison, and names the shape that blocked the draw.
+
+**At a union in ANY position, not only a root one (widened 2026-10-27).** This rule read "a
+branch class of a ROOT union … under the ROOT's siblings", and the restriction was never
+justified: the reason above is draft-07's evaluation rule, which does not care where the union
+sits. The cost of the narrower reading was 9 documents blocking 42 — group G2 of
+`docs/plan/reasons-vs-rows.md` — refused on the ground that pushing the sibling into each branch
+"states it at a pointer the document does not", which is the exact objection this rule exists to
+answer.
+
+**So a sibling beside a union lowers by COMPOSITION, and nothing is approximated.** The siblings
+become a base class; each branch becomes a subclass narrowing what it narrows; the union is over
+the subclasses. `account/sync-accounts-request.json` at `/properties/accounts/items` is the
+measured case: `type: object`, `additionalProperties: true`, 16 declared `properties` and 2
+`dependencies` at the node, and two `oneOf` branches that declare **no properties at all** and
+differ only in `required` — `[brand, operator, billing]` against `[account]`. Every fact is kept,
+the branches separate on disjoint `required`, and each branch class is paired against its node
+read under those siblings, so the inherited fields are facts its node states.
+
+Where a branch also *restates* a property the siblings declare, the restatement composes by the
+conjunct rule below; composition and intersection are the same operation reached from two
+directions.
 
 **The dual of that rule, for a node whose `type` is a LIST (added 2026-10-26).** A class cut
 out of a type list is paired with its node read at **its own type word**, not at the whole list.
