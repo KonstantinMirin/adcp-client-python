@@ -72,6 +72,7 @@ reported on the row rather than absorbed.
 from __future__ import annotations
 
 import dataclasses
+import re
 from collections import defaultdict
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -592,14 +593,24 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
         # reported for it that the line does not use.  The direction is safe either way:
         # a class name that merely CONTAINS a reported name keeps an import the line
         # does not need, which is an unused import and never a ``NameError``.
-        used = {
-            word
-            for word in extra_field.type_hint.replace("[", " ")
-            .replace("]", " ")
-            .replace(",", " ")
-            .replace("|", " ")
-            .split()
-        }
+        #
+        # **The split is over every character a Python NAME cannot contain, and that was
+        # a bug fixed at ``adcp-client-python-10l.21``.**  It listed four separators by
+        # hand -- ``[``, ``]``, ``,`` and ``|`` -- which is exactly the set a mapping of
+        # bare types needs and nothing more, so a CALL inside the annotation hid every
+        # name in it: §2's value rules render as
+        # ``Annotated[X, Field(json_schema_extra={…}), AfterValidator(Distinct())]``, and
+        # ``AfterValidator(Distinct())`` tokenised as one word, so none of ``Field``,
+        # ``AfterValidator`` or ``Distinct`` was in ``used`` and all three imports were
+        # filtered out of a line that names them.  Measured on
+        # ``core/postal-area-support.json``, whose typed extras store holds a
+        # ``uniqueItems`` array: the module raised ``PydanticUserError: not fully
+        # defined; you should define AfterValidator`` at import, and 11 pairs reported
+        # ``harness_error``.  A character class keeps the filter's safe direction -- it
+        # can only ADMIT more names, and an unused import is never a ``NameError`` --
+        # while being a property of Python's identifier grammar rather than of today's
+        # annotation shape, so the next carrier added to an annotation cannot re-open it.
+        used = set(re.split(r"[^\w.]+", extra_field.type_hint))
         for imp in extra_field.imports:
             if imp.from_ and imp.import_ and imp.import_ in used:
                 out.imports.add((imp.from_, imp.import_))

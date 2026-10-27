@@ -5622,6 +5622,54 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         model.model_validate({"a": "x", "extra": "not an int"})
 
 
+def test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined() -> None:
+    """Every file of the tree IMPORTED, which is one obligation and not a derivation.
+
+    ``graded()`` imports the tree too, but at COLLECTION time and only for the modules
+    that bind a pair -- so a module whose annotation names a symbol it does not import
+    takes the whole test file down with an ``ImportError`` before a single assertion
+    runs, and a module that imports but leaves a class unresolved reports
+    ``harness_error`` on every pair of it.  Neither reads as the one-line defect it is.
+
+    **Measured at ``adcp-client-python-10l.21``, which is why this exists.**
+    ``render.klass`` filters the typed ``__pydantic_extra__`` annotation's reported
+    imports by the names the rendered line uses, and the filter split the hint on four
+    characters -- ``[``, ``]``, ``,`` and ``|`` -- so a CALL inside the annotation hid
+    every name in it.  ``core/postal-area-support.json``'s extras store holds a
+    ``uniqueItems`` array, which §2 renders as
+    ``Annotated[…, Field(json_schema_extra={…}), AfterValidator(Distinct())]``, and none
+    of ``Field``, ``AfterValidator`` or ``Distinct`` was imported: the module raised
+    ``PydanticUserError: not fully defined`` on first touch and 11 pairs reported
+    ``harness_error`` three test files away.
+
+    ``model_json_schema()`` is what asks the second half: an unresolved forward reference
+    survives the import and fails only when pydantic is asked to build the schema, which
+    is exactly the shape ``__pydantic_extra__`` produced.
+    """
+    modules = claimed(
+        "modules of the emitted tree",
+        [
+            info.name
+            for info in pkgutil.walk_packages([str(TREE)], "adcp.types._schemas.")
+            if not info.ispkg
+        ],
+    )
+    unresolved: list[tuple[str, str]] = []
+    for name in sorted(modules):
+        module = importlib.import_module(name)
+        for value in vars(module).values():
+            if (
+                isinstance(value, type)
+                and issubclass(value, BaseModel)
+                and value.__module__ == name
+            ):
+                try:
+                    value.model_json_schema()
+                except Exception as why:  # noqa: BLE001 -- the failure is the finding
+                    unresolved.append((f"{name}.{value.__name__}", str(why)[:200]))
+    assert unresolved == [], unresolved
+
+
 def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     """Step 6's second defect: draft-07 applies a constraint to its own type only.
 
