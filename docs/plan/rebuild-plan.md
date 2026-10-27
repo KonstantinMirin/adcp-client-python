@@ -256,34 +256,17 @@ The refusal argument survives in exactly two places, and the design keeps both.
   construction then fails. A narrowing is the defect the old sentence was reaching for, and
   nothing below widens into one.
 
-  **One narrowing is DECLARED and taken on purpose, and this clause exists because the rule
-  above, read alone, says otherwise (added 2026-10-27).** The bundle spells "a URL" nine
-  different ways across 74 sites, and a bare `{"type": "string", "format": "uri"}` is RFC 3986:
-  it admits `urn:`, `file:///` and `http://` alongside `https://`. Honouring every spelling
-  means a typed surface that parses nothing. The owner's decision is to **normalise instead**:
-  `uri` selects a URL type, and the facts that type adds which no document states — pydantic's
-  `maxLength: 2083` and `minLength: 1` — are a narrowing we accept.
+  **A narrowing taken on purpose is admitted by an ENUMERATED registry and by nothing else.**
+  The registry is the authority, this sentence is not, and a narrowing absent from one is the
+  defect above. Each entry is compared by equality so it admits that fact and not its kind — a
+  rule admitting "the sort of bound a URL type adds" would be invisible and permanent.
 
-  It is bounded by four conditions, and a narrowing meeting fewer than all four is the defect
-  this section forbids:
+  There is one today: `harness.URL_IMPLIED`, the two facts a pydantic URL type renders of its
+  own (`minLength: 1`, `maxLength: 2083`). `codegen/constraints.py`'s `url_type` decides which
+  type each position takes and its docstring carries the measurement.
 
-  1. **The document's own statement of the fact is defective, and a live upstream issue says
-     so.** Here `adcontextprotocol/adcp#8398`, "URL validation is over-specified: eight patterns
-     where `^https://` is enough".
-  2. **It is ENUMERATED, never a rule.** `harness.compare_schema` carries one hand-written row
-     per added fact. A rule admitting "facts a URL type adds" would admit the next one unseen;
-     a row per fact means each is named, and a tenth spelling reddens until someone looks.
-  3. **The alternative is measured, not assumed.** `AdCPUrl` everywhere was tried and is worse:
-     it narrows 228 of 300 positions in 128 of 160 documents by refusing three schemes the
-     document admits, against `HttpUrl`'s 227 narrowed by refusing two.
-  4. **It is re-measured per bundle version.** The counts above are properties of 3.2 and
-     nothing reads them from a literal.
-
-  `codegen/constraints.py`'s `url_type` is where the decision lives and its docstring states it.
-  **A later reading that finds the code contradicting the rule above must report it, not
-  "repair" it** — row `.21`'s scalar lane read the rule alone, took the contradiction for a
-  defect, and degraded 86 modules from a URL type to `str` before the orchestrator reverted it.
-  The rule was incomplete; the code was right.
+  **A reading that finds code contradicting this section reports it and does not change either
+  side.** A registry entry is a decision even though it is not in this document.
 - **No document of record.** Where the record (§3) is undefined, there is no schema half at all,
   so `strict_validate` has no authority to run and the annotation is the only claim there is.
   That is the one case where a partial model really would claim conformance to a document it
