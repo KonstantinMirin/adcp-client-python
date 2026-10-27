@@ -1201,6 +1201,40 @@ class is graded against the shape it actually describes. Row `.20` found this by
 documents into the three checks, reported it, and declined to invent the rule — which is why it
 is here and not in a handler.
 
+**The third pairing rule, for a node at a CONJUNCT of an `allOf` (added 2026-10-27).** A class,
+root model or alias cut out at `…/allOf/N` is paired with its node read **as the composition** —
+the intersection of every conjunct of that `allOf`, taken with the keywords stated beside the
+`allOf`. Not with the conjunct's own text.
+
+The reason is the union-branch rule's reason, and the two are the same rule about different
+combinators. Draft-07's `allOf` holds every conjunct against the SAME instance, so a fact a
+sibling conjunct states is a fact this node's instance must satisfy. It is not a fact this class
+*added*, any more than a base's field is one a union branch added.
+
+Pairing against the conjunct's own text instead inverts the comparison's meaning. Every fact the
+other conjuncts contribute reads as `added`, and `added` is the comparison's word for *the model
+is narrower than its document* — the one defect §2 forbids outright. So the instrument would
+report the faithful model as the defect it exists to catch, 18 times over, and the only way to
+quiet it would be to let `added` be declared away. That is the repair to refuse: `added` is how a
+tightened model is caught, and a declarable `added` is no instrument at all.
+
+`core/assets/url-asset.json` is the measured case, at
+`/properties/macro_declarations/items/allOf/1/properties/location`. One conjunct declares
+`location` whole, with `field` as `{"type": "string", "enum": ["url", "markup", "content",
+"ad_request_url", "clickthrough_url"]}`; the other declares `{"properties": {"field": {"const":
+"url"}}}` and nothing else. The composition is `field` as `{"type": "string", "const": "url"}`,
+because `"url"` is a member of the enum — expressible exactly, so **the model keeps the fact and
+no approximation arises**. Read as the composition, both halves state `const` and the pair is
+silent. Read as the conjunct's own text, the same faithful model reports a `missing const`
+beside an `added enum`: one fact, counted twice, in opposite directions.
+
+This rule is why §5's `properties` row at CONJ is reachable. That row was decided and
+unimplemented because a `SchemaRef` carrying an `allOf` segment had nowhere to be graded — zero
+such classes exist in the committed tree, so the gap was invisible. Writing the row makes the
+count non-zero, and this is the rule that grades them. Row `.21`'s fourth instalment found it by
+implementing §5(b) as written, measuring 22 pairs red where the declaration census was empty, and
+declining to edit §8 to suit its own code.
+
 A check is exhaustive over the set of nodes it claims, or it does not exist. A check that
 enumerates a subset reports on that subset only, and says so.
 
