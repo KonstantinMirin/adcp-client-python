@@ -1420,7 +1420,13 @@ def check_widening(
         # ``$ref`` resolved and a conjunction folded at every depth, so the two instruments
         # §8 points at one declaration agree about where the fact is.
         walked = _steps(relative, schema)
-        node = None if walked is None else walked[1]
+        if walked is None:
+            res.unproved.append(
+                f"{one.pointer}/{one.keyword}: the pointer describes no instance "
+                "location, so no drawn value can be placed at it"
+            )
+            continue
+        node = walked[1]
         if not isinstance(node, Mapping) or one.keyword not in node:
             res.unproved.append(
                 f"{one.pointer}/{one.keyword}: the document states no such keyword at "
@@ -1428,13 +1434,7 @@ def check_widening(
                 "approximate on a keyword the walk itself inserted)"
             )
             continue
-        path = instance_path(relative, schema)
-        if path is None:
-            res.unproved.append(
-                f"{one.pointer}/{one.keyword}: the pointer describes no instance "
-                "location, so no drawn value can be placed at it"
-            )
-            continue
+        path = tuple(segment for segment, _ in walked[0])
         classes = value_classes(one.keyword, node)
         if not classes:
             res.unproved.append(

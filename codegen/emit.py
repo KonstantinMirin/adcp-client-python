@@ -1097,6 +1097,18 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     ordered, refused = order(closure(documents, lowering), lowering)
 
     lowered: dict[str, tuple[Module, ir.Module, dict]] = {}
+    #: document -> the declarations its walk MINTED, before :func:`repointed` moved any.
+    #: A remote reference naming a FRAGMENT needs the pointer the declaration was minted
+    #: at, because that is the pointer ``bundle.record`` inlines the node from: the local
+    #: move has already carried the target's own entry to the target's own referring
+    #: property, and a referrer naming ``#/definitions/x`` directly would then match
+    #: neither spelling.  Both are offered and :func:`repointed` dedupes by site, so each
+    #: referrer re-points off whichever pointer its own fragment names.  Measured at
+    #: ``formats/canonical/audio_daast.json`` and
+    #: ``core/requirements/daast-asset-requirements.json``, which name
+    #: ``core/daast-tracker-constraints.json#/definitions/daast_versions`` and reported
+    #: the fact *missing* until this map existed.
+    minted: dict[str, tuple[Approximation, ...]] = {}
     #: ``$ref`` URI -> the ROOT NODE of the document it names, for §2's intersection
     #: rule (:meth:`compiler.Module.resolve_node`).  **Run-level and not per document**,
     #: and the reason is whose declaration that rule reads: it compares two property
@@ -1281,13 +1293,17 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         # **§8's "a declaration travels with the fact it is about"**, applied where §10's
         # order makes it a lookup: every target this document references is finished, so
         # its declarations are read rather than re-derived (:func:`repointed`).
+        minted[document] = bound.approximations
         bound = dataclasses_replace(
             bound,
             approximations=repointed(
                 document,
                 bound.approximations,
                 lowering.get(document, ()),
-                {d: held[1].approximations for d, held in lowered.items()},
+                {
+                    d: (*minted.get(d, ()), *held[1].approximations)
+                    for d, held in lowered.items()
+                },
                 frozenset(bound.symbols),
             ),
         )
