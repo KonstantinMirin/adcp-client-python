@@ -11,6 +11,7 @@ grader, and the plan. Everything else is written by a step of the plan.
 |---|---|
 | `schemas/cache/3.2/` | 1,625 documents. The source of truth and the only input. |
 | `codegen/harness.py` | Grades a (schema document, Python class) pair in both directions. Imports `jsonschema`, `hypothesis`, `hypothesis_jsonschema`, `pydantic` and **no sibling, no path, no filesystem, and no name from the vocabulary it is pointed at** — which is why it can grade output that does not exist yet. |
+| `patches/8525/` | A PATCH SET: new documents plus a manifest of the pointers that become a `$ref`. Applied to the published bundle by `codegen/patch.py`, which produces the patched one; it is also the diff we ask upstream to take, and it retires when the backport lands. Admissibility is checked, not asserted — `tests/test_patch_8525.py` compares the record of every one of the 1,054 documents. |
 | `docs/plan/rebuild-plan.md` | Ten steps. The only work list. |
 | `docs/plan/sdk-type-generation.md` | Design intent, P1–P13. Non-negotiable. |
 | `docs/plan/defect-inventory.md` | The 21 verified defects in the *previous* generated output, each the named control of one step. |
