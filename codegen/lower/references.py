@@ -57,7 +57,7 @@ def lower(node: nodes.Reference, mod: Module) -> Decided | Refusal:
         # CHAIN for a target that refused, because it is the one holding the target's own
         # refusal to carry ``through=``; this row has nothing to add to it.
         return target
-    mod.imports.add((target.module, target.symbol))
+    mod.importing(target.symbol, target.where)
     return Decided(ir.TypeRef(target.symbol, local=True))
 
 
@@ -109,7 +109,7 @@ def _root(node: nodes.Reference, mod: Module) -> Decided | Refusal:
             "is a class",
             kind=Kind.DEFERRED,
         )
-    mod.imports.add((target.module, target.symbol))
+    mod.importing(target.symbol, target.where)
     declared = compiler.declare_object(
         node,
         node.pointer,
