@@ -6,7 +6,6 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import HttpUrl
 
 from ..core.preview_renderer_metadata import PreviewRendererMetadata
 
@@ -54,7 +53,7 @@ class PreviewRenderUrl(PreviewRender):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/0')
     render_id: Annotated[str, Field(description='Unique identifier for this rendered piece within the variant')]
     output_format: Annotated[Literal['url'], Field(description='Discriminator indicating preview_url is provided')]
-    preview_url: Annotated[HttpUrl, Field(description='Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.')]
+    preview_url: Annotated[str, Field(description='Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.', json_schema_extra={'format': 'uri'})]
     role: Annotated[str, Field(description="Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.")]
     dimensions: Annotated[PreviewRenderUrlDimensions | None, Field(description='Dimensions for this rendered piece')] = None
     embedding: Annotated[PreviewRenderUrlEmbedding | None, Field(description='Optional security and embedding metadata for safe iframe integration')] = None
@@ -108,7 +107,7 @@ class PreviewRenderBoth(PreviewRender):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/2')
     render_id: Annotated[str, Field(description='Unique identifier for this rendered piece within the variant')]
     output_format: Annotated[Literal['both'], Field(description='Discriminator indicating both preview_url and preview_html are provided')]
-    preview_url: Annotated[HttpUrl, Field(description='Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.')]
+    preview_url: Annotated[str, Field(description='Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.', json_schema_extra={'format': 'uri'})]
     preview_html: Annotated[str, Field(description='Untrusted HTML. Consumers MUST NOT inject it into the host DOM. Render only as iframe srcdoc with an empty sandbox token set and a caller-enforced restrictive CSP; provider embedding metadata is advisory and MUST NOT loosen that policy.')]
     role: Annotated[str, Field(description="Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.")]
     dimensions: Annotated[PreviewRenderBothDimensions | None, Field(description='Dimensions for this rendered piece')] = None

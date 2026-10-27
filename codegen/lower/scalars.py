@@ -77,11 +77,55 @@ from codegen.schema import nodes
 #: derandomized examples. That instrument gap is ``salesagent-j3k2l.10``'s, not this
 #: module's.
 #:
-#: **``HttpUrl``'s two ceilings are accepted deliberately and named at D5**: it still
-#: refuses ``urn:`` and ``file:``, so 227 of 300 positions stay narrower than their
-#: document, and it renders ``maxLength: 2083`` and ``minLength: 1`` that no document
-#: states -- which ``harness.compare_schema`` admits with one hand-written row per
-#: fact, each naming itself.
+#: **``HttpUrl``'s two ceilings were accepted deliberately and they are NARROWINGS, so
+#: §2 takes the type off every node that has nothing to choose it from**
+#: (``adcp-client-python-10l.10``).  The sentence this replaces read "accepted
+#: deliberately and named at D5": ``HttpUrl`` still refuses ``urn:`` and ``file:``, so
+#: 227 of 300 positions stayed narrower than their document, and it renders
+#: ``maxLength: 2083`` and ``minLength: 1`` that no document states.  A ceiling named
+#: is still a ceiling: §2's one forbidden direction is "an annotation tighter than its
+#: document refuses a payload the protocol permits, and ``strict_validate`` cannot
+#: repair it".
+#:
+#: Measured through the production entry point, on the emitted class, against the
+#: document of record: ``core/attestation-capabilities.json``'s
+#: ``accepted_claim_types`` element states ``{"type": "string", "format": "uri"}`` and
+#: nothing else, ``jsonschema`` with the draft's own checker admits a 2,220-character
+#: https URL there, and ``AttestationCapabilities.strict_validate`` refused it with
+#: ``url_too_long``.  ``harness.check_widening`` reported four narrowings over
+#: ``harness.FORMAT_SHAPES``'s seven ``uri`` shapes -- a URN, a file URL, a mailto URI
+#: and that long URL.  All four are the TYPE's and none is the document's.
+#:
+#: **The rung is TYPE, §2's second, and it is the rung the ladder names with this very
+#: example**: "drop a type selection the constraints contradict, keep the constraints".
+#: A fact is DROPPED and never SUBSTITUTED, and what is dropped here is the URL type,
+#: which is not a document fact -- §5's ``format`` row keeps the format itself, riding
+#: as ``json_schema_extra={"format": "uri"}`` where §8 grades it.  So **nothing is
+#: approximated for this**: the document says ``type: string`` and ``format: uri`` and
+#: so does the model, which is §5(a)'s "both facts are kept and neither half narrows;
+#: what is given up is the URL type's parsing, which is not an acceptance fact".
+#: ``APPROXIMATED`` does not move, and §8's *over-declared* outcome would report a
+#: declaration if one were written.
+#:
+#: **Where the type still fires is §5's own sentence read literally**: "``uri`` -> a
+#: URL type chosen by ``pattern``".  A node stating no ``pattern`` has nothing to
+#: choose a URL type FROM, so the row's otherwise branch answers it; a node stating one
+#: hands :func:`constraints.url_type` the document's own scheme restriction, and
+#: :func:`selects_a_url_type` is the gate.  Lower rungs were measured and do not reach
+#: it: KEYWORD drops one keyword and keeps the type, and the type is the thing that
+#: narrows here, so KEYWORD cannot carry it.
+#:
+#: **One narrowing SURVIVES this row and is reported rather than fixed, because the fix
+#: collides with a frozen set.**  At the 43 packaged positions whose document states a
+#: ``pattern`` other than ``^https://``, ``url_type`` still answers ``HttpUrl`` and its
+#: ``maxLength: 2083`` still refuses a value those documents admit -- none of them
+#: states a length bound, since a node that does already takes the fallback below.
+#: Taking ``HttpUrl`` off them too would move the six ``ORIGIN_ONLY`` positions of
+#: ``codegen/dump_exemptions.py`` onto a plain ``str``, whose dump is the sender's own
+#: bytes and which the pattern therefore admits -- dissolving an exempt set whose owner
+#: has frozen it.  ``harness``'s own value classes cannot reach the narrowing either
+#: (``FORMAT_SHAPES``'s long URL does not match those patterns, so ``_restricted``
+#: yields a document admitting nothing), so no run reports it today.
 #:
 #: What follows is the reasoning for the type being ours rather than pydantic's at
 #: the https branch, which the amendment did not change.  D5 admits
@@ -105,7 +149,17 @@ from codegen.schema import nodes
 #:
 #: Each value is ``(node) -> dotted path``.  ``date-time`` and ``date`` ignore the
 #: node; ``uri`` is ``constraints.url_type``, which reads the document's own
-#: ``pattern``.
+#: ``pattern``.  Whether the chooser is CONSULTED at all is
+#: :func:`selects_a_url_type`'s, because that is the question a check asks too.
+#:
+#: **A dotted path and not a pydantic symbol, which is the seam this table sits on.**
+#: ``FORMAT_TYPES`` deciding a pydantic type is exactly where a pydantic idiom could
+#: leak past ``render.py``, and the reason it does not is that the IR carries a NAME:
+#: an ``ir.TypeRef``'s ``path`` is text the renderer resolves to an import, the same
+#: way every other decided type reaches it.  Nothing here constructs a pydantic
+#: object, reads a pydantic field or renders a line of Python, and the decision this
+#: row makes -- "does the document state the fact the type carries" -- is a reading of
+#: the DOCUMENT, so it belongs on this side of the seam and not in the renderer.
 FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
     "date-time": lambda node: "pydantic.AwareDatetime",
     "date": lambda node: "datetime.date",
@@ -271,7 +325,9 @@ def lower(node: nodes.Scalar, mod: Module) -> Decided | Refusal:
     # true of the URL type it was about: pydantic refuses to apply a string constraint to
     # one, so the bound had nowhere to go.  It has somewhere to go on a ``str``.
     #
-    # ``pattern`` is NOT in this set and the URL type still wins over it, which is §5's
+    # ``pattern`` is NOT in this set and the URL type still wins over it -- and a node
+    # with NO ``pattern`` takes the fallback too, which is the same row read one step
+    # further (``adcp-client-python-10l.10``, and :func:`selects_a_url_type`).  §5's
     # ``pattern`` row: "On ``format: uri`` -> selects the type instead, and the pattern
     # stays with the schema half."  That is a different trade from this one -- there the
     # document's two facts are a type and a regex and the row keeps the type; here they
@@ -310,11 +366,22 @@ def selects_a_url_type(fmt: str | None, constraints: Mapping[str, Any]) -> bool:
     fact."  pydantic refuses to apply a string constraint to a URL type at all, so the
     two readings are exclusive and this is the one function that says which fires.
 
-    ``pattern`` is NOT a constraint for this question, and that is §5's ``pattern`` row
-    rather than an exception here: "On ``format: uri`` → selects the type instead, and
-    the pattern stays with the schema half."  There the document's two facts are a type
-    and a regex and the row keeps the type; here they are a bound and a format and the
+    ``pattern`` is not one of those constraints, and that is §5's ``pattern`` row rather
+    than an exception here: "On ``format: uri`` → selects the type instead, and the
+    pattern stays with the schema half."  There the document's two facts are a type and
+    a regex and the row keeps the type; here they are a bound and a format and the
     fallback keeps both.
+
+    **``pattern`` is REQUIRED rather than merely tolerated, and that is the change**
+    (``adcp-client-python-10l.10``).  The set comparison reads "exactly ``pattern``",
+    where it read "nothing but ``pattern``" -- so a node stating no ``pattern`` at all
+    now takes the fallback too.  §5's ``format`` row says ``uri`` selects "a URL type
+    chosen by ``pattern``", and a node stating none has nothing to choose a URL type
+    FROM: the choice is a function of the document, the document is silent, and the
+    row's own otherwise branch is what silence answers.  What that buys is measured at
+    :data:`FORMAT_TYPES` -- every pydantic URL type renders bounds no ``format: uri``
+    document states, and ``HttpUrl``'s ``maxLength: 2083`` refuses a 2,220-character
+    URL the bare node admits, which is §2's one forbidden direction.
 
     **Declared at module scope because a CHECK asks it too.**  ``tests/test_emit.py``'s
     format check derives the type a format selects from :data:`FORMAT_TYPES` and asserts
@@ -322,11 +389,7 @@ def selects_a_url_type(fmt: str | None, constraints: Mapping[str, Any]) -> bool:
     and a second reading of that is how a check comes to grade a document against a
     compiler nobody runs.  One function, two readers.
     """
-    return (
-        fmt is not None
-        and fmt in URL_FORMATS
-        and not sorted(set(constraints) - {"pattern"})
-    )
+    return fmt is not None and fmt in URL_FORMATS and set(constraints) == {"pattern"}
 
 
 def null(node: nodes.Null, mod: Module) -> Decided | Refusal:

@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import HttpUrl, StrMinLen1
+from adcp.types.constraints import StrMinLen1
 
 
 class DownstreamConnectionRequirementConnectionType(StrEnum):
@@ -54,9 +54,9 @@ class DownstreamConnectionRequirementResourceRef(AdCPBaseModel):
     platform_account_id: Annotated[str | None, Field(description='Provider-native advertiser or business account id, when safe to disclose.')] = None
     identity_id: Annotated[str | None, Field(description='Provider-native creator, page, channel, organization, or profile id, when safe to disclose.')] = None
     handle: Annotated[str | None, Field(description='Provider-native public handle for the owning identity, when available.')] = None
-    profile_url: Annotated[HttpUrl | None, Field(description='Public URL for the owning identity, when available.')] = None
+    profile_url: Annotated[str | None, Field(description='Public URL for the owning identity, when available.', json_schema_extra={'format': 'uri'})] = None
     post_id: Annotated[str | None, Field(description='Provider-native post id, when the grant is post-scoped or the failed request referenced a specific post.')] = None
-    post_url: Annotated[HttpUrl | None, Field(description='Public URL for the referenced post, when available.')] = None
+    post_url: Annotated[str | None, Field(description='Public URL for the referenced post, when available.', json_schema_extra={'format': 'uri'})] = None
 
 
 class DownstreamConnectionRequirement(AdCPBaseModel):
@@ -77,7 +77,7 @@ class DownstreamConnectionRequirement(AdCPBaseModel):
     status: Annotated[DownstreamConnectionRequirementStatus | None, Field(description='Current seller-observed state for this downstream connection when known. Product declarations MAY omit status or use `unknown`; AUTHORIZATION_REQUIRED details SHOULD use `missing`, `expired`, or `revoked` for the connection that blocked the call.')] = None
     connection_id: Annotated[str | None, Field(description='Seller-defined identifier for an already-created downstream connection. Omit when no connection exists yet or when exposing it would leak platform/account state.')] = None
     resource_ref: Annotated[DownstreamConnectionRequirementResourceRef | None, Field(description='Optional opaque provider-native resource hint, such as a platform account id, profile URL, handle, channel id, post id, or post URL. This is a hint for routing authorization, not proof that authorization exists.')] = None
-    authorization_url: Annotated[HttpUrl | None, Field(description='Seller-hosted or provider-hosted URL where a human can complete or restore this downstream connection.')] = None
+    authorization_url: Annotated[str | None, Field(description='Seller-hosted or provider-hosted URL where a human can complete or restore this downstream connection.', json_schema_extra={'format': 'uri'})] = None
     authorization_instructions: Annotated[str | None, Field(description='Human-readable instructions for completing or restoring this downstream connection.')] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='Expiration time for the downstream grant, when known.')] = None
 
