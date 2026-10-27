@@ -1078,7 +1078,59 @@ def value_classes(keyword: str, node: Mapping[str, Any]) -> tuple[tuple[str, dic
     return ()
 
 
-def instance_path(pointer: str) -> tuple[Any, ...] | None:
+#: The keywords whose subschema is a mapping's VALUE, DERIVED from the descent column
+#: rather than named: ``keywords.descends_at`` is "the ONE descent table", and a keyword
+#: holding a MAPV subschema is exactly what a mapping value IS.  Read at PROP, which is
+#: where a mapping sits in the documents that state one; the column's answer is the same
+#: at every position that gives one.
+#:
+#: Each is paired with how many pointer segments it spends: ``patternProperties`` is a MAP
+#: from an expression to a schema, so its own word plus the expression, and
+#: ``additionalProperties`` is one schema, so its word alone.  Read off
+#: :data:`_DESCEND_MAP`, which is the same distinction one line up.
+_MAPPING_VALUE = {
+    keyword: 2 if keyword in _DESCEND_MAP else 1
+    for keyword, position in keywords.descends_at(Position.PROP).items()
+    if position is Position.MAPV
+}
+
+
+def _mapping_key(schema: Any, at: str, expression: str | None) -> Any:
+    """ONE key the mapping at ``at`` admits, for a widening declared on its VALUE.
+
+    §8: "A mapping value -- ``#/properties/x/additionalProperties``, and the same for
+    ``patternProperties``.  The location is ``x`` then any key the mapping admits; a key
+    is a free choice and the draw makes one, so the location exists and simply was not
+    read."  This is that choice, and it is a DRAW from what the document says about keys
+    rather than a literal: 4 of the bundle's 5 mapping-valued widening sites state
+    ``propertyNames: {"pattern": ...}``, so a fixed key would be a key the document
+    refuses and the obligation would report ``unproved`` for the instrument's own reason
+    instead of the document's.
+
+    :data:`_ALIEN_KEY` where the document says NOTHING about keys, which is not a fallback
+    but the same choice made deterministically: every string is admitted, so the one worth
+    picking is the one that cannot collide with a declared property's own schema.
+
+    ``None`` where a key constraint is stated and nothing can be drawn from it, so
+    :func:`check_widening` reports the widening unproved rather than placing a key the
+    document refuses.
+    """
+    node = at_or_none(schema, at)
+    names = node.get("propertyNames") if isinstance(node, Mapping) else None
+    key: dict[str, Any] = {"type": "string"}
+    if expression is not None:
+        key["pattern"] = expression
+    if isinstance(names, Mapping):
+        key |= {k: v for k, v in names.items() if k != "type"}
+    if set(key) == {"type"}:
+        return _ALIEN_KEY
+    try:
+        return one_instance(key, {})
+    except Exception:  # noqa: BLE001 -- an undrawable key constraint has no location
+        return None
+
+
+def instance_path(pointer: str, schema: Any = None) -> tuple[Any, ...] | None:
     """The INSTANCE location a schema pointer describes, or ``None`` where it has none.
 
     ``#/properties/x`` describes the value under the key ``x``; ``#/items`` describes
@@ -1086,10 +1138,25 @@ def instance_path(pointer: str) -> tuple[Any, ...] | None:
     ``#/oneOf/1``, ``#/then`` -- describes the SAME instance and contributes no segment,
     which is ``adcp.types._base.SAME_INSTANCE_LIST``'s own rule read the other way.
 
+    **A MAPPING VALUE has a location too, and §8 settled that it was simply not read**:
+    ``#/properties/x/additionalProperties`` is ``x`` then any key the mapping admits, and
+    ``#/properties/x/patternProperties/<expr>`` is ``x`` then a key the expression
+    matches.  The key is a free choice (:func:`_mapping_key`), which is the same sentence
+    ``items`` already stands on -- "describes every element, so index 0 stands for it".
+    ``schema`` is what the choice is read off, so a caller grading a pair passes the
+    pair's own node; with none supplied the key constraint cannot be read and such a
+    pointer has no location, which is the fail-safe direction.
+
     ``None`` for a pointer whose segments describe no instance location at all -- a
     ``#/definitions/x`` reached only through a ``$ref``, an ``#/if``, a
     ``#/propertyNames`` -- and :func:`check_widening` reports that as
     ``no_instance_path`` rather than placing a value somewhere the document does not mean.
+
+    **A ``definitions`` entry stays without one and needs none** (§8): "an entry is
+    reachable only through a ``$ref`` that names it, and §5 declares no entry nothing
+    references", so it has no location of its own -- and the rule that a declaration
+    travels with the fact (``emit.repointed``) has already re-pointed it to the referring
+    ``properties`` segment, which this function does place.
     """
     segments = [s for s in pointer.lstrip("#").split("/") if s]
     out: list[Any] = []
@@ -1102,6 +1169,17 @@ def instance_path(pointer: str) -> tuple[Any, ...] | None:
         elif word == "items":
             out.append(0)
             i += 1
+        elif word in _MAPPING_VALUE and i + _MAPPING_VALUE[word] <= len(segments):
+            spent = _MAPPING_VALUE[word]
+            key = _mapping_key(
+                schema,
+                "/".join(segments[:i]) and "/" + "/".join(segments[:i]),
+                bundle.unescape_key(segments[i + 1]) if spent == 2 else None,  # noqa: PLR2004
+            )
+            if key is None:
+                return None
+            out.append(key)
+            i += spent
         elif word in ("allOf", "anyOf", "oneOf") and i + 1 < len(segments):
             i += 2  # a same-instance hop through a list: no segment
         elif word in ("then", "else"):
@@ -1230,7 +1308,7 @@ def check_widening(
                 "approximate on a keyword the walk itself inserted)"
             )
             continue
-        path = instance_path(relative)
+        path = instance_path(relative, schema)
         if path is None:
             res.unproved.append(
                 f"{one.pointer}/{one.keyword}: the pointer describes no instance "

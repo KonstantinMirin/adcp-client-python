@@ -108,6 +108,7 @@ from codegen.compiler import (
     class_name,
     declare_alias,
 )
+from codegen.lower import approximate as lower_approximate
 from codegen.lower import const as lower_const
 from codegen.lower import names as lower_names
 from codegen.lower import enum as lower_enum
@@ -649,6 +650,117 @@ def _bound_shape(shape: compiler.Shape, symbols: Mapping[str, str]) -> compiler.
     )
 
 
+#: How many times :func:`repointed` re-reads its own output before it stops.  A local
+#: reference whose target is itself a local reference moves a declaration twice, and a
+#: chain of them moves it once per hop; the bundle's deepest chain is 2, and
+#: ``compiler.local_reference`` already refuses a cycle by name, so this is a bound on a
+#: terminating walk rather than a guard against one that does not terminate.  Same
+#: constant style as ``harness``'s fold depths, and for the same reason: a traversal cut
+#: at an unstated depth disagrees with its own reader about node identity (§9).
+_TRAVEL_DEPTH = 8
+
+
+def _under(pointer: str, into: str) -> bool:
+    """Whether ``pointer`` names the node at fragment ``into`` or one inside it.
+
+    ``pointer`` is an :class:`adcp.types._base.Approximation`'s, so it carries the ``#``
+    ``schema_ref`` spells; ``into`` is a :attr:`bundle.Edge.into`, which does not.  One
+    spelling is reconciled here and in no second place, which is the whole reason this is
+    a function: §8's equality compares two sets of ``(pointer, keyword)`` pairs and a
+    second ``#``-stripping is how the two sides come to disagree about one pointer.
+    """
+    base = f"#{into}"
+    return pointer == base or pointer.startswith(f"{base}/")
+
+
+def _travelled(document: str, one: Approximation, referrer: str, into: str) -> Approximation:
+    """``one`` re-pointed from the fragment ``into`` to the referring pointer.
+
+    The suffix below the fragment is kept exactly, because the resolution kept it: a
+    declaration at ``#/definitions/x/items`` carried to a reference at
+    ``#/properties/y`` is a declaration at ``#/properties/y/items``, which is the pointer
+    the comparison walks once the resolution has replaced the node.
+
+    The attribution is RE-MINTED rather than carried, and §2 is why: an upstream
+    attribution "is a property of a document and a pointer rather than of a keyword", so a
+    declaration arriving at a new document and a new pointer is a new SITE and
+    ``codegen.attribution``'s registry is what answers for it.  Carrying the target's
+    string would make ``harness.unattributed`` compare the artifact against a registry
+    lookup for a site the artifact does not name.
+    """
+    pointer = f"#{referrer}{one.pointer[len(into) + 1 :]}"
+    return one._replace(
+        document=document,
+        pointer=pointer,
+        attribution=lower_approximate.attribution_for(document, pointer, one.keyword),
+    )
+
+
+def repointed(
+    document: str,
+    own: Sequence[Approximation],
+    edges: Sequence[bundle.Edge],
+    finished: Mapping[str, Sequence[Approximation]],
+) -> tuple[Approximation, ...]:
+    """**§8: a declaration travels with the fact it is about.**
+
+    "A reference carries its target's declarations to the referring pointer, re-pointed by
+    the same resolution that carried the facts.  The record already inlines a deep copy of
+    a target's facts at the referring node; a declaration about those facts is re-pointed
+    by that same operation, because a fact and the record of what could not be rendered
+    for it must move together or the two sides cannot agree about where either is."
+
+    Here and not in a lowering, for §10's reason: the dependency order finishes every
+    target before a referrer is parsed, so this reads a FINISHED module's declarations
+    rather than re-deriving a resolution.  A handler holds one node and cannot know who
+    references it.
+
+    **The two resolutions move a declaration differently, and each one's own behaviour is
+    what decides it.**  There is no third rule and no flag:
+
+    * a REMOTE reference is inlined by ``bundle.record`` as a deep COPY, and the target
+      document emits its own module and is graded by its own pairs -- so the declaration
+      is COPIED to the referring pointer and the target keeps its own.
+    * a LOCAL reference is left in the record and resolved per side by the comparison's
+      own normalisation, which REPLACES the referring node with its target -- so the fact
+      is read at the referring pointer and at no other, and the declaration MOVES.  An
+      entry left behind would be a declaration no pair reaches, which §8 reports as
+      *over-declared*, "which is the outcome's whole purpose".
+
+    ``own`` is this document's own declarations in document order and ``finished`` is
+    document -> the declarations of a document the order has already finished.  A target
+    outside ``finished`` contributes nothing: it refused, so it has no module and no
+    declaration, and the referring site refused with it.
+    """
+    # ``into`` empty on a LOCAL reference is ``$ref: "#"`` -- a document naming itself,
+    # which is a recursive type ``compiler.local_reference`` refuses by name.  Excluded
+    # here so the fixed point below cannot be handed a fragment that contains every
+    # declaration including the ones it produces.
+    local = [e for e in edges if e.local and e.into]
+    carried = list(own)
+    for _ in range(_TRAVEL_DEPTH):
+        moved: list[Approximation] = []
+        for one in carried:
+            sites = [e for e in local if _under(one.pointer, e.into)]
+            moved += (
+                [one]
+                if not sites
+                else [_travelled(document, one, e.pointer, e.into) for e in sites]
+            )
+        if moved == carried:
+            break
+        carried = moved
+    out: dict[tuple[str, str], Approximation] = {(a.pointer, a.keyword): a for a in carried}
+    for edge in edges:
+        if edge.local or edge.target is None:
+            continue
+        for one in finished.get(edge.target, ()):
+            if _under(one.pointer, edge.into):
+                travelled = _travelled(document, one, edge.pointer, edge.into)
+                out.setdefault((travelled.pointer, travelled.keyword), travelled)
+    return tuple(out.values())
+
+
 def closure(documents: Collection[str], sites: Mapping[str, Sequence[bundle.Edge]]) -> list[str]:
     """``documents`` and every document one of them references, transitively.
 
@@ -1095,6 +1207,18 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             refused[document] = outcome
             continue
         mod, bound = outcome
+        # **§8's "a declaration travels with the fact it is about"**, applied where §10's
+        # order makes it a lookup: every target this document references is finished, so
+        # its declarations are read rather than re-derived (:func:`repointed`).
+        bound = dataclasses_replace(
+            bound,
+            approximations=repointed(
+                document,
+                bound.approximations,
+                lowering.get(document, ()),
+                {d: held[1].approximations for d, held in lowered.items()},
+            ),
+        )
         lowered[document] = (mod, bound, doc)
         # The target's own root node, for §2's intersection rule and for nothing else.
         # Written when the document FINISHES, so a refused document contributes none and
