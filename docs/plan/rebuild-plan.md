@@ -718,6 +718,45 @@ attribution.
 registry data keys constrain no instance, so no annotation drops anything for them. They move to
 §6 — admitted by name, compiling to nothing, reported — and §7 says what becomes of its own set.
 
+### A union of presence-only branches that also forbid (decided 2026-10-27)
+
+The `oneOf`/`anyOf` row's presence clause reads "every branch `required`-only", and 11 documents
+hold a union whose branches constrain presence only and are NOT `required`-only. Row `.20`
+measured them as two shapes and this section answered neither. They go to different places, and
+the generated cell is written by the row that implements each.
+
+**Group A — every branch is `required` plus a `not` of required groups. This is FAITHFUL, and
+it needs one new rule kind.** Six documents: `core/audience-characteristic.json`,
+`core/catchment.json`, `core/creative-asset.json`, `core/creative-manifest.json`,
+`core/frequency-cap-impression-constraints.json`, `core/frequency-cap-interval-constraints.json`.
+
+Every branch constrains which keys are present and nothing else, so it is a rule on the root's
+class and not a branch class. **The answer is ONE rule whose clauses are the branches, each
+clause carrying its own required group AND its own forbidden group, with the combinator deciding
+how many clauses an instance may satisfy.**
+
+Widening `_required_only` to admit `not` is the obvious move and it is WRONG, measured: the `not`
+is per BRANCH, so branch *i* reads "every name in R*ᵢ* present and no group of F*ᵢ* present". A
+`RequiredGroups` over the R*ᵢ* beside a root-level `ForbiddenGroups` over the F*ᵢ* forbids every
+F*ᵢ* unconditionally — `core/catchment.json` states three methods and forbids the other two per
+method, so a root-level rule forbids all three and refuses a payload the document admits. The two
+halves must stay paired per clause, and neither `RequiredGroups` (groups and a combinator) nor
+`ForbiddenGroups` (groups alone) has a slot for the other half. So `_runtime.py` declares the
+new kind and `lower/rules.py` writes it. Nothing is dropped: `APPROXIMATED` does not move.
+
+**Group B — the union MIXES shape branches with presence-only ones. This is a WIDENING, and it
+belongs to §14 step 10.** Five documents, among them
+`error-details/vast-version-mismatch.json` `/anyOf/2`, `media-buy/buy-products-request.json`
+`/anyOf/0` and `media-buy/create-media-buy-request.json` `/anyOf/2`.
+
+A presence-only branch admits ANY object carrying those keys, which is wider than any of the
+shape branches' classes. So no type over the shape classes covers the instances the presence
+branch admits, and there is no faithful type for the union: the shape branches give classes, the
+presence branch gives a rule, and an instance satisfying only the rule is none of the classes.
+That is the asymmetry Group A does not have, and it is why the two shapes separate. The fact
+dropped is the shape precision of the branches, the type widens by §2's ladder, and the gap is
+declared and attributed.
+
 ---
 
 ## 6. Keywords we admit and do not compile
