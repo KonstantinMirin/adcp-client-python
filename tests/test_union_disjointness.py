@@ -198,13 +198,56 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
     named = claimed(
         "union roots whose first-source dispatch is expected to be empty",
         {
+            # **7 -> 40 AT ``adcp-client-python-10l.20``, and the whole of the move is
+            # that these roots REACH the derivation now** (§14 step 9).  Every one of
+            # the 33 added states ``properties``, ``required``,
+            # ``additionalProperties`` or ``allOf`` beside its combinator, and
+            # ``union.ROOT_CONJUNCTS`` refused it before the dispatch was ever derived
+            # -- "there is no pointer to the conjunction for a branch class to name".
+            # §8's pairing rule answers that, so the root's siblings compile onto the
+            # base and the walk gets as far as asking §4's question about the branches.
+            # The derivation itself is unchanged in substance; what changed is its
+            # denominator, which is the number this set exists to carry.
             "a2ui/bound-value.json",
+            "account/get-account-financials-response.json",
+            "account/sync-accounts-response.json",
+            "account/sync-governance-response.json",
             "adagents.json",
             "brand.json",
+            "brand/acquire-rights-response.json",
+            "brand/creative-approval-response.json",
+            "brand/get-brand-identity-response.json",
+            "brand/get-rights-response.json",
+            "brand/search-brands-response.json",
+            "brand/update-rights-response.json",
+            "brand/verify-brand-claim-response.json",
+            "brand/verify-brand-claims-response.json",
+            "compliance/comply-test-controller-response.json",
+            "content-standards/calibrate-content-response.json",
+            "content-standards/create-content-standards-response.json",
+            "content-standards/get-content-standards-response.json",
+            "content-standards/get-media-buy-artifacts-response.json",
+            "content-standards/list-content-standards-response.json",
+            "content-standards/validate-content-delivery-response.json",
             "core/account-ref.json",
             "core/audience-selector.json",
             "core/canonical-account-ref.json",
+            "core/evaluator-spec.json",
             "core/postal-area.json",
+            "core/postal-country-system.json",
+            "creative/get-creative-features-response.json",
+            "creative/sync-creatives-response.json",
+            "media-buy/build-creative-response.json",
+            "media-buy/create-media-buy-response.json",
+            "media-buy/log-event-response.json",
+            "media-buy/provide-performance-feedback-response.json",
+            "media-buy/request-proposals-response.json",
+            "media-buy/sync-audiences-response.json",
+            "media-buy/sync-catalogs-response.json",
+            "media-buy/sync-event-sources-response.json",
+            "media-buy/update-media-buy-response.json",
+            "signals/activate-signal-response.json",
+            "trusted-match/provider-registration.json",
         },
         inside=bundle.portable(BUNDLE),
     )
@@ -217,10 +260,18 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
         titles
     )
     reached = named
+    # **The document's OWN refusal and not a CHAIN quoting one** -- a chained refusal's
+    # detail carries its target's sentence verbatim, so a document behind an overlapping
+    # root read as overlapping itself.  Measured at ``adcp-client-python-10l.20``:
+    # ``core/postal-area.json`` separates its own two branches and refuses on a ``$ref``
+    # into ``core/postal-country-system.json``, which overlaps -- and this predicate put
+    # it in the overlapping half, which is the one claim about it the docstring above
+    # says is false.
     overlapping = {
         d
         for d in reached
         if "branches OVERLAP" in out.refusals.get(d, {}).get("detail", "")
+        and out.refusals[d]["kind"] is not Kind.CHAINED
     }
     partitions(reached, overlapping=overlapping, disjoint=reached - overlapping)
     claimed("roots refused on overlap", overlapping, inside=reached)
@@ -231,9 +282,14 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
     # else entirely.  Asserted as "not on overlap" rather than "emits", because what each
     # one then waits on is another row's fact.
     for document in sorted(disjoint):
-        assert "branches OVERLAP" not in out.refusals.get(document, {}).get(
-            "detail", ""
-        ), document
+        row = out.refusals.get(document, {})
+        # ITS OWN refusal, for the reason the ``overlapping`` reading above takes the
+        # same gate: a chained refusal's detail quotes its target's sentence, so a
+        # document whose own branches separate and whose ``$ref`` target overlaps reads
+        # as overlapping here.  ``core/postal-area.json`` is the measured one.
+        if row.get("kind") is Kind.CHAINED:
+            continue
+        assert "branches OVERLAP" not in row.get("detail", ""), document
     assert disjoint & set(out.emitted), sorted(disjoint)
 
 

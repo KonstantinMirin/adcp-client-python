@@ -1830,7 +1830,15 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
         doc = schema_at(g.ref)
         emitted = _model_schema(g.model)
         for key, sub in (doc.get("properties") or {}).items():
-            if not isinstance(sub.get("format"), str):
+            # **A BOOLEAN property schema is not a format site, and draft-07 has one.**
+            # ``core/format-option-ref.json#/oneOf/1`` states
+            # ``"publisher_domain": false`` -- the schema that admits nothing, which the
+            # branch's own description spells out in prose -- and §14 step 9 is what
+            # made that document emit, so this loop met its first non-mapping property
+            # node and raised ``AttributeError`` on it.  Skipped here because a ``false``
+            # schema states no ``format``; what the model does with it is a FINDING filed
+            # against the row and not this test's subject.
+            if not isinstance(sub, dict) or not isinstance(sub.get("format"), str):
                 continue
             mine = _rendered(emitted, key, g.model)
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
@@ -3317,7 +3325,24 @@ def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
 
         assert symbol in classes, (document, symbol)
         bases = [b.id for b in classes[symbol].bases if isinstance(b, ast.Name)]
-        assert bases == ["BranchDispatchMixin", "AdCPBaseModel"], (document, bases)
+        # **``BranchDispatchMixin`` FIRST, and what follows is DERIVED from the
+        # document** (§14 step 9).  This read ``== ["BranchDispatchMixin",
+        # "AdCPBaseModel"]``, which was true while ``union.ROOT_CONJUNCTS`` refused a
+        # root that composes: §5's ``allOf`` row now compiles a root's conjuncts onto the
+        # base -- "beside a union → the same, onto the base: ``$ref`` conjuncts are the
+        # base's bases" -- so a composing root's base derives those classes and reaches
+        # ``AdCPBaseModel`` through them, which is the ONLY order Python will build (a
+        # class cannot precede its own subclasses in an MRO).  The count is read off the
+        # document's own conjunct list rather than listed here.
+        conjuncts = [
+            c
+            for c in (doc.get("allOf") or [])
+            if isinstance(c, dict) and set(compiler.declaring(c, keywords.Position.CONJ)) == {"$ref"}
+        ]
+        assert bases[0] == "BranchDispatchMixin", (document, bases)
+        assert len(bases) == 1 + (len(conjuncts) or 1), (document, bases, len(conjuncts))
+        if not conjuncts:
+            assert bases[1] == "AdCPBaseModel", (document, bases)
 
         # **A branch class is one whose FIRST base is the union base**, not one whose
         # only base is.  Section 4: "A branch whose schema is a ``$ref`` is a class with
@@ -3385,7 +3410,15 @@ def test_the_base_the_root_name_binds_is_the_class_every_branch_descends_from() 
             assert "_branch_models" not in branch.__dict__, (document, branch)
             assert branch.__adcp_schema__.document == document, (document, branch)
         assert base._branch_combinator() == lower_union.keyword(doc), document
-        assert base._ROOT_REQUIRED == (), document
+        # **The root's OWN ``required``, derived from the document** (§14 step 9).  This
+        # asserted ``()`` and said so because ``union.ROOT_CONJUNCTS`` refused a root
+        # that declares one; §5's ``required`` row at ROOT beside a union is "required on
+        # the base's fields, and the names recorded in ``_ROOT_REQUIRED``, so a refusal
+        # can separate a field the root requires from one that selects a branch", and the
+        # mixin's own refusal reads it -- which
+        # ``test_a_payload_no_branch_admits_is_refused_in_the_documents_own_vocabulary``
+        # now grades against a live document rather than a constructed one.
+        assert base._ROOT_REQUIRED == tuple(doc.get("required") or ()), document
 
 
 def _module_of(document: str) -> str:
@@ -3570,9 +3603,23 @@ def test_a_payload_no_branch_admits_is_refused_in_the_documents_own_vocabulary()
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         with pytest.raises(ValidationError) as caught:
             base.model_validate({"__adcp_harness__": "no branch admits this"})
-        assert [e["type"] for e in caught.value.errors()] == [
-            lower_union.keyword(bundle.read(BUNDLE, document))
-        ], (document, caught.value.errors())
+        # **``_ROOT_REQUIRED`` decides WHICH of the two refusals the document's own
+        # vocabulary calls for, and the split is the mixin's own sentence**: "A
+        # root-required field that is absent is reported as ``required`` at its own
+        # location, because that is what the document refuses on and it is not the
+        # branches' doing.  Anything else is the combinator."  §14 step 9 gives the
+        # population its first non-empty ``_ROOT_REQUIRED``, so the arm that was graded
+        # only by the constructed fixture below is graded by live documents too -- and
+        # the expectation is DERIVED from the class's own fact rather than listed.
+        expected = (
+            [("required", (name,)) for name in base._ROOT_REQUIRED]
+            if base._ROOT_REQUIRED
+            else [(lower_union.keyword(bundle.read(BUNDLE, document)), ())]
+        )
+        assert [(e["type"], e["loc"]) for e in caught.value.errors()] == expected, (
+            document,
+            caught.value.errors(),
+        )
 
     # the anyOf arm, and the _ROOT_REQUIRED split, neither of which the population reaches
     class AnyOfBase(BranchDispatchMixin, AdCPBaseModel):
@@ -3660,9 +3707,18 @@ def test_the_serializer_is_set_on_the_schema_the_wrapper_holds_and_not_on_a_defi
 
     # the measurement the docstring states, re-taken here so it cannot go stale silently
     assert emitted_union_bases()
+    #: Every union base the tree carries, split by whether its root states fields of its
+    #: own -- which is §14 step 9's doing: §5's union row compiles a root's
+    #: ``properties`` and its conjuncts' onto the base, so a base is no longer always
+    #: field-less.  Both halves are asserted non-empty, because the wrap serializer this
+    #: test is about behaves differently on the two and a one-sided population would
+    #: grade only the half that was already green.
+    fieldless, with_fields = [], []
     for document in emitted_union_bases():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
-        assert base.model_fields == {}, (document, sorted(base.model_fields))
+        (with_fields if base.model_fields else fieldless).append(document)
+    claimed("union bases whose root states no field of its own", fieldless)
+    claimed("union bases carrying the root's own fields", with_fields)
 
 
 def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointer() -> None:
@@ -3826,111 +3882,88 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # the merge itself had put beside the reference, which is §9's "never refuse a
     # keyword the walk itself inserted".  The document emits, and its two branch pairs
     # pass all three checks.
-    assert refused_on == {
-    "account/get-account-financials-response.json": "allOf",
-    "account/list-account-changes-response.json": "allOf",
-    "account/sync-accounts-response.json": "allOf",
-    "account/sync-governance-response.json": "allOf",
-    # Both read a keyword from inside a BRANCH until ``salesagent-j3k2l.67`` -- an
-    # ``anyOf`` conjunct at ``/oneOf/1/allOf/0`` and a scalar base at
-    # ``/definitions/default_language/allOf/0`` -- and both now read the root's own
-    # union keyword, because §4's third dispatch source decides the root's dispatch
-    # before its branches are declared and finds their branches OVERLAPPING.  The
-    # deeper obstructions are untouched and report again once the overlap is resolved.
-    "adagents.json": "oneOf",
-    "brand.json": "oneOf",
-    "brand/acquire-rights-response.json": "allOf",
-    "brand/creative-approval-response.json": "allOf",
-    "brand/get-brand-identity-response.json": "allOf",
-    "brand/get-rights-response.json": "allOf",
-    "brand/search-brands-response.json": "allOf",
-    "brand/update-rights-response.json": "allOf",
-    "brand/verify-brand-claim-request.json": "allOf",
-    "brand/verify-brand-claim-response.json": "allOf",
-    "brand/verify-brand-claims-response.json": "allOf",
-    "compliance/comply-test-controller-response.json": "allOf",
-    "compliance/task-completion-data.json": "$ref",
-    "content-standards/calibrate-content-response.json": "allOf",
-    "content-standards/create-content-standards-response.json": "allOf",
-    "content-standards/get-content-standards-response.json": "allOf",
-    "content-standards/get-media-buy-artifacts-response.json": "allOf",
-    "content-standards/list-content-standards-response.json": "allOf",
-    "content-standards/update-content-standards-response.json": "allOf",
-    "content-standards/validate-content-delivery-response.json": "allOf",
-    "core/account-identity-change-preview.json": "$ref",
-    "core/assets/asset-union.json": "$ref",
-    "core/assets/daast-asset.json": "properties",
-    "core/assets/display-tag-asset.json": "properties",
-    "core/assets/vast-asset.json": "properties",
-    "core/async-response-data.json": "$ref",
-    "core/audience-characteristic.json": "allOf",
-    "core/brand-response-authorization-result.json": "properties",
-    "core/budget-allocation.json": "allOf",
-    "core/canonical-placement.json": "properties",
-    "core/catchment.json": "properties",
-    "core/creative-asset.json": "allOf",
-    "core/creative-manifest.json": "allOf",
-    "core/delivery-metric-aggregate.json": "allOf",
-    "core/evaluator-spec.json": "properties",
-    "core/format-option-ref.json": "additionalProperties",
-    "core/frequency-cap-impression-constraints.json": "properties",
-    "core/frequency-cap-interval-constraints.json": "properties",
-    "core/postal-area.json": "$ref",
-    "core/postal-country-system.json": "properties",
-    "core/product-format-declaration.json": "allOf",
-    "core/registry-event.json": "properties",
-    "core/requirements/asset-requirements.json": "$ref",
-    # **THREE LEFT THIS MAP AND ONE MOVED AT ``adcp-client-python-10l.20``, all four
-    # because §5's ``$ref`` row at CONJ now makes a non-class target the composing node's
-    # own TYPE.**  ``core/agent-reporting-destination.json``, ``core/optimization-goal.json``
-    # and ``core/pricing-option.json`` EMIT: each refused on a conjunct whose ``$ref``
-    # resolves to an alias or an enumeration, directly or through a chain, and the row
-    # that answers it is §14 step 9's.  ``core/budget-allocation.json`` moved ``$ref`` ->
-    # ``allOf``: its chain through ``core/optimization-goal.json`` cleared, so the walk
-    # reached its OWN conjunct at
-    # ``/oneOf/1/properties/optimization_goals/items/allOf/0``, where the target is a
-    # class and the node also declares fields -- the one shape §5's clause does not
-    # reach, reported on ``allOf`` by name.  That is the attribution moving in the honest
-    # direction, which is what this profile is for.
+    # **RE-MEASURED IN FULL AT ``adcp-client-python-10l.20`` (§14 step 9), and the
+    # profile is a DIFFERENT SET of keywords because the one this row retired was the
+    # most common entry in it.**  ``union.ROOT_CONJUNCTS`` reported 61 of these roots
+    # on ``allOf``, ``properties``, ``required`` or ``additionalProperties`` -- "there is
+    # no pointer to the conjunction for a branch class to name" -- and §8's pairing rule
+    # answers all 61, so every one of them either EMITS (15 of them, and 14 are the chain
+    # roots named in the row's delivery note) or reports the obstruction behind it.  The
+    # new profile is what those obstructions are, and each is another row's by a sentence:
     #
-    # ``core/requirements/catalog-field-binding.json`` LEFT THIS MAP AT ROW .3 and is
-    # the row's whole emission delta: 747 -> 748.  Its last refusal was ``$ref`` at
-    # ``#/definitions/ScalarBinding/properties/ext``, resolution UNRESOLVED, because the
-    # delegated resolver descended neither ``definitions`` nor ``$defs`` and left that
-    # reference in the document the package would carry.  ``bundle.record`` descends a
-    # section entry like any other subschema position (architecture §4, §11), so the
-    # reference is inlined and the carried document decides locally.
-    "core/tracker-execution-selector.json": "$ref",
-    "core/wholesale-feed-event.json": "properties",
-    "creative/get-creative-features-response.json": "allOf",
-    "creative/preview-creative-response.json": "allOf",
-    "creative/sync-creatives-response.json": "allOf",
-    # ``maxLength`` -> ``$ref`` at ``adcp-client-python-10l.20``: §5's ``format`` row's
-    # own fallback keeps a ``uri`` beside a bound, so this document's own verdict cleared
-    # and what is left is a CHAIN through ``governance/accepted-governance-agents.json``,
-    # whose obstruction is a sibling of a NESTED union.
-    "error-details/governance-agent-not-accepted.json": "$ref",
-    "error-details/vast-version-mismatch.json": "properties",
-    "media-buy/build-creative-response.json": "allOf",
-    "media-buy/buy-products-request.json": "allOf",
-    "media-buy/create-media-buy-request.json": "allOf",
-    "media-buy/create-media-buy-response.json": "allOf",
-    "media-buy/decline-proposals-response.json": "properties",
-    "media-buy/get-reporting-status-response.json": "allOf",
-    "media-buy/list-products-response.json": "properties",
-    "media-buy/log-event-response.json": "allOf",
-    "media-buy/media-buy-commitment-response.json": "$ref",
-    "media-buy/proposal-refinement.json": "properties",
-    "media-buy/provide-performance-feedback-response.json": "allOf",
-    "media-buy/refine-proposals-response.json": "properties",
-    "media-buy/request-proposals-request.json": "allOf",
-    "media-buy/request-proposals-response.json": "properties",
-    "media-buy/sync-audiences-response.json": "allOf",
-    "media-buy/sync-catalogs-response.json": "allOf",
-    "media-buy/sync-event-sources-response.json": "allOf",
-    "media-buy/update-media-buy-response.json": "allOf",
-    "signals/activate-signal-response.json": "allOf",
-    "trusted-match/provider-registration.json": "properties",
+    # * ``oneOf``/``anyOf`` (16) -- §4's third dispatch source cannot separate the
+    #   branches, which is the UNDERDETERMINED row step 10 owns;
+    # * ``required`` (11) -- a branch declaring no property constrains only key presence,
+    #   which is step 7's row and is blocked on ``rules._required_only`` admitting more
+    #   than ``{"required"}`` alone (a change to a POPULATION, not to a lowering);
+    # * ``items``/``properties``/``additionalProperties`` on a restatement (4) -- §5's
+    #   ``properties`` row, "two object declarations compose as an ``allOf`` of the two at
+    #   that property", decided and unwritten;
+    # * ``$ref`` -- a chain onto one of the above, or onto a document refused elsewhere.
+    #
+    # The claim this profile makes is unchanged: every union root the step does not emit
+    # is refused BY NAME, POINTER AND KEYWORD, and no such document is silently absent.
+    assert refused_on == {
+        "account/list-account-changes-response.json": "$ref",
+        "account/sync-accounts-response.json": "$ref",
+        "adagents.json": "oneOf",
+        "brand.json": "oneOf",
+        "brand/acquire-rights-response.json": "$ref",
+        "brand/update-rights-response.json": "$ref",
+        "brand/verify-brand-claim-response.json": "$ref",
+        "brand/verify-brand-claims-response.json": "type",
+        "compliance/comply-test-controller-response.json": "additionalProperties",
+        "compliance/task-completion-data.json": "$ref",
+        "content-standards/calibrate-content-response.json": "oneOf",
+        "content-standards/create-content-standards-response.json": "oneOf",
+        "content-standards/get-content-standards-response.json": "oneOf",
+        "content-standards/get-media-buy-artifacts-response.json": "oneOf",
+        "content-standards/list-content-standards-response.json": "oneOf",
+        "content-standards/validate-content-delivery-response.json": "oneOf",
+        "core/account-identity-change-preview.json": "$ref",
+        "core/assets/asset-union.json": "$ref",
+        "core/assets/daast-asset.json": "items",
+        "core/assets/display-tag-asset.json": "items",
+        "core/assets/vast-asset.json": "items",
+        "core/async-response-data.json": "$ref",
+        "core/audience-characteristic.json": "required",
+        "core/budget-allocation.json": "allOf",
+        "core/canonical-placement.json": "$ref",
+        "core/catchment.json": "required",
+        "core/creative-asset.json": "required",
+        "core/creative-manifest.json": "required",
+        "core/delivery-metric-aggregate.json": "allOf",
+        "core/evaluator-spec.json": "oneOf",
+        "core/frequency-cap-impression-constraints.json": "required",
+        "core/frequency-cap-interval-constraints.json": "required",
+        "core/postal-area.json": "$ref",
+        "core/postal-country-system.json": "anyOf",
+        "core/product-format-declaration.json": "required",
+        "core/registry-event.json": "$ref",
+        "core/requirements/asset-requirements.json": "$ref",
+        "core/tracker-execution-selector.json": "$ref",
+        "core/wholesale-feed-event.json": "$ref",
+        "creative/get-creative-features-response.json": "oneOf",
+        "creative/preview-creative-response.json": "properties",
+        "creative/sync-creatives-response.json": "oneOf",
+        "error-details/governance-agent-not-accepted.json": "$ref",
+        "error-details/vast-version-mismatch.json": "required",
+        "media-buy/build-creative-response.json": "oneOf",
+        "media-buy/buy-products-request.json": "required",
+        "media-buy/create-media-buy-request.json": "required",
+        "media-buy/create-media-buy-response.json": "oneOf",
+        "media-buy/decline-proposals-response.json": "required",
+        "media-buy/get-reporting-status-response.json": "oneOf",
+        "media-buy/list-products-response.json": "$ref",
+        "media-buy/media-buy-commitment-response.json": "$ref",
+        "media-buy/proposal-refinement.json": "anyOf",
+        "media-buy/refine-proposals-response.json": "type",
+        "media-buy/request-proposals-request.json": "required",
+        "media-buy/request-proposals-response.json": "$ref",
+        "media-buy/sync-audiences-response.json": "oneOf",
+        "media-buy/sync-catalogs-response.json": "oneOf",
+        "media-buy/update-media-buy-response.json": "oneOf",
+        "trusted-match/provider-registration.json": "anyOf",
     }, refused_on
 
 
@@ -5066,8 +5099,14 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
         # rule, and not a ``json_schema_extra`` fact.
         assert "propertyNames" not in _source(name), name
     # The third one's document refuses, and on another row's keyword at its root.
+    # ``allOf`` -> ``oneOf`` at ``adcp-client-python-10l.20``: the root's ``allOf``
+    # compiles onto the base now (§5's ``allOf`` row beside a union), so the walk gets
+    # past it and reports the obstruction behind it -- §4's third dispatch source, whose
+    # branches this root's derivation cannot separate.  The claim this line makes is
+    # unchanged: the document refuses at its ROOT on another row's keyword, so the key
+    # schema at ``/oneOf/1/allOf/0/then`` is not what blocks it.
     third = out.refusals["media-buy/sync-catalogs-response.json"]
-    assert (third["keyword"], third["pointer"]) == ("allOf", "/"), third
+    assert (third["keyword"], third["pointer"]) == ("oneOf", "/"), third
 
     # And the probe, both positions, one key schema.  The rule position lowers and
     # states only the conditional the ``if``/``then`` pair is about...
@@ -5217,14 +5256,25 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # branch, and a mapping's own key count -- and each now emits with that fact on a
     # named type.  All three are the MAPPING path, so the store assertion below is
     # unchanged by them.
+    #
+    # **16 -> 20 at ``adcp-client-python-10l.20``, and all four are §14 step 9's.**
+    # ``brand/get-brand-identity-response.json`` and
+    # ``brand/search-brands-response.json`` are union roots whose own siblings now
+    # compile onto the base; ``core/media-buy-features.json`` emits behind
+    # ``core/format-option-ref.json``, which the same row cleared.  Two of the four are
+    # a STORE site rather than the mapping path, which is the first time this population
+    # has moved the store list below -- and that list names them.
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
         "a2ui/component.json",
+        "brand/get-brand-identity-response.json",
+        "brand/search-brands-response.json",
         "collection/get-collection-list-response.json",
         "core/account-change.json",
         "core/canonical-media-buy-features.json",
         "core/geo-place-area.json",
         "core/geo-region-support.json",
+        "core/media-buy-features.json",
         "core/product-change-map.json",
         "core/reporting-file-entry.json",
         "core/tasks-list-response.json",
@@ -5257,8 +5307,19 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # second arrived at ``salesagent-j3k2l.41``: ``reported-outcome-error``'s root
     # declares ``properties`` beside a typed ``additionalProperties``, so it is the
     # STORE path and not the mapping one.
+    # **TWO -> FOUR at ``adcp-client-python-10l.20``, and both additions are §14 step
+    # 9's**: a union root whose own siblings compile onto the base emits, so
+    # ``brand/get-brand-identity-response.json``'s branch declares ``fonts`` -- a node
+    # with ``properties`` AND a typed ``additionalProperties``, which is the store's own
+    # shape at a BRANCH rather than at a root, and the first site of it this population
+    # has ever reached -- and ``core/media-buy-features.json`` emits behind
+    # ``core/format-option-ref.json``, which the same row cleared.  The mechanism is
+    # unchanged; what grew is the population it is graded over, which is what this list
+    # is for.
     assert [row for row in store if row[0] in out.emitted] == [
+        ("brand/get-brand-identity-response.json", "/oneOf/0/properties/fonts"),
         ("core/canonical-media-buy-features.json", "/"),
+        ("core/media-buy-features.json", "/"),
         ("governance/reported-outcome-error.json", "/"),
     ], store
     # and it really does carry the store, read off the emitted module
@@ -7546,7 +7607,27 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     #
     # The ceiling rises to the measurement and the direction is named: this pin ADMITS
     # that one more document is clearable where before it recorded it as decided.
-    assert resolved[refusal_module.Kind.DEFERRED] <= 109, resolved[refusal_module.Kind.DEFERRED]
+    #
+    # **109 -> 153 AT ``adcp-client-python-10l.20``, and the move is 85 VERDICTS LEAVING**
+    # (§14 step 9).  ``union.ROOT_CONJUNCTS`` minted a VERDICT for 61 documents and the
+    # chain carried it to more; §8's pairing rule answers all of them, so what each of
+    # those documents now reports is its next obstruction -- and almost every one of
+    # those is unwritten code: §4's UNDERDETERMINED row for 16 roots whose branches
+    # genuinely overlap, step 7's row for 11 whose branches constrain only key presence,
+    # and the chains behind both.  Measured on this tree: verdict 168 -> 83, deferred
+    # 83 -> 153 over the portable set, and 75 / 150 over ``population()``, which is what
+    # this test counts.
+    #
+    # **This ceiling rising is the ratchet working and not loosening**, by this test's
+    # own sentence above: a deferral records CLEARABLE work and a verdict records the
+    # obstruction as the document's, so a verdict becoming a deferral is a claim being
+    # withdrawn.  The figure that may not rise is the VERDICT count, which fell by 85,
+    # and §9's "do not pin the approximation count" is the same reasoning one step on.
+    assert resolved[refusal_module.Kind.DEFERRED] <= 153, resolved[refusal_module.Kind.DEFERRED]
+    # And the half that MAY NOT RISE, pinned at the measurement §14 step 9 left it at:
+    # a verdict says the obstruction belongs to the document, so a row that mints one
+    # where a deferral stood is charging a document for work nobody has done (§9).
+    assert resolved[refusal_module.Kind.VERDICT] <= 83, resolved[refusal_module.Kind.VERDICT]
     # **THE ``unresolved`` PIN IS GONE WITH THE KIND, AT ``adcp-client-python-10l.6``,
     # AND WHAT REPLACES IT IS THE RETIREMENT ITSELF.**  Architecture §3: "UNRESOLVED
     # disappears.  It named a reference the delegated resolver did not reach, and the
@@ -7615,8 +7696,24 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # ceiling above -- a kind that was minted at a raise site is read off the cell -- so
     # re-pointing this floor DOWN is the pin reporting the correction rather than
     # absorbing it.  Nothing stopped emitting and nothing started refusing.
+    # **945 -> 901 at ``adcp-client-python-10l.20``, and the fall is the same correction
+    # the two before it were, measured the same way.**  ``accounted`` is
+    # ``emitted + VERDICTS``, so the two terms moved in opposite directions: emitted
+    # 803 -> 818 (+15, every one named in the row's delivery note, and 0 documents
+    # stopped emitting) and verdicts 168 -> 83 (-85).  Net -44.
+    #
+    # The 85 were counted as FINISHED and are not.  ``union.ROOT_CONJUNCTS`` minted a
+    # VERDICT for 61 documents on the ground that "there is no pointer to the conjunction
+    # for a branch class to name", and §8's pairing rule gives it one -- so every one of
+    # those documents now reports its NEXT obstruction, and almost every one of those is
+    # unwritten code: §4's UNDERDETERMINED row for 16 roots whose branches genuinely
+    # overlap, step 7's row for 11 whose branches constrain only key presence, and the
+    # chains behind both.  §9's first rule is that a refusal for code nobody has written
+    # is a DEFERRAL, so re-pointing this floor DOWN is the pin reporting the correction
+    # rather than absorbing it.  The emitted term is what rose and nothing it counts
+    # moved the other way.
     accounted = len(out.emitted) + len(verdicts)
-    assert accounted >= 945, (accounted, len(out.emitted), len(verdicts))
+    assert accounted >= 901, (accounted, len(out.emitted), len(verdicts))
 
     # And the gap between the two readings, stated so it cannot be read as closed.
     pending = sum(resolved[k] for k in refusal_module.PENDING_KINDS)
