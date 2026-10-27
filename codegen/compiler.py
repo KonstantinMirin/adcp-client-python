@@ -53,7 +53,7 @@ from __future__ import annotations
 import keyword
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from typing import Any
+from typing import Any, NamedTuple
 
 from adcp.types._base import Approximation, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -218,11 +218,14 @@ class Shape:
     only a ``default`` and a ``description`` and ``schema_at`` raises ``KeyError``.  So
     the field is REUSED rather than re-derived.
 
-    ``declares`` is the set of symbols the class's own module declared by the time the
-    class was, which is what lets a reuser tell a symbol it may import from the base's
-    module from one that module merely imported itself -- a re-export, which section 2's
-    import rule refuses (``emit.emit``'s binder refuses the same shape for a fragment
-    ``$ref``, and for the same reason).
+    **Where a re-used field's type is IMPORTABLE from is not here and is
+    :attr:`Target.imports`'s.**  It was: ``declares``, the symbols the class's own module
+    had declared by the time the class was, which a reuser subtracted the wanted symbols
+    from and refused the remainder as a re-export.  That reading answered the wrong
+    question -- a symbol the base merely imported is not unreachable, it is reachable
+    from the module that DECLARES it -- and the question it answers belongs to a MODULE
+    rather than to one class's field set, so it is asked and answered where the two
+    document paths are known (``emit.resolve``).
     """
 
     properties: Mapping[str, dict]
@@ -230,13 +233,6 @@ class Shape:
     #: ``key -> ir.Field``; see above.  Overlaid by :func:`declare_object` with the
     #: props it is handed, so every declaring row records it in one place.
     decided: Mapping[str, ir.Field] = field(default_factory=dict)
-    #: The symbols the declaring module had declared; see above.  **POINTERS while the
-    #: declaring module is being walked and SYMBOLS once it is named**: a shape only
-    #: crosses a module boundary through a :class:`Target`, and ``emit.resolve`` binds
-    #: the pointers through the target module's own symbol table before handing it over
-    #: (§7's "naming is a pass over the module").  Within one module nothing reads it,
-    #: because a local base's symbols are this module's own by construction.
-    declares: frozenset[str] = frozenset()
     #: The class's own ``description``, which is the description its NODE states.
     #: Written by :func:`declare_object` beside :attr:`decided`, for the reason that
     #: one exists: a subclass cannot read it off the base's node, because it does not
@@ -250,6 +246,23 @@ class Shape:
     description: str | None = None
 
 
+class Importable(NamedTuple):
+    """Where ONE symbol is importable from, for the module that is about to name it.
+
+    ``module`` is the spelling that module writes, which D1 derives from the two
+    document paths and ``emit.relative_module`` is the one derivation of.  ``document``
+    is the bundle document whose module DECLARES the symbol, and it is here because the
+    spelling alone cannot be handed on: a third module composing the second needs the
+    symbol's own declarer, and re-deriving a spelling from a spelling is a second copy of
+    D1.  Carrying the document means every module in a chain imports from the SAME place,
+    which is §1's "one import path per class, and never a second way to reach the same
+    class" read across more than two modules.
+    """
+
+    module: str
+    document: str
+
+
 @dataclass(frozen=True)
 class Target:
     """What a resolved ``$ref`` gives the lowering that asked for it.
@@ -259,17 +272,45 @@ class Target:
     D2's root-scalar row is an ``Annotated`` alias, and subclassing one is a
     ``TypeError`` at import, so a lowering refuses it as a base rather than
     writing a module that cannot be imported.
+
+    ``document`` is the bundle path ``module`` was derived from, so a lowering that
+    records the import also records WHO declares the symbol (:class:`Importable`).
     """
 
     module: str
     symbol: str
     shape: Shape | None = None
+    document: str = ""
+    #: **Every symbol the target's module can hand this one, and where each is
+    #: importable FROM**: the symbols that module declares, mapped to the target itself,
+    #: and the symbols it imported, mapped to the documents that declare THOSE.  §1 gives
+    #: a class one import path, so a reuser of an inherited field takes each symbol the
+    #: field's type names from its declarer and never from the base as a re-export --
+    #: which is the same rule ``emit.resolve`` applies to a fragment ``$ref``, written
+    #: once and read by :func:`_reused`.
+    #:
+    #: Built by ``emit.resolve``, because the spelling is a function of the two DOCUMENT
+    #: paths (D1) and the walk knows neither: a lowering reads this table and derives no
+    #: import.  Empty for a document lowered outside a run, which refuses by name rather
+    #: than inventing one.
+    imports: Mapping[str, Importable] = field(default_factory=dict)
 
     # **The target's own ROOT NODE is not here and is ``Module.roots``'s now.**  §2's
     # intersection rule asked of two declarations that are each a bare ``$ref`` is the
     # one reader that needs the target's schema rather than its symbol, and it holds a
     # DECLARATION and not a node -- so it has no pointer to ask a site with, and the
     # run keys that one answer by the URI alone (:func:`Module.resolve_node`).
+
+    @property
+    def where(self) -> Importable:
+        """Where :attr:`symbol` itself is importable from.
+
+        The target's own symbol is one its document DECLARES -- ``emit.resolve`` reads it
+        off the target module's symbol table and refuses a fragment whose node carries
+        none -- so the declarer is the target, and this is the pair every site recording
+        the import hands :meth:`Module.importing`.
+        """
+        return Importable(self.module, self.document)
 
 
 @dataclass(frozen=True)
@@ -470,6 +511,14 @@ class Module:
     #: own name unless Python's own keyword list refuses it.
     reserved: frozenset[str] = frozenset()
     imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
+    #: **Symbol -> the bundle DOCUMENT that declares it**, for every symbol this
+    #: module imported from another one.  The other half of :attr:`imports`, which holds
+    #: the SPELLING: a spelling is relative to this document and says nothing to a third
+    #: module, and the declarer is what §1's one-import-path rule is about.  Written by
+    #: :meth:`importing` and by no other path, so a symbol in one map and not the other
+    #: is unrepresentable; read by ``emit.resolve``, which turns it into the
+    #: :class:`Importable` table a module composing this one is handed.
+    imported: dict[str, str] = field(default_factory=dict)
     #: **Every declaration this module holds, in DECLARATION ORDER**
     #: (``docs/plan/architecture.md`` §7).  This was a list of rendered text BLOCKS, and
     #: a module accumulating text beside its decision memo is the two-layers-one-object
@@ -675,6 +724,19 @@ class Module:
         """
         self.asked.add((uri, pointer))
         return self.targets.get((uri, pointer)) or unresolved(uri, pointer)
+
+    def importing(self, symbol: str, where: Importable) -> str:
+        """Record that this module imports ``symbol`` from ``where``, and return it.
+
+        **The one writer of both halves.**  :attr:`imports` is what the renderer writes
+        the ``from ... import`` line off; :attr:`imported` is what a module composing
+        this one reads to take the same symbol from the same declarer rather than from
+        here, which would be a re-export and §1's second way to reach one class.  Two
+        records written on one line, so neither can be the one a caller forgot.
+        """
+        self.imports.add((where.module, symbol))
+        self.imported[symbol] = where.document
+        return symbol
 
     def declare(self, pointer: str, declaration: ir.Declaration) -> Refusal | None:
         """Record one declaration at its POINTER, or say why not.
@@ -1334,11 +1396,18 @@ def declare_object(
         combinator=combinator,
         branches=branches,
     )
-    # :attr:`Shape.decided` and :attr:`Shape.declares` are written HERE and by no
-    # caller, for the reason the rule tuple above is: this is the one funnel a class
-    # with fields passes through, so a row cannot forget to record what it decided.
+    # :attr:`Shape.decided` is written HERE and by no caller, for the reason the rule
+    # tuple above is: this is the one funnel a class with fields passes through, so a
+    # row cannot forget to record what it decided.
     # The caller's own ``decided`` is what the class INHERITS (a composing row passes
     # its bases'), and the props it is handed are this class's own and win the key.
+    #
+    # **It recorded the module's declared POINTERS here too and no longer does.**  That
+    # set was read in one place -- a reuser asking whether a symbol was importable from
+    # the base -- and the answer it gave was a snapshot of one moment in another
+    # module's walk.  Where a symbol is importable from is a fact about two DOCUMENTS,
+    # so ``emit.resolve`` answers it off the target's finished symbol table and its
+    # :attr:`Module.imported` record (:attr:`Target.imports`).
     #
     # **A UNION BASE records one too, and what it is NOT allowed to do is CROSS A
     # MODULE BOUNDARY.**  §5's ``$ref`` row at CONJ decides a union root by name --
@@ -1354,7 +1423,6 @@ def declare_object(
     mod.shapes[pointer] = replace(
         shape,
         decided={**shape.decided, **{p.wire: p for p in props}},
-        declares=frozenset(mod.at) | {pointer},
         description=described,
     )
     collision = mod.declare(pointer, declaration)
@@ -2058,10 +2126,10 @@ def lower_composition(
                 # can say so.  The import is added here because the symbol is this
                 # module's to name either way, and the two arms differ in what they do
                 # with it rather than in whether they need it.
-                mod.imports.add((target.module, target.symbol))
+                mod.importing(target.symbol, target.where)
                 conjoined.append((where, target.symbol))
                 continue
-            mod.imports.add((target.module, target.symbol))
+            mod.importing(target.symbol, target.where)
             # A base another MODULE declares, carried as the symbol the module writer
             # imported: §7 makes ``bases`` ``TypeRef``s so one slot holds that beside a
             # base this module declares, which travels by pointer until the pass runs.
@@ -2578,20 +2646,48 @@ def _reused(
 ) -> ir.Field | Refusal:
     """The inherited field an annotation-only restatement re-states, importable here.
 
-    A re-used type names symbols, and each one has to be IMPORTABLE from this module
-    or the class is an undefined name at import.  The only module this row knows for
-    the key is the one its ``$ref`` conjunct bound, so a symbol that module DECLARES
-    is imported from it and anything else refuses by name.  The second case is a
-    re-export -- the base merely imported the symbol itself -- and section 2's import
-    rule is an import of a symbol the target declares; ``emit.emit``'s binder refuses
-    the same shape for a fragment ``$ref``, with the same reasoning.
+    A re-used type names symbols, and each one has to be IMPORTABLE from this module or
+    the class is an undefined name at import.  **Each is taken from the module that
+    DECLARES it** -- :attr:`Target.imports` is the base's whole offer, its own
+    declarations beside the declarers of everything it imported -- which is §1's "one
+    import path per class, and never a second way to reach the same class": the base's
+    import of a symbol and this module's import of the same symbol name one module, so
+    there is one path to the class and no re-export anywhere.
 
-    Measured over this step's population: 3 keys re-use a field, all 3 on
-    ``formats/canonical/_base.json`` -- ``experimental`` and ``v1_translatable`` name
-    no symbol at all (``bool``), and ``slots`` names ``CanonicalFormatBaseSlotsItem``,
-    which ``_base`` declares.  **0** re-use a type naming a re-exported symbol, so the
-    refusal below fires on nothing today and is the loud answer when a document first
-    reaches one.
+    **It read ``Shape.declares`` and refused the rest as a re-export, and that refusal
+    is what ``adcp-client-python-81c`` answers.**  The sentence was right about what it
+    refused -- importing a symbol FROM the base, which the base only imported, is the
+    second path §1 forbids -- and wrong that there was nothing else to do.  The base's
+    own import names the declaring module, the run holds it
+    (:attr:`Module.imported`), and taking the symbol from there is one import path and
+    not a relaxation of anything.
+
+    **Its population was NOT 0, which is this row's own finding.**  The sentence it
+    replaced read "0 re-use a type naming a re-exported symbol, so the refusal below
+    fires on nothing today", and that figure is stale at ``18474e55``: the PUBLISHED
+    bundle reaches it in two documents -- ``core/media-buy-frequency-cap-capability.json``
+    at ``/properties/max_impressions_constraints``
+    (``FrequencyCapImpressionConstraints``) and ``core/product-signal-targeting-option``
+    ``.json`` at ``/properties/signal_ref`` (``SignalRef``).  The patch set for upstream
+    #8525 adds the third: ``core/domain-name.json`` is extracted,
+    ``core/placement-ref.json``'s ``publisher_domain`` becomes a ``$ref`` to it,
+    ``core/placement-selection.json`` composes that base under ``{required:
+    [publisher_domain]}``, and the subclass restates the key with the base's type.
+
+    **Measured at this row, both bundles, over the portable set.**  70 keys reach this
+    function.  9 take the arm below (the base is this module's own).  61 cross a module
+    boundary, and of those 17 re-use a type naming a symbol -- 18 over the patched
+    bundle.  The symbols resolve to 5 declaring documents: 13 to
+    ``formats/canonical/_base.json``, which is the base itself, and 4 to a document the
+    base IMPORTED -- ``core/frequency-cap-impression-constraints.json``,
+    ``core/frequency-cap-interval-constraints.json``, ``enums/reach-unit.json`` and
+    ``core/signal-ref.json`` -- with ``core/domain-name.json`` the fifth over the patched
+    bundle.  0 refuse, over either.
+
+    What is left to refuse is a symbol the base's module neither declares nor imported
+    from a document of this bundle -- nothing of the run can name it, so there is no
+    module to import it from and no judgement to make about which one.  Population 0
+    over both bundles.
     """
     held, source = inherited_fields.get(key), inherited_from.get(key)
     if held is None:
@@ -2609,23 +2705,29 @@ def _reused(
         # :class:`Target` for it and nothing to import -- the field's type names this
         # module's own declarations by pointer and ``lower/names.py`` binds them.  The
         # import screen below is about crossing a module boundary, and this does not
-        # cross one.  Measured over the 1,054 portable documents: **0 branches reach
-        # here**, because 0 of the 145 branch restatements of a root-declared property
-        # state nothing but annotations (139 narrow and 6 restate identically), so this
-        # arm is written for the first document that does rather than discovered by it.
+        # cross one.
+        #
+        # **Re-measured at ``adcp-client-python-81c``: 9 branches reach here**, over both
+        # bundles -- 6 on ``account/list-account-changes-response.json`` and 3 on
+        # ``core/brand-response-authorization-result.json``.  This read "0 branches reach
+        # here, so this arm is written for the first document that does rather than
+        # discovered by it", which was true when it was written and is not now; the arm
+        # is exercised and ``/properties/reason``'s re-used type reaches it still
+        # carrying a POINTER, which is exactly the case it declines to screen.
         return held
     wanted = ir.symbols(held.type)
-    unplaceable = sorted(wanted - source.shape.declares) if source.shape else sorted(wanted)
+    unplaceable = sorted(wanted - set(source.imports))
     if unplaceable:
         return Refusal(
             "properties",
             pointer,
             f"{key!r} re-uses the field of {source.symbol}, whose type names "
-            f"{unplaceable} -- symbols that module imports rather than declares, so "
-            f"importing them from it would be a re-export",
+            f"{unplaceable} -- symbols no document this run lowered declares, so there "
+            f"is no module to import them from",
             kind=Kind.VERDICT,
         )
-    mod.imports |= {(source.module, symbol) for symbol in wanted}
+    for symbol in sorted(wanted):
+        mod.importing(symbol, source.imports[symbol])
     return held
 
 

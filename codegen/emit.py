@@ -650,9 +650,13 @@ def _bound_shape(shape: compiler.Shape, symbols: Mapping[str, str]) -> compiler.
     module's own table.
 
     A shape is recorded during the walk, where a local declaration is a POINTER (§7), and
-    it is read by ANOTHER document -- a composing row's re-used field, and the set of
-    symbols that row may import from the base.  The target was named before this document
-    was parsed (§10's order), so the binding is a lookup and never a second derivation.
+    it is read by ANOTHER document -- a composing row's re-used field.  The target was
+    named before this document was parsed (§10's order), so the binding is a lookup and
+    never a second derivation.
+
+    **Where those symbols are importable from is NOT bound here**: that is a fact about
+    two DOCUMENT paths rather than about one class's fields, and it is
+    :func:`_importable`'s, on the :class:`compiler.Target` beside the shape.
     """
     return dataclasses_replace(
         shape,
@@ -660,8 +664,32 @@ def _bound_shape(shape: compiler.Shape, symbols: Mapping[str, str]) -> compiler.
             key: dataclasses_replace(f, type=lower_names.resolved(f.type, symbols))
             for key, f in shape.decided.items()
         },
-        declares=frozenset(symbols[p] for p in shape.declares if p in symbols),
     )
+
+
+def _importable(
+    asking: str, target: str, symbols: Mapping[str, str], imported: Mapping[str, str]
+) -> dict[str, compiler.Importable]:
+    """Every symbol ``target``'s module can hand ``asking``, and where each comes from.
+
+    **§1's "one import path per class" across more than two modules.**  ``symbols`` is
+    the target's own symbol table, so every name in it is one the target DECLARES and
+    the declarer is the target.  ``imported`` is the target's record of what it imported
+    and from WHICH DOCUMENT, so a symbol reaching the target by import reaches this
+    module from the same declarer -- never from the target, which would be a re-export
+    and the second path §1 forbids.
+
+    The two document paths are both here and the spelling is :func:`relative_module`'s
+    (D1), which is why this is the run's and not the walk's: a lowering reads the table
+    and derives no import.  A symbol the target both declares and imported is
+    impossible -- one module, one namespace -- and the declaration wins if one ever is,
+    because the target is then itself the declarer.
+    """
+    declares = compiler.Importable(relative_module(asking, target), target)
+    return {
+        **{s: compiler.Importable(relative_module(asking, d), d) for s, d in imported.items()},
+        **dict.fromkeys(symbols.values(), declares),
+    }
 
 
 #: How many times :func:`repointed` re-reads its own output before it stops.  A local
@@ -1249,8 +1277,11 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             # **The SHAPE crosses the module boundary with its symbols BOUND**, which is
             # what makes a shape recorded by pointer readable in another module: the
             # target was named before this document was parsed (§10's order), so its own
-            # symbol table is what binds the re-used field's type and the set of symbols
-            # a composing subclass may import from it (``compiler._reused``).
+            # symbol table is what binds the re-used field's type.  WHERE each of those
+            # symbols is importable from crosses beside it (:func:`_importable`), which
+            # is the same table ``symbol`` above is read off and the record of what the
+            # target imported -- so a composing subclass takes each symbol from its
+            # declarer, which is §1's one import path per class.
             #
             # **A UNION BASE's shape does not cross, and §5's ``$ref`` row at CONJ is
             # the sentence** (§14 step 9): "where it is not a class declaring fields --
@@ -1271,6 +1302,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                 relative_module(document, edge.target),
                 symbol,
                 None if shape is None else _bound_shape(shape, bound.symbols),
+                edge.target,
+                _importable(document, edge.target, bound.symbols, mod.imported),
             )
         return answers
 

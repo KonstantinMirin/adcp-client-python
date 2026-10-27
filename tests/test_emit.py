@@ -7711,7 +7711,6 @@ VERDICTS = frozenset(
         'core/hotel-item.json',
         'core/job-item.json',
         'core/localized-creative-asset.json',
-        'core/media-buy-frequency-cap-capability.json',
         'core/offering-asset-group.json',
         'core/offering.json',
         'core/package-signal-targeting-group.json',
@@ -8148,6 +8147,13 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     #   property re-uses a field whose type its base module imports rather than
     #   declares.  ``core/product-signal-targeting-option.json`` already carried that
     #   verdict, so this is a second instance of a decided shape and not a new claim.
+    #   **Both left the set at ``adcp-client-python-81c``, and the verdict with them.**
+    #   A symbol the base merely imported is reachable from the module that DECLARES it,
+    #   so ``compiler._reused`` takes it from there: ``core/media-buy-frequency-cap``
+    #   ``-capability.json`` EMITS, and ``core/product-signal-targeting-option.json``
+    #   stays in the set on its NEXT obstruction -- a chain through
+    #   ``core/vendor-pricing-option.json``, which resolves to a verdict of its own.  The
+    #   paragraph above stands as the record of a verdict that was decided and is not.
     #
     # So every one of the 16 is a document moving ONTO a verdict already decided and
     # already live in the tree, and none of them is a deferral re-minted as a verdict.
@@ -8598,10 +8604,13 @@ CONJUNCT_PARTS = (
 #: SITE for was the pairing, and now it does.
 #: **``required+rule`` left with it**, one site: ``core/media-buy-frequency-cap.json``
 #: at ``/allOf/1``, which states ``required`` beside a rule keyword and nothing else.
-CONJUNCT_PARTS_WITH_NO_SITE = (
-    "nothing",
-    "fields+required+rule",
-)
+#: **``fields+required+rule`` LEFT at ``adcp-client-python-81c``**, one site:
+#: ``core/media-buy-frequency-cap-capability.json`` at ``/allOf/1``, whose conjunct
+#: states ``properties``, ``required`` and a ``not`` together.  That document emitted for
+#: the first time when ``compiler._reused`` stopped refusing a re-used field whose type
+#: names a symbol the base IMPORTED and started taking it from the declaring module --
+#: which is the direction this tuple exists for, again.
+CONJUNCT_PARTS_WITH_NO_SITE = ("nothing",)
 
 #: Every conjunct in the WHOLE portable set that states ``additionalProperties``, as
 #: ``"<document> <pointer>"``.  Section 5's ``additionalProperties`` row gives four
