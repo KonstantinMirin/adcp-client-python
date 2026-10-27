@@ -637,7 +637,7 @@ def constrained_to_object(doc: dict) -> frozenset[str]:
     )
 
 
-def _is_an_annotation(key: str, position: keywords.Position) -> bool:
+def is_an_annotation(key: str, position: keywords.Position) -> bool:
     """Does this sibling of a ``$ref`` state nothing about ACCEPTANCE?
 
     The one question :func:`record` asks of a sibling, and the answer decides which
@@ -684,7 +684,7 @@ def _beside(placed: dict, referring: Mapping, position: keywords.Position) -> di
     rather than this inliner's.
     """
     siblings = {k: copy.deepcopy(v) for k, v in referring.items() if k != "$ref"}
-    wins = {k: v for k, v in siblings.items() if k not in placed or _is_an_annotation(k, position)}
+    wins = {k: v for k, v in siblings.items() if k not in placed or is_an_annotation(k, position)}
     return {**placed, **wins}
 
 
@@ -868,7 +868,7 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
         done: dict[str, object] = {}
         for _, suffix, sub, at in subschemas(node):
             if not isinstance(sub, dict):
-                continue  # not a schema; §3 drops nothing, so ``_rebuilt`` keeps it
+                continue  # not a schema; §3 drops nothing, so ``rebuilt`` keeps it
             answer = inline(
                 sub, pointer=f"{pointer}{suffix}", home=home, scope=scope, position=at, where=where
             )
@@ -876,7 +876,7 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
                 return answer
             done[suffix] = answer
         return {
-            key: _rebuilt(key, value, done) if key in _DESCENDS else copy.deepcopy(value)
+            key: rebuilt(key, value, done) if key in _DESCENDS else copy.deepcopy(value)
             for key, value in node.items()
         }
 
@@ -885,12 +885,17 @@ def record(bundle_dir: Path, document: str) -> dict | Refusal:
     )
 
 
-def _rebuilt(keyword: str, held: object, done: Mapping[str, object]) -> object:
-    """``held`` with each subschema replaced by the one :func:`record` inlined for it.
+def rebuilt(keyword: str, held: object, done: Mapping[str, object]) -> object:
+    """``held`` with each subschema replaced by the one its caller computed for it.
 
-    The inverse of :func:`subschemas` for one keyword, and it rebuilds the keyword's own
-    SPELLING: a map stays a map with its keys in their own order, a list stays a list of
-    the same length, one schema stays one.  A value the descent did not reach -- an
+    The inverse of :func:`subschemas` for one keyword, and BOTH descents that rebuild a
+    document need exactly it: :func:`record` places an inlined copy and
+    :func:`codegen.patch.rewritten` places a ``$ref`` where a copy stood.  Two spellings
+    of "put the subschema back where it came from" is how an inliner and a patcher come
+    to disagree about which node a pointer names.
+
+    It rebuilds the keyword's own SPELLING: a map stays a map with its keys in their own
+    order, a list stays a list of the same length, one schema stays one.  A value the descent did not reach -- an
     ``additionalProperties: false``, an ``items`` that is neither a schema nor a list of
     them -- is deep-copied as it stands, because §3 drops nothing and because a record
     that aliased the bundle's own object would let one reader's edit reach another's.
