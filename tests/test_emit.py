@@ -56,6 +56,7 @@ from unittest.mock import patch
 from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter, ValidationError
 
 from adcp.types._base import (
+    WIDENED,
     AdCPBaseModel,
     AdCPRootModel,
     SchemaBound,
@@ -67,6 +68,7 @@ from adcp.types._base import (
 )
 from adcp.types._runtime import Dependencies, Rule, RuleBound, UniqueItems, bound_rules
 from codegen import bundle, compiler, emit, harness, ir, keywords, render
+from codegen.keywords import Rung
 from codegen import constraints as constraints_module
 from codegen import refusal as refusal_module
 from codegen.lower import names, scalars
@@ -564,22 +566,6 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
             if (pointer_, uri) not in lowered:
                 unlowered += 1
                 continue
-            if (uri, pointer_) not in out.asked.get(document, frozenset()):
-                # **A site the STATIC reading reports and the WALK does not reach**, which
-                # ``emit``'s own prune is already written against: "that reading is an
-                # over-approximation of what the walk reaches".  The ImportError claim is
-                # about the references the walk LOWERS, so it ranges over the walk's own
-                # record (``emit.Emitted.asked``) and the static reading is what names
-                # this population rather than what the claim is taken over.
-                #
-                # §5(b)'s ``patternProperties`` widening is what first made this live on
-                # an EMITTED document: ``core/creative-assets.json`` drops the pattern's
-                # value typing, so the ``$ref`` inside that value schema is at a position
-                # no class names and the module imports nothing of its target.  Verified
-                # at the module: ``creative_assets.py`` imports only ``adcp.types._base``,
-                # so there is no ImportError and the closure is not broken.
-                unasked += 1
-                continue
             named, pointer = bundle.split_ref(uri)
             if not named:
                 # A LOCAL reference names a node in the REFERRING document, which is
@@ -594,6 +580,27 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
                 # local reference could not be observed here.
                 assert pointer in nodes, (document, uri)
                 local_seen += 1
+                continue
+            if (uri, pointer_) not in out.asked.get(document, frozenset()):
+                # **A site the STATIC reading reports and the WALK does not reach**, which
+                # ``emit``'s own prune is already written against: "that reading is an
+                # over-approximation of what the walk reaches".  The ImportError claim is
+                # about the references the walk LOWERS, so it ranges over the walk's own
+                # record (``emit.Emitted.asked``) and the static reading is what names
+                # this population rather than what the claim is taken over.
+                #
+                # §5(b)'s ``patternProperties`` widening is what first made this live on
+                # an EMITTED document: ``core/creative-assets.json`` drops the pattern's
+                # value typing, so the ``$ref`` inside that value schema is at a position
+                # no class names and the module imports nothing of its target.  Verified
+                # at the module: ``creative_assets.py`` imports only ``adcp.types._base``,
+                # so there is no ImportError and the closure is not broken.
+                #
+                # AFTER the local branch, because ``asked`` is the record of what the
+                # walk asked the RUN for and a local reference asks ``local_reference``
+                # instead -- there is no module to import from, so the site is never in
+                # it and the whole local population would read as unasked.
+                unasked += 1
                 continue
             # The DOCUMENT HALF, which ``split_ref`` took off the URI above.
             # ``document_for`` reads no ``#`` at all -- its docstring says every caller
@@ -3958,23 +3965,48 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     #
     # The claim this profile makes is unchanged: every union root the step does not emit
     # is refused BY NAME, POINTER AND KEYWORD, and no such document is silently absent.
+    # **RE-MEASURED IN FULL AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT: 54
+    # -> 49 refused, and the ``oneOf``/``anyOf`` entries are GONE.**  §4's own answer is
+    # written -- a union matching none of the three dispatch sources emits a plain
+    # ``A | B`` and DECLARES an UNDERDETERMINED approximation -- so no union root refuses
+    # on its combinator any more, and the 16 that did either emit or report the
+    # obstruction behind them.  Named here, every one of them, which is what this map is
+    # for:
+    #
+    # * **5 EMIT**: ``content-standards/calibrate-content-response.json``,
+    #   ``content-standards/create-content-standards-response.json``,
+    #   ``content-standards/validate-content-delivery-response.json`` with the
+    #   declaration; ``media-buy/sync-audiences-response.json`` and
+    #   ``media-buy/sync-catalogs-response.json`` WITHOUT one, because
+    #   ``adcp-client-python-10l.27``'s two derivations separate them -- the
+    #   ``not``/``anyOf`` reduction keeping the disjuncts it can read, and §4's fourth
+    #   separator.
+    # * **the rest report their own next keyword**, each another row's: ``$ref`` for the
+    #   chains through ``content-standards/content-standards.json`` and
+    #   ``core/budget-allocation.json``, ``title`` for a branch D3 cannot name
+    #   (``creative/get-creative-features-response.json``,
+    #   ``trusted-match/provider-registration.json``), ``pattern`` for
+    #   ``core/postal-country-system.json``, ``anyOf`` for ``adagents.json``'s conjunct
+    #   and ``$ref`` for ``brand.json``, which is ``adcp-client-python-857``.
+    #
+    # Three more left by EMITTING on §5(b)'s ``uniqueItems`` row:
+    # ``core/postal-area.json`` is not one of them -- it stays -- while
+    # ``account/sync-accounts-response.json``, ``core/async-response-data.json`` and
+    # ``media-buy/list-products-response.json`` moved with their chains.
     assert refused_on == {
         "account/list-account-changes-response.json": "$ref",
         "account/sync-accounts-response.json": "$ref",
-        "adagents.json": "oneOf",
-        "brand.json": "oneOf",
+        "adagents.json": "anyOf",
+        "brand.json": "$ref",
         "brand/acquire-rights-response.json": "$ref",
         "brand/update-rights-response.json": "$ref",
         "brand/verify-brand-claim-response.json": "$ref",
         "brand/verify-brand-claims-response.json": "type",
         "compliance/comply-test-controller-response.json": "additionalProperties",
         "compliance/task-completion-data.json": "$ref",
-        "content-standards/calibrate-content-response.json": "oneOf",
-        "content-standards/create-content-standards-response.json": "oneOf",
-        "content-standards/get-content-standards-response.json": "oneOf",
-        "content-standards/get-media-buy-artifacts-response.json": "oneOf",
-        "content-standards/list-content-standards-response.json": "oneOf",
-        "content-standards/validate-content-delivery-response.json": "oneOf",
+        "content-standards/get-content-standards-response.json": "$ref",
+        "content-standards/get-media-buy-artifacts-response.json": "$ref",
+        "content-standards/list-content-standards-response.json": "$ref",
         "core/account-identity-change-preview.json": "$ref",
         "core/assets/asset-union.json": "$ref",
         "core/assets/daast-asset.json": "items",
@@ -3984,23 +4016,23 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "core/budget-allocation.json": "allOf",
         "core/canonical-placement.json": "$ref",
         "core/delivery-metric-aggregate.json": "allOf",
-        "core/evaluator-spec.json": "oneOf",
+        "core/evaluator-spec.json": "$ref",
         "core/postal-area.json": "$ref",
-        "core/postal-country-system.json": "anyOf",
+        "core/postal-country-system.json": "pattern",
         "core/product-format-declaration.json": "required",
         "core/registry-event.json": "$ref",
         "core/requirements/asset-requirements.json": "$ref",
         "core/tracker-execution-selector.json": "$ref",
         "core/wholesale-feed-event.json": "$ref",
-        "creative/get-creative-features-response.json": "oneOf",
+        "creative/get-creative-features-response.json": "title",
         "creative/preview-creative-response.json": "properties",
-        "creative/sync-creatives-response.json": "oneOf",
+        "creative/sync-creatives-response.json": "$ref",
         "error-details/governance-agent-not-accepted.json": "$ref",
         "error-details/vast-version-mismatch.json": "required",
-        "media-buy/build-creative-response.json": "oneOf",
+        "media-buy/build-creative-response.json": "$ref",
         "media-buy/buy-products-request.json": "required",
         "media-buy/create-media-buy-request.json": "required",
-        "media-buy/create-media-buy-response.json": "oneOf",
+        "media-buy/create-media-buy-response.json": "$ref",
         "media-buy/decline-proposals-response.json": "required",
         "media-buy/get-reporting-status-response.json": "oneOf",
         "media-buy/list-products-response.json": "$ref",
@@ -4009,10 +4041,8 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "media-buy/refine-proposals-response.json": "type",
         "media-buy/request-proposals-request.json": "required",
         "media-buy/request-proposals-response.json": "$ref",
-        "media-buy/sync-audiences-response.json": "oneOf",
-        "media-buy/sync-catalogs-response.json": "oneOf",
-        "media-buy/update-media-buy-response.json": "oneOf",
-        "trusted-match/provider-registration.json": "anyOf",
+        "media-buy/update-media-buy-response.json": "$ref",
+        "trusted-match/provider-registration.json": "title",
     }, refused_on
 
 
@@ -4634,10 +4664,14 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     assert "UniqueItems('a')" in text, text
     assert "json_schema_extra={'uniqueItems': True}" in text, text
 
-    # The array row's own screen is UNTOUCHED, which is what keeps an array with no
-    # class above it refused rather than widened.  A mapping value is the shape that
-    # still costs a document (`core/account-authorization.json`).
-    caught = refusal_from(emit.lower_document(
+    # **An array with no class above it DECLARES rather than refusing**, which is
+    # §5(b)'s row landed at ``adcp-client-python-10l.21``: "``uniqueItems`` and
+    # ``contains`` where even a named type cannot hold the rule.  Rung KEYWORD: the
+    # array is ``list[X]`` and the duplicate check is the schema half's alone."  A
+    # mapping value is one of the three positions with neither a class nor a root model,
+    # and the measurement above is unchanged -- the keyword still reaches no mechanism
+    # there, so what moved is the ANSWER and not the reading.
+    widened, _ = emit.lower_document(
         "v.json",
         {
             "title": "V",
@@ -4653,9 +4687,15 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
                 }
             },
         },
-    ))
-    assert caught.keyword == "uniqueItems", caught
-    assert caught.pointer == "/properties/m/additionalProperties", caught
+        reserved=render.RESERVED,
+    )
+    (declared,) = widened.approximations
+    assert declared.pointer == "#/properties/m/additionalProperties", declared
+    assert (declared.keyword, declared.kind, declared.fact) == ("uniqueItems", WIDENED, True)
+    # The rung and the attribution are the CELL's, which §2 gives a handler neither to
+    # choose, and the rendered module carries no rule for the keyword at that position.
+    assert declared.rung == Rung.KEYWORD.value, declared
+    assert declared.attribution == keywords.address("uniqueItems"), declared
 
     # And on the bundle: the keyword is down to the positions no class holds, each
     # named WITH ITS POINTER, which is the position the refusal is about -- D2's
@@ -4696,17 +4736,48 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     # value's own annotated type", which is the ``validators`` slot §7 declares and no
     # row has written.  So this list is now exactly the positions that slot answers,
     # which is the honest reading of the refusal it keeps.
+    #
+    # **AND THE LIST IS EMPTY AT ``adcp-client-python-10l.21``, because the slot's
+    # answer is §2's ladder rather than §7's ``validators``.**  §5(b) decides those three
+    # positions: the keyword is DROPPED, the drop is DECLARED at rung KEYWORD with the
+    # cell's own attribution, and ``strict_validate`` enforces it from the document --
+    # so no document of the bundle refuses on this keyword any more.  The five that did
+    # are the five DECLARING it below, each at the very pointer it refused at, which is
+    # what makes this a row landing rather than a check being dropped.
     out = emit.emit(BUNDLE, population())
     blocked = {d: out.refusals[d]["pointer"] for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
-    claimed("documents refused on uniqueItems", blocked)
-    assert blocked == {
-        "core/account-authorization.json": "/properties/field_scopes/additionalProperties",
-        "core/daast-tracker-constraints.json": "/definitions/daast_versions",
-        "core/vast-tracker-constraints.json": "/definitions/vast_versions",
-        "error-details/requote-required.json": "/properties/envelope_field/oneOf/1",
-        "media-buy/acceptance-policy-profile.json": "/properties/region_aliases/additionalProperties",
-    }, blocked
-    assert all(p != "/" for p in blocked.values()), blocked
+    assert blocked == {}, blocked
+    declaring = {
+        a.document: a.pointer
+        for declared_for in out.approximations.values()
+        for a in declared_for
+        if a.keyword == "uniqueItems"
+    }
+    claimed("documents declaring a uniqueItems widening", declaring)
+    assert declaring == {
+        "core/account-authorization.json": "#/properties/field_scopes/additionalProperties",
+        "core/daast-tracker-constraints.json": "#/properties/daast_versions",
+        "core/vast-tracker-constraints.json": "#/properties/vast_versions",
+        "error-details/requote-required.json": "#/properties/envelope_field/oneOf/1",
+        "media-buy/acceptance-policy-profile.json": "#/properties/region_aliases/additionalProperties",
+        # Carried to a REFERRER by §8's "a declaration travels with the fact it is
+        # about": each of these inlines one of the five above at its own pointer, so the
+        # record carries the fact there and the declaration travels with it.  Over
+        # ``population()``, which is narrower than the portable set -- the two
+        # ``core/geo-place-*`` documents carry one over the portable set and are not in
+        # this denominator.
+        "account/list-accounts-response.json": "#/properties/accounts/items/properties/authorization/properties/field_scopes/additionalProperties",
+        "core/account-with-authorization.json": "#/properties/authorization/properties/field_scopes/additionalProperties",
+        "core/requirements/daast-asset-requirements.json": "#/properties/daast_versions",
+        "formats/canonical/audio_daast.json": "#/properties/daast_versions",
+        "governance/policy-entry.json": "#/properties/acceptance_profile/properties/region_aliases/additionalProperties",
+        "media-buy/acceptance-policy-catalog.json": "#/properties/profiles/items/properties/region_aliases/additionalProperties",
+    }, declaring
+    # The ``definitions`` pointers are GONE from the declared set and that is the
+    # re-pointing, not a drop: §5 declares no entry nothing references, so an entry has
+    # no instance location of its own and the declaration travels to the referring
+    # ``properties`` segment, which the accepts draw does reach.
+    assert all("/definitions/" not in p for p in declaring.values()), declaring
 
 
 def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rule() -> None:
@@ -4848,10 +4919,27 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     mappings: set[tuple[str, str]] = set()
     for row in graded():
         doc = schema_at(row.ref)
+        # **The pointers the DOCUMENT ITSELF writes a ``$ref`` at**, so an INLINED copy
+        # of another document's authored mapping is not counted as this one's.  §3 has
+        # ``bundle.record`` inline a remote target, so a referrer's record carries a copy
+        # of the target's mapping while its MODULE imports the target's class -- the key
+        # alias is spelled where the mapping is declared, which is the target's module.
+        # The set is therefore one entry per AUTHORED mapping, which is the denominator
+        # ``adcp-client-python-10l.3`` already corrected this test to: that row removed
+        # the delegated resolver's copies for exactly this reason, and a remote inline is
+        # the same thing by the other mechanism (measured at
+        # ``governance/policy-entry.json`` and
+        # ``media-buy/acceptance-policy-catalog.json``, which both reach
+        # ``media-buy/acceptance-policy-profile.json``'s ``region_aliases``).
+        inlined = tuple(
+            f"{p}/" for p, _, _ in bundle.references(bundle.read(BUNDLE, row.ref.document))
+        )
         for pointer, node in bundle.nodes(doc):
             if node.get("type") == "object" and "properties" not in node:
                 mappings.add((f"{row.ref.document}{row.ref.pointer}", pointer or "/"))
-                if {"propertyNames", "patternProperties"} & set(node):
+                if {"propertyNames", "patternProperties"} & set(node) and not pointer.startswith(
+                    inlined
+                ):
                     constrained.append((f"{row.ref.document}{row.ref.pointer}", pointer or "/"))
     # The mapping population is asserted NON-EMPTY rather than counted -- the claim is
     # about the constrained keys among them, which are named, and the denominator's
@@ -4884,11 +4972,23 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     # constrained key of a different KIND from the other seven: those name an
     # ``adcp.types.constraints`` alias, and a closed set names a ``Literal`` instead, so
     # the loop below branches on the document's own keyword rather than on a count.
+    #
+    # **8 -> 10 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and both are
+    # §5(b)'s two widened rows letting the walk reach a mapping it never reached.**
+    # ``media-buy/acceptance-policy-profile.json`` carries the ``uniqueItems`` §5(b)
+    # declares, on the VALUE of the very mapping whose key states a ``propertyNames``
+    # pattern.  The other is ``core/creative-assets.json``, the first
+    # ``patternProperties`` site in the emitted population, and its KEY is a bare
+    # ``str`` -- which is §5(b)'s reading and the one the branch below is for: a
+    # non-``false`` ``additionalProperties`` admits every key already, so the key is
+    # faithful and the pattern's VALUE typing is the fact dropped and declared.
     assert constrained == [
+        ("core/creative-assets.json#", "/"),
         ("core/geo-region-support.json#", "/properties/countries"),
         ("core/product-change-map.json#", "/"),
         ("core/store-item.json#", "/properties/hours"),
         ("governance/reported-outcome-error.json#", "/definitions/bounded_object"),
+        ("media-buy/acceptance-policy-profile.json#", "/properties/region_aliases"),
         ("trusted-match/identity-match-response.json#", "/properties/tmpx_providers"),
         ("trusted-match/publisher-targeting-kv-config.json#", "/properties/targeting_kv_mapping"),
         ("trusted-match/publisher-tmpx-config.json#", "/properties/tmpx_macro_mapping"),
@@ -4914,6 +5014,24 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         # behind a ``#/definitions`` reference emitted
         # (``governance/reported-outcome-error.json``, ``salesagent-j3k2l.41``).
         node = harness.at(schema_at(SchemaRef(path, "#")), pointer if pointer != "/" else "")
+        # **§5(b)'s WIDENED shape: the pattern is DROPPED and the key is a bare ``str``**
+        # (added 2026-10-27).  A ``patternProperties`` beside a non-``false``
+        # ``additionalProperties`` admits every key the pattern does not match, so the
+        # document's key set IS every string and a bare ``str`` is faithful there; what
+        # the model drops is the pattern's value typing, which the module DECLARES.  So
+        # the assertion is the declaration rather than a key alias -- a key alias here
+        # would be a model narrower than its document, which is the direction §2 forbids.
+        if node.get("additionalProperties") is not False and "patternProperties" in node:
+            assert f"dict[str," in _source(path), document
+            (declared,) = [
+                one
+                for one in harness.declarations_of(
+                    importlib.import_module(emit.PACKAGE + "." + emit.module_path(path).replace("/", "."))
+                )
+                if one.keyword == "patternProperties"
+            ]
+            assert declared.pointer == f"#{'' if pointer == '/' else pointer}", declared
+            continue
         key = node.get("propertyNames") or {"pattern": next(iter(node["patternProperties"]))}
         # **A CLOSED key set is a ``Literal`` and not an alias**, so it is read off the
         # document's own keyword: ``constraints.symbol`` answers for a BOUND on a string
@@ -5032,17 +5150,46 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         }
     )
     assert rendered in other, (rendered, other)
-    # An unclosed ``patternProperties`` admits every key the pattern does not match,
-    # and a typed key refuses it -- the model would be NARROWER than its document.
-    for ap, keyword in ((None, "additionalProperties"), ({"type": "string"}, "additionalProperties")):
+    # **An unclosed ``patternProperties`` admits every key the pattern does not match,
+    # so a typed key would REFUSE one the document admits -- and §5(b) answers that with
+    # a declared WIDENING instead of a verdict** (``7c11a596``, landed at
+    # ``adcp-client-python-10l.21``).  The mapping is ``dict[str, Any]``: the key is a
+    # bare ``str``, which is faithful because every key is admitted, and the pattern's
+    # VALUE typing is the fact dropped.  Measured under ``Draft7Validator``, which is why
+    # the verdict was wrong: the shape accepts ``{"x_a": "ok"}``, refuses ``{"x_a": 1}``
+    # and accepts ``{"other": 123}``, so the obstruction is not the document's.
+    #
+    # Both arms of the old refusal, each with what it declares: an ABSENT
+    # ``additionalProperties`` (draft-07's ``true``) drops the pattern alone, and a TYPED
+    # one drops the ``additionalProperties`` value typing beside it, because the pattern
+    # takes the keys it matches and this takes the rest.
+    for ap, keywords_dropped in (
+        (None, ["patternProperties"]),
+        ({"type": "string"}, ["additionalProperties", "patternProperties"]),
+    ):
         node = {"type": "object", "patternProperties": {"^x_": {"type": "integer"}}}
         if ap is not None:
             node["additionalProperties"] = ap
-        caught = refusal_from(emit.lower_document(
+        widened, _ = emit.lower_document(
             "pp0.json",
             {"title": "PP0", "type": "object", "properties": {"m": node}},
-        ))
-        assert caught.keyword == keyword, (ap, caught.keyword)
+            reserved=render.RESERVED,
+        )
+        assert sorted(one.keyword for one in widened.approximations) == keywords_dropped, (
+            ap,
+            widened.approximations,
+        )
+        for one in widened.approximations:
+            assert one.pointer == "#/properties/m", one
+            assert one.rung == Rung.CONTAINER.value, one
+            assert one.kind == WIDENED, one
+            assert one.attribution == keywords.address(one.keyword), one
+        # The FACT is the document's own value for the keyword, which is what lets §8
+        # look for it in the document and find it.
+        declared = {one.keyword: one.fact for one in widened.approximations}
+        assert declared["patternProperties"] == node["patternProperties"], declared
+        if ap is not None:
+            assert declared["additionalProperties"] == ap, declared
     # Two statements about one key type is one too many for a dict[K, V].
     caught = refusal_from(emit.lower_document(
         "pp1.json",
@@ -5190,15 +5337,20 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
         # The keyword reaches the output in no spelling: it is not a key type, not a
         # rule, and not a ``json_schema_extra`` fact.
         assert "propertyNames" not in _source(name), name
-    # The third one's document refuses, and on another row's keyword at its root.
-    # ``allOf`` -> ``oneOf`` at ``adcp-client-python-10l.20``: the root's ``allOf``
-    # compiles onto the base now (§5's ``allOf`` row beside a union), so the walk gets
-    # past it and reports the obstruction behind it -- §4's third dispatch source, whose
-    # branches this root's derivation cannot separate.  The claim this line makes is
-    # unchanged: the document refuses at its ROOT on another row's keyword, so the key
-    # schema at ``/oneOf/1/allOf/0/then`` is not what blocks it.
-    third = out.refusals["media-buy/sync-catalogs-response.json"]
-    assert (third["keyword"], third["pointer"]) == ("oneOf", "/"), third
+    # **The third one EMITS at ``adcp-client-python-10l.21``'s second instalment**, and
+    # the claim this line makes is the one it always made, in the stronger direction:
+    # the key schema at ``/oneOf/1/allOf/0/then`` is not what blocks the document, and
+    # now nothing does.  §4's FOURTH separator is what cleared it -- one branch forbids
+    # ``status == "submitted"`` and another pins ``status`` to that very ``const``, so
+    # the two are disjoint in fact and now by derivation (``adcp-client-python-10l.27``).
+    # It was ``allOf`` at ``/`` before ``adcp-client-python-10l.20`` and ``oneOf`` at
+    # ``/`` after it; the pointer has now left the refusal set entirely.
+    assert "media-buy/sync-catalogs-response.json" in out.emitted, out.refusals.get(
+        "media-buy/sync-catalogs-response.json"
+    )
+    # And the keyword still reaches the output in no spelling, which is the same claim
+    # the two documents above carry.
+    assert "propertyNames" not in _source("media-buy/sync-catalogs-response.json")
 
     # And the probe, both positions, one key schema.  The rule position lowers and
     # states only the conditional the ``if``/``then`` pair is about...
@@ -5366,12 +5518,21 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # it, so it is the MAPPING path and the store list below is unchanged by it.  (It is
     # also §14 step 9's one live ``Literal``-at-KEY site, graded in
     # ``test_a_mapping_is_a_dict_whose_key_comes_from_the_document``.)
+    #
+    # **21 -> 24 at ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and all three are
+    # §5(b)'s ``uniqueItems`` row.**  ``core/account-authorization.json`` is the row's own
+    # site -- its ``field_scopes`` mapping value carries the keyword -- and
+    # ``media-buy/acceptance-policy-profile.json`` and
+    # ``governance/policy-entry.json`` behind it; each declares a typed
+    # ``additionalProperties`` of its own.  All three are the MAPPING path, so the store
+    # list below is unchanged by them.
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
         "a2ui/component.json",
         "brand/get-brand-identity-response.json",
         "brand/search-brands-response.json",
         "collection/get-collection-list-response.json",
+        "core/account-authorization.json",
         "core/account-change.json",
         "core/canonical-media-buy-features.json",
         "core/geo-place-area.json",
@@ -5382,7 +5543,9 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         "core/store-item.json",
         "core/tasks-list-response.json",
         "error-details/vendor-error-codes.json",
+        "governance/policy-entry.json",
         "governance/reported-outcome-error.json",
+        "media-buy/acceptance-policy-profile.json",
         "property/property-feature-result.json",
         "protocol/list-tasks-response.json",
         "sponsored-intelligence/si-ui-element.json",
@@ -8945,7 +9108,18 @@ def test_the_comparison_reads_a_composed_document_by_intersection(
     red: dict[str, list[str]] = {}
     for one in pairs:
         pair = pair_of(one)
-        result = harness.compare_schema(pair.schema, pair.model, document=pair.document)
+        # **``declared=`` and ``at=``, exactly as ``harness.check_pair`` passes them**
+        # (``adcp-client-python-10l.21``).  Without the declaration the comparison has
+        # nothing to read a widening against, so every fact §5(b)'s two rows now declare
+        # read as *missing* here while the pair itself passes -- two readings of one
+        # comparison, which is the disagreement §8's second equality exists to forbid.
+        result = harness.compare_schema(
+            pair.schema,
+            pair.model,
+            document=pair.document,
+            declared=pair.declared,
+            at=pair.ref.pointer if pair.ref is not None else "#",
+        )
         # The DIRECTION beside the pointer, which is the form
         # :data:`COMPARISON_FACTS` is written in: a fact that moved between the three
         # directions is a different fact about the model.

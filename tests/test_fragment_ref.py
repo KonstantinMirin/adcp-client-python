@@ -1270,9 +1270,24 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     # back down says nothing about which document moved.  The two pointers asserted
     # below are what make this evidence of a DESCENT into the section rather than of
     # the section being read, and they are what a count could never say.
+    #
+    # **8 -> 7 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and the pointer
+    # this test pinned is the one that LEFT.**  §5(b)'s ``uniqueItems`` row is a declared
+    # WIDENING now rather than a verdict, so ``core/geo-place-requirement.json`` emits
+    # and leaves this population -- which is the fourth time the pointer it carried
+    # moved and the first time it cleared.  ``governance/policy-entry.json`` emits for
+    # the same reason and its own pin below went with it.
+    #
+    # The replacement pin is ``core/creative-localization-readback.json``, which is
+    # deeper than either and reads INSIDE a section through three further hops -- a
+    # section entry, a ``patternProperties`` expression, a combinator branch -- so it
+    # still says what this test exists to say: the walk DESCENDS into a section rather
+    # than reading the section's name.  ``brand.json`` joined at ``/definitions/colors``
+    # and that is ``adcp-client-python-857``, a latent collision the overlap used to
+    # stand in front of.
     claimed("documents refusing inside a definitions section", inside)
-    assert inside["core/geo-place-requirement.json"] == (
-        "/definitions/catalogRequirement/properties/countries/additionalProperties"
+    assert inside["core/creative-localization-readback.json"] == (
+        "/definitions/resolvedAssets/patternProperties/^[a-z0-9_]+$/anyOf/0"
     )
     # Pinned by name because a count alone cannot say the pointer went INTO a
     # section.  This was ``core/response-payload-jws-envelope.json`` at
@@ -1287,8 +1302,16 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
         "/definitions/nonblocking_impacts/items/allOf/0"
     )
 
-    entry = out.refusals["governance/policy-entry.json"]
-    assert entry["pointer"] == "/properties/acceptance_profile", entry
+    # ``governance/policy-entry.json`` EMITS at ``adcp-client-python-10l.21``'s second
+    # instalment -- its ``/properties/acceptance_profile`` chained to
+    # ``media-buy/acceptance-policy-profile.json``, whose ``region_aliases`` mapping
+    # value carries the ``uniqueItems`` §5(b) now declares -- so what this half asserts
+    # is the half that was always the point: the three enum documents its own
+    # references name are reached over the population below.  A document that emits
+    # reaches MORE of them, not fewer.
+    assert "governance/policy-entry.json" in out.emitted, out.refusals.get(
+        "governance/policy-entry.json"
+    )
     read = lambda d: bundle.read(BUNDLE, d)  # noqa: E731
     pop = sorted(
         {
