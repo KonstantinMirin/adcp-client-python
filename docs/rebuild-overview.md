@@ -163,16 +163,32 @@ than aspirational — and it is the first thing to re-measure on the next bundle
 
 Last full run: **`1 failed, 1637 passed`** (650s).
 
-The one failure is `test_an_arrays_bound_is_the_lists_and_not_its_elements`. For
-`core/attestation-capabilities.json`, property `accepted_claim_types`, the schema element states
-`{"type": "string", "format": "uri"}` and nothing about length, while the emitted element carries
-`minLength: 1, maxLength: 2083` — pydantic's `HttpUrl` bounds, which the schema never states. The
-model is therefore **tighter** than its document, which is the one defect the design says must
-never happen, and `strict_validate` cannot repair it: the document admits a 2,220-character URI
-and the construction then fails. The owner is `FORMAT_TYPES`, now in `codegen/lower/scalars.py`;
-it is tracked on row `.10` (wave 2, which carries `format`); the test states its own diagnosis in
-place and was
-left red deliberately. Narrowing its assertion to go green would pin the defect. The gate for this
-branch is "this one and no others".
+The one failure is `test_an_arrays_bound_is_the_lists_and_not_its_elements`, and **this passage
+first described it wrongly. The correction is the point, so it is made here rather than quietly
+deleted.**
+
+It said: for `core/attestation-capabilities.json`'s `accepted_claim_types`, the schema element
+states `{"type": "string", "format": "uri"}` and nothing about length while the emitted element
+carries `minLength: 1, maxLength: 2083` — `HttpUrl`'s bounds — so the model is tighter than its
+document, "the one defect the design says must never happen", owned by `FORMAT_TYPES`.
+
+**Those bounds are a recorded decision, not a defect.** The bundle spells "a URL" nine different
+ways across 74 sites, and a bare `format: uri` is RFC 3986 — it admits `urn:`, `file:///` and
+`http://` beside `https://`. `codegen/constraints.py`'s `url_type` therefore normalises:
+`AdCPUrl` where the document pins `^https://`, `HttpUrl` elsewhere. `AdCPUrl` everywhere was
+tried first and measured worse — 228 of 300 positions narrowed against `HttpUrl`'s 227. The two
+facts the type adds are admitted by `harness.URL_IMPLIED`, by equality, one entry each.
+
+So the test is red for a reason that is not the compiler's. Its own subject, which its docstring
+states, is **which node a bound lands on** — the array or its elements — and it is tripped
+because `HttpUrl` renders `minLength` on the element and **this test does not read
+`URL_IMPLIED`**, while the comparison that grades every pair does. The fix is one test consulting
+the registry the rest of the system already honours.
+
+Reading this passage as written cost a lane: an agent was briefed from it, took the bounds for
+the defect it names, and degraded 86 modules from a URL type to `str` before the change was
+reverted. **A document that calls a decision a defect will be believed.** The gate for this
+branch is "this one and no others"; narrowing the test's assertion to go green would still be
+wrong, but so is changing the compiler to satisfy it.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
