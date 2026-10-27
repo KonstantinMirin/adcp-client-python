@@ -190,5 +190,3 @@ the defect it names, and degraded 86 modules from a URL type to `str` before the
 reverted. **A document that calls a decision a defect will be believed.** The gate for this
 branch is "this one and no others"; narrowing the test's assertion to go green would still be
 wrong, but so is changing the compiler to satisfy it.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
