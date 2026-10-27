@@ -1144,6 +1144,14 @@ def fields(
     this loop is how two declarations of one field come to disagree about the
     answer.
 
+    **``required`` is read IN ORDER, so the caller owns that order** (P7): the names
+    this function reports as undeclared come out of a comprehension over it, so the
+    argument's order is the refusal sentence's order and therefore part of the run's
+    report.  A caller passing the document's own ``required`` tuple passes document
+    order; a caller holding a ``set`` -- the composing row, which unions the node's own
+    names with a base's ``frozenset`` -- sorts before it passes, because a set of
+    strings iterates in hash order and a report must be a function of the bundle.
+
     ``inherited`` names the keys a BASE CLASS already declares.  They are not
     decided here -- the field is inherited, and a subclass that restated it would
     shadow the base's type with whatever its own restatement happens to say --
@@ -2640,7 +2648,27 @@ def lower_composition(
     own_nodes = {key: n for key, n in parsed_own.items() if not isinstance(n, Refusal)}
     decided = fields(
         own_nodes,
-        required | (inherited_required & set(own)),
+        # **SORTED, because this is where the set becomes an order** (P7).  ``required``
+        # and ``inherited_required`` are both ``set[str]`` here -- the node's own
+        # ``required`` tuple went into a set at the top of this function so the conjuncts'
+        # names could be unioned into it, and a base's arrives as the ``frozenset`` on
+        # :attr:`Shape.required` -- and :func:`fields` READS this argument in order: the
+        # ``undeclared`` list it names in its refusal is a comprehension over it.  A set of
+        # strings iterates in hash order, so without the sort the refusal sentence for
+        # ``core/product-format-declaration.json`` names ``format_kind`` and ``params`` in
+        # an order that changes with ``PYTHONHASHSEED`` -- measured 32/32 over seeds 0..63
+        # -- and the run's own report stops being a function of the bundle.
+        #
+        # Here and not at the raise site: the order of this argument is the CALLER's, which
+        # is why :func:`fields`' other caller passes ``node.required`` and gets the
+        # document's own order.  Sorting inside ``fields`` would overrule that caller and
+        # put the choice in the layer that reports the refusal rather than the one that
+        # holds the set.  It is the same reading the two other places this function's sets
+        # become sequences already take -- the requiredness overlay's
+        # ``sorted(required - inherited_required - set(own))`` above and ``distinct``
+        # below -- and the one :func:`codegen.lower.names` takes of ``Shape.required``
+        # when it spells a branch's name.
+        sorted(required | (inherited_required & set(own))),
         pointer,
         mod,
         inherited=set(inherited),

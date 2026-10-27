@@ -6645,18 +6645,33 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
     ``set[tuple[str, str]]`` -- and that varies by hash seed, not by anything a
     caller passes.  So the two runs are two processes with different
     ``PYTHONHASHSEED`` values, which is the perturbation this property has.
+
+    **THE REPORT IS OUTPUT TOO, and comparing only the tree is the hole this
+    property had.**  A refused document writes no module, so every sentence the run
+    says about it lives on stdout and nowhere in ``files`` -- and a refusal that
+    names a set's members names them in hash order.  Measured on
+    ``core/product-format-declaration.json``, whose two undeclared required names
+    came out ``['format_kind', 'params']`` at 32 of the seeds 0..63 and
+    ``['params', 'format_kind']`` at the other 32, reaching 8 report lines over the
+    published bundle: its own refusal plus the 7 documents whose chained refusal
+    quotes it (``adcp-client-python-42v``).  The tree was identical at every one of
+    them, so the tree comparison could not see it.  Both halves are compared here
+    rather than in two tests because they are one property of one pair of runs.
     """
     cmd = [sys.executable, "-m", "codegen", "--bundle", str(BUNDLE), "--tree"]
-    outs = []
+    trees = []
+    reports = []
     for seed in ("0", "12345"):
         into = Path(tempfile.mkdtemp())
         env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": SUBPROCESS_PATH}
-        subprocess.run(
+        done = subprocess.run(
             [*cmd, str(into), *population()], check=False, cwd=REPO, env=env, capture_output=True
         )
-        outs.append({str(p.relative_to(into)): p.read_text() for p in sorted(into.rglob("*.py"))})
+        trees.append({str(p.relative_to(into)): p.read_text() for p in sorted(into.rglob("*.py"))})
+        reports.append(done.stdout.decode())
         shutil.rmtree(into)
-    assert outs[0] and outs[0] == outs[1]
+    assert trees[0] and trees[0] == trees[1]
+    assert reports[0] and reports[0] == reports[1]
 
 
 def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
