@@ -196,21 +196,33 @@ def test_a_ref_branch_is_a_class_with_two_bases_and_the_dispatch_is_derived() ->
         shutil.rmtree(at)
 
 
-def test_a_ref_branch_root_with_no_derivable_dispatch_defers_and_never_verdicts() -> None:
-    """The refusal kind, which is the half of this row that is an accounting fact.
+def test_a_ref_branch_root_with_no_derivable_dispatch_refuses_on_nothing_of_its_own() -> None:
+    """**The dispatch mints NO refusal at all now, which is §4's own answer written**
+    (``adcp-client-python-10l.21``): "a union matching none of the three emits a plain
+    ``A | B`` over its branches and declares an UNDERDETERMINED approximation at the
+    union's pointer."
 
-    A root whose branches own no fields and pin no shared distinct ``const`` matches
-    NEITHER of §4's two dispatch sources.  §4's second source is a key the bundle's
-    manifest states, which is ``salesagent-j3k2l.60``'s row -- so the obstruction is
-    UNWRITTEN CODE and the kind is a DEFERRAL.  A verdict there counts a clearable
-    document as finally refused, which is what this row found and corrected: the bare
-    ``$ref`` branch refused as a verdict, and ten documents -- six roots and four
-    reached through them -- were accounted for as finally refused while the code to
-    clear them was simply not written.
+    This test was the accounting half of its row: a root whose branches own no fields
+    and pin no shared distinct ``const`` matches none of §4's sources, and the kind it
+    refused with had to be a DEFERRAL rather than a verdict, because a verdict counts a
+    clearable document as finally refused.  The declaration answers that question
+    differently and better -- there is no refusal to carry a kind -- so what is left to
+    assert is that the dispatch is silent and each fixture reaches ITS OWN next
+    obstruction, which here is D3's naming pass: a bare ``$ref`` branch with no title,
+    no pin and no ``required`` has no identity to derive a class name from, and the one
+    with a repeated pin derives the SAME name twice.  Both are properties of the
+    document, so both are verdicts, and both are decided elsewhere and already live in
+    the tree (``creative/get-creative-features-response.json`` and
+    ``trusted-match/provider-registration.json`` carry them).
 
-    Three fixtures, because "no shared distinct const" has three shapes and a refusal
-    that cannot tell them apart is not actionable: no pin at all, a pin only one branch
-    carries, and one pin repeated.
+    Three fixtures, because "no shared distinct const" has three shapes: no pin at all,
+    a pin only one branch carries, and one pin repeated.  That the three reach two
+    DIFFERENT naming refusals is what says the dispatch stopped standing in front of
+    them.
+
+    ``tests/test_union_disjointness.py::
+    test_a_root_whose_branches_overlap_declares_underdetermined_and_emits`` is where the
+    declaration itself is graded, on a root whose branches CAN be named.
     """
     unpinned = {
         name: {**doc, "properties": {k: v for k, v in doc["properties"].items() if k != "kind"},
@@ -230,14 +242,18 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_defers_and_never_verdicts(
             # an ordinary object root.  It is the union ROOT that refuses.
             assert "root.json" not in out.emitted, out.emitted
             row = out.refusals["root.json"]
-            assert row["keyword"] == "oneOf", row
-            assert row["pointer"] == "/", row
-            assert row["kind"] is Kind.DEFERRED, row
-            assert row["resolved"] is Kind.DEFERRED, row
-            # The pins themselves are in the sentence, which is what makes the three
-            # shapes tellable apart without re-running the emitter.
-            assert "salesagent-j3k2l.60" in row["detail"], row
-            assert ("pins" in row["detail"]) or ("pin" in row["detail"]), row
+            # NOT the combinator and NOT the root: the dispatch declared and the walk
+            # went on, so what refuses is a BRANCH, on D3's own keyword.
+            assert row["keyword"] == "title", row
+            assert row["pointer"].startswith("/oneOf/"), row
+            assert "OVERLAP" not in row["detail"], row
+            assert "salesagent-j3k2l.60" not in row["detail"], row
+            # A property of the DOCUMENT -- this branch has no identity, or two derive
+            # one name -- so a verdict, and the sentence says which of the two.
+            assert row["kind"] is Kind.VERDICT, row
+            assert ("no identity to derive a name from" in row["detail"]) or (
+                "derive the class name" in row["detail"]
+            ), row
         finally:
             shutil.rmtree(at)
 

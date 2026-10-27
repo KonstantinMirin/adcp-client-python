@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import HttpUrl, StrMatching43E30B32, StrMinLen1
 
 from ..core.context import ContextObject
@@ -23,6 +24,9 @@ class GetCreativeFeaturesSuccess(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-features-terminal-success.json', pointer='#')
+    _adcp_rules: ClassVar[tuple[Rule, ...]] = (
+        ForbiddenGroups((('errors',),)),
+    )
     evaluation_id: Annotated[StrMinLen1 | None, Field(description='Provider-generated identity for this evaluation. Optional in AdCP 3.x and required in AdCP 4.0. Providers SHOULD emit it in 3.x. When present, it MUST be stable across exact response replays and, for async work whose submitted acknowledgement included evaluation_id, MUST be identical to that value. Used for result provenance, consumption and provider-cost reconciliation, and support; it is not an idempotency key or task identity.')] = None
     results: Annotated[list[CreativeFeatureResult], Field(description='Feature values for the evaluated creative')]
     detail_url: Annotated[HttpUrl | None, Field(description="URL to the vendor's full assessment report. The vendor controls what information is disclosed and access control.")] = None

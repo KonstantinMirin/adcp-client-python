@@ -35,8 +35,9 @@ from typing import Any, Literal
 
 from pydantic import create_model
 
-from adcp.types._base import SchemaRef, schema_at
+from adcp.types._base import UNDERDETERMINED, SchemaRef, schema_at
 from codegen import bundle, emit, harness, keywords
+from codegen.keywords import Rung
 from codegen.lower import union as lower_union
 from codegen.refusal import Kind
 from codegen.schema import nodes, parse as schema_parse
@@ -271,28 +272,31 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
     # into ``core/postal-country-system.json``, which overlaps -- and this predicate put
     # it in the overlapping half, which is the one claim about it the docstring above
     # says is false.
-    overlapping = {
-        d
-        for d in reached
-        if "branches OVERLAP" in out.refusals.get(d, {}).get("detail", "")
-        and out.refusals[d]["kind"] is not Kind.CHAINED
-    }
+    # **READ OFF THE SET ``adcp-client-python-10l.21`` NAMES, because an overlapping root
+    # no longer REFUSES.**  §4's own answer is written: "a union matching none of the
+    # three emits a plain ``A | B`` over its branches and declares an UNDERDETERMINED
+    # approximation at the union's pointer".  So there is no refusal detail to read the
+    # overlapping half off, and the two halves are told apart by the declaration -- which
+    # ``harness.underdetermined_census`` is the equality on, in both directions, and is
+    # where a root joining or leaving the set reddens.
+    overlapping = OVERLAPPING_ROOTS & reached
     partitions(reached, overlapping=overlapping, disjoint=reached - overlapping)
-    claimed("roots refused on overlap", overlapping, inside=reached)
+    claimed("roots the derivation cannot separate", overlapping, inside=reached)
     disjoint = claimed(
         "roots the third source dispatches", reached - overlapping, inside=reached
     )
-    # Every disjoint root got PAST the dispatch: it emits, or it refuses on something
-    # else entirely.  Asserted as "not on overlap" rather than "emits", because what each
-    # one then waits on is another row's fact.
-    for document in sorted(disjoint):
+    # Every root the derivation cannot separate either EMITS with the declaration or
+    # refuses further on, on another row's keyword -- and never on the overlap.
+    declaring = {
+        d
+        for d, declared in out.approximations.items()
+        for one in declared
+        if one.kind == UNDERDETERMINED
+    }
+    assert declaring <= overlapping, sorted(declaring - overlapping)
+    assert declaring == overlapping - set(out.refusals), sorted(declaring)
+    for document in sorted(reached):
         row = out.refusals.get(document, {})
-        # ITS OWN refusal, for the reason the ``overlapping`` reading above takes the
-        # same gate: a chained refusal's detail quotes its target's sentence, so a
-        # document whose own branches separate and whose ``$ref`` target overlaps reads
-        # as overlapping here.  ``core/postal-area.json`` is the measured one.
-        if row.get("kind") is Kind.CHAINED:
-            continue
         assert "branches OVERLAP" not in row.get("detail", ""), document
     assert disjoint & set(out.emitted), sorted(disjoint)
 
@@ -300,29 +304,36 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
 # --------------------------------------------------------------------------- #
 # the refusal for the overlapping remainder
 # --------------------------------------------------------------------------- #
-def test_a_root_whose_branches_overlap_refuses_on_overlap_and_defers() -> None:
-    """§4's refusal sentence, through the real entry point.
+def test_a_root_whose_branches_overlap_declares_underdetermined_and_emits() -> None:
+    """**§4's own answer, through the real entry point** (``adcp-client-python-10l.21``).
 
     Two open branches requiring different names overlap: an instance carrying both keys
-    satisfies both, so a branch could only be reached by trying each and keeping the
-    first that validates.  The refusal names the keyword, the root pointer, the PAIRS and
-    §4's three sources, and its kind is a DEFERRAL -- the second source is a key the
-    bundle's manifest states, which is ``salesagent-j3k2l.60``'s unwritten row, and a
-    verdict would count a clearable document as finally refused.
+    satisfies both, so a branch can only be reached by trying each and keeping the first
+    that validates.  §4: "a union matching none of the three emits a plain ``A | B`` over
+    its branches and declares an UNDERDETERMINED approximation at the union's pointer."
+    So the document EMITS, and WHICH branch an overlapping payload becomes is the fact
+    dropped -- declared, with a rung and an attribution neither of which the handler
+    chose.
+
+    The pointer is the UNION's and not the node's, because that is the spelling
+    ``harness.inseparable_unions`` yields and §8's third equality compares the two sets
+    pointer by pointer.
     """
     at = _fixture(_OVERLAPPING)
     try:
         out = emit.emit(at, ["root.json"])
-        assert "root.json" not in out.emitted, out.emitted
-        row = out.refusals["root.json"]
-        assert (row["keyword"], row["pointer"]) == ("oneOf", "/"), row
-        assert row["kind"] is Kind.DEFERRED, row
-        assert row["resolved"] is Kind.DEFERRED, row
-        assert "OVERLAP" in row["detail"], row
-        # The pairs by pointer, so a reader of a 15-branch root does not have to re-run
-        # the emitter to find which two.
-        assert "/oneOf/0 and /oneOf/1" in row["detail"], row
-        assert "salesagent-j3k2l.60" in row["detail"], row
+        assert out.refusals == {}, out.refusals
+        assert "root.json" in out.emitted, out.emitted
+        (one,) = out.approximations["root.json"]
+        assert (one.document, one.pointer, one.keyword) == ("root.json", "#/oneOf", "oneOf")
+        assert one.kind == UNDERDETERMINED, one
+        # The rung is the cell's and the attribution the cell's own address: §2 gives a
+        # handler neither to choose.
+        assert one.rung == Rung.JOIN.value, one
+        assert one.attribution == keywords.address("oneOf"), one
+        # The FACT is the document's own branch declarations, so §8 can look for it in
+        # the document and find it (§9: never approximate on a keyword the walk inserted).
+        assert list(one.fact) == _OVERLAPPING["oneOf"], one.fact
     finally:
         shutil.rmtree(at)
 
@@ -422,9 +433,18 @@ MANIFEST_DISCRIMINATED = frozenset(
     }
 )
 #: Union roots the walk cannot separate: §4's three sources all answer no, so the union
-#: is step 10's UNDERDETERMINED row.  ``adagents.json`` and ``brand.json`` overlapped
-#: before §14 step 9 and the root-siblings row let the other 16 reach the derivation for
-#: the first time, which reconciles the previous instalment's 16 with this set.
+#: declares §4's UNDERDETERMINED approximation.  ``adagents.json`` and ``brand.json``
+#: overlapped before §14 step 9 and the root-siblings row let the other 16 reach the
+#: derivation for the first time, which reconciles the previous instalment's 16 with this
+#: set.
+#:
+#: **TWO LEFT AT ``adcp-client-python-10l.21``, and both left because the DERIVATION got
+#: them right rather than because the set was relaxed** (``adcp-client-python-10l.27``):
+#: ``media-buy/sync-audiences-response.json`` separates on §4's SECOND separator once the
+#: ``not``/``anyOf`` reduction keeps the disjuncts it can read, and
+#: ``media-buy/sync-catalogs-response.json`` on §4's FOURTH -- one branch forbids a VALUE
+#: another pins.  Both emit, and neither declares an approximation, which is the
+#: direction this set is pinned for.
 OVERLAPPING_ROOTS = frozenset(
     {
         "adagents.json",
@@ -441,8 +461,6 @@ OVERLAPPING_ROOTS = frozenset(
         "creative/sync-creatives-response.json",
         "media-buy/build-creative-response.json",
         "media-buy/create-media-buy-response.json",
-        "media-buy/sync-audiences-response.json",
-        "media-buy/sync-catalogs-response.json",
         "media-buy/update-media-buy-response.json",
         "trusted-match/provider-registration.json",
     }
@@ -524,21 +542,42 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         assert stated == [], (document, stated)
 
     # 2 and 3. The overlapping set, and what the manifest says about each one.
+    #
+    # **READ OFF THE DECLARATION AND NOT OFF A REFUSAL, because §4's own answer is now
+    # written** (``adcp-client-python-10l.21``): "a union matching none of the three emits
+    # a plain ``A | B`` over its branches and declares an UNDERDETERMINED approximation at
+    # the union's pointer".  So an overlapping root no longer refuses on the overlap; it
+    # EMITS and declares, or it refuses FURTHER ON, on another row's keyword, and the set
+    # is the two halves together -- each half derived from the run and neither from the
+    # other.
     out, _ = _reaching(sorted(bundle.portable(BUNDLE)))
-    overlapping = sorted(
+    declaring = {
         d
-        for d, row in out.refusals.items()
-        if "branches OVERLAP" in row.get("detail", "") and row["kind"] is not Kind.CHAINED
-    )
-    assert set(overlapping) == set(OVERLAPPING_ROOTS), sorted(overlapping)
+        for d, declared in out.approximations.items()
+        for one in declared
+        if one.kind == UNDERDETERMINED
+    }
+    assert not any("branches OVERLAP" in r.get("detail", "") for r in out.refusals.values())
+    deeper = {d for d in OVERLAPPING_ROOTS if d in out.refusals}
+    overlapping = sorted(OVERLAPPING_ROOTS)
+    assert declaring == set(OVERLAPPING_ROOTS) - deeper, sorted(declaring)
+    # Every one of the rest reaches the derivation and reports its OWN next obstruction,
+    # which is neither the overlap nor nothing: a document that silently stopped
+    # refusing would be read here as the set going stale.
+    for document in sorted(deeper):
+        row = out.refusals[document]
+        assert row["keyword"] != document, row
+        assert "branches OVERLAP" not in row["detail"], (document, row)
     resolved_overlaps = [d for d in overlapping if d in resolves]
     for document in overlapping:
-        row = out.refusals[document]
+        # The union is the document's ROOT combinator, read off the document itself: an
+        # overlapping root no longer refuses ON the overlap, so the refusal's pointer is
+        # its own next obstruction and says nothing about where the union is.
         node = bundle.read(BUNDLE, document)
-        for segment in [s for s in row["pointer"].split("/") if s]:
-            node = node[int(segment)] if isinstance(node, list) else node[segment]
-        branches = [b for b in (node.get(row["keyword"]) or []) if isinstance(b, dict)]
-        assert branches, (document, row["pointer"])
+        stated = [kw for kw in ("oneOf", "anyOf") if isinstance(node.get(kw), list)]
+        assert len(stated) == 1, (document, stated)
+        branches = [b for b in node[stated[0]] if isinstance(b, dict)]
+        assert branches, (document, stated)
         # No branch carries the envelope's key, and no branch is one of the schemas the
         # manifest resolves -- the two shapes the second source would read.
         assert not any(field in (b.get("properties") or {}) for b in branches), document
@@ -571,8 +610,6 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         "creative/sync-creatives-response.json",
         "media-buy/build-creative-response.json",
         "media-buy/create-media-buy-response.json",
-        "media-buy/sync-audiences-response.json",
-        "media-buy/sync-catalogs-response.json",
         "media-buy/update-media-buy-response.json",
     }, sorted(resolved_overlaps)
 
