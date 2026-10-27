@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AdCPUrl, FloatMin0Max1, IntMin1
+from adcp.types.constraints import AdCPUrl, FloatMin0Max1, HttpUrl, IntMin1
 
 from ..enums.c2pa_watermark_action import C2PAWatermarkAction
 from ..enums.digital_source_type import DigitalSourceType
@@ -82,7 +82,7 @@ class ProvenanceDeclaredBy(AdCPBaseModel):
     Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/declared_by')
-    agent_url: Annotated[str | None, Field(description='URL of the agent or service that declared this provenance', json_schema_extra={'format': 'uri'})] = None
+    agent_url: Annotated[HttpUrl | None, Field(description='URL of the agent or service that declared this provenance')] = None
     role: Annotated[ProvenanceDeclaredByRole, Field(description='Role of the declaring party in the supply chain')]
 
 
@@ -91,7 +91,7 @@ class ProvenanceC2pa(AdCPBaseModel):
     C2PA sidecar manifest reference. Links to a detached cryptographic provenance manifest for this content. Note: file-level C2PA bindings break when ad servers transcode, resize, or re-encode assets. For pipelines with intermediaries, consider embedded_provenance as the primary provenance mechanism.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/c2pa')
-    manifest_url: Annotated[str, Field(description='URL to the C2PA manifest store for this content', json_schema_extra={'format': 'uri'})]
+    manifest_url: Annotated[HttpUrl, Field(description='URL to the C2PA manifest store for this content')]
 
 
 class ProvenanceEmbeddedProvenanceItemVerifyAgent(AdCPBaseModel):
@@ -184,7 +184,7 @@ class ProvenanceVerificationItem(AdCPBaseModel):
     verified_time: Annotated[AwareDatetime | None, Field(description='When the verification was performed (ISO 8601)')] = None
     result: Annotated[ProvenanceVerificationItemResult, Field(description='Verification outcome')]
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score of the verification result (0.0 to 1.0)')] = None
-    details_url: Annotated[str | None, Field(description='URL to the full verification report', json_schema_extra={'format': 'uri'})] = None
+    details_url: Annotated[HttpUrl | None, Field(description='URL to the full verification report')] = None
 
 
 class Provenance(AdCPBaseModel):

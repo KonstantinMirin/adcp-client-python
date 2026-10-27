@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import HttpUrl
 
 
 class CreativeRejectedDetails(AdCPBaseModel):
@@ -17,7 +18,7 @@ class CreativeRejectedDetails(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/creative-rejected.json', pointer='#')
     policy_id: Annotated[str | None, Field(description='Identifier for the violated policy')] = None
-    policy_url: Annotated[str | None, Field(description='URL where the full policy can be reviewed', json_schema_extra={'format': 'uri'})] = None
+    policy_url: Annotated[HttpUrl | None, Field(description='URL where the full policy can be reviewed')] = None
     reasons: Annotated[list[str] | None, Field(description='Specific reasons the creative was rejected')] = None
 
 

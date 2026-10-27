@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import StrMatchingEF42E836, StrMinLen1MaxLen64MatchingD373B860, StrMinLen32MaxLen255Matching3AEA6666
+from adcp.types.constraints import HttpUrl, StrMatchingEF42E836, StrMinLen1MaxLen64MatchingD373B860, StrMinLen32MaxLen255Matching3AEA6666
 
 from ..enums.notification_type import NotificationType
 
@@ -53,7 +53,7 @@ class WebhookChallenge(AdCPBaseModel):
     challenge: Annotated[StrMinLen32MaxLen255Matching3AEA6666, Field(description='Opaque, cryptographically random value that the receiver must echo in the response body. Recommended encoding: base64url without padding.')]
     account_id: Annotated[str, Field(description='Seller account identifier for the account whose notification_configs[] entry is being challenged.')]
     subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Buyer-supplied subscriber identifier from the notification_configs[] entry being challenged.')]
-    seller_agent_url: Annotated[str, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.', json_schema_extra={'format': 'uri'})]
+    seller_agent_url: Annotated[HttpUrl, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.')]
     delivery_auth: Annotated[WebhookChallengeDeliveryAuth, Field(description='Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.')]
     event_types: Annotated[list[NotificationType], Field(description='Normalized notification types requested by the subscriber at the time of the challenge. Part of the endpoint proof scope; changing event_types[] requires a fresh challenge before the new set can become active.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
