@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule
 from adcp.types.constraints import StrMaxLen500, StrMinLen1
+from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -64,7 +65,7 @@ class ProvidePerformanceFeedbackSuccess(ProvidePerformanceFeedbackResponse):
     ext: ExtensionObject | None = None
 
 
-class ProvidePerformanceFeedbackError(ProvidePerformanceFeedbackResponse):
+class ProvidePerformanceFeedbackError(ProvidePerformanceFeedbackResponse, FailedResponse):
     """
     Error response - feedback rejected or could not be processed
     """

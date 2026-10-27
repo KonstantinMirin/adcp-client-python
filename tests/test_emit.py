@@ -6385,7 +6385,11 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     assert sorted(fresh) == sorted(committed)
     for rel in sorted(fresh):
         assert fresh[rel] == committed[rel], rel
-    assert sorted(out.beside) == ["constraints.py"], sorted(out.beside)
+    # Two files beside the tree, which is the set the run INTENDS and not a floor: the
+    # alias module (D5) and the envelope bases (``codegen/lower/envelope.py``).  Each
+    # holds types that belong to no document, so neither has a domain to live under and
+    # neither can sit inside the private tree; both are compared byte for byte below.
+    assert sorted(out.beside) == ["constraints.py", "envelopes.py"], sorted(out.beside)
     for rel in sorted(out.beside):
         assert (tmp_path / rel).read_text() == (TREE.parent / rel).read_text(), rel
 
@@ -6540,8 +6544,14 @@ def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> 
 
     # The control: with the real digest, the same run resolves the same shapes and
     # does not raise -- so the guard is firing on the collision and not on the run.
+    # The run's own artifacts are named rather than COUNTED, because a count here is a
+    # count of what the run writes beside the tree and a second such artifact arrived
+    # (``codegen/lower/envelope.py``) without changing anything this test is about.
     monkeypatch.undo()
-    assert len(emit.emit(BUNDLE, population()).beside) == 1
+    assert sorted(emit.emit(BUNDLE, population()).beside) == [
+        "constraints.py",
+        "envelopes.py",
+    ]
 
 
 def _is_type_variable(node: ast.Assign) -> bool:

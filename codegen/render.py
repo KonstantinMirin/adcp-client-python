@@ -101,6 +101,13 @@ from codegen.ir import MISSING
 #: the renderer writes text, and a symbol it names is not a Pydantic idiom (§8).
 ROOT_MODEL = "AdCPRootModel"
 
+#: The artifact package every emitted module imports its own hand-written and generated
+#: siblings from, as an import PREFIX, derived from ``ir``'s own declaration of the base
+#: module's path.  :func:`_import_rank` is the one reader: an absolute import under this
+#: prefix is the SDK's own and groups with ``_base``, ``_runtime`` and ``constraints``
+#: rather than with the standard library.
+ARTIFACT = ir.BASE_MODULE.rsplit(".", 1)[0] + "."
+
 #: The floor of ``requires-python``.  It decides the rendered spelling of an
 #: optional (``T | None`` rather than ``Optional[T]``), so it is named once here
 #: and never inferred from the interpreter running the emitter -- the output is a
@@ -525,6 +532,16 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
     ``declared`` is §7's approximation declaration for this class's own node, already
     narrowed by :func:`declared_at`.  Empty at §14 step 8 and for every faithful class
     after it, which is why it defaults: a caller with nothing to declare says nothing.
+
+    **A ``ref`` of ``None`` writes no ``__adcp_schema__`` line and no ``SchemaRef``
+    import**, which is the renderer's whole knowledge of a class that names no document
+    (``codegen/lower/envelope.py``).  Gate 3's note above already says what the absence
+    means and relies on it: "a class with no ``__adcp_schema__`` has no schema, so every
+    grade of it fails rather than quietly passing" -- and §9 of the architecture document
+    pairs a class with the node its reference names, so a class with none is not a pair.
+    Written as the absence of a line rather than as a ``None`` reference, because a
+    ``SchemaRef`` naming no document would be a reference the schema half would then try
+    to read.
     """
     config = {"extra": decl.extra} if decl.extra else None
     extra_template_data: defaultdict[str, Any] = defaultdict(dict)
@@ -553,7 +570,7 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
     #
     # ``_append_internal_template_data`` APPENDS to a list, measured on 0.86.0, so a
     # caller's own lines follow the ref rather than replacing it.
-    body = [f"__adcp_schema__: ClassVar[SchemaRef] = {decl.ref!r}"]
+    body = [] if decl.ref is None else [f"__adcp_schema__: ClassVar[SchemaRef] = {decl.ref!r}"]
     extra_field = None
     if decl.extras is not None:
         # ``__pydantic_extra__`` is a dunder and not a field: declared as one it
@@ -574,7 +591,8 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
         body.append(f"__pydantic_extra__: {extra_field.type_hint}")
     rule_lines, rule_imports = _rule_lines(decl.rules)
     approximation_lines = _approximation_lines(declared)
-    for line in (*body, *_union_base_lines(decl), *rule_lines, *approximation_lines):
+    class_body = (*body, *_union_base_lines(decl), *rule_lines, *approximation_lines)
+    for line in class_body:
         model._append_internal_template_data("class_body_lines", line)  # noqa: SLF001 -- the generator's own channel; see the module docstring
     out = Rendered(text=model.render().rstrip("\n"), imports=set(rule_imports))
     if approximation_lines:
@@ -628,8 +646,17 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
         out.imports.add(("pydantic", "ConfigDict"))
     else:
         out.imports.discard(("pydantic", "ConfigDict"))
-    out.imports.add(("typing", "ClassVar"))
-    out.imports.add((ir.BASE_MODULE, "SchemaRef"))
+    # ``ClassVar`` and ``SchemaRef`` are named by the class-body lines and by nothing
+    # else, so a class with no body line needs neither.  Read off the LINES this call
+    # produced rather than off ``decl``, which is the ``ConfigDict`` filter's own rule
+    # one line up: the import follows the text.  Every class the tree carried before
+    # ``ClassDecl.ref`` could be ``None`` writes at least the ``__adcp_schema__`` line,
+    # so this is byte-neutral over that population and the one class it is about is the
+    # envelope base, whose body is its fields alone.
+    if any("ClassVar" in line for line in class_body):
+        out.imports.add(("typing", "ClassVar"))
+    if decl.ref is not None:
+        out.imports.add((ir.BASE_MODULE, "SchemaRef"))
     return out
 
 
@@ -807,7 +834,11 @@ def declaration(
     :func:`declared_at`'s containment rule, so nothing is lost.
     """
     if isinstance(decl, ir.ClassDecl):
-        return klass(decl, declared_at(approximations, decl.ref))
+        # A class with no ``ref`` names no document, so there is no node for a
+        # declaration to be AT: :func:`declared_at` compares a document and a pointer and
+        # has neither to compare.  Nothing is lost, because every approximation is about
+        # a fact some document states and such a class states no document's facts.
+        return klass(decl, () if decl.ref is None else declared_at(approximations, decl.ref))
     if isinstance(decl, ir.EnumDecl):
         return enum(decl)
     if isinstance(decl, ir.AliasDecl):
@@ -903,12 +934,19 @@ def _approximation_lines(
 # the module text (D8: the emitter owns its layout)
 # --------------------------------------------------------------------------- #
 def _import_rank(module: str) -> int:
-    """stdlib, the third-party library, this package's own hand-written modules,
-    then a sibling module of this tree (always relative, so always
-    ``.``-prefixed)."""
+    """stdlib, the third-party library, the artifact's own package, then a sibling
+    module of this tree (always relative, so always ``.``-prefixed).
+
+    **Rank 2 is derived from the artifact package's own prefix** and was three names
+    (``ir.BASE_MODULE``, ``ir.RUNTIME_MODULE``, ``constraint_names.MODULE``).  Every
+    absolute import an emitted module can make of its own package is under that prefix --
+    a sibling module is RELATIVE and takes rank 3 -- so the prefix says what the list
+    said and a fourth such module (``lower/envelope.py``'s base) needs no entry.
+    Byte-neutral over the committed tree, which is what the list's three names were.
+    """
     if module.startswith("."):
         return 3
-    if module in (ir.BASE_MODULE, ir.RUNTIME_MODULE, constraint_names.MODULE):
+    if module.startswith(ARTIFACT):
         return 2
     return 1 if module == "pydantic" else 0
 
@@ -968,12 +1006,76 @@ def module(mod: ir.Module, exports: Sequence[str]) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# the envelope base module, which belongs to no document either
+# --------------------------------------------------------------------------- #
+#: The same first line every emitted module carries, less the document name: the two
+#: outputs written BESIDE the tree -- the constraints module and the envelope bases --
+#: are the ones that belong to no document, so there is no path for the header to name.
+BESIDE_HEADER = "# Generated by codegen.emit. Do not edit."
+
+ENVELOPES_DOCSTRING = '''"""Consumer-facing bases for a repeated envelope the bundle spells more than one way.
+
+GENERATED by ``codegen.emit``; see ``codegen/lower/envelope.py``, which derives both the
+family and this shape from the bundle.  Edit neither -- the tree is
+``f(bundle, emitter, pinned compiler)`` and a hand edit here is a fact no input states.
+
+A type here belongs to NO document, which is why it lives beside ``adcp.types.constraints``
+rather than under a domain: there is no document for the binding table to give it a domain
+from.  It carries no ``__adcp_schema__``, nothing grades it, and ``strict_validate`` does
+not resolve on it.
+
+**It is a type to program against and not an authority on acceptance.**  The documents of
+the family do not agree about what they accept, so no single schema reference could be
+right for all of them; the concrete class for a document keeps its own reference, its own
+``strict_validate`` and its own constraints, and that class is what decides whether a
+payload is valid. A base here is what those classes have in common and nothing more.
+"""'''
+
+
+def envelopes_module(
+    declarations: Sequence[ir.ClassDecl], imports: Collection[tuple[str, str]]
+) -> str:
+    """The text of ``adcp/types/envelopes.py``, for the bases a bundle's families earn.
+
+    A module of CLASSES with an ``__all__``, so the layout is :func:`module`'s and the
+    class text is :func:`klass`'s -- one rendering of a class, whether its ``ref`` names a
+    document or is ``None``.  What is this function's is the module around them, and the
+    one thing it does not share with :func:`module` is the header: that one names the
+    document a module was emitted from and these belong to none.
+
+    ``imports`` are the annotations' own, decided by ``lower/envelope.py`` from the
+    documents the family reaches, and they are ABSOLUTE: this module sits beside
+    ``_schemas`` rather than inside it, so a relative import would not resolve.
+
+    **No declaration is a legitimate answer and writes an empty module**: a bundle that
+    does not repeat an envelope states no family, and the artifact says so with an empty
+    ``__all__`` rather than by not existing.
+    """
+    rendered = [klass(decl) for decl in declarations]
+    named = set(imports)
+    for one in rendered:
+        named |= one.imports
+    exports = ", ".join(f'"{decl.name}"' for decl in declarations)
+    body = ["\n\n\n".join(one.text for one in rendered), "", ""] if rendered else [""]
+    return "\n".join(
+        [
+            BESIDE_HEADER,
+            ENVELOPES_DOCSTRING,
+            "",
+            "from __future__ import annotations",
+            "",
+            *_import_block(named),
+            "",
+            *body,
+            f"__all__ = [{exports}]",
+            "",
+        ]
+    )
+
+
+# --------------------------------------------------------------------------- #
 # the constraints module, which belongs to no document (§8)
 # --------------------------------------------------------------------------- #
-#: The same first line every emitted module carries, less the document name: the
-#: constraints module is the one output that belongs to no document.
-CONSTRAINTS_HEADER = "# Generated by codegen.emit. Do not edit."
-
 #: ``AdCPUrl`` is ours: ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``,
 #: named for provenance rather than after a standard, because pydantic exports 22
 #: URL types and none is https-only -- a name like ``HttpsUrl`` would read as an
@@ -1098,7 +1200,7 @@ def constraints_module(shapes: Mapping[str, constraint_names.Shape]) -> str:
             head += ["", *group]
     return "\n".join(
         [
-            CONSTRAINTS_HEADER,
+            BESIDE_HEADER,
             CONSTRAINTS_DOCSTRING,
             "",
             "from __future__ import annotations",

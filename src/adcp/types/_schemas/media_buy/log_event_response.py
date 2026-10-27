@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max1
+from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -60,7 +61,7 @@ class LogEventSuccess(LogEventResponse):
     ext: ExtensionObject | None = None
 
 
-class LogEventError(LogEventResponse):
+class LogEventError(LogEventResponse, FailedResponse):
     """
     Error response - request failed entirely
     """

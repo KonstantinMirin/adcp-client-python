@@ -5,10 +5,19 @@ The public surface -- what resolves on ``adcp.types`` and on ``adcp.types.<domai
 marker, and the only supported path to a type FROM A DOCUMENT is the private
 schema module the binding table names.
 
-``adcp.types.constraints`` is the one exception and it is public already, because
-what it holds has no document to bind: D5 names a constrained type once, and a
-type derived from a constraint belongs to no document, so it has no domain for the
-binding table to give it.  A consumer annotating application code imports from
-there, and it is the only path to such a type -- there is no flat root and no
-second spelling.
+Two modules are the exception and both are public already, because what they hold
+has no document to bind, so neither has a domain for the binding table to give it.
+A consumer annotating application code imports from them, and each is the only path
+to what it holds -- there is no flat root and no second spelling.
+
+``adcp.types.constraints`` names a constrained type once (D5): a type derived from a
+CONSTRAINT belongs to no document.
+
+``adcp.types.envelopes`` carries a base for a repeated envelope the bundle spells
+more than one way (``codegen/lower/envelope.py``).  A base there is a type to
+PROGRAM AGAINST and not an authority on acceptance: it carries no
+``__adcp_schema__``, nothing grades it, and the concrete class for a document -- the
+one ``strict_validate`` runs -- is what decides whether a payload is valid.  The
+documents of such a family do not agree about that, which is why no single schema
+reference could stand for all of them.
 """

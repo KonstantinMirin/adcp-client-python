@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
 from ..core.error import Error
@@ -87,7 +88,7 @@ class GetMediaBuyArtifactsResponseArtifactsMediaBuyId(GetMediaBuyArtifactsRespon
     ext: ExtensionObject | None = None
 
 
-class GetMediaBuyArtifactsResponseErrors(GetMediaBuyArtifactsResponse):
+class GetMediaBuyArtifactsResponseErrors(GetMediaBuyArtifactsResponse, FailedResponse):
     """
     Error response
     """

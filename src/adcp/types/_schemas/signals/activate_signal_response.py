@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types.envelopes import FailedResponse
 
 from ..core.context import ContextObject
 from ..core.deployment import Deployment
@@ -46,7 +47,7 @@ class ActivateSignalSuccess(ActivateSignalResponse):
     ext: ExtensionObject | None = None
 
 
-class ActivateSignalError(ActivateSignalResponse):
+class ActivateSignalError(ActivateSignalResponse, FailedResponse):
     """
     Error response - operation failed, signal not activated
     """

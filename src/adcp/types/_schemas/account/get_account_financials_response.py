@@ -10,6 +10,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max100, StrMatching43E30B32
+from adcp.types.envelopes import FailedResponse
 
 from ..core.account_ref import AccountReference
 from ..core.context import ContextObject
@@ -126,7 +127,7 @@ class GetAccountFinancialsSuccess(GetAccountFinancialsResponse):
     ext: ExtensionObject | None = None
 
 
-class GetAccountFinancialsError(GetAccountFinancialsResponse):
+class GetAccountFinancialsError(GetAccountFinancialsResponse, FailedResponse):
     """
     Operation failed — financials not available
     """
