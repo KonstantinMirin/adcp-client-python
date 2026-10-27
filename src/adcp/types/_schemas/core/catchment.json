@@ -1,0 +1,261 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "A catchment area definition for a store or location. Defines the geographic area from which a store draws customers. Three methods are supported: isochrone inputs (travel time + transport mode, platform resolves the shape), simple radius (distance from location), or pre-computed GeoJSON geometry (buyer provides the exact boundary). Provide exactly one method per catchment.",
+  "examples": [
+    {
+      "data": {
+        "catchment_id": "drive",
+        "label": "15-min drive",
+        "transport_mode": "driving",
+        "travel_time": {
+          "unit": "min",
+          "value": 15
+        }
+      },
+      "description": "Isochrone: 15-minute drive"
+    },
+    {
+      "data": {
+        "catchment_id": "walk",
+        "label": "10-min walk",
+        "transport_mode": "walking",
+        "travel_time": {
+          "unit": "min",
+          "value": 10
+        }
+      },
+      "description": "Isochrone: 10-minute walk"
+    },
+    {
+      "data": {
+        "catchment_id": "local",
+        "label": "5km radius",
+        "radius": {
+          "unit": "km",
+          "value": 5
+        }
+      },
+      "description": "Simple 5km radius"
+    },
+    {
+      "data": {
+        "catchment_id": "trade-area",
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                4.85,
+                52.35
+              ],
+              [
+                4.95,
+                52.35
+              ],
+              [
+                4.95,
+                52.4
+              ],
+              [
+                4.85,
+                52.4
+              ],
+              [
+                4.85,
+                52.35
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        },
+        "label": "Primary trade area"
+      },
+      "description": "Pre-computed GeoJSON boundary"
+    }
+  ],
+  "oneOf": [
+    {
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "radius"
+            ]
+          },
+          {
+            "required": [
+              "geometry"
+            ]
+          }
+        ]
+      },
+      "required": [
+        "travel_time",
+        "transport_mode"
+      ]
+    },
+    {
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "travel_time"
+            ]
+          },
+          {
+            "required": [
+              "geometry"
+            ]
+          }
+        ]
+      },
+      "required": [
+        "radius"
+      ]
+    },
+    {
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "travel_time"
+            ]
+          },
+          {
+            "required": [
+              "radius"
+            ]
+          }
+        ]
+      },
+      "required": [
+        "geometry"
+      ]
+    }
+  ],
+  "properties": {
+    "catchment_id": {
+      "description": "Identifier for this catchment, used to reference specific catchment areas in targeting (e.g., 'walk', 'drive', 'primary').",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "geometry": {
+      "additionalProperties": false,
+      "description": "Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types.",
+      "properties": {
+        "coordinates": {
+          "description": "GeoJSON coordinates array. For Polygon: array of linear rings. For MultiPolygon: array of polygons.",
+          "type": "array"
+        },
+        "type": {
+          "description": "GeoJSON geometry type.",
+          "enum": [
+            "Polygon",
+            "MultiPolygon"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "coordinates"
+      ],
+      "type": "object"
+    },
+    "label": {
+      "description": "Human-readable label for this catchment (e.g., '15-min drive', '1km walking radius').",
+      "type": "string"
+    },
+    "radius": {
+      "additionalProperties": false,
+      "description": "Simple radius from the store location. The platform draws a circle of this distance around the store's coordinates.",
+      "properties": {
+        "unit": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Distance unit.",
+          "enum": [
+            "km",
+            "mi",
+            "m"
+          ],
+          "enumDescriptions": {
+            "km": "Kilometers",
+            "m": "Meters",
+            "mi": "Miles"
+          },
+          "title": "Distance Unit",
+          "type": "string"
+        },
+        "value": {
+          "description": "Radius distance.",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "unit"
+      ],
+      "type": "object"
+    },
+    "transport_mode": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Transportation mode for isochrone calculation. Required when travel_time is provided.",
+      "enum": [
+        "walking",
+        "cycling",
+        "driving",
+        "public_transport"
+      ],
+      "enumDescriptions": {
+        "cycling": "Bicycle travel on roads and cycle paths",
+        "driving": "Motor vehicle travel on road networks",
+        "public_transport": "Public transit including bus, rail, metro, and ferry",
+        "walking": "Pedestrian travel on walkable paths and sidewalks"
+      },
+      "title": "Transport Mode",
+      "type": "string"
+    },
+    "travel_time": {
+      "additionalProperties": false,
+      "description": "Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks, accounting for road connectivity, transit schedules, and terrain.",
+      "properties": {
+        "unit": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Time unit for isochrone (travel-time catchment) calculations.",
+          "enum": [
+            "min",
+            "hr"
+          ],
+          "enumDescriptions": {
+            "hr": "Hours",
+            "min": "Minutes"
+          },
+          "title": "Travel Time Unit",
+          "type": "string"
+        },
+        "value": {
+          "description": "Travel time limit.",
+          "minimum": 1,
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "unit"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "catchment_id"
+  ],
+  "title": "Catchment",
+  "type": "object"
+}
