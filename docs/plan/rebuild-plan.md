@@ -666,6 +666,26 @@ the directive's first effect is to make it. They are the dominant class.
 **(b) Rows whose answer is a declared widening.** Each names its rung (§2's ladder) and its
 attribution.
 
+- **`patternProperties` beside a non-`false` `additionalProperties` (added 2026-10-27, and it was
+  a VERDICT).** The `patternProperties` row refuses this shape as "two value schemas". **It is
+  not the document's obstruction, and that is measured:** `{"patternProperties": {"^x_":
+  {"type": "string"}}, "additionalProperties": true}` under `Draft7Validator` accepts
+  `{"x_a": "ok"}`, refuses `{"x_a": 1}`, and accepts `{"other": 123}`. Draft-07 is perfectly
+  clear — keys matching the pattern take the pattern's schema and every other key is
+  unconstrained. So §9's test fails on all three counts: the obstruction is not the document's,
+  not the pointer space's, and not Pydantic's either, since a key-pattern check is expressible as
+  a rule.
+
+  Rung CONTAINER: the mapping is `dict[str, Any]`, the pattern's value typing is the fact
+  dropped, and `strict_validate` still enforces it from the document. Attribution ours, and the
+  one sentence is that a faithful answer is a rule family for "keys matching this pattern take
+  this type", which no row has written.
+
+  **This is why the verdict ceiling rose.** `onq`'s Group A let 15 documents get further and land
+  on this already-decided verdict, which is a verdict they should never have reached. Moving the
+  row off the verdict column takes all 15 with it — the largest single correction available to
+  `refused` after the root-siblings group.
+
 - **`uniqueItems` and `contains` where even a named type cannot hold the rule.** Rung KEYWORD:
   the array is `list[X]` and the duplicate or existential check is the schema half's alone.
   Attribution ours. These keywords are RULE-effect, so §8 grades them against the class's rule
@@ -1014,10 +1034,20 @@ they agree. Nobody can add an entry to make a failure go away without the model 
 widening at that pointer, because the accepts draw then has to accept the values the keyword
 distinguishes. A declaration is a claim with two instruments pointed at it.
 
-**What is pinned, and what is only reported.** §9's rule that a pin with no denominator is not a
-ratchet decides this. *Missing*, *differs*, *added* and *over-declared* are pinned at zero: none
-of them moves with emission, because each is a disagreement between a model and its document and
-a correct emitter produces none however many documents it emits. The approximation count is
+**The VERDICT count is not pinned either, and a ceiling on it was the wrong instrument
+(2026-10-27).** It is not monotone under progress, measured in both directions within one day:
+clearing `union.ROOT_CONJUNCTS` moved it DOWN 85, because 46 documents' real obstruction turned
+out to be unwritten code; clearing `onq`'s Group A moved it UP 16, because 15 documents got
+further and landed on a verdict already decided elsewhere. Both moves are documents progressing,
+and a ceiling that forbids the second while rewarding the first is §9's pin with no denominator —
+it would oblige a row that unblocks a document to loosen it. What is pinned instead is the SET,
+named by document, so a verdict arriving is attributable and a verdict arriving for a NEW reason
+reddens. The figure to drive to zero is `refused`, and the verdict column is a reading of it.
+
+**What else is pinned, and what is only reported.** §9's rule that a pin with no denominator is
+not a ratchet decides this. *Missing*, *differs*, *added* and *over-declared* are pinned at zero:
+none of them moves with emission, because each is a disagreement between a model and its document
+and a correct emitter produces none however many documents it emits. The approximation count is
 **not pinned** — it rises when a document starts emitting, which would oblige every later change
 to loosen the pin, the opposite of a ratchet — and is instead reported with its denominator (the
 facts compared) and split by attribution, with the *ours* half ratcheting down as §5's cells
