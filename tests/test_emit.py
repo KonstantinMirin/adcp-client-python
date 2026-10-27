@@ -5067,11 +5067,31 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     # and not on its own key set.  Named, because the arm above is now graded on a
     # constructed document and this is what says WHY: the site's document is behind
     # another row, so the emitted population does not reach the arm yet.
+    #
+    # **The row it is behind is NAMED here and re-measured, which is what closes §14
+    # step 9's entry for this arm** (``adcp-client-python-10l.20``, third instalment).
+    # The blocker MOVED once: it was ``core/catchment.json``'s root-sibling verdict and
+    # is now ``core/catchment.json``'s own union, whose three branches each state
+    # ``required`` plus a ``not`` of required groups.  §5's presence clause reads "every
+    # branch ``required``-only" and these are not, so no sentence decides them --
+    # **filed as adcp-client-python-onq**, with the measurement that a root-level
+    # ``ForbiddenGroups`` over the branches' ``not`` groups refuses a payload the
+    # document admits.  So the chain target is asserted by NAME: when ``onq`` lands,
+    # this assertion is what reddens, and the arm gets its live site.
     hours = bundle.read(BUNDLE, "core/store-item.json")
     assert "enum" in hours["properties"]["hours"]["propertyNames"]
-    refused_site = emit.emit(BUNDLE, ["core/store-item.json"]).refusals["core/store-item.json"]
+    out = emit.emit(BUNDLE, ["core/store-item.json"])
+    refused_site = out.refusals["core/store-item.json"]
     assert refused_site["kind"] == refusal_module.Kind.CHAINED, refused_site
     assert refused_site["keyword"] == "$ref", refused_site
+    assert "core/catchment.json is refused" in refused_site["detail"], refused_site
+    blocker = out.refusals["core/catchment.json"]
+    assert (blocker["keyword"], blocker["pointer"]) == ("required", "/oneOf/0"), blocker
+    assert "constrains only requiredness" in blocker["detail"], blocker
+    # and the shape ``onq`` owns, read off the document: every branch states ``required``
+    # and a ``not`` and no property, which is why §5's presence clause does not reach it.
+    branches = bundle.read(BUNDLE, "core/catchment.json")["oneOf"]
+    assert [sorted(b) for b in branches] == [["not", "required"]] * 3, branches
 
 
 def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() -> None:
