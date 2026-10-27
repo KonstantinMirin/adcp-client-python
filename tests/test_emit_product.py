@@ -868,11 +868,20 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
     # The keyword is ``_disagreeing``'s: the FIRST the two do not agree about, in
     # sorted order.  So a restatement disagreeing about both the type and the bound
     # is reported on ``minimum`` -- a tiebreak, not a judgement about which mattered.
-    for restated, keyword in (
-        ({"type": "integer", "minimum": 1}, "minimum"),  # a LOOSER bound
-        ({"type": "string"}, "minimum"),  # a different type, and the bound gone with it
-    ):
-        caught = refusal_from(_lower(
+    #
+    # **AND THE KIND IS THE CELL'S, asserted in BOTH DIRECTIONS**
+    # (``adcp-client-python-10l.21``, fourth instalment).  This arm passed
+    # ``Kind.VERDICT`` by hand, which architecture §3 forbids -- "a refusal's kind is
+    # derived from the cell and never chosen at a raise site" -- and the claim it made
+    # was false: ``docs/plan/rebuild-plan.md`` §5(b) decides this row at rung KEYWORD and
+    # nobody has written it, so the obstruction is unwritten code and §9's first rule
+    # makes it a DEFERRAL.  A constant would be green on the first two rows below and red
+    # on the third, so the derivation is what is graded rather than the value: ``minimum``
+    # compiles to a field and answers DEFERRED, and a key the table gives NO ROW answers
+    # VERDICT through the same one lookup, because an unrowed keyword's obstruction really
+    # is the document's.
+    def refusing(restated: dict[str, Any]) -> Refusal:
+        return refusal_from(_lower(
             {
                 "type": "object",
                 "allOf": [{"$ref": REF.format("core/probe-base.json")}],
@@ -884,8 +893,41 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
                 )
             },
         ))
-        assert caught.keyword == keyword, (restated, caught.keyword)
+
+    for restated in (
+        {"type": "integer", "minimum": 1},  # a LOOSER bound
+        {"type": "string"},  # a different type, and the bound gone with it
+    ):
+        caught = refusing(restated)
+        assert caught.keyword == "minimum", (restated, caught.keyword)
         assert "neither matches nor narrows" in caught.detail, caught.detail
+        assert caught.kind is Kind.DEFERRED, (restated, caught.kind)
+        assert caught.kind is compiler.kind_for(
+            "minimum", keywords.Position.PROP
+        ), caught.kind
+        # The row that decides the rung is NAMED, so a reader of the refusal reaches the
+        # sentence that says what the field would take rather than inferring a schedule.
+        assert "section 5(b)" in caught.detail, caught.detail
+
+    # **AND THE CELL IS WHERE THE KIND COMES FROM, proved by moving the cell.**  A
+    # constant ``Kind.DEFERRED`` is green on both rows above, so the derivation is graded
+    # by perturbation: ``minimum``'s cell is swapped for a REFUSE one and the SAME
+    # restatement reports a VERDICT, with every other assertion unchanged.  That is the
+    # one arm whose obstruction really would be the document's, and it is unreachable
+    # through a bundle document -- a keyword the table gives no row answers VERDICT
+    # through this same lookup, but ``check_keywords`` screens it off before this arm is
+    # reached (measured: a ``frobnicate`` beside the restatement refuses on the screen's
+    # own sentence), so the cell is what can be moved and the screen is not.
+    row = keywords.TABLE["minimum"]
+    refuse = keywords.Cell(keywords.Effect.REFUSE, row.default.rendered, None, "", None)
+    with mock.patch.dict(
+        keywords.TABLE, {"minimum": row._replace(default=refuse, at={})}
+    ):
+        assert compiler.kind_for("minimum", keywords.Position.PROP) is Kind.VERDICT
+        moved = refusing({"type": "integer", "minimum": 1})
+        assert moved.keyword == "minimum", moved.keyword
+        assert "neither matches nor narrows" in moved.detail, moved.detail
+        assert moved.kind is Kind.VERDICT, moved.kind
 
 
 def test_a_lost_inherited_fact_is_reported_as_missing(tmp_path, monkeypatch) -> None:

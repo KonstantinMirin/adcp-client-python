@@ -8166,6 +8166,33 @@ def test_the_first_refusal_is_the_earliest_in_the_document_and_not_in_the_sort()
 #: to be read as that claim rather than absorbed by a number.
 VERDICTS = frozenset(
     {
+        # **83 -> 49 at ``adcp-client-python-10l.21``'s FOURTH instalment, and all 34 that
+        # left are ONE CLAIM BEING WITHDRAWN rather than 34 documents clearing.**  Nothing
+        # emitted that did not emit before -- emitted is 885 on both trees, over the same
+        # 885 documents, and the 169 refusals are the same documents at the same pointers
+        # on the same keywords.  What changed is that ``lower_composition``'s restatement
+        # arm stopped MINTING ``Kind.VERDICT`` by hand and reads it off the cell
+        # (``compiler.kind_for``), which answers DEFERRED for every keyword that arm
+        # reports on: ``docs/plan/rebuild-plan.md`` §5(b) DECIDES the row at rung KEYWORD
+        # and nobody has written it, so the obstruction belongs to unwritten code and not
+        # to the document, to pydantic or to the pointer space.  §9's first rule is that a
+        # refusal for code nobody has written is a deferral, "because minting a verdict for
+        # unwritten code reports clearable work as finished" -- and that is exactly what
+        # the comment below recorded when ELEVEN of the fourteen documents that joined at
+        # the third instalment resolved to this very row.
+        #
+        # 13 of the 34 refuse at the arm itself and 21 chain to one that does.  The 13 are
+        # ``brand/verify-brand-claim-response.json``,
+        # ``brand/verify-brand-claims-response.json``,
+        # ``core/assets/daast-asset.json``, ``core/assets/daast-tracker-asset.json``,
+        # ``core/assets/display-tag-asset.json``, ``core/assets/pixel-tracker-asset.json``,
+        # ``core/assets/url-asset.json``, ``core/assets/vast-asset.json``,
+        # ``core/assets/vast-tracker-asset.json``,
+        # ``core/tracker-execution-selector.json``,
+        # ``governance/check-governance-response.json``,
+        # ``media-buy/get-media-buys-response.json`` and
+        # ``signals/get-signals-response.json``.
+        #
         # **69 -> 80 at ``adcp-client-python-10l.21``'s third instalment, and the set is
         # named in BOTH directions because a verdict count is not monotone under
         # progress.**  THREE LEFT -- ``core/assets/card-asset.json``,
@@ -8188,63 +8215,30 @@ VERDICTS = frozenset(
         "core/requirements/catalog-requirements.json",
         "core/requirements/asset-requirements.json",
         "core/package-delivery-metric-value.json",
-        "core/assets/vast-tracker-asset.json",
-        "core/assets/daast-tracker-asset.json",
         "content-standards/list-content-standards-response.json",
         "content-standards/get-content-standards-response.json",
         "content-standards/content-standards.json",
-        "brand/verify-brand-claims-response.json",
         'account/list-account-changes-response.json',
         'account/sync-accounts-response.json',
         'brand.json',
-        'brand/verify-brand-claim-response.json',
         'core/account-identity-change-preview.json',
-        'core/app-item.json',
-        'core/assets/asset-union.json',
-        'core/assets/card-asset.json',
-        'core/assets/daast-asset.json',
-        'core/assets/display-tag-asset.json',
-        'core/assets/pixel-tracker-asset.json',
-        'core/assets/url-asset.json',
-        'core/assets/vast-asset.json',
-        'core/canonical-format-option.json',
-        'core/canonical-placement.json',
         'core/canonical-proposal.json',
-        'core/creative-localization-readback.json',
-        'core/creative-localization.json',
-        'core/destination-item.json',
-        'core/education-item.json',
-        'core/flight-item.json',
-        'core/hotel-item.json',
-        'core/job-item.json',
-        'core/localized-creative-asset.json',
-        'core/offering-asset-group.json',
-        'core/offering.json',
         'core/package-signal-targeting-group.json',
         'core/package-signal-targeting-groups.json',
         'core/package-signal-targeting.json',
-        'core/product-card-reference-asset.json',
         'core/product-filters.json',
         'core/product-signal-targeting-option.json',
-        'core/real-estate-item.json',
         'core/registry-event.json',
         'core/registry-feed-response.json',
         'core/signal-pricing-option.json',
         'core/targeting-input.json',
         'core/targeting.json',
-        'core/tracker-execution-contract.json',
-        'core/tracker-execution-selector.json',
-        'core/vehicle-item.json',
         'core/vendor-pricing-option.json',
         'creative/get-creative-features-response.json',
-        'creative/list-creatives-response.json',
-        'creative/sync-creatives-response.json',
-        'governance/check-governance-response.json',
         'media-buy/accept-proposal-response.json',
         'media-buy/buy-products-response.json',
         'media-buy/commercial-terms.json',
         'media-buy/control-media-buy-request.json',
-        'media-buy/get-media-buys-response.json',
         'media-buy/get-products-targeting-resolution.json',
         'media-buy/legacy-purchase-continuation-input.json',
         'media-buy/media-buy-commitment-response.json',
@@ -8261,7 +8255,6 @@ VERDICTS = frozenset(
         'property/list-property-lists-response.json',
         'property/property-list.json',
         'property/update-property-list-response.json',
-        'signals/get-signals-response.json',
         'trusted-match/provider-registration.json',
     }
 )
@@ -8463,7 +8456,15 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # verdict to loosen one.  §5(b)'s ``patternProperties`` and ``uniqueItems`` rows are
     # declared widenings now and 29 verdicts left the tree with them.  What this still
     # catches is what it was written for: a run that stops minting the kind at all.
-    assert split[refusal_module.Kind.VERDICT] >= 44, dict(split)
+    #
+    # **44 -> 33 AT THE FOURTH INSTALMENT, and the eleven are the SAME eleven chains the
+    # :data:`VERDICTS` set names: nothing cleared and nothing re-rooted.**  The
+    # restatement arm reads its kind off the cell instead of passing ``Kind.VERDICT`` by
+    # hand, so the 13 direct refusals re-minted as deferrals and the chains onto them
+    # carry the target's new answer through ``through=``.  ``len(chained)`` is 109 on both
+    # trees and the DEFERRED half rose by the same 11, which is what tells this apart from
+    # a target emitting: a chain that leaves the refusal set leaves ``chained`` with it.
+    assert split[refusal_module.Kind.VERDICT] >= 33, dict(split)
     assert split[refusal_module.Kind.DEFERRED] >= 1, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (
