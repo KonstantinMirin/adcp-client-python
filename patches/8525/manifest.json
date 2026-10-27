@@ -1,0 +1,99 @@
+{
+  "issue": "https://github.com/adcontextprotocol/adcp/issues/8525",
+  "against": "adcontextprotocol/adcp schemas bundle 3.2",
+  "summary": "Extract five repeated subschemas into their own titled documents and $ref them. Acceptance-preserving: resolve every $ref this adds and the published document comes back, which codegen.patch.differing checks over all 1,054 portable documents.",
+  "extractions": [
+    {
+      "document": "core/currency-code.json",
+      "pointer": "",
+      "names": "ISO 4217 currency code",
+      "apart": [
+        {
+          "document": "core/flight-item.json",
+          "pointer": "/properties/origin/properties/airport_code",
+          "because": "an IATA airport code, not a currency: the same three uppercase letters spelling a different thing"
+        },
+        {
+          "document": "core/flight-item.json",
+          "pointer": "/properties/destination/properties/airport_code",
+          "because": "an IATA airport code, not a currency: the same three uppercase letters spelling a different thing"
+        }
+      ]
+    },
+    {
+      "document": "core/country-code.json",
+      "pointer": "",
+      "names": "ISO 3166-1 alpha-2 country code",
+      "apart": []
+    },
+    {
+      "document": "core/domain-name.json",
+      "pointer": "",
+      "names": "a DNS domain name",
+      "apart": []
+    },
+    {
+      "document": "core/https-url.json",
+      "pointer": "",
+      "names": "an https URL",
+      "apart": []
+    },
+    {
+      "document": "core/idempotency-key.json",
+      "pointer": "",
+      "names": "a client-generated at-most-once execution key",
+      "apart": [
+        {
+          "document": "core/reporting-adjustment-receipt.json",
+          "pointer": "/properties/reporting_receipt_id",
+          "because": "a receipt identity, not an idempotency key"
+        },
+        {
+          "document": "core/reporting-adjustment-receipt.json",
+          "pointer": "/properties/supersedes_reporting_receipt_id",
+          "because": "a receipt identity, not an idempotency key"
+        },
+        {
+          "document": "core/reporting-consumer-status.json",
+          "pointer": "/properties/reporting_status_id",
+          "because": "a status-statement identity, not an idempotency key"
+        },
+        {
+          "document": "core/reporting-consumer-status.json",
+          "pointer": "/properties/supersedes_reporting_status_id",
+          "because": "a status-statement identity, not an idempotency key"
+        },
+        {
+          "document": "core/reporting-obligation.json",
+          "pointer": "/properties/current_consumer_status_id",
+          "because": "a status-statement identity, not an idempotency key"
+        },
+        {
+          "document": "core/reporting-receipt.json",
+          "pointer": "/properties/reporting_receipt_id",
+          "because": "a receipt identity, not an idempotency key"
+        },
+        {
+          "document": "core/reporting-receipt.json",
+          "pointer": "/properties/supersedes_reporting_receipt_id",
+          "because": "a receipt identity, not an idempotency key"
+        },
+        {
+          "document": "core/reporting-status-issue.json",
+          "pointer": "/properties/reporting_status_id",
+          "because": "a status-statement identity, not an idempotency key"
+        },
+        {
+          "document": "media-buy/sync-reporting-receipts-response.json",
+          "pointer": "/properties/results/items/anyOf/4/properties/reporting_receipt_id",
+          "because": "a receipt identity, not an idempotency key"
+        },
+        {
+          "document": "media-buy/sync-reporting-status-response.json",
+          "pointer": "/properties/results/items/oneOf/2/properties/reporting_status_id",
+          "because": "a status-statement identity, not an idempotency key"
+        }
+      ]
+    }
+  ]
+}

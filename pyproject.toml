@@ -124,6 +124,7 @@ files = [
     "codegen/keywords.py",
     "codegen/ir.py",
     "codegen/bundle.py",
+    "codegen/patch.py",
     "codegen/schema",
     "codegen/lower",
     "codegen/compiler.py",
