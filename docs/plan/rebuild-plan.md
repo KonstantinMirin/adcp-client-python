@@ -978,6 +978,35 @@ other check inherits their reach.
    *over-declared*). Both directions, for the reason the first equality has them: a set checked
    in one direction is complete with respect to itself, and what it omits passes.
 
+**A declaration travels with the fact it is about (decided 2026-10-27).** The second equality
+compares two sets of (pointer, keyword) pairs, so it holds only while both sides agree on the
+pointer — and they do not, by default. A declaration is minted at the NODE's pointer; the
+comparison reports a fact at the pointer it WALKED. Four things sit between the two: a local
+`$ref` the normalisation folds, a remote `$ref` the record inlines as a deep copy, a combinator
+branch the comparison does not descend, and an `allOf` conjunct the composition reading folds.
+
+That divergence is not an edge. **A row widens exactly where no class, no field and no instance
+location holds the fact, so the positions a widening lands at are systematically those four.**
+Measured over the 102 primary refusal sites: 43 are `properties` and `items` segments only, 46
+sit inside a combinator, and 13 have no instance location at all.
+
+So the rule is that **a reference carries its target's declarations to the referring pointer,
+re-pointed by the same resolution that carried the facts.** The record already inlines a deep
+copy of a target's facts at the referring node; a declaration about those facts is re-pointed by
+that same operation, because a fact and the record of what could not be rendered for it must
+move together or the two sides cannot agree about where either is. `emit` is where it happens:
+§10's dependency order finishes every target before a referrer is parsed, so the re-pointing
+reads a finished `Module` rather than re-deriving a resolution.
+
+A declaration that no pair reaches after re-pointing is then genuinely unearned — it describes
+a fact no pair reads — and *over-declared* reports it, which is the outcome's whole purpose.
+
+*The two answers this replaces.* Having the comparison follow the same resolution when it looks
+UP a declaration covers the local `$ref` and the `allOf` fold and cannot cover the remote one,
+because the record left no `$ref` to follow. Having the staleness check tolerate a declaration
+no pair reaches is rejected by that check's own reason: it exists to catch a declaration nothing
+earns, and tolerating one is the allowlist behaviour the registry replaced.
+
 *Why the second is not a weaker version of an allowlist.* An allowlist is a set a human writes
 and a check consults. These are two sets a machine derives — one from the document against the
 model, one from the emitter's own record of what it could not render — and the check is that
