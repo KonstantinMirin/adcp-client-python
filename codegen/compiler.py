@@ -2456,13 +2456,66 @@ def lower_composition(
             continue
         verdict = _restatement(stating, inherited[key], mod.resolve_node)
         if verdict is None:
+            # **THE KIND IS THE CELL'S AND NOT THIS SITE'S** (architecture §3, "a
+            # refusal's kind is derived from the cell and never chosen at a raise
+            # site"), and the hand-written ``Kind.VERDICT`` that stood here was §9's
+            # first mistake: ``docs/plan/rebuild-plan.md`` §5(b) DECIDES this row --
+            # "an ``allOf`` restatement that neither matches nor narrows ... rung
+            # KEYWORD: the field takes the base's declaration and the restatement's
+            # extra facts are dropped" -- so what is missing is a written case and not
+            # an obstruction belonging to the document.  A verdict minted for unwritten
+            # code reports clearable work as finished, which is exactly what the pinned
+            # verdict set recorded: eleven of the fourteen documents that JOINED it at
+            # this row's third instalment resolve here.
+            #
+            # :func:`kind_for` answers DEFERRED for every keyword this arm reports on,
+            # and it answers that off the cell: ``properties``, ``items``,
+            # ``additionalProperties`` and ``$ref`` all compile to a TYPE at PROP, and a
+            # lowering effect whose handler claims nothing is a deferral.  An UNROWED
+            # key still answers VERDICT through the same lookup, so the one arm that
+            # really is the document's keeps its kind without a second reading.
+            #
+            # PROP and not ``position``: a restatement is a PROPERTY's declaration
+            # against the base's, which is the same reason :func:`_constraining` reads
+            # every declaration this arm compares at PROP.  The position is the restated
+            # node's own and is taken from the structure, not recovered from the pointer.
+            #
+            # **WHY §5(b)'S RUNG IS NOT YET WRITTEN, measured rather than asserted**
+            # (``adcp-client-python-10l.21``, fourth instalment).  The widening itself
+            # is sound and lands: implemented over the 1,054 portable documents it takes
+            # emitted 885 -> 910 and refused 169 -> 144.  What it cannot do is be
+            # GRADED.  §2 defines the one gradeable kind as "WIDENED -- ... §8's
+            # comparison sees every one of these, because the document states a fact the
+            # model does not", and §8's fifth outcome is the same direction:
+            # "*approximated* -- the document states the fact, the model does not".  The
+            # facts this row drops are NESTED facts the base's own declaration states a
+            # WIDER value for, so the comparison reports them in the two directions §8
+            # has no declared form for -- measured over the graded tree, 18 pairs report
+            # ``added /../field/enum`` beside the ``missing /../field/const`` a
+            # declaration could carry, ``core/assets/display-tag-asset.json#/oneOf/2``
+            # reports ``differs /../field/enum`` alone, and
+            # ``governance/check-governance-response.json`` reports ``differs
+            # ../action_binding/required``, ``differs ../action_id/type`` and ``added
+            # ../action_id/default``.  21 of the 25 freed documents therefore carry a
+            # fact no declaration can absorb, and the three that carry NONE are wider
+            # than their documents invisibly, which ``census.stale`` reports as a
+            # declaration nothing earns.  A rung is written when §8 has a form for the
+            # direction it drops in, and that is a decision §8 makes rather than this
+            # arm.
+            disagreeing = _disagreeing(stating, inherited[key])
             return Refusal(
-                _disagreeing(stating, inherited[key]),
+                disagreeing,
                 at[key],
                 f"the restatement of {key!r} neither matches nor narrows the "
                 f"inherited declaration: inherited states {sorted(_constraining(inherited[key]))}, "
-                f"this states {sorted(_constraining(stating))}",
-                kind=Kind.VERDICT,
+                f"this states {sorted(_constraining(stating))}.  "
+                "docs/plan/rebuild-plan.md section 5(b) decides this row at rung "
+                "KEYWORD -- the field takes the base's declaration and the "
+                "restatement's extra facts are dropped -- and the facts it drops are "
+                "nested ones the base states a WIDER value for, which section 8's "
+                "approximated outcome has no direction for: it reads 'the document "
+                "states the fact, the model does not'",
+                kind=kind_for(disagreeing, Position.PROP),
             )
         if verdict or (key in required and key not in inherited_required):
             # It narrows, so the subclass is the one that states it -- and **a
