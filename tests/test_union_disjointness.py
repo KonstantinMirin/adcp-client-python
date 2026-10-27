@@ -193,7 +193,7 @@ def test_scalar_branches_of_different_type_separate_a_pair_and_the_walk_delivers
 def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_the_rest() -> (
     None
 ):
-    """The population, named and partitioned: 7 roots reach the hand-off from §4's first
+    """The population, named and partitioned: 41 roots reach the hand-off from §4's first
     source, and each one is either pairwise disjoint or refused on overlap.
 
     The partition is the assertion, because the two outcomes are different facts and
@@ -213,6 +213,15 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
             # base and the walk gets as far as asking §4's question about the branches.
             # The derivation itself is unchanged in substance; what changed is its
             # denominator, which is the number this set exists to carry.
+            # **One more at ``adcp-client-python-10l.21``'s third instalment**: §14 step
+            # 9's first faithful row -- a ``type`` word beside a NESTED combinator is in
+            # every branch already -- freed the chain this root sat behind, so it reaches
+            # the derivation now.  It is in the DISJOINT half and still refuses, one
+            # pointer on, at ``/anyOf/0`` on ``title``: a branch with no identity to
+            # derive a name from, which is D3's row.  That is the same shape
+            # ``core/postal-area.json`` has and the reason the disjoint half is not "the
+            # emitted half".
+            "core/requirements/asset-requirements.json",
             "a2ui/bound-value.json",
             "account/get-account-financials-response.json",
             "account/sync-accounts-response.json",

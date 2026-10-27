@@ -117,7 +117,7 @@ _D8 = (
     "stating a property count it does not let a reader satisfy"
 )
 
-#: **The whole exemption.**  Six positions: five on :data:`ORIGIN_ONLY`, which are
+#: **The whole exemption.**  Seven positions: six on :data:`ORIGIN_ONLY`, which are
 #: DERIVED against the packaged tree, and one on ``minProperties``, which is pinned.
 #:
 #: Three of the four are one authored node, ``core/attestation-issuer.json``'s
@@ -128,8 +128,9 @@ _D8 = (
 #: **The ORIGIN_ONLY part is not a count any more**, and the reason is the failure that
 #: changed it.  It read "the bundle SOURCE states ORIGIN_ONLY at four positions and the
 #: packaged tree carries three of them", naming two missing SOURCE positions in documents
-#: the emitter does not emit -- ``core/product-audience-evidence-requirements.json`` and
-#: ``error-details/governance-agent-not-accepted.json``, both still unemitted.  That
+#: the emitter did not emit -- ``core/product-audience-evidence-requirements.json`` and
+#: ``error-details/governance-agent-not-accepted.json``, both since emitted and both now
+#: entries of their own, each arriving by the mechanism this split predicted.  That
 #: enumeration counted SOURCE positions, so an INLINED copy of an already-exempted node
 #: had nowhere to be counted: when ``salesagent-j3k2l.43`` made
 #: ``core/audience-evidence-requirements.json`` emit, its packaged form inlined the node a
@@ -215,6 +216,25 @@ EXEMPT: tuple[Exemption, ...] = (
         pointer=(
             "/properties/accepted_attestation_issuers/items/oneOf/2/properties/origin"
         ),
+        keyword="pattern",
+        value=ORIGIN_ONLY,
+        reason=_RFC,
+    ),
+    Exemption(
+        # **The SIXTH ORIGIN_ONLY position, and the second of the two this docstring
+        # named as "still unemitted"** (``adcp-client-python-10l.21``'s third
+        # instalment).  Its AUTHORED node is this document's own -- not an inlined copy
+        # of ``core/attestation-issuer.json``'s -- and it reached a pair when the
+        # document started emitting: its chain target
+        # ``governance/accepted-governance-agents.json`` was refused for a ``type`` word
+        # beside a NESTED combinator, which §5(a)'s first bullet answers.
+        #
+        # This is the derived check's own growth channel and not a rise of the
+        # shrink-only pin: ``PIN`` covers the entries that are NOT ORIGIN_ONLY, is still
+        # 1, and is untouched.  The growth is explained by the same upstream issue every
+        # other ORIGIN_ONLY entry names, which is the property the split was made for.
+        document="error-details/governance-agent-not-accepted.json",
+        pointer="/oneOf/0/properties/attempted_agent_origin",
         keyword="pattern",
         value=ORIGIN_ONLY,
         reason=_RFC,

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import HttpUrl, StrMinLen16MaxLen255Matching1E5CF9EB
 
@@ -53,6 +53,10 @@ class CreateContentStandardsRequestCalibrationExemplars(AdCPBaseModel):
     Training/test set to calibrate policy interpretation. Use URL references for pages to be fetched and analyzed, or full artifacts for pre-extracted content.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/pass/items/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'type': 'object', 'description': 'URL reference - specific page to fetch and evaluate', 'properties': {'type': {'type': 'string', 'const': 'url', 'description': 'Indicates this is a URL reference'}, 'value': {'type': 'string', 'format': 'uri', 'description': "Full URL to a specific page (e.g., 'https://espn.com/nba/story/_/id/12345/lakers-win')"}, 'language': {'type': 'string', 'description': 'BCP 47 language tag for content at this URL'}}, 'required': ['type', 'value']}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/content-standards/artifact.json', 'description': 'Full artifact with pre-extracted content (text, images, video, audio)'}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
+        Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/fail/items/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'type': 'object', 'description': 'URL reference - specific page to fetch and evaluate', 'properties': {'type': {'type': 'string', 'const': 'url', 'description': 'Indicates this is a URL reference'}, 'value': {'type': 'string', 'format': 'uri', 'description': "Full URL to a specific page (e.g., 'https://news.example.com/controversial-article')"}, 'language': {'type': 'string', 'description': 'BCP 47 language tag for content at this URL'}}, 'required': ['type', 'value']}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/content-standards/artifact.json', 'description': 'Full artifact with pre-extracted content (text, images, video, audio)'}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
+    )
     pass_: Annotated[list[CreateContentStandardsRequestCalibrationExemplarsPassItemUrl | Artifact] | None, Field(alias='pass', description='Content that passes the standards')] = None
     fail: Annotated[list[CreateContentStandardsRequestCalibrationExemplarsFailItemUrl | Artifact] | None, Field(description='Content that fails the standards')] = None
 
@@ -67,6 +71,10 @@ class CreateContentStandardsRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/create-content-standards-request.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('policies',), ('registry_policy_ids',)), 'anyOf'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/pass/items/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'type': 'object', 'description': 'URL reference - specific page to fetch and evaluate', 'properties': {'type': {'type': 'string', 'const': 'url', 'description': 'Indicates this is a URL reference'}, 'value': {'type': 'string', 'format': 'uri', 'description': "Full URL to a specific page (e.g., 'https://espn.com/nba/story/_/id/12345/lakers-win')"}, 'language': {'type': 'string', 'description': 'BCP 47 language tag for content at this URL'}}, 'required': ['type', 'value']}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/content-standards/artifact.json', 'description': 'Full artifact with pre-extracted content (text, images, video, audio)'}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
+        Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/fail/items/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'type': 'object', 'description': 'URL reference - specific page to fetch and evaluate', 'properties': {'type': {'type': 'string', 'const': 'url', 'description': 'Indicates this is a URL reference'}, 'value': {'type': 'string', 'format': 'uri', 'description': "Full URL to a specific page (e.g., 'https://news.example.com/controversial-article')"}, 'language': {'type': 'string', 'description': 'BCP 47 language tag for content at this URL'}}, 'required': ['type', 'value']}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/content-standards/artifact.json', 'description': 'Full artifact with pre-extracted content (text, images, video, audio)'}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
     )
     scope: Annotated[CreateContentStandardsRequestScope, Field(description='Where this standards configuration applies')]
     registry_policy_ids: Annotated[list[str] | None, Field(description="Registry policy IDs to use as the evaluation basis for this content standard. When provided, the agent resolves policies from the registry and uses their policy text and exemplars as the evaluation criteria. The 'policy' field becomes optional when registry_policy_ids is provided.")] = None
