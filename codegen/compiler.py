@@ -437,6 +437,21 @@ class Module:
     #: the walk reaches and this map has no entry for is a document lowered outside a
     #: run (:func:`unresolved`).
     targets: Mapping[tuple[str, str], Target | Refusal] = field(default_factory=dict)
+    #: **The sites this document's BASES spell, resolved for this document and keyed by
+    #: the URI alone** -- the other half of what :attr:`roots` is here for.
+    #:
+    #: §2's intersection rule reads a BASE's declaration beside this document's own
+    #: (:func:`_intersection`), so every key the base alone declares reaches the composed
+    #: node -- and a key the base declares as a ``$ref`` carries a reference this
+    #: document's own text does not spell.  The site is real: draft-07 applies both
+    #: conjuncts to the same instance, so the composed class holds that property and
+    #: must IMPORT its type rather than copy it (P2).  It has no pointer either map can
+    #: be keyed by, because the pointer it arrives at is this document's -- derived from
+    #: the restating conjunct -- and belongs to no edge of either document.
+    #:
+    #: Read only where :attr:`targets` has no entry for the site, so a reference the
+    #: document spells itself is answered by its own site and this map cannot shadow one.
+    inherited_targets: Mapping[str, Target | Refusal] = field(default_factory=dict)
     #: **The reference sites this document's walk ASKED about**, written by
     #: :meth:`target` and read by the run.  It is what decides which documents the run
     #: WRITES, and §10's own sentence is the reason: "a module cannot import from a
@@ -723,7 +738,16 @@ class Module:
         a run (:func:`unresolved`), which is the refusing default the binder had.
         """
         self.asked.add((uri, pointer))
-        return self.targets.get((uri, pointer)) or unresolved(uri, pointer)
+        return (
+            self.targets.get((uri, pointer))
+            # **A site §2's intersection rule produced, answered by URI**
+            # (:attr:`inherited_targets`): a conjunct restating a property the base
+            # declares carries every key the base alone declares, so a key the base
+            # spells as a ``$ref`` reaches a pointer no edge of this document has.
+            # Asked second, so a site the document spells itself keeps its own answer.
+            or self.inherited_targets.get(uri)
+            or unresolved(uri, pointer)
+        )
 
     def importing(self, symbol: str, where: Importable) -> str:
         """Record that this module imports ``symbol`` from ``where``, and return it.
@@ -2999,6 +3023,28 @@ def _at_least_as_tight(
         return (
             isinstance(c, dict) and isinstance(b, dict) and _restatement(c, b, resolve) is not None
         )
+    if keyword == "properties":
+        # **An overlay under ``properties``, and the same recursion the ``items`` arm
+        # takes one key deeper** -- §5's ``properties`` row at CONJ in its own words:
+        # "A property two conjuncts declare is one field: its constraints intersect by
+        # §2, and two object declarations compose as an ``allOf`` of the two at that
+        # property."  §2 says the recursion is the rule rather than a second one ("this
+        # holds at ANY DEPTH"), so the question asked of each shared key is the question
+        # asked of the node: is the child's declaration compatible with the base's.
+        #
+        # A key only the CHILD declares says something more about the same instance, and
+        # a key only the BASE declares is one the child is silent about -- and silence is
+        # not a loosening under ``allOf`` (:func:`_restatement`), because the base's
+        # declaration applies wherever the child is quiet.  Neither can make the
+        # composition looser, so only the shared keys are asked about.
+        if not isinstance(c, dict) or not isinstance(b, dict):
+            return False
+        return all(
+            isinstance(c[k], dict)
+            and isinstance(b[k], dict)
+            and _restatement(c[k], b[k], resolve) is not None
+            for k in set(c) & set(b)
+        )
     return False
 
 
@@ -3093,7 +3139,34 @@ def _intersection(
     # first argument would make the result a function of which view the walk read first
     # -- the "last wins" this rule exists to have no reading of.
     for kw in set(c) & set(b):
-        if not _at_least_as_tight(kw, c[kw], b[kw], resolve):
+        if kw == "properties" and isinstance(c[kw], dict) and isinstance(b[kw], dict):
+            # **At ``properties`` neither value is the tighter one WHOLESALE, and §5's
+            # row at CONJ says why: "two object declarations compose as an ``allOf`` of
+            # the two at that property".**  The composition is therefore taken PER KEY
+            # -- this same intersection, one level down -- and a key only one of them
+            # declares is carried through as it stands, because under ``allOf`` every
+            # key either object declares constrains the same instance.
+            #
+            # Taking the child's object whole is what this arm replaces, and it is the
+            # shadow §2 forbids: ``core/assets/url-asset.json`` restates ``location`` as
+            # ``{"properties": {"field": {"const": "url"}}}`` over
+            # ``core/macro-declaration.json``'s three-property object, so the child's
+            # object alone drops ``occurrence`` and ``context`` -- two properties the
+            # base REQUIRES -- and the model would accept a payload the document
+            # refuses.  Per key, ``field`` intersects to ``{"type": "string", "const":
+            # "url"}`` (``"url"`` is a member of the base's five-member ``enum``, so
+            # ``_AXES`` lets the ``const`` replace it), and the other two are the
+            # base's.
+            merged[kw] = {
+                **b[kw],
+                **c[kw],
+                **{
+                    k: _intersection(c[kw][k], b[kw][k], resolve)
+                    for k in set(c[kw]) & set(b[kw])
+                    if isinstance(c[kw][k], dict) and isinstance(b[kw][k], dict)
+                },
+            }
+        elif not _at_least_as_tight(kw, c[kw], b[kw], resolve):
             merged[kw] = b[kw]
     resolved = _dereferenced(child, resolve)
     # **The BASE is gap-filled THROUGH ITS OWN REFERENCE, for the same reason the child

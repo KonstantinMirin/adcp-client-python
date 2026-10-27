@@ -73,6 +73,31 @@ def _walk(node: Any, ptr: str = "") -> Any:
             yield from _walk(value, f"{ptr}/{index}")
 
 
+def _silent_about_extras(node: Any) -> bool:
+    """Does this node, and every conjunct draft-07 applies to the same instance, say
+    nothing about ``additionalProperties``?
+
+    **Asked of the node as the document APPLIES it, which is §8's pairing rules and not
+    a second reading of them.**  Entry four's exposure is about a CLASS's ``extra``
+    setting, and D8 derives that from the node the class is paired with: a class cut out
+    at ``.../allOf/N`` is paired with the COMPOSITION (§8's third pairing rule), so a
+    sibling conjunct's ``additionalProperties: false`` is that class's own and the class
+    drops no key.
+
+    Read as the BARE node instead, ``core/package-delivery-metric-value.json`` at
+    ``/allOf/1/properties/qualifier`` counts as an exposure it does not have: the
+    conjunct's whole text there is ``{"minProperties": 1}``, its sibling conjunct closes
+    the object, and the emitted ``PackageDeliveryMetricValueQualifier`` carries
+    ``extra='forbid'`` beside its ``PropertyCount`` -- so no instance of it dumps to
+    ``{}`` and no document refuses its dump.  That position joined the packaged tree at
+    ``adcp-client-python-10l.21``'s fifth instalment, which is the first row to declare a
+    class at a conjunct pointer at all.
+    """
+    if "additionalProperties" in node:
+        return False
+    return all(_silent_about_extras(c) for c in node.get("allOf", ()) if isinstance(c, dict))
+
+
 def _packaged(document: str) -> dict:
     return json.loads((PACKAGED / document).read_text())
 
@@ -281,7 +306,17 @@ def test_the_minproperties_entry_is_the_only_copy_that_is_a_pairs_own_node() -> 
     assert len(copies) > 1, copies  # the denominator: there IS an exposure to bound
     graded = _graded_positions()
     assert graded, "the denominator is empty: no pair would be checked"
-    assert copies & graded == {f"{entry.document}#{entry.pointer}"}, copies & graded
+    # Each copy that IS a pair's own node, re-read as the document applies it
+    # (:func:`_silent_about_extras`): the exposure is a class's ``extra`` setting and D8
+    # derives that from the node the class is paired with, so a conjunct whose sibling
+    # closes the object has no exposure to bound.  The intersection is asserted
+    # non-empty first, so the applied reading cannot empty the denominator silently.
+    own = copies & graded
+    assert own, "the denominator is empty: no copy is a pair's own node"
+    exposed = {
+        c for c in own if _silent_about_extras(schema_at(SchemaRef(*c.split("#", 1))))
+    }
+    assert exposed == {f"{entry.document}#{entry.pointer}"}, (sorted(own), sorted(exposed))
 
 
 # --------------------------------------------------------------------------- #

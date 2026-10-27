@@ -225,11 +225,16 @@ RELEASED: dict[str, tuple[str, ...]] = {
 #: /additionalProperties`` carries a ``uniqueItems`` at a mapping value -- §5(b)'s row,
 #: which this row's second instalment lands as a DECLARED WIDENING rather than a verdict.
 #: All three emit.
+#: **THREE MORE ENTRIES LEFT AT ``adcp-client-python-10l.21``'s FIFTH INSTALMENT, and
+#: it is the same shrink.**  ``core/assets/pixel-tracker-asset.json`` and
+#: ``core/assets/url-asset.json`` were both sitting on ``additionalProperties`` at
+#: ``/properties/macro_declarations/items/allOf/1/properties/location`` -- a conjunct
+#: restating a property ``core/macro-declaration.json`` declares -- which §5's
+#: ``properties`` row at CONJ composes per key now, and
+#: ``core/product-card-reference-asset.json`` chained behind the first of them.  All
+#: three emit.
 STILL_REFUSED: dict[str, str] = {
-    "core/assets/pixel-tracker-asset.json": "additionalProperties",
-    "core/assets/url-asset.json": "additionalProperties",
     "core/media-buy.json": "$ref",
-    "core/product-card-reference-asset.json": "$ref",
     "governance/get-plan-audit-logs-response.json": "$ref",
 }
 
