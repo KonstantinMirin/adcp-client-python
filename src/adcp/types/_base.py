@@ -800,13 +800,14 @@ class BranchDispatchMixin:
     comes back as a ``definitions`` node the key goes on the node inside it, because a
     ``serialization`` key on a ``definitions`` node is not consulted.
 
-    Its inner schema is the branches' union with the base's own model schema as the LAST
-    member, not the base's model schema alone.  Measured three ways on one fixture: with no
-    slot, a base instance raises; with the base's model schema alone, a base instance dumps
-    but a BRANCH reached through a base-typed field comes back as
-    ``{"shared": null}`` -- the arm's own fields dropped silently; with the union plus the
-    base, both dump in full.  The base as the last member is what terminates, because it is
-    a plain model schema rather than this class's, so the fallback has somewhere to land.
+    **What that serializer is, settled 2026-10-27: it dispatches on the instance's own
+    class and each class serialises through its own plain model schema**
+    (:meth:`_serialise_as_itself`, which carries the three measurements).  A branch
+    serialises the branch's fields, a base serialises the base's, and there is no union
+    in the slot at all -- no arm to fail to match and nothing to infer, which is why it
+    terminates.  The two readings it replaces each lost data in one direction: the
+    base's model schema alone dropped a branch's own fields through a base-typed field,
+    and the branches' union with that schema last left a base instance matching no arm.
 
     The branches subclass the base, so they do not exist while the base is being built: the
     hook returns the base's own schema then, and the declaring module calls
@@ -892,17 +893,65 @@ class BranchDispatchMixin:
         # The branches are generated through the handler so their definitions are
         # registered in the schema this hook is contributing to; the VALIDATOR is the
         # adapter above, which is complete on its own.
-        members = [handler.generate_schema(branch) for branch in cls._branch_models]
+        for branch in cls._branch_models:
+            handler.generate_schema(branch)
         held = own["schema"] if own["type"] == "definitions" else own
         wrapped = core_schema.no_info_wrap_validator_function(
             lambda value, _handler: cls._dispatch(value),
             held,
             serialization=core_schema.wrap_serializer_function_ser_schema(
-                lambda value, nested: nested(value),
-                schema=core_schema.union_schema([*members, held]),
+                cls._serialise_as_itself, schema=held, info_arg=True
             ),
         )
         return {**own, "schema": wrapped} if own["type"] == "definitions" else wrapped
+
+    @classmethod
+    def _serialise_as_itself(cls, value: Any, nested: Any, info: Any) -> Any:
+        """§4's fourth mechanic: **a value serialises as what it is.**
+
+        The serialiser dispatches on the INSTANCE'S OWN CLASS and each class serialises
+        through its own plain model schema -- settled 2026-10-27, after both of the
+        readings the mechanic's old sentence admitted were measured and both lost data.
+        An instance of ``cls`` goes through ``nested``, which is the base's own plain
+        model schema (the one the wrap validator holds); anything else is a branch or a
+        consumer's refinement, and its own class's serialiser IS its own plain model
+        schema, because this hook returns ``own`` unchanged for every class that does
+        not DECLARE ``_branch_models`` (part 3).
+
+        There is no union in this slot, which is why it terminates: no arm to fail to
+        match and nothing to infer.  **Both of the readings it replaces were measured on
+        this tree.**  With the base's model schema ALONE in the slot, a branch reached
+        through a base-typed field came back as the base's fields and the branch's own
+        were dropped silently.  With the branches' union plus that schema, a base
+        instance matched no arm -- ``own["type"]`` is ``definitions`` for 12 of the 13
+        field-carrying bases, so the base's arm is a ``definition-ref`` the union
+        serialiser does not match an instance against -- and the fallback inferred a
+        model, found this same class and recursed: ``PydanticSerializationError:
+        Circular reference detected``.  A base instance is a legitimate value, because
+        ``__new__`` covers ``Base(**data)`` and validates it, so the slot owes it an
+        answer rather than treating it as unreachable.
+
+        The branch's serialiser is asked in the MODE and with the flags this call is
+        being made in, read off ``info``: a dispatch that dropped them would make
+        ``model_dump_json`` of a base-typed field disagree with ``model_dump`` of the
+        same value about dates, aliases and excluded keys.  ``exclude``/``include`` are
+        not among them -- they are relative to the FIELD being serialised and pydantic
+        has already applied this field's own -- which is the one place this dispatch is
+        narrower than the schema it replaces.
+        """
+        if type(value) is cls:
+            return nested(value)
+        return type(value).__pydantic_serializer__.to_python(
+            value,
+            mode="json" if info.mode_is_json() else "python",
+            by_alias=info.by_alias,
+            exclude_unset=info.exclude_unset,
+            exclude_defaults=info.exclude_defaults,
+            exclude_none=info.exclude_none,
+            round_trip=info.round_trip,
+            context=info.context,
+            serialize_as_any=info.serialize_as_any,
+        )
 
     @classmethod
     def _dispatch(cls, value: Any) -> Any:
