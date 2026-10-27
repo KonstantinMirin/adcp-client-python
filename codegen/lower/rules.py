@@ -37,12 +37,19 @@ name, and that is the true reason, because a rule has nowhere to live there.
 
 **The step-5 boundary, and why it is a predicate and not a precedence rule.**  A
 ``oneOf``/``anyOf`` whose branches are SHAPES is a union root: a base, one subclass per
-branch, step 5's row.  A ``oneOf``/``anyOf`` whose every branch is ``required``-only has
-no shape to subclass -- the branches declare no property at all -- so it is a class plus
-a rule, which is this row.  :func:`presence_only` is that test, and
+branch, step 5's row.  A ``oneOf``/``anyOf`` whose every branch states only which keys
+are PRESENT has no shape to subclass -- the branches declare no property at all -- so it
+is a class plus a rule, which is this row.  :func:`presence_only` is that test, and
 ``populations.states_an_object_rule`` is the selector built on it, so the two rows cannot
 both claim one document and the unordered dispatch table has no precedence question to
 answer.
+
+**A presence branch may also FORBID**, which is §5's "A union of presence-only branches
+that also forbid" (decided 2026-10-27): branch *i* reads "every name in R*ᵢ* present and
+no group of F*ᵢ* present".  Both halves belong to the branch, so they travel together in
+one clause of one rule -- :class:`adcp.types._runtime.PresenceGroups` -- and
+:func:`codegen.schema.parse.presence_clause` is the one reading of a branch that answers
+both the boundary predicate and the clause values.
 """
 
 from __future__ import annotations
@@ -57,6 +64,8 @@ from adcp.types._runtime import (
     ForbiddenGroups,
     Match,
     NegatedConditional,
+    Presence,
+    PresenceGroups,
     PropertyCount,
     RequiredGroups,
     Rule,
@@ -64,6 +73,7 @@ from adcp.types._runtime import (
 )
 from codegen import compiler
 from codegen.keywords import Position
+from codegen.schema import parse as schema
 
 #: Everything this module reads off a node with FIELDS: the keywords whose CELL
 #: compiles to a RULE, read off ``codegen.keywords`` at the position asked about.
@@ -168,32 +178,29 @@ def presence_only(node: Mapping[str, Any]) -> bool:
     """Is every combinator at ``node`` a statement about key PRESENCE?
 
     The one question that decides between step 5's row and this one, asked per node
-    because a document can carry a combinator anywhere.  A ``oneOf``/``anyOf`` of
-    ``required``-only branches is a rule; a ``oneOf``/``anyOf`` of shapes is a union
-    root.  Both predicates are read off the same branches, so no document satisfies
-    both and the unordered table has nothing to arbitrate.
+    because a document can carry a combinator anywhere.  A ``oneOf``/``anyOf`` whose
+    every branch states only which keys are present is a rule; a ``oneOf``/``anyOf`` of
+    shapes is a union root.  Both predicates are read off the same branches, so no
+    document satisfies both and the unordered table has nothing to arbitrate.
+
+    **The reading is ``schema.parse``'s and this is the name the rows call it by.**
+    §11's "nothing repeats" names ``parse``'s classification as the one owner of the
+    kind -- "a combinator whose every branch is ``required``-only is not a ``Union`` but
+    a rule source of the enclosing object (the ``presence_only`` reading, read once
+    here)" -- and this module restated it until the branch shape grew a ``not``, at
+    which point two readings of one §5 sentence would have had to grow it twice.  So
+    there is one, and the walk's classification and the row's selector cannot disagree.
+
+    Position RULE, which is what this module has always asked at: every node it reads is
+    inside a conditional or a ``not``, and a key that annotates without constraining is
+    not part of what a rule TESTS.
 
     ``if``/``then``/``else``, ``not``, ``dependencies``, ``min``/``maxProperties`` and
     ``uniqueItems`` are not asked about: no other D2 row claims a document for one of
     them, so there is no boundary to police, and D4 is what makes an unreadable one
     safe to carry rather than refuse.
     """
-    for keyword in _COMBINATORS:
-        branches = node.get(keyword)
-        if branches is None:
-            continue
-        if not isinstance(branches, list) or not branches:
-            return False
-        if not all(_required_only(b) for b in branches):
-            return False
-    return True
-
-
-def _required_only(branch: Any) -> bool:
-    """A branch that says nothing but which keys are present."""
-    if not isinstance(branch, dict):
-        return False
-    return _keys(branch) == {"required"} and isinstance(branch["required"], list)
+    return schema.presence_only(node, Position.RULE)
 
 
 # --------------------------------------------------------------------------- #
@@ -253,26 +260,45 @@ def _negated(node: Mapping[str, Any], out: Lowered) -> None:
 
 
 def _combinator(node: Mapping[str, Any], out: Lowered) -> None:
-    """``oneOf`` / ``anyOf`` over ``required``: which groups of keys may be present.
+    """``oneOf`` / ``anyOf`` whose branches state only which keys are present.
 
-    Only the all-``required``-only form, which is :func:`presence_only`'s test and the
-    step-5 boundary.  A combinator of shapes is a union root and this writes nothing for
-    it -- the document is step 5's and the selector does not claim it.
+    Only that form, which is :func:`presence_only`'s test and the step-5 boundary.  A
+    combinator of shapes is a union root and this writes nothing for it -- the document
+    is step 5's and the selector does not claim it.
+
+    **Two kinds and ONE reading of the branches**, which is §5's "A union of
+    presence-only branches that also forbid" (decided 2026-10-27).  A branch is
+    ``schema.presence_clause``'s pair -- the names it requires and the groups its ``not``
+    forbids -- and the kind written is decided by whether any branch forbids anything:
+
+    * no branch forbids → :class:`RequiredGroups`, which is the pair's degenerate case
+      and the kind the bundle's existing rule tuples already carry, so they do not move;
+    * some branch forbids → :class:`PresenceGroups`, whose clauses ARE the branches with
+      both halves paired.
+
+    Hoisting the ``not``\\ s into a :class:`ForbiddenGroups` beside a
+    :class:`RequiredGroups` is the move this kind exists to refuse, and
+    ``core/catchment.json`` is the measurement: each of its three branches forbids the
+    other two methods, so the hoisted rule forbids all three and refuses every payload
+    the document admits.  ``tests/test_emit.py``'s
+    ``test_a_presence_clause_keeps_its_two_halves_paired_to_its_own_branch`` grades the
+    document's verdict, the rule's and the perturbation, so a later row that collapses
+    the pairing back into two rules reddens.
     """
     for keyword in _COMBINATORS:
         branches = node.get(keyword)
         if not isinstance(branches, list) or not branches:
             continue
-        if not all(_required_only(b) for b in branches):
+        read = [schema.presence_clause(b, Position.RULE) for b in branches]
+        clauses = tuple(Presence(*pair) for pair in read if pair is not None)
+        if len(clauses) != len(read):
             continue
-        groups = tuple(
-            tuple(n for n in b["required"] if isinstance(n, str))
-            for b in branches
-            if isinstance(b, dict)
-        )
-        if not any(groups):
+        if not any(c.require or c.forbid for c in clauses):
             continue
-        out.rules.append(RequiredGroups(groups, keyword))
+        if any(c.forbid for c in clauses):
+            out.rules.append(PresenceGroups(clauses, keyword))
+            continue
+        out.rules.append(RequiredGroups(tuple(c.require for c in clauses), keyword))
 
 
 def _distinct(declared: Mapping[str, Any], out: Lowered) -> None:
@@ -331,37 +357,14 @@ def _keys(sub: dict) -> set[str]:
 
 
 def _required_groups(sub: Any) -> list[tuple[str, ...]] | None:
-    """``sub`` as a set of key groups, or ``None`` if it says anything else.
+    """``sub`` as a set of key groups, at RULE: ``schema.parse.required_groups``.
 
-    A group is a set of names whose simultaneous presence satisfies ``sub``, so an
-    enclosing ``not`` forbids it.  ``anyOf`` of branches is the union of their groups
-    (any branch satisfied satisfies ``sub``); ``allOf`` of single-group branches is one
-    group, the union of their names.  ``oneOf`` is deliberately absent: its negation is
-    "not exactly one", which no list of forbidden groups expresses.
+    The reduction is the PARSER's -- :func:`codegen.schema.parse.presence_clause` reads
+    the same ``not`` to classify a branch, and §11's "nothing repeats" makes one keyword
+    one reduction.  This is the name the three readers in this module call it by, and
+    the position they ask at.
     """
-    if not isinstance(sub, dict):
-        return None
-    keys = _keys(sub)
-    if keys == {"required"} and isinstance(sub["required"], list):
-        names = tuple(n for n in sub["required"] if isinstance(n, str))
-        return [names] if names else None
-    if keys == {"anyOf"} and isinstance(sub["anyOf"], list):
-        out: list[tuple[str, ...]] = []
-        for branch in sub["anyOf"]:
-            groups = _required_groups(branch)
-            if groups is None:
-                return None
-            out.extend(groups)
-        return out or None
-    if keys == {"allOf"} and isinstance(sub["allOf"], list):
-        merged: list[str] = []
-        for branch in sub["allOf"]:
-            groups = _required_groups(branch)
-            if groups is None or len(groups) != 1:
-                return None
-            merged.extend(groups[0])
-        return [tuple(merged)] if merged else None
-    return None
+    return schema.required_groups(sub, Position.RULE)
 
 
 def _clauses(sub: Any) -> list[tuple[str, bool, tuple[Any, ...] | None]] | None:

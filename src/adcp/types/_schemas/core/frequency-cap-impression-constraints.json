@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Exact supported values for max_impressions, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.",
+  "oneOf": [
+    {
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "minimum"
+            ]
+          },
+          {
+            "required": [
+              "maximum"
+            ]
+          }
+        ]
+      },
+      "required": [
+        "allowed_values"
+      ]
+    },
+    {
+      "not": {
+        "required": [
+          "allowed_values"
+        ]
+      },
+      "required": [
+        "minimum",
+        "maximum"
+      ]
+    }
+  ],
+  "properties": {
+    "allowed_values": {
+      "items": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "maximum": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "minimum": {
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "title": "Frequency Cap Impression Constraints",
+  "type": "object",
+  "x-adcp-validation": {
+    "ordered_bounds": "minimum MUST be less than or equal to maximum."
+  }
+}

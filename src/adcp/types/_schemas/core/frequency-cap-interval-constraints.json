@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Exact supported intervals for one duration unit, declared as either an exhaustive preset list or an inclusive integer range. The two forms are mutually exclusive.",
+  "if": {
+    "properties": {
+      "unit": {
+        "const": "campaign"
+      }
+    },
+    "required": [
+      "unit"
+    ]
+  },
+  "oneOf": [
+    {
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "minimum_interval"
+            ]
+          },
+          {
+            "required": [
+              "maximum_interval"
+            ]
+          }
+        ]
+      },
+      "required": [
+        "allowed_intervals"
+      ]
+    },
+    {
+      "not": {
+        "required": [
+          "allowed_intervals"
+        ]
+      },
+      "required": [
+        "minimum_interval",
+        "maximum_interval"
+      ]
+    }
+  ],
+  "properties": {
+    "allowed_intervals": {
+      "items": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "maximum_interval": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "minimum_interval": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "unit": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "A duration unit supported for a frequency-cap window or suppression period.",
+      "enum": [
+        "seconds",
+        "minutes",
+        "hours",
+        "days",
+        "campaign"
+      ],
+      "title": "Frequency Cap Duration Unit",
+      "type": "string"
+    }
+  },
+  "required": [
+    "unit"
+  ],
+  "then": {
+    "properties": {
+      "allowed_intervals": {
+        "items": {
+          "const": 1
+        }
+      },
+      "maximum_interval": {
+        "const": 1
+      },
+      "minimum_interval": {
+        "const": 1
+      }
+    }
+  },
+  "title": "Frequency Cap Interval Constraints",
+  "type": "object",
+  "x-adcp-hoist": true,
+  "x-adcp-validation": {
+    "ordered_bounds": "minimum_interval MUST be less than or equal to maximum_interval."
+  }
+}
