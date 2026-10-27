@@ -54,8 +54,10 @@ from hypothesis import strategies as st
 from unittest.mock import patch
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter, ValidationError
+from pydantic_core import PydanticCustomError
 
 from adcp.types._base import (
+    UNDERDETERMINED,
     WIDENED,
     AdCPBaseModel,
     AdCPRootModel,
@@ -982,25 +984,41 @@ PAIRS_FLOOR = 1095
 #: derivation from the mechanism rather than a second count.
 ROUND_TRIPS_NOTHING = ("no_instrument",)
 
-#: **§14 step 8's exit condition, as two numbers.**  "*Exit condition: every count
-#: unchanged -- the same documents emit, the same documents refuse -- with ``APPROXIMATED``
-#: 0 and ``OVER_DECLARED`` 0.*"
+#: **§2's declared widenings, NAMED and not counted**, which is what §9 asks for the
+#: moment a cell widens: "Do not pin the approximation count.  It rises whenever the
+#: emitted set grows ... Pin the four disagreement counts, which do not, and ratchet the
+#: *ours* split down."  So this is the *ours* backlog as a SET, and the ratchet is that
+#: it may only shrink: a site leaving reddens with the site named, and a site arriving
+#: reddens with the site named, where two integers would have said only that a number
+#: moved.
 #:
-#: ``APPROXIMATED`` is the FACTS and ``APPROXIMATED_DOCUMENTS`` is the documents carrying
-#: at least one: "``K`` and ``D`` are different counts over different denominators and the
-#: report never adds them" (§10).  Both are zero because the row builds the instrument and
-#: widens no cell, and both are asserted rather than assumed -- a count the row's own
-#: exit condition names and no check reads is a count nothing holds.
+#: Both figures §10 prints are read OFF this set rather than stated beside it, because
+#: "``K`` and ``D`` are different counts over different denominators and the report never
+#: adds them": ``len`` is the facts and the distinct documents are the documents.
 #:
-#: **NEITHER IS A RATCHET and neither may be pinned once a cell widens**, which is §9's
-#: own rule: "Do not pin the approximation count.  It rises whenever the emitted set grows
-#: ... Pin the four disagreement counts, which do not, and ratchet the *ours* split down."
-#: They are pinned HERE, at this row only, because at this row the figure is not yet a
-#: function of emission: nothing is approximated, so 0 is the measurement and not a target.
-#: The row that widens the first cell replaces these two with the *ours* split and its
-#: ratchet.
-APPROXIMATED = 0
-APPROXIMATED_DOCUMENTS = 0
+#: **It was ``APPROXIMATED = 0`` / ``APPROXIMATED_DOCUMENTS = 0``, pinned at §14 step 8
+#: where the row built the instrument and widened no cell** -- and the comment that stood
+#: here said in as many words that "the row that widens the first cell replaces these two
+#: with the *ours* split and its ratchet".  Three cells widened and nobody replaced them,
+#: so the two zeros were a falsehood this test asserted about its own tree.  They are
+#: replaced here, by ``adcp-client-python-10l.29``, which is also the row that takes 13 of
+#: the 17 BACK: every ``uniqueItems`` declaration was a widening claimed for unwritten
+#: code, and ``AtLeastOne`` / ``NotValue`` / ``Distinct`` are now written.
+#:
+#: What is left, each with the sentence that keeps it:
+#:
+#: * three ``oneOf``\\ s that are UNDERDETERMINED -- §4's dispatch cannot separate their
+#:   branches, which is the one kind §8 gives an instrument of its own
+#:   (``underdetermined_census``) and the one the comparison cannot see;
+#: * one ``patternProperties`` beside a non-``false`` ``additionalProperties``, whose
+#:   faithful answer is a rule family for "keys matching this pattern take this type" --
+#:   a different thing from the three value rules, and no row has written it.
+DECLARED_WIDENINGS = {
+    ("content-standards/calibrate-content-response.json", "#/oneOf", "oneOf"),
+    ("content-standards/create-content-standards-response.json", "#/oneOf", "oneOf"),
+    ("content-standards/validate-content-delivery-response.json", "#/oneOf", "oneOf"),
+    ("core/creative-assets.json", "#", "patternProperties"),
+}
 
 #: **§8's UNDERDETERMINED equality, as the set the derivation cannot separate.**  "The set
 #: of unions declaring one equals the set the derivation cannot separate, in both
@@ -2342,22 +2360,29 @@ def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     # keyword set belongs.  The second is this: the approximated set equals the declared
     # set, in both directions, over every pair of the run.
     #
-    # **At §14 step 8 both sets are EMPTY, and that is the step's exit condition rather
-    # than a reason to skip the assertion**: the row builds the instrument and widens no
-    # cell, so ``APPROXIMATED`` is 0 and ``OVER_DECLARED`` is 0.  The clause is written now
-    # because the first row that widens a cell has to move these two numbers TOGETHER, and
-    # a check added with the widening could not say whether it was ever able to fail.
-    # ``tests/test_approximation.py`` is where each direction is perturbed.
+    # Both directions have to move TOGETHER, which is why the clause was written while
+    # both sets were still empty: a check added with the first widening could not say
+    # whether it was ever able to fail.  ``tests/test_approximation.py`` is where each
+    # direction is perturbed.
     census = harness.census([(pair_of(g), r) for g, r in graded_reports()])
     assert census.over_declared == [], census.over_declared
     assert census.undeclared_widenings == [], census.undeclared_widenings
     assert census.unattributed == [], census.unattributed
     assert census.outcome == "pass", census
-    # The three figures §10 prints, asserted at the step's own exit condition.  ``K`` and
-    # ``D`` are different counts over different denominators and are never added (§2).
-    assert len(census.approximated) == APPROXIMATED, sorted(census.approximated)
-    assert len(census.declared) == APPROXIMATED, sorted(census.declared)
-    assert census.documents == APPROXIMATED_DOCUMENTS
+    # **The *ours* backlog as a SET**, which is §9's own instruction once a cell widens
+    # ("ratchet the *ours* split down").  A site arriving or leaving reddens with the
+    # site named; :data:`DECLARED_WIDENINGS` carries the sentence that keeps each.
+    assert set(census.declared) == DECLARED_WIDENINGS, sorted(census.declared)
+    # The two figures §10 prints, READ OFF that set rather than stated beside it: ``K``
+    # and ``D`` are different counts over different denominators and are never added.
+    assert census.documents == len({document for document, _, _ in DECLARED_WIDENINGS})
+    # And the approximated half is the declared half MINUS the one kind §8 exempts from
+    # the comparison by name -- an equality and not a third number, because
+    # ``census.stale`` already holds one direction and ``over_declared`` the other, so
+    # anything else here would be a count restating two checks that passed above.
+    assert census.approximated == {
+        site for site, one in census.declared.items() if one.kind != UNDERDETERMINED
+    }, sorted(census.approximated)
     # §8's UNDERDETERMINED equality, which no comparison, draw or dump can see: the set of
     # unions declaring one equals the set §4's disjointness derivation cannot separate, in
     # both directions.  Over the documents of record, which is the verifier's own reading
@@ -4632,15 +4657,21 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     pydantic v2 removed ``unique_items``.  Carrying it through ``constraints=`` would
     therefore be a model wider than its document, silently.
 
-    So the keyword takes two channels, both of them the class's and neither of them
-    the array's: the RULE narrows the constructor (D6), and
-    ``json_schema_extra`` states the fact on the field, which is the same channel
-    ``Property.format`` takes for the same reason -- the schema comparison reads
-    ``uniqueItems`` off the model's rendered schema (``harness.FACTS``), so a fact
-    only a validator enforces would read as ``missing``.
+    So the keyword takes two channels, never ``constraints=``: a RULE narrows the
+    constructor (D6), and ``json_schema_extra`` states the fact where the comparison
+    reads it, which is the same channel ``Property.format`` takes for the same reason --
+    the schema comparison reads ``uniqueItems`` off the model's rendered schema
+    (``harness.FACTS``), so a fact only a validator enforces would read as ``missing``.
 
-    Four cells: the keyword sets the constraints model, the rendering drops it, the
-    class states both halves, and an array NO class holds is still refused by name.
+    **Both channels exist at BOTH of §2's places a rule hangs**, which is the half this
+    test asserted the opposite of until ``adcp-client-python-10l.29``: on the nearest
+    class the rule is ``UniqueItems`` on its tuple and the fact is on the field holding
+    the array, and where no class sits above the array the rule is a ``Distinct`` on the
+    array's own annotated type and the fact is a ``Field(json_schema_extra=…)`` beside it
+    in the same ``Annotated``.
+
+    Four cells: the keyword sets the constraints model, the rendering drops it, a class
+    states both halves, and an array NO class holds states both halves too.
     """
     from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
 
@@ -4664,14 +4695,20 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     assert "UniqueItems('a')" in text, text
     assert "json_schema_extra={'uniqueItems': True}" in text, text
 
-    # **An array with no class above it DECLARES rather than refusing**, which is
-    # §5(b)'s row landed at ``adcp-client-python-10l.21``: "``uniqueItems`` and
-    # ``contains`` where even a named type cannot hold the rule.  Rung KEYWORD: the
-    # array is ``list[X]`` and the duplicate check is the schema half's alone."  A
-    # mapping value is one of the three positions with neither a class nor a root model,
-    # and the measurement above is unchanged -- the keyword still reaches no mechanism
-    # there, so what moved is the ANSWER and not the reading.
-    widened, _ = emit.lower_document(
+    # **An array with no class above it CARRIES THE RULE ON ITS OWN TYPE**, which is
+    # §2's second place a rule hangs -- "where no class sits above the value ... the rule
+    # hangs off the value's own annotated type as an after-validator (``AtLeastOne``,
+    # ``NotValue``, ``Distinct``)".  A mapping value is one of those positions.
+    #
+    # **This probe asserted the OPPOSITE at ``adcp-client-python-10l.21`` and the
+    # assertion was the defect.**  It read §5(b)'s withdrawn row -- "``uniqueItems`` and
+    # ``contains`` where even a named type cannot hold the rule ... the duplicate check is
+    # the schema half's alone" -- and declared an approximation here.  A named type holds
+    # the rule perfectly well; what was missing was that ``_runtime`` declared none of the
+    # three kinds, so "we cannot express it" was standing in for "nobody wrote it".  The
+    # three cells below are the faithful answer, and the one that matters is the first:
+    # the module declares NOTHING, because there is nothing to declare.
+    on_a_value, _ = emit.lower_document(
         "v.json",
         {
             "title": "V",
@@ -4689,63 +4726,40 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
         },
         reserved=render.RESERVED,
     )
-    (declared,) = widened.approximations
-    assert declared.pointer == "#/properties/m/additionalProperties", declared
-    assert (declared.keyword, declared.kind, declared.fact) == ("uniqueItems", WIDENED, True)
-    # The rung and the attribution are the CELL's, which §2 gives a handler neither to
-    # choose, and the rendered module carries no rule for the keyword at that position.
-    assert declared.rung == Rung.KEYWORD.value, declared
-    assert declared.attribution == keywords.address("uniqueItems"), declared
+    assert on_a_value.approximations == [], on_a_value.approximations
+    bound_on_a_value = _assigned(on_a_value)
+    on_the_value = render.module(
+        bound_on_a_value, emit.exported(on_a_value, bound_on_a_value)
+    )
+    # The RULE, on the mapping's VALUE type and not on the field holding the mapping --
+    # a rule written there would be about the dict and not about each array in it.
+    assert "dict[str, Annotated[list[str]," in on_the_value, on_the_value
+    assert "AfterValidator(Distinct())" in on_the_value, on_the_value
+    # And the FACT beside it, so §8 grades the keyword at the array's own pointer: this
+    # is the same ``json_schema_extra`` channel the class-level half takes above, for the
+    # same measured reason -- pydantic v2 removed ``unique_items``.
+    assert "json_schema_extra={'uniqueItems': True}" in on_the_value, on_the_value
 
-    # And on the bundle: the keyword is down to the positions no class holds, each
-    # named WITH ITS POINTER, which is the position the refusal is about -- D2's
-    # unimplemented ``RootModel[list[X]]`` row at a root, a mapping value, a
-    # ``definitions`` section's array and a union branch.  ``product.lower_root``
-    # writes no rule of any D6 family, which is step 4's row and not this keyword's.
+    # And on the bundle: NO document refuses on this keyword and NO document declares a
+    # widening for it, in either direction, over the whole emitted population.  The two
+    # empty sets are the row's exit condition and the named set below is what makes them
+    # evidence rather than vacuous -- a reading that stopped reaching the keyword would
+    # satisfy both emptinesses and move the third.
     #
-    # Re-pointed here, with each move's cause read off the refusal rather than
-    # inferred from the list's length.  Three documents JOINED, all three because an
-    # earlier blocker of theirs cleared and the walk reached this keyword:
-    # ``core/daast-tracker-constraints.json`` and ``core/vast-tracker-constraints.json``
-    # at a ``definitions`` section's array, and ``error-details/requote-required.json``
-    # at a ``oneOf`` branch -- each one a ``Kind.VERDICT`` on this keyword, which is
-    # this row's own ground and not a deferral.  One LEFT:
-    # ``media-buy/list-creative-formats-request.json`` emits now.
-    #
-    # A ninth JOINED at ``salesagent-j3k2l.64``, and for the same reason the three
-    # did: an earlier blocker of its own cleared and the walk reached this keyword.
-    # ``media-buy/acceptance-policy-profile.json`` refused at
-    # ``/properties/region_aliases/propertyNames`` on the key ``pattern``; the typed
-    # key emits now, so the walk descends into that mapping's VALUE and meets an
-    # array with no class above it -- a mapping value, which is one of the four
-    # positions this list is about.
-    #
-    # **The four ROOT sites LEFT at ``adcp-client-python-10l.20``, and the three that
-    # stay are the positions §7's ``ir.TypeRef.validators`` slot owns.**  §5's group (a)
-    # decides the root: "A root array is a root model, and a root model carries a rule
-    # tuple exactly as a class does, so ``Distinct`` and ``AtLeastOne`` reach it.  The
-    # keyword is enforced, not dropped."  So ``core/acceptance-policy-profile-ids.json``,
-    # ``core/forecast-point-dimensions.json``,
-    # ``core/reporting-verification-profile-set.json`` and
-    # ``media-buy/product-fields.json`` each emit a root model carrying
-    # ``UniqueItems('root')`` -- the key being a root model's one pydantic field, which
-    # is where ``_runtime.supplied`` finds the value.
-    #
-    # What is left is a mapping VALUE, a ``definitions`` entry and a combinator BRANCH,
-    # and none of the three has a class or a root model: §2 hangs the rule off "the
-    # value's own annotated type", which is the ``validators`` slot §7 declares and no
-    # row has written.  So this list is now exactly the positions that slot answers,
-    # which is the honest reading of the refusal it keeps.
-    #
-    # **AND THE LIST IS EMPTY AT ``adcp-client-python-10l.21``, because the slot's
-    # answer is §2's ladder rather than §7's ``validators``.**  §5(b) decides those three
-    # positions: the keyword is DROPPED, the drop is DECLARED at rung KEYWORD with the
-    # cell's own attribution, and ``strict_validate`` enforces it from the document --
-    # so no document of the bundle refuses on this keyword any more.  The five that did
-    # are the five DECLARING it below, each at the very pointer it refused at, which is
-    # what makes this a row landing rather than a check being dropped.
+    # The history, because the count moved four times and a number says nothing about
+    # which document moved: the five sites that REFUSED at ``adcp-client-python-10l.20``
+    # became five DECLARATIONS at ``.21`` (plus six more carried to a REFERRER by §8's
+    # "a declaration travels with the fact it is about", for 11 over ``population()`` and
+    # 13 over the portable set), and at ``.29`` all of them become the rule itself.  The
+    # ``definitions`` entries are back in their own documents' modules, because the rule
+    # lives on the ALIAS the entry emits and a referrer imports that symbol -- so the
+    # fact has one spelling again (P2) rather than a declaration per referrer.
     out = emit.emit(BUNDLE, population())
-    blocked = {d: out.refusals[d]["pointer"] for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
+    blocked = {
+        d: out.refusals[d]["pointer"]
+        for d, r in out.refusals.items()
+        if r["keyword"] == "uniqueItems"
+    }
     assert blocked == {}, blocked
     declaring = {
         a.document: a.pointer
@@ -4753,31 +4767,23 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
         for a in declared_for
         if a.keyword == "uniqueItems"
     }
-    claimed("documents declaring a uniqueItems widening", declaring)
-    assert declaring == {
-        "core/account-authorization.json": "#/properties/field_scopes/additionalProperties",
-        "core/daast-tracker-constraints.json": "#/properties/daast_versions",
-        "core/vast-tracker-constraints.json": "#/properties/vast_versions",
-        "error-details/requote-required.json": "#/properties/envelope_field/oneOf/1",
-        "media-buy/acceptance-policy-profile.json": "#/properties/region_aliases/additionalProperties",
-        # Carried to a REFERRER by §8's "a declaration travels with the fact it is
-        # about": each of these inlines one of the five above at its own pointer, so the
-        # record carries the fact there and the declaration travels with it.  Over
-        # ``population()``, which is narrower than the portable set -- the two
-        # ``core/geo-place-*`` documents carry one over the portable set and are not in
-        # this denominator.
-        "account/list-accounts-response.json": "#/properties/accounts/items/properties/authorization/properties/field_scopes/additionalProperties",
-        "core/account-with-authorization.json": "#/properties/authorization/properties/field_scopes/additionalProperties",
-        "core/requirements/daast-asset-requirements.json": "#/properties/daast_versions",
-        "formats/canonical/audio_daast.json": "#/properties/daast_versions",
-        "governance/policy-entry.json": "#/properties/acceptance_profile/properties/region_aliases/additionalProperties",
-        "media-buy/acceptance-policy-catalog.json": "#/properties/profiles/items/properties/region_aliases/additionalProperties",
-    }, declaring
-    # The ``definitions`` pointers are GONE from the declared set and that is the
-    # re-pointing, not a drop: §5 declares no entry nothing references, so an entry has
-    # no instance location of its own and the declaration travels to the referring
-    # ``properties`` segment, which the accepts draw does reach.
-    assert all("/definitions/" not in p for p in declaring.values()), declaring
+    assert declaring == {}, declaring
+    enforcing = claimed(
+        "documents whose module binds a Distinct to an array no class holds",
+        {
+            d
+            for d in out.emitted
+            if "Distinct(" in out.files[f"{emit.module_path(d)}.py"]
+        },
+        inside=set(out.emitted),
+    )
+    assert enforcing == {
+        "core/account-authorization.json",  # a mapping value
+        "core/daast-tracker-constraints.json",  # a definitions entry
+        "core/vast-tracker-constraints.json",  # a definitions entry
+        "error-details/requote-required.json",  # a oneOf branch
+        "media-buy/acceptance-policy-profile.json",  # a mapping value
+    }, sorted(enforcing)
 
 
 def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rule() -> None:
@@ -6809,6 +6815,168 @@ def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
         seen.add(type(rule).__name__)
 
     assert seen == set(RULE_KINDS), seen
+
+
+#: **THE THREE VALUE-RULE KINDS, AND THE EMITTED SITE EACH IS REACHED AT.**  §2 names
+#: them -- "where no class sits above the value ... the rule hangs off the value's own
+#: annotated type as an after-validator (``AtLeastOne``, ``NotValue``, ``Distinct``)" --
+#: and ``src/adcp/types/_runtime.py`` declared NONE of them until this row: 0 emitted
+#: each, against ``UniqueItems`` at 212 and ``ForbiddenGroups`` at 64, so the
+#: class-level path was well travelled and the value-level path had never been walked.
+#:
+#: Each row is a DOCUMENT and a POSITION, so the set is the claim that each kind is
+#: reached from a real bundle node at the position §2 puts it at -- not that it exists.
+#: The payloads are below: one the document REFUSES and one it ADMITS, so a validator
+#: that refused everything could not pass either.
+#:
+#: ``Distinct`` carries three rows because its three positions are three different
+#: renderings -- inside ``dict[K, V]``, as a module-level alias, as one arm of a union
+#: -- and a row that only worked at one of them is the defect this names.  A root array
+#: is the fourth position §2 lists and is deliberately NOT here: it is a root model,
+#: which carries a rule TUPLE exactly as a class does, so ``UniqueItems('root')``
+#: reaches it and no validator is needed (``lower.containers.array``).
+VALUE_RULE_CARRIERS: dict[str, list[tuple[str, str]]] = {
+    "Distinct": [
+        ("core/account-authorization.json", "MAPV"),
+        ("core/daast-tracker-constraints.json", "DEF"),
+        ("error-details/requote-required.json", "BRANCH"),
+    ],
+    "NotValue": [("core/iana-timezone.json", "ROOT")],
+    "AtLeastOne": [("core/product-execution-requirement.json", "PROP")],
+}
+
+
+def test_each_value_rule_kind_refuses_on_the_value_alone() -> None:
+    """Each kind, graded without pydantic and without a document.
+
+    ``ValueRule.__call__(value)`` is the whole protocol -- the sibling of
+    ``Rule.errors(keys, values)`` and deliberately not the same one, because a rule on
+    a type is handed the one value its annotation is about and a rule on a class is
+    handed the keys that arrived.  Each row is the rule, the value, and the JSON Schema
+    keyword it must name, or ``None`` where the value satisfies it.
+    """
+    from adcp.types._runtime import AtLeastOne, Distinct, NotValue
+
+    cases: list[tuple[Any, Any, str | None]] = [
+        (Distinct(), ["a", "b"], None),
+        (Distinct(), ["a", "a"], "uniqueItems"),
+        # draft-07's equality and not Python's: ``1 == 1.0`` is one value and
+        # ``true != 1`` is two.  ``_same`` is shared with ``UniqueItems``, so the two
+        # kinds cannot come to disagree about what a repeat IS.
+        (Distinct(), [True, 1, 1.0], "uniqueItems"),
+        (Distinct(), [True, 1], None),
+        (Distinct(), [{"a": 1}, {"a": 1}], "uniqueItems"),
+        # Not a list: the annotated type can be one arm of a union whose other arms are
+        # not arrays, and ``uniqueItems`` says nothing about those.
+        (Distinct(), "not an array", None),
+        (NotValue(("x",)), "y", None),
+        (NotValue(("x",)), "x", "not"),
+        (NotValue((1,)), True, None),  # draft-07 again: ``true`` is not ``1``
+        (NotValue(("x", "y")), "y", "not"),
+        (AtLeastOne(values=("p",)), ["q", "p"], None),
+        (AtLeastOne(values=("p",)), ["q"], "contains"),
+        (AtLeastOne(values=("p",)), [], "contains"),
+        (AtLeastOne(pinned=(("effect", "blocked"),)), [{"effect": "blocked"}], None),
+        (AtLeastOne(pinned=(("effect", "blocked"),)), [{"effect": "allowed"}], "contains"),
+        (AtLeastOne(pinned=(("effect", "blocked"),)), "not an array", None),
+    ]
+    seen: set[str] = set()
+    for rule, value, keyword in cases:
+        try:
+            assert rule(value) is value, (rule, value)
+            got = None
+        except PydanticCustomError as refusal:
+            got = refusal.type
+        assert got == keyword, (rule, value, got)
+        seen.add(type(rule).__name__)
+    assert seen == set(VALUE_RULE_CARRIERS), seen
+
+
+def test_every_value_rule_kind_is_enforced_by_the_class_the_tree_emitted() -> None:
+    """The three kinds, through the EMITTED annotation and not through a fixture.
+
+    The test above grades the dataclass; this grades the pipeline that reaches it --
+    the lowering writing the rule onto ``ir.TypeRef.validators``, the renderer composing
+    ``Annotated[…, AfterValidator(…)]``, and the three places that annotation sits.  A
+    refusal here names the DOCUMENT's own keyword, which is what makes the two halves of
+    ``strict_validate`` read alike.
+
+    **Both directions per site**, because a narrowing is the failure that matters: the
+    admitted payload is one the DOCUMENT accepts, so a rule written where the document
+    states none would redden here rather than only in the accepts draw.
+    """
+    from adcp.types._schemas.core.account_authorization import AccountAuthorization
+    from adcp.types._schemas.core.daast_tracker_constraints import DAASTTrackerConstraints
+    from adcp.types._schemas.core.iana_timezone import IANATimezoneIdentifier
+    from adcp.types._schemas.core.product_execution_requirement import (
+        DownstreamConnectionExecutionRequirementConnection,
+    )
+    from adcp.types._schemas.error_details.requote_required import RequoteRequiredDetails
+
+    # (kind, document, build, the payload the document refuses, one it admits).
+    sites = [
+        (
+            "Distinct",
+            "core/account-authorization.json",
+            AccountAuthorization.model_validate,
+            {"allowed_tasks": ["get_products"], "field_scopes": {"k": ["a", "a"]}},
+            {"allowed_tasks": ["get_products"], "field_scopes": {"k": ["a", "b"]}},
+        ),
+        (
+            "Distinct",
+            "core/daast-tracker-constraints.json",
+            DAASTTrackerConstraints.model_validate,
+            {"daast_versions": ["1.0", "1.0"]},
+            {"daast_versions": ["1.0", "1.1"]},
+        ),
+        (
+            "Distinct",
+            "error-details/requote-required.json",
+            RequoteRequiredDetails.model_validate,
+            {"envelope_field": ["a", "a"]},
+            {"envelope_field": ["a", "b"]},
+        ),
+        (
+            "NotValue",
+            "core/iana-timezone.json",
+            TypeAdapter(IANATimezoneIdentifier).validate_python,
+            "inventory_local",
+            "America/New_York",
+        ),
+        (
+            "AtLeastOne",
+            "core/product-execution-requirement.json",
+            DownstreamConnectionExecutionRequirementConnection.model_validate,
+            {"connection_type": "advertiser_account", "required_for": ["list_creatives"]},
+            {
+                "connection_type": "advertiser_account",
+                "required_for": ["list_creatives", "create_media_buy"],
+            },
+        ),
+    ]
+    # The keyword each kind refuses on is the DOCUMENT's own, read off the rule rather
+    # than listed beside it: one spelling, so a kind that started naming something else
+    # reddens here.
+    keyword = {"Distinct": "uniqueItems", "NotValue": "not", "AtLeastOne": "contains"}
+    claimed(
+        "value-rule kinds enforced by an emitted class",
+        {kind for kind, *_ in sites},
+        inside=set(VALUE_RULE_CARRIERS),
+    )
+    assert {kind for kind, *_ in sites} == set(VALUE_RULE_CARRIERS)
+    assert sorted((k, d) for k, d, *_ in sites) == sorted(
+        (kind, document)
+        for kind, carried in VALUE_RULE_CARRIERS.items()
+        for document, _position in carried
+    )
+    for kind, document, build, refused, admitted in sites:
+        with pytest.raises(ValidationError) as caught:
+            build(refused)
+        assert keyword[kind] in {e["type"] for e in caught.value.errors()}, (
+            document,
+            caught.value.errors(),
+        )
+        build(admitted)  # the document admits it, so the model must
 
 
 def test_a_presence_clause_keeps_its_two_halves_paired_to_its_own_branch() -> None:

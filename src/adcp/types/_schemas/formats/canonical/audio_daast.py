@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import Approximation, SchemaRef
+from adcp.types._base import SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import IntMin1
 
@@ -24,9 +24,6 @@ class CanonicalFormatDAASTAudio(CanonicalFormatBase):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/audio_daast.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('daast_version', 'daast_versions'),)),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='formats/canonical/audio_daast.json', pointer='#/properties/daast_versions', keyword='uniqueItems', kind='WIDENED', rung='KEYWORD', fact=True, attribution='docs/plan/rebuild-plan.md §5 arrays/uniqueItems'),
     )
     slots: Annotated[list[CanonicalFormatBaseSlotsItem] | None, Field(description="Default slots for audio_daast canonical. Buyer ships a DAAST tag (URL or inline XML, 1.0 or 1.1) plus an optional clickthrough URL. Tracking events are inherent to DAAST and don't require explicit slots.")] = [{'asset_group_id': 'daast_tag', 'asset_type': 'daast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]
     daast_version: Annotated[DAASTVersion | None, Field(description='Deprecated one-element alias for `daast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.')] = None

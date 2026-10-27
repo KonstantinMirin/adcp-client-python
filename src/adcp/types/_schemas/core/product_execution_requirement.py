@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
+from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
 from ..enums.catalog_type import CatalogType
@@ -69,7 +69,7 @@ class DownstreamConnectionExecutionRequirementConnection(DownstreamConnectionReq
         ForbiddenGroups((('resource_ref',), ('connection_id',), ('expires_at',))),
     )
     status: Annotated[Literal['unknown'] | None, Field(description='Current seller-observed state for this downstream connection when known. Product declarations MAY omit status or use `unknown`; AUTHORIZATION_REQUIRED details SHOULD use `missing`, `expired`, or `revoked` for the connection that blocked the call.')] = None
-    required_for: Annotated[list[StrMinLen1] | None, Field(description='Concrete AdCP protocol operation names that require this downstream connection. Sellers SHOULD include this in product declarations when the requirement is known ahead of time, and in AUTHORIZATION_REQUIRED details when it explains the failed operation. Prefer specific operation names such as `list_creatives`, `sync_creatives`, `create_media_buy`, `get_media_buy_delivery`, or `get_creative_delivery` over broad category labels such as `reporting`.', json_schema_extra={'uniqueItems': True})] = None
+    required_for: Annotated[Annotated[list[StrMinLen1], AfterValidator(AtLeastOne(values=('create_media_buy',), pinned=()))] | None, Field(description='Concrete AdCP protocol operation names that require this downstream connection. Sellers SHOULD include this in product declarations when the requirement is known ahead of time, and in AUTHORIZATION_REQUIRED details when it explains the failed operation. Prefer specific operation names such as `list_creatives`, `sync_creatives`, `create_media_buy`, `get_media_buy_delivery`, or `get_creative_delivery` over broad category labels such as `reporting`.', json_schema_extra={'uniqueItems': True})] = None
 
 
 class DownstreamConnectionExecutionRequirement(ProductExecutionRequirement):

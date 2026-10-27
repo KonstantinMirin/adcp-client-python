@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1
 
@@ -24,9 +24,6 @@ class AcceptancePolicyCatalog(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-catalog.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('profiles',), ('registry_profiles',)), 'anyOf'),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/acceptance-policy-catalog.json', pointer='#/properties/profiles/items/properties/region_aliases/additionalProperties', keyword='uniqueItems', kind='WIDENED', rung='KEYWORD', fact=True, attribution='docs/plan/rebuild-plan.md §5 arrays/uniqueItems'),
     )
     catalog_version: StrMinLen1
     generated_at: AwareDatetime | None = None

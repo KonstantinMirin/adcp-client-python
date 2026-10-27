@@ -3,15 +3,16 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import AfterValidator, Field
 
 from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._runtime import NotValue
 from adcp.types.constraints import StrMinLen1MaxLen255MatchingA57C93CC
 
 
 __adcp_schema__ = SchemaRef(document='core/iana-timezone.json', pointer='#')
 
-IANATimezoneIdentifier = Annotated[StrMinLen1MaxLen255MatchingA57C93CC, Field(description="Concrete timezone identifier in the implementation's supported IANA Time Zone Database, such as America/New_York, CET, or UTC.")]
+IANATimezoneIdentifier = Annotated[Annotated[StrMinLen1MaxLen255MatchingA57C93CC, AfterValidator(NotValue(('inventory_local',)))], Field(description="Concrete timezone identifier in the implementation's supported IANA Time Zone Database, such as America/New_York, CET, or UTC.")]
 
 
 strict_validate = strict_alias(__adcp_schema__, "IANATimezoneIdentifier", IANATimezoneIdentifier)

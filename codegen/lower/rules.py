@@ -5,10 +5,19 @@
 on, so none can be a ``Field`` kwarg.  Each becomes either an INSTANCE of one of
 ``adcp.types._runtime``'s frozen dataclasses -- which ``codegen.render`` writes into the
 one class-level ``_adcp_rules`` tuple that ``adcp.types._runtime.RuleBound`` reads -- or,
-when it is a statement about a VALUE rather than about which keys are present, nothing on
-the class at all.  **The rule kinds are declared once, in the runtime** (§2 of the
-semantics document, "rules are after-validators, written once"; §7 of the architecture
-document for why the walk composes values and holds no text).
+when it is a statement about a VALUE rather than about which keys are present, an
+instance of one of the runtime's VALUE-rule kinds, which ``codegen.render`` writes into
+the value's own ``Annotated``.  **The rule kinds are declared once, in the runtime** (§2
+of the semantics document, "rules are after-validators, written once"; §7 of the
+architecture document for why the walk composes values and holds no text).
+
+**§2's two places a rule hangs are :func:`lower` and :func:`on_a_value`, and they are in
+one module on purpose**: "on the nearest class if there is one ... where no class sits
+above the value -- a root array, a mapping value, a ``definitions`` entry, a union branch
+-- the rule hangs off the value's own annotated type as an after-validator
+(``AtLeastOne``, ``NotValue``, ``Distinct``)."  One reader decides which half a
+document's statement takes, so the two cannot both claim it and neither can silently
+drop it.
 
 **Nothing here refuses a document.**  That is D4, and it is the one judgement this
 module makes, so it is stated once rather than per keyword.  The accepted set of every
@@ -31,9 +40,14 @@ carries the rule: the array a FIELD holds.  467 of the bundle's 485 occurrences 
 ``properties/<name>`` slot, so D2's *a rule on the nearest class* makes the class holding
 the array the one that states it, and :func:`_distinct` reads it off this node's own
 ``properties``.  The array row's own keyword screen is left alone, which is the
-decision rather than an omission: an array with no class above it (a mapping value, a
-document root, a combinator branch -- 18 of the 485) keeps refusing on ``uniqueItems`` by
-name, and that is the true reason, because a rule has nowhere to live there.
+decision rather than an omission: the 18 sites with no class above them are
+:func:`on_a_value`'s, and the array row writes a :class:`adcp.types._runtime.Distinct`
+onto the array's own annotated type there.  **That array row used to DECLARE AN
+APPROXIMATION for each of them** -- 13 of the tree's 17 -- on the ground that "a rule has
+nowhere to live there".  It was never true: ``Annotated[list[X], AfterValidator(…)]``
+carries a rule, §2 always said so, and what was actually missing was the three kinds.
+A ROOT array is the one of the four that still takes a rule TUPLE rather than a
+validator, because it is a root model and a root model has one.
 
 **The step-5 boundary, and why it is a predicate and not a precedence rule.**  A
 ``oneOf``/``anyOf`` whose branches are SHAPES is a union root: a base, one subclass per
@@ -59,17 +73,21 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from adcp.types._runtime import (
+    AtLeastOne,
     ConditionalRequired,
     Dependencies,
+    Distinct,
     ForbiddenGroups,
     Match,
     NegatedConditional,
+    NotValue,
     Presence,
     PresenceGroups,
     PropertyCount,
     RequiredGroups,
     Rule,
     UniqueItems,
+    ValueRule,
 )
 from codegen import compiler
 from codegen.keywords import Position
@@ -169,6 +187,106 @@ def lower_declaration(declaration: Mapping[str, Any], position: Position) -> Low
         declared if isinstance(declared, dict) else {},
         "additionalProperties" in declaration,
     )
+
+
+# --------------------------------------------------------------------------- #
+# §2's OTHER place a rule hangs: the value's own annotated type
+# --------------------------------------------------------------------------- #
+def on_a_value(
+    sources: Mapping[str, Any],
+    *,
+    distinct: bool = False,
+    contains: Any = None,
+) -> tuple[ValueRule, ...]:
+    """Every rule bound to a node's own TYPE, where no class above it can hold one.
+
+    §2's "Where a rule hangs" has two halves and this is the second: "on the nearest
+    class if there is one, because a class can read sibling fields.  Where no class sits
+    above the value -- a root array, a mapping value, a ``definitions`` entry, a union
+    branch -- the rule hangs off the value's own annotated type as an after-validator
+    (``AtLeastOne``, ``NotValue``, ``Distinct``)."  :func:`lower` is the first half; this
+    is the second, in the same module, so one reader decides which of the two a
+    document's statement reaches and the two cannot both claim it.
+
+    **WHICH half a keyword takes is the CELL's answer and not this function's**, which
+    is why the three arguments are what they are and why the POSITION gate is the
+    caller's:
+
+    * ``uniqueItems`` -- "A ``UniqueItems`` rule on the class holding the array ... Where
+      no class sits above the array → a ``Distinct`` after-validator on its own annotated
+      type."  So ``distinct`` is passed only by a caller at such a position, and
+      ``lower.containers.array`` is the one that knows which those are: a PROP array has
+      the class whose field holds it and a ROOT array is a root model, which carries a
+      rule tuple exactly as a class does.
+    * ``contains`` -- "A field position → an ``AtLeastOne`` after-validator on the
+      array's own annotated type."  There is no class-level kind for it at all, so it
+      takes this half at EVERY position and the caller gates nothing.
+    * ``not`` over a ``const`` or an ``enum`` -- "→ a ``NotValue`` after-validator on the
+      value's own annotated type."  Also ungated, and for the same reason:
+      :class:`ForbiddenGroups` is the class-level kind for the keyword's OTHER shape, a
+      ``not`` over ``required``, and a statement about a VALUE has nowhere on a class to
+      live.
+
+    The order is fixed here -- distinct, contains, not -- rather than read off a mapping,
+    so the rendered annotation is a function of the document's CONTENT and not of the key
+    order a schema author happened to write (P7).  The three keywords are distinct, so
+    there is no document order between them to preserve.
+
+    Returns an empty tuple where the node states none of them, which is every node of the
+    bundle but a few: a caller writes the tuple onto the type and an empty one renders
+    nothing.
+    """
+    out: list[ValueRule] = []
+    if distinct:
+        out.append(Distinct())
+    predicate = contains_predicate(contains)
+    if predicate is not None:
+        out.append(predicate)
+    # Read ONCE into a local, so the ``isinstance`` narrows the value that is passed and
+    # not a second ``get`` of the same key -- :func:`lower_declaration`'s own reason.
+    negated = sources.get("not")
+    excluded = _values(negated) if isinstance(negated, dict) else None
+    if excluded:
+        out.append(NotValue(excluded))
+    return tuple(out)
+
+
+def contains_predicate(sub: Any) -> AtLeastOne | None:
+    """§5's ``contains`` row as a PREDICATE, or ``None`` where it decides none.
+
+    "The model states the **predicate**, not a transcription of the subschema.  Every
+    position → an ``AtLeastOne`` after-validator on the array's own annotated type ...
+    ``AtLeastOne(pinned=…)`` where the subschema requires properties pinned to a const,
+    ``AtLeastOne(values=…)`` where it is a bare ``const`` or a one-member ``enum``.  Any
+    other predicate -- a bound, a pattern, a nested ``contains``, a ``$ref`` -- → the
+    keyword is CARRIED and the schema half answers alone: a transcription of the
+    subschema is the thing this row declines to emit, and the first document to state
+    such a predicate decides its rendering."
+
+    ``None`` is that last clause, and the caller is what does something with it: the
+    array row CARRIES such a ``contains`` exactly as it did before this function existed,
+    which is D4 -- ``strict_validate`` enforces the keyword from the document and the
+    constructor is wider.  **The distinction §5(b) draws is here and nowhere else**: a
+    rule having nowhere to LIVE was never true, and a predicate having no decided
+    RENDERING is.
+
+    **Both readings are the ones this module already makes**, which is §11's "nothing
+    repeats": a bare value is :func:`_values`, the same function an ``if`` clause reads a
+    pinned property with, and the object predicate is :func:`_clauses`, the same function
+    an ``if`` itself is read with -- a ``contains`` that requires properties pinned to a
+    const IS an ``if``'s shape, asked about an element instead of about the instance.  A
+    clause admitting more than one value is not a pin and the predicate is not decided,
+    which is why every clause is checked for exactly one.
+    """
+    if not isinstance(sub, dict):
+        return None
+    bare = _values(sub)
+    if bare is not None:
+        return AtLeastOne(values=bare) if len(bare) == 1 else None
+    clauses = _clauses(sub)
+    if clauses is None or not all(a is not None and len(a) == 1 for _, _, a in clauses):
+        return None
+    return AtLeastOne(pinned=tuple((key, allowed[0]) for key, _, allowed in clauses if allowed))
 
 
 # --------------------------------------------------------------------------- #
