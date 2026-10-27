@@ -3327,8 +3327,28 @@ class Census:
 
     @property
     def stale(self) -> list[Site]:
-        """The declared sites with no approximated fact, as sites."""
-        return sorted(set(self.declared) - self.approximated)
+        """The declared sites with no approximated fact, as sites.
+
+        **An UNDERDETERMINED site is not one of them, and section 8 is the sentence.**
+        "An UNDERDETERMINED approximation (section 2) is invisible to all three checks,
+        and that is why it needs an instrument of its own ... The comparison matches, the
+        draw accepts and the dump validates, because the annotation admits exactly what
+        the document admits."  This difference is computed FROM the comparison's output,
+        so a kind no comparison can report could never be in :attr:`approximated` and
+        would be stale at every pair forever -- the *over-declared* outcome firing on the
+        one kind section 8 exempts from it by name.
+
+        :func:`check_widening` already carries the exclusion with that citation ("claiming
+        it here would report a pass this check cannot earn") and this is the same reading
+        on the other equality: section 8 gives UNDERDETERMINED its own instrument,
+        :func:`underdetermined_census`, which holds it in BOTH directions over section 4's
+        disjointness derivation.  So the kind is accounted for, and by the check its own
+        section assigns it.
+        """
+        return sorted(
+            {site for site, one in self.declared.items() if one.kind != UNDERDETERMINED}
+            - self.approximated
+        )
 
     @property
     def outcome(self) -> str:
