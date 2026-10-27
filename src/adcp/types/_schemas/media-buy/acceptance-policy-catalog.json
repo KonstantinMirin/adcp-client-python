@@ -1,0 +1,888 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "anyOf": [
+    {
+      "required": [
+        "profiles"
+      ]
+    },
+    {
+      "required": [
+        "registry_profiles"
+      ]
+    }
+  ],
+  "description": "Seller-hosted catalog referenced from capabilities. Profiles compose restrictively: every referenced profile applies and the most restrictive matching disposition wins (prohibited over conditional over allowed).",
+  "properties": {
+    "catalog_version": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "profiles": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "coverage": {
+                  "const": "complete"
+                }
+              },
+              "required": [
+                "coverage"
+              ]
+            },
+            "then": {
+              "required": [
+                "scope"
+              ]
+            }
+          }
+        ],
+        "description": "Versioned acceptance-policy profile published by a registry or seller. Omitted rules are unknown unless coverage is complete and scope is explicit; discovery never guarantees acceptance of an exact request.",
+        "properties": {
+          "content_digest": {
+            "description": "SHA-256 digest of the RFC 8785 JCS serialization of this profile with content_digest omitted. A profile_id/version pair is immutable; consumers reject a resolved profile whose digest differs.",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "coverage": {
+            "description": "partial means additional unpublished rules may apply and omission is unknown. complete means this profile is exhaustive only for its declared scope and version.",
+            "enum": [
+              "partial",
+              "complete"
+            ],
+            "type": "string"
+          },
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "ext": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": true,
+            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            "title": "Extension Object",
+            "type": "object"
+          },
+          "policy_refs": {
+            "description": "Exact registry policy versions from which this profile was derived. Consumers MUST NOT silently substitute a different version.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "content_digest": {
+                  "description": "SHA-256 digest of the referenced policy entry's RFC 8785 JCS serialization with acceptance_profile omitted.",
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "policy_id": {
+                  "minLength": 1,
+                  "type": "string",
+                  "x-entity": "governance_registry_policy"
+                },
+                "version": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "policy_id",
+                "version",
+                "content_digest"
+              ],
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "profile_id": {
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "type": "string",
+            "x-entity": "acceptance_policy_profile"
+          },
+          "region_aliases": {
+            "additionalProperties": {
+              "items": {
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "description": "Profile-local named country groups. Rules may reference only keys declared here; consumers expand them before matching.",
+            "propertyNames": {
+              "pattern": "^[A-Z][A-Z0-9_-]*$"
+            },
+            "type": "object"
+          },
+          "rules": {
+            "items": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "disposition": {
+                        "const": "conditional"
+                      }
+                    },
+                    "required": [
+                      "disposition"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "requirements"
+                    ]
+                  }
+                }
+              ],
+              "description": "A coarse, discoverable seller rule for one policy subject. Discovery is advisory; the seller response to an exact request remains authoritative.",
+              "properties": {
+                "advertiser_roles": {
+                  "description": "Registry-extensible roles such as political_actor, election_authority, government_entity, news_publisher, or commercial_advertiser.",
+                  "items": {
+                    "pattern": "^[a-z][a-z0-9_]*$",
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "applies_to": {
+                  "items": {
+                    "enum": [
+                      "account",
+                      "media_buy",
+                      "creative",
+                      "landing_page",
+                      "targeting",
+                      "delivery",
+                      "format"
+                    ],
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "description": {
+                  "description": "Display-only explanation. Matchers MUST NOT interpret this text as executable instructions or use it to override typed fields.",
+                  "maxLength": 1000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "disposition": {
+                  "enum": [
+                    "allowed",
+                    "conditional",
+                    "prohibited"
+                  ],
+                  "type": "string"
+                },
+                "effective_at": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "expires_at": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "ext": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": true,
+                  "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                  "title": "Extension Object",
+                  "type": "object"
+                },
+                "jurisdiction_groups": {
+                  "description": "Named country groups declared by the containing profile's region_aliases. Unknown group IDs invalidate the profile; they never match permissively.",
+                  "items": {
+                    "pattern": "^[A-Z][A-Z0-9_-]*$",
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "jurisdictions": {
+                  "description": "Delivery jurisdictions where this rule applies. Omission means every jurisdiction served by the seller.",
+                  "items": {
+                    "pattern": "^[A-Z]{2}$",
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "policy_ids": {
+                  "description": "Registry policies that define the exact obligations behind this coarse rule.",
+                  "items": {
+                    "minLength": 1,
+                    "type": "string",
+                    "x-entity": "governance_registry_policy"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "requirements": {
+                  "items": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "description": "A typed prerequisite or restriction attached to a conditional seller-acceptance rule. The kind is coarse and machine-actionable; exact obligations remain in the referenced registry policies.",
+                    "discriminator": {
+                      "propertyName": "kind"
+                    },
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "declaration": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "category_declaration",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "advertiser_verification",
+                            "type": "string"
+                          },
+                          "verification_scheme": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "criteria": {
+                            "description": "Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.",
+                            "items": {
+                              "pattern": "^[a-z][a-z0-9_.:-]*$",
+                              "type": "string"
+                            },
+                            "minItems": 1,
+                            "type": "array",
+                            "uniqueItems": true
+                          },
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "advertiser_eligibility",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "criteria"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "criteria": {
+                            "description": "Stable restrictions such as no_foreign_funding or sponsor_identity_required.",
+                            "items": {
+                              "pattern": "^[a-z][a-z0-9_.:-]*$",
+                              "type": "string"
+                            },
+                            "minItems": 1,
+                            "type": "array",
+                            "uniqueItems": true
+                          },
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "funding_restriction",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "criteria"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "credential": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "certification",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "credential": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "license",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "prior_authorization",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "account_setup",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "sales_assisted",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "format": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "disclosure",
+                            "type": "string"
+                          },
+                          "placement": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "targeting_restriction",
+                            "type": "string"
+                          },
+                          "restricted_attributes": {
+                            "items": {
+                              "$schema": "http://json-schema.org/draft-07/schema#",
+                              "description": "Personal data categories that may be restricted from use in audience targeting. Combines GDPR Article 9 special categories with US civil-rights protected classes (FHA familial_status, ADEA age). Used in two places: (1) on campaign plans via restricted_attributes to declare which categories are prohibited, and (2) on signal-definition.json via restricted_attributes to declare which categories a signal touches. Governance agents match plan restrictions against signal declarations for structural validation.",
+                              "enum": [
+                                "racial_ethnic_origin",
+                                "political_opinions",
+                                "religious_beliefs",
+                                "trade_union_membership",
+                                "health_data",
+                                "sex_life_sexual_orientation",
+                                "genetic_data",
+                                "biometric_data",
+                                "age",
+                                "familial_status"
+                              ],
+                              "enumDescriptions": {
+                                "age": "A person's age or age range. US ADEA (40+) for employment, US FHA for housing, EU AVMSD for content-directed targeting. Restricted for regulated verticals.",
+                                "biometric_data": "Biometric data used for identification. GDPR Article 9(1).",
+                                "familial_status": "Whether a household includes children under 18, a pregnant person, or a person seeking custody of a minor. US FHA protected class.",
+                                "genetic_data": "Genetic data. GDPR Article 9(1), US GINA.",
+                                "health_data": "Health status, medical conditions, disability. GDPR Article 9(1), US ADA protected class. Includes inferred health data from behavioral signals.",
+                                "political_opinions": "Political opinions or affiliations. GDPR Article 9(1). EU DSA Article 26 prohibits targeting on this category.",
+                                "racial_ethnic_origin": "Race or ethnic origin. GDPR Article 9(1), US FHA/ECOA/EEOC protected class.",
+                                "religious_beliefs": "Religious or philosophical beliefs. GDPR Article 9(1), US FHA/EEOC protected class.",
+                                "sex_life_sexual_orientation": "Sex life or sexual orientation. GDPR Article 9(1).",
+                                "trade_union_membership": "Trade union membership. GDPR Article 9(1)."
+                              },
+                              "title": "Restricted Attribute",
+                              "type": "string"
+                            },
+                            "minItems": 1,
+                            "type": "array",
+                            "uniqueItems": true
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "creative_restriction",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "description"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "destination_restriction",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "description"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "format_ids": {
+                            "deprecated": true,
+                            "description": "Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "minItems": 1,
+                            "type": "array",
+                            "uniqueItems": true,
+                            "x-deprecated-in": "3.2.0",
+                            "x-removed-in": "4.0.0"
+                          },
+                          "kind": {
+                            "const": "format_restriction",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "ends_at": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "time_restriction",
+                            "type": "string"
+                          },
+                          "starts_at": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "transparency_reporting",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ]
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "ext": {
+                            "$schema": "http://json-schema.org/draft-07/schema#",
+                            "additionalProperties": true,
+                            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                            "title": "Extension Object",
+                            "type": "object"
+                          },
+                          "id": {
+                            "pattern": "^[a-z][a-z0-9_.:-]*$",
+                            "type": "string"
+                          },
+                          "kind": {
+                            "const": "custom",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "id",
+                          "description"
+                        ]
+                      }
+                    ],
+                    "title": "Acceptance Policy Requirement",
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "rule_id": {
+                  "pattern": "^[A-Za-z0-9_.:-]+$",
+                  "type": "string",
+                  "x-entity": "acceptance_policy_rule"
+                },
+                "subject_category": {
+                  "description": "Registry policy-category-definition category_id. Named subject_category to avoid collision with PolicyEntry.category, whose values are regulation and standard.",
+                  "pattern": "^[a-z][a-z0-9_]*$",
+                  "type": "string",
+                  "x-entity": "governance_policy_category"
+                },
+                "subject_facets": {
+                  "description": "Facet IDs defined by the selected policy category. Omission means the rule applies to every facet in the category.",
+                  "items": {
+                    "pattern": "^[a-z][a-z0-9_]*$",
+                    "type": "string",
+                    "x-entity": "governance_policy_category_facet"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "rule_id",
+                "subject_category",
+                "applies_to",
+                "disposition"
+              ],
+              "title": "Acceptance Policy Rule",
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "scope": {
+            "additionalProperties": false,
+            "anyOf": [
+              {
+                "required": [
+                  "jurisdictions"
+                ]
+              },
+              {
+                "required": [
+                  "jurisdiction_groups"
+                ]
+              },
+              {
+                "required": [
+                  "all_jurisdictions"
+                ]
+              }
+            ],
+            "description": "The boundary within which a complete profile claims exhaustiveness. It is informative for partial profiles and mandatory for complete profiles.",
+            "properties": {
+              "all_jurisdictions": {
+                "const": true,
+                "description": "Explicitly states that the scope is not limited by delivery jurisdiction.",
+                "type": "boolean"
+              },
+              "applies_to": {
+                "items": {
+                  "enum": [
+                    "account",
+                    "media_buy",
+                    "creative",
+                    "landing_page",
+                    "targeting",
+                    "delivery",
+                    "format"
+                  ],
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "jurisdiction_groups": {
+                "description": "Named groups declared in this profile's region_aliases.",
+                "items": {
+                  "pattern": "^[A-Z][A-Z0-9_-]*$",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "jurisdictions": {
+                "items": {
+                  "pattern": "^[A-Z]{2}$",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "subject_categories": {
+                "items": {
+                  "pattern": "^[a-z][a-z0-9_]*$",
+                  "type": "string",
+                  "x-entity": "governance_policy_category"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "subject_categories",
+              "applies_to"
+            ],
+            "type": "object"
+          },
+          "version": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "version",
+          "content_digest",
+          "policy_refs",
+          "coverage",
+          "rules"
+        ],
+        "title": "Acceptance Policy Profile",
+        "type": "object",
+        "x-adcp-validation": {
+          "content_digests": [
+            {
+              "algorithm": "sha256",
+              "canonicalization": "RFC8785-JCS",
+              "field": "content_digest",
+              "omit": [
+                "content_digest"
+              ],
+              "path": "$"
+            }
+          ],
+          "referential_integrity": [
+            "Every rules[].policy_ids value MUST identify exactly one policy_refs[] entry.",
+            "Every rules[].subject_category and subject_facets value MUST resolve through the policy-category registry."
+          ],
+          "unique_by": [
+            {
+              "field": "policy_id",
+              "path": "policy_refs"
+            },
+            {
+              "field": "rule_id",
+              "path": "rules"
+            }
+          ]
+        }
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "registry_profiles": {
+      "description": "Exact reusable profiles adopted from the shared policy registry. Resolution failure is unknown, never allowed. A seller adds a distinct local profile to narrow a registry profile.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "description": "Exact reference to a reusable acceptance profile embedded in a version-pinned shared policy-registry entry. Sellers add separate local profiles to narrow it; they do not copy and mutate a registry profile under the same identity.",
+        "properties": {
+          "policy_digest": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "policy_id": {
+            "minLength": 1,
+            "type": "string",
+            "x-entity": "governance_registry_policy"
+          },
+          "policy_version": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "profile_digest": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "profile_id": {
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "type": "string",
+            "x-entity": "acceptance_policy_profile"
+          },
+          "profile_version": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "policy_id",
+          "policy_version",
+          "policy_digest",
+          "profile_id",
+          "profile_version",
+          "profile_digest"
+        ],
+        "title": "Registry Acceptance Policy Profile Reference",
+        "type": "object",
+        "x-adcp-validation": {
+          "resolver_integrity": "Resolve the exact policy_id/policy_version. The resolver returns canonical_content and content_digest; RFC 8785-canonicalize canonical_content, verify that its SHA-256 equals both content_digest and policy_digest, then select the embedded profile_id/profile_version and verify profile_digest before use. A null digest or canonical_content is not sufficient for a pinned registry profile."
+        }
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "catalog_version"
+  ],
+  "title": "Acceptance Policy Catalog",
+  "type": "object",
+  "x-adcp-validation": {
+    "unique_across": [
+      {
+        "description": "A profile_id MUST occur at most once across both local and registry profile lists.",
+        "field": "profile_id",
+        "paths": [
+          "profiles",
+          "registry_profiles"
+        ]
+      }
+    ],
+    "unique_by": [
+      {
+        "field": "profile_id",
+        "path": "profiles"
+      },
+      {
+        "field": "profile_id",
+        "path": "registry_profiles"
+      }
+    ]
+  }
+}

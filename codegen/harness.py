@@ -1078,7 +1078,58 @@ def value_classes(keyword: str, node: Mapping[str, Any]) -> tuple[tuple[str, dic
     return ()
 
 
-def instance_path(pointer: str) -> tuple[Any, ...] | None:
+#: The keywords whose subschema is a mapping's VALUE, DERIVED from the descent column
+#: rather than named: ``keywords.descends_at`` is "the ONE descent table", and a keyword
+#: holding a MAPV subschema is exactly what a mapping value IS.  Read at PROP, which is
+#: where a mapping sits in the documents that state one; the column's answer is the same
+#: at every position that gives one.
+#:
+#: Each is paired with how many pointer segments it spends: ``patternProperties`` is a MAP
+#: from an expression to a schema, so its own word plus the expression, and
+#: ``additionalProperties`` is one schema, so its word alone.  Read off
+#: :data:`_DESCEND_MAP`, which is the same distinction one line up.
+_MAPPING_VALUE = {
+    keyword: 2 if keyword in _DESCEND_MAP else 1
+    for keyword, position in keywords.descends_at(Position.PROP).items()
+    if position is Position.MAPV
+}
+
+
+def _mapping_key(node: Any, expression: str | None) -> Any:
+    """ONE key the mapping ``node`` admits, for a widening declared on its VALUE.
+
+    §8: "A mapping value -- ``#/properties/x/additionalProperties``, and the same for
+    ``patternProperties``.  The location is ``x`` then any key the mapping admits; a key
+    is a free choice and the draw makes one, so the location exists and simply was not
+    read."  This is that choice, and it is a DRAW from what the document says about keys
+    rather than a literal: 4 of the bundle's 5 mapping-valued widening sites state
+    ``propertyNames: {"pattern": ...}``, so a fixed key would be a key the document
+    refuses and the obligation would report ``unproved`` for the instrument's own reason
+    instead of the document's.
+
+    :data:`_ALIEN_KEY` where the document says NOTHING about keys, which is not a fallback
+    but the same choice made deterministically: every string is admitted, so the one worth
+    picking is the one that cannot collide with a declared property's own schema.
+
+    ``None`` where a key constraint is stated and nothing can be drawn from it, so
+    :func:`check_widening` reports the widening unproved rather than placing a key the
+    document refuses.
+    """
+    names = node.get("propertyNames") if isinstance(node, Mapping) else None
+    key: dict[str, Any] = {"type": "string"}
+    if expression is not None:
+        key["pattern"] = expression
+    if isinstance(names, Mapping):
+        key |= {k: v for k, v in names.items() if k != "type"}
+    if set(key) == {"type"}:
+        return _ALIEN_KEY
+    try:
+        return one_instance(key, {})
+    except Exception:  # noqa: BLE001 -- an undrawable key constraint has no location
+        return None
+
+
+def instance_path(pointer: str, schema: Any = None) -> tuple[Any, ...] | None:
     """The INSTANCE location a schema pointer describes, or ``None`` where it has none.
 
     ``#/properties/x`` describes the value under the key ``x``; ``#/items`` describes
@@ -1086,29 +1137,171 @@ def instance_path(pointer: str) -> tuple[Any, ...] | None:
     ``#/oneOf/1``, ``#/then`` -- describes the SAME instance and contributes no segment,
     which is ``adcp.types._base.SAME_INSTANCE_LIST``'s own rule read the other way.
 
+    **A MAPPING VALUE has a location too, and §8 settled that it was simply not read**:
+    ``#/properties/x/additionalProperties`` is ``x`` then any key the mapping admits, and
+    ``#/properties/x/patternProperties/<expr>`` is ``x`` then a key the expression
+    matches.  The key is a free choice (:func:`_mapping_key`), which is the same sentence
+    ``items`` already stands on -- "describes every element, so index 0 stands for it".
+    ``schema`` is what the choice is read off, so a caller grading a pair passes the
+    pair's own node; with none supplied the key constraint cannot be read and such a
+    pointer has no location, which is the fail-safe direction.
+
     ``None`` for a pointer whose segments describe no instance location at all -- a
     ``#/definitions/x`` reached only through a ``$ref``, an ``#/if``, a
     ``#/propertyNames`` -- and :func:`check_widening` reports that as
     ``no_instance_path`` rather than placing a value somewhere the document does not mean.
+
+    **A ``definitions`` entry stays without one and needs none** (§8): "an entry is
+    reachable only through a ``$ref`` that names it, and §5 declares no entry nothing
+    references", so it has no location of its own -- and the rule that a declaration
+    travels with the fact (``emit.repointed``) has already re-pointed it to the referring
+    ``properties`` segment, which this function does place.
+    """
+    walked = _steps(pointer, schema)
+    return None if walked is None else tuple(segment for segment, _ in walked[0])
+
+
+def _down(node: Any, *keys: str) -> Any:
+    """The subschema ``keys`` names under ``node``, or ``None``.
+
+    A LIST index is a segment like any other, because a combinator's branches and a
+    conjunction's members are a list in the document: without it, a declaration one
+    ``allOf/1`` hop in lost every subschema below it and :func:`_reached` had nothing to
+    draw an absent intermediate from.
+    """
+    for key in keys:
+        if isinstance(node, list):
+            if not key.isdigit() or int(key) >= len(node):
+                return None
+            node = node[int(key)]
+        elif isinstance(node, Mapping) and key in node:
+            node = node[key]
+        else:
+            return None
+    return node
+
+
+def _settled(node: Any, root: Any) -> Any:
+    """``node`` read the way the comparison reads it: a local ``$ref`` resolved against
+    ``root`` and a conjunction folded into the node it composes.
+
+    ``harness._normalize`` and ``harness._composed`` are the two readings and this is the
+    pair of them in the order ``compare`` applies them -- normalisation FIRST, "so a
+    reference whose TARGET composes still has its conjuncts folded".  Anything that is not
+    a mapping is handed back unchanged, which is what a list of branches is.
+    """
+    if not isinstance(node, Mapping):
+        return node
+    return _composed(_normalize(node, root, declared_null=True))
+
+
+def _steps(
+    pointer: str, schema: Any
+) -> tuple[list[tuple[Any, Any]], Any] | None:
+    """Each instance segment the pointer's location is made of, with the DOCUMENT's own
+    subschema for the value at it -- and the node the pointer itself names.
+
+    :func:`instance_path` is the segments alone, :func:`_reached` is the subschemas and
+    :func:`check_widening` is the last node: one walk answers all three, because a path
+    whose intermediate nodes are read by a DIFFERENT reading of the pointer than the path
+    itself is two walks that can disagree about which node a segment names.
+
+    **Every node on the way is COMPOSED and NORMALIZED first, which is the reading the
+    comparison makes**: ``compare`` folds a conjunct's facts into the node it composes at
+    every depth, so a fact a conjunct states is found at the pointer the comparison walks
+    to it and at no other.  Without it the two instruments pointed at one declaration
+    disagreed about where the fact is -- measured at
+    ``core/account-with-authorization.json``, whose widening is declared at the composed
+    pointer (``emit._folded``) and whose raw document holds the keyword one ``allOf/1``
+    hop away, so the obligation reported "the document states no such keyword".
     """
     segments = [s for s in pointer.lstrip("#").split("/") if s]
-    out: list[Any] = []
+    out: list[tuple[Any, Any]] = []
+    node = _settled(schema, schema)
     i = 0
     while i < len(segments):
         word = segments[i]
         if word == "properties" and i + 1 < len(segments):
-            out.append(bundle.unescape_key(segments[i + 1]))
+            node = _settled(_down(node, word, segments[i + 1]), schema)
+            out.append((bundle.unescape_key(segments[i + 1]), node))
             i += 2
         elif word == "items":
-            out.append(0)
+            node = _settled(_down(node, word), schema)
+            out.append((0, node))
             i += 1
+        elif word in _MAPPING_VALUE and i + _MAPPING_VALUE[word] <= len(segments):
+            spent = _MAPPING_VALUE[word]
+            expression = bundle.unescape_key(segments[i + 1]) if spent == 2 else None  # noqa: PLR2004
+            key = _mapping_key(node, expression)
+            if key is None:
+                return None
+            node = _settled(_down(node, *segments[i : i + spent]), schema)
+            out.append((key, node))
+            i += spent
         elif word in ("allOf", "anyOf", "oneOf") and i + 1 < len(segments):
+            node = _settled(_down(node, word, segments[i + 1]), schema)
             i += 2  # a same-instance hop through a list: no segment
         elif word in ("then", "else"):
+            node = _settled(_down(node, word), schema)
             i += 1  # a same-instance hop
         else:
             return None
-    return tuple(out)
+    return out, node
+
+
+def _reached(
+    schema: Any, pointer: str, instance: Any, custom_formats: Mapping[str, Any]
+) -> Any:
+    """``instance`` with every node on the way to ``pointer``'s location PRESENT.
+
+    §8's "every position a widening can land at has an instance location" is a claim about
+    the DOCUMENT, and a drawn payload that happened to omit an optional property on the way
+    to that location does not refute it -- it says only that the draw went another way.  So
+    each node the path passes through that the instance does not carry is DRAWN from the
+    document's OWN subschema at that point, which keeps the payload one the document
+    admits; a bare ``{}`` there does not, and that is what the measurement said: three of
+    the twelve declared widenings reported ``unproved`` because an intermediate object
+    created empty violated its own ``required``, or because an ``items`` index had no list
+    under it at all.
+
+    The LAST segment is left alone -- :func:`_placed` is what writes the drawn value there,
+    and drawing a value for it first would be a draw thrown away.
+
+    ``instance`` unchanged where a step's subschema is unknown, which is the fail-safe
+    direction: the placement then either lands or :func:`check_widening` reports it
+    unproved, and neither invents a payload the document does not admit.
+    """
+    walked = _steps(pointer, schema)
+    if walked is None or not walked[0]:
+        return instance
+    steps = walked[0]
+    out = copy.deepcopy(instance)
+    cursor = out
+    for segment, node in steps[:-1]:
+        if isinstance(segment, int):
+            if not isinstance(cursor, list):
+                return out
+            if len(cursor) <= segment:
+                if node is None:
+                    return out
+                try:
+                    drawn = one_instance(node, custom_formats)
+                except Exception:  # noqa: BLE001 -- an undrawable node is left absent
+                    return out
+                while len(cursor) <= segment:
+                    cursor.append(copy.deepcopy(drawn))
+        else:
+            if not isinstance(cursor, dict):
+                return out
+            if segment not in cursor:
+                if node is None:
+                    return out
+                try:
+                    cursor[segment] = one_instance(node, custom_formats)
+                except Exception:  # noqa: BLE001
+                    return out
+        cursor = cursor[segment]
+    return out
 
 
 def _placed(instance: Any, path: Sequence[Any], value: Any) -> Any:
@@ -1116,7 +1309,8 @@ def _placed(instance: Any, path: Sequence[Any], value: Any) -> Any:
 
     A path segment the instance does not carry is CREATED, because a widened fact can sit
     at an optional property the drawn instance happened to omit: the point of the draw is
-    the value at the pointer, so an instance without it says nothing.
+    the value at the pointer, so an instance without it says nothing.  :func:`_reached` is
+    what makes that creation a node the DOCUMENT admits rather than a bare ``{}``.
     """
     if not path:
         return value
@@ -1222,21 +1416,25 @@ def check_widening(
             res.declarations -= 1
             continue
         relative = "" if one.pointer == at else one.pointer[len(at.rstrip("/")) :]
-        node = at_or_none(schema, relative)
-        if not isinstance(node, dict) or one.keyword not in node:
+        # **The node READ THE WAY THE COMPARISON READS IT** (:func:`_steps`): a local
+        # ``$ref`` resolved and a conjunction folded at every depth, so the two instruments
+        # §8 points at one declaration agree about where the fact is.
+        walked = _steps(relative, schema)
+        if walked is None:
+            res.unproved.append(
+                f"{one.pointer}/{one.keyword}: the pointer describes no instance "
+                "location, so no drawn value can be placed at it"
+            )
+            continue
+        node = walked[1]
+        if not isinstance(node, Mapping) or one.keyword not in node:
             res.unproved.append(
                 f"{one.pointer}/{one.keyword}: the document states no such keyword at "
                 "that pointer, so there is no fact to prove dropped (section 9: never "
                 "approximate on a keyword the walk itself inserted)"
             )
             continue
-        path = instance_path(relative)
-        if path is None:
-            res.unproved.append(
-                f"{one.pointer}/{one.keyword}: the pointer describes no instance "
-                "location, so no drawn value can be placed at it"
-            )
-            continue
+        path = tuple(segment for segment, _ in walked[0])
         classes = value_classes(one.keyword, node)
         if not classes:
             res.unproved.append(
@@ -1258,7 +1456,7 @@ def check_widening(
                     "document's own node refuses -- the restriction is not one"
                 )
                 continue
-            payload = _placed(instance, path, value)
+            payload = _placed(_reached(schema, relative, instance, cf), path, value)
             if payload is None:
                 res.unproved.append(
                     f"{one.pointer}/{one.keyword}: {label} has nowhere to go in the drawn "
@@ -3092,6 +3290,44 @@ def compare_schema(
             res.added.append(
                 f"{pointer}/propertyNames: the model says {key_got!r}, the document nothing"
             )
+        # **``patternProperties``, descended the way ``propertyNames`` is**, because it is
+        # STRUCTURE and not a fact: §8 gives a keyword four answers and this one is
+        # "descends it as structure", so it is absent from :func:`compared_facts` by the
+        # table's own rule and a comparison that also compared it as a value "would report
+        # a spelling as a difference and leave the facts inside it ungraded".
+        #
+        # Reached only where :func:`_patterned_key` DECLINED the node, because the fold
+        # rewrites the keyword away on both sides where it applies -- which leaves exactly
+        # §5(b)'s widened shape, a pattern beside a non-``false`` ``additionalProperties``.
+        # Without this arm that widening is UNGRADABLE: the document states the keyword,
+        # the model states none, and nothing in the comparison looks -- so the declaration
+        # could never be reported *approximated* and would be *over-declared* forever,
+        # which is the half of §8's second equality this keyword had no instrument for.
+        pattern_doc = doc.get("patternProperties")
+        pattern_got = got.get("patternProperties")
+        if isinstance(pattern_doc, dict) and isinstance(pattern_got, dict):
+            for expr in sorted(set(pattern_doc) & set(pattern_got)):
+                compare(
+                    pattern_doc[expr],
+                    pattern_got[expr],
+                    f"{pointer}/patternProperties/{_esc(expr)}",
+                    Position.MAPV,
+                )
+        elif isinstance(pattern_doc, dict) and pattern_doc:
+            res.compared += 1
+            if (one := declaration(pointer, "patternProperties")) is not None:
+                approximated(one, f"{pointer}/patternProperties", pattern_doc)
+            else:
+                res.missing.append(
+                    f"{pointer}/patternProperties: the document says {pattern_doc!r}, "
+                    "the model states no value schema per key pattern"
+                )
+        elif isinstance(pattern_got, dict) and pattern_got:
+            res.model_facts += 1
+            res.added.append(
+                f"{pointer}/patternProperties: the model says {pattern_got!r}, the "
+                "document nothing"
+            )
 
     compare(schema, emitted, "", position)
     return res
@@ -3533,6 +3769,18 @@ def _forbids(node: Mapping[str, Any]) -> frozenset[str]:
     name.  A group of MORE than one name forbids no single name: "not (a and b)" leaves
     either one present, so a longer group is read and contributes nothing, which is the
     same distinction ``adcp.types._runtime.ForbiddenGroups`` draws between its shapes.
+
+    **A member stating MORE than ``required`` forbids the VALUE and not the NAME, and
+    reading it as the name is the over-read §4 settled out on 2026-10-27.**  This
+    collected every singleton ``required`` it found anywhere under a ``not``, so it read
+    ``{"properties": {"status": {"const": "submitted"}}, "required": ["status"]}`` as
+    forbidding ``status`` by name -- which the document does not say.  At
+    ``media-buy/sync-catalogs-response.json`` the conclusion was right and the reasoning
+    wrong; at a branch pinning some OTHER value it would separate a pair that overlaps,
+    which is the defect §4's third source exists to prevent.  "That over-reading is a
+    defect whether or not this separator lands, and it goes either way."  The value the
+    member does forbid is :func:`_forbidden_values`' answer and §4's fourth separator is
+    what reads it.
     """
     found: set[str] = set()
 
@@ -3540,7 +3788,13 @@ def _forbids(node: Mapping[str, Any]) -> frozenset[str]:
         if not isinstance(sub, Mapping):
             return
         names = sub.get("required")
-        if isinstance(names, list) and len(names) == 1 and isinstance(names[0], str):
+        stated = {k for k in sub if keywords.declares(k, Position.RULE)}
+        if (
+            stated == {"required"}
+            and isinstance(names, list)
+            and len(names) == 1
+            and isinstance(names[0], str)
+        ):
             found.add(names[0])
         for keyword in ("anyOf", "allOf"):
             if isinstance(sub.get(keyword), list):
@@ -3549,6 +3803,49 @@ def _forbids(node: Mapping[str, Any]) -> frozenset[str]:
 
     groups(node.get("not"))
     return frozenset(found)
+
+
+def _forbidden_values(node: Mapping[str, Any]) -> dict[str, Any]:
+    """Each ``(key, value)`` pair ``node``'s ``not`` forbids, read off a PINNED property.
+
+    **A second spelling of ``codegen.schema.parse.forbidden_values``, over the DOCUMENT**,
+    for :func:`_forbids`' reason: a verifier that asked the walk which values a branch
+    forbids would compare the walk's answer with itself.
+
+    ``not: {"properties": {"k": {"const": v}}, "required": ["k"]}`` says no instance
+    carries ``k == v``; the ``required`` is what makes the member a statement about the
+    VALUE rather than one an absent key satisfies.  An ``anyOf`` of such members forbids
+    each, because "not (a or b)" is "not a and not b"; an ``allOf`` is not read, because
+    "not (a and b)" leaves either member -- the same distinction :func:`_forbids` draws
+    between a singleton group and a longer one.
+    """
+    out: dict[str, Any] = {}
+
+    def member(sub: Any) -> None:
+        if not isinstance(sub, Mapping):
+            return
+        stated = {k for k in sub if keywords.declares(k, Position.RULE)}
+        if stated == {"anyOf"} and isinstance(sub.get("anyOf"), list):
+            for one in sub["anyOf"]:
+                member(one)
+            return
+        properties = sub.get("properties")
+        required = sub.get("required")
+        if stated != {"properties", "required"} or not isinstance(properties, Mapping):
+            return
+        if not isinstance(required, list) or len(required) != 1:
+            return
+        (name,) = required
+        declaration = properties.get(name)
+        if set(properties) != {name} or not isinstance(declaration, Mapping):
+            return
+        if "const" in declaration:
+            out[name] = declaration["const"]
+        elif isinstance(declaration.get("enum"), list) and len(declaration["enum"]) == 1:
+            out[name] = declaration["enum"][0]
+
+    member(node.get("not"))
+    return out
 
 
 def separates(a: Mapping[str, Any], b: Mapping[str, Any], a_type: Any, b_type: Any) -> str | None:
@@ -3580,6 +3877,20 @@ def separates(a: Mapping[str, Any], b: Mapping[str, Any], a_type: Any, b_type: A
         named = sorted(required & _forbids(other))
         if named:
             return f"one branch requires {named} and the other forbids each by name"
+    for one, other in ((a, b), (b, a)):
+        # **§4's FOURTH separator (2026-10-27): one branch forbids a VALUE another pins.**
+        # The pinning branch must also REQUIRE the key, or an instance of it omitting the
+        # key satisfies the forbidding branch too and the pair is not separated.
+        forbidden = _forbidden_values(other)
+        pinned = _pins(one)
+        demanded = {n for n in (one.get("required") or []) if isinstance(n, str)}
+        named = sorted(
+            key
+            for key, value in pinned.items()
+            if key in forbidden and forbidden[key] == value and key in demanded
+        )
+        if named:
+            return f"one branch pins {named} to a value the other forbids outright"
     for one, other in ((a, b), (b, a)):
         closed = other.get("additionalProperties") is False and "patternProperties" not in other
         if not closed:

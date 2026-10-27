@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "allOf": [
+    {
+      "if": {
+        "anyOf": [
+          {
+            "not": {
+              "required": [
+                "target"
+              ]
+            }
+          },
+          {
+            "properties": {
+              "target": {
+                "const": "linear"
+              }
+            },
+            "required": [
+              "target"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "daast_event": {
+            "enum": [
+              "creativeView",
+              "start",
+              "firstQuartile",
+              "midpoint",
+              "thirdQuartile",
+              "complete",
+              "mute",
+              "unmute",
+              "pause",
+              "resume",
+              "rewind",
+              "skip",
+              "progress"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "target": {
+            "const": "companion"
+          }
+        },
+        "required": [
+          "target"
+        ]
+      },
+      "then": {
+        "properties": {
+          "daast_event": {
+            "const": "creativeView"
+          }
+        }
+      }
+    },
+    {
+      "else": {
+        "not": {
+          "required": [
+            "offset"
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "daast_event": {
+            "const": "progress"
+          }
+        },
+        "required": [
+          "daast_event"
+        ]
+      },
+      "then": {
+        "required": [
+          "offset"
+        ]
+      }
+    }
+  ],
+  "definitions": {
+    "daast_event": {
+      "enum": [
+        "creativeView",
+        "start",
+        "firstQuartile",
+        "midpoint",
+        "thirdQuartile",
+        "complete",
+        "mute",
+        "unmute",
+        "pause",
+        "resume",
+        "rewind",
+        "skip",
+        "progress",
+        "close"
+      ],
+      "type": "string"
+    },
+    "daast_offset": {
+      "pattern": "^(\\d{2}:[0-5]\\d:[0-5]\\d(\\.\\d{3})?|(100|\\d{1,2})%)$",
+      "type": "string"
+    },
+    "daast_target": {
+      "default": "linear",
+      "enum": [
+        "linear",
+        "companion"
+      ],
+      "type": "string"
+    },
+    "daast_versions": {
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Supported DAAST (Digital Audio Ad Serving Template) specification versions",
+        "enum": [
+          "1.0",
+          "1.1"
+        ],
+        "title": "DAAST Version",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "description": "Shared DAAST tracker vocabulary and execution-selector constraints. The legacy asset vocabulary retains AdCP's historical close extension, while the closed standards selector matrix excludes it. Progress alone carries offset in selectors.",
+  "properties": {
+    "daast_event": {
+      "$ref": "#/definitions/daast_event"
+    },
+    "daast_versions": {
+      "$ref": "#/definitions/daast_versions"
+    },
+    "offset": {
+      "$ref": "#/definitions/daast_offset"
+    },
+    "target": {
+      "$ref": "#/definitions/daast_target"
+    }
+  },
+  "title": "DAAST Tracker Constraints",
+  "type": "object"
+}

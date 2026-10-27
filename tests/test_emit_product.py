@@ -440,8 +440,22 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         "core/media-buy-support.json",
         "core/package-targeting-resolution.json",
         "core/reporting-delivery-ready-webhook.json",
+        # **TWO MORE at ``adcp-client-python-10l.21``'s second instalment, and both are
+        # RELEASES of the same kind.**  Neither composes at its own root.
+        # ``core/requirements/daast-asset-requirements.json`` references
+        # ``core/daast-tracker-constraints.json``, whose ``*_versions`` entry carried the
+        # ``uniqueItems`` §5(b) now DECLARES rather than refusing -- so the chain
+        # released; and each then still needs THIS row, because with the root ``allOf``
+        # arm stubbed out its other target refuses.  Named here, so this row's own
+        # credit stays separate from the release.  ``media-buy/acceptance-policy-catalog
+        # .json`` is the second and the same shape, through
+        # ``media-buy/acceptance-policy-profile.json``'s ``region_aliases``.
+        # ``formats/canonical/audio_daast.json`` is NOT here: it emits either way, so the
+        # row did not clear it.
+        "core/requirements/daast-asset-requirements.json",
         "error-details/authorization-required.json",
         "error-details/macro-resolution-failed.json",
+        "media-buy/acceptance-policy-catalog.json",
     ], sorted(cleared - set(composing()))
     # Every document of the population is accounted for by name, pointer and keyword.
     assert set(pop) <= set(with_row.emitted) | set(with_row.refusals)

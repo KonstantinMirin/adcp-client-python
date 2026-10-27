@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Requirements for DAAST (Digital Audio Ad Serving Template) creative assets.",
+  "not": {
+    "required": [
+      "daast_version",
+      "daast_versions"
+    ]
+  },
+  "properties": {
+    "daast_version": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "deprecated": true,
+      "description": "Deprecated one-element alias for `daast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.",
+      "enum": [
+        "1.0",
+        "1.1"
+      ],
+      "title": "DAAST Version",
+      "type": "string"
+    },
+    "daast_versions": {
+      "description": "Accepted DAAST version set for this asset requirement.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Supported DAAST (Digital Audio Ad Serving Template) specification versions",
+        "enum": [
+          "1.0",
+          "1.1"
+        ],
+        "title": "DAAST Version",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "title": "DAAST Asset Requirements",
+  "type": "object"
+}
