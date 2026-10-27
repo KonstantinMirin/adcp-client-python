@@ -418,6 +418,13 @@ class Branch:
     #: its enclosing union knows about it (:attr:`nodes.Union.branches`).
     parsed: "nodes.Node"
     inherits: Inherited | None = None
+    #: The names this branch forbids ONE AT A TIME (``compiler.Rules.forbids``), which
+    #: is §4's third dispatch source read in the idiom §4 itself names: "each branch
+    #: forbidding a name the other requires".  ``frozenset()`` for a bare ``$ref``
+    #: branch, for :func:`admits_only_what_it_declares`' reason -- a ``not`` is a fact
+    #: about the NODE, the node here is the reference, and ``compiler.Shape`` carries
+    #: the target's properties and ``required`` and not its rules.
+    forbids: frozenset[str] = frozenset()
 
     @property
     def properties(self) -> Any:
@@ -704,6 +711,32 @@ def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
         if first[key] != second[key]:
             return f"{key!r} is pinned to {first[key]!r} on one branch and {second[key]!r} on the other"
     for one, other in ((a, b), (b, a)):
+        # **The idiom §4 NAMES, read directly off the other branch's ``not``.**  §4's
+        # attribution paragraph says it in as many words: "the bundle already writes the
+        # idiom that separates them -- each branch forbidding a name the other requires".
+        # A ``not: {"required": [n]}`` -- or an ``anyOf`` of those, which is how the
+        # response envelopes spell several -- says ``n`` is not present at all, so an
+        # instance carrying it fails this branch and one without it fails the branch
+        # requiring it.  ``compiler.Rules.forbids`` is the reading, taken off the
+        # ``ForbiddenGroups`` rule the branch already carries, and only a SINGLETON group
+        # forbids a single name.
+        #
+        # **This arm was missing and the closure arm below stood in for it**, which is a
+        # strictly narrower reading of the same sentence: closure forbids every name
+        # outside the map and a ``not`` forbids one by name, and 38 union roots spell it
+        # the second way.  Measured over the 1,054 portable documents at §14 step 9,
+        # where the root-sibling rows first let these roots reach the dispatch at all:
+        # the ``not`` reading separates 22 of the 38 and 16 still overlap -- and those 16
+        # genuinely do, which ``content-standards/calibrate-content-response.json`` is
+        # the clearest of: its two branches require ``verdict`` and ``errors``, forbid
+        # nothing and close nothing, so one instance satisfies both.  They are §4's
+        # UNDERDETERMINED row and step 10's.
+        forbidden = sorted(requires(one) & other.forbids)
+        if forbidden:
+            return (
+                f"one branch requires {forbidden} and the other forbids every one of "
+                "them by name (a not over required)"
+            )
         if not admits_only_what_it_declares(other):
             continue
         declared = set(other.properties or {})
@@ -773,18 +806,6 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
     refused = compiler.check_keywords(node, ROOT_CLAIMS | {kw} | stated.screen, mod=mod)
     if refused is not None:
         return refused
-    for name in ROOT_CONJUNCTS:
-        if name in node.siblings:
-            return Refusal(
-                name,
-                pointer,
-                f"a root {name!r} is a conjunction with every branch (draft-07), and a "
-                f"branch class that carries it -- as a field of its own, or as a base "
-                f"inherited through the root's class -- states a fact its own "
-                f"#{'/' + kw}/<i> node does not: there is no pointer to the conjunction "
-                "for it to name",
-                kind=Kind.VERDICT,
-            )
     if len(node.branches) < 2:  # noqa: PLR2004 -- a union of one is not a union
         return Refusal(
             kw,
@@ -931,10 +952,10 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
     mod.imports.add(("typing", "ClassVar"))
     # §4's three facts the emitter writes onto the BASE, as the class's own slots rather
     # than as class-body text (``docs/plan/architecture.md`` §7): ``_ROOT_REQUIRED`` is
-    # always empty in this step's population and is declared anyway, because the mixin's
-    # refusal reads it and a root with required fields refuses above;
-    # ``_BRANCH_DISCRIMINATOR`` is the derived dispatch, the one fact here that is a
-    # judgement about the branches rather than a transcription of the root; and the
+    # the names the root's own ``required`` states, which §5's ``required`` row puts
+    # there so a refusal can separate a field the root requires from one that selects a
+    # branch; ``_BRANCH_DISCRIMINATOR`` is the derived dispatch, the one fact here that
+    # is a judgement about the branches rather than a transcription of the root; and the
     # combinator is the keyword a refusal has to name.  ``render._union_base_lines``
     # writes all four statements, and the root's own rule -- which every branch inherits
     # -- arrives through ``rules`` like any other class's.
@@ -944,26 +965,65 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
     # which classes are this base's branches.  Each one names a branch by POINTER until
     # ``lower/names.py`` binds it (§7).
     branches = tuple(ir.TypeRef(p.pointer, local=True) for p in planned)
-    collision = mod.declare(
-        pointer,
-        ir.ClassDecl(
-            name=pointer,
-            ref=compiler.schema_ref(mod.document, pointer),
-            fields=(),
-            description=node.description,
-            bases=(
-                ir.TypeRef("BranchDispatchMixin", local=True),
-                ir.TypeRef("AdCPBaseModel", local=True),
-            ),
-            rules=stated.rules,
-            root_required=(),
+    # **THE ROOT'S SIBLINGS COMPILE ONTO THE BASE, and the reader is the one §5 names**
+    # (§14 step 9).  :data:`ROOT_CONJUNCTS` refused a root carrying ``allOf``,
+    # ``properties``, ``required`` or ``additionalProperties`` here, on the ground that a
+    # branch class inheriting those facts states something its own ``#/<kw>/<i>`` node
+    # does not and there is no pointer to the conjunction for it to name.  §8 now names
+    # it: "a branch class of a root union is paired with its branch node read UNDER THE
+    # ROOT'S SIBLINGS", and ``_base.applied_schema`` is the one reading of that pointer
+    # -- so the fact IS at the branch's own pointer and the grader reads it there.
+    #
+    # ``compiler.lower_composition`` and not a reader of this module's own, because §5
+    # says the keywords "compile as they would on any class -- fields, ``extra``, bases,
+    # rules" and that function is where a class with conjuncts, own properties, a
+    # requiredness and an extra policy is assembled.  A root stating NONE of the four
+    # reaches it with an empty conjunct list and no declarations, which is the same
+    # empty class this site used to build by hand -- measured byte for byte over the 38
+    # union bases the tree already carried.
+    stated_base = compiler.lower_composition(
+        node,
+        mod,
+        # ``BranchDispatchMixin`` FIRST, because the MRO is what finds its
+        # ``__get_pydantic_core_schema__``, and the model base only where the root
+        # composes nothing -- a root that composes reaches ``AdCPBaseModel`` through its
+        # conjuncts' own classes, and naming it beside them puts a class before two of
+        # its own subclasses (``compiler.lower_composition``'s
+        # ``base_if_none_composes``).
+        bases=(ir.TypeRef("BranchDispatchMixin", local=True),),
+        base_if_none_composes=ir.TypeRef("AdCPBaseModel", local=True),
+        union=compiler.UnionBase(
+            root_required=tuple(node.required),
             discriminator=on,
             combinator=kw,
             branches=branches,
         ),
     )
-    if collision is not None:
-        return collision
+    if isinstance(stated_base, Refusal):
+        return stated_base
+    if isinstance(stated_base, compiler.Decided):
+        # §5's ``$ref`` row at CONJ answered with a TYPE: the root's one conjunct
+        # resolves to something that is not a class, so there is no base class for the
+        # branches to subclass.  §4 makes the base the symbol every referrer imports and
+        # the thing ``isinstance(payload, Base)`` tests, which no annotation is.
+        # Measured over the 1,054 portable documents: **0 union roots reach it** -- the
+        # arm inside ``_the_conjuncts_own_type`` fires first, because a union base always
+        # composes the mixin and so always has ``bases``.
+        return Refusal(
+            "allOf",
+            pointer,
+            f"this root composes {stated_base.type.path or 'an annotation'}, which "
+            "section 5's $ref row at CONJ makes the node's own TYPE rather than a base: "
+            "section 4 makes a union root a BASE CLASS its branches subclass, and an "
+            "annotation has no subclass",
+            kind=Kind.VERDICT,
+        )
+    #: What the BASE declares, which is what every branch below INHERITS (§4: "a branch
+    #: composes its own with them").  Read off the record ``declare_object`` wrote for
+    #: the base rather than re-derived from the root's siblings here: a second reading
+    #: would be a second answer to "what does the base declare", and the one that
+    #: matters is the one the class was declared from.
+    base_shape = mod.shapes[stated_base]
 
     for plan in planned:
         # Three branch shapes and three readers, and every one of them takes the union
@@ -1009,10 +1069,17 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
                 plan.pointer,
                 mod,
                 (),
+                # **BOTH bases' shapes, and the base's first**: §4 gives this branch two
+                # bases -- the union base, which supplies the root's own fields, and the
+                # target, which supplies its own -- so what the branch INHERITS is the
+                # union of the two, and a later reuser of the branch reads one map
+                # (:attr:`compiler.Shape`'s transitivity).  The target wins a shared key,
+                # because the target is the branch's own declaration and §5's union row
+                # makes the root's the one the branch composes WITH.
                 compiler.Shape(
-                    plan.inherits.shape.properties,
-                    plan.inherits.shape.required,
-                    decided=plan.inherits.shape.decided,
+                    {**base_shape.properties, **plan.inherits.shape.properties},
+                    base_shape.required | plan.inherits.shape.required,
+                    decided={**base_shape.decided, **plan.inherits.shape.decided},
                     description=inherited,
                 ),
                 Position.BRANCH,
@@ -1031,7 +1098,10 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
         # reads a declaration, which is §2's own decision about the conjunct merge.
         if "allOf" in plan.node:
             composed = compiler.lower_composition(
-                plan.parsed, mod, bases=(ir.TypeRef(pointer, local=True),)
+                plan.parsed,
+                mod,
+                bases=(ir.TypeRef(pointer, local=True),),
+                inherits=base_shape,
             )
             if isinstance(composed, Refusal):
                 return composed
@@ -1056,11 +1126,35 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
                     kind=Kind.VERDICT,
                 )
         elif isinstance(plan.parsed, nodes.Object):
-            classed = compiler.lower_object(
-                plan.parsed, mod, bases=(ir.TypeRef(pointer, local=True),)
+            # **``lower_composition`` and not ``lower_object`` wherever the BASE
+            # declares a field, because §4 says "a branch composes its own with
+            # them".**  A branch that restates a property the root also declares is
+            # §2's restatement: the two declarations apply to the same instance, so the
+            # branch's field is their INTERSECTION and its requiredness is the union --
+            # and a branch lowered from its own node alone shadows the base's field
+            # instead.  Measured over the 61 documents this row unblocks: 145 branch
+            # sites restate a root-declared property (139 narrowing, 6 identical, 0
+            # annotation-only), 135 of them dropping a ``description`` the root states
+            # and 79 dropping a ``required`` it states, across 14 and 4 documents.
+            #
+            # A base that declares NOTHING composes nothing, so the branch reaches the
+            # object row exactly as it did before -- which is what keeps the 38 union
+            # bases the tree already carried byte-identical, and is the measurement the
+            # base's own site above records.
+            composing = (
+                compiler.lower_composition(
+                    plan.parsed,
+                    mod,
+                    bases=(ir.TypeRef(pointer, local=True),),
+                    inherits=base_shape,
+                )
+                if base_shape.properties
+                else compiler.lower_object(
+                    plan.parsed, mod, bases=(ir.TypeRef(pointer, local=True),)
+                )
             )
-            if isinstance(classed, Refusal):
-                return classed
+            if isinstance(composing, Refusal):
+                return composing
         else:
             # **A branch the PARSER did not classify as an object, and this is a crash
             # replaced by an outcome** (§9: "a crash is not an outcome").
@@ -1423,9 +1517,15 @@ def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal
         )
     # The branch's own D6 rules: the keywords are admitted here and the TUPLE is
     # written by ``compiler.declare_object``, which ``lower_object`` below reaches.
+    # ONE reading, and the dispatch derivation takes the other half of it: ``forbids``
+    # is the names this branch's ``not`` forbids by name, which is §4's third source
+    # (:func:`separates`), so the rule the branch carries and the separator the root is
+    # dispatched by cannot disagree about what a ``not`` over ``required`` says.
+    stated = compiler.rules_at(parsed, position=Position.BRANCH)
+    forbids = stated.forbids
     refused = compiler.check_keywords(  # the walk's own check
         parsed,
-        BRANCH_CLAIMS | compiler.rules_at(parsed, position=Position.BRANCH).screen,
+        BRANCH_CLAIMS | stated.screen,
         mod=mod,
     )
     if refused is not None:
@@ -1480,7 +1580,7 @@ def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal
         # below sits after this one: a branch whose fields all come from its conjuncts
         # declares none of its own, and ``lower_composition`` reads the conjunct list
         # for them.
-        return Branch(pointer=pointer, node=branch, parsed=parsed)
+        return Branch(pointer=pointer, node=branch, parsed=parsed, forbids=forbids)
     if "properties" not in branch:
         return Refusal(
             "required" if "required" in branch else "type",
@@ -1489,4 +1589,4 @@ def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal
             "on the root's class (D2, D6), not a branch class (step 7's row)",
             kind=Kind.DEFERRED,
         )
-    return Branch(pointer=pointer, node=branch, parsed=parsed)
+    return Branch(pointer=pointer, node=branch, parsed=parsed, forbids=forbids)

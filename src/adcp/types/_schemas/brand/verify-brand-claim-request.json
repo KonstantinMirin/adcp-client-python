@@ -1,0 +1,254 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "allOf": [
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Release-precision AdCP protocol version negotiation fields. Composed via `allOf` into AdCP request schemas and shared response components so the version semantics live in one place. Strict (`additionalProperties: false`) request schemas also redeclare these two fields in their own `properties` via `$ref`, because draft-07 does not evaluate properties across `allOf`. The Trusted Match match requests are the exception: they inline both fields for their strict privacy boundary. Distinct from `core/protocol-envelope.json`, which wraps responses at the transport layer (context_id / task_id / status / payload). This envelope is part of the payload itself.",
+      "properties": {
+        "adcp_major_version": {
+          "deprecated": true,
+          "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+          "maximum": 99,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "adcp_version": {
+          "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
+          "examples": [
+            "3.0",
+            "3.1",
+            "3.1-beta",
+            "3.1-rc.1"
+          ],
+          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
+          "type": "string"
+        }
+      },
+      "title": "AdCP Version Envelope",
+      "type": "object"
+    }
+  ],
+  "description": "Ask a brand-agent a verification question \u2014 does the brand's own data confirm or reject a specific claim about a facet of its identity? The unified replacement for the per-dimension verify_* tools. claim_type discriminates the kind of question (subsidiary / parent / property / trademark); the claim payload carries the question. Read-only; naturally idempotent \u2014 the brand's internal bookkeeping deduplicates per {caller_identity, claim_type, claim-target}.",
+  "discriminator": {
+    "propertyName": "claim_type"
+  },
+  "oneOf": [
+    {
+      "additionalProperties": true,
+      "description": "House-side: is this brand a subsidiary of mine? Used by consumers detecting a leaf claiming `house_domain` pointing at this house.",
+      "properties": {
+        "claim": {
+          "additionalProperties": true,
+          "properties": {
+            "observed_at": {
+              "description": "When the caller observed the leaf's claim.",
+              "format": "date-time",
+              "type": "string"
+            },
+            "subsidiary_brand_id": {
+              "description": "Stable brand identifier the leaf uses for itself. Optional but recommended.",
+              "pattern": "^[a-z0-9_]+$",
+              "type": "string"
+            },
+            "subsidiary_domain": {
+              "description": "Domain of the leaf brand whose `house_domain` claim is being verified.",
+              "format": "hostname",
+              "type": "string"
+            }
+          },
+          "required": [
+            "subsidiary_domain"
+          ],
+          "type": "object"
+        },
+        "claim_type": {
+          "const": "subsidiary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_type",
+        "claim"
+      ],
+      "title": "VerifySubsidiaryClaim"
+    },
+    {
+      "additionalProperties": true,
+      "description": "Leaf-side mirror: is this brand my parent house? The symmetric path that lets a leaf's brand-agent authoritatively confirm or reject a third party's claim about its parentage. Mutual assertion can complete at the agent layer (both house and leaf answer) rather than requiring a static-file crawl.",
+      "properties": {
+        "claim": {
+          "additionalProperties": true,
+          "properties": {
+            "claimant_says": {
+              "description": "Optional context \u2014 what the claimant published or said. Helps the agent disambiguate competing claims.",
+              "type": "string"
+            },
+            "observed_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "parent_domain": {
+              "description": "Domain of the house claimed as this brand's parent.",
+              "format": "hostname",
+              "type": "string"
+            }
+          },
+          "required": [
+            "parent_domain"
+          ],
+          "type": "object"
+        },
+        "claim_type": {
+          "const": "parent",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_type",
+        "claim"
+      ],
+      "title": "VerifyParentClaim"
+    },
+    {
+      "additionalProperties": true,
+      "description": "Is this property (website, app, podcast, etc.) one of mine? Used at inventory-onboarding, creative-clearance, and fraud-escalation gates.",
+      "properties": {
+        "claim": {
+          "additionalProperties": true,
+          "properties": {
+            "property": {
+              "additionalProperties": true,
+              "description": "Shape matches brand.json properties[] entry.",
+              "properties": {
+                "identifier": {
+                  "type": "string"
+                },
+                "region": {
+                  "type": "string"
+                },
+                "store": {
+                  "enum": [
+                    "apple",
+                    "google",
+                    "amazon",
+                    "roku",
+                    "fire_tv",
+                    "samsung",
+                    "lg",
+                    "vizio",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                "type": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "Types of addressable advertising properties with verifiable ownership. Property types are a subset of media channels - they represent inventory surfaces that can be validated via adagents.json.",
+                  "enum": [
+                    "website",
+                    "mobile_app",
+                    "ctv_app",
+                    "desktop_app",
+                    "dooh",
+                    "podcast",
+                    "radio",
+                    "linear_tv",
+                    "streaming_audio",
+                    "ai_assistant"
+                  ],
+                  "enumDescriptions": {
+                    "ai_assistant": "AI-powered conversational interfaces including chatbots, AI assistants, and conversational AI platforms, identified by platform-specific IDs",
+                    "ctv_app": "Connected TV applications, identified by platform-specific store IDs",
+                    "desktop_app": "Desktop applications (Electron, native, Chromium wrappers), identified by application bundle IDs",
+                    "dooh": "Venue-operated digital endpoint networks, including screens and audio players, identified by network/venue IDs",
+                    "linear_tv": "Linear television stations and networks, identified by station ID or facility ID",
+                    "mobile_app": "Native mobile applications, identified by app store IDs or bundle identifiers",
+                    "podcast": "Podcast feeds and episodes, identified by RSS feed URLs or podcast IDs",
+                    "radio": "Radio station properties, identified by station ID or facility ID",
+                    "streaming_audio": "Digital audio streaming properties, identified by platform-specific IDs",
+                    "website": "Web properties accessible via browser, identified by domain"
+                  },
+                  "title": "Property Type",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "identifier"
+              ],
+              "type": "object"
+            },
+            "use_case": {
+              "description": "Optional caller-declared use case. The agent MAY scope its answer.",
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          "required": [
+            "property"
+          ],
+          "type": "object"
+        },
+        "claim_type": {
+          "const": "property",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_type",
+        "claim"
+      ],
+      "title": "VerifyPropertyClaim"
+    },
+    {
+      "additionalProperties": true,
+      "description": "Is this trademark mine? Returns ownership plus licensing posture and authorized use cases \u2014 the differentiator vs registry crawls.",
+      "properties": {
+        "claim": {
+          "additionalProperties": true,
+          "properties": {
+            "countries": {
+              "items": {
+                "maxLength": 2,
+                "minLength": 2,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "mark": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "number": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "registry": {
+              "maxLength": 50,
+              "type": "string"
+            },
+            "use_case": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          "required": [
+            "mark"
+          ],
+          "type": "object"
+        },
+        "claim_type": {
+          "const": "trademark",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_type",
+        "claim"
+      ],
+      "title": "VerifyTrademarkClaim"
+    }
+  ],
+  "title": "Verify Brand Claim Request",
+  "type": "object"
+}

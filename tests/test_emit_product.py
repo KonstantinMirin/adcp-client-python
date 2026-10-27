@@ -46,6 +46,7 @@ from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, compare_schema
 from codegen.lower import names, union
 from codegen.refusal import Kind, Refusal
+from codegen.schema import nodes, parse as schema_parse
 import populations
 from conftest import refusal_from
 
@@ -262,7 +263,15 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         # name argument off every handler, so a stub standing in for one takes the node
         # and the module and nothing else.
         position, pointer = node.position, node.pointer
-        if position is keywords.Position.ROOT:
+        # **AND NOT A UNION AT THAT POSITION, which is the same scoping rule one step
+        # on** (``adcp-client-python-10l.20``).  §14 step 9 makes this function the
+        # reader of a union BASE as well -- §5's ``allOf`` row, "beside a union → the
+        # same, onto the base" -- so a union root reaches it through the UNION arm and
+        # not through the ``allOf`` arm this stub stands in for.  Left unscoped, the
+        # perturbation takes every union root out of ``without`` and inflates this row's
+        # delta by 18 documents it does not claim, which is the defect the comment above
+        # names for the nested case.
+        if position is keywords.Position.ROOT and not isinstance(node, nodes.Union):
             # RETURNED and not raised: §14 step 6 makes a refusal a value, so a stub
             # standing in for the handler has to answer the way the handler answers or
             # the perturbation is a crash rather than the row's own refusal.
@@ -534,10 +543,26 @@ def test_a_composing_root_reaches_one_arm_and_nothing_can_claim_it_twice() -> No
         and populations.union_root(raw)
     ]
     claimed("roots carrying allOf beside a union", both, inside=bundle.portable(BUNDLE))
-    out = emit.emit(BUNDLE, both)
+    # **WHICH ARM, read off the PARSER, which is where §5's arm order lives.**  This
+    # asserted that every one of them REFUSES on a ``union.ROOT_CONJUNCTS`` keyword,
+    # which was a statement about the answer rather than about the arm -- and
+    # ``adcp-client-python-10l.20`` retires that refusal: §14 step 9 compiles the root's
+    # conjuncts onto the base, so these documents now emit or report the obstruction
+    # behind them, and the keyword says nothing about which arm read them.
+    #
+    # The arm itself is what the ordering decides and the parser is what decides it:
+    # ``parse.parse`` reads the union arm BEFORE the ``allOf`` arm and puts the conjunct
+    # list on :attr:`nodes.Union.siblings`, so a root carrying both is a ``nodes.Union``
+    # whose siblings carry its ``allOf``.  Asserting that is asserting the arm, with no
+    # refusal to go stale -- and the ``allOf`` is asserted PRESENT in the siblings, which
+    # is what says the union arm CONSUMES it rather than dropping it.
     for d in both:
-        assert d in out.refusals, d
-        assert out.refusals[d]["keyword"] in union.ROOT_CONJUNCTS, (d, out.refusals[d])
+        raw = bundle.read(BUNDLE, d)
+        node = schema_parse.parse(
+            raw, pointer="", position=keywords.Position.ROOT, source=schema_parse.Source(document=d)
+        )
+        assert isinstance(node, nodes.Union), (d, type(node).__name__)
+        assert node.siblings.get("allOf") == raw["allOf"], d
 
 
 # --------------------------------------------------------------------------- #
