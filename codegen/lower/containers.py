@@ -77,11 +77,12 @@ Measured: 727 documents mention ``additionalProperties`` and 51 carry a typed on
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from adcp.types._runtime import UniqueItems
 from codegen import bundle, compiler, ir
-from codegen.lower import names
+from codegen.lower import approximate, names
 from codegen.schema import nodes
 from codegen.schema import parse as nodes_parse
 from codegen.keywords import Position
@@ -328,7 +329,22 @@ def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
         # that reach this refusal are measured to be exactly the other positions: 4 at a
         # document root, 6 at a mapping value, 5 inside a combinator branch and 3 at a
         # ``definitions``/``$defs`` entry.
-        return Refusal("uniqueItems", pointer, _DISTINCT_HAS_NOWHERE_TO_LIVE, kind=Kind.VERDICT)
+        # **§5(b): "``uniqueItems`` and ``contains`` where even a named type cannot hold
+        # the rule.  Rung KEYWORD: the array is ``list[X]`` and the duplicate or
+        # existential check is the schema half's alone.  Attribution ours."**  The
+        # paragraph above is the measurement that says this position has no mechanism;
+        # what §2's ladder adds is that a position with no mechanism DROPS the keyword and
+        # DECLARES the drop, rather than refusing the document.
+        #
+        # The fact is the document's own ``uniqueItems`` value, which is ``true`` at all
+        # 485 of the bundle's sites (the paragraph above), so :attr:`nodes.Array.distinct`
+        # being set IS the document stating it -- §9's "never approximate on a keyword the
+        # walk itself inserted" holds, because the parser read it off the document and
+        # nothing here inserted it.
+        #
+        # ``strict_validate`` still enforces it from the document, which is what makes
+        # the drop a WIDENING of the annotation and not of the accepted set.
+        approximate.declare(mod, pointer, "uniqueItems", position, True)
     bounds = dict(node.bounds)
     if "items" not in node.declares:
         # ``{"type": "array"}`` admits a list of anything, and ``Any`` is that set --
@@ -425,33 +441,68 @@ def mapping(node: nodes.Mapping_, mod: Module) -> Decided | Refusal:
         # different statements, and this refusal is the one place they say the same).
         stated_extra = True if node.extra is None else node.extra
         if stated_extra is not False:
-            # TWO DOCUMENT SHAPES, ONE REFUSAL, and the second arm was dead until
-            # this row made the ``patternProperties`` node lower at all.  §5 refuses
-            # a non-``false`` ``additionalProperties`` beside ``patternProperties``,
-            # and ABSENT is draft-07's ``true``: a key the pattern does not match is
-            # then admitted with no value schema, while a typed key REFUSES it -- so
-            # a dict[Annotated[str, pattern], V] would be narrower than its document,
-            # which is the direction P3 exists to remove.  A typed one is the other
-            # arm: two value schemas for one mapping value type.
+            # **§5(b), added 2026-10-27: a DECLARED WIDENING, and it WAS a verdict.**
+            # This arm refused "two value schemas for one mapping value type", and §9's
+            # own test fails it on all three counts -- the obstruction is not the
+            # document's, not the pointer space's, and not pydantic's, since a
+            # key-pattern check is expressible as a rule.  Measured under
+            # ``Draft7Validator``: ``{"patternProperties": {"^x_": {"type": "string"}},
+            # "additionalProperties": true}`` accepts ``{"x_a": "ok"}``, refuses
+            # ``{"x_a": 1}`` and accepts ``{"other": 123}``.  Draft-07 is perfectly
+            # clear: keys matching the pattern take the pattern's schema and every
+            # other key is unconstrained.
             #
-            # Both are properties of the DOCUMENT, so both are verdicts.  Measured
-            # over the 1,054 portable documents, the 14 ``patternProperties`` sites
-            # split 5 / 7 / 2: **5 state ``additionalProperties: false``** and are the
-            # ones this row lowers; **7 state ``true``**, which this arm already
-            # refused before the absent case was added to it; and **2 state nothing**,
-            # both at a RULE position (``core/creative-manifest.json
-            # #/allOf/1/then/properties/assets`` and
+            # Rung CONTAINER: the mapping is ``dict[str, Any]``, the pattern's VALUE
+            # TYPING is the fact dropped, and ``strict_validate`` still enforces it from
+            # the document.  The KEY stays a bare ``str`` and that is faithful rather
+            # than widened -- a non-``false`` ``additionalProperties`` admits every key
+            # already, so the key set the document states IS every string.  Attribution
+            # ours, and the one sentence is that a faithful answer is a rule family for
+            # "keys matching this pattern take this type", which no row has written.
+            #
+            # Measured over the 1,054 portable documents, the 14 ``patternProperties``
+            # sites split 5 / 7 / 2: **5 state ``additionalProperties: false``** and are
+            # lowered faithfully below; **7 state ``true``** and are this arm's; and **2
+            # state nothing**, both at a RULE position
+            # (``core/creative-manifest.json#/allOf/1/then/properties/assets`` and
             # ``core/creative-representation.json#/allOf/2/then/properties/assets``),
-            # which §5 lowers to nothing anyway -- so the ABSENT arm costs no document
-            # and closes a hole rather than refusing one.
-            return Refusal(
-                "additionalProperties",
-                pointer,
-                f"{stated_extra!r} beside patternProperties: a "
-                "typed one leaves two value schemas for one mapping value type, and a true "
-                "or absent one admits every key the pattern does not match, which a typed "
-                "key refuses -- the model would be narrower than its document",
-                kind=Kind.VERDICT,
+            # which §5 lowers to nothing anyway.
+            if "propertyNames" in node.declares:
+                # The widening drops the pattern expression, so a ``propertyNames``
+                # beside it is a SECOND statement about the same key that this arm has
+                # no rung-and-fact pair for: the parser reads the pattern as the key
+                # (:func:`_key`) and never reads this keyword at a patterned node, so
+                # lowering here would drop it in silence.  DEFERRED and not a verdict --
+                # what is missing is a written case, which is §2's division -- and
+                # population 0: no node of the bundle states both, so the first document
+                # to state them decides the rendering.
+                return Refusal(
+                    "propertyNames",
+                    pointer,
+                    "beside patternProperties and a non-false additionalProperties: the "
+                    "pattern is dropped by section 5(b)'s widening, so this is a second "
+                    "statement about the same key with no declaration of its own, and "
+                    "the key would be widened to str in silence",
+                    kind=Kind.DEFERRED,
+                )
+            approximate.declare(
+                mod, pointer, "patternProperties", position, node.patterned
+            )
+            if isinstance(stated_extra, Mapping) and stated_extra:
+                # A TYPED ``additionalProperties`` beside the pattern types the keys the
+                # pattern does NOT match, so ``dict[str, Any]`` drops that value typing
+                # too and §8 grades a declaration for each keyword separately.  Population
+                # 0 over this bundle -- every patterned node states ``true``, ``false`` or
+                # nothing -- and declared rather than refused because the rung is the same
+                # one: the mapping is already ``dict[str, Any]``.
+                approximate.declare(
+                    mod, pointer, "additionalProperties", position, stated_extra
+                )
+            return Decided(
+                ir.TypeRef(
+                    container="dict", of=(ir.TypeRef("typing.Any"),), key=ir.TypeRef("str")
+                ),
+                bounds,
             )
         if "propertyNames" in node.declares:
             # Two statements about ONE key type, and the dict carries one.  Not in the

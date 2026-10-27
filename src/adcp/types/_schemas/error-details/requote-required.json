@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Recommended details shape for REQUOTE_REQUIRED errors. Identifies the accepted-envelope field and change term involved and, when safe to disclose, the coarse seller-policy dimension that declined the requested shape. Producer-authored extension values remain buyer-visible and MUST NOT contain vendor identifiers, internal object names, internal IDs, stack traces, or other producer-private implementation details.",
+  "properties": {
+    "change_term_id": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Accepted proposal change term whose typed constraint the request exceeded.",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "title": "Media Buy Change Term ID",
+      "type": "string",
+      "x-entity": "media_buy_change_term"
+    },
+    "decline_reason": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Coarse seller-policy dimension that declined the requested shape. Sellers SHOULD populate this when they have a structured reason and disclosure does not expose private thresholds or enforcement controls. When present, it MUST be consistent with the enclosing error.recovery classification.",
+      "enum": [
+        "inventory",
+        "share_of_voice",
+        "minimum_commitment",
+        "notice_period",
+        "contract_terms",
+        "frequency_cap",
+        "other"
+      ],
+      "enumDescriptions": {
+        "contract_terms": "The product permits the right in general, but the right was not negotiated into this buy because of account tier, insertion-order terms, or a buy-level override.",
+        "frequency_cap": "The requested frequency-cap shape is incompatible with the seller's permitted exposure policy.",
+        "inventory": "The seller cannot forecast or reserve the requested volume in the requested window.",
+        "minimum_commitment": "The requested change would take the buy below a product-level or account-level minimum commitment.",
+        "notice_period": "The change is permitted in general but was requested inside a seller notice window.",
+        "other": "Another seller-policy reason; the buyer-safe error message carries the explanation.",
+        "share_of_voice": "The requested change would exceed a seller concentration cap, such as an advertiser, category, or section share limit."
+      },
+      "title": "Seller Policy Decline Reason",
+      "type": "string"
+    },
+    "envelope_field": {
+      "description": "Buyer-visible request field path or paths that breached the accepted commercial envelope. Values MUST NOT name seller-internal objects or identifiers. New emitters SHOULD use the array form even for one path; the scalar form remains valid for compatibility with existing 3.x sellers.",
+      "oneOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      ]
+    }
+  },
+  "title": "Requote Required Details",
+  "type": "object"
+}

@@ -435,6 +435,21 @@ class Module:
     #: rule for a ``~0``/``~1`` in a key.  Empty by default: a document lowered outside
     #: ``lower_document`` resolves no local reference rather than inventing a symbol.
     local: Mapping[str, dict] = field(default_factory=dict)
+    #: **The ``default`` a LOCAL ``$ref``'s TARGET states, keyed by the REFERRING node's
+    #: pointer.**  Draft-07 replaces a ``$ref`` node with its target, so the target's
+    #: ``default`` IS the referring node's -- and §5's ``default`` row then says "PROP ->
+    #: the field's default".  :func:`local_reference` is the one writer, because it is the
+    #: one place the resolution happens, and :func:`fields` is the one reader; the field
+    #: rendered ``default: None`` where the document says ``"linear"`` until this carrier
+    #: existed, which is a *differs* and §8 pins that at zero
+    #: (``adcp-client-python-10l.26``, measured at ``core/daast-tracker-constraints.json``
+    #: and ``core/vast-tracker-constraints.json``).
+    #:
+    #: Keyed by the REFERRER and not by the target, because one target may be named from
+    #: two properties and the fact belongs to each field that resolves it.  A ``default``
+    #: is a VALUE and not a constraint (§2: "it neither widens nor narrows what the class
+    #: accepts"), so this cannot be declared as an approximation and has to be carried.
+    referred: dict[str, Any] = field(default_factory=dict)
 
     #: The pointers of this document's nodes an ENCLOSING node already constrains to
     #: ``type: "object"``; see ``bundle.constrained_to_object``.  A fact about the
@@ -1164,7 +1179,13 @@ def fields(
             )
         is_required = key in required
         default = MISSING
-        if "default" in child.annotations:
+        # **Through a LOCAL ``$ref`` the target's ``default`` is this field's**, which is
+        # draft-07 replacing the node with its target read by §5's ``default`` row:
+        # :attr:`Module.referred` is where :func:`local_reference` put it, and the node's
+        # OWN sibling wins where it states one -- the same precedence §5's ``$ref`` row
+        # gives a ``description`` sibling.
+        stated = child.annotations.get("default", mod.referred.get(child.pointer, MISSING))
+        if stated is not MISSING:
             if is_required:
                 # Section 5's ``default`` row: **on a REQUIRED property, dropped and
                 # reported, because no rendering makes a field both required and
@@ -1187,9 +1208,9 @@ def fields(
                 # has no other guard against.  :attr:`Module.drops` carries it out to
                 # ``emit.emit``, which prints it and hands it to the suite.  5 of the
                 # bundle's 339 property defaults sit on a required property.
-                mod.drops[at] = child.annotations["default"]
+                mod.drops[at] = stated
             else:
-                default = child.annotations["default"]
+                default = stated
         built.append(
             ir.Field(
                 name=fname,
@@ -3265,6 +3286,21 @@ def local_reference(mod: Module, pointer: str, at: str) -> Decided | Refusal:
         return Refusal(
             "$ref", at, f"#{pointer} names no node of this document", kind=Kind.VERDICT
         )
+    # **The target's ``default`` travels to the REFERRING node** (``adcp-client-python
+    # -10l.26``).  Draft-07 replaces a ``$ref`` node with its target, so the target's
+    # ``default`` IS the referring node's, and §5's ``default`` row then gives it to the
+    # field; without this the field rendered ``default: None`` where the document says
+    # ``"linear"``, which the comparison reports as *differs* and §8 pins at zero.  §2 is
+    # why it cannot be declared instead: "a default is a value and not a constraint, so it
+    # neither widens nor narrows what the class accepts", so there is no fact about
+    # acceptance to drop and nothing to attribute.
+    #
+    # Written HERE because this is the one place the local resolution happens, and keyed by
+    # the REFERRER so two properties naming one entry each get it.  It is recorded before
+    # the decision below, so a target that refuses leaves the record untouched by anyone
+    # who then never builds a field from it.
+    if "default" in node:
+        mod.referred[at] = node["default"]
     # **§4's DEF rule as a HOP**: ``<Root><Key>``, the key being the entry's own, which
     # ``names.entry_key`` reads off the pointer's last segment because the pointer IS
     # that key.  The NAME is ``lower/names.py``'s, so nothing here concatenates one.

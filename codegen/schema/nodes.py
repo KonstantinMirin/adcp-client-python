@@ -330,6 +330,15 @@ class Mapping_(Base):
     key: Node | None = None
     #: The ``patternProperties`` expression, where the mapping is spelled that way.
     pattern: str | None = None
+    #: ``patternProperties`` AS THE DOCUMENT STATES IT, the way :attr:`Base.extra` carries
+    #: ``additionalProperties``.  ``None`` where the document states the keyword not at
+    #: all.  It exists because §5(b)'s widening declares the keyword and §9 requires the
+    #: declared fact to be the DOCUMENT's own spelling -- "an approximation must name
+    #: something the document states, or the document is blamed for the compiler's own
+    #: rewriting" -- and the expression alone is a projection of that value, not the
+    #: value.  Recorded by the parser, which already read it, so no handler re-reads a
+    #: raw mapping for it.
+    patterned: Mapping[str, Any] | None = None
     #: How many ``patternProperties`` entries the node states: ``None`` where it states
     #: the keyword not at all, ``-1`` where the value is not a mapping, and the count
     #: otherwise.  §5 gives a mapping ONE key type, so anything but a single entry
