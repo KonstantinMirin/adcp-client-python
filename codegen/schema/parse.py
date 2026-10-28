@@ -897,15 +897,35 @@ def presence_clause(branch: Any, position: Position) -> Clause | None:
     constrains something a rule cannot say, so the node is a combinator of shapes and
     §5's union row answers it.  Reading it as a clause and dropping the ``not`` would
     make the rule say less than the branch with nothing to report it.
+
+    **A branch that FORBIDS and requires nothing is a presence clause, and its required
+    group is EMPTY** (``adcp-client-python-10l.64``).  §5's row is "each clause carries
+    its OWN required group and its own forbidden groups, because the ``not`` is per
+    branch", and the section's own reason for the kind is "every branch constrains which
+    keys are present and nothing else, so it is a rule on the root's class and not a
+    branch class" -- which a branch stating only a ``not`` over required groups satisfies.
+    Nothing in either sentence asks the required half to be non-empty, and
+    :meth:`adcp.types._runtime.Presence.holds` reads an empty ``require`` as the
+    quantifier over no names that it is: the clause is then exactly "no group of F
+    present", which is the branch.
+
+    A branch declaring NOTHING at all stays out, and that is the gate this keeps: §5's
+    ``type`` row reads such a node as ``{}``, "which IS true", so it is not a statement
+    about presence and ``lower.union``'s own row is what reports it.
+
+    Measured over every combinator node of the 1,054 portable documents: **2 sites
+    change**, and they are the two this row cleared -- ``core/forecast-point.json`` and
+    ``core/canonical-forecast-point.json`` at ``/properties/viewability``, whose ``anyOf``
+    is "forbid all four measurement keys, or require ``standard``".
     """
     if not isinstance(branch, Mapping):
         return None
     declared = {k for k in branch if keywords.declares(k, position)}
-    if not declared <= {"required", "not"} or "required" not in declared:
+    if not declared or not declared <= {"required", "not"}:
         return None
-    if not isinstance(branch["required"], list):
+    if "required" in declared and not isinstance(branch["required"], list):
         return None
-    require = tuple(n for n in branch["required"] if isinstance(n, str))
+    require = tuple(n for n in branch.get("required", ()) if isinstance(n, str))
     if "not" not in declared:
         return (require, ())
     forbid = required_groups(branch["not"], position)
