@@ -19,7 +19,7 @@ from .duration import Duration
 from .ext import ExtensionObject
 
 
-class AudienceEvidenceRequirementsRequirementMode(StrEnum):
+class RequirementMode(StrEnum):
     """
     required excludes products whose published evidence violates the constraints; preferred only affects ranking and explanation. When this policy affects inclusion or ranking, the seller MUST return the exact matching audience_evidence_selections even if get_products.fields omitted that field.
     """
@@ -27,7 +27,7 @@ class AudienceEvidenceRequirementsRequirementMode(StrEnum):
     PREFERRED = 'preferred'
 
 
-class AudienceEvidenceRequirementsEvidencePresence(StrEnum):
+class EvidencePresence(StrEnum):
     """
     required applies the mode to evidence presence itself. when_available applies constraints only when a product publishes evidence: with requirement_mode required, a product with no evidence remains eligible but a product with evidence must have an admissible item; with preferred, presence and admissibility only affect ranking.
     """
@@ -35,13 +35,13 @@ class AudienceEvidenceRequirementsEvidencePresence(StrEnum):
     WHEN_AVAILABLE = 'when_available'
 
 
-class AudienceEvidenceRequirementsAcceptedEvidenceTypesItem(StrEnum):
+class AcceptedEvidenceTypesItem(StrEnum):
     MEASURED = 'measured'
     FORECAST = 'forecast'
     SELLER_DECLARED = 'seller_declared'
 
 
-class AudienceEvidenceRequirementsMaximumAgeUnit(StrEnum):
+class Unit(StrEnum):
     """
     Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.
     """
@@ -51,12 +51,12 @@ class AudienceEvidenceRequirementsMaximumAgeUnit(StrEnum):
     DAYS = 'days'
 
 
-class AudienceEvidenceRequirementsMaximumAge(Duration):
+class MaximumAge(Duration):
     """
     Maximum age at evaluation time measured from last_updated. Campaign-relative duration is not valid for evidence age.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-evidence-requirements.json', pointer='#/properties/maximum_age')
-    unit: Annotated[AudienceEvidenceRequirementsMaximumAgeUnit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
+    unit: Annotated[Unit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
 
 
 class AudienceEvidenceRequirements(AdCPBaseModel):
@@ -77,17 +77,17 @@ class AudienceEvidenceRequirements(AdCPBaseModel):
         UniqueItems('accepted_attestation_claim_types'),
         ConditionalRequired((Match('independent_attestation_required', True, (True,)),), require=('accepted_attestation_issuers',), forbid=()),
     )
-    requirement_mode: Annotated[AudienceEvidenceRequirementsRequirementMode, Field(description='required excludes products whose published evidence violates the constraints; preferred only affects ranking and explanation. When this policy affects inclusion or ranking, the seller MUST return the exact matching audience_evidence_selections even if get_products.fields omitted that field.')]
-    evidence_presence: Annotated[AudienceEvidenceRequirementsEvidencePresence, Field(description='required applies the mode to evidence presence itself. when_available applies constraints only when a product publishes evidence: with requirement_mode required, a product with no evidence remains eligible but a product with evidence must have an admissible item; with preferred, presence and admissibility only affect ranking.')]
+    requirement_mode: Annotated[RequirementMode, Field(description='required excludes products whose published evidence violates the constraints; preferred only affects ranking and explanation. When this policy affects inclusion or ranking, the seller MUST return the exact matching audience_evidence_selections even if get_products.fields omitted that field.')]
+    evidence_presence: Annotated[EvidencePresence, Field(description='required applies the mode to evidence presence itself. when_available applies constraints only when a product publishes evidence: with requirement_mode required, a product with no evidence remains eligible but a product with evidence must have an admissible item; with preferred, presence and admissibility only affect ranking.')]
     accepted_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(description='Allowed methodologies. excluded_methodologies always wins if a value appears in both lists.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     excluded_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(description='Disallowed methodologies. Exclusion wins over accepted_methodologies when the lists overlap.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_evidence_types: Annotated[list[AudienceEvidenceRequirementsAcceptedEvidenceTypesItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    accepted_evidence_types: Annotated[list[AcceptedEvidenceTypesItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     accepted_providers: Annotated[list[BrandReference] | None, Field(description='Allowed evidence providers. excluded_providers always wins if the same canonical BrandRef appears in both lists.', min_length=1)] = None
     excluded_providers: Annotated[list[BrandReference] | None, Field(description='Disallowed evidence providers. Exclusion wins over accepted_providers when the lists overlap.', min_length=1)] = None
     accepted_subject_types: Annotated[list[AudienceSubjectType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     accepted_resolution_methods: Annotated[list[AudienceResolutionMethod] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     minimum_confidence: FloatMin0Max1 | None = None
-    maximum_age: Annotated[AudienceEvidenceRequirementsMaximumAge | None, Field(description='Maximum age at evaluation time measured from last_updated. Campaign-relative duration is not valid for evidence age.')] = None
+    maximum_age: Annotated[MaximumAge | None, Field(description='Maximum age at evaluation time measured from last_updated. Campaign-relative duration is not valid for evidence age.')] = None
     methodology_documentation_required: Annotated[bool | None, Field(description='Whether an admissible item must carry methodology_url.')] = False
     independent_attestation_required: Annotated[bool | None, Field(description="Whether an admissible item must have at least one exact reference/evaluation pair whose outcome is verified, whose reference is published in the evidence, and whose claim type and issuer match the buyer's accepted lists as well as the seller's issuer and resolver policy. Setting true requires accepted_attestation_issuers.")] = False
     accepted_attestation_issuers: Annotated[list[AttestationIssuer] | None, Field(description="Buyer allowlist for independent attestation issuers. An exact reference/evaluation pair satisfies the requirement only when reference.issuer matches an entry here. This list narrows and never broadens the seller's accepted issuer policy.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None

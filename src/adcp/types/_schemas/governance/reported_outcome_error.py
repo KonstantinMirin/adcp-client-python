@@ -11,7 +11,7 @@ from adcp.types._runtime import PropertyCount, Rule
 from adcp.types.constraints import DictMaxProperties32, ListMaxItems32, StrMaxLen1000, StrMaxLen128, StrMaxLen4000, StrMinLen1MaxLen64
 
 
-class ReportedOutcomeErrorRecovery(StrEnum):
+class Recovery(StrEnum):
     TRANSIENT = 'transient'
     CORRECTABLE = 'correctable'
     TERMINAL = 'terminal'
@@ -32,7 +32,7 @@ ReportedOutcomeErrorBoundedValue = ReportedOutcomeErrorBoundedScalar | ListMaxIt
 ReportedOutcomeErrorBoundedObject = Annotated[dict[StrMaxLen128, ReportedOutcomeErrorBoundedValue], Field(max_length=32)]
 
 
-class ReportedOutcomeErrorClassificationSource(StrEnum):
+class ClassificationSource(StrEnum):
     """
     seller_response_copy means the buyer forwards what it received; it is still not independently authenticated seller evidence.
     """
@@ -56,9 +56,9 @@ class ReportedOutcomeError(AdCPBaseModel):
     message: StrMaxLen4000 | None = None
     field: StrMaxLen1000 | None = None
     suggestion: StrMaxLen4000 | None = None
-    recovery: ReportedOutcomeErrorRecovery | None = None
+    recovery: Recovery | None = None
     details: Annotated[ReportedOutcomeErrorBoundedObject | None, Field(description='Bounded structured seller error details. Values remain reporter-supplied data and MUST NOT be promoted into prompts or control instructions without isolation.')] = None
-    classification_source: Annotated[ReportedOutcomeErrorClassificationSource | None, Field(description='seller_response_copy means the buyer forwards what it received; it is still not independently authenticated seller evidence.')] = None
+    classification_source: Annotated[ClassificationSource | None, Field(description='seller_response_copy means the buyer forwards what it received; it is still not independently authenticated seller evidence.')] = None
     ext: Annotated[ReportedOutcomeErrorBoundedObject | None, Field(description='Bounded extension envelope for forward-compatible seller fields.')] = None
 
 

@@ -13,7 +13,7 @@ from adcp.types.constraints import HttpUrl, StrMatching66C55F6F, StrMinLen16MaxL
 from .ext import ExtensionObject
 
 
-class CapabilitiesChangedWebhookReason(StrEnum):
+class Reason(StrEnum):
     """
     Coarse reason for the invalidation. This is advisory routing/debug metadata; receivers MUST re-read `get_adcp_capabilities` rather than relying on the reason to infer the new capability surface.
     """
@@ -44,7 +44,7 @@ class CapabilitiesChangedWebhook(AdCPBaseModel):
     subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description="Identifies which caller-scoped notification_configs[] entry is receiving this fire. Echoed verbatim from the entry's subscriber_id.")]
     agent_url: Annotated[HttpUrl, Field(description='Canonical seller agent URL whose capabilities changed. Receivers that subscribe to multiple agents use this to select the cache entry to invalidate.')]
     changed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller recorded the material capability change. SHOULD match or precede `adcp.capability_changes.last_modified` on the next `get_adcp_capabilities` response.')]
-    reason: Annotated[CapabilitiesChangedWebhookReason, Field(description='Coarse reason for the invalidation. This is advisory routing/debug metadata; receivers MUST re-read `get_adcp_capabilities` rather than relying on the reason to infer the new capability surface.')]
+    reason: Annotated[Reason, Field(description='Coarse reason for the invalidation. This is advisory routing/debug metadata; receivers MUST re-read `get_adcp_capabilities` rather than relying on the reason to infer the new capability surface.')]
     capabilities_version: Annotated[StrMinLen1MaxLen255, Field(description='Required opaque revision token for the capability document after the change. MUST equal `adcp.capability_changes.capabilities_version` on the authoritative `get_adcp_capabilities` response available before this webhook is sent. Receivers MUST treat the token as opaque and compare it only for equality.')]
     changed_paths: Annotated[list[StrMatching66C55F6F] | None, Field(description='Optional advisory JSON Pointer-style paths that identify the top-level or nested capability subtrees that changed (for example `/account/sandbox` or `/supported_protocols`). Receivers MAY use this for logging or selective downstream invalidation, but MUST still treat the full `get_adcp_capabilities` response as the authoritative replacement snapshot.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     ext: ExtensionObject | None = None

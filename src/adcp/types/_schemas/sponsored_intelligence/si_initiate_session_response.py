@@ -19,7 +19,7 @@ from .si_sponsored_context import SISponsoredContext
 from .si_ui_element import SIUIElement
 
 
-class SIInitiateSessionResponseResponse(AdCPBaseModel):
+class Response(AdCPBaseModel):
     """
     Brand agent's initial response
     """
@@ -40,7 +40,7 @@ class SIInitiateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-initiate-session-response.json', pointer='#')
     session_id: Annotated[str, Field(description='Unique session identifier for subsequent messages')]
-    response: Annotated[SIInitiateSessionResponseResponse | None, Field(description="Brand agent's initial response")] = None
+    response: Annotated[Response | None, Field(description="Brand agent's initial response")] = None
     negotiated_capabilities: Annotated[SICapabilities | None, Field(description='Intersection of brand and host capabilities for this session')] = None
     sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for sponsored context carried by the initial brand-agent response. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before presenting, comparing, or otherwise using it.')] = None
     session_status: Annotated[SISessionStatus, Field(description='Current session lifecycle state. Returned in initiation, message, and termination responses.')]

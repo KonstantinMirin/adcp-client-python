@@ -470,6 +470,19 @@ ALREADY_AN_OBJECT_ITSELF = frozenset(
         # negated group vacuously and the BARE node already refuses the string.  Its
         # second branch states no ``not`` and is a row.
         "account/list-account-changes-response.json#/oneOf/0",
+        # ``adcp-client-python-10l.50``: the document emits now that §4's nested rule
+        # names a position rather than the path to it, so the two positions that folded
+        # to one class name are two names.  All SIX of its branches ``not`` a
+        # ``required`` group -- each excludes the trigger inputs the other five own --
+        # so a non-object satisfies every negated group vacuously and the bare node
+        # already refuses the string.  The document therefore contributes no row, which
+        # is why it is here in full and absent from the set of row documents above.
+        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/0",
+        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/1",
+        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/2",
+        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/3",
+        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/4",
+        "formats/canonical/seller_rendered_stateful_display.json#/properties/transitions/items/oneOf/5",
     }
 )
 

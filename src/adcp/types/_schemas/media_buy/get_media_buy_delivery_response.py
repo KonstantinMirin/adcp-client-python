@@ -48,7 +48,7 @@ from ..enums.sort_direction import SortDirection
 from ..enums.sort_metric import SortMetric
 
 
-class GetMediaBuyDeliveryResponseNotificationType(StrEnum):
+class NotificationType(StrEnum):
     """
     Type of webhook notification (only present in webhook deliveries): scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = resending period with corrected data (same window), window_update = resending period with a wider measurement window (e.g., C3 superseding live, C7 superseding C3)
     """
@@ -59,7 +59,7 @@ class GetMediaBuyDeliveryResponseNotificationType(StrEnum):
     WINDOW_UPDATE = 'window_update'
 
 
-class GetMediaBuyDeliveryResponseReportingPeriod(AdCPBaseModel):
+class ReportingPeriod(AdCPBaseModel):
     """
     Half-open period for the report: start is inclusive and end is exclusive. Both are instants. For a date-bounded request they are the instants at which start_date and end_date begin in the reporting timezone (the in-scope products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC. An exact reporting_revision_id read returns the revision's period instead, whose source_timezone names its calendar.
     """
@@ -72,7 +72,7 @@ class GetMediaBuyDeliveryResponseReportingPeriod(AdCPBaseModel):
     timezone: Annotated[StrMinLen1 | None, Field(description="Reporting timezone applied to this report, as 'UTC' or an IANA timezone identifier. It equals the in-scope products' reporting_capabilities.timezone. start_date, end_date, the reporting_period boundaries, daily_breakdown[].date, and daily, weekly, or monthly windows[] all use it, so a stored report stays interpretable if the product's capability later changes. Sellers SHOULD return it on reads without reporting_revision_id whenever every in-scope media buy shares one reporting timezone. Exact reporting_revision_id reads return the revision period, which carries source_timezone instead.")] = None
 
 
-class GetMediaBuyDeliveryResponseReportingRevisionBinding(AdCPBaseModel):
+class ReportingRevisionBinding(AdCPBaseModel):
     """
     Present only for a reporting_revision_id selector. Binds the complete ordered reporting_rows sequence obtained by concatenating every cursor page to one immutable Reliable Reporting revision; consumers verify content_sha256 over RFC 8785 JCS of {reporting_revision_id,row_count,control_totals,reporting_rows} before using it as revision evidence.
     """
@@ -86,7 +86,7 @@ class GetMediaBuyDeliveryResponseReportingRevisionBinding(AdCPBaseModel):
     content_sha256: Annotated[StrMatching5E987613, Field(description='SHA-256 of RFC 8785 JCS of {reporting_revision_id,row_count,control_totals,reporting_rows}, where reporting_rows is the complete ordered sequence concatenated across every cursor page; identical to reporting_revision.revision_content_sha256.')]
 
 
-class GetMediaBuyDeliveryResponseAggregatedTotals(AdCPBaseModel):
+class AggregatedTotals(AdCPBaseModel):
     """
     Deprecated in AdCP 3.2 and removed in AdCP 4.0. Legacy combined metrics across all returned media buys. When this field is present, the deprecated response-wide currency is required and denominates its spend. Cross-buy totals are unsafe when currencies, metric qualifiers, measurement windows, finality, or deduplication semantics differ. Sellers SHOULD omit this field; buyers SHOULD aggregate media_buy_deliveries[] only when the relevant row semantics are compatible.
     """
@@ -117,7 +117,7 @@ class GetMediaBuyDeliveryResponseAggregatedTotals(AdCPBaseModel):
     metric_aggregates: Annotated[list[DeliveryMetricAggregate] | None, Field(description="Cross-buy delivery aggregates partitioned by qualifier. Row-symmetric with `package.committed_metrics` and `by_package[].missing_metrics` — same atomic unit `(scope, metric_id, qualifier)` — so reconciliation collapses to a row-level join on the tuple. Granularity rule: one row per `(metric_id, full-qualifier-set)`, reported at the finest available granularity; buyers re-aggregate up if they want a coarser view. Used only for metrics with non-empty qualifier sets — unqualified metrics (`impressions`, `spend`, `media_buy_count`, etc.) remain at the top of `aggregated_totals`. **Mutual exclusion MUST**: for any `metric_id` appearing in `metric_aggregates`, the corresponding top-level scalar in `aggregated_totals` MUST be omitted (not zeroed) — avoids duplicate sources of truth. The qualifier vocabulary on this delivery surface is closed today (`additionalProperties: false`, same content as `committed_metrics.qualifier`) but is expected to **diverge from contract qualifier in future minors** as transparency disclosures buyers don't commit to ship delivery-only (e.g., `tracker_firing` pending #3832 resolution). Each row carries a `value` plus inlined per-metric component fields (e.g., `measurable_impressions` and `viewable_impressions` for `viewable_rate`; `spend` and `conversions` for `cost_per_acquisition`). Per-buy `totals` keeps its flat shape — each buy is single-qualifier by definition; only the aggregate spans qualifiers. **Qualifier-set drift across reports**: when a campaign gains a new qualifier mid-flight (e.g., adds `tracker_firing` partitioning in week 2), prior periods' rows remain valid at their original granularity; buyers SHOULD NOT retroactively repartition.")] = None
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemStatus(StrEnum):
+class Status(StrEnum):
     """
     Current media buy status. Lifecycle states use the same taxonomy as media-buy-status (`pending_creatives`, `pending_start`, `active`, `paused`, `completed`, `rejected`, `canceled`). In webhook context, reporting_delayed indicates data temporarily unavailable. `pending` is accepted as a legacy alias for pending_start.
     """
@@ -133,7 +133,7 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemStatus(StrEnum):
     REPORTING_DELAYED = 'reporting_delayed'
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemTotals(DeliveryMetrics):
+class MediaBuyDeliveriesItemTotals(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -141,7 +141,7 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemTotals(DeliveryMetrics):
     effective_rate: Annotated[NonNegativeFloat | None, Field(description="Effective rate paid per unit based on pricing_model (e.g., actual CPM for 'cpm', actual cost per completed view for 'cpcv', actual cost per point for 'cpp')")] = None
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByFormatItem(DeliveryMetrics):
+class ByFormatItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -151,7 +151,7 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByFormatItem
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByDeviceTypeItem(DeliveryMetrics):
+class ByDeviceTypeItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -161,7 +161,7 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByDeviceType
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByDevicePlatformItem(DeliveryMetrics):
+class ByDevicePlatformItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -171,7 +171,7 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByDevicePlat
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByAudienceItem(DeliveryMetrics):
+class ByAudienceItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -183,7 +183,7 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByAudienceIt
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByDemographicItem(DeliveryMetrics):
+class ByDemographicItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -195,7 +195,7 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByDemographi
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemBySpotItem(DeliveryMetrics):
+class BySpotItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -208,7 +208,7 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemBySpotItem(D
     daypart: Annotated[StrMinLen1 | None, Field(description="Optional seller-defined daypart label, for example 'prime_time' or 'morning_drive'.")] = None
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemDailyBreakdownItem(AdCPBaseModel):
+class ByPackageItemDailyBreakdownItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -223,7 +223,7 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemDailyBreakdo
     new_to_brand_rate: Annotated[FloatMin0Max1 | None, Field(description='Daily fraction of conversions from first-time brand buyers (0 = none, 1 = all)')] = None
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItem(DeliveryMetrics):
+class MediaBuyDeliveriesItemByPackageItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -246,7 +246,7 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItem(DeliveryMet
     by_catalog_item_sorted_by: Annotated[SortMetric | None, Field(description="The metric actually used to order by_catalog_item rows. Sellers MUST return this field whenever by_catalog_item is present and the request included reporting_dimensions.catalog_item. When the seller cannot sort by the requested sort_by metric it falls back to 'spend'; this echo makes the fallback visible instead of silently returning rows the buyer will misread as ordered by the requested metric. When the breakdown was returned automatically without a request key, the field is RECOMMENDED but not required — automatic rows carry no completeness contract.")] = None
     by_catalog_item_sort_direction: Annotated[SortDirection | None, Field(description='The direction actually applied to by_catalog_item ordering. Sellers MUST return this field whenever by_catalog_item is present and the request included reporting_dimensions.catalog_item, alongside by_catalog_item_sorted_by. When the breakdown was returned automatically without a request key, the field is RECOMMENDED but not required — automatic rows carry no completeness contract.')] = None
     by_creative: Annotated[list[CreativeDeliveryMetrics] | None, Field(description='Metrics broken down by creative within this package. Available when the seller supports creative-level reporting.')] = None
-    by_format: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByFormatItem] | None, Field(description="Delivery by canonical creative format kind within this package. Negotiated on the GET path when the buyer requests reporting_dimensions.format and the product declares supports_format_breakdown; reporting webhook configuration does not negotiate or guarantee this breakdown. Each row aggregates every served creative of that format kind. Sellers MUST aggregate all delivery using adopter-defined shapes into one format_kind 'custom' row. When by_format_truncated is false, additive metrics such as impressions and spend across the rows SHOULD reconcile to the corresponding package totals, subject to the measurement and attribution semantics of each metric. Buyers MUST NOT expect row-level correspondence between by_format and by_creative because the two breakdowns are independently produced at different grains.")] = None
+    by_format: Annotated[list[ByFormatItem] | None, Field(description="Delivery by canonical creative format kind within this package. Negotiated on the GET path when the buyer requests reporting_dimensions.format and the product declares supports_format_breakdown; reporting webhook configuration does not negotiate or guarantee this breakdown. Each row aggregates every served creative of that format kind. Sellers MUST aggregate all delivery using adopter-defined shapes into one format_kind 'custom' row. When by_format_truncated is false, additive metrics such as impressions and spend across the rows SHOULD reconcile to the corresponding package totals, subject to the measurement and attribution semantics of each metric. Buyers MUST NOT expect row-level correspondence between by_format and by_creative because the two breakdowns are independently produced at different grains.")] = None
     by_format_truncated: Annotated[bool | None, Field(description='Whether by_format was truncated due to the requested limit or a seller-imposed maximum. Sellers MUST return this flag whenever by_format is present (false means the list is complete).')] = None
     by_format_sorted_by: Annotated[SortMetric | None, Field(description="The metric actually used to order by_format rows. Sellers MUST return this field whenever by_format is present. When the seller cannot sort by the requested sort_by metric it falls back to 'spend'; this echo makes the fallback visible instead of silently returning rows the buyer will misread as ordered by the requested metric.")] = None
     by_format_sort_direction: Annotated[SortDirection | None, Field(description='The direction actually applied to by_format ordering. Sellers MUST return this field whenever by_format is present.')] = None
@@ -261,22 +261,22 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItem(DeliveryMet
     by_geo_truncated: Annotated[bool | None, Field(description='Whether by_geo was truncated due to the requested limit or a seller-imposed maximum. Sellers MUST return this flag whenever by_geo is present (false means the list is complete).')] = None
     by_geo_sorted_by: Annotated[SortMetric | None, Field(description="The metric actually used to order by_geo rows. Sellers MUST return this field whenever by_geo is present. When the seller cannot sort by the requested sort_by metric it falls back to 'spend'; this echo makes the fallback visible instead of silently returning rows the buyer will misread as ordered by the requested metric.")] = None
     by_geo_sort_direction: Annotated[SortDirection | None, Field(description='The direction actually applied to by_geo ordering. Sellers MUST return this field whenever by_geo is present.')] = None
-    by_device_type: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByDeviceTypeItem] | None, Field(description='Delivery by device form factor within this package. Available when the buyer requests device_type breakdown via reporting_dimensions and the seller supports it.')] = None
+    by_device_type: Annotated[list[ByDeviceTypeItem] | None, Field(description='Delivery by device form factor within this package. Available when the buyer requests device_type breakdown via reporting_dimensions and the seller supports it.')] = None
     by_device_type_truncated: Annotated[bool | None, Field(description='Whether by_device_type was truncated. Sellers MUST return this flag whenever by_device_type is present (false means the list is complete).')] = None
     by_device_type_sorted_by: Annotated[SortMetric | None, Field(description="The metric actually used to order by_device_type rows. Sellers MUST return this field whenever by_device_type is present. When the seller cannot sort by the requested sort_by metric it falls back to 'spend'; this echo makes the fallback visible instead of silently returning rows the buyer will misread as ordered by the requested metric.")] = None
     by_device_type_sort_direction: Annotated[SortDirection | None, Field(description='The direction actually applied to by_device_type ordering. Sellers MUST return this field whenever by_device_type is present.')] = None
     by_device_type_pagination: Annotated[PaginationResponse | None, Field(description="Cursor to retrieve the remaining by_device_type rows when by_device_type_truncated is true. Sellers MUST return this field whenever by_device_type_truncated is true; omit when false or when by_device_type is absent. Pass the cursor back in the corresponding request's reporting_dimensions.device_type.cursor to fetch the next page; other reporting_dimensions.device_type request fields (limit, sort_by, sort_direction) MUST be repeated unchanged across paged requests.")] = None
-    by_device_platform: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByDevicePlatformItem] | None, Field(description='Delivery by operating system within this package. Available when the buyer requests device_platform breakdown via reporting_dimensions and the seller supports it. Useful for CTV campaigns where tvOS vs Roku OS vs Fire OS matters.')] = None
+    by_device_platform: Annotated[list[ByDevicePlatformItem] | None, Field(description='Delivery by operating system within this package. Available when the buyer requests device_platform breakdown via reporting_dimensions and the seller supports it. Useful for CTV campaigns where tvOS vs Roku OS vs Fire OS matters.')] = None
     by_device_platform_truncated: Annotated[bool | None, Field(description='Whether by_device_platform was truncated. Sellers MUST return this flag whenever by_device_platform is present (false means the list is complete).')] = None
     by_device_platform_sorted_by: Annotated[SortMetric | None, Field(description="The metric actually used to order by_device_platform rows. Sellers MUST return this field whenever by_device_platform is present. When the seller cannot sort by the requested sort_by metric it falls back to 'spend'; this echo makes the fallback visible instead of silently returning rows the buyer will misread as ordered by the requested metric.")] = None
     by_device_platform_sort_direction: Annotated[SortDirection | None, Field(description='The direction actually applied to by_device_platform ordering. Sellers MUST return this field whenever by_device_platform is present.')] = None
     by_device_platform_pagination: Annotated[PaginationResponse | None, Field(description="Cursor to retrieve the remaining by_device_platform rows when by_device_platform_truncated is true. Sellers MUST return this field whenever by_device_platform_truncated is true; omit when false or when by_device_platform is absent. Pass the cursor back in the corresponding request's reporting_dimensions.device_platform.cursor to fetch the next page; other reporting_dimensions.device_platform request fields (limit, sort_by, sort_direction) MUST be repeated unchanged across paged requests.")] = None
-    by_audience: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByAudienceItem] | None, Field(description="Delivery by audience segment within this package. Available when the buyer requests audience breakdown via reporting_dimensions and the seller supports it. Only 'synced' audiences are directly targetable via the targeting overlay; other sources are informational.")] = None
+    by_audience: Annotated[list[ByAudienceItem] | None, Field(description="Delivery by audience segment within this package. Available when the buyer requests audience breakdown via reporting_dimensions and the seller supports it. Only 'synced' audiences are directly targetable via the targeting overlay; other sources are informational.")] = None
     by_audience_truncated: Annotated[bool | None, Field(description='Whether by_audience was truncated. Sellers MUST return this flag whenever by_audience is present (false means the list is complete).')] = None
     by_audience_sorted_by: Annotated[SortMetric | None, Field(description="The metric actually used to order by_audience rows. Sellers MUST return this field whenever by_audience is present. When the seller cannot sort by the requested sort_by metric it falls back to 'spend'; this echo makes the fallback visible instead of silently returning rows the buyer will misread as ordered by the requested metric.")] = None
     by_audience_sort_direction: Annotated[SortDirection | None, Field(description='The direction actually applied to by_audience ordering. Sellers MUST return this field whenever by_audience is present.')] = None
     by_audience_pagination: Annotated[PaginationResponse | None, Field(description="Cursor to retrieve the remaining by_audience rows when by_audience_truncated is true. Sellers MUST return this field whenever by_audience_truncated is true; omit when false or when by_audience is absent. Pass the cursor back in the corresponding request's reporting_dimensions.audience.cursor to fetch the next page; other reporting_dimensions.audience request fields (limit, sort_by, sort_direction) MUST be repeated unchanged across paged requests.")] = None
-    by_demographic: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemByDemographicItem] | None, Field(description='Delivery by demographic within this package. Available when the buyer requests demographic breakdown and the product declares supports_demographic_breakdown. A free-form measurement code does not prove alignment with buyer targeting. When age is present it is the authoritative machine-comparable interval; for requested age_ranges, sellers MUST echo the exact requested interval and MUST NOT substitute a wider or narrower native bucket.')] = None
+    by_demographic: Annotated[list[ByDemographicItem] | None, Field(description='Delivery by demographic within this package. Available when the buyer requests demographic breakdown and the product declares supports_demographic_breakdown. A free-form measurement code does not prove alignment with buyer targeting. When age is present it is the authoritative machine-comparable interval; for requested age_ranges, sellers MUST echo the exact requested interval and MUST NOT substitute a wider or narrower native bucket.')] = None
     by_demographic_truncated: Annotated[bool | None, Field(description='Whether non-suppressed by_demographic rows were truncated due to the requested limit or a seller-imposed maximum. Sellers MUST return this flag whenever by_demographic is present. False means every non-suppressed row is present; inspect by_demographic_suppressed separately before reconciling rows to package totals.')] = None
     by_demographic_sorted_by: Annotated[SortMetric | None, Field(description="The metric actually used to order by_demographic rows. Sellers MUST return this field whenever by_demographic is present. When the seller cannot sort by the requested sort_by metric it falls back to 'spend'; this echo makes the fallback visible instead of silently returning rows the buyer will misread as ordered by the requested metric.")] = None
     by_demographic_sort_direction: Annotated[SortDirection | None, Field(description='The direction actually applied to by_demographic ordering. Sellers MUST return this field whenever by_demographic is present.')] = None
@@ -314,20 +314,20 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItem(DeliveryMet
     by_placement_property_suppressed: Annotated[bool | None, Field(description='Whether one or more otherwise reportable by_placement_property rows were omitted from this response due to privacy, policy, or measurement thresholds. Sellers MUST return this flag whenever by_placement_property is present. False means no rows were threshold-suppressed. Both suppression and truncation may be true.')] = None
     by_placement_property_sorted_by: Annotated[SortMetric | None, Field(description='The metric actually used to order by_placement_property rows. Sellers MUST return this field whenever by_placement_property is present.')] = None
     by_placement_property_sort_direction: Annotated[SortDirection | None, Field(description='The direction actually applied to by_placement_property rows. Sellers MUST return this field whenever by_placement_property is present.')] = None
-    by_spot: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemBySpotItem] | None, Field(description='Spot-level as-run airing records for broadcast TV, radio, or other scheduled inventory. Available when the buyer requests spot breakdown and the product declares supports_spot_breakdown. Sellers MUST order rows by aired_at ascending. The same spot_id is reused when a later package measurement_window adds or revises metrics. Network and station are optional so station-direct radio and network-level TV records use the same channel-neutral shape. Sellers SHOULD populate creative_id whenever they can associate a specific airing with a creative, particularly when the package could serve more than one creative during any part of the reporting period, including a mid-period replacement. Sellers that cannot make that association MUST omit creative_id rather than emit a default or placeholder. Buyers MUST NOT aggregate by_spot rows by creative_id and expect the result to equal by_creative impressions for the same creative: the two dimensions are independently produced at different granularities and are subject to different metric-maturation and attribution semantics within the package measurement_window. by_creative is the authoritative creative-performance aggregate; creative_id on a by_spot row identifies which creative aired, not an independent metric roll-up source.')] = None
+    by_spot: Annotated[list[BySpotItem] | None, Field(description='Spot-level as-run airing records for broadcast TV, radio, or other scheduled inventory. Available when the buyer requests spot breakdown and the product declares supports_spot_breakdown. Sellers MUST order rows by aired_at ascending. The same spot_id is reused when a later package measurement_window adds or revises metrics. Network and station are optional so station-direct radio and network-level TV records use the same channel-neutral shape. Sellers SHOULD populate creative_id whenever they can associate a specific airing with a creative, particularly when the package could serve more than one creative during any part of the reporting period, including a mid-period replacement. Sellers that cannot make that association MUST omit creative_id rather than emit a default or placeholder. Buyers MUST NOT aggregate by_spot rows by creative_id and expect the result to equal by_creative impressions for the same creative: the two dimensions are independently produced at different granularities and are subject to different metric-maturation and attribution semantics within the package measurement_window. by_creative is the authoritative creative-performance aggregate; creative_id on a by_spot row identifies which creative aired, not an independent metric roll-up source.')] = None
     by_spot_truncated: Annotated[bool | None, Field(description='Whether by_spot is incomplete because of the requested limit or a seller-imposed maximum. Sellers MUST return this flag whenever by_spot is present (false means the as-run log is complete for the requested reporting period).')] = None
-    daily_breakdown: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItemDailyBreakdownItem] | None, Field(description='Day-by-day delivery for this package. Only present when include_package_daily_breakdown is true in the request. Enables per-package pacing analysis and line-item monitoring.')] = None
+    daily_breakdown: Annotated[list[ByPackageItemDailyBreakdownItem] | None, Field(description='Day-by-day delivery for this package. Only present when include_package_daily_breakdown is true in the request. Enables per-package pacing analysis and line-item monitoring.')] = None
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemTotals(DeliveryMetrics):
+class WindowsItemTotals(DeliveryMetrics):
     """
     Aggregate metrics for this window slice across all packages. Shape-aligned with reporting_webhook fire payloads at the same granularity.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/windows/items/properties/totals')
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemByPackageItem(DeliveryMetrics):
+class WindowsItemByPackageItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -336,17 +336,17 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemByPackageItem(
     currency: Annotated[StrMatching43E30B32 | None, Field(description="ISO 4217 denomination for this package window's monetary values. Required by the runtime currency-coherence rule when neither the parent media-buy row nor deprecated response-wide field supplies a currency and this package window contains monetary values; otherwise it MUST match the row or response currency when present.")] = None
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItem(AdCPBaseModel):
+class WindowsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/windows/items')
     window_start: Annotated[AwareDatetime, Field(description='ISO 8601 start of the window slice (inclusive). Daily, weekly, monthly, and quarterly slices start on reporting-timezone calendar boundaries (see reporting_period.timezone), which are UTC midnights only when that timezone is UTC. Weekly slices start Monday 00:00 in the reporting timezone (ISO 8601 weeks). Quarterly slices start on 1 January, 1 April, 1 July and 1 October.')]
     window_end: Annotated[AwareDatetime, Field(description="ISO 8601 end of the window slice (exclusive). The next row's window_start equals this value when slices are contiguous.")]
-    totals: Annotated[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemTotals, Field(description='Aggregate metrics for this window slice across all packages. Shape-aligned with reporting_webhook fire payloads at the same granularity.')]
-    by_package: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemByPackageItem] | None, Field(description='Per-package metrics for this window slice, using the same metric envelope and package identity as the parent media_buy_deliveries[].by_package row but scoped to the window. Requested reporting_dimensions do not apply to these webhook-aligned recovery rows; sellers may include dimensional fields only as webhook payload extensions, not as a guaranteed result of the GET request. Sellers MAY omit by_package when per-package window-level data is unavailable; when present, package_id values MUST match the parent by_package entries.')] = None
+    totals: Annotated[WindowsItemTotals, Field(description='Aggregate metrics for this window slice across all packages. Shape-aligned with reporting_webhook fire payloads at the same granularity.')]
+    by_package: Annotated[list[WindowsItemByPackageItem] | None, Field(description='Per-package metrics for this window slice, using the same metric envelope and package identity as the parent media_buy_deliveries[].by_package row but scoped to the window. Requested reporting_dimensions do not apply to these webhook-aligned recovery rows; sellers may include dimensional fields only as webhook payload extensions, not as a guaranteed result of the GET request. Sellers MAY omit by_package when per-package window-level data is unavailable; when present, package_id values MUST match the parent by_package entries.')] = None
     is_final: Annotated[bool | None, Field(description='Whether the slice data is final for this window. Same semantics as the per-package is_final flag — when false, a later read may return revised numbers for the same window as measurement matures (broadcast C3 → C7, post-IVT filtering, etc.).')] = None
     measurement_window: Annotated[StrMaxLen50 | None, Field(description="Which measurement-window stage this slice represents (e.g., 'live', 'c3', 'c7'), referencing a window_id from the product's reporting_capabilities.measurement_windows. Absent when the data is not phased.")] = None
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemDailyBreakdownItem(AdCPBaseModel):
+class MediaBuyDeliveriesItemDailyBreakdownItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -361,24 +361,24 @@ class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemDailyBreakdownItem(AdCPBa
     new_to_brand_rate: Annotated[FloatMin0Max1 | None, Field(description='Daily fraction of conversions from first-time brand buyers (0 = none, 1 = all)')] = None
 
 
-class GetMediaBuyDeliveryResponseMediaBuyDeliveriesItem(AdCPBaseModel):
+class MediaBuyDeliveriesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items')
     media_buy_id: Annotated[str, Field(description="Seller's media buy identifier")]
     currency: Annotated[StrMatching43E30B32 | None, Field(description="ISO 4217 denomination for monetary values in this media-buy delivery row, including totals, package spend, and currency-denominated package rates. Sellers SHOULD populate this field whenever all monetary values in the row share one currency. For AdCP-authored buys it MUST equal the media-buy currency, and every by_package[].currency MUST equal it. For a legacy or externally created mixed-currency buy, omit this field, daily_breakdown, and all monetary or money-derived values from row and window totals; report those values only at package grain with each package's own currency. AdCP does not perform currency conversion.")] = None
-    status: Annotated[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemStatus, Field(description='Current media buy status. Lifecycle states use the same taxonomy as media-buy-status (`pending_creatives`, `pending_start`, `active`, `paused`, `completed`, `rejected`, `canceled`). In webhook context, reporting_delayed indicates data temporarily unavailable. `pending` is accepted as a legacy alias for pending_start.')]
+    status: Annotated[Status, Field(description='Current media buy status. Lifecycle states use the same taxonomy as media-buy-status (`pending_creatives`, `pending_start`, `active`, `paused`, `completed`, `rejected`, `canceled`). In webhook context, reporting_delayed indicates data temporarily unavailable. `pending` is accepted as a legacy alias for pending_start.')]
     expected_availability: Annotated[AwareDatetime | None, Field(description='When delayed data is expected to be available (only present when status is reporting_delayed)')] = None
     is_adjusted: Annotated[bool | None, Field(description='Indicates this delivery contains updated data for a previously reported period. Buyer should replace previous period data with these totals.')] = None
     is_final: Annotated[bool | None, Field(description="Whether this row's delivery data is final for the reporting period. The row does not carry its own `measurement_window` — that lives on each `by_package[*]` entry. Reconciliation joins on per-package `measurement_window`; this row-level flag is a convenience roll-up. Sellers MUST NOT emit `is_final: true` at the row level unless every entry in `by_package` has `is_final: true` for the same `measurement_window` as the buy's `measurement_terms.billing_measurement.measurement_window` (or for the row's natural window when no `billing_measurement.measurement_window` is set). On any disagreement between row-level and package-level finality, package-level is authoritative. When true, the seller considers these numbers closed and is willing to invoice on them subject to `measurement_terms.billing_measurement`. When false, numbers may still move as measurement matures (broadcast C3 → C7) or processing completes (IVT scrubbing, dedup). When absent, the seller does not distinguish provisional from final at the row level — consult per-package `is_final`.")] = None
     finalized_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp at which this row became final. Present only when `is_final: true`. Anchors the buyer's reconciliation and (when later defined) dispute-window clocks against the buy's `measurement_terms.billing_measurement`. Computed as the latest `finalized_at` across the row's packages for the reconciliation window.")] = None
     pricing_model: Annotated[PricingModel | None, Field(description='Pricing model used for this media buy')] = None
     pacing_index: Annotated[NonNegativeFloat | None, Field(description='Aggregate media-buy delivery pace relative to the media-buy pacing plan (1.0 = on track, <1.0 = behind, >1.0 = ahead). This is the authoritative pacing signal for seller-optimized buys; package pacing indexes are subordinate diagnostics.')] = None
-    totals: GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemTotals
-    by_package: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemByPackageItem], Field(description='Metrics broken down by package')]
-    windows: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItem] | None, Field(description="Per-window delivery slices over the reporting period at the requested time_granularity. Only present when the request set time_granularity and include_window_breakdown: true. Each slice mirrors what reporting_webhook would have delivered for the same window — buyers who missed webhook fires can reconstruct identical data by reading this array. Slice rows are ordered by window_start ascending; consecutive rows are contiguous (each row's window_end equals the next row's window_start) and partition the requested date range at the chosen granularity. For a legacy or external mixed-currency media buy, monetary and money-derived values MUST be omitted from each window totals object and reported only in currency-qualified windows[].by_package rows. Sellers MUST exclude this field when time_granularity is omitted; when set, sellers MUST honor pulls at any granularity in reporting_capabilities.windowed_pull_granularities (otherwise return UNSUPPORTED_GRANULARITY). See snapshot-and-log Rule 4 for the two-paths-parity contract this surface anchors.")] = None
-    daily_breakdown: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemDailyBreakdownItem] | None, Field(description="Day-by-day delivery for a media-buy row with one currency. Sellers MUST omit this aggregate breakdown for a legacy or externally created mixed-currency buy because these rows have no package currency field. Sellers MUST also omit this aggregate breakdown when the media buy's packages span more than one reporting timezone; package-level daily_breakdown remains, each in its own product's reporting timezone.")] = None
+    totals: MediaBuyDeliveriesItemTotals
+    by_package: Annotated[list[MediaBuyDeliveriesItemByPackageItem], Field(description='Metrics broken down by package')]
+    windows: Annotated[list[WindowsItem] | None, Field(description="Per-window delivery slices over the reporting period at the requested time_granularity. Only present when the request set time_granularity and include_window_breakdown: true. Each slice mirrors what reporting_webhook would have delivered for the same window — buyers who missed webhook fires can reconstruct identical data by reading this array. Slice rows are ordered by window_start ascending; consecutive rows are contiguous (each row's window_end equals the next row's window_start) and partition the requested date range at the chosen granularity. For a legacy or external mixed-currency media buy, monetary and money-derived values MUST be omitted from each window totals object and reported only in currency-qualified windows[].by_package rows. Sellers MUST exclude this field when time_granularity is omitted; when set, sellers MUST honor pulls at any granularity in reporting_capabilities.windowed_pull_granularities (otherwise return UNSUPPORTED_GRANULARITY). See snapshot-and-log Rule 4 for the two-paths-parity contract this surface anchors.")] = None
+    daily_breakdown: Annotated[list[MediaBuyDeliveriesItemDailyBreakdownItem] | None, Field(description="Day-by-day delivery for a media-buy row with one currency. Sellers MUST omit this aggregate breakdown for a legacy or externally created mixed-currency buy because these rows have no package currency field. Sellers MUST also omit this aggregate breakdown when the media buy's packages span more than one reporting timezone; package-level daily_breakdown remains, each in its own product's reporting timezone.")] = None
 
 
 class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
@@ -392,20 +392,20 @@ class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('aggregated_totals', True, None),), require=('currency',), forbid=()),
     )
-    notification_type: Annotated[GetMediaBuyDeliveryResponseNotificationType | None, Field(description='Type of webhook notification (only present in webhook deliveries): scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = resending period with corrected data (same window), window_update = resending period with a wider measurement window (e.g., C3 superseding live, C7 superseding C3)')] = None
+    notification_type: Annotated[NotificationType | None, Field(description='Type of webhook notification (only present in webhook deliveries): scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = resending period with corrected data (same window), window_update = resending period with a wider measurement window (e.g., C3 superseding live, C7 superseding C3)')] = None
     partial_data: Annotated[bool | None, Field(description='Indicates if any media buys in this webhook have missing/delayed data (only present in webhook deliveries)')] = None
     unavailable_count: Annotated[NonNegativeInt | None, Field(description='Number of media buys with reporting_delayed or failed status (only present in webhook deliveries when partial_data is true)')] = None
     sequence_number: Annotated[IntMin1 | None, Field(description='Sequential notification number (only present in webhook deliveries, starts at 1)')] = None
     next_expected_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp for next expected notification (only present in webhook deliveries when notification_type is not 'final')")] = None
-    reporting_period: Annotated[GetMediaBuyDeliveryResponseReportingPeriod, Field(description="Half-open period for the report: start is inclusive and end is exclusive. Both are instants. For a date-bounded request they are the instants at which start_date and end_date begin in the reporting timezone (the in-scope products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC. An exact reporting_revision_id read returns the revision's period instead, whose source_timezone names its calendar.")]
-    reporting_revision_binding: Annotated[GetMediaBuyDeliveryResponseReportingRevisionBinding | None, Field(description='Present only for a reporting_revision_id selector. Binds the complete ordered reporting_rows sequence obtained by concatenating every cursor page to one immutable Reliable Reporting revision; consumers verify content_sha256 over RFC 8785 JCS of {reporting_revision_id,row_count,control_totals,reporting_rows} before using it as revision evidence.')] = None
+    reporting_period: Annotated[ReportingPeriod, Field(description="Half-open period for the report: start is inclusive and end is exclusive. Both are instants. For a date-bounded request they are the instants at which start_date and end_date begin in the reporting timezone (the in-scope products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC. An exact reporting_revision_id read returns the revision's period instead, whose source_timezone names its calendar.")]
+    reporting_revision_binding: Annotated[ReportingRevisionBinding | None, Field(description='Present only for a reporting_revision_id selector. Binds the complete ordered reporting_rows sequence obtained by concatenating every cursor page to one immutable Reliable Reporting revision; consumers verify content_sha256 over RFC 8785 JCS of {reporting_revision_id,row_count,control_totals,reporting_rows} before using it as revision evidence.')] = None
     reporting_revision: Annotated[ReportingRevision | None, Field(description='Full immutable revision metadata, identical to the get_reporting_status revision record.')] = None
     reporting_rows: Annotated[list[dict[str, Any]] | None, Field(description="One page of authoritative logical rows for an exact reporting_revision_id read. Validate every row against the revision's digest-pinned schema; concatenate pages in cursor order before verifying the binding digest.")] = None
     pagination: Annotated[PaginationResponse | None, Field(description='Exact revision pages are frozen for the cursor walk. total_count is mandatory for reporting_revision_id and equals reporting_revision.row_count and reporting_revision_binding.row_count; it counts the complete ordered row sequence, not this page.')] = None
     currency: Annotated[StrMatching43E30B32 | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. Optional legacy response-wide ISO 4217 currency code. It may be used only when every monetary value in the response has that denomination. A delivery response can contain media buys with different currencies, so buyers MUST NOT interpret this field as an aggregation currency or evidence of currency conversion. Prefer media_buy_deliveries[].currency when present and package-level currency otherwise.')] = None
     attribution_window: Annotated[AttributionWindow | None, Field(description='Attribution methodology and lookback windows used for conversion metrics in this response. All media buys from a single seller share the same attribution methodology. Enables cross-platform comparison (e.g., Amazon 14-day click vs. Criteo 30-day click).')] = None
-    aggregated_totals: Annotated[GetMediaBuyDeliveryResponseAggregatedTotals | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. Legacy combined metrics across all returned media buys. When this field is present, the deprecated response-wide currency is required and denominates its spend. Cross-buy totals are unsafe when currencies, metric qualifiers, measurement windows, finality, or deduplication semantics differ. Sellers SHOULD omit this field; buyers SHOULD aggregate media_buy_deliveries[] only when the relevant row semantics are compatible.')] = None
-    media_buy_deliveries: Annotated[list[GetMediaBuyDeliveryResponseMediaBuyDeliveriesItem], Field(description='Array of delivery data for media buys. When used in webhook notifications, may contain multiple media buys aggregated by publisher. When used in get_media_buy_delivery API responses, typically contains requested media buys.')]
+    aggregated_totals: Annotated[AggregatedTotals | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. Legacy combined metrics across all returned media buys. When this field is present, the deprecated response-wide currency is required and denominates its spend. Cross-buy totals are unsafe when currencies, metric qualifiers, measurement windows, finality, or deduplication semantics differ. Sellers SHOULD omit this field; buyers SHOULD aggregate media_buy_deliveries[] only when the relevant row semantics are compatible.')] = None
+    media_buy_deliveries: Annotated[list[MediaBuyDeliveriesItem], Field(description='Array of delivery data for media buys. When used in webhook notifications, may contain multiple media buys aggregated by publisher. When used in get_media_buy_delivery API responses, typically contains requested media buys.')]
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings (e.g., missing delivery data, reporting platform issues)')] = None
     sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
     context: ContextObject | None = None

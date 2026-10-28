@@ -13,7 +13,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class GetAdCPCapabilitiesRequestProtocolsItem(StrEnum):
+class ProtocolsItem(StrEnum):
     MEDIA_BUY = 'media_buy'
     SIGNALS = 'signals'
     GOVERNANCE = 'governance'
@@ -29,7 +29,7 @@ class GetAdCPCapabilitiesRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-request.json', pointer='#')
-    protocols: Annotated[list[GetAdCPCapabilitiesRequestProtocolsItem] | None, Field(description='Specific protocols to query capabilities for. If omitted, returns capabilities for all supported protocols.', min_length=1)] = None
+    protocols: Annotated[list[ProtocolsItem] | None, Field(description='Specific protocols to query capabilities for. If omitted, returns capabilities for all supported protocols.', min_length=1)] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

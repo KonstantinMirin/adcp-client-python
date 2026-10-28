@@ -17,7 +17,7 @@ from ..enums.canonical_media_buy_action_mode import CanonicalMediaBuyActionMode
 from .change_term_constraints import MediaBuyChangeTermConstraints
 
 
-class MediaBuyChangeTermAllowedStatusesItem(StrEnum):
+class AllowedStatusesItem(StrEnum):
     PENDING_CREATIVES = 'pending_creatives'
     PENDING_START = 'pending_start'
     ACTIVE = 'active'
@@ -39,7 +39,7 @@ class MediaBuyChangeTerm(AdCPBaseModel):
     term_id: StrMatching71E52EB8
     action: CanonicalMediaBuyActionName
     service_mode: CanonicalMediaBuyActionMode
-    allowed_statuses: Annotated[list[MediaBuyChangeTermAllowedStatusesItem] | None, Field(description='Non-terminal MediaBuy statuses in which this negotiated right may be exercised. When absent, the right applies in every non-terminal status where the canonical action itself is meaningful. This field describes contractual lifecycle scope; available_actions[] remains authoritative for the current instant.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    allowed_statuses: Annotated[list[AllowedStatusesItem] | None, Field(description='Non-terminal MediaBuy statuses in which this negotiated right may be exercised. When absent, the right applies in every non-terminal status where the canonical action itself is meaningful. This field describes contractual lifecycle scope; available_actions[] remains authoritative for the current instant.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     processing_sla: Annotated[SLAWindow | None, Field(description='Binding elapsed-time acknowledgement and completion commitment. Sellers account for weekends and non-working periods when declaring the maximum.')] = None
     conditions: Annotated[list[StrMatchingB74DBD1C] | None, Field(description='Opaque stable condition identifiers defined by terms_ref or bilateral commercial documentation. Implementations compare identifiers; they MUST NOT execute or interpret them as instructions.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     constraints: Annotated[MediaBuyChangeTermConstraints | None, Field(description='Portable bounds that buyer and seller SDKs can preflight. Omission means no machine-readable bound was promised; opaque conditions remain unevaluated.')] = None

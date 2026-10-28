@@ -9,7 +9,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import AdCPUrl, StrMatchingA828669D, StrMinLen1
 
 
-class PublisherDesignatedPreviewProviderRoutesItem(AdCPBaseModel):
+class RoutesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -29,7 +29,7 @@ class PublisherDesignatedPreviewProvider(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/preview-provider.json', pointer='#')
     agent_url: Annotated[AdCPUrl, Field(description='HTTPS URL of the delegated creative-agent endpoint. Buyers call get_adcp_capabilities and preview_creative on this endpoint. They MUST allow only public IPs, pin DNS resolution through connection, refuse redirects, cap time and response size, and attach provider credentials only after exact normalized-origin binding.')]
     authority: Annotated[Literal['publisher_designated'], Field(description="Explicitly states that authority comes from the publisher-hosted placement declaration. The provider's rendering_origin metadata is informational and remains non-authoritative elsewhere.")]
-    routes: Annotated[list[PublisherDesignatedPreviewProviderRoutesItem], Field(min_length=1)]
+    routes: Annotated[list[RoutesItem], Field(min_length=1)]
 
 
 __all__ = ["PublisherDesignatedPreviewProvider"]

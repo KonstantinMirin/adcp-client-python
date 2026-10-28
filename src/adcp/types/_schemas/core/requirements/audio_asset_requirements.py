@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1
 
 
-class AudioAssetRequirementsFormatsItem(StrEnum):
+class FormatsItem(StrEnum):
     MP3 = 'mp3'
     AAC = 'aac'
     WAV = 'wav'
@@ -18,7 +18,7 @@ class AudioAssetRequirementsFormatsItem(StrEnum):
     FLAC = 'flac'
 
 
-class AudioAssetRequirementsChannelsItem(StrEnum):
+class ChannelsItem(StrEnum):
     MONO = 'mono'
     STEREO = 'stereo'
 
@@ -33,10 +33,10 @@ class AudioAssetRequirements(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/audio-asset-requirements.json', pointer='#')
     min_duration_ms: Annotated[IntMin1 | None, Field(description='Minimum duration in milliseconds')] = None
     max_duration_ms: Annotated[IntMin1 | None, Field(description='Maximum duration in milliseconds')] = None
-    formats: Annotated[list[AudioAssetRequirementsFormatsItem] | None, Field(description='Accepted audio file formats')] = None
+    formats: Annotated[list[FormatsItem] | None, Field(description='Accepted audio file formats')] = None
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes')] = None
     sample_rates: Annotated[list[IntMin1] | None, Field(description='Accepted sample rates in Hz (e.g., [44100, 48000])')] = None
-    channels: Annotated[list[AudioAssetRequirementsChannelsItem] | None, Field(description='Accepted audio channel configurations')] = None
+    channels: Annotated[list[ChannelsItem] | None, Field(description='Accepted audio channel configurations')] = None
     min_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Minimum audio bitrate in kilobits per second')] = None
     max_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Maximum audio bitrate in kilobits per second')] = None
     loudness_lufs: Annotated[float | None, Field(description='Target integrated loudness in LUFS. LKFS is the equivalent unit name under ITU-R BS.1770; values expressed in LUFS and LKFS are directly comparable without conversion.')] = None

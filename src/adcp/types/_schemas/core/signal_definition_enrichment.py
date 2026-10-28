@@ -16,7 +16,7 @@ from .demographic_predicate import DemographicPredicate
 from .signal_modeling_disclosure import SignalModelingDisclosure
 
 
-class SignalDefinitionEnrichmentTaxonomyValuesItem(AdCPBaseModel):
+class ValuesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -26,7 +26,7 @@ class SignalDefinitionEnrichmentTaxonomyValuesItem(AdCPBaseModel):
     modifiers: list[str] | None = None
 
 
-class SignalDefinitionEnrichmentTaxonomyValueMappingsItem(AdCPBaseModel):
+class ValueMappingsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -37,13 +37,13 @@ class SignalDefinitionEnrichmentTaxonomyValueMappingsItem(AdCPBaseModel):
     modifiers: list[str] | None = None
 
 
-class SignalDefinitionEnrichmentTaxonomyParentMatchBehavior(StrEnum):
+class ParentMatchBehavior(StrEnum):
     EXACT_ONLY = 'exact_only'
     DESCENDANTS_SUPPORTED = 'descendants_supported'
     UNKNOWN = 'unknown'
 
 
-class SignalDefinitionEnrichmentTaxonomy(AdCPBaseModel):
+class Taxonomy(AdCPBaseModel):
     """
     Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.
     """
@@ -55,12 +55,12 @@ class SignalDefinitionEnrichmentTaxonomy(AdCPBaseModel):
     version: str | None = None
     segtax: IntMin1 | None = None
     etag: str | None = None
-    values: Annotated[list[SignalDefinitionEnrichmentTaxonomyValuesItem], Field(min_length=1)]
-    value_mappings: Annotated[list[SignalDefinitionEnrichmentTaxonomyValueMappingsItem] | None, Field(min_length=1)] = None
-    parent_match_behavior: SignalDefinitionEnrichmentTaxonomyParentMatchBehavior | None = None
+    values: Annotated[list[ValuesItem], Field(min_length=1)]
+    value_mappings: Annotated[list[ValueMappingsItem] | None, Field(min_length=1)] = None
+    parent_match_behavior: ParentMatchBehavior | None = None
 
 
-class SignalDefinitionEnrichmentDataSourcesItem(StrEnum):
+class DataSourcesItem(StrEnum):
     APP_BEHAVIOR = 'app_behavior'
     APP_USAGE = 'app_usage'
     WEB_USAGE = 'web_usage'
@@ -80,7 +80,7 @@ class SignalDefinitionEnrichmentDataSourcesItem(StrEnum):
     OFFLINE_TRANSACTION = 'offline_transaction'
 
 
-class SignalDefinitionEnrichmentMethodology(StrEnum):
+class Methodology(StrEnum):
     OBSERVED = 'observed'
     DECLARED = 'declared'
     DERIVED = 'derived'
@@ -88,7 +88,7 @@ class SignalDefinitionEnrichmentMethodology(StrEnum):
     MODELED = 'modeled'
 
 
-class SignalDefinitionEnrichmentRefreshCadence(StrEnum):
+class RefreshCadence(StrEnum):
     INTRA_DAY = 'intra_day'
     DAILY = 'daily'
     WEEKLY = 'weekly'
@@ -99,10 +99,10 @@ class SignalDefinitionEnrichmentRefreshCadence(StrEnum):
     ANNUALLY = 'annually'
 
 
-SignalDefinitionEnrichmentLookbackWindow = SignalDefinitionEnrichmentRefreshCadence
+LookbackWindow = RefreshCadence
 
 
-class SignalDefinitionEnrichmentOnboarderMatchKeysItem(StrEnum):
+class MatchKeysItem(StrEnum):
     NAME = 'name'
     ADDRESS = 'address'
     EMAIL = 'email'
@@ -115,25 +115,25 @@ class SignalDefinitionEnrichmentOnboarderMatchKeysItem(StrEnum):
     PHONE = 'phone'
 
 
-class SignalDefinitionEnrichmentOnboarderPreOnboardingPrecisionLevel(StrEnum):
+class PreOnboardingPrecisionLevel(StrEnum):
     INDIVIDUAL = 'individual'
     HOUSEHOLD = 'household'
     BUSINESS = 'business'
     GEOGRAPHY = 'geography'
 
 
-class SignalDefinitionEnrichmentOnboarder(AdCPBaseModel):
+class Onboarder(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/onboarder')
-    match_keys: Annotated[list[SignalDefinitionEnrichmentOnboarderMatchKeysItem], Field(min_length=1)]
+    match_keys: Annotated[list[MatchKeysItem], Field(min_length=1)]
     pre_onboarding_audience_expansion: bool | None = None
     pre_onboarding_device_expansion: bool | None = None
-    pre_onboarding_precision_level: SignalDefinitionEnrichmentOnboarderPreOnboardingPrecisionLevel | None = None
+    pre_onboarding_precision_level: PreOnboardingPrecisionLevel | None = None
 
 
-class SignalDefinitionEnrichmentArt9Basis(StrEnum):
+class Art9Basis(StrEnum):
     """
     Data provider's declared GDPR Article 9 basis for the underlying signal definition when special-category data is involved and Article 9 applies, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own Article 9 basis for the provider-declared basis.
     """
@@ -143,14 +143,14 @@ class SignalDefinitionEnrichmentArt9Basis(StrEnum):
     VITAL_INTERESTS = 'vital_interests'
 
 
-class SignalDefinitionEnrichmentModelingMethod(StrEnum):
+class Method(StrEnum):
     LOOKALIKE = 'lookalike'
     SUPERVISED = 'supervised'
     EMBEDDING = 'embedding'
     RULES = 'rules'
 
 
-class SignalDefinitionEnrichmentModelingSeedSourceType(StrEnum):
+class SeedSourceType(StrEnum):
     FIRST_PARTY_CRM = 'first_party_crm'
     PANEL = 'panel'
     DECLARED_SURVEY = 'declared_survey'
@@ -158,34 +158,34 @@ class SignalDefinitionEnrichmentModelingSeedSourceType(StrEnum):
     BEHAVIORAL = 'behavioral'
 
 
-class SignalDefinitionEnrichmentModelingSeedSource(AdCPBaseModel):
+class SeedSource(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/modeling/properties/seed_source')
-    type: SignalDefinitionEnrichmentModelingSeedSourceType
+    type: SeedSourceType
     provider_signed: Annotated[bool, Field(description='Provider assertion that the seed source carries a signed attestation. Consumers MUST NOT treat this boolean alone as cryptographic proof.')]
 
 
-class SignalDefinitionEnrichmentModelingAiActRiskClass(StrEnum):
+class AiActRiskClass(StrEnum):
     MINIMAL = 'minimal'
     LIMITED = 'limited'
     HIGH_RISK = 'high_risk'
 
 
-class SignalDefinitionEnrichmentModeling(AdCPBaseModel):
+class Modeling(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/modeling')
-    method: SignalDefinitionEnrichmentModelingMethod
-    seed_source: SignalDefinitionEnrichmentModelingSeedSource
+    method: Method
+    seed_source: SeedSource
     training_data_jurisdictions: Annotated[list[StrMatchingEFC12812], Field(min_length=1)]
-    ai_act_risk_class: SignalDefinitionEnrichmentModelingAiActRiskClass
+    ai_act_risk_class: AiActRiskClass
     disclosure: SignalModelingDisclosure | None = None
 
 
-class SignalDefinitionEnrichmentDataSubjectRightsChannelsItemRightsItem(StrEnum):
+class RightsItem(StrEnum):
     ACCESS = 'access'
     RECTIFICATION = 'rectification'
     ERASURE = 'erasure'
@@ -193,7 +193,7 @@ class SignalDefinitionEnrichmentDataSubjectRightsChannelsItemRightsItem(StrEnum)
     OBJECTION = 'objection'
 
 
-class SignalDefinitionEnrichmentDataSubjectRightsChannelsItem(AdCPBaseModel):
+class ChannelsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -202,14 +202,14 @@ class SignalDefinitionEnrichmentDataSubjectRightsChannelsItem(AdCPBaseModel):
         RequiredGroups((('url',), ('email',)), 'anyOf'),
         UniqueItems('rights'),
     )
-    rights: Annotated[list[SignalDefinitionEnrichmentDataSubjectRightsChannelsItemRightsItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
+    rights: Annotated[list[RightsItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     url: AdCPUrl | None = None
     email: Annotated[str | None, Field(json_schema_extra={'format': 'email'})] = None
     languages: list[str] | None = None
     countries: list[StrMatchingEFC12812] | None = None
 
 
-class SignalDefinitionEnrichmentDataSubjectRights(AdCPBaseModel):
+class DataSubjectRights(AdCPBaseModel):
     """
     Per-signal data-subject-rights routing. This is a contact/routing reference, not a machine-callable AdCP API.
     """
@@ -218,7 +218,7 @@ class SignalDefinitionEnrichmentDataSubjectRights(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition-enrichment.json', pointer='#/properties/data_subject_rights')
     upstream_source_domain: Annotated[StrMaxLen253 | None, Field(json_schema_extra={'format': 'hostname'})] = None
-    channels: Annotated[list[SignalDefinitionEnrichmentDataSubjectRightsChannelsItem], Field(min_length=1)]
+    channels: Annotated[list[ChannelsItem], Field(min_length=1)]
     response_sla_days: IntMin1Max90 | None = None
     ccpa_opt_out_url: AdCPUrl | None = None
 
@@ -237,21 +237,21 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
     restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description='Restricted attribute categories this signal touches.', min_length=1)] = None
     demographic_predicate: Annotated[DemographicPredicate | None, Field(description="Projected authoritative demographic meaning for the signal. When projected from another provider, this MUST match the provider's definition exactly. Signal names alone never establish demographic semantics.")] = None
     policy_categories: Annotated[list[str] | None, Field(description='Policy categories this signal is sensitive for.', min_length=1)] = None
-    taxonomy: Annotated[SignalDefinitionEnrichmentTaxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.')] = None
+    taxonomy: Annotated[Taxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy.')] = None
     segmentation_criteria: StrMaxLen500 | None = None
     criteria_url: HttpUrl | None = None
-    data_sources: Annotated[list[SignalDefinitionEnrichmentDataSourcesItem] | None, Field(min_length=1)] = None
-    methodology: SignalDefinitionEnrichmentMethodology | None = None
+    data_sources: Annotated[list[DataSourcesItem] | None, Field(min_length=1)] = None
+    methodology: Methodology | None = None
     audience_expansion: bool | None = None
     device_expansion: bool | None = None
-    refresh_cadence: SignalDefinitionEnrichmentRefreshCadence | None = None
-    lookback_window: SignalDefinitionEnrichmentLookbackWindow | None = None
-    onboarder: SignalDefinitionEnrichmentOnboarder | None = None
+    refresh_cadence: RefreshCadence | None = None
+    lookback_window: LookbackWindow | None = None
+    onboarder: Onboarder | None = None
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(min_length=1)] = None
     consent_basis: Annotated[list[ConsentBasis] | None, Field(description="Data provider's declared GDPR Article 6 lawful basis or consent basis for the underlying signal definition, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own processing basis for the provider-declared basis.", min_length=1)] = None
-    art9_basis: Annotated[SignalDefinitionEnrichmentArt9Basis | None, Field(description="Data provider's declared GDPR Article 9 basis for the underlying signal definition when special-category data is involved and Article 9 applies, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own Article 9 basis for the provider-declared basis.")] = None
-    modeling: SignalDefinitionEnrichmentModeling | None = None
-    data_subject_rights: Annotated[SignalDefinitionEnrichmentDataSubjectRights | None, Field(description='Per-signal data-subject-rights routing. This is a contact/routing reference, not a machine-callable AdCP API.')] = None
+    art9_basis: Annotated[Art9Basis | None, Field(description="Data provider's declared GDPR Article 9 basis for the underlying signal definition when special-category data is involved and Article 9 applies, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own Article 9 basis for the provider-declared basis.")] = None
+    modeling: Modeling | None = None
+    data_subject_rights: Annotated[DataSubjectRights | None, Field(description='Per-signal data-subject-rights routing. This is a contact/routing reference, not a machine-callable AdCP API.')] = None
     last_updated: Annotated[AwareDatetime | None, Field(description='When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.')] = None
     dts_compliant_version: str | None = None
 

@@ -38,7 +38,7 @@ class AdCPAudienceSync(AudienceActivationMethod):
     pattern: Literal['sync_audiences']
 
 
-class TMPIdentityMatchBuyerAgent(AdCPBaseModel):
+class BuyerAgent(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -55,10 +55,10 @@ class TMPIdentityMatch(AudienceActivationMethod):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/1')
     pattern: Literal['tmp_identity_match']
-    buyer_agent: TMPIdentityMatchBuyerAgent
+    buyer_agent: BuyerAgent
 
 
-class FileTransferDirectionsItem(StrEnum):
+class DirectionsItem(StrEnum):
     BUYER_TO_SELLER = 'buyer_to_seller'
     SELLER_TO_BUYER = 'seller_to_buyer'
 
@@ -76,11 +76,11 @@ class FileTransfer(AudienceActivationMethod):
     )
     pattern: Literal['file_transfer']
     transport: Annotated[CloudStorageProtocol, Field(description='Storage protocol for the exchange.')]
-    directions: Annotated[list[FileTransferDirectionsItem] | None, Field(description='Supported transfer directions. buyer_to_seller: buyer writes to a seller-hosted bucket. seller_to_buyer: seller reads from a buyer-hosted bucket. Absent means unspecified (resolve during account setup), not neither.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    directions: Annotated[list[DirectionsItem] | None, Field(description='Supported transfer directions. buyer_to_seller: buyer writes to a seller-hosted bucket. seller_to_buyer: seller reads from a buyer-hosted bucket. Absent means unspecified (resolve during account setup), not neither.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     vendor: Annotated[BrandReference, Field(description="Platform providing the storage primitive (e.g., the cloud provider's domain).")]
 
 
-class DatasetQueryConsumerIdentitiesItemCloud(StrEnum):
+class Cloud(StrEnum):
     """
     Cloud family hosting this identity's account.
     """
@@ -89,7 +89,7 @@ class DatasetQueryConsumerIdentitiesItemCloud(StrEnum):
     GCP = 'gcp'
 
 
-class DatasetQueryConsumerIdentitiesItem(AdCPBaseModel):
+class ConsumerIdentitiesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -98,7 +98,7 @@ class DatasetQueryConsumerIdentitiesItem(AdCPBaseModel):
         Dependencies('cloud', ('region',)),
         Dependencies('region', ('cloud',)),
     )
-    cloud: Annotated[DatasetQueryConsumerIdentitiesItemCloud | None, Field(description="Cloud family hosting this identity's account.")] = None
+    cloud: Annotated[Cloud | None, Field(description="Cloud family hosting this identity's account.")] = None
     region: Annotated[str | None, Field(description="Vendor/cloud region identifier. Format follows the cloud family's region naming; not constrained by this schema.")] = None
     identity: Annotated[StrMinLen1, Field(description="Principal to grant, interpreted relative to the enclosing entry's vendor.domain. Format is vendor-specific and opaque — Snowflake: orgname.accountname; Databricks: sharing recipient identifier; BigQuery: IAM principal.")]
 
@@ -113,7 +113,7 @@ class DatasetQuery(AudienceActivationMethod):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/3')
     pattern: Literal['dataset_query']
     vendor: Annotated[BrandReference, Field(description='Data-sharing platform the seller can consume from.')]
-    consumer_identities: Annotated[list[DatasetQueryConsumerIdentitiesItem] | None, Field(description="Principals the buyer grants access to in the vendor's system. identity is always required. cloud and region are optional, paired deployment metadata: omit both for global principals (for example, an IAM principal or federated identity). Their operational meaning is vendor-specific — they may constrain direct-share reachability or select a fulfillment route, or may be routing and cost hints only. They are not compliance boundaries; data-transfer assessments key on the recipient entity's jurisdiction, not the grantee account's region. Optional: sellers MAY instead communicate identities during account setup.", min_length=1)] = None
+    consumer_identities: Annotated[list[ConsumerIdentitiesItem] | None, Field(description="Principals the buyer grants access to in the vendor's system. identity is always required. cloud and region are optional, paired deployment metadata: omit both for global principals (for example, an IAM principal or federated identity). Their operational meaning is vendor-specific — they may constrain direct-share reachability or select a fulfillment route, or may be routing and cost hints only. They are not compliance boundaries; data-transfer assessments key on the recipient entity's jurisdiction, not the grantee account's region. Optional: sellers MAY instead communicate identities during account setup.", min_length=1)] = None
 
 
 class CleanRoom(AudienceActivationMethod):

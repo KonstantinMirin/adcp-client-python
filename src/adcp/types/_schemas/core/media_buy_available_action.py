@@ -17,7 +17,7 @@ from .media_buy_legacy_terms_ref import MediaBuyTermsReference
 from .sla_window import SLAWindow
 
 
-class MediaBuyAvailableActionTask(StrEnum):
+class Task(StrEnum):
     """
     Compact-lifecycle task for this resolved action: operational control, commercial refinement, or creative lifecycle mutation.
     """
@@ -39,7 +39,7 @@ class MediaBuyAvailableAction(AdCPBaseModel):
     )
     action: Annotated[MediaBuyAvailableActionID, Field(description='The action identifier.')]
     mode: Annotated[MediaBuyActionMode, Field(description='The single mode that applies right now on this buy for this action. Singular because the buy has a concrete state, exactly one mode applies. Buyer SDKs branch on this to decide whether to expect a synchronous response, conditional handling, or an asynchronous approval callback.')]
-    task: Annotated[MediaBuyAvailableActionTask | None, Field(description='Compact-lifecycle task for this resolved action: operational control, commercial refinement, or creative lifecycle mutation.')] = None
+    task: Annotated[Task | None, Field(description='Compact-lifecycle task for this resolved action: operational control, commercial refinement, or creative lifecycle mutation.')] = None
     sla: Annotated[SLAWindow | None, Field(description='Optional SLA commitment for this action on this buy. Absence means no commitment, not zero commitment.')] = None
     change_term_id: MediaBuyChangeTermID | None = None
     terms_ref: MediaBuyTermsReference | None = None

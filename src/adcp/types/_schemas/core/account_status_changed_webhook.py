@@ -13,7 +13,7 @@ from ..enums.account_status import AccountStatus
 from .ext import ExtensionObject
 
 
-class AccountStatusChangedWebhookReasonCode(StrEnum):
+class ReasonCode(StrEnum):
     """
     Machine-readable reason for the transition. This is advisory routing/debug metadata; receivers MUST re-read list_accounts rather than relying on the reason code as the source of truth.
     """
@@ -32,7 +32,7 @@ class AccountStatusChangedWebhookReasonCode(StrEnum):
     OTHER = 'other'
 
 
-class AccountStatusChangedWebhookSetup(AdCPBaseModel):
+class Setup(AdCPBaseModel):
     """
     Reduced setup hint when the new status requires human action. This block intentionally omits setup.url; receivers fetch the current setup URL from list_accounts if the caller is authorized to see it.
     """
@@ -61,9 +61,9 @@ class AccountStatusChangedWebhook(AdCPBaseModel):
     previous_status: Annotated[AccountStatus, Field(description='Account status immediately before this transition.')]
     status: Annotated[AccountStatus, Field(description='Account status after this transition. Receivers SHOULD treat this as advisory and re-read list_accounts for the authoritative account snapshot.')]
     observed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller recorded the account status transition. Used in the notification_id stability key; this is seller wall time for the transition, not webhook fire time.')]
-    reason_code: Annotated[AccountStatusChangedWebhookReasonCode, Field(description='Machine-readable reason for the transition. This is advisory routing/debug metadata; receivers MUST re-read list_accounts rather than relying on the reason code as the source of truth.')]
+    reason_code: Annotated[ReasonCode, Field(description='Machine-readable reason for the transition. This is advisory routing/debug metadata; receivers MUST re-read list_accounts rather than relying on the reason code as the source of truth.')]
     reason_detail: Annotated[StrMaxLen500 | None, Field(description='Optional short human-readable detail. Treat as untrusted text. Sellers MUST NOT include secrets, setup tokens, internal stack traces, or regulated financial details.')] = None
-    setup: Annotated[AccountStatusChangedWebhookSetup | None, Field(description='Reduced setup hint when the new status requires human action. This block intentionally omits setup.url; receivers fetch the current setup URL from list_accounts if the caller is authorized to see it.')] = None
+    setup: Annotated[Setup | None, Field(description='Reduced setup hint when the new status requires human action. This block intentionally omits setup.url; receivers fetch the current setup URL from list_accounts if the caller is authorized to see it.')] = None
     ext: ExtensionObject | None = None
 
 

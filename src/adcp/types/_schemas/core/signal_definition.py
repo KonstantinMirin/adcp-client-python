@@ -19,7 +19,7 @@ from .demographic_predicate import DemographicPredicate
 from .signal_modeling_disclosure import SignalModelingDisclosure
 
 
-class SignalDefinitionRange(AdCPBaseModel):
+class Range(AdCPBaseModel):
     """
     For numeric signals, the valid value range
     """
@@ -32,7 +32,7 @@ class SignalDefinitionRange(AdCPBaseModel):
     unit: Annotated[str | None, Field(description="Unit of measurement (e.g., 'score', 'dollars', 'years')")] = None
 
 
-class SignalDefinitionTaxonomyValuesItem(AdCPBaseModel):
+class ValuesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -42,7 +42,7 @@ class SignalDefinitionTaxonomyValuesItem(AdCPBaseModel):
     modifiers: Annotated[list[str] | None, Field(description='Optional taxonomy-specific modifiers that qualify the node.')] = None
 
 
-class SignalDefinitionTaxonomyValueMappingsItem(AdCPBaseModel):
+class ValueMappingsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -53,7 +53,7 @@ class SignalDefinitionTaxonomyValueMappingsItem(AdCPBaseModel):
     modifiers: Annotated[list[str] | None, Field(description='Optional taxonomy-specific modifiers that qualify the mapped value.')] = None
 
 
-class SignalDefinitionTaxonomyParentMatchBehavior(StrEnum):
+class ParentMatchBehavior(StrEnum):
     """
     Whether this signal definition supports treating a parent taxonomy node as matching descendant nodes for discovery/filtering or seller-side expansion. 'exact_only' means only explicitly listed node ids match. 'descendants_supported' means the seller can expand known, version-pinned parent nodes to descendants internally, typically by ORing the children in its execution system. 'unknown' means the provider has not declared parent-node behavior. This field is metadata about discovery/translation behavior, not a package targeting operator.
     """
@@ -62,7 +62,7 @@ class SignalDefinitionTaxonomyParentMatchBehavior(StrEnum):
     UNKNOWN = 'unknown'
 
 
-class SignalDefinitionTaxonomy(AdCPBaseModel):
+class Taxonomy(AdCPBaseModel):
     """
     Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy. Taxonomy metadata does not create a new value_type and does not change package targeting grammar: buyers still target the named signal according to value_type. When a taxonomy value is a parent node, parent/descendant expansion is seller behavior and must be declared through parent_match_behavior rather than assumed.
     """
@@ -74,12 +74,12 @@ class SignalDefinitionTaxonomy(AdCPBaseModel):
     version: Annotated[str | None, Field(description='Version identifier for the taxonomy when the taxonomy has versioned definitions.')] = None
     segtax: Annotated[IntMin1 | None, Field(description='OpenRTB segtax code when the taxonomy maps to an OpenRTB segment taxonomy.')] = None
     etag: Annotated[str | None, Field(description='Optional validator for custom taxonomy definitions so consumers can detect drift between signal publication and taxonomy resolution.')] = None
-    values: Annotated[list[SignalDefinitionTaxonomyValuesItem], Field(description='Taxonomy node values that describe this signal. These are meaning/discovery metadata for the signal definition, not the values a buyer submits in package targeting expressions.', min_length=1)]
-    value_mappings: Annotated[list[SignalDefinitionTaxonomyValueMappingsItem] | None, Field(description="For categorical signals, maps package-targeting allowed_values[] strings to stable taxonomy node identifiers. The allowed_values[] strings remain the wire values buyers submit; this mapping explains how those strings resolve into the published taxonomy. Each value_mappings[].value SHOULD match one of the signal's allowed_values[] entries; JSON Schema draft-07 cannot enforce this cross-array constraint.", min_length=1)] = None
-    parent_match_behavior: Annotated[SignalDefinitionTaxonomyParentMatchBehavior | None, Field(description="Whether this signal definition supports treating a parent taxonomy node as matching descendant nodes for discovery/filtering or seller-side expansion. 'exact_only' means only explicitly listed node ids match. 'descendants_supported' means the seller can expand known, version-pinned parent nodes to descendants internally, typically by ORing the children in its execution system. 'unknown' means the provider has not declared parent-node behavior. This field is metadata about discovery/translation behavior, not a package targeting operator.")] = None
+    values: Annotated[list[ValuesItem], Field(description='Taxonomy node values that describe this signal. These are meaning/discovery metadata for the signal definition, not the values a buyer submits in package targeting expressions.', min_length=1)]
+    value_mappings: Annotated[list[ValueMappingsItem] | None, Field(description="For categorical signals, maps package-targeting allowed_values[] strings to stable taxonomy node identifiers. The allowed_values[] strings remain the wire values buyers submit; this mapping explains how those strings resolve into the published taxonomy. Each value_mappings[].value SHOULD match one of the signal's allowed_values[] entries; JSON Schema draft-07 cannot enforce this cross-array constraint.", min_length=1)] = None
+    parent_match_behavior: Annotated[ParentMatchBehavior | None, Field(description="Whether this signal definition supports treating a parent taxonomy node as matching descendant nodes for discovery/filtering or seller-side expansion. 'exact_only' means only explicitly listed node ids match. 'descendants_supported' means the seller can expand known, version-pinned parent nodes to descendants internally, typically by ORing the children in its execution system. 'unknown' means the provider has not declared parent-node behavior. This field is metadata about discovery/translation behavior, not a package targeting operator.")] = None
 
 
-class SignalDefinitionDataSourcesItem(StrEnum):
+class DataSourcesItem(StrEnum):
     APP_BEHAVIOR = 'app_behavior'
     APP_USAGE = 'app_usage'
     WEB_USAGE = 'web_usage'
@@ -99,7 +99,7 @@ class SignalDefinitionDataSourcesItem(StrEnum):
     OFFLINE_TRANSACTION = 'offline_transaction'
 
 
-class SignalDefinitionMethodology(StrEnum):
+class Methodology(StrEnum):
     """
     How the signal's audience membership or attribute was determined. 'modeled' requires the modeling block.
     """
@@ -110,7 +110,7 @@ class SignalDefinitionMethodology(StrEnum):
     MODELED = 'modeled'
 
 
-class SignalDefinitionRefreshCadence(StrEnum):
+class RefreshCadence(StrEnum):
     """
     Cadence at which the signal definition's underlying segment membership is refreshed.
     """
@@ -124,7 +124,7 @@ class SignalDefinitionRefreshCadence(StrEnum):
     ANNUALLY = 'annually'
 
 
-class SignalDefinitionLookbackWindow(StrEnum):
+class LookbackWindow(StrEnum):
     """
     Time window in which a qualifying event can occur for inclusion.
     """
@@ -138,7 +138,7 @@ class SignalDefinitionLookbackWindow(StrEnum):
     ANNUALLY = 'annually'
 
 
-class SignalDefinitionOnboarderMatchKeysItem(StrEnum):
+class MatchKeysItem(StrEnum):
     NAME = 'name'
     ADDRESS = 'address'
     EMAIL = 'email'
@@ -151,14 +151,14 @@ class SignalDefinitionOnboarderMatchKeysItem(StrEnum):
     PHONE = 'phone'
 
 
-class SignalDefinitionOnboarderPreOnboardingPrecisionLevel(StrEnum):
+class PreOnboardingPrecisionLevel(StrEnum):
     INDIVIDUAL = 'individual'
     HOUSEHOLD = 'household'
     BUSINESS = 'business'
     GEOGRAPHY = 'geography'
 
 
-class SignalDefinitionOnboarder(AdCPBaseModel):
+class Onboarder(AdCPBaseModel):
     """
     Onboarder disclosure. Required when data_sources includes an offline_* or public_record_* source.
     """
@@ -166,20 +166,20 @@ class SignalDefinitionOnboarder(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/onboarder')
-    match_keys: Annotated[list[SignalDefinitionOnboarderMatchKeysItem], Field(min_length=1)]
+    match_keys: Annotated[list[MatchKeysItem], Field(min_length=1)]
     pre_onboarding_audience_expansion: bool | None = None
     pre_onboarding_device_expansion: bool | None = None
-    pre_onboarding_precision_level: SignalDefinitionOnboarderPreOnboardingPrecisionLevel | None = None
+    pre_onboarding_precision_level: PreOnboardingPrecisionLevel | None = None
 
 
-class SignalDefinitionIdTypesItem(StrEnum):
+class IdTypesItem(StrEnum):
     COOKIE = 'cookie'
     MOBILE_ID = 'mobile_id'
     PLATFORM_ID = 'platform_id'
     USER_ENABLED_ID = 'user_enabled_id'
 
 
-class SignalDefinitionAudienceScope(StrEnum):
+class AudienceScope(StrEnum):
     """
     Context within which the audience attribute was determined. 'single_domain' requires originating_domain.
     """
@@ -189,7 +189,7 @@ class SignalDefinitionAudienceScope(StrEnum):
     OFFLINE = 'offline'
 
 
-class SignalDefinitionArt9Basis(StrEnum):
+class Art9Basis(StrEnum):
     """
     GDPR Article 9 basis when restricted_attributes is non-empty and the signal is used in jurisdictions where Article 9 applies. Required by policy for applicable use cases rather than universally required at schema level because sensitivity and lawful basis are jurisdiction-relative.
     """
@@ -199,14 +199,14 @@ class SignalDefinitionArt9Basis(StrEnum):
     VITAL_INTERESTS = 'vital_interests'
 
 
-class SignalDefinitionModelingMethod(StrEnum):
+class Method(StrEnum):
     LOOKALIKE = 'lookalike'
     SUPERVISED = 'supervised'
     EMBEDDING = 'embedding'
     RULES = 'rules'
 
 
-class SignalDefinitionModelingSeedSourceType(StrEnum):
+class SeedSourceType(StrEnum):
     FIRST_PARTY_CRM = 'first_party_crm'
     PANEL = 'panel'
     DECLARED_SURVEY = 'declared_survey'
@@ -214,16 +214,16 @@ class SignalDefinitionModelingSeedSourceType(StrEnum):
     BEHAVIORAL = 'behavioral'
 
 
-class SignalDefinitionModelingSeedSource(AdCPBaseModel):
+class SeedSource(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/modeling/properties/seed_source')
-    type: SignalDefinitionModelingSeedSourceType
+    type: SeedSourceType
     provider_signed: Annotated[bool, Field(description="Whether the seed source carries a signed attestation under one of the provider's published signing keys. This is a forward-looking claim until the consumer can resolve and verify the provider's applicable signing keys through the AdCP signing profile; consumers MUST NOT treat this boolean alone as cryptographic proof.")]
 
 
-class SignalDefinitionModelingAiActRiskClass(StrEnum):
+class AiActRiskClass(StrEnum):
     """
     EU AI Act risk classification self-declared by the provider. Prohibited-risk modeled signals must not be published as AdCP signal definitions.
     """
@@ -232,7 +232,7 @@ class SignalDefinitionModelingAiActRiskClass(StrEnum):
     HIGH_RISK = 'high_risk'
 
 
-class SignalDefinitionModeling(AdCPBaseModel):
+class Modeling(AdCPBaseModel):
     """
     Modeling disclosure for modeled data signals. Required when methodology is 'modeled' or audience_expansion is true. This describes data modeling and intentionally does not reuse creative provenance, which is content/render oriented.
     """
@@ -240,14 +240,14 @@ class SignalDefinitionModeling(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/modeling')
-    method: SignalDefinitionModelingMethod
-    seed_source: SignalDefinitionModelingSeedSource
+    method: Method
+    seed_source: SeedSource
     training_data_jurisdictions: Annotated[list[StrMatchingEFC12812], Field(description="ISO 3166-1 alpha-2 country codes where the model's training data was collected.", min_length=1)]
-    ai_act_risk_class: Annotated[SignalDefinitionModelingAiActRiskClass, Field(description='EU AI Act risk classification self-declared by the provider. Prohibited-risk modeled signals must not be published as AdCP signal definitions.')]
+    ai_act_risk_class: Annotated[AiActRiskClass, Field(description='EU AI Act risk classification self-declared by the provider. Prohibited-risk modeled signals must not be published as AdCP signal definitions.')]
     disclosure: Annotated[SignalModelingDisclosure | None, Field(description='Signal/modeling-specific disclosure requirements and jurisdictional notes. This is not creative provenance render guidance.')] = None
 
 
-class SignalDefinitionDataSubjectRightsChannelsItemRightsItem(StrEnum):
+class RightsItem(StrEnum):
     ACCESS = 'access'
     RECTIFICATION = 'rectification'
     ERASURE = 'erasure'
@@ -255,7 +255,7 @@ class SignalDefinitionDataSubjectRightsChannelsItemRightsItem(StrEnum):
     OBJECTION = 'objection'
 
 
-class SignalDefinitionDataSubjectRightsChannelsItem(AdCPBaseModel):
+class ChannelsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -264,14 +264,14 @@ class SignalDefinitionDataSubjectRightsChannelsItem(AdCPBaseModel):
         RequiredGroups((('url',), ('email',)), 'anyOf'),
         UniqueItems('rights'),
     )
-    rights: Annotated[list[SignalDefinitionDataSubjectRightsChannelsItemRightsItem], Field(description='Rights supported by this channel.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    rights: Annotated[list[RightsItem], Field(description='Rights supported by this channel.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     url: Annotated[AdCPUrl | None, Field(description='HTTPS URL for submitting the rights request.')] = None
     email: Annotated[str | None, Field(description='Email address for submitting the rights request.', json_schema_extra={'format': 'email'})] = None
     languages: Annotated[list[str] | None, Field(description='BCP 47 language tags supported by this channel.')] = None
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='ISO 3166-1 alpha-2 countries this channel serves, when the provider routes rights by country.')] = None
 
 
-class SignalDefinitionDataSubjectRights(AdCPBaseModel):
+class DataSubjectRights(AdCPBaseModel):
     """
     Per-signal data-subject-rights routing. Inline on the signal because upstream source, rights routing, and response commitments can differ by segment or may be unavailable from a public provider document for custom/private signals. This is a contact/routing reference, not a machine-callable AdCP API.
     """
@@ -280,7 +280,7 @@ class SignalDefinitionDataSubjectRights(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/data_subject_rights')
     upstream_source_domain: Annotated[StrMaxLen253 | None, Field(description='Domain of the upstream data source whose rights process these channels reach, when different from the publishing domain.', json_schema_extra={'format': 'hostname'})] = None
-    channels: Annotated[list[SignalDefinitionDataSubjectRightsChannelsItem], Field(description='Rights request channels and the rights each channel supports. At least one declared channel MUST support one or more of access, erasure, or objection; schema validators enforce this with draft-07 contains, and consumers whose SDK drops contains need an equivalent runtime check.', min_length=1)]
+    channels: Annotated[list[ChannelsItem], Field(description='Rights request channels and the rights each channel supports. At least one declared channel MUST support one or more of access, erasure, or objection; schema validators enforce this with draft-07 contains, and consumers whose SDK drops contains need an equivalent runtime check.', min_length=1)]
     response_sla_days: Annotated[IntMin1Max90 | None, Field(description="Maximum response time in days for rights requests handled through the declared rights channels. For provider-published signals, providers SHOULD avoid duplicating this field across every signal unless the value varies by signal or upstream source; consumers MAY also consult the provider's public privacy policy or registry disclosures when present.")] = None
     ccpa_opt_out_url: Annotated[AdCPUrl | None, Field(description="US-specific 'Do Not Sell or Share' opt-out URL where required.")] = None
 
@@ -308,27 +308,27 @@ class SignalDefinition(AdCPBaseModel):
     restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description="Restricted attribute categories this signal touches. Data providers SHOULD declare these so governance agents can structurally match signals against a plan's restricted_attributes without relying on semantic inference from the signal name or description.", min_length=1)] = None
     demographic_predicate: Annotated[DemographicPredicate | None, Field(description='Authoritative machine-readable demographic meaning for this signal. Signal names and taxonomy labels alone never establish exact demographic equivalence. Signals carrying this field MUST also declare restricted_attributes including age.')] = None
     policy_categories: Annotated[list[str] | None, Field(description="Policy categories this signal is sensitive for (e.g., a children's interest signal declares ['children_directed']). Governance agents match these against a plan's policy_categories to flag sensitive data usage.", min_length=1)] = None
-    range: Annotated[SignalDefinitionRange | None, Field(description='For numeric signals, the valid value range')] = None
-    taxonomy: Annotated[SignalDefinitionTaxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy. Taxonomy metadata does not create a new value_type and does not change package targeting grammar: buyers still target the named signal according to value_type. When a taxonomy value is a parent node, parent/descendant expansion is seller behavior and must be declared through parent_match_behavior rather than assumed.')] = None
+    range: Annotated[Range | None, Field(description='For numeric signals, the valid value range')] = None
+    taxonomy: Annotated[Taxonomy | None, Field(description='Optional taxonomy metadata describing what this signal means in an external audience, content, retail-media, or provider-owned taxonomy. Taxonomy metadata does not create a new value_type and does not change package targeting grammar: buyers still target the named signal according to value_type. When a taxonomy value is a parent node, parent/descendant expansion is seller behavior and must be declared through parent_match_behavior rather than assumed.')] = None
     segmentation_criteria: Annotated[StrMaxLen500 | None, Field(description='Rules governing inclusion of identifiers in the segment. Aligns with IAB Data Transparency Standard audience criteria disclosure.')] = None
     criteria_url: Annotated[HttpUrl | None, Field(description='Optional URL to a longer-form methodology or criteria document. This is a disclosure pointer; buyers should not branch programmatically on the linked content.')] = None
-    data_sources: Annotated[list[SignalDefinitionDataSourcesItem] | None, Field(description="Origin categories of the raw data used to compile the signal, aligned with IAB Data Transparency Standard source disclosure. Use 'panel' for respondent-panel or JIC-style audience sources. Offline and public-record sources require onboarder disclosure. Co-viewing projection and reconciliation of seller claims against a JIC or measurement vendor belong in measurement reporting/vendor metrics rather than package signal targeting.", min_length=1)] = None
-    methodology: Annotated[SignalDefinitionMethodology | None, Field(description="How the signal's audience membership or attribute was determined. 'modeled' requires the modeling block.")] = None
+    data_sources: Annotated[list[DataSourcesItem] | None, Field(description="Origin categories of the raw data used to compile the signal, aligned with IAB Data Transparency Standard source disclosure. Use 'panel' for respondent-panel or JIC-style audience sources. Offline and public-record sources require onboarder disclosure. Co-viewing projection and reconciliation of seller claims against a JIC or measurement vendor belong in measurement reporting/vendor metrics rather than package signal targeting.", min_length=1)] = None
+    methodology: Annotated[Methodology | None, Field(description="How the signal's audience membership or attribute was determined. 'modeled' requires the modeling block.")] = None
     audience_expansion: Annotated[bool | None, Field(description='Whether look-alike or similar-audience expansion was used to include additional identifiers. When true, modeling is required.')] = None
     device_expansion: Annotated[bool | None, Field(description="Whether the signal was expanded deterministically across devices of the same user, household, or business. Probabilistic cross-device expansion is modeling and should use methodology 'modeled' or the modeling block.")] = None
-    refresh_cadence: Annotated[SignalDefinitionRefreshCadence | None, Field(description="Cadence at which the signal definition's underlying segment membership is refreshed.")] = None
-    lookback_window: Annotated[SignalDefinitionLookbackWindow | None, Field(description='Time window in which a qualifying event can occur for inclusion.')] = None
-    onboarder: Annotated[SignalDefinitionOnboarder | None, Field(description='Onboarder disclosure. Required when data_sources includes an offline_* or public_record_* source.')] = None
+    refresh_cadence: Annotated[RefreshCadence | None, Field(description="Cadence at which the signal definition's underlying segment membership is refreshed.")] = None
+    lookback_window: Annotated[LookbackWindow | None, Field(description='Time window in which a qualifying event can occur for inclusion.')] = None
+    onboarder: Annotated[Onboarder | None, Field(description='Onboarder disclosure. Required when data_sources includes an offline_* or public_record_* source.')] = None
     subject_type: Annotated[AudienceSubjectType | None, Field(description='What kind of subject this signal characterizes.')] = None
     resolution_method: Annotated[AudienceResolutionMethod | None, Field(description='How the subject is resolved at decision time.')] = None
-    id_types: Annotated[list[SignalDefinitionIdTypesItem] | None, Field(description='Identifier currencies analyzed to determine audience membership or attributes.', min_length=1)] = None
-    audience_scope: Annotated[SignalDefinitionAudienceScope | None, Field(description="Context within which the audience attribute was determined. 'single_domain' requires originating_domain.")] = None
+    id_types: Annotated[list[IdTypesItem] | None, Field(description='Identifier currencies analyzed to determine audience membership or attributes.', min_length=1)] = None
+    audience_scope: Annotated[AudienceScope | None, Field(description="Context within which the audience attribute was determined. 'single_domain' requires originating_domain.")] = None
     originating_domain: Annotated[str | None, Field(description="Domain of the digital property where the audience originates. Required when audience_scope is 'single_domain'.", json_schema_extra={'format': 'hostname'})] = None
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description="ISO 3166-1 alpha-2 country codes where the signal is applicable. Sellers must not expose a signal for media buys in countries outside this list. Federating agents that surface a peer's signal MUST treat the peer-published list as an upper bound, re-check it against the buyer's intended deployment countries, and may apply only narrower local policy.", min_length=1)] = None
     consent_basis: Annotated[list[ConsentBasis] | None, Field(description="Declared GDPR Article 6 lawful basis or consent basis under which this signal's data is processed. For non-GDPR regimes, use countries, policy_categories, and disclosure fields to describe jurisdiction-specific obligations unless a future enum value applies.", min_length=1)] = None
-    art9_basis: Annotated[SignalDefinitionArt9Basis | None, Field(description='GDPR Article 9 basis when restricted_attributes is non-empty and the signal is used in jurisdictions where Article 9 applies. Required by policy for applicable use cases rather than universally required at schema level because sensitivity and lawful basis are jurisdiction-relative.')] = None
-    modeling: Annotated[SignalDefinitionModeling | None, Field(description="Modeling disclosure for modeled data signals. Required when methodology is 'modeled' or audience_expansion is true. This describes data modeling and intentionally does not reuse creative provenance, which is content/render oriented.")] = None
-    data_subject_rights: Annotated[SignalDefinitionDataSubjectRights | None, Field(description='Per-signal data-subject-rights routing. Inline on the signal because upstream source, rights routing, and response commitments can differ by segment or may be unavailable from a public provider document for custom/private signals. This is a contact/routing reference, not a machine-callable AdCP API.')] = None
+    art9_basis: Annotated[Art9Basis | None, Field(description='GDPR Article 9 basis when restricted_attributes is non-empty and the signal is used in jurisdictions where Article 9 applies. Required by policy for applicable use cases rather than universally required at schema level because sensitivity and lawful basis are jurisdiction-relative.')] = None
+    modeling: Annotated[Modeling | None, Field(description="Modeling disclosure for modeled data signals. Required when methodology is 'modeled' or audience_expansion is true. This describes data modeling and intentionally does not reuse creative provenance, which is content/render oriented.")] = None
+    data_subject_rights: Annotated[DataSubjectRights | None, Field(description='Per-signal data-subject-rights routing. Inline on the signal because upstream source, rights routing, and response commitments can differ by segment or may be unavailable from a public provider document for custom/private signals. This is a contact/routing reference, not a machine-callable AdCP API.')] = None
     last_updated: Annotated[AwareDatetime | None, Field(description='When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.')] = None
     dts_compliant_version: Annotated[str | None, Field(description='IAB Data Transparency Standard version this signal definition self-attests as satisfying, when applicable.')] = None
 

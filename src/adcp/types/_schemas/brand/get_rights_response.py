@@ -33,7 +33,7 @@ class GetRightsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelo
         return "oneOf"
 
 
-class GetRightsSuccessRightsItemExclusivityStatus(AdCPBaseModel):
+class ExclusivityStatus(AdCPBaseModel):
     """
     Current exclusivity availability
     """
@@ -45,7 +45,7 @@ class GetRightsSuccessRightsItemExclusivityStatus(AdCPBaseModel):
     existing_exclusives: Annotated[list[str] | None, Field(description="Active exclusivity commitments that may affect availability. Implementers should use vague descriptions ('exclusive commitment in this category') rather than specific deal terms to protect confidential business relationships.")] = None
 
 
-class GetRightsSuccessRightsItemPreviewAssetsItem(AdCPBaseModel):
+class PreviewAssetsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -54,7 +54,7 @@ class GetRightsSuccessRightsItemPreviewAssetsItem(AdCPBaseModel):
     usage: str | None = None
 
 
-class GetRightsSuccessRightsItem(AdCPBaseModel):
+class RightsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -69,13 +69,13 @@ class GetRightsSuccessRightsItem(AdCPBaseModel):
     available_uses: Annotated[list[RightUse], Field(description='Rights uses available for licensing')]
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Countries where rights are available (ISO 3166-1 alpha-2). When both countries and excluded_countries are present, the effective set is countries minus excluded_countries. If neither is present, all countries are available.')] = None
     excluded_countries: Annotated[list[StrMatchingEFC12812] | None, Field(description='Countries excluded from availability')] = None
-    exclusivity_status: Annotated[GetRightsSuccessRightsItemExclusivityStatus | None, Field(description='Current exclusivity availability')] = None
+    exclusivity_status: Annotated[ExclusivityStatus | None, Field(description='Current exclusivity availability')] = None
     pricing_options: Annotated[list[RightsPricingOption], Field(description='Available pricing options for these rights', min_length=1)]
     content_restrictions: Annotated[list[str] | None, Field(description='Content restrictions or approval requirements')] = None
-    preview_assets: Annotated[list[GetRightsSuccessRightsItemPreviewAssetsItem] | None, Field(description='Preview-only assets for evaluation')] = None
+    preview_assets: Annotated[list[PreviewAssetsItem] | None, Field(description='Preview-only assets for evaluation')] = None
 
 
-class GetRightsSuccessExcludedItem(AdCPBaseModel):
+class ExcludedItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -94,8 +94,8 @@ class GetRightsSuccess(GetRightsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
     )
-    rights: Annotated[list[GetRightsSuccessRightsItem], Field(description='Matching rights with pricing options, ranked by relevance')]
-    excluded: Annotated[list[GetRightsSuccessExcludedItem] | None, Field(description='Results that matched but were filtered out, with reasons')] = None
+    rights: Annotated[list[RightsItem], Field(description='Matching rights with pricing options, ranked by relevance')]
+    excluded: Annotated[list[ExcludedItem] | None, Field(description='Results that matched but were filtered out, with reasons')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

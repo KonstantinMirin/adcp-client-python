@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMatching4D6E1599, StrMinLen1
 
 
-class PolicyViolationDetailsOrigin(StrEnum):
+class Origin(StrEnum):
     """
     Whose policy produced the rejection. Optional so undisclosed seller policies can return only the typed POLICY_VIOLATION code if even origin would reveal sensitive information.
     """
@@ -27,7 +27,7 @@ class PolicyViolationDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/policy-violation.json', pointer='#')
-    origin: Annotated[PolicyViolationDetailsOrigin | None, Field(description='Whose policy produced the rejection. Optional so undisclosed seller policies can return only the typed POLICY_VIOLATION code if even origin would reveal sensitive information.')] = None
+    origin: Annotated[Origin | None, Field(description='Whose policy produced the rejection. Optional so undisclosed seller policies can return only the typed POLICY_VIOLATION code if even origin would reveal sensitive information.')] = None
     policy_id: Annotated[str | None, Field(description='Shared policy-registry identifier for the violated policy. Use seller_policy_ref instead when the seller is not disclosing a registry policy.')] = None
     seller_policy_ref: Annotated[StrMinLen1 | None, Field(description='Opaque seller-scoped reference that lets support and audit records correlate an undisclosed policy without publishing its rules. This is not a shared policy-registry ID.')] = None
     policy_url: Annotated[HttpUrl | None, Field(description='URL where the full policy can be reviewed')] = None

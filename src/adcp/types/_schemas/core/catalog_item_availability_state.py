@@ -14,7 +14,7 @@ from .catalog_item_availability_error import CatalogItemAvailabilityError
 from .ext import ExtensionObject
 
 
-class CatalogItemAvailabilityStateStatus(StrEnum):
+class Status(StrEnum):
     """
     found returns current state; failed means the reference could not be read.
     """
@@ -22,7 +22,7 @@ class CatalogItemAvailabilityStateStatus(StrEnum):
     FAILED = 'failed'
 
 
-class CatalogItemAvailabilityStateAvailability(StrEnum):
+class Availability(StrEnum):
     """
     Current buyer-authored overlay state. active does not imply seller approval or delivery eligibility.
     """
@@ -46,8 +46,8 @@ class CatalogItemAvailabilityState(AdCPBaseModel):
     catalog_id: StrMinLen1MaxLen255
     catalog_generation: StrMinLen1MaxLen255
     item_id: StrMinLen1MaxLen255
-    status: Annotated[CatalogItemAvailabilityStateStatus, Field(description='found returns current state; failed means the reference could not be read.')]
-    availability: Annotated[CatalogItemAvailabilityStateAvailability | None, Field(description='Current buyer-authored overlay state. active does not imply seller approval or delivery eligibility.')] = None
+    status: Annotated[Status, Field(description='found returns current state; failed means the reference could not be read.')]
+    availability: Annotated[Availability | None, Field(description='Current buyer-authored overlay state. active does not imply seller approval or delivery eligibility.')] = None
     overlay_revision: Annotated[NonNegativeInt | None, Field(description='Current optimistic-concurrency token. Revision 0 is the initial active state. Every applied suppress, applied restore, and automatic expiry increments it exactly once; unchanged updates, reads, and idempotent replays do not increment it.')] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='Current automatic expiry, present only while availability is suppressed with an expiry.')] = None
     updated_at: Annotated[AwareDatetime | None, Field(description='Seller timestamp of the state represented by overlay_revision.')] = None

@@ -13,7 +13,7 @@ from ..enums.impairment_offline_state import ImpairmentOfflineState
 from ..enums.impairment_reason_code import ImpairmentReasonCode
 
 
-class ImpairmentResourceType(StrEnum):
+class ResourceType(StrEnum):
     """
     The kind of upstream dependency that transitioned to an offline state. Values are drawn from the x-entity vocabulary (see core/x-entity-types.json) and identify a buyer-referenced object with its own lifecycle that the seller can take offline. This is the subset of x-entity types for which a media buy's serving depends on the resource — not a new typology, just the impairment-relevant slice.
     """
@@ -24,7 +24,7 @@ class ImpairmentResourceType(StrEnum):
     PROPERTY = 'property'
 
 
-class ImpairmentTransition(AdCPBaseModel):
+class Transition(AdCPBaseModel):
     """
     The resource-level status transition that triggered this impairment.
     """
@@ -45,10 +45,10 @@ class Impairment(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/impairment.json', pointer='#')
     impairment_id: Annotated[str, Field(description="Stable identifier for this impairment, used as the notification_id when the impairment fires via webhook. Stable across re-emissions of the same open impairment (e.g., the seller re-fires after the buyer's receiver was down) and across the closing fire that signals resolution. A new impairment for the same resource_id after closure receives a new impairment_id. Distinct from the per-fire idempotency_key issued at the webhook transport layer — see snapshot-and-log Rule 1. Receivers correlate webhook fires to current impairments[] state by impairment_id; receivers suppress duplicate transport-layer retries by idempotency_key. Seeing the same impairment_id with different idempotency_keys is a re-emission signal, not a retry — the buyer should treat it as a notice that something may have been missed.")]
-    resource_type: Annotated[ImpairmentResourceType, Field(description="The kind of upstream dependency that transitioned to an offline state. Values are drawn from the x-entity vocabulary (see core/x-entity-types.json) and identify a buyer-referenced object with its own lifecycle that the seller can take offline. This is the subset of x-entity types for which a media buy's serving depends on the resource — not a new typology, just the impairment-relevant slice.")]
+    resource_type: Annotated[ResourceType, Field(description="The kind of upstream dependency that transitioned to an offline state. Values are drawn from the x-entity vocabulary (see core/x-entity-types.json) and identify a buyer-referenced object with its own lifecycle that the seller can take offline. This is the subset of x-entity types for which a media buy's serving depends on the resource — not a new typology, just the impairment-relevant slice.")]
     resource_id: Annotated[str, Field(description="Seller's identifier for the specific resource that transitioned. References the same id space as the corresponding sync_/list_ task responses (e.g., audience_id, creative_id).")]
     package_ids: Annotated[list[str], Field(description="Packages within this media buy whose delivery is degraded by the impairment. MUST list at least one package — cosmetic effects that do not degrade any package's ability to serve MUST NOT be reported as impairments.", min_length=1)]
-    transition: Annotated[ImpairmentTransition, Field(description='The resource-level status transition that triggered this impairment.')]
+    transition: Annotated[Transition, Field(description='The resource-level status transition that triggered this impairment.')]
     reason_code: Annotated[ImpairmentReasonCode, Field(description='Categorical reason for the offline transition. Drives buyer-side remediation logic.')]
     reason: Annotated[StrMaxLen500 | None, Field(description='Human-readable explanation. Supplements reason_code with seller-specific detail.')] = None
     observed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller observed the resource transition to its offline state.')]

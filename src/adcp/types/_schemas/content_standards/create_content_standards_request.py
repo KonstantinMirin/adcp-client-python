@@ -17,7 +17,7 @@ from ..governance.policy_entry import PolicyEntry
 from .artifact import Artifact
 
 
-class CreateContentStandardsRequestScope(AdCPBaseModel):
+class Scope(AdCPBaseModel):
     """
     Where this standards configuration applies
     """
@@ -28,7 +28,7 @@ class CreateContentStandardsRequestScope(AdCPBaseModel):
     description: Annotated[str | None, Field(description='Human-readable description of this scope')] = None
 
 
-class CreateContentStandardsRequestCalibrationExemplarsPassItemUrl(AdCPBaseModel):
+class PassItemUrl(AdCPBaseModel):
     """
     URL reference - specific page to fetch and evaluate
     """
@@ -38,7 +38,7 @@ class CreateContentStandardsRequestCalibrationExemplarsPassItemUrl(AdCPBaseModel
     language: Annotated[str | None, Field(description='BCP 47 language tag for content at this URL')] = None
 
 
-class CreateContentStandardsRequestCalibrationExemplarsFailItemUrl(AdCPBaseModel):
+class FailItemUrl(AdCPBaseModel):
     """
     URL reference - specific page to fetch and evaluate
     """
@@ -48,7 +48,7 @@ class CreateContentStandardsRequestCalibrationExemplarsFailItemUrl(AdCPBaseModel
     language: Annotated[str | None, Field(description='BCP 47 language tag for content at this URL')] = None
 
 
-class CreateContentStandardsRequestCalibrationExemplars(AdCPBaseModel):
+class CalibrationExemplars(AdCPBaseModel):
     """
     Training/test set to calibrate policy interpretation. Use URL references for pages to be fetched and analyzed, or full artifacts for pre-extracted content.
     """
@@ -57,8 +57,8 @@ class CreateContentStandardsRequestCalibrationExemplars(AdCPBaseModel):
         Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/pass/items/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'type': 'object', 'description': 'URL reference - specific page to fetch and evaluate', 'properties': {'type': {'type': 'string', 'const': 'url', 'description': 'Indicates this is a URL reference'}, 'value': {'type': 'string', 'format': 'uri', 'description': "Full URL to a specific page (e.g., 'https://espn.com/nba/story/_/id/12345/lakers-win')"}, 'language': {'type': 'string', 'description': 'BCP 47 language tag for content at this URL'}}, 'required': ['type', 'value']}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/content-standards/artifact.json', 'description': 'Full artifact with pre-extracted content (text, images, video, audio)'}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
         Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/fail/items/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'type': 'object', 'description': 'URL reference - specific page to fetch and evaluate', 'properties': {'type': {'type': 'string', 'const': 'url', 'description': 'Indicates this is a URL reference'}, 'value': {'type': 'string', 'format': 'uri', 'description': "Full URL to a specific page (e.g., 'https://news.example.com/controversial-article')"}, 'language': {'type': 'string', 'description': 'BCP 47 language tag for content at this URL'}}, 'required': ['type', 'value']}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/content-standards/artifact.json', 'description': 'Full artifact with pre-extracted content (text, images, video, audio)'}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
     )
-    pass_: Annotated[list[CreateContentStandardsRequestCalibrationExemplarsPassItemUrl | Artifact] | None, Field(alias='pass', description='Content that passes the standards')] = None
-    fail: Annotated[list[CreateContentStandardsRequestCalibrationExemplarsFailItemUrl | Artifact] | None, Field(description='Content that fails the standards')] = None
+    pass_: Annotated[list[PassItemUrl | Artifact] | None, Field(alias='pass', description='Content that passes the standards')] = None
+    fail: Annotated[list[FailItemUrl | Artifact] | None, Field(description='Content that fails the standards')] = None
 
 
 class CreateContentStandardsRequest(AdCPVersionEnvelope):
@@ -76,10 +76,10 @@ class CreateContentStandardsRequest(AdCPVersionEnvelope):
         Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/pass/items/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'type': 'object', 'description': 'URL reference - specific page to fetch and evaluate', 'properties': {'type': {'type': 'string', 'const': 'url', 'description': 'Indicates this is a URL reference'}, 'value': {'type': 'string', 'format': 'uri', 'description': "Full URL to a specific page (e.g., 'https://espn.com/nba/story/_/id/12345/lakers-win')"}, 'language': {'type': 'string', 'description': 'BCP 47 language tag for content at this URL'}}, 'required': ['type', 'value']}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/content-standards/artifact.json', 'description': 'Full artifact with pre-extracted content (text, images, video, audio)'}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
         Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/fail/items/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'type': 'object', 'description': 'URL reference - specific page to fetch and evaluate', 'properties': {'type': {'type': 'string', 'const': 'url', 'description': 'Indicates this is a URL reference'}, 'value': {'type': 'string', 'format': 'uri', 'description': "Full URL to a specific page (e.g., 'https://news.example.com/controversial-article')"}, 'language': {'type': 'string', 'description': 'BCP 47 language tag for content at this URL'}}, 'required': ['type', 'value']}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.4/content-standards/artifact.json', 'description': 'Full artifact with pre-extracted content (text, images, video, audio)'}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
     )
-    scope: Annotated[CreateContentStandardsRequestScope, Field(description='Where this standards configuration applies')]
+    scope: Annotated[Scope, Field(description='Where this standards configuration applies')]
     registry_policy_ids: Annotated[list[str] | None, Field(description="Registry policy IDs to use as the evaluation basis for this content standard. When provided, the agent resolves policies from the registry and uses their policy text and exemplars as the evaluation criteria. The 'policy' field becomes optional when registry_policy_ids is provided.")] = None
     policies: Annotated[list[PolicyEntry] | None, Field(description='Bespoke policies for this content-standards configuration, using the same shape as registry entries. Each policy is addressable by policy_id and carries its own enforcement (must|should); governance findings reference the policy_id that triggered them. Inline bespoke policies can omit version/name/category (defaulted by the server). Combines with registry_policy_ids — registry policies and bespoke policies are both evaluated. Bespoke policy_ids MUST be flat (no colons/slashes) to avoid collision with namespaced registry ids.', min_length=1)] = None
-    calibration_exemplars: Annotated[CreateContentStandardsRequestCalibrationExemplars | None, Field(description='Training/test set to calibrate policy interpretation. Use URL references for pages to be fetched and analyzed, or full artifacts for pre-extracted content.')] = None
+    calibration_exemplars: Annotated[CalibrationExemplars | None, Field(description='Training/test set to calibrate policy interpretation. Use URL references for pages to be fetched and analyzed, or full artifacts for pre-extracted content.')] = None
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for this request. Prevents duplicate content standards creation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

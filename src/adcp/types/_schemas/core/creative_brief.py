@@ -14,7 +14,7 @@ from ..enums.disclosure_position import DisclosurePosition
 from .reference_asset import ReferenceAsset
 
 
-class CreativeBriefObjective(StrEnum):
+class Objective(StrEnum):
     """
     Campaign objective that guides creative tone and call-to-action strategy
     """
@@ -25,7 +25,7 @@ class CreativeBriefObjective(StrEnum):
     ENGAGEMENT = 'engagement'
 
 
-class CreativeBriefMessaging(AdCPBaseModel):
+class Messaging(AdCPBaseModel):
     """
     Messaging framework for the campaign
     """
@@ -39,7 +39,7 @@ class CreativeBriefMessaging(AdCPBaseModel):
     key_messages: Annotated[list[str] | None, Field(description='Key messages to communicate in priority order')] = None
 
 
-class CreativeBriefComplianceRequiredDisclosuresItem(AdCPBaseModel):
+class RequiredDisclosuresItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -53,7 +53,7 @@ class CreativeBriefComplianceRequiredDisclosuresItem(AdCPBaseModel):
     persistence: Annotated[DisclosurePersistence | None, Field(description='How long the disclosure must persist during content playback or display. When omitted, the creative agent should use the most restrictive persistence mode supported by the target format.')] = None
 
 
-class CreativeBriefCompliance(AdCPBaseModel):
+class Compliance(AdCPBaseModel):
     """
     Regulatory and legal compliance requirements for this campaign. Campaign-specific, regional, and product-based — distinct from brand-level disclaimers in brand.json.
     """
@@ -61,7 +61,7 @@ class CreativeBriefCompliance(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-brief.json', pointer='#/properties/compliance')
-    required_disclosures: Annotated[list[CreativeBriefComplianceRequiredDisclosuresItem] | None, Field(description='Disclosures that must appear in creatives for this campaign. Each disclosure specifies the text, where it should appear, and which jurisdictions require it.', min_length=1)] = None
+    required_disclosures: Annotated[list[RequiredDisclosuresItem] | None, Field(description='Disclosures that must appear in creatives for this campaign. Each disclosure specifies the text, where it should appear, and which jurisdictions require it.', min_length=1)] = None
     prohibited_claims: Annotated[list[str] | None, Field(description='Claims that must not appear in creatives for this campaign. Creative agents should ensure generated content avoids these claims.', min_length=1)] = None
 
 
@@ -74,13 +74,13 @@ class CreativeBrief(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-brief.json', pointer='#')
     name: Annotated[str, Field(description='Campaign or flight name for identification')]
-    objective: Annotated[CreativeBriefObjective | None, Field(description='Campaign objective that guides creative tone and call-to-action strategy')] = None
+    objective: Annotated[Objective | None, Field(description='Campaign objective that guides creative tone and call-to-action strategy')] = None
     tone: Annotated[str | None, Field(description="Desired tone for this campaign, modulating the brand's base tone (e.g., 'playful and festive', 'premium and aspirational')")] = None
     audience: Annotated[str | None, Field(description='Target audience description for this campaign')] = None
     territory: Annotated[str | None, Field(description='Creative territory or positioning the campaign should occupy')] = None
-    messaging: Annotated[CreativeBriefMessaging | None, Field(description='Messaging framework for the campaign')] = None
+    messaging: Annotated[Messaging | None, Field(description='Messaging framework for the campaign')] = None
     reference_assets: Annotated[list[ReferenceAsset] | None, Field(description='Visual and strategic reference materials such as mood boards, product shots, example creatives, and strategy documents')] = None
-    compliance: Annotated[CreativeBriefCompliance | None, Field(description='Regulatory and legal compliance requirements for this campaign. Campaign-specific, regional, and product-based — distinct from brand-level disclaimers in brand.json.')] = None
+    compliance: Annotated[Compliance | None, Field(description='Regulatory and legal compliance requirements for this campaign. Campaign-specific, regional, and product-based — distinct from brand-level disclaimers in brand.json.')] = None
 
 
-__all__ = ["CreativeBrief", "CreativeBriefCompliance", "CreativeBriefMessaging", "CreativeBriefObjective"]
+__all__ = ["CreativeBrief", "Compliance", "Messaging", "Objective"]

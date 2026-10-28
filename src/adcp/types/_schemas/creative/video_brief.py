@@ -9,7 +9,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1
 
 
-class VideoBriefSegmentsItem(AdCPBaseModel):
+class SegmentsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -29,7 +29,7 @@ class VideoBrief(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/video-brief.json', pointer='#')
-    segments: Annotated[list[VideoBriefSegmentsItem], Field(description="Ordered list of per-segment prompts that compose the generated video. The sum of `duration_ms` across segments should match the target video duration declared by the format declaration's `duration_ms_exact` or `duration_ms_range`.", min_length=1)]
+    segments: Annotated[list[SegmentsItem], Field(description="Ordered list of per-segment prompts that compose the generated video. The sum of `duration_ms` across segments should match the target video duration declared by the format declaration's `duration_ms_exact` or `duration_ms_range`.", min_length=1)]
 
 
 __all__ = ["VideoBrief"]

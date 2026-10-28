@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMatching2879A8E3, StrMinLen1
 
 
-class PreviewRendererMetadataRenderingOrigin(StrEnum):
+class RenderingOrigin(StrEnum):
     """
     Informational implementation origin copied from the selected route. It does not grant authority.
     """
@@ -29,7 +29,7 @@ class PreviewRendererMetadata(AdCPBaseModel):
     renderer_id: Annotated[StrMinLen1, Field(description='Stable implementation identifier.')]
     version: Annotated[StrMatching2879A8E3, Field(description='Exact semantic version of the renderer implementation.')]
     export: Annotated[StrMinLen1, Field(description='Renderer export or entry-point name used for this render.')]
-    rendering_origin: Annotated[PreviewRendererMetadataRenderingOrigin, Field(description='Informational implementation origin copied from the selected route. It does not grant authority.')]
+    rendering_origin: Annotated[RenderingOrigin, Field(description='Informational implementation origin copied from the selected route. It does not grant authority.')]
     tracking_suppressed: Annotated[bool, Field(description='True only when the produced output cannot initiate impression, click, billing, conversion, viewability, or asset-fetch side effects. Renderers that retain any remote asset URL or navigation MUST emit false.')]
 
 

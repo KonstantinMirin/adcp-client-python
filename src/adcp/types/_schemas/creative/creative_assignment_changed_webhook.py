@@ -12,7 +12,7 @@ from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB, StrMinL
 from ..core.ext import ExtensionObject
 
 
-class CreativeAssignmentChangedWebhookChangeKind(StrEnum):
+class ChangeKind(StrEnum):
     ASSIGNED = 'assigned'
     UNASSIGNED = 'unassigned'
     APPROVAL_CHANGED = 'approval_changed'
@@ -35,7 +35,7 @@ class CreativeAssignmentChangedWebhook(AdCPBaseModel):
     media_buy_id: str
     package_id: str
     creative_id: str
-    change_kind: CreativeAssignmentChangedWebhookChangeKind
+    change_kind: ChangeKind
     observed_at: AwareDatetime
     ext: ExtensionObject | None = None
 

@@ -9,7 +9,7 @@ from pydantic import ConfigDict, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
-class MacroEncodingKind(StrEnum):
+class Kind(StrEnum):
     NONE = 'none'
     RFC3986 = 'rfc3986'
     IAB_VAST_URI = 'iab_vast_uri'
@@ -23,7 +23,7 @@ class MacroEncoding(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/macro-encoding.json', pointer='#')
-    kind: MacroEncodingKind
+    kind: Kind
     depth: NonNegativeInt
 
 

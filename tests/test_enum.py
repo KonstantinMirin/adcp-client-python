@@ -1200,7 +1200,7 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
     # AND IT TOOK TWO CLAUSES, which is this assertion's second catch rather than a
     # correction to the first.  salesagent-j3k2l.36 landed a subclass that RE-USES a
     # composed base's decided field, so ``formats/canonical/_base``'s
-    # ``CanonicalFormatBaseSlotsItem`` crossed into 7 modules with no ``$ref`` naming
+    # ``SlotsItem`` crossed into 7 modules with no ``$ref`` naming
     # it -- the bundle-named clause cannot reach that, and this assertion found it
     # again the same way.  A symbol crosses in exactly those two ways, so
     # ``emit.exported`` is now the union of both and still not every declared symbol.

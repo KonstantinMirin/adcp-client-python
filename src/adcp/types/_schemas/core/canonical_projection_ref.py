@@ -12,7 +12,7 @@ from .canonical_format_kind import CanonicalFormatKind
 from .canonical_projection_slot_override import CanonicalProjectionSlotOverride
 
 
-class CanonicalProjectionReferenceAssetSource(StrEnum):
+class AssetSource(StrEnum):
     """
     Where the rendered asset bytes come from on the projected v2 declaration. Default (when omitted) is `buyer_uploaded` — the canonical's default. Set explicitly when the v1 named format doesn't follow that default. Required for generative entries (`agent_synthesized` or `seller_pre_rendered_from_brief`) because their asset shape doesn't carry image/video/audio bytes, and for published-post reference entries (`publisher_owned_reference`) because their asset shape carries a post reference rather than uploaded bytes. Projection without this hint produces a lossy v2 declaration that claims buyer-uploaded bytes.
     """
@@ -60,7 +60,7 @@ class CanonicalProjectionReference(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-projection-ref.json', pointer='#')
     kind: Annotated[CanonicalFormatKind, Field(description='The v2 canonical-format-kind this v1 format projects to (`image`, `html5`, `display_tag`, `image_carousel`, `video_hosted`, `video_vast`, `audio_hosted`, `audio_vast`, `audio_daast`, `sponsored_placement`, `native_in_feed`, `responsive_creative`, `agent_placement`, `seller_rendered_stateful_display`, `coordinated_placements`, or `custom`).')]
-    asset_source: Annotated[CanonicalProjectionReferenceAssetSource | None, Field(description="Where the rendered asset bytes come from on the projected v2 declaration. Default (when omitted) is `buyer_uploaded` — the canonical's default. Set explicitly when the v1 named format doesn't follow that default. Required for generative entries (`agent_synthesized` or `seller_pre_rendered_from_brief`) because their asset shape doesn't carry image/video/audio bytes, and for published-post reference entries (`publisher_owned_reference`) because their asset shape carries a post reference rather than uploaded bytes. Projection without this hint produces a lossy v2 declaration that claims buyer-uploaded bytes.")] = None
+    asset_source: Annotated[AssetSource | None, Field(description="Where the rendered asset bytes come from on the projected v2 declaration. Default (when omitted) is `buyer_uploaded` — the canonical's default. Set explicitly when the v1 named format doesn't follow that default. Required for generative entries (`agent_synthesized` or `seller_pre_rendered_from_brief`) because their asset shape doesn't carry image/video/audio bytes, and for published-post reference entries (`publisher_owned_reference`) because their asset shape carries a post reference rather than uploaded bytes. Projection without this hint produces a lossy v2 declaration that claims buyer-uploaded bytes.")] = None
     slots_override: Annotated[list[CanonicalProjectionSlotOverride] | None, Field(description="When the v1 named format's slot shape differs from the canonical's default slots, this carries the override that the projected v2 declaration's `params.slots[]` should use. REPLACES (does not merge with) the canonical's default slots — projection-time semantics. The slot vocabulary follows `asset-group-vocabulary.json`. Asset IDs in the v1 format's `assets[*]` MUST resolve (directly or via the vocabulary's aliases) to the `asset_group_id` values declared here.", min_length=1)] = None
 
 

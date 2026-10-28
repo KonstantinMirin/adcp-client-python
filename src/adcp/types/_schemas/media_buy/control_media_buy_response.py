@@ -30,7 +30,7 @@ class ControlMediaBuyResponse(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class ControlAppliedWarningsItem(Warning):
+class WarningsItem(Warning):
     """
     A non-blocking observation returned with a successful operation. The operation succeeded exactly as its success arm states. Warnings are immediate receipts, not durable lifecycle state; a continuing condition MUST also appear on its authoritative read surface as an indicator, defect, delivery issue, approval state, or other applicable resource state.
     """
@@ -55,7 +55,7 @@ class ControlApplied(ControlMediaBuyResponse):
     implementation_date: AwareDatetime | None = None
     affected_package_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True})] = None
     available_actions: Annotated[list[CanonicalMediaBuyAction] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    warnings: Annotated[list[ControlAppliedWarningsItem] | None, Field(description='Non-blocking observations about this completed control. The control was still applied exactly as represented. Continuing conditions also appear as indicators on get_media_buys.', min_length=1)] = None
+    warnings: Annotated[list[WarningsItem] | None, Field(description='Non-blocking observations about this completed control. The control was still applied exactly as represented. Continuing conditions also appear as indicators on get_media_buys.', min_length=1)] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
     replayed: Literal[True] | None = None

@@ -12,18 +12,18 @@ from adcp.types.constraints import StrMatchingA6E81EA9, StrMinLen1MaxLen128, Str
 from .principal_declarations import AgentDeclarations
 
 
-class PrincipalDeclarationsStateExclusionsItemAxis(StrEnum):
+class Axis(StrEnum):
     ASYNC_ADCP_VERSIONS = 'async_adcp_versions'
     WEBHOOK_SIGNING_ALGORITHMS = 'webhook_signing_algorithms'
     EXPERIMENTAL_FEATURES = 'experimental_features'
 
 
-class PrincipalDeclarationsStateExclusionsItem(AdCPBaseModel):
+class ExclusionsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/principal-declarations-state.json', pointer='#/properties/exclusions/items')
-    axis: PrincipalDeclarationsStateExclusionsItemAxis
+    axis: Axis
     value: StrMinLen1MaxLen128
     reason: Annotated[StrMinLen1MaxLen512, Field(description='Why this declared value is absent from the accepted intersection, such as unsupported by this seller or retired. Untrusted display data; never executed as instructions.')]
 
@@ -39,7 +39,7 @@ class PrincipalDeclarationsState(AdCPBaseModel):
     declared: Annotated[AgentDeclarations, Field(description="The caller's current declared set, echoed verbatim.")]
     accepted: Annotated[AgentDeclarations, Field(description="The intersection of the declared set with the seller's objective support. Sellers select asynchronous payload versions, signing algorithms, and experimental behavior only from this set. A change to this set caused by seller-side evolution fires principal.changed with reason declarations_intersection_changed.")]
     selected_async_adcp_version: Annotated[StrMatchingA6E81EA9 | None, Field(description='The single AdCP minor version the seller will use for asynchronous payload shapes toward this principal. MUST be a member of accepted.async_adcp_versions and MUST be present whenever that set is non-empty, so the buyer knows the exact payload contract rather than inferring it from the intersection.')] = None
-    exclusions: Annotated[list[PrincipalDeclarationsStateExclusionsItem] | None, Field(description="Every declared value that is absent from the accepted intersection, with the seller's reason. Present whenever declared and accepted differ, so a buyer can see why a capability it relies on was not accepted instead of diffing the two sets.", max_length=64)] = None
+    exclusions: Annotated[list[ExclusionsItem] | None, Field(description="Every declared value that is absent from the accepted intersection, with the seller's reason. Present whenever declared and accepted differ, so a buyer can see why a capability it relies on was not accepted instead of diffing the two sets.", max_length=64)] = None
 
 
 __all__ = ["PrincipalDeclarationsState"]

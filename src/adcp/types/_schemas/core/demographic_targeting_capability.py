@@ -15,13 +15,13 @@ from ..enums.age_verification_method import AgeVerificationMethod
 from .demographic_age_range import DemographicAgeRange
 
 
-class DemographicTargetingCapabilityAgeExecutionModesItem(StrEnum):
+class ExecutionModesItem(StrEnum):
     CONTINUOUS_BOUNDS = 'continuous_bounds'
     ENUMERATED_INTERVALS = 'enumerated_intervals'
     SIGNALS = 'signals'
 
 
-class DemographicTargetingCapabilityAgeUnknownHandling(StrEnum):
+class UnknownHandling(StrEnum):
     """
     How this product handles people whose age is unavailable. selectable honors either include_unknown value; always_excluded supports only false; always_included supports only true. A seller MUST reject a request incompatible with this declaration rather than silently changing it.
     """
@@ -30,7 +30,7 @@ class DemographicTargetingCapabilityAgeUnknownHandling(StrEnum):
     ALWAYS_INCLUDED = 'always_included'
 
 
-class DemographicTargetingCapabilityAgeIntervalsItem(AdCPBaseModel):
+class IntervalsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -39,7 +39,7 @@ class DemographicTargetingCapabilityAgeIntervalsItem(AdCPBaseModel):
     age: DemographicAgeRange
 
 
-class DemographicTargetingCapabilityAge(AdCPBaseModel):
+class Age(AdCPBaseModel):
     """
     Age-targeting execution available for this product.
     """
@@ -53,15 +53,15 @@ class DemographicTargetingCapabilityAge(AdCPBaseModel):
         UniqueItems('supported_verification_methods'),
         ConditionalRequired((Match('supported_verification_methods', True, None),), require=('supported_bases',), forbid=()),
     )
-    execution_modes: Annotated[list[DemographicTargetingCapabilityAgeExecutionModesItem], Field(description='Ways this product can execute canonical age intent. continuous_bounds accepts canonical predicates whose explicit integer bounds fall between min_supported_age and max_supported_age, inclusive; omitted bounds additionally require the corresponding supports_unbounded_min or supports_unbounded_max flag. enumerated_intervals accepts exact unions of the declared intervals; signals resolves through signals carrying authoritative demographic_predicate metadata.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    execution_modes: Annotated[list[ExecutionModesItem], Field(description='Ways this product can execute canonical age intent. continuous_bounds accepts canonical predicates whose explicit integer bounds fall between min_supported_age and max_supported_age, inclusive; omitted bounds additionally require the corresponding supports_unbounded_min or supports_unbounded_max flag. enumerated_intervals accepts exact unions of the declared intervals; signals resolves through signals carrying authoritative demographic_predicate metadata.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     min_supported_age: Annotated[IntMin0Max150 | None, Field(description='Lowest integer accepted as an explicit min or max bound by continuous_bounds. This limit does not replace an omitted min: omission means no lower age restriction. Required when that execution mode is declared.')] = None
     max_supported_age: Annotated[IntMin0Max150 | None, Field(description='Highest integer accepted as an explicit min or max bound by continuous_bounds. This limit does not replace an omitted max: omission means no upper age restriction, so a request such as min 65 remains 65+ even when max_supported_age is 65. Required when that execution mode is declared.')] = None
     supports_unbounded_min: Annotated[bool | None, Field(description='Whether continuous_bounds accepts a predicate with min omitted. When true, the omitted min means no lower age restriction and MUST NOT be replaced by min_supported_age. When false, the seller MUST reject open-lower predicates. Required when continuous_bounds is declared.')] = None
     supports_unbounded_max: Annotated[bool | None, Field(description='Whether continuous_bounds accepts a predicate with max omitted. When true, the omitted max means no upper age restriction and MUST NOT be replaced by max_supported_age; for example, min 65 remains 65+. When false, the seller MUST reject open-upper predicates. Required when continuous_bounds is declared.')] = None
-    unknown_handling: Annotated[DemographicTargetingCapabilityAgeUnknownHandling, Field(description='How this product handles people whose age is unavailable. selectable honors either include_unknown value; always_excluded supports only false; always_included supports only true. A seller MUST reject a request incompatible with this declaration rather than silently changing it.')]
+    unknown_handling: Annotated[UnknownHandling, Field(description='How this product handles people whose age is unavailable. selectable honors either include_unknown value; always_excluded supports only false; always_included supports only true. A seller MUST reject a request incompatible with this declaration rather than silently changing it.')]
     supported_bases: Annotated[list[AgeDeterminationBasis] | None, Field(description='User-level age determination bases this product can use for exact execution. Sellers MUST publish only bases whose provenance they can preserve and audit; they MUST NOT infer a basis from an opaque platform age bucket. When omitted, the product makes no basis-aware targeting commitment and MUST reject requests that specify accepted_bases.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     supported_verification_methods: Annotated[list[AgeVerificationMethod] | None, Field(description='Age verification methods available when supported_bases contains verified. This is an availability declaration only: a method must still establish the entire requested age predicate. Threshold-only methods such as World ID cannot establish an arbitrary bounded range.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    intervals: Annotated[list[DemographicTargetingCapabilityAgeIntervalsItem] | None, Field(description='Seller-owned age intervals available to enumerated_intervals execution. Bounds are authoritative capability data, not a protocol-wide bucket taxonomy. Exact compilation may union adjacent intervals but MUST NOT introduce gaps or extra ages.', min_length=1)] = None
+    intervals: Annotated[list[IntervalsItem] | None, Field(description='Seller-owned age intervals available to enumerated_intervals execution. Bounds are authoritative capability data, not a protocol-wide bucket taxonomy. Exact compilation may union adjacent intervals but MUST NOT introduce gaps or extra ages.', min_length=1)] = None
 
 
 class DemographicTargetingCapability(AdCPBaseModel):
@@ -72,7 +72,7 @@ class DemographicTargetingCapability(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/demographic-targeting-capability.json', pointer='#')
-    age: Annotated[DemographicTargetingCapabilityAge, Field(description='Age-targeting execution available for this product.')]
+    age: Annotated[Age, Field(description='Age-targeting execution available for this product.')]
 
 
 __all__ = ["DemographicTargetingCapability"]

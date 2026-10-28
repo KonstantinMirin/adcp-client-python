@@ -14,7 +14,7 @@ from .offering_asset_group import OfferingAssetGroup
 from .price import Price
 
 
-class HotelItemLocation(AdCPBaseModel):
+class Location(AdCPBaseModel):
     """
     Geographic coordinates of the property.
     """
@@ -26,7 +26,7 @@ class HotelItemLocation(AdCPBaseModel):
     lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84).')]
 
 
-class HotelItemAddress(AdCPBaseModel):
+class Address(AdCPBaseModel):
     """
     Structured address for display and geocoding.
     """
@@ -52,8 +52,8 @@ class HotelItem(AdCPBaseModel):
     hotel_id: Annotated[str, Field(description='Unique identifier for this property. Used to match remarketing events and inventory feeds to the correct hotel.')]
     name: Annotated[str, Field(description="Property name (e.g., 'Grand Hotel Amsterdam', 'Seaside Resort & Spa').")]
     description: Annotated[str | None, Field(description='Property description highlighting features and location.')] = None
-    location: Annotated[HotelItemLocation, Field(description='Geographic coordinates of the property.')]
-    address: Annotated[HotelItemAddress | None, Field(description='Structured address for display and geocoding.')] = None
+    location: Annotated[Location, Field(description='Geographic coordinates of the property.')]
+    address: Annotated[Address | None, Field(description='Structured address for display and geocoding.')] = None
     star_rating: Annotated[IntMin1Max5 | None, Field(description='Official star rating (1–5).')] = None
     price: Annotated[Price | None, Field(description="Nightly rate or starting price. Use period 'night' for nightly rates.")] = None
     image_url: Annotated[HttpUrl | None, Field(description='Primary property image URL.')] = None

@@ -31,7 +31,7 @@ class ExistingBinding(ReportingWriteDestination):
     destination_ref: Annotated[StrMinLen1MaxLen255, Field(description='Seller-issued immutable destination-generation reference returned by sync_agent_configuration, an earlier sync, or bilateral setup.')]
 
 
-class ProvisionBindingProvider(AdCPBaseModel):
+class Provider(AdCPBaseModel):
     """
     Platform hosting the destination.
     """
@@ -48,7 +48,7 @@ class ProvisionBinding(ReportingWriteDestination):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-write-destination.json', pointer='#/oneOf/1')
     mode: Literal['provision']
-    provider: Annotated[ProvisionBindingProvider, Field(description='Platform hosting the destination.')]
+    provider: Annotated[Provider, Field(description='Platform hosting the destination.')]
     location: Annotated[StrMinLen1MaxLen2048, Field(description='Provider-native bucket, prefix, project/dataset, catalog/schema, or equivalent locator. It MUST NOT contain an embedded credential or signed URL.')]
     access_mode: Annotated[StrMinLen1MaxLen64Matching5CDAE669 | None, Field(description='Optional provider access family used for capability matching.')] = None
 

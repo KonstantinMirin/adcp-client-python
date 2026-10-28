@@ -980,6 +980,7 @@ def decidable(
     named: frozenset[str],
     roots: Mapping[str, dict],
     reserved: frozenset[str],
+    carriers: frozenset[str],
     asked: set[tuple[str, str]],
     inherited: Mapping[str, Target | Refusal],
 ) -> tuple[Module, ir.Module] | Refusal:
@@ -1001,7 +1002,7 @@ def decidable(
     if isinstance(outcome, Refusal):
         return outcome
     mod, _ = outcome
-    bound = lower_names.assign(mod)
+    bound = lower_names.assign(mod, carriers)
     if isinstance(bound, Refusal):
         # §4's two naming refusals, both VERDICTS of the document: two pointers deriving
         # one class name, and a branch with no identity.  Returned from here because this
@@ -1430,6 +1431,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             named.get(document, frozenset()),
             roots,
             render.RESERVED,
+            render.CARRIERS,
             asked.setdefault(document, set()),
             inherited_sites(document),
         )

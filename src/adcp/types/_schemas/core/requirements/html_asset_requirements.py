@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1, StrFormatHostname
 
 
-class HTMLAssetRequirementsSandbox(StrEnum):
+class Sandbox(StrEnum):
     """
     Sandbox environment the HTML must be compatible with. 'none' = direct DOM access, 'iframe' = standard iframe isolation, 'safeframe' = IAB SafeFrame container, 'fencedframe' = Privacy Sandbox fenced frame
     """
@@ -29,7 +29,7 @@ class HTMLAssetRequirements(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/html-asset-requirements.json', pointer='#')
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes for the HTML asset')] = None
-    sandbox: Annotated[HTMLAssetRequirementsSandbox | None, Field(description="Sandbox environment the HTML must be compatible with. 'none' = direct DOM access, 'iframe' = standard iframe isolation, 'safeframe' = IAB SafeFrame container, 'fencedframe' = Privacy Sandbox fenced frame")] = 'none'
+    sandbox: Annotated[Sandbox | None, Field(description="Sandbox environment the HTML must be compatible with. 'none' = direct DOM access, 'iframe' = standard iframe isolation, 'safeframe' = IAB SafeFrame container, 'fencedframe' = Privacy Sandbox fenced frame")] = 'none'
     external_resources_allowed: Annotated[bool | None, Field(description='Whether the HTML creative can load external resources (scripts, images, fonts, etc.). When false, all resources must be inlined or bundled.')] = None
     allowed_external_domains: Annotated[list[StrFormatHostname] | None, Field(description='List of domains the HTML creative may reference for external resources. Only applicable when external_resources_allowed is true.')] = None
 

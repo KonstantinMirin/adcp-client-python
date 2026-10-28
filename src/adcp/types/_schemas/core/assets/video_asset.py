@@ -17,7 +17,7 @@ from ...enums.scan_type import ScanType
 from ..provenance import Provenance
 
 
-class VideoAssetColorSpace(StrEnum):
+class ColorSpace(StrEnum):
     """
     Color space of the video
     """
@@ -28,7 +28,7 @@ class VideoAssetColorSpace(StrEnum):
     DCI_P3 = 'dci_p3'
 
 
-class VideoAssetHdrFormat(StrEnum):
+class HdrFormat(StrEnum):
     """
     HDR format if applicable, or 'sdr' for standard dynamic range
     """
@@ -39,7 +39,7 @@ class VideoAssetHdrFormat(StrEnum):
     DOLBY_VISION = 'dolby_vision'
 
 
-class VideoAssetChromaSubsampling(StrEnum):
+class ChromaSubsampling(StrEnum):
     """
     Chroma subsampling format
     """
@@ -48,7 +48,7 @@ class VideoAssetChromaSubsampling(StrEnum):
     V_4_4_4 = '4:4:4'
 
 
-class VideoAssetVideoBitDepth(IntEnum):
+class VideoBitDepth(IntEnum):
     """
     Video bit depth
     """
@@ -57,7 +57,7 @@ class VideoAssetVideoBitDepth(IntEnum):
     V_12 = 12
 
 
-class VideoAssetAudioBitDepth(IntEnum):
+class AudioBitDepth(IntEnum):
     """
     Audio bit depth
     """
@@ -86,10 +86,10 @@ class VideoAsset(AdCPBaseModel):
     frame_rate: Annotated[str | None, Field(description="Frame rate as string to preserve precision (e.g., '23.976', '29.97', '30')")] = None
     frame_rate_type: FrameRateType | None = None
     scan_type: ScanType | None = None
-    color_space: Annotated[VideoAssetColorSpace | None, Field(description='Color space of the video')] = None
-    hdr_format: Annotated[VideoAssetHdrFormat | None, Field(description="HDR format if applicable, or 'sdr' for standard dynamic range")] = None
-    chroma_subsampling: Annotated[VideoAssetChromaSubsampling | None, Field(description='Chroma subsampling format')] = None
-    video_bit_depth: Annotated[VideoAssetVideoBitDepth | None, Field(description='Video bit depth')] = None
+    color_space: Annotated[ColorSpace | None, Field(description='Color space of the video')] = None
+    hdr_format: Annotated[HdrFormat | None, Field(description="HDR format if applicable, or 'sdr' for standard dynamic range")] = None
+    chroma_subsampling: Annotated[ChromaSubsampling | None, Field(description='Chroma subsampling format')] = None
+    video_bit_depth: Annotated[VideoBitDepth | None, Field(description='Video bit depth')] = None
     gop_interval_seconds: Annotated[float | None, Field(description='GOP/keyframe interval in seconds')] = None
     gop_type: GOPType | None = None
     moov_atom_position: MoovAtomPosition | None = None
@@ -97,7 +97,7 @@ class VideoAsset(AdCPBaseModel):
     audio_codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, ac3, eac3, etc.)')] = None
     audio_sampling_rate_hz: Annotated[int | None, Field(description='Audio sampling rate in Hz (e.g., 44100, 48000)')] = None
     audio_channels: Annotated[AudioChannelLayout | None, Field(description='Audio channel configuration')] = None
-    audio_bit_depth: Annotated[VideoAssetAudioBitDepth | None, Field(description='Audio bit depth')] = None
+    audio_bit_depth: Annotated[AudioBitDepth | None, Field(description='Audio bit depth')] = None
     audio_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Audio bitrate in kilobits per second')] = None
     audio_loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS')] = None
     audio_true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS')] = None

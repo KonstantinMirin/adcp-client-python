@@ -13,7 +13,7 @@ from ..enums.uid_type import UIDType
 from .ext import ExtensionObject
 
 
-class UserMatchUidsItem(AdCPBaseModel):
+class UidsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -33,7 +33,7 @@ class UserMatch(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('uids',), ('hashed_email',), ('hashed_phone',), ('click_id',), ('client_ip', 'client_user_agent')), 'anyOf'),
     )
-    uids: Annotated[list[UserMatchUidsItem] | None, Field(description='Universal ID values for user matching', min_length=1)] = None
+    uids: Annotated[list[UidsItem] | None, Field(description='Universal ID values for user matching', min_length=1)] = None
     hashed_email: Annotated[StrMatchingEF42E836 | None, Field(description='SHA-256 hash of lowercase, trimmed email address. Buyer must normalize before hashing: lowercase, trim whitespace. Pseudonymous PII, not anonymous — the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.')] = None
     hashed_phone: Annotated[StrMatchingEF42E836 | None, Field(description='SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Buyer must normalize to E.164 before hashing. Pseudonymous PII, not anonymous — the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.')] = None
     click_id: Annotated[str | None, Field(description='Platform click identifier (fbclid, gclid, ttclid, ScCid, etc.)')] = None

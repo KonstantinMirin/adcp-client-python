@@ -20,7 +20,7 @@ from ..enums.creative_sort_field import CreativeSortField
 from ..enums.sort_direction import SortDirection
 
 
-class ListCreativesRequestSort(AdCPBaseModel):
+class Sort(AdCPBaseModel):
     """
     Sorting parameters
     """
@@ -32,7 +32,7 @@ class ListCreativesRequestSort(AdCPBaseModel):
     direction: Annotated[SortDirection | None, Field(description='Sort direction')] = 'desc'
 
 
-class ListCreativesRequestAssignmentProjection(StrEnum):
+class AssignmentProjection(StrEnum):
     """
     Controls nested assigned_packages projection when assignments are included. all returns up to assignment_limit active assignments per creative. matching returns only assignments matching filters.indicator_types and requires that filter. Use matching for compact indicator discovery; get_media_buys remains the complete authoritative repair path when assignments_truncated is true.
     """
@@ -40,7 +40,7 @@ class ListCreativesRequestAssignmentProjection(StrEnum):
     MATCHING = 'matching'
 
 
-class ListCreativesRequestFieldsItem(StrEnum):
+class FieldsItem(StrEnum):
     CREATIVE_ID = 'creative_id'
     NAME = 'name'
     FORMAT_ID = 'format_id'
@@ -76,10 +76,10 @@ class ListCreativesRequest(AdCPVersionEnvelope):
         ConditionalRequired((Match('assignment_projection', True, ('matching',)),), require=('filters',), forbid=()),
     )
     filters: CreativeFilters | None = None
-    sort: Annotated[ListCreativesRequestSort | None, Field(description='Sorting parameters')] = None
+    sort: Annotated[Sort | None, Field(description='Sorting parameters')] = None
     pagination: PaginationRequest | None = None
     include_assignments: Annotated[bool | None, Field(description='Include package assignment information in response')] = True
-    assignment_projection: Annotated[ListCreativesRequestAssignmentProjection | None, Field(description='Controls nested assigned_packages projection when assignments are included. all returns up to assignment_limit active assignments per creative. matching returns only assignments matching filters.indicator_types and requires that filter. Use matching for compact indicator discovery; get_media_buys remains the complete authoritative repair path when assignments_truncated is true.')] = 'all'
+    assignment_projection: Annotated[AssignmentProjection | None, Field(description='Controls nested assigned_packages projection when assignments are included. all returns up to assignment_limit active assignments per creative. matching returns only assignments matching filters.indicator_types and requires that filter. Use matching for compact indicator discovery; get_media_buys remains the complete authoritative repair path when assignments_truncated is true.')] = 'all'
     assignment_limit: Annotated[IntMin1Max200 | None, Field(description='Maximum assigned_packages rows returned per creative. Sellers MUST set assignments.assignments_truncated when additional qualifying rows exist.')] = 50
     include_snapshot: Annotated[bool | None, Field(description='Include a lightweight delivery snapshot per creative (lifetime impressions and last-served date). For detailed performance analytics, use get_creative_delivery.')] = False
     include_items: Annotated[bool | None, Field(description='Include items for multi-asset formats like carousels and native ads')] = False
@@ -89,7 +89,7 @@ class ListCreativesRequest(AdCPVersionEnvelope):
     include_webhook_activity: Annotated[bool | None, Field(description='Include recent webhook activity per creative. When true, each returned creative carries a `webhook_activity[]` array of the most recent fires scoped to that creative — `creative.status_changed` and `creative.purged` deliveries. Adoption of the `webhook_activity[]` pattern per `snapshot-and-log.mdx § Webhook activity log pattern`. Retention is 30 days from `completed_at` (MUST). Three-state presence applies: omitted = seller does not surface; `[]` = persists but no recent fires; non-empty = actual records.')] = False
     webhook_activity_limit: Annotated[IntMin1Max200 | None, Field(description="Maximum number of `webhook_activity[]` records to return per creative. Only meaningful when `include_webhook_activity: true`. Sellers MUST respect the cap; structural enforcement is provided by the response schema's `maxItems: 200` on the array.")] = 50
     account: Annotated[AccountReference | None, Field(description="Account reference for pricing and access. When provided with include_pricing, the agent returns pricing_options from this account's rate card on each creative.")] = None
-    fields: Annotated[list[ListCreativesRequestFieldsItem] | None, Field(description="Specific fields to include in response (omit for all fields). The 'concept' value returns both concept_id and concept_name. `format_id` is a deprecated 3.x compatibility projection; new integrations request `format_kind` and `format_option_ref`. Selecting localization automatically includes creative_id, status, assets, the selected format identity, and localization_unavailable when applicable. Selecting rights_attestation_evaluations automatically includes rights so each seller-produced result can be reconciled with the exact retained constraint and reference.", min_length=1)] = None
+    fields: Annotated[list[FieldsItem] | None, Field(description="Specific fields to include in response (omit for all fields). The 'concept' value returns both concept_id and concept_name. `format_id` is a deprecated 3.x compatibility projection; new integrations request `format_kind` and `format_option_ref`. Selecting localization automatically includes creative_id, status, assets, the selected format identity, and localization_unavailable when applicable. Selecting rights_attestation_evaluations automatically includes rights so each seller-produced result can be reconciled with the exact retained constraint and reference.", min_length=1)] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

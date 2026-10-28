@@ -19,7 +19,7 @@ from ..enums.task_status import TaskStatus
 from ..enums.task_type import TaskType
 
 
-class ListTasksRequestFilters(AdCPBaseModel):
+class Filters(AdCPBaseModel):
     """
     Filter criteria for querying tasks
     """
@@ -42,7 +42,7 @@ class ListTasksRequestFilters(AdCPBaseModel):
     has_webhook: Annotated[bool | None, Field(description='Filter tasks that have webhook configuration when true')] = None
 
 
-class ListTasksRequestSortField(StrEnum):
+class SortField(StrEnum):
     """
     Field to sort by
     """
@@ -53,7 +53,7 @@ class ListTasksRequestSortField(StrEnum):
     PROTOCOL = 'protocol'
 
 
-class ListTasksRequestSort(AdCPBaseModel):
+class Sort(AdCPBaseModel):
     """
     Sorting parameters
     """
@@ -61,7 +61,7 @@ class ListTasksRequestSort(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-request.json', pointer='#/properties/sort')
-    field: Annotated[ListTasksRequestSortField | None, Field(description='Field to sort by')] = 'created_at'
+    field: Annotated[SortField | None, Field(description='Field to sort by')] = 'created_at'
     direction: Annotated[SortDirection | None, Field(description='Sort direction')] = 'desc'
 
 
@@ -74,8 +74,8 @@ class ListTasksRequest(AdCPVersionEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-request.json', pointer='#')
     account: Annotated[AccountReference | None, Field(description="Account scope for task reconciliation. Sellers MUST only return tasks created for the caller's authenticated account + principal pair. When omitted, the seller MAY use the credential-bound singleton account, but multi-account credentials SHOULD require an explicit account.")] = None
-    filters: Annotated[ListTasksRequestFilters | None, Field(description='Filter criteria for querying tasks')] = None
-    sort: Annotated[ListTasksRequestSort | None, Field(description='Sorting parameters')] = None
+    filters: Annotated[Filters | None, Field(description='Filter criteria for querying tasks')] = None
+    sort: Annotated[Sort | None, Field(description='Sorting parameters')] = None
     pagination: PaginationRequest | None = None
     include_history: Annotated[bool | None, Field(description='Include full conversation history for each task (may significantly increase response size)')] = False
     context: ContextObject | None = None

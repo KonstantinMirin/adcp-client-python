@@ -16,7 +16,7 @@ from .reporting_control_total import ReportingControlTotal
 from .reporting_coverage import ReportingCoverage, ReportingCoverageReportingMediaBuyId
 
 
-class ReportingRevisionPeriod(AdCPBaseModel):
+class Period(AdCPBaseModel):
     """
     Half-open reporting interval with its source calendar boundary.
     """
@@ -29,7 +29,7 @@ class ReportingRevisionPeriod(AdCPBaseModel):
     source_timezone: StrMinLen1
 
 
-class ReportingRevisionFinalityBasis(StrEnum):
+class FinalityBasis(StrEnum):
     """
     Why an official revision is considered final: an authoritative source signal, a versioned contractual cutoff, or a versioned stabilization rule.
     """
@@ -38,7 +38,7 @@ class ReportingRevisionFinalityBasis(StrEnum):
     STABILIZED = 'stabilized'
 
 
-class ReportingRevisionDataThroughPrecision(StrEnum):
+class DataThroughPrecision(StrEnum):
     EXACT = 'exact'
     LOWER_BOUND = 'lower_bound'
     UNKNOWN = 'unknown'
@@ -72,14 +72,14 @@ class ReportingRevision(AdCPBaseModel):
     account_id: StrMinLen1
     media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(description='Exact frozen media-buy denominator inherited from the obligation, including buys with zero rows. An empty array proves a zero-buy period rather than an unknown denominator.', json_schema_extra={'uniqueItems': True})]
     coverage: Annotated[ReportingCoverage, Field(description='Frozen product/package denominator represented by this logical content. The same coverage follows the revision to every destination.')]
-    period: Annotated[ReportingRevisionPeriod, Field(description='Half-open reporting interval with its source calendar boundary.')]
+    period: Annotated[Period, Field(description='Half-open reporting interval with its source calendar boundary.')]
     finality: ReportingFinality
-    finality_basis: Annotated[ReportingRevisionFinalityBasis | None, Field(description='Why an official revision is considered final: an authoritative source signal, a versioned contractual cutoff, or a versioned stabilization rule.')] = None
+    finality_basis: Annotated[FinalityBasis | None, Field(description='Why an official revision is considered final: an authoritative source signal, a versioned contractual cutoff, or a versioned stabilization rule.')] = None
     finality_policy_id: Annotated[StrMinLen1MaxLen255Matching67860854 | None, Field(description='Immutable policy/version reference that defines the selected finality basis. It MUST be bound by report_definition_id.')] = None
     finalized_at: Annotated[AwareDatetime | None, Field(description='When the producer applied the declared finality basis to this official revision.')] = None
     observed_at: Annotated[AwareDatetime, Field(description='When the seller obtained or committed this source observation.')]
     data_through: Annotated[AwareDatetime | None, Field(description='Latest event time conservatively included, or null when precision is unknown.')]
-    data_through_precision: ReportingRevisionDataThroughPrecision
+    data_through_precision: DataThroughPrecision
     supersedes_reporting_revision_id: Annotated[StrMinLen1MaxLen255Matching67860854 | None, Field(description='Immediately superseded snapshot revision of the same logical slice. An official revision is terminal and MUST NOT be named here; later corrections use reporting-adjustment records.')] = None
     row_count: Annotated[NonNegativeInt, Field(description='Logical row count, including zero for a successfully evaluated empty report.')]
     control_totals: Annotated[list[ReportingControlTotal], Field(description='Profile-defined totals computed from the canonical logical revision. Names MUST be unique.', json_schema_extra={'uniqueItems': True})]

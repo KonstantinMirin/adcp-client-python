@@ -16,7 +16,7 @@ from ..pricing_options.price_breakdown import PriceBreakdown
 from ..pricing_options.price_guidance import PriceGuidance
 
 
-class CanonicalPricingOptionPricingModel(StrEnum):
+class PricingModel(StrEnum):
     CPM = 'cpm'
     VCPM = 'vcpm'
     CPC = 'cpc'
@@ -46,7 +46,7 @@ class CanonicalPricingOption(AdCPBaseModel):
         ConditionalRequired((Match('event_type', True, ('custom',)),), require=('custom_event_name',), forbid=()),
     )
     pricing_option_id: StrMinLen1
-    pricing_model: CanonicalPricingOptionPricingModel
+    pricing_model: PricingModel
     currency: StrMatching43E30B32
     fixed_price: NonNegativeFloat | None = None
     floor_price: NonNegativeFloat | None = None

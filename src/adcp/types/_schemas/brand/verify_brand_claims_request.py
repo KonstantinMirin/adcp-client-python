@@ -57,7 +57,7 @@ class VerifyParentClaim(AdCPBaseModel):
     claim: VerifyParentClaimClaim
 
 
-class VerifyPropertyClaimClaimPropertyStore(StrEnum):
+class Store(StrEnum):
     APPLE = 'apple'
     GOOGLE = 'google'
     AMAZON = 'amazon'
@@ -69,7 +69,7 @@ class VerifyPropertyClaimClaimPropertyStore(StrEnum):
     OTHER = 'other'
 
 
-class VerifyPropertyClaimClaimProperty(AdCPBaseModel):
+class Property(AdCPBaseModel):
     """
     Shape matches brand.json properties[] entry.
     """
@@ -79,7 +79,7 @@ class VerifyPropertyClaimClaimProperty(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claims-request.json', pointer='#/definitions/claim_entry/oneOf/2/properties/claim/properties/property')
     type: PropertyType
     identifier: str
-    store: VerifyPropertyClaimClaimPropertyStore | None = None
+    store: Store | None = None
     region: str | None = None
 
 
@@ -88,7 +88,7 @@ class VerifyPropertyClaimClaim(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claims-request.json', pointer='#/definitions/claim_entry/oneOf/2/properties/claim')
-    property: Annotated[VerifyPropertyClaimClaimProperty, Field(description='Shape matches brand.json properties[] entry.')]
+    property: Annotated[Property, Field(description='Shape matches brand.json properties[] entry.')]
     use_case: Annotated[StrMaxLen100 | None, Field(description='Optional caller-declared use case.')] = None
 
 

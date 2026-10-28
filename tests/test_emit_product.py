@@ -1792,15 +1792,16 @@ def test_an_annotation_on_a_containers_contents_reaches_the_wire(tmp_path, monke
         shared={"spare": {"type": "string", "description": "the base's spare"}},
     )
 
-    # The alias is named by D3's nested rule and the field references it, so the
-    # annotation is not restated inline.
+    # The alias is named by D3's nested rule -- by the position's OWN name, since the
+    # module path carries the document (``adcp-client-python-10l.50``) -- and the field
+    # references it, so the annotation is not restated inline.
     assert (
-        "ProbeComposingComponentValue = Annotated[dict[str, Any], "
+        "ComponentValue = Annotated[dict[str, Any], "
         "Field(description='Component properties')]" in text
     ), text
-    assert "component: Annotated[dict[str, ProbeComposingComponentValue]" in text, text
-    assert "ProbeComposingTagsItem = Annotated[dict[str, Any], Field(description='one tag')]" in text, text
-    assert "tags: Annotated[list[ProbeComposingTagsItem] | None" in text, text
+    assert "component: Annotated[dict[str, ComponentValue]" in text, text
+    assert "TagsItem = Annotated[dict[str, Any], Field(description='one tag')]" in text, text
+    assert "tags: Annotated[list[TagsItem] | None" in text, text
 
     comparison = compare_schema(schema, cls)
     assert (comparison.added, comparison.missing, comparison.differs) == ([], [], []), comparison
@@ -1848,7 +1849,7 @@ def test_breaking_the_inner_annotation_carrier_drops_the_fact_at_both_positions(
         own=ANNOTATED_VALUE,
         shared={"spare": {"type": "string", "description": "the base's spare"}},
     )
-    assert "ProbeComposingComponentValue" not in text, "the patch did not reach"
+    assert "ComponentValue" not in text, "the patch did not reach"
 
     # The two positions, each read on both sides: the DOCUMENT states the annotation and
     # the broken MODEL states nothing at all there.  The faithful probe above asserts

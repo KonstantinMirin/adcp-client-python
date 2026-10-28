@@ -19,7 +19,7 @@ from ..enums.watermark_media_type import WatermarkMediaType
 from .ext import ExtensionObject
 
 
-class ProvenanceAiTool(AdCPBaseModel):
+class AiTool(AdCPBaseModel):
     """
     AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.
     """
@@ -29,7 +29,7 @@ class ProvenanceAiTool(AdCPBaseModel):
     provider: Annotated[str | None, Field(description="Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')")] = None
 
 
-class ProvenanceHumanOversight(StrEnum):
+class HumanOversight(StrEnum):
     """
     Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` — the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.
     """
@@ -53,7 +53,7 @@ class ProvenanceHumanOversight(StrEnum):
     """Human directed the creative process with AI as an assistive tool"""
 
 
-class ProvenanceDeclaredByRole(StrEnum):
+class Role(StrEnum):
     """
     Role of the declaring party in the supply chain
     """
@@ -77,16 +77,16 @@ class ProvenanceDeclaredByRole(StrEnum):
     """Automated tool or service that attached provenance metadata"""
 
 
-class ProvenanceDeclaredBy(AdCPBaseModel):
+class DeclaredBy(AdCPBaseModel):
     """
     Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/declared_by')
     agent_url: Annotated[HttpUrl | None, Field(description='URL of the agent or service that declared this provenance')] = None
-    role: Annotated[ProvenanceDeclaredByRole, Field(description='Role of the declaring party in the supply chain')]
+    role: Annotated[Role, Field(description='Role of the declaring party in the supply chain')]
 
 
-class ProvenanceC2pa(AdCPBaseModel):
+class C2pa(AdCPBaseModel):
     """
     C2PA sidecar manifest reference. Links to a detached cryptographic provenance manifest for this content. Note: file-level C2PA bindings break when ad servers transcode, resize, or re-encode assets. For pipelines with intermediaries, consider embedded_provenance as the primary provenance mechanism.
     """
@@ -94,7 +94,7 @@ class ProvenanceC2pa(AdCPBaseModel):
     manifest_url: Annotated[HttpUrl, Field(description='URL to the C2PA manifest store for this content')]
 
 
-class ProvenanceEmbeddedProvenanceItemVerifyAgent(AdCPBaseModel):
+class EmbeddedProvenanceItemVerifyAgent(AdCPBaseModel):
     """
     Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing — the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).
     """
@@ -106,16 +106,16 @@ class ProvenanceEmbeddedProvenanceItemVerifyAgent(AdCPBaseModel):
     feature_id: Annotated[str | None, Field(description="Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `encypher.markers_present_v2`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.")] = None
 
 
-class ProvenanceEmbeddedProvenanceItem(AdCPBaseModel):
+class EmbeddedProvenanceItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/embedded_provenance/items')
     method: Annotated[EmbeddedProvenanceMethod, Field(description='How provenance data is carried within the content')]
     standard: Annotated[str | None, Field(description="Standard the embedding conforms to, if any (e.g., 'c2pa' for C2PA Section A.7 text manifest embedding)")] = None
     provider: Annotated[str, Field(description="Organization that performed the embedding (e.g., 'Encypher', 'Digimarc'). Display label and audit context — not a wire identifier.")]
-    verify_agent: Annotated[ProvenanceEmbeddedProvenanceItemVerifyAgent | None, Field(description="Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing — the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).")] = None
+    verify_agent: Annotated[EmbeddedProvenanceItemVerifyAgent | None, Field(description="Buyer's representation that this embedding can be verified by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing — the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist). MAY be omitted for self-verifiable embeddings (e.g., a C2PA text manifest with a public key the seller already trusts).")] = None
     embedded_at: Annotated[AwareDatetime | None, Field(description='When the provenance data was embedded (ISO 8601)')] = None
 
 
-class ProvenanceWatermarksItemVerifyAgent(AdCPBaseModel):
+class WatermarksItemVerifyAgent(AdCPBaseModel):
     """
     Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing — the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).
     """
@@ -127,16 +127,16 @@ class ProvenanceWatermarksItemVerifyAgent(AdCPBaseModel):
     feature_id: Annotated[str | None, Field(description="Optional `feature_id` the buyer represents the seller should request via `get_creative_features` (e.g., `imatag.watermark_detected`). SHOULD match the `feature_id` declared on the matching `accepted_verifiers[]` entry, or be omitted to defer the selector to the seller. When the seller's entry pins a `feature_id`, that value wins; when neither side pins, the seller selects from the agent's `governance.creative_features` catalog.")] = None
 
 
-class ProvenanceWatermarksItem(AdCPBaseModel):
+class WatermarksItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/watermarks/items')
     media_type: Annotated[WatermarkMediaType, Field(description='Media category of the watermarked content')]
     provider: Annotated[str, Field(description="Organization that applied the watermark (e.g., 'Imatag', 'Steg.AI', 'Encypher'). Display label and audit context — not a wire identifier.")]
-    verify_agent: Annotated[ProvenanceWatermarksItemVerifyAgent | None, Field(description="Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing — the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).")] = None
+    verify_agent: Annotated[WatermarksItemVerifyAgent | None, Field(description="Buyer's representation that this watermark can be detected by a governance agent on the seller's `creative_policy.accepted_verifiers` list. The `agent_url` MUST match (canonicalized) one of the seller's published `accepted_verifiers[].agent_url` entries; sellers reject `sync_creatives` submissions whose `verify_agent.agent_url` is off-list with `PROVENANCE_VERIFIER_NOT_ACCEPTED`. This is buyer-supplied evidence, not buyer-driven routing — the seller is the verifier-of-record and the seller controls which agent it actually calls (the seller MAY use a different on-list agent if it determines this is more appropriate; the seller does not call buyer-asserted endpoints outside its allowlist).")] = None
     c2pa_action: Annotated[C2PAWatermarkAction | None, Field(description='C2PA action classification for this watermark')] = None
     embedded_at: Annotated[AwareDatetime | None, Field(description='When the watermark was applied (ISO 8601)')] = None
 
 
-class ProvenanceDisclosureJurisdictionsItemRenderGuidance(AdCPBaseModel):
+class RenderGuidance(AdCPBaseModel):
     """
     How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.
     """
@@ -150,25 +150,25 @@ class ProvenanceDisclosureJurisdictionsItemRenderGuidance(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-class ProvenanceDisclosureJurisdictionsItem(AdCPBaseModel):
+class JurisdictionsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/disclosure/properties/jurisdictions/items')
     country: Annotated[str, Field(description="ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')")]
     region: Annotated[str | None, Field(description="Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)")] = None
     regulation: Annotated[str, Field(description="Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')")]
     label_text: Annotated[str | None, Field(description='Required disclosure label text for this jurisdiction, in the local language')] = None
-    render_guidance: Annotated[ProvenanceDisclosureJurisdictionsItemRenderGuidance | None, Field(description="How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.")] = None
+    render_guidance: Annotated[RenderGuidance | None, Field(description="How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.")] = None
 
 
-class ProvenanceDisclosure(AdCPBaseModel):
+class Disclosure(AdCPBaseModel):
     """
     Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/disclosure')
     required: Annotated[bool, Field(description="The declaring party's claim that AI disclosure is required for this content under applicable regulations. This is a declared signal carried through the supply chain — useful as a routing and audit input — not a regulatory determination made by the protocol. Receiving parties remain responsible for their own jurisdictional analysis and should not treat `required: false` as compliance cover.")]
-    jurisdictions: Annotated[list[ProvenanceDisclosureJurisdictionsItem] | None, Field(description='Jurisdictions where disclosure obligations apply', min_length=1)] = None
+    jurisdictions: Annotated[list[JurisdictionsItem] | None, Field(description='Jurisdictions where disclosure obligations apply', min_length=1)] = None
 
 
-class ProvenanceVerificationItemResult(StrEnum):
+class Result(StrEnum):
     """
     Verification outcome
     """
@@ -178,11 +178,11 @@ class ProvenanceVerificationItemResult(StrEnum):
     INCONCLUSIVE = 'inconclusive'
 
 
-class ProvenanceVerificationItem(AdCPBaseModel):
+class VerificationItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/verification/items')
     verified_by: Annotated[str, Field(description="Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')")]
     verified_time: Annotated[AwareDatetime | None, Field(description='When the verification was performed (ISO 8601)')] = None
-    result: Annotated[ProvenanceVerificationItemResult, Field(description='Verification outcome')]
+    result: Annotated[Result, Field(description='Verification outcome')]
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score of the verification result (0.0 to 1.0)')] = None
     details_url: Annotated[HttpUrl | None, Field(description='URL to the full verification report')] = None
 
@@ -194,16 +194,16 @@ class Provenance(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#')
     digital_source_type: Annotated[DigitalSourceType | None, Field(description='IPTC-aligned classification of AI involvement in producing this content')] = None
     synthetic_depiction: Annotated[bool | None, Field(description='Assessed declaration of whether the content synthetically depicts a real or fictional person performing or appearing in a way that was generated or materially manipulated rather than captured as depicted. `true` covers both a fully synthetic performer and material manipulation of a real performer; `false` is an assessed declaration that the content does not contain such a depiction. Absence means the content has not been assessed for synthetic depiction. This field does not claim consent, legality, or independent verification, and receivers MUST NOT derive it solely from `digital_source_type`.')] = None
-    ai_tool: Annotated[ProvenanceAiTool | None, Field(description='AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.')] = None
-    human_oversight: Annotated[ProvenanceHumanOversight | None, Field(description='Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` — the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.')] = None
-    declared_by: Annotated[ProvenanceDeclaredBy | None, Field(description='Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.')] = None
+    ai_tool: Annotated[AiTool | None, Field(description='AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.')] = None
+    human_oversight: Annotated[HumanOversight | None, Field(description='Level of human involvement in the AI-assisted creation process. Independent of `disclosure.required` — the protocol does not derive disclosure obligations from oversight level. Some regulations include carve-outs for human-edited or human-directed AI output, but those carve-outs have factual prerequisites the schema cannot evaluate. Asserting `edited` or `directed` does not by itself justify `disclosure.required: false`.')] = None
+    declared_by: Annotated[DeclaredBy | None, Field(description='Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.')] = None
     declared_at: Annotated[AwareDatetime | None, Field(description='When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance.')] = None
     created_time: Annotated[AwareDatetime | None, Field(description='When this content was created or generated (ISO 8601)')] = None
-    c2pa: Annotated[ProvenanceC2pa | None, Field(description='C2PA sidecar manifest reference. Links to a detached cryptographic provenance manifest for this content. Note: file-level C2PA bindings break when ad servers transcode, resize, or re-encode assets. For pipelines with intermediaries, consider embedded_provenance as the primary provenance mechanism.')] = None
-    embedded_provenance: Annotated[list[ProvenanceEmbeddedProvenanceItem] | None, Field(description='Provenance metadata embedded within the content stream. Each entry declares one embedding layer: structured provenance data carried inside the content itself, as distinct from sidecar references (c2pa.manifest_url). Embedded provenance survives operations that break sidecar and file-level bindings: ad-server transcoding, CMS ingestion, copy-paste, reformatting, and CDN re-encoding. For ad-tech pipelines where content passes through multiple intermediaries, embedded provenance is the reliable path for provenance that persists from declaration through delivery. This is a declaration by the embedding party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).', min_length=1)] = None
-    watermarks: Annotated[list[ProvenanceWatermarksItem] | None, Field(description='Content watermarks applied to this asset. Each entry declares one watermarking layer: a content modification that encodes an identifier or fingerprint within the asset. Watermarks differ from embedded provenance: a watermark encodes an identifier (who generated it, who owns it), while embedded provenance carries or references a structured provenance record (the full chain of custody). A single asset may carry both. Aligns with C2PA action taxonomy: c2pa.watermarked.bound (watermark linked to a C2PA manifest) and c2pa.watermarked.unbound (watermark independent of any manifest). This is a declaration by the watermarking party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).', min_length=1)] = None
-    disclosure: Annotated[ProvenanceDisclosure | None, Field(description='Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.')] = None
-    verification: Annotated[list[ProvenanceVerificationItem] | None, Field(description='Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.', min_length=1)] = None
+    c2pa: Annotated[C2pa | None, Field(description='C2PA sidecar manifest reference. Links to a detached cryptographic provenance manifest for this content. Note: file-level C2PA bindings break when ad servers transcode, resize, or re-encode assets. For pipelines with intermediaries, consider embedded_provenance as the primary provenance mechanism.')] = None
+    embedded_provenance: Annotated[list[EmbeddedProvenanceItem] | None, Field(description='Provenance metadata embedded within the content stream. Each entry declares one embedding layer: structured provenance data carried inside the content itself, as distinct from sidecar references (c2pa.manifest_url). Embedded provenance survives operations that break sidecar and file-level bindings: ad-server transcoding, CMS ingestion, copy-paste, reformatting, and CDN re-encoding. For ad-tech pipelines where content passes through multiple intermediaries, embedded provenance is the reliable path for provenance that persists from declaration through delivery. This is a declaration by the embedding party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).', min_length=1)] = None
+    watermarks: Annotated[list[WatermarksItem] | None, Field(description='Content watermarks applied to this asset. Each entry declares one watermarking layer: a content modification that encodes an identifier or fingerprint within the asset. Watermarks differ from embedded provenance: a watermark encodes an identifier (who generated it, who owns it), while embedded provenance carries or references a structured provenance record (the full chain of custody). A single asset may carry both. Aligns with C2PA action taxonomy: c2pa.watermarked.bound (watermark linked to a C2PA manifest) and c2pa.watermarked.unbound (watermark independent of any manifest). This is a declaration by the watermarking party. The receiving party (the seller) is the verifier-of-record: it confirms the claim by calling a governance agent it trusts (typically one published in `creative_policy.accepted_verifiers`).', min_length=1)] = None
+    disclosure: Annotated[Disclosure | None, Field(description='Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.')] = None
+    verification: Annotated[list[VerificationItem] | None, Field(description='Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.', min_length=1)] = None
     ext: ExtensionObject | None = None
 
 

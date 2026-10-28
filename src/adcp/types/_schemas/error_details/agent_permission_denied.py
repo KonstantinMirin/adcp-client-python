@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
-class AgentPermissionDeniedDetailsReason(StrEnum):
+class Reason(StrEnum):
     """
     Registered per-agent provisioning gate that fired. `"sandbox_only"` — the agent is provisioned for sandbox traffic only and the request was against a non-sandbox account. New `reason` values MUST be added here (the enum is closed by `additionalProperties: false`) so cross-language SDKs can dispatch without parsing prose.
     """
@@ -25,7 +25,7 @@ class AgentPermissionDeniedDetails(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/agent-permission-denied.json', pointer='#')
     scope: Annotated[Literal['agent'], Field(description='Discriminator that this `PERMISSION_DENIED` was triggered by a per-buyer-agent provisioning gate (as opposed to a generic credential-shaped failure). Registered subset of `enums/error-scope.json` — sellers MUST set this field exactly to `"agent"` for this shape, and MUST omit `scope` entirely when responding on the unauthenticated/unestablished-identity path required by the cross-tenant oracle clamp. The `AGENT_SUSPENDED` / `AGENT_BLOCKED` codes (per-agent commercial status) do NOT carry an explicit `scope` field — the code itself is the discriminator on those paths, mirroring `BILLING_NOT_PERMITTED_FOR_AGENT`.')]
-    reason: Annotated[AgentPermissionDeniedDetailsReason, Field(description='Registered per-agent provisioning gate that fired. `"sandbox_only"` — the agent is provisioned for sandbox traffic only and the request was against a non-sandbox account. New `reason` values MUST be added here (the enum is closed by `additionalProperties: false`) so cross-language SDKs can dispatch without parsing prose.')]
+    reason: Annotated[Reason, Field(description='Registered per-agent provisioning gate that fired. `"sandbox_only"` — the agent is provisioned for sandbox traffic only and the request was against a non-sandbox account. New `reason` values MUST be added here (the enum is closed by `additionalProperties: false`) so cross-language SDKs can dispatch without parsing prose.')]
 
 
 __all__ = ["AgentPermissionDeniedDetails"]

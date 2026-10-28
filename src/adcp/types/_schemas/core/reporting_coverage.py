@@ -11,7 +11,7 @@ from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
 
-class ReportingCoverageStatus(StrEnum):
+class Status(StrEnum):
     FULL = 'full'
     PARTIAL = 'partial'
     NONE = 'none'
@@ -24,7 +24,7 @@ ReportingCoverageReportingMediaBuyId = StrMinLen1
 ReportingCoverageReportingPackageId = StrMinLen1
 
 
-class ReportingCoverageLimitationsItemReason(StrEnum):
+class Reason(StrEnum):
     OFFERING_UNSUPPORTED = 'offering_unsupported'
     ACCOUNT_ENTITLEMENT_UNAVAILABLE = 'account_entitlement_unavailable'
     CREDENTIAL_SCOPE_INSUFFICIENT = 'credential_scope_insufficient'
@@ -32,7 +32,7 @@ class ReportingCoverageLimitationsItemReason(StrEnum):
     CAPABILITY_UNKNOWN = 'capability_unknown'
 
 
-class ReportingCoverageLimitationsItem(AdCPBaseModel):
+class LimitationsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -40,7 +40,7 @@ class ReportingCoverageLimitationsItem(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('package_ids'),
     )
-    reason: ReportingCoverageLimitationsItemReason
+    reason: Reason
     media_buy_id: ReportingCoverageReportingMediaBuyId
     package_ids: Annotated[list[ReportingCoverageReportingPackageId] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
@@ -64,7 +64,7 @@ class ReportingCoverage(AdCPBaseModel):
         UniqueItems('unsupported_package_ids'),
         UniqueItems('unknown_package_ids'),
     )
-    status: ReportingCoverageStatus
+    status: Status
     evaluated_at: AwareDatetime
     media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(description='Exact media-buy denominator, including unsupported and unknown buys. An empty array is an explicitly evaluated zero-buy scope.', json_schema_extra={'uniqueItems': True})]
     fully_covered_media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]
@@ -75,7 +75,7 @@ class ReportingCoverage(AdCPBaseModel):
     covered_package_ids: Annotated[list[ReportingCoverageReportingPackageId], Field(json_schema_extra={'uniqueItems': True})]
     unsupported_package_ids: Annotated[list[ReportingCoverageReportingPackageId], Field(json_schema_extra={'uniqueItems': True})]
     unknown_package_ids: Annotated[list[ReportingCoverageReportingPackageId], Field(json_schema_extra={'uniqueItems': True})]
-    limitations: Annotated[list[ReportingCoverageLimitationsItem], Field(description='Stable reasons that some requested scope is not covered by the exact selected offering. These are capability facts, not delivery failures.')]
+    limitations: Annotated[list[LimitationsItem], Field(description='Stable reasons that some requested scope is not covered by the exact selected offering. These are capability facts, not delivery failures.')]
 
 
 __all__ = ["ReportingCoverage", "ReportingCoverageReportingMediaBuyId", "ReportingCoverageReportingPackageId"]

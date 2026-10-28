@@ -16,7 +16,7 @@ from ..enums.travel_time_unit import TravelTimeUnit
 from .ext import ExtensionObject
 
 
-class CatchmentTravelTime(AdCPBaseModel):
+class TravelTime(AdCPBaseModel):
     """
     Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks, accounting for road connectivity, transit schedules, and terrain.
     """
@@ -28,7 +28,7 @@ class CatchmentTravelTime(AdCPBaseModel):
     unit: TravelTimeUnit
 
 
-class CatchmentRadius(AdCPBaseModel):
+class Radius(AdCPBaseModel):
     """
     Simple radius from the store location. The platform draws a circle of this distance around the store's coordinates.
     """
@@ -40,7 +40,7 @@ class CatchmentRadius(AdCPBaseModel):
     unit: Annotated[DistanceUnit, Field(description='Distance unit.')]
 
 
-class CatchmentGeometryType(StrEnum):
+class GeometryType(StrEnum):
     """
     GeoJSON geometry type.
     """
@@ -48,7 +48,7 @@ class CatchmentGeometryType(StrEnum):
     MULTIPOLYGON = 'MultiPolygon'
 
 
-class CatchmentGeometry(AdCPBaseModel):
+class Geometry(AdCPBaseModel):
     """
     Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types.
     """
@@ -56,7 +56,7 @@ class CatchmentGeometry(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catchment.json', pointer='#/properties/geometry')
-    type: Annotated[CatchmentGeometryType, Field(description='GeoJSON geometry type.')]
+    type: Annotated[GeometryType, Field(description='GeoJSON geometry type.')]
     coordinates: Annotated[list[Any], Field(description='GeoJSON coordinates array. For Polygon: array of linear rings. For MultiPolygon: array of polygons.')]
 
 
@@ -73,10 +73,10 @@ class Catchment(AdCPBaseModel):
     )
     catchment_id: Annotated[str, Field(description="Identifier for this catchment, used to reference specific catchment areas in targeting (e.g., 'walk', 'drive', 'primary').")]
     label: Annotated[str | None, Field(description="Human-readable label for this catchment (e.g., '15-min drive', '1km walking radius').")] = None
-    travel_time: Annotated[CatchmentTravelTime | None, Field(description='Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks, accounting for road connectivity, transit schedules, and terrain.')] = None
+    travel_time: Annotated[TravelTime | None, Field(description='Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks, accounting for road connectivity, transit schedules, and terrain.')] = None
     transport_mode: Annotated[TransportMode | None, Field(description='Transportation mode for isochrone calculation. Required when travel_time is provided.')] = None
-    radius: Annotated[CatchmentRadius | None, Field(description="Simple radius from the store location. The platform draws a circle of this distance around the store's coordinates.")] = None
-    geometry: Annotated[CatchmentGeometry | None, Field(description='Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types.')] = None
+    radius: Annotated[Radius | None, Field(description="Simple radius from the store location. The platform draws a circle of this distance around the store's coordinates.")] = None
+    geometry: Annotated[Geometry | None, Field(description='Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types.')] = None
     ext: ExtensionObject | None = None
 
 

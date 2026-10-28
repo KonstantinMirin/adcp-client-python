@@ -13,14 +13,14 @@ from ..enums.reach_unit import ReachUnit
 from .duration import Duration
 
 
-class FrequencyCapSuppress(Duration):
+class Suppress(Duration):
     """
     Cooldown period between consecutive exposures to the same entity. Prevents back-to-back ad delivery (e.g. {"interval": 60, "unit": "minutes"} for a 1-hour cooldown). Preferred over suppress_minutes.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/frequency-cap.json', pointer='#/properties/suppress')
 
 
-class FrequencyCapWindow(Duration):
+class Window(Duration):
     """
     Time window for the max_impressions cap (e.g. {"interval": 7, "unit": "days"} or {"interval": 1, "unit": "campaign"} for the full flight). Required when max_impressions is set.
     """
@@ -41,11 +41,11 @@ class FrequencyCap(AdCPBaseModel):
         Dependencies('window', ('max_impressions',)),
         RequiredGroups((('suppress',), ('suppress_minutes',), ('max_impressions',)), 'anyOf'),
     )
-    suppress: Annotated[FrequencyCapSuppress | None, Field(description='Cooldown period between consecutive exposures to the same entity. Prevents back-to-back ad delivery (e.g. {"interval": 60, "unit": "minutes"} for a 1-hour cooldown). Preferred over suppress_minutes.')] = None
+    suppress: Annotated[Suppress | None, Field(description='Cooldown period between consecutive exposures to the same entity. Prevents back-to-back ad delivery (e.g. {"interval": 60, "unit": "minutes"} for a 1-hour cooldown). Preferred over suppress_minutes.')] = None
     suppress_minutes: Annotated[NonNegativeFloat | None, Field(description='Deprecated — use suppress instead. Cooldown period in minutes between consecutive exposures to the same entity (e.g. 60 for a 1-hour cooldown).')] = None
     max_impressions: Annotated[IntMin1 | None, Field(description="Maximum number of impressions per entity per window. For duration windows, implementations typically use a rolling window. campaign applies across the owning field's full flight: the package flight for a targeting overlay, or the MediaBuy flight for a root cap.")] = None
     per: Annotated[ReachUnit | None, Field(description='Entity granularity for impression counting. Required when max_impressions is set.')] = None
-    window: Annotated[FrequencyCapWindow | None, Field(description='Time window for the max_impressions cap (e.g. {"interval": 7, "unit": "days"} or {"interval": 1, "unit": "campaign"} for the full flight). Required when max_impressions is set.')] = None
+    window: Annotated[Window | None, Field(description='Time window for the max_impressions cap (e.g. {"interval": 7, "unit": "days"} or {"interval": 1, "unit": "campaign"} for the full flight). Required when max_impressions is set.')] = None
 
 
-__all__ = ["FrequencyCap", "FrequencyCapSuppress", "FrequencyCapWindow"]
+__all__ = ["FrequencyCap", "Suppress", "Window"]

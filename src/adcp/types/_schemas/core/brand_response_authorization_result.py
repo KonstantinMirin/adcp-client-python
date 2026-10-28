@@ -11,7 +11,7 @@ from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import AdCPUrl, StrMinLen1
 
 
-class BrandResponseAuthorizationResultTrust(StrEnum):
+class Trust(StrEnum):
     """
     Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.
     """
@@ -19,7 +19,7 @@ class BrandResponseAuthorizationResultTrust(StrEnum):
     UNTRUSTED = 'untrusted'
 
 
-class BrandResponseAuthorizationResultReason(StrEnum):
+class Reason(StrEnum):
     """
     Machine-readable reason for an untrusted result.
     """
@@ -47,8 +47,8 @@ class BrandResponseAuthorizationResult(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    trust: Annotated[BrandResponseAuthorizationResultTrust, Field(description='Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.')]
-    reason: Annotated[BrandResponseAuthorizationResultReason | None, Field(description='Machine-readable reason for an untrusted result.')] = None
+    trust: Annotated[Trust, Field(description='Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.')]
+    reason: Annotated[Reason | None, Field(description='Machine-readable reason for an untrusted result.')] = None
     kid: Annotated[StrMinLen1 | None, Field(description='JWS kid evaluated by the cross-check.')] = None
     jwks_uri: Annotated[AdCPUrl | None, Field(description='JWKS URI selected only from the matched brand.json agent entry, or its same-origin default.')] = None
 
@@ -66,7 +66,7 @@ class BrandResponseAuthorizationResultTrusted(BrandResponseAuthorizationResult):
 class BrandResponseAuthorizationResultUntrusted(BrandResponseAuthorizationResult):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/brand-response-authorization-result.json', pointer='#/oneOf/1')
     trust: Annotated[Literal['untrusted'], Field(description='Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.')]
-    reason: Annotated[BrandResponseAuthorizationResultReason, Field(description='Machine-readable reason for an untrusted result.')]
+    reason: Annotated[Reason, Field(description='Machine-readable reason for an untrusted result.')]
 
 
 BrandResponseAuthorizationResult._branch_models = (BrandResponseAuthorizationResultTrusted, BrandResponseAuthorizationResultUntrusted,)

@@ -17,7 +17,7 @@ from .datetime_range import DatetimeRange
 from .performance_feedback_metric import PerformanceFeedbackMetric
 
 
-class PerformanceFeedbackAssertionEvidenceConfidenceInterval(AdCPBaseModel):
+class ConfidenceInterval(AdCPBaseModel):
     """
     Confidence interval on the performance_index scale. sample_size may be omitted when the producer cannot disclose it.
     """
@@ -30,7 +30,7 @@ class PerformanceFeedbackAssertionEvidenceConfidenceInterval(AdCPBaseModel):
     level: FloatGt0Lt1
 
 
-class PerformanceFeedbackAssertionEvidence(AdCPBaseModel):
+class Evidence(AdCPBaseModel):
     """
     Small inline evidence summary used to weight the assertion without transporting the full study.
     """
@@ -39,7 +39,7 @@ class PerformanceFeedbackAssertionEvidence(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/performance-feedback-assertion.json', pointer='#/properties/evidence')
     sample_size: IntMin1 | None = None
-    confidence_interval: Annotated[PerformanceFeedbackAssertionEvidenceConfidenceInterval | None, Field(description='Confidence interval on the performance_index scale. sample_size may be omitted when the producer cannot disclose it.')] = None
+    confidence_interval: Annotated[ConfidenceInterval | None, Field(description='Confidence interval on the performance_index scale. sample_size may be omitted when the producer cannot disclose it.')] = None
 
 
 class PerformanceFeedbackAssertion(AdCPBaseModel):
@@ -68,11 +68,11 @@ class PerformanceFeedbackAssertion(AdCPBaseModel):
     methodology: Annotated[StrMinLen1MaxLen100 | None, Field(description='Producer-scoped methodology identifier such as geo_incrementality, media_mix_model, or deterministic_attribution.')] = None
     methodology_version: Annotated[StrMinLen1MaxLen100 | None, Field(description='Producer-defined version of the methodology used for this assertion.')] = None
     study_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque producer-assigned study or model-run reference. Receivers use it for correlation only and MUST NOT interpret it as an experiment-execution instruction.')] = None
-    evidence: Annotated[PerformanceFeedbackAssertionEvidence | None, Field(description='Small inline evidence summary used to weight the assertion without transporting the full study.')] = None
+    evidence: Annotated[Evidence | None, Field(description='Small inline evidence summary used to weight the assertion without transporting the full study.')] = None
     evidence_ref: Annotated[HttpUrl | None, Field(description='Provider-hosted evidence or result reference for parties authorized to inspect the full study.')] = None
     as_of: Annotated[AwareDatetime | None, Field(description='When the producer computed this assertion.')] = None
     final: Annotated[bool | None, Field(description='Whether the producer expects this assertion to be revised as data matures.')] = None
     supersedes_feedback_id: Annotated[StrMinLen1 | None, Field(description='Receiver-issued feedback_id of the earlier assertion this one replaces at the same hop.')] = None
 
 
-__all__ = ["PerformanceFeedbackAssertion", "PerformanceFeedbackAssertionEvidence"]
+__all__ = ["PerformanceFeedbackAssertion", "Evidence"]

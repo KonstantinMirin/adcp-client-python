@@ -15,7 +15,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.policy_enforcement import PolicyEnforcementLevel
 
 
-class SyncPlansResponsePlansItemStatus(StrEnum):
+class PlansItemStatus(StrEnum):
     """
     Sync result status. 'active' means sync succeeded; 'error' means sync failed.
     """
@@ -23,7 +23,7 @@ class SyncPlansResponsePlansItemStatus(StrEnum):
     ERROR = 'error'
 
 
-class SyncPlansResponsePlansItemCategoriesItemStatus(StrEnum):
+class CategoriesItemStatus(StrEnum):
     """
     Whether this category is active for this plan.
     """
@@ -31,16 +31,16 @@ class SyncPlansResponsePlansItemCategoriesItemStatus(StrEnum):
     INACTIVE = 'inactive'
 
 
-class SyncPlansResponsePlansItemCategoriesItem(AdCPBaseModel):
+class CategoriesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-response.json', pointer='#/properties/plans/items/properties/categories/items')
     category_id: Annotated[str, Field(description='Validation category identifier.')]
-    status: Annotated[SyncPlansResponsePlansItemCategoriesItemStatus, Field(description='Whether this category is active for this plan.')]
+    status: Annotated[CategoriesItemStatus, Field(description='Whether this category is active for this plan.')]
 
 
-class SyncPlansResponsePlansItemResolvedPoliciesItemSource(StrEnum):
+class Source(StrEnum):
     """
     How this policy was included. 'explicit': referenced in the brand compliance configuration. 'auto_applied': matched automatically by jurisdiction or policy category.
     """
@@ -48,27 +48,27 @@ class SyncPlansResponsePlansItemResolvedPoliciesItemSource(StrEnum):
     AUTO_APPLIED = 'auto_applied'
 
 
-class SyncPlansResponsePlansItemResolvedPoliciesItem(AdCPBaseModel):
+class ResolvedPoliciesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-response.json', pointer='#/properties/plans/items/properties/resolved_policies/items')
     policy_id: Annotated[str, Field(description='Registry policy ID.')]
-    source: Annotated[SyncPlansResponsePlansItemResolvedPoliciesItemSource, Field(description="How this policy was included. 'explicit': referenced in the brand compliance configuration. 'auto_applied': matched automatically by jurisdiction or policy category.")]
+    source: Annotated[Source, Field(description="How this policy was included. 'explicit': referenced in the brand compliance configuration. 'auto_applied': matched automatically by jurisdiction or policy category.")]
     enforcement: Annotated[PolicyEnforcementLevel, Field(description='Enforcement level for this policy.')]
     reason: Annotated[str | None, Field(description="Why this policy was included (e.g., 'Matched jurisdiction US and policy category pharmaceutical_advertising').")] = None
 
 
-class SyncPlansResponsePlansItem(AdCPBaseModel):
+class PlansItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-response.json', pointer='#/properties/plans/items')
     plan_id: Annotated[str, Field(description='Plan identifier.')]
-    status: Annotated[SyncPlansResponsePlansItemStatus, Field(description="Sync result status. 'active' means sync succeeded; 'error' means sync failed.")]
+    status: Annotated[PlansItemStatus, Field(description="Sync result status. 'active' means sync succeeded; 'error' means sync failed.")]
     version: Annotated[int, Field(description='Plan version (increments on each sync).')]
-    categories: Annotated[list[SyncPlansResponsePlansItemCategoriesItem] | None, Field(description='Validation categories active for this plan.')] = None
-    resolved_policies: Annotated[list[SyncPlansResponsePlansItemResolvedPoliciesItem] | None, Field(description='Policies the governance agent will enforce for this plan. Includes explicitly referenced policies from the brand compliance configuration and auto-applied policies matched by jurisdiction or policy category. Present when the governance agent supports policy resolution.')] = None
+    categories: Annotated[list[CategoriesItem] | None, Field(description='Validation categories active for this plan.')] = None
+    resolved_policies: Annotated[list[ResolvedPoliciesItem] | None, Field(description='Policies the governance agent will enforce for this plan. Includes explicitly referenced policies from the brand compliance configuration and auto-applied policies matched by jurisdiction or policy category. Present when the governance agent supports policy resolution.')] = None
 
 
 class SyncPlansResponse(AdCPVersionEnvelope, ProtocolEnvelope):
@@ -79,7 +79,7 @@ class SyncPlansResponse(AdCPVersionEnvelope, ProtocolEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-response.json', pointer='#')
-    plans: Annotated[list[SyncPlansResponsePlansItem], Field(description='Status for each synced plan.')]
+    plans: Annotated[list[PlansItem], Field(description='Status for each synced plan.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

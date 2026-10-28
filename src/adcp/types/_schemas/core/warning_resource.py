@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 
-class WarningAffectedResourceResourceType(StrEnum):
+class ResourceType(StrEnum):
     MEDIA_BUY = 'media_buy'
     PACKAGE = 'package'
     CREATIVE = 'creative'
@@ -31,7 +31,7 @@ class WarningAffectedResource(AdCPBaseModel):
         ConditionalRequired((Match('resource_type', True, ('creative',)),), require=('creative_id',), forbid=()),
         ConditionalRequired((Match('resource_type', True, ('creative_assignment',)),), require=('media_buy_id', 'package_id', 'creative_id'), forbid=()),
     )
-    resource_type: WarningAffectedResourceResourceType
+    resource_type: ResourceType
     media_buy_id: str | None = None
     package_id: str | None = None
     creative_id: str | None = None

@@ -12,7 +12,7 @@ from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 
 
-class UpdateMediaBuyInputRequiredReason(StrEnum):
+class Reason(StrEnum):
     """
     Reason code indicating why input is needed
     """
@@ -28,7 +28,7 @@ class UpdateMediaBuyInputRequired(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/update-media-buy-async-response-input-required.json', pointer='#')
-    reason: Annotated[UpdateMediaBuyInputRequiredReason | None, Field(description='Reason code indicating why input is needed')] = None
+    reason: Annotated[Reason | None, Field(description='Reason code indicating why input is needed')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

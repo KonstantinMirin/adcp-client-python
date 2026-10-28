@@ -14,7 +14,7 @@ from .catalog_item_availability_error import CatalogItemAvailabilityError
 from .ext import ExtensionObject
 
 
-class CatalogItemAvailabilityUpdateResultAction(StrEnum):
+class Action(StrEnum):
     """
     Action from the request.
     """
@@ -22,7 +22,7 @@ class CatalogItemAvailabilityUpdateResultAction(StrEnum):
     RESTORE = 'restore'
 
 
-class CatalogItemAvailabilityUpdateResultStatus(StrEnum):
+class Status(StrEnum):
     """
     applied means the requested overlay transition completed, including replacement or removal of an existing expires_at; unchanged means the item was already in the requested buyer-availability state with the same expiry; failed means no transition was applied.
     """
@@ -31,7 +31,7 @@ class CatalogItemAvailabilityUpdateResultStatus(StrEnum):
     FAILED = 'failed'
 
 
-class CatalogItemAvailabilityUpdateResultAvailability(StrEnum):
+class Availability(StrEnum):
     """
     Persisted buyer-authored state after an applied or unchanged result.
     """
@@ -56,9 +56,9 @@ class CatalogItemAvailabilityUpdateResult(AdCPBaseModel):
     catalog_id: Annotated[str, Field(description='Catalog ID from the request.')]
     catalog_generation: Annotated[StrMinLen1MaxLen255, Field(description='Catalog generation from the request.')]
     item_id: Annotated[str, Field(description='Item ID from the request.')]
-    action: Annotated[CatalogItemAvailabilityUpdateResultAction, Field(description='Action from the request.')]
-    status: Annotated[CatalogItemAvailabilityUpdateResultStatus, Field(description='applied means the requested overlay transition completed, including replacement or removal of an existing expires_at; unchanged means the item was already in the requested buyer-availability state with the same expiry; failed means no transition was applied.')]
-    availability: Annotated[CatalogItemAvailabilityUpdateResultAvailability | None, Field(description='Persisted buyer-authored state after an applied or unchanged result.')] = None
+    action: Annotated[Action, Field(description='Action from the request.')]
+    status: Annotated[Status, Field(description='applied means the requested overlay transition completed, including replacement or removal of an existing expires_at; unchanged means the item was already in the requested buyer-availability state with the same expiry; failed means no transition was applied.')]
+    availability: Annotated[Availability | None, Field(description='Persisted buyer-authored state after an applied or unchanged result.')] = None
     overlay_revision: Annotated[NonNegativeInt | None, Field(description="Persisted state revision after an applied or unchanged result. Applied increments the request's expected_overlay_revision exactly once; unchanged preserves it.")] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='Persisted expiry after this update, present only for a suppressed state with an expiry.')] = None
     applied_at: Annotated[AwareDatetime | None, Field(description='Seller timestamp when the buyer-availability state took effect. Required for applied. Optional for unchanged when the seller knows the timestamp of the already-persisted state.')] = None

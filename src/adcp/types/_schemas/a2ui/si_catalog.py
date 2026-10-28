@@ -9,7 +9,7 @@ from pydantic import Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
-class SIComponentCatalogComponentsItem(StrEnum):
+class ComponentsItem(StrEnum):
     TEXT = 'Text'
     BUTTON = 'Button'
     LINK = 'Link'
@@ -29,7 +29,7 @@ class SIComponentCatalog(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='a2ui/si-catalog.json', pointer='#')
     catalogId: Annotated[Literal['si-standard'] | None, Field(description='SI standard component catalog')] = None
-    components: Annotated[list[SIComponentCatalogComponentsItem] | None, Field(description='Available component types')] = None
+    components: Annotated[list[ComponentsItem] | None, Field(description='Available component types')] = None
 
 
 __all__ = ["SIComponentCatalog"]

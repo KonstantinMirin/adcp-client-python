@@ -11,7 +11,7 @@ from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import HttpUrl, StrMatchingD4A41027, StrMinLen1
 
 
-class AgenticAdvertisingOrgVerificationTokenClaimsRole(StrEnum):
+class Role(StrEnum):
     MEDIA_BUY = 'media-buy'
     CREATIVE = 'creative'
     SIGNALS = 'signals'
@@ -49,7 +49,7 @@ class AgenticAdvertisingOrgVerificationTokenClaims(AdCPBaseModel):
     iat: NonNegativeInt
     exp: NonNegativeInt
     agent_url: HttpUrl
-    role: AgenticAdvertisingOrgVerificationTokenClaimsRole
+    role: Role
     verified_specialisms: Annotated[list[str], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     verification_modes: Annotated[list[AgenticAdvertisingOrgVerificationTokenClaimsVerificationTokenMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     grading_profile: Annotated[AgenticAdvertisingOrgVerificationTokenClaimsVerificationTokenGradingProfile | None, Field(description='Grading policy that produced the badge. Absence on a historical token means Legacy; verification_modes remains an independent evidence axis.')] = None

@@ -12,7 +12,7 @@ from ..enums.assessment_status import AssessmentStatus
 from .diagnostic_issue import DiagnosticIssue
 
 
-class EventSourceHealthDetail(AdCPBaseModel):
+class Detail(AdCPBaseModel):
     """
     Seller-specific scoring detail. Only present when the seller has a native quality score to relay. Buyer agents should use status (not detail) for cross-seller decisions. Detail is supplementary context for human review or advanced diagnostics.
     """
@@ -34,7 +34,7 @@ class EventSourceHealth(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/event-source-health.json', pointer='#')
     status: Annotated[AssessmentStatus, Field(description="Overall health status. Use this for cross-seller decisions — do not rely on detail.score for comparability. 'insufficient' covers the source-offline case (zero events received over the seller's evaluation window) — disambiguate via `events_received_24h: 0` and a stale `last_event_at`. Sellers MUST surface a corresponding impairment (reason_code: source_offline) on any active media buy whose conversion goals depend on an event source that has gone offline.")]
-    detail: Annotated[EventSourceHealthDetail | None, Field(description='Seller-specific scoring detail. Only present when the seller has a native quality score to relay. Buyer agents should use status (not detail) for cross-seller decisions. Detail is supplementary context for human review or advanced diagnostics.')] = None
+    detail: Annotated[Detail | None, Field(description='Seller-specific scoring detail. Only present when the seller has a native quality score to relay. Buyer agents should use status (not detail) for cross-seller decisions. Detail is supplementary context for human review or advanced diagnostics.')] = None
     match_rate: Annotated[FloatMin0Max1 | None, Field(description='Fraction of events from this source that the seller successfully matched to ad interactions (0.0-1.0). Low match rates indicate weak user_match identifiers. Absent when the seller does not compute match rates.')] = None
     last_event_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of the most recent event received from this source. Absent when no events have been received.')] = None
     evaluated_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when this health assessment was computed. When health is derived from reporting data, this may lag real-time. Buyer agents can use this to decide whether to trust stale assessments or re-request.')] = None

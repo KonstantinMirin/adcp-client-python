@@ -11,7 +11,7 @@ from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, 
 from adcp.types.constraints import StrMatching5E987613, StrMinLen16MaxLen255Matching1E5CF9EB, StrMinLen1MaxLen128MatchingE43B025C, StrMinLen1MaxLen255Matching67860854
 
 
-class ReportingAdjustmentReceiptStatus(StrEnum):
+class Status(StrEnum):
     ACCEPTED = 'accepted'
     REJECTED = 'rejected'
 
@@ -36,7 +36,7 @@ class ReportingAdjustmentReceipt(AdCPBaseModel):
     reporting_adjustment_id: StrMinLen1MaxLen255Matching67860854
     adjusts_reporting_revision_id: StrMinLen1MaxLen255Matching67860854
     supersedes_reporting_receipt_id: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB | None, Field(description='Optional immutable rejected receipt replaced by this new receipt for the same adjustment. Accepted current receipts are terminal.')] = None
-    status: ReportingAdjustmentReceiptStatus
+    status: Status
     observed_adjustment_sha256: Annotated[StrMatching5E987613, Field(description='Digest recomputed from the adjustment using its canonical evidence rule.')]
     rejection_codes: Annotated[list[ReportingAdjustmentReceiptReportingAdjustmentRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     observed_at: AwareDatetime

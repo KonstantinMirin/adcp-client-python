@@ -33,7 +33,7 @@ class GetBrandIdentityResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
         return "oneOf"
 
 
-class GetBrandIdentitySuccessHouse(AdCPBaseModel):
+class House(AdCPBaseModel):
     """
     The house (corporate entity) this brand belongs to. Always returned regardless of authorization level.
     """
@@ -45,7 +45,7 @@ class GetBrandIdentitySuccessHouse(AdCPBaseModel):
     name: Annotated[str, Field(description='House display name')]
 
 
-class GetBrandIdentitySuccessKellerType(StrEnum):
+class KellerType(StrEnum):
     """
     Brand architecture type: master (primary brand of house), sub_brand (carries parent name), endorsed (independent identity backed by parent), independent (operates separately)
     """
@@ -55,7 +55,7 @@ class GetBrandIdentitySuccessKellerType(StrEnum):
     INDEPENDENT = 'independent'
 
 
-class GetBrandIdentitySuccessLogosItemOrientation(StrEnum):
+class Orientation(StrEnum):
     """
     Logo aspect ratio orientation
     """
@@ -65,7 +65,7 @@ class GetBrandIdentitySuccessLogosItemOrientation(StrEnum):
     STACKED = 'stacked'
 
 
-class GetBrandIdentitySuccessLogosItemBackground(StrEnum):
+class Background(StrEnum):
     """
     Background compatibility
     """
@@ -74,7 +74,7 @@ class GetBrandIdentitySuccessLogosItemBackground(StrEnum):
     TRANSPARENT_BG = 'transparent-bg'
 
 
-class GetBrandIdentitySuccessLogosItemVariant(StrEnum):
+class Variant(StrEnum):
     """
     Logo variant type
     """
@@ -85,22 +85,22 @@ class GetBrandIdentitySuccessLogosItemVariant(StrEnum):
     FULL_LOCKUP = 'full-lockup'
 
 
-class GetBrandIdentitySuccessLogosItem(AdCPBaseModel):
+class LogosItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items')
     url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
-    orientation: Annotated[GetBrandIdentitySuccessLogosItemOrientation | None, Field(description='Logo aspect ratio orientation')] = None
-    background: Annotated[GetBrandIdentitySuccessLogosItemBackground | None, Field(description='Background compatibility')] = None
-    variant: Annotated[GetBrandIdentitySuccessLogosItemVariant | None, Field(description='Logo variant type')] = None
+    orientation: Annotated[Orientation | None, Field(description='Logo aspect ratio orientation')] = None
+    background: Annotated[Background | None, Field(description='Background compatibility')] = None
+    variant: Annotated[Variant | None, Field(description='Logo variant type')] = None
     tags: Annotated[list[str] | None, Field(description='Additional semantic tags')] = None
     usage: Annotated[str | None, Field(description='When to use this logo variant')] = None
     width: Annotated[int | None, Field(description='Width in pixels')] = None
     height: Annotated[int | None, Field(description='Height in pixels')] = None
 
 
-class GetBrandIdentitySuccessColors(AdCPBaseModel):
+class Colors(AdCPBaseModel):
     """
     Brand color palette. Each role accepts a single hex color or an array of hex colors. Shape matches brand.json colors definition.
     """
@@ -115,7 +115,7 @@ class GetBrandIdentitySuccessColors(AdCPBaseModel):
     text: StrMatchingF01B4765 | NonEmptyList[StrMatchingF01B4765] | None = None
 
 
-class GetBrandIdentityResponseFontRoleFamilyFilesItemStyle(StrEnum):
+class Style(StrEnum):
     """
     CSS font-style
     """
@@ -124,7 +124,7 @@ class GetBrandIdentityResponseFontRoleFamilyFilesItemStyle(StrEnum):
     OBLIQUE = 'oblique'
 
 
-class GetBrandIdentityResponseFontRoleFamilyFilesItem(AdCPBaseModel):
+class FilesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -132,7 +132,7 @@ class GetBrandIdentityResponseFontRoleFamilyFilesItem(AdCPBaseModel):
     url: Annotated[AdCPUrl, Field(description='HTTPS URL to the font file')]
     weight: Annotated[IntMin100Max900 | None, Field(description='CSS numeric font-weight')] = None
     weight_range: Annotated[list[IntMin100Max900] | None, Field(description='Variable font weight axis range as [min, max]', max_length=2, min_length=2)] = None
-    style: Annotated[GetBrandIdentityResponseFontRoleFamilyFilesItemStyle | None, Field(description='CSS font-style')] = None
+    style: Annotated[Style | None, Field(description='CSS font-style')] = None
 
 
 class GetBrandIdentityResponseFontRoleFamily(AdCPBaseModel):
@@ -141,7 +141,7 @@ class GetBrandIdentityResponseFontRoleFamily(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/fonts/definitions/font_role/oneOf/1')
     family: Annotated[str, Field(description='CSS font-family name')]
-    files: Annotated[list[GetBrandIdentityResponseFontRoleFamilyFilesItem] | None, Field(max_length=36)] = None
+    files: Annotated[list[FilesItem] | None, Field(max_length=36)] = None
     opentype_features: Annotated[list[StrMatching83577F62] | None, Field(description="OpenType feature tags to enable (e.g., ['ss01', 'tnum'])", max_length=20)] = None
     fallbacks: Annotated[list[StrMaxLen100] | None, Field(description='Ordered fallback font-family names for script coverage', max_length=10)] = None
 
@@ -149,7 +149,7 @@ class GetBrandIdentityResponseFontRoleFamily(AdCPBaseModel):
 GetBrandIdentityResponseFontRole = str | GetBrandIdentityResponseFontRoleFamily
 
 
-class GetBrandIdentitySuccessFonts(AdCPBaseModel):
+class Fonts(AdCPBaseModel):
     """
     Brand typography. Each key is a role name (e.g., 'primary', 'secondary') referenced by type_scale entries. Values are either a CSS font-family string or a structured object with family name and font files. Shape matches brand.json fonts definition.
     """
@@ -165,7 +165,7 @@ class GetBrandIdentitySuccessFonts(AdCPBaseModel):
     secondary: Annotated[GetBrandIdentityResponseFontRole | None, Field(description='Secondary font family')] = None
 
 
-class GetBrandIdentitySuccessTone(AdCPBaseModel):
+class Tone(AdCPBaseModel):
     """
     Brand voice and messaging guidelines
     """
@@ -179,7 +179,7 @@ class GetBrandIdentitySuccessTone(AdCPBaseModel):
     donts: Annotated[list[str] | None, Field(description='Prohibited topics, competitor references, and phrasings to avoid')] = None
 
 
-class GetBrandIdentitySuccessVoiceSynthesis(AdCPBaseModel):
+class VoiceSynthesis(AdCPBaseModel):
     """
     Voice synthesis configuration for AI-generated audio
     """
@@ -193,7 +193,7 @@ class GetBrandIdentitySuccessVoiceSynthesis(AdCPBaseModel):
     settings: dict[str, Any] | None = None
 
 
-class GetBrandIdentitySuccessAssetsItem(AdCPBaseModel):
+class AssetsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -211,7 +211,7 @@ class GetBrandIdentitySuccessAssetsItem(AdCPBaseModel):
     format: Annotated[str | None, Field(description="File format (e.g., 'jpg', 'mp4')")] = None
 
 
-class GetBrandIdentitySuccessRights(AdCPBaseModel):
+class Rights(AdCPBaseModel):
     """
     Rights availability summary. For detailed pricing, use get_rights.
     """
@@ -226,7 +226,7 @@ class GetBrandIdentitySuccessRights(AdCPBaseModel):
     content_restrictions: list[str] | None = None
 
 
-class GetBrandIdentitySuccessAvailableFieldsItem(StrEnum):
+class AvailableFieldsItem(StrEnum):
     DESCRIPTION = 'description'
     INDUSTRIES = 'industries'
     KELLER_TYPE = 'keller_type'
@@ -250,21 +250,21 @@ class GetBrandIdentitySuccess(GetBrandIdentityResponse):
         ForbiddenGroups((('errors',),)),
     )
     brand_id: Annotated[str, Field(description='Brand identifier')]
-    house: Annotated[GetBrandIdentitySuccessHouse, Field(description='The house (corporate entity) this brand belongs to. Always returned regardless of authorization level.')]
+    house: Annotated[House, Field(description='The house (corporate entity) this brand belongs to. Always returned regardless of authorization level.')]
     names: Annotated[list[DictMinProperties1[str, str]], Field(description="Localized brand names with BCP 47 locale code keys (e.g., 'en_US', 'fr_CA'). Bare language codes ('en') are accepted as wildcards for backwards compatibility.")]
     description: Annotated[str | None, Field(description='Brand description')] = None
     industries: Annotated[list[str] | None, Field(description='Brand industries.', min_length=1)] = None
-    keller_type: Annotated[GetBrandIdentitySuccessKellerType | None, Field(description='Brand architecture type: master (primary brand of house), sub_brand (carries parent name), endorsed (independent identity backed by parent), independent (operates separately)')] = None
-    logos: Annotated[list[GetBrandIdentitySuccessLogosItem] | None, Field(description='Brand logos. Public callers get standard logos; authorized callers also receive high-res variants. Shape matches brand.json logo definition.')] = None
-    colors: Annotated[GetBrandIdentitySuccessColors | None, Field(description='Brand color palette. Each role accepts a single hex color or an array of hex colors. Shape matches brand.json colors definition.')] = None
-    fonts: Annotated[GetBrandIdentitySuccessFonts | None, Field(description="Brand typography. Each key is a role name (e.g., 'primary', 'secondary') referenced by type_scale entries. Values are either a CSS font-family string or a structured object with family name and font files. Shape matches brand.json fonts definition.")] = None
+    keller_type: Annotated[KellerType | None, Field(description='Brand architecture type: master (primary brand of house), sub_brand (carries parent name), endorsed (independent identity backed by parent), independent (operates separately)')] = None
+    logos: Annotated[list[LogosItem] | None, Field(description='Brand logos. Public callers get standard logos; authorized callers also receive high-res variants. Shape matches brand.json logo definition.')] = None
+    colors: Annotated[Colors | None, Field(description='Brand color palette. Each role accepts a single hex color or an array of hex colors. Shape matches brand.json colors definition.')] = None
+    fonts: Annotated[Fonts | None, Field(description="Brand typography. Each key is a role name (e.g., 'primary', 'secondary') referenced by type_scale entries. Values are either a CSS font-family string or a structured object with family name and font files. Shape matches brand.json fonts definition.")] = None
     visual_guidelines: Annotated[dict[str, Any] | None, Field(description='Structured visual rules for generative creative systems (photography, graphic_style, colorways, type_scale, motion). Matches brand.json visual_guidelines definition. Authorized callers only.')] = None
-    tone: Annotated[GetBrandIdentitySuccessTone | None, Field(description='Brand voice and messaging guidelines')] = None
+    tone: Annotated[Tone | None, Field(description='Brand voice and messaging guidelines')] = None
     tagline: Annotated[str | NonEmptyList[DictMinProperties1MaxProperties1[str, StrMinLen1]] | None, Field(description='Brand tagline or slogan. Accepts a plain string or a localized array matching the names pattern.')] = None
-    voice_synthesis: Annotated[GetBrandIdentitySuccessVoiceSynthesis | None, Field(description='Voice synthesis configuration for AI-generated audio')] = None
-    assets: Annotated[list[GetBrandIdentitySuccessAssetsItem] | None, Field(description='Available brand assets (images, audio, video). Authorized callers only. Shape matches brand.json asset definition.')] = None
-    rights: Annotated[GetBrandIdentitySuccessRights | None, Field(description='Rights availability summary. For detailed pricing, use get_rights.')] = None
-    available_fields: Annotated[list[GetBrandIdentitySuccessAvailableFieldsItem] | None, Field(description='Fields available but not returned in this response due to authorization level. Tells the caller what they would gain by linking their account via sync_accounts. Values match the request fields enum.')] = None
+    voice_synthesis: Annotated[VoiceSynthesis | None, Field(description='Voice synthesis configuration for AI-generated audio')] = None
+    assets: Annotated[list[AssetsItem] | None, Field(description='Available brand assets (images, audio, video). Authorized callers only. Shape matches brand.json asset definition.')] = None
+    rights: Annotated[Rights | None, Field(description='Rights availability summary. For detailed pricing, use get_rights.')] = None
+    available_fields: Annotated[list[AvailableFieldsItem] | None, Field(description='Fields available but not returned in this response due to authorization level. Tells the caller what they would gain by linking their account via sync_accounts. Values match the request fields enum.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

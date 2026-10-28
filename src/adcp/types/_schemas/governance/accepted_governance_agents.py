@@ -11,7 +11,7 @@ from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import StrMatching2DACB561, StrMatching43C17DAB, StrMaxLen2048MatchingFE5FDE4A
 
 
-class AcceptedGovernanceAgentsAnyOfItemAgentUrl(AdCPBaseModel):
+class AnyOfItemAgentUrl(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -20,12 +20,12 @@ class AcceptedGovernanceAgentsAnyOfItemAgentUrl(AdCPBaseModel):
     agent_url: Annotated[StrMaxLen2048MatchingFE5FDE4A, Field(description='Exact canonical agent endpoint without userinfo, query, or fragment. Redirect targets, DNS aliases, and URLs asserted by the candidate do not satisfy this matcher.', json_schema_extra={'format': 'uri'})]
 
 
-class AcceptedGovernanceAgentsAnyOfItemVerificationVerificationModesItem(StrEnum):
+class VerificationModesItem(StrEnum):
     SPEC = 'spec'
     LIVE = 'live'
 
 
-class AcceptedGovernanceAgentsAnyOfItemVerification(AdCPBaseModel):
+class AnyOfItemVerification(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -37,7 +37,7 @@ class AcceptedGovernanceAgentsAnyOfItemVerification(AdCPBaseModel):
     registry: Annotated[StrMaxLen2048MatchingFE5FDE4A, Field(description='Seller-configured trusted verification registry without userinfo, query, or fragment. The candidate cannot supply or override this URL; fetches use the registry-resolution security contract.', json_schema_extra={'format': 'uri'})]
     role: Annotated[StrMatching2DACB561, Field(description="Role asserted by the trusted registry's verified record, never by candidate self-description.")]
     adcp_version: Annotated[StrMatching43C17DAB, Field(description='Registry protocol version in canonical MAJOR.MINOR form.')]
-    verification_modes: Annotated[list[AcceptedGovernanceAgentsAnyOfItemVerificationVerificationModesItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
+    verification_modes: Annotated[list[VerificationModesItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     max_age_seconds: Annotated[NonNegativeInt, Field(description='Maximum age of the registry evidence at binding time. Zero requires a fresh result. Evidence is pinned to the accepted binding; later registry drift does not silently revoke an existing binding.')]
 
 
@@ -49,7 +49,7 @@ class AcceptedGovernanceAgents(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/accepted-governance-agents.json', pointer='#')
-    any_of: Annotated[list[AcceptedGovernanceAgentsAnyOfItemAgentUrl | AcceptedGovernanceAgentsAnyOfItemVerification], Field(min_length=1)]
+    any_of: Annotated[list[AnyOfItemAgentUrl | AnyOfItemVerification], Field(min_length=1)]
 
 
 __all__ = ["AcceptedGovernanceAgents"]

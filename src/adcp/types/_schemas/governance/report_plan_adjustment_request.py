@@ -15,7 +15,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ReportPlanAdjustmentRequestAction(StrEnum):
+class Action(StrEnum):
     """
     report is seller-authenticated and creates a non-authoritative record; review is plan-owner-authenticated and accepts or disputes it.
     """
@@ -23,7 +23,7 @@ class ReportPlanAdjustmentRequestAction(StrEnum):
     REVIEW = 'review'
 
 
-class ReportPlanAdjustmentRequestDecision(StrEnum):
+class Decision(StrEnum):
     """
     Buyer review decision. Acceptance is blocked while delivery evidence for the governed action is disputed in an open governance period; a historical closed_unresolved period is audit evidence, not a billing determination.
     """
@@ -31,7 +31,7 @@ class ReportPlanAdjustmentRequestDecision(StrEnum):
     DISPUTE = 'dispute'
 
 
-class ReportPlanAdjustmentRequestAdjustmentType(StrEnum):
+class AdjustmentType(StrEnum):
     """
     Commercial meaning. Verified decommitments restore headroom in every mode; verified refunds and credits restore it only in verified_net_cost mode; makegoods never restore cash headroom.
     """
@@ -41,7 +41,7 @@ class ReportPlanAdjustmentRequestAdjustmentType(StrEnum):
     MAKEGOOD = 'makegood'
 
 
-class ReportPlanAdjustmentRequestAmount(AdCPBaseModel):
+class Amount(AdCPBaseModel):
     """
     Positive adjustment amount in the plan currency.
     """
@@ -53,14 +53,14 @@ class ReportPlanAdjustmentRequestAmount(AdCPBaseModel):
     currency: Annotated[StrMatching43E30B32, Field(description='Three-letter uppercase currency code matching the plan currency.')]
 
 
-class ReportPlanAdjustmentRequestEvidenceEvidenceType(StrEnum):
+class EvidenceType(StrEnum):
     DECOMMITMENT_AGREEMENT = 'decommitment_agreement'
     REFUND_SETTLEMENT = 'refund_settlement'
     CREDIT_NOTE = 'credit_note'
     MAKEGOOD_AGREEMENT = 'makegood_agreement'
 
 
-class ReportPlanAdjustmentRequestEvidence(AdCPBaseModel):
+class Evidence(AdCPBaseModel):
     """
     Integrity-bound commercial source record supplied by the seller. Its evidence_type must correspond to adjustment_type.
     """
@@ -69,7 +69,7 @@ class ReportPlanAdjustmentRequestEvidence(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-adjustment-request.json', pointer='#/properties/evidence')
     evidence_id: Annotated[StrMinLen1MaxLen255, Field(description="Immutable identifier in the authenticated seller's namespace. Reuse with different adjustment evidence is a conflict.")]
-    evidence_type: ReportPlanAdjustmentRequestEvidenceEvidenceType
+    evidence_type: EvidenceType
     digest: StrMatching3CBDBB74
     issued_at: AwareDatetime
 
@@ -87,18 +87,18 @@ class ReportPlanAdjustmentRequest(AdCPVersionEnvelope):
         ConditionalRequired((Match('action', True, ('review',)),), require=('adjustment_id', 'decision'), forbid=()),
         ConditionalRequired((Match('action', True, ('review',)),Match('decision', True, ('dispute',)),), require=('reason',), forbid=()),
     )
-    action: Annotated[ReportPlanAdjustmentRequestAction, Field(description='report is seller-authenticated and creates a non-authoritative record; review is plan-owner-authenticated and accepts or disputes it.')]
+    action: Annotated[Action, Field(description='report is seller-authenticated and creates a non-authoritative record; review is plan-owner-authenticated and accepts or disputes it.')]
     plan_id: Annotated[StrMinLen1, Field(description='Plan containing the source outcome.')]
     outcome_id: Annotated[StrMinLen1 | None, Field(description='Completed outcome whose authoritative commitment is being adjusted.')] = None
     adjustment_id: Annotated[str | None, Field(description='Adjustment to accept or dispute. Required for review.')] = None
-    decision: Annotated[ReportPlanAdjustmentRequestDecision | None, Field(description='Buyer review decision. Acceptance is blocked while delivery evidence for the governed action is disputed in an open governance period; a historical closed_unresolved period is audit evidence, not a billing determination.')] = None
+    decision: Annotated[Decision | None, Field(description='Buyer review decision. Acceptance is blocked while delivery evidence for the governed action is disputed in an open governance period; a historical closed_unresolved period is audit evidence, not a billing determination.')] = None
     seller_reference: Annotated[StrMinLen1MaxLen255 | None, Field(description='Seller resource identifier. Must exactly match the reference retained on the source outcome.')] = None
     seller_adjustment_id: Annotated[StrMinLen1MaxLen255 | None, Field(description="Stable identifier of the adjustment in the authenticated seller's system.")] = None
-    adjustment_type: Annotated[ReportPlanAdjustmentRequestAdjustmentType | None, Field(description='Commercial meaning. Verified decommitments restore headroom in every mode; verified refunds and credits restore it only in verified_net_cost mode; makegoods never restore cash headroom.')] = None
-    amount: Annotated[ReportPlanAdjustmentRequestAmount | None, Field(description='Positive adjustment amount in the plan currency.')] = None
+    adjustment_type: Annotated[AdjustmentType | None, Field(description='Commercial meaning. Verified decommitments restore headroom in every mode; verified refunds and credits restore it only in verified_net_cost mode; makegoods never restore cash headroom.')] = None
+    amount: Annotated[Amount | None, Field(description='Positive adjustment amount in the plan currency.')] = None
     reason: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Human-readable reason retained in the audit trail.')] = None
     effective_at: Annotated[AwareDatetime | None, Field(description="When the seller's adjustment became effective.")] = None
-    evidence: Annotated[ReportPlanAdjustmentRequestEvidence | None, Field(description='Integrity-bound commercial source record supplied by the seller. Its evidence_type must correspond to adjustment_type.')] = None
+    evidence: Annotated[Evidence | None, Field(description='Integrity-bound commercial source record supplied by the seller. Its evidence_type must correspond to adjustment_type.')] = None
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Caller-generated retry key. Exact replays return the original report or review; reuse with another payload is rejected.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

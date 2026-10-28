@@ -55,7 +55,7 @@ class PercentOfMediaPricing(VendorPricing):
     ext: ExtensionObject | None = None
 
 
-class FlatFeePricingPeriod(StrEnum):
+class Period(StrEnum):
     """
     Billing period for the flat fee.
     """
@@ -75,7 +75,7 @@ class FlatFeePricing(VendorPricing):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-pricing.json', pointer='#/oneOf/2')
     model: Literal['flat_fee']
     amount: Annotated[NonNegativeFloat, Field(description='Fixed charge for the billing period')]
-    period: Annotated[FlatFeePricingPeriod, Field(description='Billing period for the flat fee.')]
+    period: Annotated[Period, Field(description='Billing period for the flat fee.')]
     currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency code')]
     ext: ExtensionObject | None = None
 
@@ -95,7 +95,7 @@ class PerUnitPricing(VendorPricing):
     ext: ExtensionObject | None = None
 
 
-class CustomPricingMetadata(AdCPBaseModel):
+class Metadata(AdCPBaseModel):
     """
     Structured parameters for the custom model. Keys follow lowercase_snake_case. Values may be primitives, arrays, or nested objects. Must be sufficient for a human to understand the pricing basis and for a downstream system to reconstruct the charge. Vendors SHOULD include a `summary_for_operator` string (one or two sentences, suitable for display in a buyer's operator-review UI) so reviewers across vendors see a consistent prompt. Required operator-review fields (approver role, dollar threshold for automatic approval, escalation contact) MAY be surfaced via additional keys the buyer's review surface recognizes.
     """
@@ -119,7 +119,7 @@ class CustomPricing(VendorPricing):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-pricing.json', pointer='#/oneOf/4')
     model: Literal['custom']
     description: Annotated[StrMinLen1, Field(description='Human-readable description of the custom pricing model. Buyers display this to the operator when requesting approval.')]
-    metadata: Annotated[CustomPricingMetadata, Field(description="Structured parameters for the custom model. Keys follow lowercase_snake_case. Values may be primitives, arrays, or nested objects. Must be sufficient for a human to understand the pricing basis and for a downstream system to reconstruct the charge. Vendors SHOULD include a `summary_for_operator` string (one or two sentences, suitable for display in a buyer's operator-review UI) so reviewers across vendors see a consistent prompt. Required operator-review fields (approver role, dollar threshold for automatic approval, escalation contact) MAY be surfaced via additional keys the buyer's review surface recognizes.")]
+    metadata: Annotated[Metadata, Field(description="Structured parameters for the custom model. Keys follow lowercase_snake_case. Values may be primitives, arrays, or nested objects. Must be sufficient for a human to understand the pricing basis and for a downstream system to reconstruct the charge. Vendors SHOULD include a `summary_for_operator` string (one or two sentences, suitable for display in a buyer's operator-review UI) so reviewers across vendors see a consistent prompt. Required operator-review fields (approver role, dollar threshold for automatic approval, escalation contact) MAY be surfaced via additional keys the buyer's review surface recognizes.")]
     currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code. Present when the pricing resolves to a monetary charge in a specific currency.')] = None
     ext: ExtensionObject | None = None
 

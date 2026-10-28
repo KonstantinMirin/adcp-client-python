@@ -116,10 +116,14 @@ def _stated_default(document: str, root: Any, sub: Any) -> Any:
     return target["default"] if isinstance(target, dict) and "default" in target else MISSING
 
 
-def _defaults_on_required_properties() -> set[tuple[str, str]]:
+def _defaults_on_required_properties() -> dict[tuple[str, str], Any]:
     """Every (document, pointer) in the bundle where a property's declaration states a
     ``default`` -- its own, or its local ``$ref`` target's -- and its enclosing object
-    REQUIRES the key.
+    REQUIRES the key, against the VALUE that declaration states.
+
+    One derivation and not two: the set the check ranges over and the value each site
+    drops are the same reading of the same declaration, so a site cannot be enumerated
+    by one rule and graded by another.
 
     Read off the documents rather than off the run, so the set this check ranges over
     is a property of the bundle and the emitter's own record is what gets compared to
@@ -127,17 +131,45 @@ def _defaults_on_required_properties() -> set[tuple[str, str]]:
     ``compiler.fields`` is handed, and a nested object's own properties are reached
     through their own node at their own pointer, which this enumerates too by walking
     every node the bundle yields.
+
+    **A union BRANCH is enumerated against its enclosing object's declarations too**,
+    because §2's intersection rule is what ``compiler.fields`` hands the branch: a branch
+    of a worded object inherits the object's ``properties`` and its ``required``, so a
+    key the object requires and states a ``default`` on is required AND defaulted at the
+    branch's own pointer -- the branch restating the key without a default does not
+    withdraw either fact.  Reached first by
+    ``formats/canonical/seller_rendered_stateful_display.json``
+    (``adcp-client-python-10l.50``), whose ``/properties/transitions/items`` requires
+    ``transition_mode`` and defaults it to ``instant`` while all six of its branches
+    restate the key: the run reports the drop at the object's pointer and at each
+    branch's, which is seven sites for one stated fact.
     """
-    found = set()
+    found: dict[tuple[str, str], Any] = {}
     for document in bundle.portable(BUNDLE):
-        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
+        root = bundle.read(BUNDLE, document)
+        for pointer, node in bundle.nodes(root):
             props = node.get("properties") if isinstance(node, dict) else None
             demanded = node.get("required") if isinstance(node, dict) else None
             if not isinstance(props, dict) or not isinstance(demanded, list):
                 continue
             for key, sub in props.items():
-                if key in demanded and _stated_default(document, bundle.read(BUNDLE, document), sub) is not MISSING:
-                    found.add((document, f"{pointer}/properties/{key}"))
+                stated = _stated_default(document, root, sub)
+                if key not in demanded or stated is MISSING:
+                    continue
+                found[(document, f"{pointer}/properties/{key}")] = stated
+                # §2's intersection at every branch of this object, which is where the
+                # same fact is handed to a second declaration.  The branch's own
+                # ``default`` wins where it states one, which is the precedence the
+                # intersection gives every keyword the two declarations share.
+                for word in ("oneOf", "anyOf", "allOf"):
+                    for i, branch in enumerate(node.get(word) or ()):
+                        if not isinstance(branch, dict):
+                            continue
+                        own = (branch.get("properties") or {}).get(key)
+                        theirs = _stated_default(document, root, own)
+                        found[(document, f"{pointer}/{word}/{i}/properties/{key}")] = (
+                            stated if theirs is MISSING else theirs
+                        )
     return found
 
 
@@ -158,16 +190,13 @@ def test_every_drop_the_run_reports_is_a_default_on_a_property_its_document_requ
         "drops the run reported",
         {(d, p) for d, sites in out.drops.items() for p in sites},
     )
+    stated_by = _defaults_on_required_properties()
     stated = claimed("defaults the bundle states on a required property",
-                     _defaults_on_required_properties(), inside=None)
+                     stated_by, inside=None)
     assert reported <= stated, sorted(reported - stated)
     partitions(stated, reported=reported, never_reached=stated - reported)
     for document, pointer in sorted(reported):
-        root = bundle.read(BUNDLE, document)
-        node = root
-        for step in [s for s in pointer.split("/") if s]:
-            node = node[step] if not isinstance(node, list) else node[int(step)]
-        assert out.drops[document][pointer] == _stated_default(document, root, node), (
+        assert out.drops[document][pointer] == stated_by[(document, pointer)], (
             document,
             pointer,
         )

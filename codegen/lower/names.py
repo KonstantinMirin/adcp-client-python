@@ -5,9 +5,24 @@ through the walk."**  This module takes a :class:`codegen.compiler.Module` whose
 declarations are keyed by POINTER and whose ``TypeRef``\\ s name local declarations by
 pointer, and returns the module with a symbol table -- by §4 of
 ``docs/plan/rebuild-plan.md``'s rules: the root by ``pascal_case(title)``; a nested
-declaration by its position (``<Parent><Property>`` at PROP, ``<Parent>Item`` at ELEM,
-``<Parent>Value`` at MAPV, ``<Root><Key>`` at DEF); a branch by its own ``title``, else
+declaration by its OWN position (``<Property>`` at PROP, ``<Property>Item`` at ELEM,
+``<Property>Value`` at MAPV, ``<Root><Key>`` at DEF); a branch by its own ``title``, else
 the ``const`` it pins on the discriminating property, else its sorted ``required`` set.
+
+**A nested name is its own position and not the path to it, and §4's collision rule is
+what pays for that** (:data:`COLLISION`, :func:`spell`).  "The module path already
+carries the document, so a nested name does not repeat it" -- so two positions of one
+module can derive one name, and where N do, ALL N lengthen by their own nearest ancestor
+segment until every name in the module is unique.  Before the rule was written this pass
+folded every hop to the root and concatenated, which cannot collide and therefore needed
+no rule: 808 of 2,118 emitted classes were longer than 30 characters, 141 longer than 50,
+and one was ``GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemBrandContext``.
+With the rule it is 235 of 2,144 over 30, the median falls from 26 characters to 17, and
+2,116 of 2,226 named positions keep the one segment §4 derives.
+:func:`segments` is the same readings kept as a CHAIN so that :func:`spell` can spend as
+few of them as the module requires, and the chain's whole spelling is the name the fold
+gave -- which is why the refusal two indistinguishable positions earn is the same
+refusal, over the same documents, as before.
 
 **The walk computes no name, and §7 reads §4's own rule strictly.**  §4 says a name is
 an input to a lowering and is never computed inside one; §7 adds "read strictly, it is
@@ -99,6 +114,33 @@ def class_name(title: str) -> str:
     return "".join(w[:1].upper() + w[1:] for w in words)
 
 
+def _suffixed(chain: tuple[str, ...], suffix: str) -> tuple[str, ...]:
+    """``chain`` with ``suffix`` spelled onto its LAST segment rather than appended as a
+    segment of its own.
+
+    §4 names three positions off their container -- ``<Property>Item`` for an element,
+    ``<Property>Value`` for a mapping value, ``<Base><Const>`` for a pinned branch -- and
+    each of the three is ONE segment, because ``Item``, ``Value`` and ``True`` name no
+    position on their own: a collision between two elements has to lengthen past the
+    container to say anything at all.
+
+    An empty chain is the position under a mapping's KEY, which derives no name
+    (:class:`Unnamed`), and the suffix is then the whole chain -- which is what the fold
+    produced there before this pass had segments.
+    """
+    return (chain[:-1] + (chain[-1] + suffix,)) if chain else (suffix,)
+
+
+def spelling(chain: tuple[str, ...], depth: int) -> str:
+    """One position's name carrying its last ``depth`` segments.
+
+    ``depth`` 1 is the name §4 derives, each further step is the next nearest ancestor
+    prepended (§4's collision rule, :func:`spell`), and ``len(chain)`` is the whole path
+    -- which is the name this emitter gave every position before the rule was written.
+    """
+    return "".join(chain[max(len(chain) - depth, 0) :])
+
+
 def entry_key(pointer: str) -> str:
     """The ``definitions``/``$defs`` KEY a local reference's pointer names.
 
@@ -116,14 +158,15 @@ def entry_key(pointer: str) -> str:
 # --------------------------------------------------------------------------- #
 @dataclass(frozen=True)
 class Root:
-    """The document ROOT: ``pascal_case(title)``, and the parent of every derived name."""
+    """The document ROOT: ``pascal_case(title)``, and the OUTERMOST segment of every
+    name derived below it (:func:`segments`)."""
 
     title: str
 
 
 @dataclass(frozen=True)
 class Property:
-    """A value of ``properties``: ``<Parent><Property>``."""
+    """A value of ``properties``: ``<Property>``, a segment of its own."""
 
     parent: str
     key: str
@@ -131,14 +174,16 @@ class Property:
 
 @dataclass(frozen=True)
 class Item:
-    """An array's ``items``: ``<Parent>Item``."""
+    """An array's ``items``: ``<Property>Item``, spelled onto the segment the array is
+    spelled with, because ``Item`` names no position on its own."""
 
     parent: str
 
 
 @dataclass(frozen=True)
 class Value:
-    """A mapping's value schema: ``<Parent>Value``."""
+    """A mapping's value schema: ``<Property>Value``, spelled onto the segment the
+    mapping is spelled with, because ``Value`` names no position on its own."""
 
     parent: str
 
@@ -211,14 +256,21 @@ Hop = Root | Property | Item | Value | Entry | Branch | Unnamed
 # --------------------------------------------------------------------------- #
 # §4's branch rules
 # --------------------------------------------------------------------------- #
-def branch_identity(hop: Branch, parent: str) -> str | None:
-    """§4 "Names"'s three branch rules, in order, or ``None`` where none of them applies.
+def branch_identity(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | None:
+    """§4 "Names"'s three branch rules, in order, as the branch's own SEGMENTS, or
+    ``None`` where none of them applies.
 
-    A title names itself.  A ``const`` or a required set is prefixed with the PARENT's
-    name, so a branch named by either shares its base's spelling.  The required-set key
-    is deliberate: it is stable when the spec adds an OPTIONAL field and renames exactly
+    A title names ITSELF, so it is a chain of one and the branch's ancestors are no part
+    of it.  A ``const`` or a required set is spelled ON the parent's own last segment, so
+    a branch named by either shares its base's spelling.  The required-set key is
+    deliberate: it is stable when the spec adds an OPTIONAL field and renames exactly
     when requiredness changes, which is a semantic change a caller should meet as an
     ``ImportError`` rather than as a silent repoint.
+
+    **Which fact wins decides the SPELLING and the PLACEMENT together, which is why both
+    are here.**  A caller handed the spelling alone would have to read ``hop.title``
+    again to find out whether the ancestors belong in the chain, and that reading would
+    be a second copy of the first rule.
 
     **A name is never derived from the neighbourhood.**  The rule a previous generator
     reached for -- name the sole classed branch after its PARENT -- makes a class name a
@@ -226,11 +278,11 @@ def branch_identity(hop: Branch, parent: str) -> str | None:
     class.  §4 has no such rule and the caller refuses or falls back instead.
     """
     if hop.title:
-        return class_name(hop.title)
+        return (class_name(hop.title),)
     if hop.pin is not None:
-        return parent + class_name(str(hop.pin))
+        return _suffixed(parent, class_name(str(hop.pin)))
     if hop.required:
-        return parent + "".join(class_name(str(k)) for k in sorted(hop.required))
+        return _suffixed(parent, "".join(class_name(str(k)) for k in sorted(hop.required)))
     return None
 
 
@@ -325,7 +377,8 @@ def adopt(mod: Module, pointer: str, declared: str) -> ir.TypeRef | Refusal:
     POSITION, so a node at three positions has one class and three derived names.  An
     alias is a NAME BOUND TO THAT CLASS and not a second class, which is why the two
     rules do not collide and why nothing here is hand-assigned: the name is whatever
-    :func:`derive` folds the adopting position's own hops to.
+    :func:`segments` folds the adopting position's own hops to and :func:`spell`
+    spells.
 
     What this refuses to do is type a field by a SIBLING POSITION's name.  Binding
     ``PreviewRenderHtml.dimensions`` to ``PreviewRenderUrlDimensions`` would read as the
@@ -371,15 +424,32 @@ def adopt(mod: Module, pointer: str, declared: str) -> ir.TypeRef | Refusal:
 # --------------------------------------------------------------------------- #
 # the pass
 # --------------------------------------------------------------------------- #
-def derive(
+def segments(
     pointer: str, hops: Mapping[str, Hop], seen: frozenset[str] = frozenset()
-) -> str | Refusal:
-    """The name §4 derives for the node at ``pointer``, folding its hops to the root.
+) -> tuple[str, ...] | Refusal:
+    """§4's name rules for the node at ``pointer``, as the SEGMENTS of its path with the
+    root first -- so the LAST segment is the name §4 derives for it and each earlier one
+    is an ancestor a collision can lengthen by (:func:`spell`).
 
     A name is a function of the node's PATH through the document and of nothing else --
     not of its content, not of which other nodes exist, not of the order the walk
     happened to reach it in.  That is what makes it recomputable after the walk, and it
     is also §9's rule: no census over the run enters here.
+
+    **A chain and not a name, and that is the whole of §4's "the module path already
+    carries the document".**  This fold used to CONCATENATE every hop to the root, which
+    needs no collision rule because it cannot collide -- and that is why 808 of 2,118
+    emitted classes were longer than 30 characters and one was
+    ``GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemBrandContext``.  The
+    segments are the same readings, kept apart, so :func:`spell` can spend exactly as
+    many of them as the module's own names require.
+
+    Three positions are a segment rather than a name of their own, and :func:`_suffixed`
+    is where: an element, a mapping value and a pinned branch are each spelled onto the
+    segment their container is spelled with.  A ``definitions`` entry is one segment too,
+    because §4 names it ``<Root><Key>`` -- the root is part of the name the section
+    states, exactly as the property is part of ``<Property>Item``.  A branch TITLE names
+    itself, so it starts a chain and its ancestors are no part of it.
 
     ``seen`` is the pointers already on this fold, so a hop table that named a pointer
     through itself answers once rather than recurring.  The parser gives a child a
@@ -388,29 +458,126 @@ def derive(
     """
     hop = hops.get(pointer)
     if hop is None or pointer in seen:
-        return ""
+        return ()
     if isinstance(hop, Unnamed):
-        return ""
+        return ()
     if isinstance(hop, Root):
-        return class_name(hop.title)
+        return (class_name(hop.title),)
     if isinstance(hop, Entry):
-        root = derive("", hops, seen | {pointer})
-        return root if isinstance(root, Refusal) else root + class_name(hop.key)
-    parent = derive(hop.parent, hops, seen | {pointer})
+        root = segments("", hops, seen | {pointer})
+        if isinstance(root, Refusal):
+            return root
+        return ("".join(root) + class_name(hop.key),)
+    parent = segments(hop.parent, hops, seen | {pointer})
     if isinstance(parent, Refusal):
         return parent
     if isinstance(hop, Property):
-        return parent + class_name(hop.key)
+        return (*parent, class_name(hop.key))
     if isinstance(hop, Item):
-        return parent + "Item"
+        return _suffixed(parent, "Item")
     if isinstance(hop, Value):
-        return parent + "Value"
+        return _suffixed(parent, "Value")
     derived = branch_identity(hop, parent)
     if derived is not None:
         return derived
     if hop.refuses:
         return Refusal("title", pointer, NO_IDENTITY, kind=Kind.VERDICT)
     return parent
+
+
+#: §4's collision rule, in the section's own words.  QUOTED by the checks that grade it
+#: (``tests/test_names_collision.py``), so the sentence the code states and the sentence
+#: a check reports against are one string.
+COLLISION = (
+    "every position derives its short name; where N positions of one module derive the "
+    "same name, ALL N lengthen -- each prepends its own nearest ancestor segment -- and "
+    "the step repeats until every name in the module is unique; a position whose short "
+    "name collides with nothing keeps it (section 4)"
+)
+
+
+def spell(
+    chains: Mapping[str, tuple[str, ...]], occupied: frozenset[str] = frozenset()
+) -> dict[str, str] | Refusal:
+    """§4's collision rule over the names of ONE module: pointer -> the name it is
+    declared under, or the refusal of a module two of whose positions cannot be told
+    apart.
+
+    :data:`COLLISION` is the rule.  Every position starts at the name §4 derives (its
+    last segment); the positions sharing a name ALL lengthen by their own nearest
+    ancestor segment; the step repeats until no name is shared.
+
+    **ALL N lengthen, and that is the whole of why this is order-independent.**
+    Lengthening only the later collider would make a public symbol a function of which
+    position the walk reached first, which §9 forbids and which :func:`adopt` already
+    refuses for the same reason.  Lengthening all of them makes each name a function of
+    the SET of colliding positions, and that set is a function of the one document --
+    which is why this takes a mapping and not a module, and why nothing here can consult
+    the run.
+
+    ``occupied`` is the names the module's own IMPORTS hold: what the walk reported
+    (``Module.imports``) and what the renderer brings in (``render.CARRIERS``, via
+    :func:`assign`).  A module's namespace is its declarations AND what it imports -- a
+    class shadowing an imported symbol retypes every field annotated with it, and
+    ``class Field(StrEnum)`` beside ``from pydantic import Field`` makes
+    ``Annotated[X, Field(description=…)]`` call the class -- so an imported name is a
+    name taken, and a position deriving it lengthens.  Measured over the portable set
+    with §4's nested rule in force: 25 positions of 2,226 derive an occupied name -- 3
+    a symbol their own document's ``$ref`` imports, 5 one the renderer brings
+    (``Field`` four times and ``Presence`` once), and 17 a name in the vocabulary the
+    renderer could bring and this module does not.
+
+    It is not a census over the run.  A module imports a symbol because ITS OWN ``$ref``
+    names the target, so the set is a function of the one document and its closure, which
+    a one-document emission writes as well; §9's rule is about the documents BEYOND that
+    closure.  An import cannot lengthen, so only the positions move.
+
+    **An occupied name a position cannot lengthen past is kept and does not refuse**, and
+    the reason is that it is exactly the name this emitter has always given that position.
+    A ROOT and a titled branch are chains of ONE -- §4 names them after the document and
+    after the branch's own title -- so neither has an ancestor to prepend, and refusing
+    them would refuse 99 documents of this bundle on a name no document says anything
+    about -- measured by making it refuse: ``core/error.json``'s root is ``Error`` and
+    the runtime exports an ``Error``, and 98 more follow it or chain behind one.
+    Lengthening is an improvement where it is available and the status quo where it is
+    not.
+
+    The REFUSAL is the one this pass always had, and it needs two positions: both spelled
+    with their whole paths, neither with an ancestor left to prepend, and spelled alike.
+    That is exactly the population the fold refused before the rule was written -- the
+    full path was the name then -- so the rule moves no document into the refused set.
+    """
+    depth = dict.fromkeys(chains, 1)
+    while True:
+        spelled = {p: spelling(chains[p], depth[p]) for p in chains}
+        groups: dict[str, list[str]] = {}
+        for pointer, name in spelled.items():
+            groups.setdefault(name, []).append(pointer)
+        colliding = {
+            name: ps for name, ps in groups.items() if len(ps) > 1 or name in occupied
+        }
+        lengthened = False
+        for group in colliding.values():
+            for pointer in group:
+                if depth[pointer] < len(chains[pointer]):
+                    depth[pointer] += 1
+                    lengthened = True
+        if lengthened:
+            continue
+        # Nothing colliding can lengthen.  Two positions sharing a name is the refusal;
+        # a position alone on a name an import holds keeps it (above).  The pointer named
+        # is the one that COLLIDED -- the later of the two in declaration order, which is
+        # the pointer ``Module.declare``'s symmetric check names as well.
+        shared = {name: ps for name, ps in colliding.items() if len(ps) > 1}
+        if not shared:
+            return spelled
+        at = next(p for p in chains if p in {q for ps in shared.values() for q in ps[1:]})
+        return Refusal(
+            "title",
+            at,
+            f"two nodes in this document derive the class name {spelled[at]!r}",
+            kind=Kind.VERDICT,
+        )
 
 
 def resolved(decided: ir.TypeRef, symbols: Mapping[str, str]) -> ir.TypeRef:
@@ -521,7 +688,7 @@ def _at(declaration: ir.Declaration) -> str | None:
     return None
 
 
-def assign(mod: Module) -> ir.Module | Refusal:
+def assign(mod: Module, carriers: frozenset[str] = frozenset()) -> ir.Module | Refusal:
     """The pass: every declaration of one module given the name §4 derives for it.
 
     ``mod`` is the walk's own module value, ``compiler.Module``, and the import of it is
@@ -530,6 +697,13 @@ def assign(mod: Module) -> ir.Module | Refusal:
     thing that needs the name and the type checker gets it.  What this reads is four
     fields -- the declarations in declaration order, the hops, the adoptions and the
     imports -- and nothing else of the walk.
+
+    ``carriers`` is the other half of the module's NAMESPACE: the names the renderer
+    brings in, which the walk does not report (``render.CARRIERS``, handed in by the run
+    for :func:`field_name`'s reason -- §8 bans ``pydantic`` under ``lower/`` and the one
+    module allowed to read the model layer derives the set).  It is empty by default,
+    which spells every position by §4 alone; the run passes it, so a class cannot take
+    the name of an import the module's own fields are annotated with.
 
     THE WHOLE OF THE DEDUP IS HERE, and it is §4's own sentence: declarations whose
     NODES are equal are one class, declared under the first pointer in document order,
@@ -540,44 +714,53 @@ def assign(mod: Module) -> ir.Module | Refusal:
     walk iterated in, because the adopting pointer takes the name ITS OWN position
     derives and the declaring pointer takes its own.
 
+    **The names are decided over the WHOLE module and not one declaration at a time**,
+    because §4's collision rule is about a SET: the positions sharing a derived name all
+    lengthen, so no position's name can be settled before every position's chain is
+    known.  So this fold collects the chains (:func:`segments`) and :func:`spell` decides
+    the names from them -- and the refusal two indistinguishable positions earn is
+    :func:`spell`'s, where the whole set is in hand, rather than a first-come check that
+    would name whichever the walk reached second.
+
     :data:`SCOPE` is the scope, and the signature holds it: the only inputs are this
     module and §4's rules, so there is no census over the run to decide a name by.
     """
-    symbols: dict[str, str] = {}
-    taken: dict[str, str] = {}
     #: The declarations §4's dedup leaves unwritten: an adopting position that derives NO
     #: name of its own, and one whose derived name IS the declaring class's.  The first
     #: has nothing to bind and the second would be ``X = X``; both take the class symbol
     #: DIRECTLY, which is what mapping the adopting pointer onto the declaring symbol
     #: does for every type that names it.
     degenerate: set[int] = set()
+    chains: dict[str, tuple[str, ...]] = {}
+    #: An adopting pointer that binds no name of its own -> the pointer whose class it
+    #: takes.  Resolved after :func:`spell`, because the symbol it takes is not decided
+    #: until the declaring position's own name is.
+    takes: dict[str, str] = {}
     for i, declaration in enumerate(mod.declarations):
         pointer = _at(declaration)
         if pointer is None:
             continue
-        derived = derive(pointer, mod.hops)
-        if isinstance(derived, Refusal):
-            return derived
+        chain = segments(pointer, mod.hops)
+        if isinstance(chain, Refusal):
+            return chain
         declares = mod.adopted.get(pointer)
-        if declares is not None and derived in ("", symbols.get(declares)):
-            symbols[pointer] = symbols[declares]
+        #: Compared over the WHOLE chain, which is this position's own longest spelling:
+        #: two positions whose paths spell alike derive one name at every length, so the
+        #: degenerate arm is the same arm it was when the fold returned that spelling.
+        if declares is not None and "".join(chain) in (
+            "",
+            "".join(chains.get(declares, ())),
+        ):
+            takes[pointer] = declares
             degenerate.add(i)
             continue
-        if derived in taken:
-            # The symmetric failure to ``Module.declare``'s pointer check, and the same
-            # kind of thing: §1 gives a class ONE import path, so two nodes of one
-            # module deriving one name is a document this emitter cannot name -- and
-            # which of the two a referrer would import would be decided by the order
-            # the walk reached them in.  Measured 0 times over the 1,054 portable
-            # documents, so this refuses rather than ordering them.
-            return Refusal(
-                "title",
-                pointer,
-                f"two nodes in this document derive the class name {derived!r}",
-                kind=Kind.VERDICT,
-            )
-        symbols[pointer] = derived
-        taken[derived] = pointer
+        chains[pointer] = chain
+    spelled = spell(chains, carriers | {symbol for _, symbol in mod.imports})
+    if isinstance(spelled, Refusal):
+        return spelled
+    symbols: dict[str, str] = dict(spelled)
+    for pointer, declares in takes.items():
+        symbols[pointer] = symbols[declares]
     return ir.Module(
         document=mod.document,
         root=symbols.get("", ""),

@@ -18,23 +18,23 @@ from .duration import Duration
 from .ext import ExtensionObject
 
 
-class ProductAudienceEvidenceRequirementsRequirementMode(StrEnum):
+class RequirementMode(StrEnum):
     REQUIRED = 'required'
     PREFERRED = 'preferred'
 
 
-class ProductAudienceEvidenceRequirementsEvidencePresence(StrEnum):
+class EvidencePresence(StrEnum):
     REQUIRED = 'required'
     WHEN_AVAILABLE = 'when_available'
 
 
-class ProductAudienceEvidenceRequirementsAcceptedEvidenceTypesItem(StrEnum):
+class AcceptedEvidenceTypesItem(StrEnum):
     MEASURED = 'measured'
     FORECAST = 'forecast'
     SELLER_DECLARED = 'seller_declared'
 
 
-class ProductAudienceEvidenceRequirementsMaximumAgeUnit(StrEnum):
+class Unit(StrEnum):
     """
     Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.
     """
@@ -44,15 +44,15 @@ class ProductAudienceEvidenceRequirementsMaximumAgeUnit(StrEnum):
     DAYS = 'days'
 
 
-class ProductAudienceEvidenceRequirementsMaximumAge(Duration):
+class MaximumAge(Duration):
     """
     A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 — the window spans the full campaign flight.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/maximum_age')
-    unit: Annotated[ProductAudienceEvidenceRequirementsMaximumAgeUnit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
+    unit: Annotated[Unit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
 
 
-class ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemBrand(AdCPBaseModel):
+class AcceptedAttestationIssuersItemBrand(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -62,7 +62,7 @@ class ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemBrand(AdC
     ext: ExtensionObject | None = None
 
 
-class ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemAgent(AdCPBaseModel):
+class AcceptedAttestationIssuersItemAgent(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -72,7 +72,7 @@ class ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemAgent(AdC
     ext: ExtensionObject | None = None
 
 
-class ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemOrigin(AdCPBaseModel):
+class AcceptedAttestationIssuersItemOrigin(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -100,20 +100,20 @@ class ProductAudienceEvidenceRequirements(AdCPBaseModel):
         UniqueItems('accepted_attestation_claim_types'),
         ConditionalRequired((Match('independent_attestation_required', True, (True,)),), require=('accepted_attestation_issuers',), forbid=()),
     )
-    requirement_mode: ProductAudienceEvidenceRequirementsRequirementMode
-    evidence_presence: ProductAudienceEvidenceRequirementsEvidencePresence
+    requirement_mode: RequirementMode
+    evidence_presence: EvidencePresence
     accepted_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     excluded_methodologies: Annotated[list[AudienceEvidenceMethodology] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    accepted_evidence_types: Annotated[list[ProductAudienceEvidenceRequirementsAcceptedEvidenceTypesItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    accepted_evidence_types: Annotated[list[AcceptedEvidenceTypesItem] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     accepted_providers: Annotated[list[BrandKey] | None, Field(min_length=1)] = None
     excluded_providers: Annotated[list[BrandKey] | None, Field(min_length=1)] = None
     accepted_subject_types: Annotated[list[AudienceSubjectType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     accepted_resolution_methods: Annotated[list[AudienceResolutionMethod] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     minimum_confidence: FloatMin0Max1 | None = None
-    maximum_age: ProductAudienceEvidenceRequirementsMaximumAge | None = None
+    maximum_age: MaximumAge | None = None
     methodology_documentation_required: bool | None = False
     independent_attestation_required: bool | None = False
-    accepted_attestation_issuers: Annotated[list[ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemBrand | ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemAgent | ProductAudienceEvidenceRequirementsAcceptedAttestationIssuersItemOrigin] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    accepted_attestation_issuers: Annotated[list[AcceptedAttestationIssuersItemBrand | AcceptedAttestationIssuersItemAgent | AcceptedAttestationIssuersItemOrigin] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     accepted_attestation_claim_types: Annotated[list[HttpUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     ext: ExtensionObject | None = None
 

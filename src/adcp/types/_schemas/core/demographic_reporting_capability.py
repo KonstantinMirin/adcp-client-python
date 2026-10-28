@@ -14,12 +14,12 @@ from ..enums.demographic_system import DemographicSystem
 from .demographic_age_range import DemographicAgeRange
 
 
-class DemographicReportingCapabilityAgeReportingModesItem(StrEnum):
+class ReportingModesItem(StrEnum):
     EXACT_PREDICATES = 'exact_predicates'
     ENUMERATED_INTERVALS = 'enumerated_intervals'
 
 
-class DemographicReportingCapabilityAgeIntervalsItem(AdCPBaseModel):
+class IntervalsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -33,7 +33,7 @@ class DemographicReportingCapabilityAgeIntervalsItem(AdCPBaseModel):
     demographic_system: DemographicSystem | None = None
 
 
-class DemographicReportingCapabilityAge(AdCPBaseModel):
+class Age(AdCPBaseModel):
     """
     Machine-comparable age ranges this product can report.
     """
@@ -45,12 +45,12 @@ class DemographicReportingCapabilityAge(AdCPBaseModel):
         UniqueItems('reporting_modes'),
         UniqueItems('intervals'),
     )
-    reporting_modes: Annotated[list[DemographicReportingCapabilityAgeReportingModesItem], Field(description='Ways this product can produce age rows. exact_predicates accepts requested canonical age predicates within the declared bounds. enumerated_intervals reports only the exact intervals declared in intervals; buyers may aggregate adjacent complete intervals but MUST NOT treat a wider or narrower interval as the requested audience.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    reporting_modes: Annotated[list[ReportingModesItem], Field(description='Ways this product can produce age rows. exact_predicates accepts requested canonical age predicates within the declared bounds. enumerated_intervals reports only the exact intervals declared in intervals; buyers may aggregate adjacent complete intervals but MUST NOT treat a wider or narrower interval as the requested audience.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     min_reportable_age: Annotated[IntMin0Max150 | None, Field(description='Lowest explicit min or max bound accepted by exact_predicates. Required when that mode is declared.')] = None
     max_reportable_age: Annotated[IntMin0Max150 | None, Field(description='Highest explicit min or max bound accepted by exact_predicates. Required when that mode is declared.')] = None
     supports_unbounded_min: Annotated[bool | None, Field(description='Whether exact_predicates accepts a canonical age predicate with min omitted. Required when that mode is declared.')] = None
     supports_unbounded_max: Annotated[bool | None, Field(description='Whether exact_predicates accepts a canonical age predicate with max omitted. Required when that mode is declared.')] = None
-    intervals: Annotated[list[DemographicReportingCapabilityAgeIntervalsItem] | None, Field(description='Fixed reportable age intervals for enumerated_intervals. Bounds are authoritative capability data, not a protocol-wide bucket taxonomy. Optional native labels identify the measurement-system code returned with the interval.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    intervals: Annotated[list[IntervalsItem] | None, Field(description='Fixed reportable age intervals for enumerated_intervals. Bounds are authoritative capability data, not a protocol-wide bucket taxonomy. Optional native labels identify the measurement-system code returned with the interval.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
 class DemographicReportingCapability(AdCPBaseModel):
@@ -65,7 +65,7 @@ class DemographicReportingCapability(AdCPBaseModel):
         RequiredGroups((('age',), ('demographic_systems',)), 'anyOf'),
         UniqueItems('demographic_systems'),
     )
-    age: Annotated[DemographicReportingCapabilityAge | None, Field(description='Machine-comparable age ranges this product can report.')] = None
+    age: Annotated[Age | None, Field(description='Machine-comparable age ranges this product can report.')] = None
     demographic_systems: Annotated[list[DemographicSystem] | None, Field(description='Measurement-system notations this product may return. A code remains opaque unless its capability interval and response row also carry a canonical age predicate.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     may_suppress_small_cells: Annotated[bool, Field(description='Whether privacy, policy, or measurement thresholds may suppress otherwise reportable demographic rows. When true, buyers must inspect by_demographic_suppressed before testing whether rows reconcile to package totals.')]
 

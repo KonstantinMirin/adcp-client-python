@@ -14,7 +14,7 @@ from .canonical_audience_evidence import CanonicalAudienceEvidence
 from .ext import ExtensionObject
 
 
-class CanonicalAudienceEvidenceSelectionDecisionUse(StrEnum):
+class DecisionUse(StrEnum):
     RECOMMENDATION = 'recommendation'
     ELIGIBILITY = 'eligibility'
     PACKAGE_CONSTRUCTION = 'package_construction'
@@ -35,7 +35,7 @@ class CanonicalAudienceEvidenceSelection(AdCPBaseModel):
     snapshot_id: StrMinLen1
     version: StrMinLen1
     content_digest: StrMatching3CBDBB74
-    decision_use: CanonicalAudienceEvidenceSelectionDecisionUse
+    decision_use: DecisionUse
     evidence: CanonicalAudienceEvidence | None = None
     verified_attestation_digests: Annotated[list[StrMatching3CBDBB74] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     ext: ExtensionObject | None = None

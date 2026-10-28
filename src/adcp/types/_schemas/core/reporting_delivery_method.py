@@ -34,7 +34,7 @@ class ReportingDeliveryMethodReportingOrchestration(StrEnum):
     CONSUMER_MANAGED = 'consumer_managed'
 
 
-class FileTransferFormat(StrEnum):
+class Format(StrEnum):
     """
     Physical file format.
     """
@@ -54,7 +54,7 @@ class FileTransfer(ReportingDeliveryMethod):
     transport: Annotated[StrMinLen1MaxLen64Matching5CDAE669, Field(description='Storage transport such as s3, gcs, azure_blob, or sftp.')]
     orchestration: ReportingDeliveryMethodReportingOrchestration
     destination: ReportingWriteDestination
-    format: Annotated[FileTransferFormat, Field(description='Physical file format.')]
+    format: Annotated[Format, Field(description='Physical file format.')]
 
 
 class DatasetShare(ReportingDeliveryMethod):

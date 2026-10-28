@@ -62,6 +62,7 @@ DictMinProperties1MaxProperties1 = Annotated[dict[K, V], Field(max_length=1, min
 FloatGt0 = Annotated[float, Field(gt=0.0)]
 FloatGt0Lt1 = Annotated[float, Field(gt=0.0, lt=1.0)]
 FloatGt0Max1 = Annotated[float, Field(gt=0.0, le=1.0)]
+FloatGt0Max100 = Annotated[float, Field(gt=0.0, le=100.0)]
 FloatMin0Max1 = Annotated[float, Field(ge=0.0, le=1.0)]
 FloatMin0Max100 = Annotated[float, Field(ge=0.0, le=100.0)]
 FloatMin0Max24 = Annotated[float, Field(ge=0.0, le=24.0)]

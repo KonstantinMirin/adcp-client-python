@@ -14,7 +14,7 @@ from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
 
 
-class URLAssetMacroDeclarationsItemLocation(AdCPBaseModel):
+class Location(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -24,12 +24,12 @@ class URLAssetMacroDeclarationsItemLocation(AdCPBaseModel):
     context: MacroValueContext
 
 
-class URLAssetMacroDeclarationsItem(MacroDeclaration):
+class MacroDeclarationsItem(MacroDeclaration):
     """
     The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/url-asset.json', pointer='#/properties/macro_declarations/items')
-    location: URLAssetMacroDeclarationsItemLocation
+    location: Location
 
 
 class URLAsset(AdCPBaseModel):
@@ -43,7 +43,7 @@ class URLAsset(AdCPBaseModel):
     asset_type: Annotated[Literal['url'], Field(description='Discriminator identifying this as a URL asset. See /schemas/creative/asset-types for the registry.')]
     url: Annotated[MacroBearingURL, Field(description='URL reference carrying plain, AdCP, IAB, or declared vendor macro syntax. Buyers preserve token delimiters; the authoritative declaration determines the processing operation and encoding.')]
     url_type: Annotated[URLAssetType | None, Field(description='Mechanism a receiver uses to invoke this URL: `clickthrough` for a user destination, `ad_request` for a third-party display creative request, `tracker_pixel` for an event HTTP request, or `tracker_script` for a script include. SHOULD be present on every URL asset.')] = None
-    macro_declarations: Annotated[list[URLAssetMacroDeclarationsItem] | None, Field(description='One declaration per token occurrence in `url`; declaration_id values MUST be unique and every location MUST identify an existing occurrence. Absence retains legacy opaque transport behavior.', min_length=1)] = None
+    macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='One declaration per token occurrence in `url`; declaration_id values MUST be unique and every location MUST identify an existing occurrence. Absence retains legacy opaque transport behavior.', min_length=1)] = None
     description: Annotated[str | None, Field(description='Description of what this URL points to')] = None
     state_id: Annotated[str | None, Field(description='Binding used only when this URL populates a `seller_rendered_stateful_display` `state_click_urls` slot. It MUST match one declared `states[].state_id` (semantic validators resolve it); at most one entry per state. Omit for ordinary URL slots.')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None

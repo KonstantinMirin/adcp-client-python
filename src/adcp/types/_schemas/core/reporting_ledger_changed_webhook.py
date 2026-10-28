@@ -14,7 +14,7 @@ from ..enums.reporting_finality import ReportingFinality
 from .ext import ExtensionObject
 
 
-class ReportingLedgerChangedWebhookChangeKind(StrEnum):
+class ChangeKind(StrEnum):
     REVISION_PUBLISHED = 'revision_published'
     ADJUSTMENT_PUBLISHED = 'adjustment_published'
 
@@ -37,7 +37,7 @@ class ReportingLedgerChangedWebhook(AdCPBaseModel):
     fired_at: AwareDatetime
     subscriber_id: StrMinLen1MaxLen64MatchingD373B860
     account_id: StrMinLen1
-    change_kind: ReportingLedgerChangedWebhookChangeKind
+    change_kind: ChangeKind
     reporting_revision_id: StrMinLen1MaxLen255Matching67860854 | None = None
     supersedes_reporting_revision_id: StrMinLen1MaxLen255Matching67860854 | None = None
     finality: ReportingFinality | None = None

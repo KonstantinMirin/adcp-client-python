@@ -8,7 +8,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
-class A2UIUserActionAction(AdCPBaseModel):
+class Action(AdCPBaseModel):
     """
     The action that was triggered
     """
@@ -30,7 +30,7 @@ class A2UIUserAction(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='a2ui/user-action.json', pointer='#')
     surfaceId: Annotated[str, Field(description='ID of the surface where the action occurred')]
     componentId: Annotated[str, Field(description='ID of the component that triggered the action')]
-    action: Annotated[A2UIUserActionAction, Field(description='The action that was triggered')]
+    action: Annotated[Action, Field(description='The action that was triggered')]
     timestamp: Annotated[AwareDatetime | None, Field(description='When the action occurred')] = None
 
 

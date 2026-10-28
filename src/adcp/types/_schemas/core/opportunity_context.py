@@ -13,7 +13,7 @@ from adcp.types.constraints import StrMinLen1MaxLen255Matching67860854, StrMinLe
 from .date_range import DateRange
 
 
-class OpportunityContextPhase(StrEnum):
+class Phase(StrEnum):
     """
     Current stage of buyer planning.
     """
@@ -22,7 +22,7 @@ class OpportunityContextPhase(StrEnum):
     ACTIVE_SOURCING = 'active_sourcing'
 
 
-class OpportunityContextIntent(StrEnum):
+class Intent(StrEnum):
     """
     How seriously the buyer is evaluating supply in this cycle.
     """
@@ -32,7 +32,7 @@ class OpportunityContextIntent(StrEnum):
     LIVE_RFP = 'live_rfp'
 
 
-class OpportunityContextStatus(StrEnum):
+class Status(StrEnum):
     """
     Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.
     """
@@ -40,7 +40,7 @@ class OpportunityContextStatus(StrEnum):
     CLOSED = 'closed'
 
 
-class OpportunityContextCloseReason(StrEnum):
+class CloseReason(StrEnum):
     """
     Why the opportunity closed. Required when status is closed.
     """
@@ -67,12 +67,12 @@ class OpportunityContext(AdCPBaseModel):
         ConditionalRequired((Match('close_reason', True, ('other',)),), require=('close_detail',), forbid=()),
     )
     opportunity_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Opaque buyer-assigned identifier for this planning cycle, scoped to the seller and account.')]
-    phase: Annotated[OpportunityContextPhase | None, Field(description='Current stage of buyer planning.')] = None
-    intent: Annotated[OpportunityContextIntent | None, Field(description='How seriously the buyer is evaluating supply in this cycle.')] = None
+    phase: Annotated[Phase | None, Field(description='Current stage of buyer planning.')] = None
+    intent: Annotated[Intent | None, Field(description='How seriously the buyer is evaluating supply in this cycle.')] = None
     planning_horizon: Annotated[DateRange | None, Field(description='Inclusive calendar range in which the buyer expects the campaign to run.')] = None
     response_deadline: Annotated[AwareDatetime | None, Field(description='Deadline by which the buyer needs a seller response.')] = None
-    status: Annotated[OpportunityContextStatus | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
-    close_reason: Annotated[OpportunityContextCloseReason | None, Field(description='Why the opportunity closed. Required when status is closed.')] = None
+    status: Annotated[Status | None, Field(description='Whether the planning cycle remains open. On calls after initial creation, omission means no status update and MUST NOT reopen or close the opportunity implicitly, except that successful create_media_buy proposal execution explicitly infers accepted closure.')] = None
+    close_reason: Annotated[CloseReason | None, Field(description='Why the opportunity closed. Required when status is closed.')] = None
     close_detail: Annotated[StrMinLen1MaxLen500 | None, Field(description='Optional non-sensitive context about closure. MUST NOT identify a competitor or disclose confidential clearing terms.')] = None
 
 

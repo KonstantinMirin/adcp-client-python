@@ -12,7 +12,7 @@ from adcp.types.constraints import FloatGt0, FloatGt0Lt1, StrMaxLen256, StrMaxLe
 from ..enums.adjustment_kind import PriceAdjustmentKind
 
 
-class PriceBreakdownAdjustmentsItem(AdCPBaseModel):
+class AdjustmentsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -37,7 +37,7 @@ class PriceBreakdown(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='pricing-options/price-breakdown.json', pointer='#')
     list_price: Annotated[FloatGt0, Field(description='Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.')]
-    adjustments: Annotated[list[PriceBreakdownAdjustmentsItem], Field(description="Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price — fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.", max_length=20, min_length=1)]
+    adjustments: Annotated[list[AdjustmentsItem], Field(description="Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price — fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.", max_length=20, min_length=1)]
 
 
 __all__ = ["PriceBreakdown"]

@@ -15,7 +15,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .validation_result import ValidationResult
 
 
-class ValidatePropertyDeliveryResponseSummary(AdCPBaseModel):
+class Summary(AdCPBaseModel):
     """
     Aggregate validation statistics
     """
@@ -35,7 +35,7 @@ class ValidatePropertyDeliveryResponseSummary(AdCPBaseModel):
     unidentified_impressions: Annotated[int, Field(description='Impressions from unidentified records')]
 
 
-class ValidatePropertyDeliveryResponseAggregate(AdCPBaseModel):
+class Aggregate(AdCPBaseModel):
     """
     Optional aggregate measurements computed by the governance agent. Format and meaning are agent-specific.
     """
@@ -49,7 +49,7 @@ class ValidatePropertyDeliveryResponseAggregate(AdCPBaseModel):
     methodology_url: Annotated[HttpUrl | None, Field(description='URL explaining how this aggregate was calculated')] = None
 
 
-class ValidatePropertyDeliveryResponseAuthorizationSummary(AdCPBaseModel):
+class AuthorizationSummary(AdCPBaseModel):
     """
     Aggregate authorization statistics. Only present if any records included sales_agent_url.
     """
@@ -77,9 +77,9 @@ class ValidatePropertyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validate-property-delivery-response.json', pointer='#')
     compliant: Annotated[bool | None, Field(description='Overall compliance flag for the submitted delivery — true when every record is compliant, false when any record is non_compliant. Derived from summary.non_compliant_records === 0 but surfaced at the root as a convenience signal for buyers. Agents MAY omit this field when the response represents a partial validation (e.g., when include_compliant is false and results only contains non_compliant records); consumers SHOULD fall back to summary counts if compliant is absent.')] = None
     list_id: Annotated[str, Field(description='ID of the property list validated against')]
-    summary: Annotated[ValidatePropertyDeliveryResponseSummary, Field(description='Aggregate validation statistics')]
-    aggregate: Annotated[ValidatePropertyDeliveryResponseAggregate | None, Field(description='Optional aggregate measurements computed by the governance agent. Format and meaning are agent-specific.')] = None
-    authorization_summary: Annotated[ValidatePropertyDeliveryResponseAuthorizationSummary | None, Field(description='Aggregate authorization statistics. Only present if any records included sales_agent_url.')] = None
+    summary: Annotated[Summary, Field(description='Aggregate validation statistics')]
+    aggregate: Annotated[Aggregate | None, Field(description='Optional aggregate measurements computed by the governance agent. Format and meaning are agent-specific.')] = None
+    authorization_summary: Annotated[AuthorizationSummary | None, Field(description='Aggregate authorization statistics. Only present if any records included sales_agent_url.')] = None
     results: Annotated[list[ValidationResult], Field(description='Per-record validation results. By default only includes non_compliant and unknown records. Set include_compliant=true to include all records.')]
     validated_at: Annotated[AwareDatetime, Field(description='Timestamp when validation was performed')]
     list_resolved_at: Annotated[AwareDatetime | None, Field(description='Timestamp of the property list resolution used for validation')] = None

@@ -21,7 +21,7 @@ class TransformerParamType(StrEnum):
     BOOLEAN = 'boolean'
 
 
-class TransformerParamValueSource(StrEnum):
+class ValueSource(StrEnum):
     """
     Where the legal values come from. `inline` — a small closed set listed in `allowed_values` (e.g. mastering_preset). `range` — a numeric interval bounded by `minimum`/`maximum` (e.g. speaking_rate). `enumerable` — an account-scoped, dynamic set (e.g. voices, including custom/cloned ones) resolved per-credential; values appear in `options[]` only when expanded. `free_text` — an open buyer-authored string with no closed/enumerable set (e.g. a negative_prompt or style note for a generative agent); `type` MUST be `string` and `allowed_values`/`minimum`/`maximum`/`options`/`options_cursor` MUST be absent. NOTE: a transformer-param MUST NOT be a generation-count knob (sample_count/n/num_images/count) — output count is owned by `max_variants`/`max_creatives`, never config.
     """
@@ -31,7 +31,7 @@ class TransformerParamValueSource(StrEnum):
     FREE_TEXT = 'free_text'
 
 
-class TransformerParamOptionsItem(AdCPBaseModel):
+class OptionsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -56,12 +56,12 @@ class TransformerParam(AdCPBaseModel):
     )
     field: Annotated[str, Field(description='The config key. Buyers set the value under this exact key in build_creative `config`.')]
     type: Annotated[TransformerParamType, Field(description='JSON type of the value the buyer supplies for this field.')]
-    value_source: Annotated[TransformerParamValueSource, Field(description='Where the legal values come from. `inline` — a small closed set listed in `allowed_values` (e.g. mastering_preset). `range` — a numeric interval bounded by `minimum`/`maximum` (e.g. speaking_rate). `enumerable` — an account-scoped, dynamic set (e.g. voices, including custom/cloned ones) resolved per-credential; values appear in `options[]` only when expanded. `free_text` — an open buyer-authored string with no closed/enumerable set (e.g. a negative_prompt or style note for a generative agent); `type` MUST be `string` and `allowed_values`/`minimum`/`maximum`/`options`/`options_cursor` MUST be absent. NOTE: a transformer-param MUST NOT be a generation-count knob (sample_count/n/num_images/count) — output count is owned by `max_variants`/`max_creatives`, never config.')]
+    value_source: Annotated[ValueSource, Field(description='Where the legal values come from. `inline` — a small closed set listed in `allowed_values` (e.g. mastering_preset). `range` — a numeric interval bounded by `minimum`/`maximum` (e.g. speaking_rate). `enumerable` — an account-scoped, dynamic set (e.g. voices, including custom/cloned ones) resolved per-credential; values appear in `options[]` only when expanded. `free_text` — an open buyer-authored string with no closed/enumerable set (e.g. a negative_prompt or style note for a generative agent); `type` MUST be `string` and `allowed_values`/`minimum`/`maximum`/`options`/`options_cursor` MUST be absent. NOTE: a transformer-param MUST NOT be a generation-count knob (sample_count/n/num_images/count) — output count is owned by `max_variants`/`max_creatives`, never config.')]
     max_length: Annotated[IntMin1 | None, Field(description='Optional maximum character length for a `free_text` param. Omit for no declared limit.')] = None
     allowed_values: Annotated[list[Any] | None, Field(description='The closed set of legal values. Present when `value_source` is `inline`.', min_length=1)] = None
     minimum: Annotated[float | None, Field(description='Inclusive lower bound. Present when `value_source` is `range`.')] = None
     maximum: Annotated[float | None, Field(description='Inclusive upper bound. Present when `value_source` is `range`.')] = None
-    options: Annotated[list[TransformerParamOptionsItem] | None, Field(description="Account-scoped legal values for an `enumerable` param. Populated ONLY when this param's `field` was named in the list_transformers `expand_params` request — otherwise omitted (the buyer enumerates on demand). Brief-filtered and paginated; use `options_cursor` for the next page.")] = None
+    options: Annotated[list[OptionsItem] | None, Field(description="Account-scoped legal values for an `enumerable` param. Populated ONLY when this param's `field` was named in the list_transformers `expand_params` request — otherwise omitted (the buyer enumerates on demand). Brief-filtered and paginated; use `options_cursor` for the next page.")] = None
     options_cursor: Annotated[str | None, Field(description="Opaque pagination cursor for this param's `options[]`. Present when more option values are available than were returned. Pass back to list_transformers (scoped to this transformer + field) to fetch the next page.")] = None
     default: Annotated[Any | None, Field(description='The value applied when the buyer omits this field from `config`. Type matches `type`.')] = None
     required: Annotated[bool | None, Field(description='Whether the buyer MUST supply this field in `config`. When false and no `default` is declared, the agent chooses.')] = False

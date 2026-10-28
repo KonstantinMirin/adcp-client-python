@@ -13,7 +13,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class SITerminateSessionRequestReason(StrEnum):
+class Reason(StrEnum):
     """
     Reason for termination
     """
@@ -24,12 +24,12 @@ class SITerminateSessionRequestReason(StrEnum):
     HOST_TERMINATED = 'host_terminated'
 
 
-class SITerminateSessionRequestTerminationContextTransactionIntentAction(StrEnum):
+class Action(StrEnum):
     PURCHASE = 'purchase'
     SUBSCRIBE = 'subscribe'
 
 
-class SITerminateSessionRequestTerminationContextTransactionIntent(AdCPBaseModel):
+class TransactionIntent(AdCPBaseModel):
     """
     For handoff_transaction - what user wants to buy
     """
@@ -37,11 +37,11 @@ class SITerminateSessionRequestTerminationContextTransactionIntent(AdCPBaseModel
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-request.json', pointer='#/properties/termination_context/properties/transaction_intent')
-    action: SITerminateSessionRequestTerminationContextTransactionIntentAction | None = None
+    action: Action | None = None
     product: Annotated[dict[str, Any] | None, Field(description='Product/service details')] = None
 
 
-class SITerminateSessionRequestTerminationContext(AdCPBaseModel):
+class TerminationContext(AdCPBaseModel):
     """
     Context for the termination
     """
@@ -50,7 +50,7 @@ class SITerminateSessionRequestTerminationContext(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-request.json', pointer='#/properties/termination_context')
     summary: Annotated[str | None, Field(description='Summary of the conversation')] = None
-    transaction_intent: Annotated[SITerminateSessionRequestTerminationContextTransactionIntent | None, Field(description='For handoff_transaction - what user wants to buy')] = None
+    transaction_intent: Annotated[TransactionIntent | None, Field(description='For handoff_transaction - what user wants to buy')] = None
     cause: Annotated[str | None, Field(description='For host_terminated - why host ended session')] = None
 
 
@@ -63,8 +63,8 @@ class SITerminateSessionRequest(AdCPVersionEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-request.json', pointer='#')
     session_id: Annotated[str, Field(description='Session identifier to terminate')]
-    reason: Annotated[SITerminateSessionRequestReason, Field(description='Reason for termination')]
-    termination_context: Annotated[SITerminateSessionRequestTerminationContext | None, Field(description='Context for the termination')] = None
+    reason: Annotated[Reason, Field(description='Reason for termination')]
+    termination_context: Annotated[TerminationContext | None, Field(description='Context for the termination')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

@@ -15,21 +15,21 @@ from ...enums.activation_method import CreativeActivationMethod
 from ...enums.ctv_ad_experience import CTVAdExperience
 from ...enums.motion_level import CreativeMotionLevel
 from ...enums.vast_version import VASTVersion
-from ._base import CanonicalFormatBase, CanonicalFormatBaseSlotsItem
+from ._base import CanonicalFormatBase, SlotsItem
 
 
-class CanonicalFormatVASTVideoOrientation(StrEnum):
+class Orientation(StrEnum):
     VERTICAL = 'vertical'
     HORIZONTAL = 'horizontal'
     SQUARE = 'square'
 
 
-class CanonicalFormatVASTVideoVpaidVersion(StrEnum):
+class VpaidVersion(StrEnum):
     V_1_0 = '1.0'
     V_2_0 = '2.0'
 
 
-class CanonicalFormatVASTVideoCreativeType(StrEnum):
+class CreativeType(StrEnum):
     """
     Required VAST creative class: `linear` (in-stream Linear), `nonlinear` (NonLinearAds overlay-class), or `either`. Supersedes `linear_required`; when both are present `creative_type` wins, and validators treat `linear_required: true` with no `creative_type` as `linear`.
     """
@@ -52,14 +52,14 @@ class CanonicalFormatVASTVideo(CanonicalFormatBase):
         UniqueItems('activation_methods'),
         ConditionalRequired((Match('ctv_ad_experience', True, None),), require=('creative_type',), forbid=()),
     )
-    slots: Annotated[list[CanonicalFormatBaseSlotsItem] | None, Field(description="Default slots for video_vast canonical. Buyer ships a VAST tag (URL or inline XML, VAST 2.x-4.x) plus an optional clickthrough URL (which falls back to the VAST `ClickThrough` element when omitted). Tracking events are inherent to VAST and don't require explicit slots.")] = [{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]
-    orientation: CanonicalFormatVASTVideoOrientation | None = None
+    slots: Annotated[list[SlotsItem] | None, Field(description="Default slots for video_vast canonical. Buyer ships a VAST tag (URL or inline XML, VAST 2.x-4.x) plus an optional clickthrough URL (which falls back to the VAST `ClickThrough` element when omitted). Tracking events are inherent to VAST and don't require explicit slots.")] = [{'asset_group_id': 'vast_tag', 'asset_type': 'vast', 'required': True}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]
+    orientation: Orientation | None = None
     aspect_ratio: StrMatchingF601B9EB | None = None
     vast_versions: Annotated[list[VASTVersion] | None, Field(description='VAST versions accepted by this product format option. The asset still declares exactly one `vast_version`; compatibility requires membership in this set and the seller-wide execution set.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     vast_version: Annotated[VASTVersion | None, Field(description='Deprecated one-element alias for `vast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.')] = None
     media_file_requirements: Annotated[VASTMediaFileRequirements | None, Field(description='Technical acceptance constraints for alternative VAST MediaFile renditions. Each applicable resolved InLine linear creative needs at least one MediaFile satisfying all declared constraints.')] = None
     vpaid_enabled: Annotated[bool | None, Field(description='Whether VPAID interactivity is supported. When true, the VAST tag may carry VPAID JS/Flash payloads.')] = None
-    vpaid_version: CanonicalFormatVASTVideoVpaidVersion | None = None
+    vpaid_version: VpaidVersion | None = None
     simid_supported: Annotated[bool | None, Field(description='Whether the seller accepts IAB SIMID through `<InteractiveCreativeFile apiFramework="SIMID">` on a Linear VAST creative. SIMID is not a generic VAST extension and cannot be serialized under NonLinearAds; every `ctv_ad_experience` profile therefore forbids `true`.')] = None
     duration_ms_range: Annotated[list[NonNegativeInt] | None, Field(description='[min, max] duration in milliseconds. **Precedence**: `duration_ms_exact` takes precedence when both ship. SDKs SHOULD lint a warning when both fields ship.', max_length=2, min_length=2)] = None
     duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship.')] = None
@@ -67,7 +67,7 @@ class CanonicalFormatVASTVideo(CanonicalFormatBase):
     max_width: Annotated[IntMin1 | None, Field(description='Maximum placement/player width in pixels. MediaFile rendition dimensions are declared in `media_file_requirements`.')] = None
     min_height: Annotated[IntMin1 | None, Field(description='Minimum placement/player height in pixels. MediaFile rendition dimensions are declared in `media_file_requirements`.')] = None
     max_height: Annotated[IntMin1 | None, Field(description='Maximum placement/player height in pixels. MediaFile rendition dimensions are declared in `media_file_requirements`.')] = None
-    creative_type: Annotated[CanonicalFormatVASTVideoCreativeType | None, Field(description='Required VAST creative class: `linear` (in-stream Linear), `nonlinear` (NonLinearAds overlay-class), or `either`. Supersedes `linear_required`; when both are present `creative_type` wins, and validators treat `linear_required: true` with no `creative_type` as `linear`.')] = None
+    creative_type: Annotated[CreativeType | None, Field(description='Required VAST creative class: `linear` (in-stream Linear), `nonlinear` (NonLinearAds overlay-class), or `either`. Supersedes `linear_required`; when both are present `creative_type` wins, and validators treat `linear_required: true` with no `creative_type` as `linear`.')] = None
     ctv_ad_experience: Annotated[CTVAdExperience | None, Field(description='CTV experience this option is eligible to serve. On video_vast only `pause`, `screensaver`, `overlay`, `squeezeback`, and `in_scene` are valid (`menu` routes to native_in_feed or sponsored_placement), and `creative_type` MUST be `nonlinear`. Because VAST places `<InteractiveCreativeFile>` only under Linear `<MediaFiles>`, `simid_supported` MUST NOT be true on any of these NonLinear profiles. Per-experience floors: `overlay` and `squeezeback` require a 10s minimum duration; `in_scene` requires a 3s minimum brand-exposure duration and forbids interactivity (`vpaid_enabled` MUST NOT be true); `pause` has no duration floor and ends on viewer or device action.')] = None
     motion_level: Annotated[CreativeMotionLevel | None, Field(description='Accepted motion class for the rendered creative (AdCOM attrs 21-23).')] = None
     activation_methods: Annotated[list[CreativeActivationMethod] | None, Field(description='Viewer activation mechanisms this option offers. Activations are engagement events, not impressions.', json_schema_extra={'uniqueItems': True})] = None

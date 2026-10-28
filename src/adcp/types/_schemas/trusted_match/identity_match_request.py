@@ -15,7 +15,7 @@ from ..enums.attestation_claim import AttestationClaim
 from ..enums.uid_type import UIDType
 
 
-class IdentityMatchRequestIdentitiesItemAttestationVerificationLevel(StrEnum):
+class VerificationLevel(StrEnum):
     """
     Credential strength (e.g. World ID Orb = biometric unique-human; Device = weaker; Document = passport/NFC).
     """
@@ -24,7 +24,7 @@ class IdentityMatchRequestIdentitiesItemAttestationVerificationLevel(StrEnum):
     DOCUMENT = 'document'
 
 
-class IdentityMatchRequestIdentitiesItemAttestation(AdCPBaseModel):
+class Attestation(AdCPBaseModel):
     """
     Optional verifiable proof ABOUT this identity (e.g. World ID proof-of-personhood and/or age). The receiver MUST verify it (see conformance) and MUST treat an absent-or-unverifiable attestation as 'no attestation' — never as an asserted-true claim. Issuer-agnostic: World ID is the first scheme; mDL / VC-style issuers use the same shape. Receivers MUST bound attestation size to prevent DoS.
     """
@@ -40,23 +40,23 @@ class IdentityMatchRequestIdentitiesItemAttestation(AdCPBaseModel):
     relying_party_id: Annotated[str | None, Field(description="Relying-party id the proof was minted for. The receiver checks this against the relying_party_id's published owner (brand.json `identity_relying_parties[]`) so a forwarded proof cannot be replayed under a different owner.")] = None
     action: Annotated[str | None, Field(description='Issuer action/scope the proof was bound to (e.g. "humanity-check-for-ads").')] = None
     claims: Annotated[list[AttestationClaim], Field(description='Claims this attestation establishes. Closed, issuer-agnostic set.', json_schema_extra={'uniqueItems': True}, max_length=16, min_length=1)]
-    verification_level: Annotated[IdentityMatchRequestIdentitiesItemAttestationVerificationLevel | None, Field(description='Credential strength (e.g. World ID Orb = biometric unique-human; Device = weaker; Document = passport/NFC).')] = None
+    verification_level: Annotated[VerificationLevel | None, Field(description='Credential strength (e.g. World ID Orb = biometric unique-human; Device = weaker; Document = passport/NFC).')] = None
     signal_binding: Annotated[str | None, Field(description='Hash of the signal the proof commits to. The receiver MUST verify it matches the context the receiver expects (e.g. a buyer-issued nonce or the request_id) and that the attestation is within its freshness window; this, plus nullifier-reuse tracking, is the replay defense.')] = None
     proof: Annotated[dict[str, Any], Field(description="Scheme-specific verifiable proof material. Opaque to this schema; validated by the scheme's verifier. MUST carry only scheme-defined verification material — never page context or additional user identifiers.")]
     expires_at: Annotated[AwareDatetime | None, Field(description='Attestation validity horizon. Receivers MUST reject when past.')] = None
 
 
-class IdentityMatchRequestIdentitiesItem(AdCPBaseModel):
+class IdentitiesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/identity-match-request.json', pointer='#/properties/identities/items')
     user_token: Annotated[str, Field(description='Opaque token from an identity provider (ID5, LiveRamp, UID2) or publisher-generated. Buyer may map to internal identity graph but cannot reverse to PII.')]
     uid_type: Annotated[UIDType, Field(description='Type of the user identifier. Tells the buyer which identity graph to resolve against, avoiding trial-and-error matching.')]
-    attestation: Annotated[IdentityMatchRequestIdentitiesItemAttestation | None, Field(description="Optional verifiable proof ABOUT this identity (e.g. World ID proof-of-personhood and/or age). The receiver MUST verify it (see conformance) and MUST treat an absent-or-unverifiable attestation as 'no attestation' — never as an asserted-true claim. Issuer-agnostic: World ID is the first scheme; mDL / VC-style issuers use the same shape. Receivers MUST bound attestation size to prevent DoS.")] = None
+    attestation: Annotated[Attestation | None, Field(description="Optional verifiable proof ABOUT this identity (e.g. World ID proof-of-personhood and/or age). The receiver MUST verify it (see conformance) and MUST treat an absent-or-unverifiable attestation as 'no attestation' — never as an asserted-true claim. Issuer-agnostic: World ID is the first scheme; mDL / VC-style issuers use the same shape. Receivers MUST bound attestation size to prevent DoS.")] = None
 
 
-class IdentityMatchRequestConsent(AdCPBaseModel):
+class Consent(AdCPBaseModel):
     """
     Privacy consent signals. Buyers in regulated jurisdictions MUST NOT process the user token without consent information.
     """
@@ -70,7 +70,7 @@ class IdentityMatchRequestConsent(AdCPBaseModel):
     us_privacy: Annotated[str | None, Field(description='US Privacy string (CCPA). Deprecated in favor of GPP but still widely used.')] = None
 
 
-class IdentityMatchRequestSealedCredentialsItem(AdCPBaseModel):
+class SealedCredentialsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -94,11 +94,11 @@ class IdentityMatchRequest(AdCPBaseModel):
     protocol_version: Annotated[str | None, Field(description='TMP protocol version. Allows receivers to handle semantic differences across versions.')] = '1.0'
     request_id: Annotated[str, Field(description='Unique request identifier. MUST NOT correlate with any context match request_id.')]
     seller_agent_url: Annotated[HttpUrl, Field(description="API endpoint URL of the seller agent issuing this request. The buyer's identity-match service uses this to resolve the active package set it has registered for this seller; when `package_ids` is omitted, evaluation occurs against that full set. If `seller_agent_url` does not match any seller for which the buyer has registered active packages, the buyer MUST return an empty `eligible_package_ids` set — it MUST NOT fall back to evaluating against another seller's active set. Compared using the AdCP URL canonicalization rules, not byte-equality — see docs/reference/url-canonicalization. Consistent with `seller_agent.agent_url` on `AvailablePackage` and `agent_url` in `adagents.json`.")]
-    identities: Annotated[list[IdentityMatchRequestIdentitiesItem], Field(description='Identity tokens for the user, each tagged with its type. Publishers SHOULD include every token they have available — the buyer resolves on whichever graph matches. Entry order is not semantically significant; buyers use their own preference order when multiple entries resolve. Duplicate `(uid_type, user_token)` pairs MUST NOT appear; routers MAY reject or dedupe. `maxItems: 3` matches the TMPX plaintext budget (~120 bytes after HPKE overhead fits three 32-byte tokens); exceeding it forces buyer-side truncation.', max_length=3, min_length=1)]
-    consent: Annotated[IdentityMatchRequestConsent | None, Field(description='Privacy consent signals. Buyers in regulated jurisdictions MUST NOT process the user token without consent information.')] = None
+    identities: Annotated[list[IdentitiesItem], Field(description='Identity tokens for the user, each tagged with its type. Publishers SHOULD include every token they have available — the buyer resolves on whichever graph matches. Entry order is not semantically significant; buyers use their own preference order when multiple entries resolve. Duplicate `(uid_type, user_token)` pairs MUST NOT appear; routers MAY reject or dedupe. `maxItems: 3` matches the TMPX plaintext budget (~120 bytes after HPKE overhead fits three 32-byte tokens); exceeding it forces buyer-side truncation.', max_length=3, min_length=1)]
+    consent: Annotated[Consent | None, Field(description='Privacy consent signals. Buyers in regulated jurisdictions MUST NOT process the user token without consent information.')] = None
     package_ids: Annotated[list[str] | None, Field(description="Optional. When omitted, the buyer evaluates eligibility against the full set of active packages it has registered for `seller_agent_url`. When provided, the composition of `package_ids` MUST be statistically independent of the current placement — sending only the page-specific subset would let the buyer correlate Identity Match with Context Match by comparing package sets. Two acceptable modes: (a) **all-active** — include every active package this buyer has at this publisher; (b) **fuzzed** — include a random sample of active packages, optionally padded with synthetic non-existent IDs, drawn from a distribution that does not depend on the current placement. The buyer's silent-drop behavior on unknown IDs (specified below) is what makes synthetic-ID padding safe — they do not affect the response shape and cannot leak registry membership. When both `seller_agent_url` and `package_ids` are present, the buyer evaluates against the intersection of its registered active set and `package_ids`; IDs in `package_ids` that the buyer has not registered for this seller MUST be silently ignored (not surfaced as errors) to avoid leaking registry membership back to the publisher.", min_length=1)] = None
     country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code. Routing directive for the TMP Router — used to select the correct regional provider. The router MUST strip this field before forwarding the request to the buyer agent. Not an identity signal.')] = None
-    sealed_credentials: Annotated[list[IdentityMatchRequestSealedCredentialsItem] | None, Field(description='Optional HPKE-sealed credentials addressed to specific audiences — the network-as-RP ("issuer-as-RP"/Mechanism B) carrier. Each payload is opaque to the publisher, who relays it untouched; the inner plaintext is an `attestation` (see identities[].attestation) scoped to the audience\'s relying party. Reuses the TMPX envelope format. Router handling (normative — see docs/trusted-match/specification.mdx): the router forwards each entry only to the provider that owns its `audience_kid` (not broadcast), folds `sealed_credentials` into the per-provider re-signature canonical bytes so an injected/swapped blob breaks the signature, and includes a `sealed_credentials_hash` in the dedup cache key. Receivers decrypt only entries whose `audience_kid` they hold a key for and ignore the rest. Receivers MUST bound count and size to prevent DoS amplification.', max_length=8)] = None
+    sealed_credentials: Annotated[list[SealedCredentialsItem] | None, Field(description='Optional HPKE-sealed credentials addressed to specific audiences — the network-as-RP ("issuer-as-RP"/Mechanism B) carrier. Each payload is opaque to the publisher, who relays it untouched; the inner plaintext is an `attestation` (see identities[].attestation) scoped to the audience\'s relying party. Reuses the TMPX envelope format. Router handling (normative — see docs/trusted-match/specification.mdx): the router forwards each entry only to the provider that owns its `audience_kid` (not broadcast), folds `sealed_credentials` into the per-provider re-signature canonical bytes so an injected/swapped blob breaks the signature, and includes a `sealed_credentials_hash` in the dedup cache key. Receivers decrypt only entries whose `audience_kid` they hold a key for and ignore the rest. Receivers MUST bound count and size to prevent DoS amplification.', max_length=8)] = None
 
 
 __all__ = ["IdentityMatchRequest"]

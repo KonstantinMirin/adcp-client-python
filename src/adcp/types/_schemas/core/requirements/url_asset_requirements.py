@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1, StrFormatHostname
 
 
-class URLAssetRequirementsRole(StrEnum):
+class Role(StrEnum):
     """
     Purpose this URL slot serves in the format — distinct from `url_type` on the manifest-side asset (which declares the receiver's invocation mechanism). A slot can be `click_tracker` (purpose) and accept a `tracker_pixel` (mechanism) URL, or `clickthrough` (purpose) and accept a `clickthrough` (mechanism) URL. Complements `asset_role` (human-readable label) by providing a machine-readable enum and serves as the receiver's fallback signal when a manifest URL asset omits `url_type`.
     """
@@ -22,7 +22,7 @@ class URLAssetRequirementsRole(StrEnum):
     THIRD_PARTY_TRACKER = 'third_party_tracker'
 
 
-class URLAssetRequirementsProtocolsItem(StrEnum):
+class ProtocolsItem(StrEnum):
     HTTPS = 'https'
     HTTP = 'http'
 
@@ -35,8 +35,8 @@ class URLAssetRequirements(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/url-asset-requirements.json', pointer='#')
-    role: Annotated[URLAssetRequirementsRole | None, Field(description="Purpose this URL slot serves in the format — distinct from `url_type` on the manifest-side asset (which declares the receiver's invocation mechanism). A slot can be `click_tracker` (purpose) and accept a `tracker_pixel` (mechanism) URL, or `clickthrough` (purpose) and accept a `clickthrough` (mechanism) URL. Complements `asset_role` (human-readable label) by providing a machine-readable enum and serves as the receiver's fallback signal when a manifest URL asset omits `url_type`.")] = None
-    protocols: Annotated[list[URLAssetRequirementsProtocolsItem] | None, Field(description='Allowed URL protocols. HTTPS is recommended for all ad URLs.')] = None
+    role: Annotated[Role | None, Field(description="Purpose this URL slot serves in the format — distinct from `url_type` on the manifest-side asset (which declares the receiver's invocation mechanism). A slot can be `click_tracker` (purpose) and accept a `tracker_pixel` (mechanism) URL, or `clickthrough` (purpose) and accept a `clickthrough` (mechanism) URL. Complements `asset_role` (human-readable label) by providing a machine-readable enum and serves as the receiver's fallback signal when a manifest URL asset omits `url_type`.")] = None
+    protocols: Annotated[list[ProtocolsItem] | None, Field(description='Allowed URL protocols. HTTPS is recommended for all ad URLs.')] = None
     allowed_domains: Annotated[list[StrFormatHostname] | None, Field(description='List of allowed domains for the URL')] = None
     max_length: Annotated[IntMin1 | None, Field(description='Maximum URL length in characters')] = None
     macro_support: Annotated[bool | None, Field(description="Coarse slot gate for macro-bearing URLs. `false` is a hard prohibition on macro tokens. `true` permits tokens but does not prove any dialect semantic, resolver, context, or encoding capability; exact support comes from the selected format option's macro_resolution_capabilities.")] = None

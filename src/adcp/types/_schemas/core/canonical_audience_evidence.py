@@ -19,19 +19,19 @@ from .date_range import DateRange
 from .ext import ExtensionObject
 
 
-class CanonicalAudienceEvidenceRelationship(StrEnum):
+class Relationship(StrEnum):
     COMPOSITION = 'composition'
     INDEX = 'index'
     REACH_ESTIMATE = 'reach_estimate'
 
 
-class CanonicalAudienceEvidenceUnit(StrEnum):
+class Unit(StrEnum):
     FRACTION = 'fraction'
     RATIO = 'ratio'
     COUNT = 'count'
 
 
-class CanonicalAudienceEvidenceBaseline(AdCPBaseModel):
+class Baseline(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -42,7 +42,7 @@ class CanonicalAudienceEvidenceBaseline(AdCPBaseModel):
     description: str | None = None
 
 
-class CanonicalAudienceEvidenceEvidenceType(StrEnum):
+class EvidenceType(StrEnum):
     MEASURED = 'measured'
     FORECAST = 'forecast'
     SELLER_DECLARED = 'seller_declared'
@@ -64,11 +64,11 @@ class CanonicalAudienceEvidence(AdCPBaseModel):
     version: StrMinLen1
     content_digest: StrMatching3CBDBB74
     audience: AudienceCharacteristic
-    relationship: CanonicalAudienceEvidenceRelationship
+    relationship: Relationship
     value: NonNegativeFloat
-    unit: CanonicalAudienceEvidenceUnit
-    baseline: CanonicalAudienceEvidenceBaseline
-    evidence_type: CanonicalAudienceEvidenceEvidenceType
+    unit: Unit
+    baseline: Baseline
+    evidence_type: EvidenceType
     methodology: AudienceEvidenceMethodology
     subject_type: AudienceSubjectType
     resolution_method: AudienceResolutionMethod | None = None

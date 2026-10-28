@@ -11,7 +11,7 @@ from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, 
 from adcp.types.constraints import StrMatching32F5291C, StrMatching3524D29B, StrMinLen1MaxLen128, StrMinLen1MaxLen2048, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen512, StrMinLen1MaxLen64
 
 
-class ReportingReportDefinitionContractVersion(StrEnum):
+class ContractVersion(StrEnum):
     """
     1.1 adds immutable official closes with adjustments_only correction semantics for Reliable Reporting 1.0. Version 1.0 remains accepted for compatibility with the preceding experimental managed-reporting contract.
     """
@@ -19,7 +19,7 @@ class ReportingReportDefinitionContractVersion(StrEnum):
     V_1_1 = '1.1'
 
 
-class ReportingReportDefinitionSourceProvider(AdCPBaseModel):
+class Provider(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -27,12 +27,12 @@ class ReportingReportDefinitionSourceProvider(AdCPBaseModel):
     domain: StrMatching32F5291C
 
 
-class ReportingReportDefinitionSource(AdCPBaseModel):
+class Source(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/source')
-    provider: ReportingReportDefinitionSourceProvider
+    provider: Provider
     system: StrMinLen1MaxLen128
     api_version: StrMinLen1MaxLen128
     query_semantics: Annotated[dict[str, Any], Field(description='Canonical JSON object containing every source option that can change the numbers, including attribution settings, action-report-time, filters, and mapping version.')]
@@ -48,7 +48,7 @@ class ReportingReportDefinitionReportCalendarTimezoneBasis(StrEnum):
     CONFIGURED_TIMEZONE = 'configured_timezone'
 
 
-class ReportingReportDefinitionCalendar(AdCPBaseModel):
+class Calendar(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -61,7 +61,7 @@ class ReportingReportDefinitionCalendar(AdCPBaseModel):
     timezone: StrMinLen1MaxLen255 | None = None
 
 
-class ReportingReportDefinitionMetricsItemAggregation(StrEnum):
+class Aggregation(StrEnum):
     SUM = 'sum'
     COUNT = 'count'
     MIN = 'min'
@@ -72,18 +72,18 @@ class ReportingReportDefinitionMetricsItemAggregation(StrEnum):
     CUSTOM = 'custom'
 
 
-class ReportingReportDefinitionMetricsItem(AdCPBaseModel):
+class MetricsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/metrics/items')
     name: StrMinLen1MaxLen128
     source_expression: StrMinLen1MaxLen2048
-    aggregation: ReportingReportDefinitionMetricsItemAggregation
+    aggregation: Aggregation
     unit: StrMinLen1MaxLen64 | None = None
 
 
-class ReportingReportDefinitionRestatementPolicy(AdCPBaseModel):
+class RestatementPolicy(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -93,7 +93,7 @@ class ReportingReportDefinitionRestatementPolicy(AdCPBaseModel):
     official_correction_mode: Annotated[Literal['adjustments_only'] | None, Field(description='Once an official revision is published it is immutable and cannot be superseded. Later source corrections are separate reporting-adjustment records applied to a later accounting period.')] = None
 
 
-class ReportingReportDefinitionFinalityPoliciesItemSourceFinal(AdCPBaseModel):
+class FinalityPoliciesItemSourceFinal(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -103,7 +103,7 @@ class ReportingReportDefinitionFinalityPoliciesItemSourceFinal(AdCPBaseModel):
     source_signal: StrMinLen1MaxLen512
 
 
-class ReportingReportDefinitionFinalityPoliciesItemContractualCutoff(AdCPBaseModel):
+class FinalityPoliciesItemContractualCutoff(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -113,7 +113,7 @@ class ReportingReportDefinitionFinalityPoliciesItemContractualCutoff(AdCPBaseMod
     duration_after_period_end: StrMatching3524D29B
 
 
-class ReportingReportDefinitionFinalityPoliciesItemStabilized(AdCPBaseModel):
+class FinalityPoliciesItemStabilized(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -135,17 +135,17 @@ class ReportingReportDefinition(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('dimensions'),
     )
-    contract_version: Annotated[ReportingReportDefinitionContractVersion, Field(description='1.1 adds immutable official closes with adjustments_only correction semantics for Reliable Reporting 1.0. Version 1.0 remains accepted for compatibility with the preceding experimental managed-reporting contract.')]
+    contract_version: Annotated[ContractVersion, Field(description='1.1 adds immutable official closes with adjustments_only correction semantics for Reliable Reporting 1.0. Version 1.0 remains accepted for compatibility with the preceding experimental managed-reporting contract.')]
     media_type: Literal['application/vnd.adcp.reporting-definition+json']
     report_definition_id: StrMinLen1MaxLen255Matching67860854
     reporting_profile: StrMinLen1MaxLen128
     grain: StrMinLen1MaxLen128
-    source: ReportingReportDefinitionSource
-    calendar: ReportingReportDefinitionCalendar
-    metrics: Annotated[list[ReportingReportDefinitionMetricsItem], Field(min_length=1)]
+    source: Source
+    calendar: Calendar
+    metrics: Annotated[list[MetricsItem], Field(min_length=1)]
     dimensions: Annotated[list[StrMinLen1MaxLen128], Field(json_schema_extra={'uniqueItems': True})]
-    restatement_policy: ReportingReportDefinitionRestatementPolicy
-    finality_policies: Annotated[list[ReportingReportDefinitionFinalityPoliciesItemSourceFinal | ReportingReportDefinitionFinalityPoliciesItemContractualCutoff | ReportingReportDefinitionFinalityPoliciesItemStabilized], Field(min_length=1)]
+    restatement_policy: RestatementPolicy
+    finality_policies: Annotated[list[FinalityPoliciesItemSourceFinal | FinalityPoliciesItemContractualCutoff | FinalityPoliciesItemStabilized], Field(min_length=1)]
 
 
 __all__ = ["ReportingReportDefinition", "ReportingReportDefinitionReportCalendarTimezoneBasis"]

@@ -14,7 +14,7 @@ from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
 
 
-class JobItemEmploymentType(StrEnum):
+class EmploymentType(StrEnum):
     """
     Type of employment.
     """
@@ -26,7 +26,7 @@ class JobItemEmploymentType(StrEnum):
     FREELANCE = 'freelance'
 
 
-class JobItemExperienceLevel(StrEnum):
+class ExperienceLevel(StrEnum):
     """
     Required experience level.
     """
@@ -37,7 +37,7 @@ class JobItemExperienceLevel(StrEnum):
     EXECUTIVE = 'executive'
 
 
-class JobItemSalaryPeriod(StrEnum):
+class Period(StrEnum):
     """
     Pay period.
     """
@@ -46,7 +46,7 @@ class JobItemSalaryPeriod(StrEnum):
     YEAR = 'year'
 
 
-class JobItemSalary(AdCPBaseModel):
+class Salary(AdCPBaseModel):
     """
     Salary range. Specify min and/or max with currency and period.
     """
@@ -57,7 +57,7 @@ class JobItemSalary(AdCPBaseModel):
     min: Annotated[NonNegativeFloat | None, Field(description='Minimum salary.')] = None
     max: Annotated[NonNegativeFloat | None, Field(description='Maximum salary.')] = None
     currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency code.')]
-    period: Annotated[JobItemSalaryPeriod, Field(description='Pay period.')]
+    period: Annotated[Period, Field(description='Pay period.')]
 
 
 class JobItem(AdCPBaseModel):
@@ -73,9 +73,9 @@ class JobItem(AdCPBaseModel):
     company_name: Annotated[str, Field(description='Hiring company or organization name.')]
     description: Annotated[str, Field(description='Full job description including responsibilities and qualifications.')]
     location: Annotated[str | None, Field(description="Job location as a display string (e.g., 'Amsterdam, NL', 'Remote', 'New York, NY'). Use 'Remote' for fully remote positions.")] = None
-    employment_type: Annotated[JobItemEmploymentType | None, Field(description='Type of employment.')] = None
-    experience_level: Annotated[JobItemExperienceLevel | None, Field(description='Required experience level.')] = None
-    salary: Annotated[JobItemSalary | None, Field(description='Salary range. Specify min and/or max with currency and period.')] = None
+    employment_type: Annotated[EmploymentType | None, Field(description='Type of employment.')] = None
+    experience_level: Annotated[ExperienceLevel | None, Field(description='Required experience level.')] = None
+    salary: Annotated[Salary | None, Field(description='Salary range. Specify min and/or max with currency and period.')] = None
     date_posted: Annotated[date | None, Field(description='Date the job was posted (ISO 8601 date).')] = None
     valid_through: Annotated[date | None, Field(description='Application deadline (ISO 8601 date).')] = None
     apply_url: Annotated[HttpUrl | None, Field(description='Direct application URL.')] = None

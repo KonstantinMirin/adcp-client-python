@@ -19,7 +19,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.consent_basis import ConsentBasis
 
 
-class SyncAudiencesRequestAudiencesItemAudienceType(StrEnum):
+class AudienceType(StrEnum):
     """
     Intended use for this audience. 'crm': target these users. 'suppression': exclude these users from delivery. 'lookalike_seed': use as a seed for the seller's lookalike modeling. Sellers may handle audiences differently based on type (e.g., suppression lists bypass minimum size requirements on some platforms).
     """
@@ -28,7 +28,7 @@ class SyncAudiencesRequestAudiencesItemAudienceType(StrEnum):
     LOOKALIKE_SEED = 'lookalike_seed'
 
 
-class SyncAudiencesRequestAudiencesItem(AdCPBaseModel):
+class AudiencesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -41,7 +41,7 @@ class SyncAudiencesRequestAudiencesItem(AdCPBaseModel):
     audience_id: Annotated[str, Field(description="Buyer's identifier for this audience. Used to reference the audience in targeting overlays.")]
     name: Annotated[str | None, Field(description='Human-readable name for this audience')] = None
     description: Annotated[str | None, Field(description="Human-readable description of this audience's composition or purpose (e.g., 'High-value customers who purchased in the last 90 days').")] = None
-    audience_type: Annotated[SyncAudiencesRequestAudiencesItemAudienceType | None, Field(description="Intended use for this audience. 'crm': target these users. 'suppression': exclude these users from delivery. 'lookalike_seed': use as a seed for the seller's lookalike modeling. Sellers may handle audiences differently based on type (e.g., suppression lists bypass minimum size requirements on some platforms).")] = None
+    audience_type: Annotated[AudienceType | None, Field(description="Intended use for this audience. 'crm': target these users. 'suppression': exclude these users from delivery. 'lookalike_seed': use as a seed for the seller's lookalike modeling. Sellers may handle audiences differently based on type (e.g., suppression lists bypass minimum size requirements on some platforms).")] = None
     tags: Annotated[list[StrMinLen1] | None, Field(description="Buyer-defined tags for organizing and filtering audiences (e.g., 'holiday_2026', 'high_ltv'). Tags are stored by the seller and returned in discovery-only calls.", json_schema_extra={'uniqueItems': True})] = None
     add: Annotated[list[AudienceMember] | None, Field(description='Members to add to this audience. Hashed before sending — normalize emails to lowercase+trim, phones to E.164.', min_length=1)] = None
     remove: Annotated[list[AudienceMember] | None, Field(description='Members to remove from this audience. If the same identifier appears in both add and remove in a single request, remove takes precedence.', min_length=1)] = None
@@ -63,7 +63,7 @@ class SyncAudiencesRequest(AdCPVersionEnvelope):
     )
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. `audience_id` gives resource-level dedup per audience, but the sync envelope emits audit events and may trigger downstream refreshes — this key prevents those side effects from firing twice on retry. Also serves as a request ID on discovery-only calls (when `audiences` is omitted). MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     account: Annotated[AccountReference, Field(description='Account to manage audiences for.')]
-    audiences: Annotated[list[SyncAudiencesRequestAudiencesItem] | None, Field(description='Audiences to sync (create or update). When omitted, the call is discovery-only and returns all existing audiences on the account without modification.', min_length=1)] = None
+    audiences: Annotated[list[AudiencesItem] | None, Field(description='Audiences to sync (create or update). When omitted, the call is discovery-only and returns all existing audiences on the account without modification.', min_length=1)] = None
     delete_missing: Annotated[bool | None, Field(description='When true, buyer-managed audiences on the account not included in this sync will be removed. Does not affect seller-managed audiences. Do not combine with an omitted audiences array or all buyer-managed audiences will be deleted.')] = False
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

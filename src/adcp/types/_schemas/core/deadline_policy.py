@@ -9,7 +9,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
 
 
-class DeadlinePolicyMaterialStagesItem(AdCPBaseModel):
+class MaterialStagesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -32,7 +32,7 @@ class DeadlinePolicy(AdCPBaseModel):
     )
     booking_lead_days: Annotated[NonNegativeInt | None, Field(description='Days before scheduled_at by which the placement must be booked')] = None
     cancellation_lead_days: Annotated[NonNegativeInt | None, Field(description='Days before scheduled_at by which cancellation is penalty-free')] = None
-    material_stages: Annotated[list[DeadlinePolicyMaterialStagesItem] | None, Field(description='Default material submission stages. Items MUST be in chronological order (earliest due first). Agents compute due_at as: installment.scheduled_at minus lead_days.', min_length=1)] = None
+    material_stages: Annotated[list[MaterialStagesItem] | None, Field(description='Default material submission stages. Items MUST be in chronological order (earliest due first). Agents compute due_at as: installment.scheduled_at minus lead_days.', min_length=1)] = None
     business_days_only: Annotated[bool | None, Field(description='When true, lead_days counts business days (Mon-Fri) rather than calendar days. Defaults to false.')] = False
 
 

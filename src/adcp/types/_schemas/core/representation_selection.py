@@ -15,7 +15,7 @@ from ..enums.vast_version import VASTVersion
 from .creative_revision_id import CreativeRevisionID
 
 
-class RepresentationSelectionResolvedBy(StrEnum):
+class ResolvedBy(StrEnum):
     """
     Who performed deterministic compatibility resolution. A buyer may resolve locally from seller discovery. Seller resolution is valid only on the destination sales agent when it advertised representation_resolution; an independent creative agent cannot claim seller-bound compatibility.
     """
@@ -39,7 +39,7 @@ class RepresentationSelection(AdCPBaseModel):
     selected_output_digest: Annotated[StrMatching3CBDBB74, Field(description='Digest of the derived seller-bound manifest projection, computed with RFC 8785 JCS after removing exactly top-level `$schema`, `representation_selection`, `creative_id`, `revision_id`, `name`, `tags`, `status`, `weight`, `placement_refs`, `placement_ids`, and `inputs`. Every other field, including unknown delivery fields, is included. The identical exclusion list applies to the returned CreativeManifest and its later CreativeAsset sync wrapper. A selected sync item cannot carry localization in this version. This is the review/execution fingerprint for the projection, distinct from revision_content_digest, which binds the complete source set.')]
     execution_vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST version verified for seller-assembled first-class VAST trackers. This is selection lineage and part of the execution review identity; it is not included in selected_output_digest.')] = None
     execution_daast_version: Annotated[DAASTVersion | None, Field(description='Exact DAAST version verified for seller-assembled first-class DAAST trackers. This is selection lineage and part of the execution review identity; it is not included in selected_output_digest.')] = None
-    resolved_by: Annotated[RepresentationSelectionResolvedBy, Field(description='Who performed deterministic compatibility resolution. A buyer may resolve locally from seller discovery. Seller resolution is valid only on the destination sales agent when it advertised representation_resolution; an independent creative agent cannot claim seller-bound compatibility.')]
+    resolved_by: Annotated[ResolvedBy, Field(description='Who performed deterministic compatibility resolution. A buyer may resolve locally from seller discovery. Seller resolution is valid only on the destination sales agent when it advertised representation_resolution; an independent creative agent cannot claim seller-bound compatibility.')]
 
 
 __all__ = ["RepresentationSelection"]

@@ -13,7 +13,7 @@ from ..core.ext import ExtensionObject
 from ..enums.creative_event_reason_code import CreativeEventReasonCode
 
 
-class CreativePurgedWebhookPurgeKind(StrEnum):
+class PurgeKind(StrEnum):
     """
     `soft` — tombstone retained on `list_creatives` (with `include_purged: true`) for the seller's retention window (default 30 days, MUST match the `webhook_activity[]` retention rule). `hard` — no tombstone; the seller MUST NOT retain or echo the asset content elsewhere. `hard` is reserved for legal erasure or equivalent compelled destruction; sellers SHOULD default to `soft`.
     """
@@ -21,7 +21,7 @@ class CreativePurgedWebhookPurgeKind(StrEnum):
     HARD = 'hard'
 
 
-class CreativePurgedWebhookInitiator(StrEnum):
+class Initiator(StrEnum):
     """
     Who initiated the purge. `seller` — explicit decision (legal team, content policy, takedown handler). `system` — automated retention sweep, storage policy enforcement. `buyer` never appears on this event — buyer-initiated destruction (if and when supported) is acknowledged on the `sync_creatives` response path.
     """
@@ -44,11 +44,11 @@ class CreativePurgedWebhook(AdCPBaseModel):
     subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Identifies which `notification_configs[]` entry on the recipient account is receiving this fire.')]
     account_id: Annotated[str, Field(description="Seller's identifier for the account that owned the purged creative.")]
     creative_id: Annotated[str, Field(description="Seller's identifier for the purged creative. After a `soft` purge this id resolves on `list_creatives` (with `include_purged: true`) for the seller's tombstone retention window; after a `hard` purge no record remains.")]
-    purge_kind: Annotated[CreativePurgedWebhookPurgeKind, Field(description="`soft` — tombstone retained on `list_creatives` (with `include_purged: true`) for the seller's retention window (default 30 days, MUST match the `webhook_activity[]` retention rule). `hard` — no tombstone; the seller MUST NOT retain or echo the asset content elsewhere. `hard` is reserved for legal erasure or equivalent compelled destruction; sellers SHOULD default to `soft`.")]
+    purge_kind: Annotated[PurgeKind, Field(description="`soft` — tombstone retained on `list_creatives` (with `include_purged: true`) for the seller's retention window (default 30 days, MUST match the `webhook_activity[]` retention rule). `hard` — no tombstone; the seller MUST NOT retain or echo the asset content elsewhere. `hard` is reserved for legal erasure or equivalent compelled destruction; sellers SHOULD default to `soft`.")]
     purged_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller observed the destruction. Distinct from `fired_at`.')]
     reason_code: Annotated[CreativeEventReasonCode, Field(description='Categorical reason for the purge. Typical values: `retention_expired`, `legal_erasure`, `takedown_request`. Receivers MUST treat unknown reason codes as forward-compatible additions.')]
     reason_detail: Annotated[StrMaxLen500 | None, Field(description='Human-readable supplement. Sellers MUST NOT include third-party PII or the asset content in this field — the field is meant for operational context, not asset preservation.')] = None
-    initiator: Annotated[CreativePurgedWebhookInitiator, Field(description='Who initiated the purge. `seller` — explicit decision (legal team, content policy, takedown handler). `system` — automated retention sweep, storage policy enforcement. `buyer` never appears on this event — buyer-initiated destruction (if and when supported) is acknowledged on the `sync_creatives` response path.')]
+    initiator: Annotated[Initiator, Field(description='Who initiated the purge. `seller` — explicit decision (legal team, content policy, takedown handler). `system` — automated retention sweep, storage policy enforcement. `buyer` never appears on this event — buyer-initiated destruction (if and when supported) is acknowledged on the `sync_creatives` response path.')]
     ext: ExtensionObject | None = None
 
 

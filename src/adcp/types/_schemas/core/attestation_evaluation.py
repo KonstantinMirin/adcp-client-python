@@ -13,7 +13,7 @@ from adcp.types.constraints import FloatMin0Max1, HttpUrl, StrMatching3CBDBB74, 
 from .ext import ExtensionObject
 
 
-class AttestationEvaluationOutcome(StrEnum):
+class Outcome(StrEnum):
     """
     Stable evaluation outcome. verified means all required issuer, signature, claim type, subject, consuming-action scope, validity, revocation, and digest checks passed under evaluator policy. subject_mismatch covers either a credential/presentation subject mismatch or a presentation/consuming-action subject mismatch. Other values are non-authoritative failures and MUST NOT be treated as verified.
     """
@@ -31,7 +31,7 @@ class AttestationEvaluationOutcome(StrEnum):
     RESOLUTION_FAILED = 'resolution_failed'
 
 
-class AttestationEvaluationActionBinding(AdCPBaseModel):
+class ActionBinding(AdCPBaseModel):
     """
     Optional binding to the consuming action or readback. Domain consumers that rely on an evaluation MUST carry either an action id or an action digest so the result cannot be transplanted to an unrelated decision.
     """
@@ -63,7 +63,7 @@ class AttestationEvaluation(AdCPBaseModel):
     reference_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 of the RFC 8785 JSON Canonicalization Scheme encoding of the complete AttestationReference, including embedded_credential when present. This prevents a result for one presentation from being replayed for another.')]
     credential_digest: Annotated[StrMatching3CBDBB74 | None, Field(description='SHA-256 of the exact resolved or embedded credential bytes according to proof_format. REQUIRED by the normative contract when outcome is verified, expired, revoked, invalid, subject_mismatch, or digest_mismatch; omitted when no credential bytes were obtained. For dual delivery, this is the resolved credential digest; reference_digest independently binds the embedded bytes.')] = None
     proof_format: Annotated[HttpUrl | None, Field(description='Absolute URI identifying the credential/proof format used to interpret and hash obtained credential bytes. REQUIRED whenever credential_digest is present.')] = None
-    outcome: Annotated[AttestationEvaluationOutcome, Field(description='Stable evaluation outcome. verified means all required issuer, signature, claim type, subject, consuming-action scope, validity, revocation, and digest checks passed under evaluator policy. subject_mismatch covers either a credential/presentation subject mismatch or a presentation/consuming-action subject mismatch. Other values are non-authoritative failures and MUST NOT be treated as verified.')]
+    outcome: Annotated[Outcome, Field(description='Stable evaluation outcome. verified means all required issuer, signature, claim type, subject, consuming-action scope, validity, revocation, and digest checks passed under evaluator policy. subject_mismatch covers either a credential/presentation subject mismatch or a presentation/consuming-action subject mismatch. Other values are non-authoritative failures and MUST NOT be treated as verified.')]
     evaluated_at: AwareDatetime
     evaluated_by: Annotated[HttpUrl, Field(description='Canonical agent URL of the evaluator-of-record that produced this result, even when it delegated proof checking to an accepted verifier.')]
     verifier_agent_url: Annotated[HttpUrl | None, Field(description='Accepted verifier agent actually used, when verification was delegated. Omit for local verification or when no verifier was called.')] = None
@@ -71,7 +71,7 @@ class AttestationEvaluation(AdCPBaseModel):
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Optional evaluator-produced confidence in the normalized outcome on the AdCP 0–1 scale. This is evaluation output, never copied from an authoritative presenter field. Omit when the proof or evaluator does not support a meaningful confidence score.')] = None
     revocation_checked_at: Annotated[AwareDatetime | None, Field(description='When the evaluator last checked authoritative revocation state. Its freshness is governed by proof format and evaluator policy.')] = None
     valid_until: Annotated[AwareDatetime | None, Field(description='Upper bound on reuse of this evaluation, considering credential expiry, revocation-cache TTL, and evaluator policy. Consumers MUST re-evaluate after this time.')] = None
-    action_binding: Annotated[AttestationEvaluationActionBinding | None, Field(description='Optional binding to the consuming action or readback. Domain consumers that rely on an evaluation MUST carry either an action id or an action digest so the result cannot be transplanted to an unrelated decision.')] = None
+    action_binding: Annotated[ActionBinding | None, Field(description='Optional binding to the consuming action or readback. Domain consumers that rely on an evaluation MUST carry either an action id or an action digest so the result cannot be transplanted to an unrelated decision.')] = None
     ext: ExtensionObject | None = None
 
 

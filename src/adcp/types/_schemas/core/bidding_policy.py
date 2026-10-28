@@ -11,7 +11,7 @@ from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import FloatGt0
 
 
-class BiddingPolicyCostPerStrength(StrEnum):
+class CostPerStrength(StrEnum):
     """
     `cap` optimizes for an average at or below the amount and accepts underdelivery when necessary; `target` optimizes around the amount while balancing volume and spend. Neither is a per-result or per-auction guarantee.
     """
@@ -19,7 +19,7 @@ class BiddingPolicyCostPerStrength(StrEnum):
     TARGET = 'target'
 
 
-class BiddingPolicyCostPer(AdCPBaseModel):
+class CostPer(AdCPBaseModel):
     """
     Average cost control per result of the scope-bound primary optimization goal. At seller-optimized media-buy scope it binds to budget_allocation.optimization_goals; at package scope it binds to that package's optimization_goals; at fixed media-buy scope it binds independently to each inheriting package and is valid only when their primary-goal result units are compatible. Metric goals are compatible only when metric and every result-defining qualifier match; vendor_metric goals only when vendor and metric_id match; event goals only when the event_type/custom_event_name set and resolved attribution_window match. Primary is the earliest array entry among goals tied for the lowest explicit numeric priority; unprioritized goals follow explicitly prioritized goals; when all priorities are absent, the first entry is primary.
     """
@@ -28,10 +28,10 @@ class BiddingPolicyCostPer(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/bidding-policy.json', pointer='#/properties/cost_per')
     amount: Annotated[FloatGt0, Field(description='Average cost amount per scope-bound primary-goal result, denominated in the media-buy currency.')]
-    strength: Annotated[BiddingPolicyCostPerStrength, Field(description='`cap` optimizes for an average at or below the amount and accepts underdelivery when necessary; `target` optimizes around the amount while balancing volume and spend. Neither is a per-result or per-auction guarantee.')]
+    strength: Annotated[CostPerStrength, Field(description='`cap` optimizes for an average at or below the amount and accepts underdelivery when necessary; `target` optimizes around the amount while balancing volume and spend. Neither is a per-result or per-auction guarantee.')]
 
 
-class BiddingPolicyRoasStrength(StrEnum):
+class RoasStrength(StrEnum):
     """
     `floor` prefers underdelivery to knowingly optimizing below the requested return; `target` optimizes around the requested return. Neither guarantees realized return.
     """
@@ -39,7 +39,7 @@ class BiddingPolicyRoasStrength(StrEnum):
     TARGET = 'target'
 
 
-class BiddingPolicyRoas(AdCPBaseModel):
+class Roas(AdCPBaseModel):
     """
     Dimensionless return-on-ad-spend control bound to the same scope-specific primary goal rules as cost_per. The bound goal must be value-bearing; a fixed media-buy default requires a value-bearing primary goal on every inheriting package. Every referenced value-bearing event source MUST declare value_currencies containing the media-buy currency. The seller validates this at buy creation; each buy consumes only exact-currency records, while other declared currencies remain available to other buys. Sellers MUST NOT perform currency conversion.
     """
@@ -48,7 +48,7 @@ class BiddingPolicyRoas(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/bidding-policy.json', pointer='#/properties/roas')
     value: Annotated[FloatGt0, Field(description='Return per unit of ad spend; 4 means 4 units of value per 1 unit spent.')]
-    strength: Annotated[BiddingPolicyRoasStrength, Field(description='`floor` prefers underdelivery to knowingly optimizing below the requested return; `target` optimizes around the requested return. Neither guarantees realized return.')]
+    strength: Annotated[RoasStrength, Field(description='`floor` prefers underdelivery to knowingly optimizing below the requested return; `target` optimizes around the requested return. Neither guarantees realized return.')]
 
 
 class BiddingPolicy(AdCPBaseModel):
@@ -66,8 +66,8 @@ class BiddingPolicy(AdCPBaseModel):
     automatic: Annotated[Literal[True] | None, Field(description='Explicitly use seller/provider automatic bidding at this authored scope. At package scope this is a complete override of a media-buy policy, not inheritance. It MUST be the only field in the block and MUST be preserved on readback.')] = None
     bid_amount: Annotated[FloatGt0 | None, Field(description="Manual auction bid denominated in the media-buy currency and expressed per the selected pricing option's auction unit. For example, a CPM option interprets the amount per thousand impressions. This is the amount submitted to the auction, not a promise that the clearing price equals it. Requires an auction-priced pricing option whose currency equals the media-buy currency.")] = None
     max_bid: Annotated[FloatGt0 | None, Field(description="Hard per-auction ceiling denominated in the media-buy currency and expressed per the selected pricing option's auction unit. This is the only canonical hard auction ceiling and MUST NOT be translated into an average outcome-cost control. Requires an auction-priced pricing option whose currency equals the media-buy currency. May stand alone or supplement cost_per/roas only when the relevant scope capability advertises that combination.")] = None
-    cost_per: Annotated[BiddingPolicyCostPer | None, Field(description="Average cost control per result of the scope-bound primary optimization goal. At seller-optimized media-buy scope it binds to budget_allocation.optimization_goals; at package scope it binds to that package's optimization_goals; at fixed media-buy scope it binds independently to each inheriting package and is valid only when their primary-goal result units are compatible. Metric goals are compatible only when metric and every result-defining qualifier match; vendor_metric goals only when vendor and metric_id match; event goals only when the event_type/custom_event_name set and resolved attribution_window match. Primary is the earliest array entry among goals tied for the lowest explicit numeric priority; unprioritized goals follow explicitly prioritized goals; when all priorities are absent, the first entry is primary.")] = None
-    roas: Annotated[BiddingPolicyRoas | None, Field(description='Dimensionless return-on-ad-spend control bound to the same scope-specific primary goal rules as cost_per. The bound goal must be value-bearing; a fixed media-buy default requires a value-bearing primary goal on every inheriting package. Every referenced value-bearing event source MUST declare value_currencies containing the media-buy currency. The seller validates this at buy creation; each buy consumes only exact-currency records, while other declared currencies remain available to other buys. Sellers MUST NOT perform currency conversion.')] = None
+    cost_per: Annotated[CostPer | None, Field(description="Average cost control per result of the scope-bound primary optimization goal. At seller-optimized media-buy scope it binds to budget_allocation.optimization_goals; at package scope it binds to that package's optimization_goals; at fixed media-buy scope it binds independently to each inheriting package and is valid only when their primary-goal result units are compatible. Metric goals are compatible only when metric and every result-defining qualifier match; vendor_metric goals only when vendor and metric_id match; event goals only when the event_type/custom_event_name set and resolved attribution_window match. Primary is the earliest array entry among goals tied for the lowest explicit numeric priority; unprioritized goals follow explicitly prioritized goals; when all priorities are absent, the first entry is primary.")] = None
+    roas: Annotated[Roas | None, Field(description='Dimensionless return-on-ad-spend control bound to the same scope-specific primary goal rules as cost_per. The bound goal must be value-bearing; a fixed media-buy default requires a value-bearing primary goal on every inheriting package. Every referenced value-bearing event source MUST declare value_currencies containing the media-buy currency. The seller validates this at buy creation; each buy consumes only exact-currency records, while other declared currencies remain available to other buys. Sellers MUST NOT perform currency conversion.')] = None
 
 
 __all__ = ["BiddingPolicy"]

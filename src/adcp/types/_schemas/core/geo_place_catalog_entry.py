@@ -14,7 +14,7 @@ from .ext import ExtensionObject
 from .geo_place_type import GeographicPlaceType
 
 
-class GeographicPlaceCatalogEntryStatus(StrEnum):
+class Status(StrEnum):
     ACTIVE = 'active'
     REMOVAL_PLANNED = 'removal_planned'
     DEPRECATED = 'deprecated'
@@ -38,7 +38,7 @@ class GeographicPlaceCatalogEntry(AdCPBaseModel):
     label: Annotated[StrMinLen1, Field(description='Human-readable display label; never an authoritative targeting key.')]
     canonical_name: Annotated[StrMinLen1, Field(description='Required fully qualified display name suitable for distinguishing same-named results.')]
     parent_labels: Annotated[list[StrMinLen1], Field(description='Ordered human-readable parent hierarchy for disambiguation only. Must include at least the containing country.', min_length=1)]
-    status: GeographicPlaceCatalogEntryStatus
+    status: Status
     replaced_by_values: Annotated[list[StrMinLen1] | None, Field(description='Replacement identifiers in the same system and response system_version.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     valid_until: Annotated[AwareDatetime | None, Field(description='Known time after which the identifier must no longer be accepted for new targeting.')] = None
     ext: ExtensionObject | None = None

@@ -15,7 +15,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .si_sponsored_context_receipt import SISponsoredContextReceipt
 
 
-class SISendMessageRequestActionResponse(AdCPBaseModel):
+class ActionResponse(AdCPBaseModel):
     """
     Response to a previous action_button (e.g., user clicked checkout)
     """
@@ -41,7 +41,7 @@ class SISendMessageRequest(AdCPVersionEnvelope):
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. Each conversational turn is a distinct mutation of session transcript — without this key, a timeout-and-retry produces a duplicate turn and a duplicate model response. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each user turn.')]
     session_id: Annotated[str, Field(description='Active session identifier')]
     message: Annotated[str | None, Field(description="User's message to the brand agent")] = None
-    action_response: Annotated[SISendMessageRequestActionResponse | None, Field(description='Response to a previous action_button (e.g., user clicked checkout)')] = None
+    action_response: Annotated[ActionResponse | None, Field(description='Response to a previous action_button (e.g., user clicked checkout)')] = None
     sponsored_context_receipt: Annotated[SISponsoredContextReceipt | None, Field(description="Host receipt for sponsored context accepted from a prior SI response in this session. This gives the brand/seller an audit-visible record of the host's accepted use mode and disclosure commitment for that context.")] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

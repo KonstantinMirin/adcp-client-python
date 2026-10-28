@@ -28,7 +28,7 @@ class AgentReportingDestination(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class FileTransferDestinationAcceptedFormatsItem(StrEnum):
+class AcceptedFormatsItem(StrEnum):
     JSONL = 'jsonl'
     CSV = 'csv'
     PARQUET = 'parquet'
@@ -51,7 +51,7 @@ class FileTransferDestination(AgentReportingDestination):
     provider: DeliveryProvider
     transport: Annotated[StrMinLen1MaxLen64Matching5CDAE669, Field(description='Open provider transport name, such as s3, gcs, or azure_blob.')]
     location: Annotated[StrMinLen1MaxLen2048Matching3101AD09, Field(description='Provider-native bucket/prefix locator, such as s3://bucket/prefix/ or abfss://container@account.dfs.core.windows.net/path. Printable ASCII without whitespace, \'?\', \'#\', \'%\', \'"\', \'<\', or \'>\'. Never a credential or signed URL; sellers additionally screen and normalize per the secret_rejection and normalization rules.')]
-    accepted_formats: Annotated[list[FileTransferDestinationAcceptedFormatsItem], Field(description='Physical formats accepted by this file-transfer destination.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    accepted_formats: Annotated[list[AcceptedFormatsItem], Field(description='Physical formats accepted by this file-transfer destination.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     accepted_verification_profiles: ReportingVerificationProfileSet
 
 

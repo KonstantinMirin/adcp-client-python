@@ -11,7 +11,7 @@ from adcp.types.constraints import FloatMin0Max100, IntMin1, StrMatching43E30B32
 from .ext import ExtensionObject
 
 
-class EventCustomDataContentsItem(AdCPBaseModel):
+class ContentsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -41,7 +41,7 @@ class EventCustomData(AdCPBaseModel):
     search_string: Annotated[str | None, Field(description='Search query for search events')] = None
     progress_percent: Annotated[FloatMin0Max100 | None, Field(description='Content progress percentage reached, primarily for `watch_milestone` events. Use 25, 50, 75, or 100 for quartiles, or another publisher-defined threshold. Do not use `value` for non-monetary progress.')] = None
     progress_seconds: Annotated[NonNegativeFloat | None, Field(description='Content progress duration reached in seconds, primarily for `watch_milestone` events. Use when the milestone is time-based rather than percentage-based.')] = None
-    contents: Annotated[list[EventCustomDataContentsItem] | None, Field(description='Per-item details for e-commerce events')] = None
+    contents: Annotated[list[ContentsItem] | None, Field(description='Per-item details for e-commerce events')] = None
     ext: ExtensionObject | None = None
 
 

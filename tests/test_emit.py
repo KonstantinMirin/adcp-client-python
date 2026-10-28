@@ -7306,7 +7306,7 @@ def test_every_value_rule_kind_is_enforced_by_the_class_the_tree_emitted() -> No
     )
     from adcp.types._schemas.core.iana_timezone import IANATimezoneIdentifier
     from adcp.types._schemas.core.product_execution_requirement import (
-        DownstreamConnectionExecutionRequirementConnection,
+        Connection,
     )
     from adcp.types._schemas.error_details.requote_required import RequoteRequiredDetails
 
@@ -7354,7 +7354,7 @@ def test_every_value_rule_kind_is_enforced_by_the_class_the_tree_emitted() -> No
         (
             "AtLeastOne",
             "core/product-execution-requirement.json",
-            DownstreamConnectionExecutionRequirementConnection.model_validate,
+            Connection.model_validate,
             {"connection_type": "advertiser_account", "required_for": ["list_creatives"]},
             {
                 "connection_type": "advertiser_account",
@@ -8413,27 +8413,25 @@ VERDICTS = frozenset(
         'property/property-list.json',
         'property/update-property-list-response.json',
         'trusted-match/provider-registration.json',
-        # **ONE joined at ``adcp-client-python-10l.34``, and it is a document GETTING
-        # FURTHER rather than a document finishing.**  §8's composition rule reaches a
-        # union at ANY position now, so
-        # ``formats/canonical/seller_rendered_stateful_display.json`` stops refusing on
-        # the sibling carrier at ``/properties/transitions/items`` and declares a base
-        # plus one class per branch -- and TWO NODES OF THE DOCUMENT then derive one
-        # class name.  §4 "Names"'s second branch rule names a branch after the ``const``
-        # it pins on the derived dispatch property, which for ``/oneOf/5`` is
-        # ``trigger: "media_event"``, so the branch is
-        # ``...TransitionsItemMediaEvent``; the base's own property ``media_event``
-        # derives that same name by §4's nested rule.  ``names.assign`` refuses it at
-        # ``/properties/transitions/items/oneOf/5``, which is the right ANSWER -- §1 gives
-        # a class ONE import path, and which of the two a referrer imported would
-        # otherwise be decided by the order the walk reached them in -- so the verdict is
-        # attributable and §8's own note applies: the figure to drive to zero is
-        # ``refused``, and this document's obstruction moved from a missing carrier to a
-        # naming collision between two of §4's own rules.  Measured: the other five
-        # branches pin ``timer``, ``in_view_timer``, ``scroll_threshold``,
-        # ``scroll_progress`` and ``user_action``, none of which is a property key of the
-        # base, so this is one collision and not five behind one report.
-        'formats/canonical/seller_rendered_stateful_display.json',
+        # **ONE joined at ``adcp-client-python-10l.34`` and LEFT at
+        # ``adcp-client-python-10l.50``, and the verdict with it.**  §8's composition rule
+        # reached a union at any position, so
+        # ``formats/canonical/seller_rendered_stateful_display.json`` stopped refusing on
+        # the sibling carrier at ``/properties/transitions/items`` and declared a base
+        # plus one class per branch -- and two nodes of the document then derived one
+        # class name, because the fold CONCATENATED every hop to the root and the two
+        # concatenations agreed: the branch at ``/oneOf/5`` pins
+        # ``trigger: "media_event"`` and was spelled
+        # ``<root>TransitionsItemMediaEvent``, and the base's own property
+        # ``media_event`` was spelled ``<root>TransitionsItem`` + ``MediaEvent``.
+        # §4's name rules are read as a POSITION now and the two positions are two
+        # chains -- ``(<root>, TransitionsItemMediaEvent)`` for the branch and
+        # ``(<root>, TransitionsItem, MediaEvent)`` for the property -- so §4's own
+        # spellings are ``TransitionsItemMediaEvent`` and ``MediaEvent``, which collide
+        # with nothing and need no collision step at all.  The document EMITS, and the
+        # ONE naming collision left in the bundle is
+        # ``trusted-match/provider-registration.json`` above, where the two chains are
+        # equal and no ancestor separates them (``adcp-client-python-10l.42``).
     }
 )
 
@@ -9386,7 +9384,7 @@ NESTED_CONJUNCT_SITES = {
 #: arm can be graded ON TODAY -- which is why it is asserted by name rather than counted.
 NESTED_CONJUNCT_RULE = (
     "core/demographic-targeting-intent.json",
-    "DemographicTargetingIntentAge",
+    "Age",
     "ConditionalRequired",
 )
 

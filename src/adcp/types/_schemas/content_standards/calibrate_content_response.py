@@ -34,7 +34,7 @@ class CalibrateContentResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
     )
 
 
-class CalibrateContentResponseVerdictFeaturesItem(AdCPBaseModel):
+class FeaturesItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/calibrate-content-response.json', pointer='#/oneOf/0/properties/features/items')
     feature_id: Annotated[str, Field(description="Which feature was evaluated. Data features come from the content-standards feature catalog (e.g., 'brand_safety', 'brand_suitability', 'competitor_adjacency'). Record-level structural checks use reserved namespaces: 'record:malformed_artifact'. Reserved prefixes: 'record:', 'delivery:'.")]
     status: FeatureCheckStatus
@@ -51,7 +51,7 @@ class CalibrateContentResponseVerdict(CalibrateContentResponse):
     verdict: BinaryVerdict
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Model confidence in the verdict (0-1)')] = None
     explanation: Annotated[str | None, Field(description='Detailed natural language explanation of the decision')] = None
-    features: Annotated[list[CalibrateContentResponseVerdictFeaturesItem] | None, Field(description='Per-feature breakdown with explanations. Mirrors validate_content_delivery feature shape so calibration loops can correlate against production verdicts by policy_id.')] = None
+    features: Annotated[list[FeaturesItem] | None, Field(description='Per-feature breakdown with explanations. Mirrors validate_content_delivery feature shape so calibration loops can correlate against production verdicts by policy_id.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

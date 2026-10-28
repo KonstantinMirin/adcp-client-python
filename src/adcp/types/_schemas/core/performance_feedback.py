@@ -20,7 +20,7 @@ from .duration import Duration
 from .vendor_metric_id import VendorMetricID
 
 
-class PerformanceFeedbackMeasurementPeriod(AdCPBaseModel):
+class MeasurementPeriod(AdCPBaseModel):
     """
     Time period for performance measurement
     """
@@ -32,7 +32,7 @@ class PerformanceFeedbackMeasurementPeriod(AdCPBaseModel):
     end: Annotated[AwareDatetime, Field(description='ISO 8601 end timestamp for measurement period')]
 
 
-class PerformanceFeedbackMetricStandardQualifier(AdCPBaseModel):
+class MetricStandardQualifier(AdCPBaseModel):
     """
     Disambiguator — same shape as `committed_metrics.qualifier`. Carry `viewability_standard` for MRC vs GroupM viewability feedback; `completion_source` for seller- vs vendor-attested completion feedback; `attribution_methodology` and `attribution_window` for outcome-metric feedback (the buyer pinning a specific methodology or window when the feedback is methodology-sensitive). Closed (`additionalProperties: false`); new keys ship explicitly in subsequent minors.
     """
@@ -47,17 +47,17 @@ class PerformanceFeedbackMetricStandardQualifier(AdCPBaseModel):
     lift_dimension: LiftDimension | None = None
 
 
-class PerformanceFeedbackMetricStandard(AdCPBaseModel):
+class MetricStandard(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/performance-feedback.json', pointer='#/properties/metric/oneOf/0')
     scope: Annotated[Literal['standard'], Field(description='Standard metric from the closed `available-metric.json` enum.')]
     metric_id: Annotated[AvailableMetric, Field(description='Identifier for the standard metric.')]
-    qualifier: Annotated[PerformanceFeedbackMetricStandardQualifier | None, Field(description='Disambiguator — same shape as `committed_metrics.qualifier`. Carry `viewability_standard` for MRC vs GroupM viewability feedback; `completion_source` for seller- vs vendor-attested completion feedback; `attribution_methodology` and `attribution_window` for outcome-metric feedback (the buyer pinning a specific methodology or window when the feedback is methodology-sensitive). Closed (`additionalProperties: false`); new keys ship explicitly in subsequent minors.')] = None
+    qualifier: Annotated[MetricStandardQualifier | None, Field(description='Disambiguator — same shape as `committed_metrics.qualifier`. Carry `viewability_standard` for MRC vs GroupM viewability feedback; `completion_source` for seller- vs vendor-attested completion feedback; `attribution_methodology` and `attribution_window` for outcome-metric feedback (the buyer pinning a specific methodology or window when the feedback is methodology-sensitive). Closed (`additionalProperties: false`); new keys ship explicitly in subsequent minors.')] = None
 
 
-class PerformanceFeedbackMetricVendorQualifier(AdCPBaseModel):
+class MetricVendorQualifier(AdCPBaseModel):
     """
     Optional disambiguator mirroring the vendor-scope qualifier on `committed_metrics` — same closed key set as standard-scope entries.
     """
@@ -72,7 +72,7 @@ class PerformanceFeedbackMetricVendorQualifier(AdCPBaseModel):
     lift_dimension: LiftDimension | None = None
 
 
-class PerformanceFeedbackMetricVendor(AdCPBaseModel):
+class MetricVendor(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -80,10 +80,10 @@ class PerformanceFeedbackMetricVendor(AdCPBaseModel):
     scope: Annotated[Literal['vendor'], Field(description='Vendor-defined metric, identified by the tuple `(vendor, metric_id)`.')]
     vendor: Annotated[BrandReference, Field(description="Vendor that defines and computes this metric. Same identity discipline as `vendor_metric_value.vendor` and `committed_metrics` vendor-scope entries. Distinct from the row-level `vendor` field at the top of `performance-feedback`, which identifies the *source* of the feedback (the party producing it); this nested vendor identifies the *vendor that defines the metric* (which may or may not be the same party). Typically the same when third-party verification reports its own metric; can differ when a buyer's MMM tool reports on a separately-defined vendor metric.")]
     metric_id: Annotated[VendorMetricID, Field(description="Identifier for the metric within the vendor's vocabulary.")]
-    qualifier: Annotated[PerformanceFeedbackMetricVendorQualifier | None, Field(description='Optional disambiguator mirroring the vendor-scope qualifier on `committed_metrics` — same closed key set as standard-scope entries.')] = None
+    qualifier: Annotated[MetricVendorQualifier | None, Field(description='Optional disambiguator mirroring the vendor-scope qualifier on `committed_metrics` — same closed key set as standard-scope entries.')] = None
 
 
-class PerformanceFeedbackStatus(StrEnum):
+class Status(StrEnum):
     """
     Processing status of the performance feedback
     """
@@ -105,13 +105,13 @@ class PerformanceFeedback(AdCPBaseModel):
     media_buy_id: Annotated[str, Field(description="Publisher's media buy identifier")]
     package_id: Annotated[str | None, Field(description='Specific package within the media buy (if feedback is package-specific)')] = None
     creative_id: Annotated[str | None, Field(description='Specific creative asset (if feedback is creative-specific)')] = None
-    measurement_period: Annotated[PerformanceFeedbackMeasurementPeriod, Field(description='Time period for performance measurement')]
+    measurement_period: Annotated[MeasurementPeriod, Field(description='Time period for performance measurement')]
     performance_index: Annotated[NonNegativeFloat, Field(description='Normalized performance score (0.0 = no value, 1.0 = expected, >1.0 = above expected)')]
     metric_type: Annotated[MetricType | None, Field(description='**Deprecated as of this minor.** The legacy free-form metric enum that mixes metrics, verification, and attribution into one list. New implementations SHOULD use `metric` (the discriminated `(scope, metric_id, qualifier)` row shape) and populate `metric_type` with a best-effort string for one-minor backwards compatibility. When both `metric` and `metric_type` are present, consumers MUST use `metric` for dispatch. Removed at the next major. See [docs/measurement/taxonomy](https://docs.adcontextprotocol.org/docs/measurement/taxonomy) for why the layered shape replaces the flat enum.')] = None
-    metric: Annotated[PerformanceFeedbackMetricStandard | PerformanceFeedbackMetricVendor | None, Field(description='The metric this feedback row pertains to, using the same `(scope, metric_id, qualifier)` row shape as `committed_metrics` and package-level delivery values (`metric_values` or `vendor_metric_values`). Preferred over the legacy `metric_type` field for new implementations. Brings performance-feedback into the same atomic unit and dispatch model as the rest of the measurement surface — buyer agents reconcile feedback against the contract surface using the row-level join on `(scope, metric_id, qualifier)`. **Optional and may be omitted entirely for holistic feedback** (e.g., a trader flagging a campaign as underperforming without a specific metric in mind — `performance_index` plus the response narrative carry the signal). Senders SHOULD populate `metric` when the feedback is metric-specific so consumers can route it to the right optimization path; senders MAY omit it for general performance feedback.')] = None
+    metric: Annotated[MetricStandard | MetricVendor | None, Field(description='The metric this feedback row pertains to, using the same `(scope, metric_id, qualifier)` row shape as `committed_metrics` and package-level delivery values (`metric_values` or `vendor_metric_values`). Preferred over the legacy `metric_type` field for new implementations. Brings performance-feedback into the same atomic unit and dispatch model as the rest of the measurement surface — buyer agents reconcile feedback against the contract surface using the row-level join on `(scope, metric_id, qualifier)`. **Optional and may be omitted entirely for holistic feedback** (e.g., a trader flagging a campaign as underperforming without a specific metric in mind — `performance_index` plus the response narrative carry the signal). Senders SHOULD populate `metric` when the feedback is metric-specific so consumers can route it to the right optimization path; senders MAY omit it for general performance feedback.')] = None
     feedback_source: Annotated[FeedbackSource, Field(description='Source of the performance data')]
     vendor: Annotated[BrandReference | None, Field(description="Vendor that produced this feedback. SHOULD be populated when `feedback_source` is `third_party_measurement` or `verification_partner` AND a single attesting vendor exists — without it, the row is unattributed and consumers can't verify authorization, resolve metric definitions, or route disputes. OMIT for blended outputs where no single vendor owns the result: MMM mixes (Nielsen MMM, Analytic Partners, in-house mix models combining multiple vendor inputs), multi-touch attribution outputs that join across vendors, and clean-room outputs (LiveRamp, Habu, AWS Clean Rooms) where the clean room is not the measurement source. For these cases, leave `vendor` absent and use the response's narrative payload to describe provenance. Optional for `buyer_attribution` and `platform_analytics` (those sources are implicit from context). The vendor's `brand.json` `agents[type='measurement']` is the discovery anchor; metric definitions live on the agent's `get_adcp_capabilities.measurement.metrics[]` block. Same identity discipline as `vendor_metric_value.vendor` and `performance-standard.vendor`.")] = None
-    status: Annotated[PerformanceFeedbackStatus, Field(description='Processing status of the performance feedback')]
+    status: Annotated[Status, Field(description='Processing status of the performance feedback')]
     submitted_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when feedback was submitted')]
     applied_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when feedback was applied to optimization algorithms')] = None
 

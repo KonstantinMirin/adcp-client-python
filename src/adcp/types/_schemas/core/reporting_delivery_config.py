@@ -18,7 +18,7 @@ from .reporting_reconciliation_mode import ReportingReconciliationMode
 from .reporting_schedule import ReportingSchedule
 
 
-class ReportingDeliveryConfigurationScope(AdCPBaseModel):
+class Scope(AdCPBaseModel):
     """
     Media buys covered by this configuration.
     """
@@ -34,7 +34,7 @@ class ReportingDeliveryConfigurationScope(AdCPBaseModel):
     media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 
 
-class ReportingDeliveryConfigurationCoverageRequirement(StrEnum):
+class CoverageRequirement(StrEnum):
     """
     Whether every package in the resolved media-buy scope must support the exact selected offering. full fails closed when any package is unsupported or unknown. allow_partial permits publication only for the explicitly covered package denominator; every revision and status response still exposes partial coverage and MUST NOT present covered-subset totals as whole-buy totals.
     """
@@ -42,7 +42,7 @@ class ReportingDeliveryConfigurationCoverageRequirement(StrEnum):
     ALLOW_PARTIAL = 'allow_partial'
 
 
-class ReportingDeliveryConfigurationAuthoritativeParty(StrEnum):
+class AuthoritativeParty(StrEnum):
     """
     Reserved: which party's count of this feed is authoritative. seller (the default, and the only value any 3.2 seller accepts) means the seller produces every revision and the consumer may only attest to what it consumed. consumer is reserved for the buyer-deposited billing revision task scoped to a later minor; until that task exists sellers MUST reject it with UNSUPPORTED_FEATURE. Reserving the field now keeps a future buyer-basis billing feed additive instead of breaking the billing-feed constraints. See https://github.com/adcontextprotocol/adcp/issues/7440.
     """
@@ -68,11 +68,11 @@ class ReportingDeliveryConfiguration(AdCPBaseModel):
     feed_purpose: ReportingDeliveryOfferingReportingFeedPurpose
     report_definition_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Exact immutable semantic definition selected from the offering. This makes the expected obligation identity independently derivable and prevents attribution, timezone, source-mapping, or restatement-policy drift behind a profile label.')]
     reporting_profile: Annotated[StrMinLen1MaxLen128MatchingB577C746, Field(description='Versioned semantic profile for the aggregate report, such as media_buy_delivery_v1. It MUST match the selected offering.')]
-    scope: Annotated[ReportingDeliveryConfigurationScope, Field(description='Media buys covered by this configuration.')]
-    coverage_requirement: Annotated[ReportingDeliveryConfigurationCoverageRequirement, Field(description='Whether every package in the resolved media-buy scope must support the exact selected offering. full fails closed when any package is unsupported or unknown. allow_partial permits publication only for the explicitly covered package denominator; every revision and status response still exposes partial coverage and MUST NOT present covered-subset totals as whole-buy totals.')]
+    scope: Annotated[Scope, Field(description='Media buys covered by this configuration.')]
+    coverage_requirement: Annotated[CoverageRequirement, Field(description='Whether every package in the resolved media-buy scope must support the exact selected offering. full fails closed when any package is unsupported or unknown. allow_partial permits publication only for the explicitly covered package denominator; every revision and status response still exposes partial coverage and MUST NOT present covered-subset totals as whole-buy totals.')]
     required_finality: Annotated[ReportingFinality, Field(description='Finality the durable path must ultimately provide. Snapshot delivery may still precede an official requirement.')]
     reconciliation_mode: Annotated[ReportingReconciliationMode, Field(description='Whether producer-side delivery evidence is sufficient or the selected consumer must submit an authenticated matching receipt. A seller-authoritative billing feed MUST use consumer_receipt.')]
-    authoritative_party: Annotated[ReportingDeliveryConfigurationAuthoritativeParty | None, Field(description="Reserved: which party's count of this feed is authoritative. seller (the default, and the only value any 3.2 seller accepts) means the seller produces every revision and the consumer may only attest to what it consumed. consumer is reserved for the buyer-deposited billing revision task scoped to a later minor; until that task exists sellers MUST reject it with UNSUPPORTED_FEATURE. Reserving the field now keeps a future buyer-basis billing feed additive instead of breaking the billing-feed constraints. See https://github.com/adcontextprotocol/adcp/issues/7440.")] = 'seller'
+    authoritative_party: Annotated[AuthoritativeParty | None, Field(description="Reserved: which party's count of this feed is authoritative. seller (the default, and the only value any 3.2 seller accepts) means the seller produces every revision and the consumer may only attest to what it consumed. consumer is reserved for the buyer-deposited billing revision task scoped to a later minor; until that task exists sellers MUST reject it with UNSUPPORTED_FEATURE. Reserving the field now keeps a future buyer-basis billing feed additive instead of breaking the billing-feed constraints. See https://github.com/adcontextprotocol/adcp/issues/7440.")] = 'seller'
     schedule: ReportingSchedule
     method: ReportingDeliveryMethod | None = None
     revocation_effective_at: Annotated[AwareDatetime | None, Field(description='Optional requested cutoff for deactivation. No new publication may begin after the applied cutoff; historical access is limited to the contracted recovery window.')] = None

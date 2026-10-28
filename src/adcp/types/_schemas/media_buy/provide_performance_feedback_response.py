@@ -31,7 +31,7 @@ class ProvidePerformanceFeedbackResponse(BranchDispatchMixin, AdCPVersionEnvelop
         return "oneOf"
 
 
-class ProvidePerformanceFeedbackSuccessApplicationStatus(StrEnum):
+class ApplicationStatus(StrEnum):
     """
     Optimizer disposition at response time, distinct from the protocol envelope's task status. accepted means stored and eligible for evaluation, not that optimizer use is guaranteed. applied means incorporated into the seller's optimization inputs. not_applied means evaluated but not incorporated. Sellers declaring reports_application_status MUST return this field.
     """
@@ -56,7 +56,7 @@ class ProvidePerformanceFeedbackSuccess(ProvidePerformanceFeedbackResponse):
     )
     success: Annotated[Literal[True], Field(description='Whether the performance feedback was successfully received')]
     feedback_id: Annotated[StrMinLen1 | None, Field(description="Receiver-issued identifier for this immutable assertion. Orchestrator gateways and sellers declaring media_buy.performance_feedback MUST return it; legacy sellers may omit it. The identifier is local to the receiving hop. Use it in supersedes_feedback_id when revising that hop's assertion.")] = None
-    application_status: Annotated[ProvidePerformanceFeedbackSuccessApplicationStatus | None, Field(description="Optimizer disposition at response time, distinct from the protocol envelope's task status. accepted means stored and eligible for evaluation, not that optimizer use is guaranteed. applied means incorporated into the seller's optimization inputs. not_applied means evaluated but not incorporated. Sellers declaring reports_application_status MUST return this field.")] = None
+    application_status: Annotated[ApplicationStatus | None, Field(description="Optimizer disposition at response time, distinct from the protocol envelope's task status. accepted means stored and eligible for evaluation, not that optimizer use is guaranteed. applied means incorporated into the seller's optimization inputs. not_applied means evaluated but not incorporated. Sellers declaring reports_application_status MUST return this field.")] = None
     status_reason: Annotated[StrMaxLen500 | None, Field(description='Human-readable explanation when application_status is not_applied. May also explain material qualifications on accepted feedback.')] = None
     received_at: Annotated[AwareDatetime | None, Field(description='When the receiving orchestrator gateway or seller stored the assertion.')] = None
     applied_at: Annotated[AwareDatetime | None, Field(description='When the seller incorporated the assertion into its optimization inputs. Present only when application_status is applied.')] = None

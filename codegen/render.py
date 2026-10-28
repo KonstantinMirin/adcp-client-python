@@ -72,12 +72,16 @@ reported on the row rather than absorbed.
 from __future__ import annotations
 
 import dataclasses
+import datetime
+import enum as stdlib_enum  # ``enum`` is this module's own renderer for an enum
 import re
+import typing
 from collections import defaultdict
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+import pydantic
 from datamodel_code_generator import PythonVersion
 from datamodel_code_generator.model import DataModelFieldBase
 from datamodel_code_generator.model.enum import Enum as DmcgEnum
@@ -89,6 +93,8 @@ from datamodel_code_generator.reference import Reference
 from datamodel_code_generator.types import DataType
 from pydantic import BaseModel as PydanticBaseModel
 
+from adcp.types import _base as adcp_base
+from adcp.types import _runtime as adcp_runtime
 from adcp.types._base import APPROXIMATIONS, Approximation, SchemaRef
 from adcp.types._runtime import Distinct, Match, Rule, UniqueItems
 from codegen import constraints as constraint_names
@@ -295,6 +301,50 @@ def _bound_to_the_type(decided: ir.TypeRef) -> Any:
 #: ``AdCPBaseModel`` attribute that is not a ``BaseModel`` attribute, so the two readings
 #: name the same fields today and the narrower one is the one with a reason.
 RESERVED = frozenset(dir(PydanticBaseModel))
+
+#: **The modules an emitted module imports a name FROM that the walk does not report.**
+#: ``compiler.Module.imports`` holds what a lowering reported -- a cross-document symbol,
+#: and the runtime carriers a lowering names for itself -- and these are the ones decided
+#: HERE, at render: the model layer (``Field``, ``ConfigDict`` and every pydantic type a
+#: ``DataType`` renders), the type vocabulary the generator reports against
+#: (``Annotated``, ``ClassVar``, ``Literal``, ``StrEnum``), and the runtime's own
+#: carriers.  Measured over the 1,054 portable documents: every one of the 909 emitted
+#: modules imports ``SchemaRef``, 616 import ``Field`` and ``Annotated``, 442 import
+#: ``StrEnum``, and none of those pairs is in ``Module.imports``.
+#:
+#: ``adcp.types.constraints`` is deliberately NOT here even though an emitted module
+#: imports its aliases: it is a whole-RUN artifact, so reading its contents to decide a
+#: name would be exactly the census §9 forbids -- a one-document emission and a
+#: whole-bundle emission would spell the same class differently.  Every alias spelling a
+#: class name could collide with is a pydantic name (``HttpUrl``, ``AnyUrl``) or begins
+#: with a type word no property key spells (``StrMinLen1``, ``IntMin0Max1000``).
+_SCOPE_MODULES = (pydantic, typing, stdlib_enum, datetime, adcp_base, adcp_runtime)
+
+#: **Every name the RENDERER can bring into an emitted module's scope**, which is the
+#: other half of that module's namespace and therefore of §4's collision rule
+#: (``names.spell``): a class named ``Field`` shadows ``pydantic.Field``, and every
+#: ``Annotated[X, Field(description=…)]`` in the module then calls the CLASS.  Measured
+#: over the portable set with §4's nested rule in force: 4 positions derive ``Field`` for
+#: a property named ``field`` and 1 derives ``Presence``, and every one of the 5 is in a
+#: module that imports the name it would shadow.
+#:
+#: Read off the MODULES above with ``dir``, and never listed by name, for the reason
+#: :data:`RESERVED` is read off ``dir(BaseModel)``: a list of names is a second copy of
+#: another package's surface and drifts the first time that package adds one.  The cost
+#: of the wider reading is measured and it is small -- 14 positions of 2,226 lengthen
+#: against a ``typing`` name no module imports, 13 of them a property called ``type`` and
+#: one called ``collection`` -- and it falls on the safe side: a prefix a module did not
+#: need is a long name, where a name a module did need is an import silently retyped.
+#:
+#: HERE for :data:`RESERVED`'s reason, which §8 decides: this is the one module under
+#: ``codegen/`` outside ``verify/`` that may read the model layer, ``lower/`` is banned
+#: from it outright, and the run hands the SET to the naming pass as data.
+CARRIERS = frozenset(
+    name
+    for module in _SCOPE_MODULES
+    for name in dir(module)
+    if not name.startswith("_")
+)
 
 
 def _field(decided: ir.Field) -> DataModelField:

@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import IntMin1
 
 
-class DurationUnit(StrEnum):
+class Unit(StrEnum):
     """
     Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.
     """
@@ -30,7 +30,7 @@ class Duration(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/duration.json', pointer='#')
     interval: Annotated[IntMin1, Field(description="Number of time units. Must be 1 when unit is 'campaign'.")]
-    unit: Annotated[DurationUnit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
+    unit: Annotated[Unit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
 
 
 __all__ = ["Duration"]

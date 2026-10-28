@@ -14,7 +14,7 @@ from .reporting_coverage import ReportingCoverageReportingMediaBuyId, ReportingC
 from .reporting_delivery_offering import ReportingDeliveryOfferingReportingFeedPurpose
 
 
-class ReportingStatusIssueCode(StrEnum):
+class Code(StrEnum):
     REPORT_OVERDUE = 'REPORT_OVERDUE'
     PRODUCTION_FAILED = 'PRODUCTION_FAILED'
     DELIVERY_FAILED = 'DELIVERY_FAILED'
@@ -37,7 +37,7 @@ class ReportingStatusIssueReportingStatusSeverity(StrEnum):
     ACTION_REQUIRED = 'action_required'
 
 
-class ReportingStatusIssueIssueState(StrEnum):
+class IssueState(StrEnum):
     """
     Optional seller-maintained lifecycle for this issue_id. open is the default when omitted. acknowledged means a human on responsible_party has taken it up but the condition persists. resolved means the underlying condition no longer holds; a recurrence uses a new issue_id. waived means the parties agreed off-protocol to disregard this exact issue even though its underlying condition may still hold. Only open and acknowledged issues appear in issues[]; retiring an issue removes it from the projection rather than publishing it at resolved or waived, so a reader that treats a nonempty issues[] as degradation stays correct. A CONSUMER_STATUS_MISMATCH waiver follows the bilateral, exact-scope requirements in consumer_mismatch_lifecycle.
     """
@@ -47,13 +47,13 @@ class ReportingStatusIssueIssueState(StrEnum):
     WAIVED = 'waived'
 
 
-class ReportingStatusIssueResponsibleParty(StrEnum):
+class ResponsibleParty(StrEnum):
     BUYER = 'buyer'
     SELLER = 'seller'
     PROVIDER = 'provider'
 
 
-class ReportingStatusIssueRecommendedAction(StrEnum):
+class RecommendedAction(StrEnum):
     WAIT_FOR_RETRY = 'wait_for_retry'
     CONTACT_BUYER = 'contact_buyer'
     CONTACT_SELLER = 'contact_seller'
@@ -79,13 +79,13 @@ class ReportingStatusIssue(AdCPBaseModel):
         ConditionalRequired((Match('code', True, ('REVISION_UNREADABLE',)),), require=('reporting_obligation_id', 'reporting_revision_id'), forbid=()),
     )
     issue_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Seller-issued stable identifier for this logical issue: re-emissions and later polls of the same unresolved condition reuse it, and resolution retires it, so consumers can project AdCP reporting issues into durable work items. A recurrence after resolution receives a new id.')]
-    code: ReportingStatusIssueCode
+    code: Code
     severity: ReportingStatusIssueReportingStatusSeverity
     opened_at: Annotated[AwareDatetime | None, Field(description='When the seller first observed this logical condition, carried unchanged across every re-emission until the issue is retired. It anchors the escalation clock advertised as consumer_mismatch_escalation_seconds and lets a consumer age an issue without keeping its own first-seen table. Required when code is CONSUMER_STATUS_MISMATCH.')] = None
-    issue_state: Annotated[ReportingStatusIssueIssueState | None, Field(description='Optional seller-maintained lifecycle for this issue_id. open is the default when omitted. acknowledged means a human on responsible_party has taken it up but the condition persists. resolved means the underlying condition no longer holds; a recurrence uses a new issue_id. waived means the parties agreed off-protocol to disregard this exact issue even though its underlying condition may still hold. Only open and acknowledged issues appear in issues[]; retiring an issue removes it from the projection rather than publishing it at resolved or waived, so a reader that treats a nonempty issues[] as degradation stays correct. A CONSUMER_STATUS_MISMATCH waiver follows the bilateral, exact-scope requirements in consumer_mismatch_lifecycle.')] = None
+    issue_state: Annotated[IssueState | None, Field(description='Optional seller-maintained lifecycle for this issue_id. open is the default when omitted. acknowledged means a human on responsible_party has taken it up but the condition persists. resolved means the underlying condition no longer holds; a recurrence uses a new issue_id. waived means the parties agreed off-protocol to disregard this exact issue even though its underlying condition may still hold. Only open and acknowledged issues appear in issues[]; retiring an issue removes it from the projection rather than publishing it at resolved or waived, so a reader that treats a nonempty issues[] as degradation stays correct. A CONSUMER_STATUS_MISMATCH waiver follows the bilateral, exact-scope requirements in consumer_mismatch_lifecycle.')] = None
     external_ref: Annotated[StrMinLen1MaxLen128MatchingB577C746 | None, Field(description="Optional opaque, non-secret correlation string for the party's own tracker — a ticket key, incident ID, or case number. Untrusted display text only. The character class excludes whitespace and the solidus, so the value cannot express a URL or a sentence; receivers compare, store, and display it as inert text and never dereference, resolve, or execute it. It confers no authorization and MUST NOT be used to look up state across accounts or callers.")] = None
-    responsible_party: ReportingStatusIssueResponsibleParty
-    recommended_action: ReportingStatusIssueRecommendedAction
+    responsible_party: ResponsibleParty
+    recommended_action: RecommendedAction
     message: Annotated[StrMaxLen500 | None, Field(description='Untrusted display text only. SDKs and agents dispatch exclusively on closed code/recommended_action values and never execute embedded links or instructions.')] = None
     reporting_obligation_id: StrMinLen1MaxLen255Matching67860854 | None = None
     reporting_revision_id: Annotated[StrMinLen1MaxLen255Matching67860854 | None, Field(description='Published revision this issue concerns. Required when code is REVISION_UNREADABLE.')] = None

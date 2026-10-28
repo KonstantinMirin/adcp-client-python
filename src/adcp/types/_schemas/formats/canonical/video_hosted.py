@@ -10,10 +10,10 @@ from adcp.types._base import SchemaRef
 from adcp.types.constraints import IntMin1, StrMatchingF601B9EB
 
 from ...enums.ctv_ad_experience import CTVAdExperience
-from ._base import CanonicalFormatBase, CanonicalFormatBaseSlotsItem
+from ._base import CanonicalFormatBase, SlotsItem
 
 
-class CanonicalFormatHostedVideoOrientation(StrEnum):
+class Orientation(StrEnum):
     """
     Video orientation. Vertical = 9:16 (Reels, Stories, Shorts). Horizontal = 16:9 (instream, CTV). Square = 1:1 (in-feed).
     """
@@ -22,7 +22,7 @@ class CanonicalFormatHostedVideoOrientation(StrEnum):
     SQUARE = 'square'
 
 
-class CanonicalFormatHostedVideoVideoCodecsItem(StrEnum):
+class VideoCodecsItem(StrEnum):
     H264 = 'h264'
     H265 = 'h265'
     VP8 = 'vp8'
@@ -31,26 +31,26 @@ class CanonicalFormatHostedVideoVideoCodecsItem(StrEnum):
     PRORES = 'prores'
 
 
-class CanonicalFormatHostedVideoAudioCodecsItem(StrEnum):
+class AudioCodecsItem(StrEnum):
     AAC = 'aac'
     MP3 = 'mp3'
     OPUS = 'opus'
     PCM = 'pcm'
 
 
-class CanonicalFormatHostedVideoContainersItem(StrEnum):
+class ContainersItem(StrEnum):
     MP4 = 'mp4'
     WEBM = 'webm'
     MOV = 'mov'
 
 
-class CanonicalFormatHostedVideoCaptions(StrEnum):
+class Captions(StrEnum):
     REQUIRED = 'required'
     RECOMMENDED = 'recommended'
     NOT_REQUIRED = 'not_required'
 
 
-class CanonicalFormatHostedVideoAssetSource(StrEnum):
+class AssetSource(StrEnum):
     """
     Where the rendered asset bytes come from. Single shared enum across canonicals. See `image.json#asset_source` for the full semantics. `publisher_host_recorded` is audio-specific and has no defined behavior on video. `publisher_owned_reference` is valid when the product accepts an existing post reference via a `published_post` slot instead of uploaded video bytes. Adopters MUST select a value appropriate to the canonical.
     """
@@ -62,7 +62,7 @@ class CanonicalFormatHostedVideoAssetSource(StrEnum):
     PUBLISHER_OWNED_REFERENCE = 'publisher_owned_reference'
 
 
-class CanonicalFormatHostedVideoBuyerAssetAcceptance(StrEnum):
+class BuyerAssetAcceptance(StrEnum):
     """
     Whether the product accepts buyer-uploaded video. When `rejected`, the buyer cannot ship a video asset directly — they must use build_creative, sync_creatives with brief inputs, or sync_creatives with an accepted reference asset so the seller produces or resolves the video.
     """
@@ -78,8 +78,8 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/video_hosted.json', pointer='#')
-    slots: Annotated[list[CanonicalFormatBaseSlotsItem] | None, Field(description='Default slots for video_hosted canonical. Buyer ships a video asset (file or hosted URL); optional headline, primary text (long-form caption), CTA (typically constrained via `cta_values`), brand_name (typical for vertical short-form), companion_banner (typical for horizontal instream), and clickthrough URL. Products MAY override or extend the default — e.g., remove `companion_banner` for short-form vertical, narrow `cta` to a value enum, mark `landing_page_url` as required.')] = [{'asset_group_id': 'video_main', 'asset_type': 'video', 'required': True}, {'asset_group_id': 'headline', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'cta', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'brand_name', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'companion_banner', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]
-    orientation: Annotated[CanonicalFormatHostedVideoOrientation | None, Field(description='Video orientation. Vertical = 9:16 (Reels, Stories, Shorts). Horizontal = 16:9 (instream, CTV). Square = 1:1 (in-feed).')] = None
+    slots: Annotated[list[SlotsItem] | None, Field(description='Default slots for video_hosted canonical. Buyer ships a video asset (file or hosted URL); optional headline, primary text (long-form caption), CTA (typically constrained via `cta_values`), brand_name (typical for vertical short-form), companion_banner (typical for horizontal instream), and clickthrough URL. Products MAY override or extend the default — e.g., remove `companion_banner` for short-form vertical, narrow `cta` to a value enum, mark `landing_page_url` as required.')] = [{'asset_group_id': 'video_main', 'asset_type': 'video', 'required': True}, {'asset_group_id': 'headline', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'primary_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'cta', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'brand_name', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'companion_banner', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': False}]
+    orientation: Annotated[Orientation | None, Field(description='Video orientation. Vertical = 9:16 (Reels, Stories, Shorts). Horizontal = 16:9 (instream, CTV). Square = 1:1 (in-feed).')] = None
     aspect_ratio: Annotated[StrMatchingF601B9EB | None, Field(description='Aspect ratio. Inferred from orientation if omitted.')] = None
     min_width: IntMin1 | None = None
     min_height: IntMin1 | None = None
@@ -87,14 +87,14 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
     max_height: IntMin1 | None = None
     duration_ms_range: Annotated[list[NonNegativeInt | None] | None, Field(description='[min, max] duration in milliseconds. Either endpoint MAY be null to express an unbounded side: [null, 60000] means up to 60s; [15000, null] means at least 15s. [null, null] is invalid because at least one endpoint must be bounded. **Precedence**: when both `duration_ms_exact` and `duration_ms_range` ship on the same product, `duration_ms_exact` takes precedence — buyers MUST validate against the exact value and ignore the range. SDKs SHOULD lint a warning when both fields ship; producers SHOULD pick one.', max_length=2, min_length=2)] = None
     duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship (see `duration_ms_range` description).')] = None
-    video_codecs: list[CanonicalFormatHostedVideoVideoCodecsItem] | None = None
-    audio_codecs: list[CanonicalFormatHostedVideoAudioCodecsItem] | None = None
-    containers: list[CanonicalFormatHostedVideoContainersItem] | None = None
+    video_codecs: list[VideoCodecsItem] | None = None
+    audio_codecs: list[AudioCodecsItem] | None = None
+    containers: list[ContainersItem] | None = None
     min_bitrate_kbps: IntMin1 | None = None
     max_bitrate_kbps: IntMin1 | None = None
     max_file_size_mb: Annotated[IntMin1 | None, Field(description='Maximum file size, where 1 MB is exactly 1,000,000 bytes.')] = None
     frame_rates: list[float] | None = None
-    captions: CanonicalFormatHostedVideoCaptions | None = None
+    captions: Captions | None = None
     om_sdk_required: bool | None = None
     headline_max_chars: IntMin1 | None = None
     primary_text_max_chars: IntMin1 | None = None
@@ -102,8 +102,8 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
     cta_values: list[str] | None = None
     companion_banner_widths: Annotated[list[IntMin1] | None, Field(description='Permitted companion banner widths (instream video).')] = None
     companion_banner_heights: list[IntMin1] | None = None
-    asset_source: Annotated[CanonicalFormatHostedVideoAssetSource | None, Field(description='Where the rendered asset bytes come from. Single shared enum across canonicals. See `image.json#asset_source` for the full semantics. `publisher_host_recorded` is audio-specific and has no defined behavior on video. `publisher_owned_reference` is valid when the product accepts an existing post reference via a `published_post` slot instead of uploaded video bytes. Adopters MUST select a value appropriate to the canonical.')] = 'buyer_uploaded'
-    buyer_asset_acceptance: Annotated[CanonicalFormatHostedVideoBuyerAssetAcceptance | None, Field(description='Whether the product accepts buyer-uploaded video. When `rejected`, the buyer cannot ship a video asset directly — they must use build_creative, sync_creatives with brief inputs, or sync_creatives with an accepted reference asset so the seller produces or resolves the video.')] = 'accepted'
+    asset_source: Annotated[AssetSource | None, Field(description='Where the rendered asset bytes come from. Single shared enum across canonicals. See `image.json#asset_source` for the full semantics. `publisher_host_recorded` is audio-specific and has no defined behavior on video. `publisher_owned_reference` is valid when the product accepts an existing post reference via a `published_post` slot instead of uploaded video bytes. Adopters MUST select a value appropriate to the canonical.')] = 'buyer_uploaded'
+    buyer_asset_acceptance: Annotated[BuyerAssetAcceptance | None, Field(description='Whether the product accepts buyer-uploaded video. When `rejected`, the buyer cannot ship a video asset directly — they must use build_creative, sync_creatives with brief inputs, or sync_creatives with an accepted reference asset so the seller produces or resolves the video.')] = 'accepted'
     ctv_ad_experience: Annotated[CTVAdExperience | None, Field(description='CTV experience this option serves. On `video_hosted` only `screensaver` is valid (ambient looping video the platform plays on idle). Other experiences route per the matrix in docs/creative/ctv-experiences.mdx; linear CTV video declares no experience.')] = None
 
 

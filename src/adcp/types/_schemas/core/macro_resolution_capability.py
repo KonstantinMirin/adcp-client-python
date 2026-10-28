@@ -18,12 +18,12 @@ from .macro_encoding import MacroEncoding
 from .macro_translation_target import MacroTranslationTarget
 
 
-class MacroProcessingCapabilityMappingStatus(StrEnum):
+class MappingStatus(StrEnum):
     VERIFIED_UNIVERSAL = 'verified_universal'
     DIALECT_DEFINED = 'dialect_defined'
 
 
-class MacroProcessingCapabilityOperation(StrEnum):
+class Operation(StrEnum):
     TRANSLATE_TO_NATIVE = 'translate_to_native'
     RESOLVE_VALUE = 'resolve_value'
 
@@ -51,9 +51,9 @@ class MacroProcessingCapability(AdCPBaseModel):
     dialect_namespace: HttpUrl | None = None
     dialect_revision: StrMinLen1 | None = None
     dialect_semantic: StrMinLen1
-    mapping_status: MacroProcessingCapabilityMappingStatus
+    mapping_status: MappingStatus
     universal_semantic: UniversalMacro | None = None
-    operation: MacroProcessingCapabilityOperation
+    operation: Operation
     performed_by: MacroProcessingActor
     supported_contexts: Annotated[list[Annotated[MacroValueContext, AfterValidator(NotValue(('opaque',)))]], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     supported_encodings: Annotated[list[MacroEncoding] | None, Field(description='Exact supported encoding profiles, not a maximum depth. Required for value resolution.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None

@@ -19,14 +19,14 @@ from ..enums.universal_macro import UniversalMacro
 from .macro_encoding import MacroEncoding
 
 
-class MacroResolutionResultUnavailableBehavior(StrEnum):
+class UnavailableBehavior(StrEnum):
     PRESERVE = 'preserve'
     OMIT_PARAMETER = 'omit_parameter'
     DIALECT_SENTINEL = 'dialect_sentinel'
     REJECT = 'reject'
 
 
-class MacroResolutionResultStatus(StrEnum):
+class Status(StrEnum):
     RESOLVABLE = 'resolvable'
     PRESERVED_FOR_DOWNSTREAM = 'preserved_for_downstream'
     UNSUPPORTED = 'unsupported'
@@ -65,8 +65,8 @@ class MacroResolutionResult(AdCPBaseModel):
     performed_by: MacroProcessingActor | None = None
     requested_encoding: MacroEncoding
     required: bool
-    unavailable_behavior: MacroResolutionResultUnavailableBehavior
-    status: MacroResolutionResultStatus
+    unavailable_behavior: UnavailableBehavior
+    status: Status
     reason: MacroResolutionReason
     matched_encodings: Annotated[list[MacroEncoding] | None, Field(description='Exact advertised profiles considered for this match, when relevant.')] = None
     message: StrMinLen1 | None = None

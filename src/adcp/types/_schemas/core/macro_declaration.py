@@ -20,7 +20,7 @@ from .macro_encoding import MacroEncoding
 from .macro_translation_target import MacroTranslationTarget
 
 
-class MacroDeclarationLocationField(StrEnum):
+class LocationField(StrEnum):
     """
     Asset field containing this occurrence.
     """
@@ -31,17 +31,17 @@ class MacroDeclarationLocationField(StrEnum):
     CLICKTHROUGH_URL = 'clickthrough_url'
 
 
-class MacroDeclarationLocation(AdCPBaseModel):
+class Location(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/macro-declaration.json', pointer='#/properties/location')
-    field: Annotated[MacroDeclarationLocationField, Field(description='Asset field containing this occurrence.')]
+    field: Annotated[LocationField, Field(description='Asset field containing this occurrence.')]
     occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
     context: MacroValueContext
 
 
-class MacroDeclarationUnavailableBehavior(StrEnum):
+class UnavailableBehavior(StrEnum):
     """
     Action when the responsible actor has no value. Omission is legal only for a complete URL query-value occurrence; dialect sentinels require a cited dialect rule.
     """
@@ -81,10 +81,10 @@ class MacroDeclaration(AdCPBaseModel):
     operation: MacroProcessingOperation
     performed_by: Annotated[MacroProcessingActor | None, Field(description='Actor authorized to perform the declared translation or value resolution. Omitted for preservation.')] = None
     translation_target: Annotated[MacroTranslationTarget | None, Field(description='Required only for `translate_to_native`. The output token contract that replaces this declaration after translation.')] = None
-    location: MacroDeclarationLocation
+    location: Location
     encoding: Annotated[MacroEncoding, Field(description='Encoding for the concrete value. Translation/preservation uses `none` at depth zero.')]
     required: Annotated[bool, Field(description='Whether terminal delivery must fail if the declared operation cannot complete.')]
-    unavailable_behavior: Annotated[MacroDeclarationUnavailableBehavior, Field(description='Action when the responsible actor has no value. Omission is legal only for a complete URL query-value occurrence; dialect sentinels require a cited dialect rule.')]
+    unavailable_behavior: Annotated[UnavailableBehavior, Field(description='Action when the responsible actor has no value. Omission is legal only for a complete URL query-value occurrence; dialect sentinels require a cited dialect rule.')]
 
 
 __all__ = ["MacroDeclaration"]

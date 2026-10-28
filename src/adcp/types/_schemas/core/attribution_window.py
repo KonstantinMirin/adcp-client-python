@@ -11,14 +11,14 @@ from ..enums.attribution_model import AttributionModel
 from .duration import Duration
 
 
-class AttributionWindowPostClick(Duration):
+class PostClick(Duration):
     """
     Post-click attribution window. Conversions occurring within this duration after a click are attributed to the ad.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attribution-window.json', pointer='#/properties/post_click')
 
 
-class AttributionWindowPostView(Duration):
+class PostView(Duration):
     """
     Post-view attribution window. Conversions occurring within this duration after an ad impression (without click) are attributed to the ad.
     """
@@ -33,8 +33,8 @@ class AttributionWindow(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attribution-window.json', pointer='#')
-    post_click: Annotated[AttributionWindowPostClick | None, Field(description='Post-click attribution window. Conversions occurring within this duration after a click are attributed to the ad.')] = None
-    post_view: Annotated[AttributionWindowPostView | None, Field(description='Post-view attribution window. Conversions occurring within this duration after an ad impression (without click) are attributed to the ad.')] = None
+    post_click: Annotated[PostClick | None, Field(description='Post-click attribution window. Conversions occurring within this duration after a click are attributed to the ad.')] = None
+    post_view: Annotated[PostView | None, Field(description='Post-view attribution window. Conversions occurring within this duration after an ad impression (without click) are attributed to the ad.')] = None
     model: Annotated[AttributionModel | None, Field(description="Attribution model used to assign credit when multiple touchpoints exist. SHOULD be populated when committing to a specific model; when absent, the seller's default applies.")] = None
 
 

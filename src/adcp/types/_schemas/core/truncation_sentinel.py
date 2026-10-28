@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
-class TruncationSentinelTruncation(AdCPBaseModel):
+class Truncation(AdCPBaseModel):
     """
     Truncation envelope. The leading underscore is a deliberate signal that this property is a control marker and not a payload field — the natural value being surfaced will not have a `_truncation` key. `additionalProperties: true` so future revisions of this contract can add classification fields without a forward-compat break.
     """
@@ -29,7 +29,7 @@ class TruncationSentinel(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/truncation-sentinel.json', pointer='#')
-    truncation: Annotated[TruncationSentinelTruncation, Field(alias='_truncation', description='Truncation envelope. The leading underscore is a deliberate signal that this property is a control marker and not a payload field — the natural value being surfaced will not have a `_truncation` key. `additionalProperties: true` so future revisions of this contract can add classification fields without a forward-compat break.')]
+    truncation: Annotated[Truncation, Field(alias='_truncation', description='Truncation envelope. The leading underscore is a deliberate signal that this property is a control marker and not a payload field — the natural value being surfaced will not have a `_truncation` key. `additionalProperties: true` so future revisions of this contract can add classification fields without a forward-compat break.')]
 
 
 __all__ = ["TruncationSentinel"]

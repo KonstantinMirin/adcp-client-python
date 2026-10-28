@@ -35,7 +35,7 @@ class SyncEventSourcesResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
         return "oneOf"
 
 
-class SyncEventSourcesSuccessEventSourcesItemManagedBy(StrEnum):
+class ManagedBy(StrEnum):
     """
     Who manages this event source. 'buyer' = configured via this sync. 'seller' = always-on, managed by the seller (e.g. Amazon sales attribution for Amazon advertisers).
     """
@@ -43,7 +43,7 @@ class SyncEventSourcesSuccessEventSourcesItemManagedBy(StrEnum):
     SELLER = 'seller'
 
 
-class SyncEventSourcesSuccessEventSourcesItemSetupSnippetType(StrEnum):
+class SnippetType(StrEnum):
     """
     Type of implementation. 'server_only' means no client-side tag is needed.
     """
@@ -53,7 +53,7 @@ class SyncEventSourcesSuccessEventSourcesItemSetupSnippetType(StrEnum):
     SERVER_ONLY = 'server_only'
 
 
-class SyncEventSourcesSuccessEventSourcesItemSetup(AdCPBaseModel):
+class Setup(AdCPBaseModel):
     """
     Implementation details for activating this event source (e.g. JavaScript tag, pixel URL)
     """
@@ -62,11 +62,11 @@ class SyncEventSourcesSuccessEventSourcesItemSetup(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-event-sources-response.json', pointer='#/oneOf/0/properties/event_sources/items/properties/setup')
     snippet: Annotated[str | None, Field(description='Code snippet to place on the site (JavaScript, HTML pixel, etc.)')] = None
-    snippet_type: Annotated[SyncEventSourcesSuccessEventSourcesItemSetupSnippetType | None, Field(description="Type of implementation. 'server_only' means no client-side tag is needed.")] = None
+    snippet_type: Annotated[SnippetType | None, Field(description="Type of implementation. 'server_only' means no client-side tag is needed.")] = None
     instructions: Annotated[str | None, Field(description='Human/agent-readable setup instructions')] = None
 
 
-class SyncEventSourcesSuccessEventSourcesItemAction(StrEnum):
+class Action(StrEnum):
     """
     Action taken for this event source
     """
@@ -77,7 +77,7 @@ class SyncEventSourcesSuccessEventSourcesItemAction(StrEnum):
     FAILED = 'failed'
 
 
-class SyncEventSourcesSuccessEventSourcesItem(AdCPBaseModel):
+class EventSourcesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -92,9 +92,9 @@ class SyncEventSourcesSuccessEventSourcesItem(AdCPBaseModel):
     value_currencies: Annotated[list[StrMatching43E30B32] | None, Field(description='ISO 4217 currencies accepted for monetary event values from this source. Canonical ROAS buys require their media-buy currency in this list.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     action_source: Annotated[ActionSource | None, Field(description='Type of event source (website pixel, app SDK, in-store, etc.)')] = None
     surface: Annotated[EventSurface | None, Field(description='Optional structured surface this source represents, such as an owned channel, profile, feed, podcast, newsletter list, website, app, or store. Complements `action_source`; use it when optimization-relevant source meaning would otherwise live only in platform-specific `ext` metadata.')] = None
-    managed_by: Annotated[SyncEventSourcesSuccessEventSourcesItemManagedBy | None, Field(description="Who manages this event source. 'buyer' = configured via this sync. 'seller' = always-on, managed by the seller (e.g. Amazon sales attribution for Amazon advertisers).")] = None
-    setup: Annotated[SyncEventSourcesSuccessEventSourcesItemSetup | None, Field(description='Implementation details for activating this event source (e.g. JavaScript tag, pixel URL)')] = None
-    action: Annotated[SyncEventSourcesSuccessEventSourcesItemAction, Field(description='Action taken for this event source')]
+    managed_by: Annotated[ManagedBy | None, Field(description="Who manages this event source. 'buyer' = configured via this sync. 'seller' = always-on, managed by the seller (e.g. Amazon sales attribution for Amazon advertisers).")] = None
+    setup: Annotated[Setup | None, Field(description='Implementation details for activating this event source (e.g. JavaScript tag, pixel URL)')] = None
+    action: Annotated[Action, Field(description='Action taken for this event source')]
     health: Annotated[EventSourceHealth | None, Field(description='Health assessment for this event source. Reflects event volume, data quality, and parameter completeness. Sellers that support health scoring include this on every source (buyer-managed and seller-managed). Absent when the seller does not evaluate event source health.')] = None
     errors: Annotated[list[Error] | None, Field(description="Errors for this event source (only present when action='failed')")] = None
     ext: Annotated[ExtensionObject | None, Field(description='Per-source extension metadata that travels with this event source result, such as platform-native conversion IDs, attribution-window handles, raw origin strings, or implementation details not yet standardized. Semantic fields such as `event_types`, `action_source`, and `surface` remain authoritative; `ext` complements them and is not a substitute.')] = None
@@ -111,7 +111,7 @@ class SyncEventSourcesSuccess(SyncEventSourcesResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
     )
-    event_sources: Annotated[list[SyncEventSourcesSuccessEventSourcesItem], Field(description='Results for each event source, including both synced and seller-managed sources on the account')]
+    event_sources: Annotated[list[EventSourcesItem], Field(description='Results for each event source, including both synced and seller-managed sources on the account')]
     sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

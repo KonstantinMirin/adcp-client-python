@@ -34,7 +34,7 @@ class SyncCatalogsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnv
         return "oneOf"
 
 
-class SyncCatalogsSuccessCatalogsItemItemIssuesItem(AdCPBaseModel):
+class ItemIssuesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -44,7 +44,7 @@ class SyncCatalogsSuccessCatalogsItemItemIssuesItem(AdCPBaseModel):
     reasons: Annotated[list[str] | None, Field(description='Reasons for rejection or warning')] = None
 
 
-class SyncCatalogsSuccessCatalogsItem(AdCPBaseModel):
+class CatalogsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -60,7 +60,7 @@ class SyncCatalogsSuccessCatalogsItem(AdCPBaseModel):
     items_approved: Annotated[NonNegativeInt | None, Field(description='Number of items approved by the platform. Populated when the platform performs item-level review.')] = None
     items_pending: Annotated[NonNegativeInt | None, Field(description='Number of items pending platform review. Common for product catalogs where items must pass content policy checks.')] = None
     items_rejected: Annotated[NonNegativeInt | None, Field(description='Number of items rejected by the platform. Check item_issues for rejection reasons.')] = None
-    item_issues: Annotated[list[SyncCatalogsSuccessCatalogsItemItemIssuesItem] | None, Field(description='Per-item issues reported by the platform (rejections, warnings). Only present when the platform performs item-level review.')] = None
+    item_issues: Annotated[list[ItemIssuesItem] | None, Field(description='Per-item issues reported by the platform (rejections, warnings). Only present when the platform performs item-level review.')] = None
     last_synced_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when the most recent sync was accepted by the platform')] = None
     next_fetch_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when the platform will next fetch the feed URL. Only present for URL-based catalogs with update_frequency.')] = None
     changes: Annotated[list[str] | None, Field(description="Field names that were modified (only present when action='updated')")] = None
@@ -81,7 +81,7 @@ class SyncCatalogsSuccess(SyncCatalogsResponse):
     )
     status: Annotated[Literal['completed'], Field(description='Availability and synchronous catalog results are terminal and complete.')]
     dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)')] = None
-    catalogs: Annotated[list[SyncCatalogsSuccessCatalogsItem], Field(description="Results for each catalog processed. Items with action='failed' indicate per-catalog validation/processing failures, not operation-level failures.")]
+    catalogs: Annotated[list[CatalogsItem], Field(description="Results for each catalog processed. Items with action='failed' indicate per-catalog validation/processing failures, not operation-level failures.")]
     item_availability_updates: Annotated[list[CatalogItemAvailabilityUpdateResult] | None, Field(description='Acknowledgements for item_availability_updates. The array length MUST equal the request array length; entry N MUST have request_index N, occupy position N, and exactly echo catalog_id, catalog_generation, item_id, and action from request entry N. Buyers MUST reject the response as non-conformant if count, ordering, request_index, or echoed identity differs. Lenient-mode failures stay in their request positions. In strict mode, any per-entry failure instead produces the operation-level error branch before mutation and this array is absent.', max_length=1000, min_length=1)] = None
     item_availability_states: Annotated[list[CatalogItemAvailabilityState] | None, Field(description='Current-state results for item_availability_queries, evaluated after updates in a mixed request. The array length MUST equal the request query length; entry N MUST have request_index N, occupy position N, and exactly echo catalog_id, catalog_generation, and item_id. Buyers MUST reject any mismatch. A replayed response is historical; use a fresh query idempotency_key before treating it as current after time-dependent expiry or catalog deletion/recreation.', max_length=1000, min_length=1)] = None
     sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
@@ -89,7 +89,7 @@ class SyncCatalogsSuccess(SyncCatalogsResponse):
     ext: ExtensionObject | None = None
 
 
-class SyncCatalogsErrorErrorsItem(Error):
+class ErrorsItem(Error):
     """
     Standard error structure for task-specific errors and warnings
     """
@@ -107,7 +107,7 @@ class SyncCatalogsError(SyncCatalogsResponse, FailedResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('catalogs',), ('item_availability_updates',), ('item_availability_states',), ('dry_run',), ('sandbox',))),
     )
-    errors: Annotated[list[SyncCatalogsErrorErrorsItem], Field(description='Operation-level errors that prevented processing any catalogs (e.g., authentication failure, service unavailable, invalid request format)', min_length=1)]
+    errors: Annotated[list[ErrorsItem], Field(description='Operation-level errors that prevented processing any catalogs (e.g., authentication failure, service unavailable, invalid request format)', min_length=1)]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

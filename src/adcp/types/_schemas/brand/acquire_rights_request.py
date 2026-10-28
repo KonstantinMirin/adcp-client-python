@@ -22,7 +22,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.right_use import RightUse
 
 
-class AcquireRightsRequestCampaign(AdCPBaseModel):
+class Campaign(AdCPBaseModel):
     """
     Campaign details for rights clearance
     """
@@ -58,7 +58,7 @@ class AcquireRightsRequest(AdCPVersionEnvelope):
     pricing_option_id: Annotated[str, Field(description='Selected pricing option from the rights offering')]
     buyer: Annotated[BrandReference, Field(description="The buyer's brand identity")]
     account: Annotated[AccountReference | None, Field(description='Account context for this acquisition. Used by the brand agent to resolve any governance agent previously bound for this brand+operator pair via sync_governance. When both an inline governance_context token and a bound governance agent are present, the token is verified against that resolved relationship. An agent advertising adcp.governance_enforcement for acquire_rights MUST resolve an account and returns ACCOUNT_REQUIRED when neither the request nor an existing resource supplies one; it MUST NOT infer that a missing token means ungoverned. Legacy non-claiming agents may continue to treat omission of both fields as ungoverned during 3.x. Pass a natural key (brand, operator, optional sandbox) or a seller-assigned account_id from list_accounts.')] = None
-    campaign: Annotated[AcquireRightsRequestCampaign, Field(description='Campaign details for rights clearance')]
+    campaign: Annotated[Campaign, Field(description='Campaign details for rights clearance')]
     revocation_webhook: Annotated[PushNotificationConfig, Field(description='Webhook for rights revocation notifications. If the rights holder needs to revoke rights (talent scandal, contract violation, etc.), they POST a revocation-notification to this URL. The buyer is responsible for stopping creative delivery upon receipt.')]
     push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Webhook for async status updates if the acquisition requires approval. The rights agent sends a webhook notification when the status transitions to acquired or rejected.')] = None
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated key for safe retries. Resubmitting with the same key returns the original response rather than creating a duplicate acquisition. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]

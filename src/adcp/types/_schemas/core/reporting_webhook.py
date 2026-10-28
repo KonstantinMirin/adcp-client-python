@@ -14,7 +14,7 @@ from ..enums.auth_scheme import AuthenticationScheme
 from ..enums.available_metric import AvailableMetric
 
 
-class ReportingWebhookAuthentication(AdCPBaseModel):
+class Authentication(AdCPBaseModel):
     """
     Legacy authentication configuration for webhook delivery (A2A-compatible). Opts the receiver into Bearer or HMAC-SHA256 signing. Both schemes are deprecated; the preferred signing profile for new integrations is RFC 9421, where the seller signs with a key published at its brand.json agents[] entry and the buyer verifies against the seller's JWKS — no shared secret crosses the wire (see docs/building/by-layer/L1/security.mdx#webhook-callbacks). This field is required in AdCP 3.x; the requirement is removed in AdCP 4.0 when the default RFC 9421 path becomes the only path.
     """
@@ -26,7 +26,7 @@ class ReportingWebhookAuthentication(AdCPBaseModel):
     credentials: Annotated[StrMinLen32, Field(description='Credentials for the legacy scheme. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.')]
 
 
-class ReportingWebhookReportingFrequency(StrEnum):
+class ReportingFrequency(StrEnum):
     """
     Frequency for automated reporting delivery. Must be supported by all products in the media buy.
     """
@@ -48,8 +48,8 @@ class ReportingWebhook(AdCPBaseModel):
     )
     url: Annotated[HttpUrl, Field(description='Webhook endpoint URL for reporting notifications')]
     token: Annotated[StrMinLen16 | None, Field(description='Optional client-provided token for webhook validation. Echoed back in webhook payload to validate request authenticity.')] = None
-    authentication: Annotated[ReportingWebhookAuthentication, Field(description="Legacy authentication configuration for webhook delivery (A2A-compatible). Opts the receiver into Bearer or HMAC-SHA256 signing. Both schemes are deprecated; the preferred signing profile for new integrations is RFC 9421, where the seller signs with a key published at its brand.json agents[] entry and the buyer verifies against the seller's JWKS — no shared secret crosses the wire (see docs/building/by-layer/L1/security.mdx#webhook-callbacks). This field is required in AdCP 3.x; the requirement is removed in AdCP 4.0 when the default RFC 9421 path becomes the only path.")]
-    reporting_frequency: Annotated[ReportingWebhookReportingFrequency, Field(description='Frequency for automated reporting delivery. Must be supported by all products in the media buy.')]
+    authentication: Annotated[Authentication, Field(description="Legacy authentication configuration for webhook delivery (A2A-compatible). Opts the receiver into Bearer or HMAC-SHA256 signing. Both schemes are deprecated; the preferred signing profile for new integrations is RFC 9421, where the seller signs with a key published at its brand.json agents[] entry and the buyer verifies against the seller's JWKS — no shared secret crosses the wire (see docs/building/by-layer/L1/security.mdx#webhook-callbacks). This field is required in AdCP 3.x; the requirement is removed in AdCP 4.0 when the default RFC 9421 path becomes the only path.")]
+    reporting_frequency: Annotated[ReportingFrequency, Field(description='Frequency for automated reporting delivery. Must be supported by all products in the media buy.')]
     requested_metrics: Annotated[list[AvailableMetric] | None, Field(description="Optional list of metrics to include in webhook notifications. If omitted, all available metrics are included; an empty array has the same meaning as omission (it does not narrow to impressions and spend only). impressions and spend are always included regardless of this list. Must be a subset of the product's available_metrics. Subset evaluation and leaf resolution follow `enums/available-metric.json`: a numeric leaf may be covered by its container, while each structured distribution must be explicitly available. Requesting any nested identity selects its canonical carrier inside the payload's nested object. Same narrowing semantics as get_media_buy_delivery's requested_metrics (which additionally requires at least one entry when present).", json_schema_extra={'uniqueItems': True})] = None
 
 

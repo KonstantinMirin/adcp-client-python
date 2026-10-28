@@ -14,7 +14,7 @@ from ..enums.notification_type import NotificationType
 from .ext import ExtensionObject
 
 
-class AgentNotificationConfigStateAuthentication(AdCPBaseModel):
+class Authentication(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -38,7 +38,7 @@ class AgentNotificationConfigState(AdCPBaseModel):
     event_types: Annotated[list[Annotated[NotificationType, AfterValidator(NotValue(('scheduled', 'final', 'delayed', 'adjusted', 'window_update', 'impairment')))]], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     all_authorized_accounts: Annotated[bool | None, Field(description='Echoed scope acknowledgment for account-anchored event types.')] = None
     include_future_event_types: Annotated[bool | None, Field(description='Echoed from the desired configuration when set.')] = None
-    authentication: AgentNotificationConfigStateAuthentication | None = None
+    authentication: Authentication | None = None
     active: bool | None = True
     ext: ExtensionObject | None = None
 

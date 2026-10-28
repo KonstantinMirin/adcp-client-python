@@ -15,7 +15,7 @@ from .reporting_file_compression import ReportingFileCompression
 from .reporting_file_entry import ReportingFileEntry
 
 
-class ReportingFileManifestPeriod(AdCPBaseModel):
+class Period(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -25,7 +25,7 @@ class ReportingFileManifestPeriod(AdCPBaseModel):
     source_timezone: StrMinLen1
 
 
-class ReportingFileManifestFormat(StrEnum):
+class Format(StrEnum):
     JSONL = 'jsonl'
     CSV = 'csv'
     PARQUET = 'parquet'
@@ -49,8 +49,8 @@ class ReportingFileManifest(AdCPBaseModel):
     reporting_revision_id: StrMinLen1MaxLen255Matching67860854
     reporting_obligation_id: StrMinLen1MaxLen255Matching67860854
     reporting_materialization_id: StrMinLen1MaxLen255Matching67860854
-    period: ReportingFileManifestPeriod
-    format: ReportingFileManifestFormat
+    period: Period
+    format: Format
     compression: ReportingFileCompression
     files: Annotated[list[ReportingFileEntry], Field(min_length=1)]
     total_size_bytes: NonNegativeInt

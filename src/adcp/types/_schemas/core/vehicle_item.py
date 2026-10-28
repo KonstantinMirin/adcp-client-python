@@ -14,7 +14,7 @@ from .offering_asset_group import OfferingAssetGroup
 from .price import Price
 
 
-class VehicleItemCondition(StrEnum):
+class Condition(StrEnum):
     """
     Vehicle condition.
     """
@@ -23,7 +23,7 @@ class VehicleItemCondition(StrEnum):
     CERTIFIED_PRE_OWNED = 'certified_pre_owned'
 
 
-class VehicleItemMileageUnit(StrEnum):
+class Unit(StrEnum):
     """
     Distance unit.
     """
@@ -31,7 +31,7 @@ class VehicleItemMileageUnit(StrEnum):
     MI = 'mi'
 
 
-class VehicleItemMileage(AdCPBaseModel):
+class Mileage(AdCPBaseModel):
     """
     Odometer reading.
     """
@@ -40,10 +40,10 @@ class VehicleItemMileage(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vehicle-item.json', pointer='#/properties/mileage')
     value: Annotated[NonNegativeFloat, Field(description='Mileage value.')]
-    unit: Annotated[VehicleItemMileageUnit, Field(description='Distance unit.')]
+    unit: Annotated[Unit, Field(description='Distance unit.')]
 
 
-class VehicleItemBodyStyle(StrEnum):
+class BodyStyle(StrEnum):
     """
     Vehicle body style.
     """
@@ -57,7 +57,7 @@ class VehicleItemBodyStyle(StrEnum):
     HATCHBACK = 'hatchback'
 
 
-class VehicleItemTransmission(StrEnum):
+class Transmission(StrEnum):
     """
     Transmission type.
     """
@@ -66,7 +66,7 @@ class VehicleItemTransmission(StrEnum):
     CVT = 'cvt'
 
 
-class VehicleItemFuelType(StrEnum):
+class FuelType(StrEnum):
     """
     Fuel or powertrain type.
     """
@@ -77,7 +77,7 @@ class VehicleItemFuelType(StrEnum):
     PLUG_IN_HYBRID = 'plug_in_hybrid'
 
 
-class VehicleItemLocation(AdCPBaseModel):
+class Location(AdCPBaseModel):
     """
     Dealer or vehicle location.
     """
@@ -103,16 +103,16 @@ class VehicleItem(AdCPBaseModel):
     model: Annotated[str, Field(description="Vehicle model (e.g., 'Civic', 'F-150', 'X5').")]
     year: Annotated[IntMin1900, Field(description='Model year.')]
     price: Annotated[Price | None, Field(description='Vehicle price.')] = None
-    condition: Annotated[VehicleItemCondition | None, Field(description='Vehicle condition.')] = None
+    condition: Annotated[Condition | None, Field(description='Vehicle condition.')] = None
     vin: Annotated[str | None, Field(description='Vehicle Identification Number (17-character VIN).')] = None
     trim: Annotated[str | None, Field(description="Trim level (e.g., 'EX', 'Limited', 'Sport').")] = None
-    mileage: Annotated[VehicleItemMileage | None, Field(description='Odometer reading.')] = None
-    body_style: Annotated[VehicleItemBodyStyle | None, Field(description='Vehicle body style.')] = None
-    transmission: Annotated[VehicleItemTransmission | None, Field(description='Transmission type.')] = None
-    fuel_type: Annotated[VehicleItemFuelType | None, Field(description='Fuel or powertrain type.')] = None
+    mileage: Annotated[Mileage | None, Field(description='Odometer reading.')] = None
+    body_style: Annotated[BodyStyle | None, Field(description='Vehicle body style.')] = None
+    transmission: Annotated[Transmission | None, Field(description='Transmission type.')] = None
+    fuel_type: Annotated[FuelType | None, Field(description='Fuel or powertrain type.')] = None
     exterior_color: Annotated[str | None, Field(description='Exterior color.')] = None
     interior_color: Annotated[str | None, Field(description='Interior color.')] = None
-    location: Annotated[VehicleItemLocation | None, Field(description='Dealer or vehicle location.')] = None
+    location: Annotated[Location | None, Field(description='Dealer or vehicle location.')] = None
     image_url: Annotated[HttpUrl | None, Field(description='Primary vehicle image URL.')] = None
     url: Annotated[HttpUrl | None, Field(description='Vehicle listing page URL.')] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'low-mileage', 'one-owner', 'dealer-certified').", min_length=1)] = None

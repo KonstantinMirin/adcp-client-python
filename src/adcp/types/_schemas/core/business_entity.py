@@ -12,7 +12,7 @@ from adcp.types.constraints import StrMatching02AE7B1E, StrMatching81D52C51, Str
 from .ext import ExtensionObject
 
 
-class BusinessEntityAddress(AdCPBaseModel):
+class Address(AdCPBaseModel):
     """
     Postal address for invoicing and legal correspondence
     """
@@ -27,7 +27,7 @@ class BusinessEntityAddress(AdCPBaseModel):
     country: Annotated[StrMatchingEFC12812, Field(description='ISO 3166-1 alpha-2 country code')]
 
 
-class BusinessEntityContactsItemRole(StrEnum):
+class Role(StrEnum):
     """
     Contact's functional role in the business relationship
     """
@@ -47,18 +47,18 @@ class BusinessEntityContactsItemRole(StrEnum):
     """Default contact when no specific role applies"""
 
 
-class BusinessEntityContactsItem(AdCPBaseModel):
+class ContactsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/business-entity.json', pointer='#/properties/contacts/items')
-    role: Annotated[BusinessEntityContactsItemRole, Field(description="Contact's functional role in the business relationship")]
+    role: Annotated[Role, Field(description="Contact's functional role in the business relationship")]
     name: Annotated[StrMaxLen200 | None, Field(description='Full name of the contact')] = None
     email: Annotated[StrMaxLen254 | None, Field(json_schema_extra={'format': 'email'})] = None
     phone: StrMaxLen30 | None = None
 
 
-class BusinessEntityBank(AdCPBaseModel):
+class Bank(AdCPBaseModel):
     """
     Bank account details for payment processing. Write-only: included in requests to provide payment coordinates, but MUST NOT be echoed in responses. Sellers store these details and confirm receipt without returning them.
     """
@@ -85,9 +85,9 @@ class BusinessEntity(AdCPBaseModel):
     vat_id: Annotated[StrMatching81D52C51 | None, Field(description='VAT identification number (e.g., DE123456789 for Germany, FR12345678901 for France). Required for B2B invoicing in the EU. Must be normalized: no spaces, dots, or dashes.')] = None
     tax_id: Annotated[StrMaxLen30 | None, Field(description='Tax identification number for jurisdictions that do not use VAT (e.g., US EIN)')] = None
     registration_number: Annotated[StrMaxLen50 | None, Field(description='Company registration number (e.g., HRB 12345 for German Handelsregister)')] = None
-    address: Annotated[BusinessEntityAddress | None, Field(description='Postal address for invoicing and legal correspondence')] = None
-    contacts: Annotated[list[BusinessEntityContactsItem] | None, Field(description='Contacts for billing, legal, and operational matters. Contains personal data subject to GDPR and equivalent regulations. Implementations MUST use this data only for invoicing and account management.', max_length=10)] = None
-    bank: Annotated[BusinessEntityBank | None, Field(description='Bank account details for payment processing. Write-only: included in requests to provide payment coordinates, but MUST NOT be echoed in responses. Sellers store these details and confirm receipt without returning them.')] = None
+    address: Annotated[Address | None, Field(description='Postal address for invoicing and legal correspondence')] = None
+    contacts: Annotated[list[ContactsItem] | None, Field(description='Contacts for billing, legal, and operational matters. Contains personal data subject to GDPR and equivalent regulations. Implementations MUST use this data only for invoicing and account management.', max_length=10)] = None
+    bank: Annotated[Bank | None, Field(description='Bank account details for payment processing. Write-only: included in requests to provide payment coordinates, but MUST NOT be echoed in responses. Sellers store these details and confirm receipt without returning them.')] = None
     ext: ExtensionObject | None = None
 
 
