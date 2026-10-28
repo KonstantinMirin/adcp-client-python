@@ -1,0 +1,240 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "properties": {
+        "mismatch_reason": {
+          "const": "asset_outside_acceptance"
+        }
+      },
+      "required": [
+        "mismatch_reason",
+        "asset_vast_version",
+        "product_vast_versions",
+        "seller_vast_versions"
+      ],
+      "title": "Asset outside accepted version intersection"
+    },
+    {
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "document_role": {
+                "enum": [
+                  "wrapper",
+                  "terminal_inline"
+                ]
+              }
+            },
+            "required": [
+              "document_role"
+            ]
+          },
+          "then": {
+            "required": [
+              "product_vast_versions",
+              "seller_vast_versions"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "mismatch_reason": {
+          "const": "document_version_mismatch"
+        }
+      },
+      "required": [
+        "mismatch_reason",
+        "asset_vast_version",
+        "observed_document_vast_version",
+        "document_role"
+      ],
+      "title": "Inspected document version mismatch"
+    },
+    {
+      "not": {
+        "required": [
+          "mismatch_reason"
+        ]
+      },
+      "required": [
+        "supported_versions"
+      ],
+      "title": "Supported versions compatibility details"
+    }
+  ],
+  "description": "Required compatibility details for VAST_VERSION_MISMATCH. Modern emitters discriminate an asset-versus-acceptance mismatch from an inspected-document mismatch. The legacy supported_versions-only arm remains accepted for older 3.x peers.",
+  "properties": {
+    "asset_vast_version": {
+      "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
+      "enum": [
+        "2.0",
+        "3.0",
+        "4.0",
+        "4.1",
+        "4.2",
+        "4.3"
+      ],
+      "title": "VAST Version",
+      "type": "string"
+    },
+    "document_role": {
+      "description": "Role of the inspected document. Only the submitted document is required to equal the asset declaration; wrapper and terminal documents are checked against the applicable acceptance sets.",
+      "enum": [
+        "submitted",
+        "wrapper",
+        "terminal_inline"
+      ],
+      "type": "string"
+    },
+    "format_option_ref": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Selected option reference when the product option is addressable. Omitted for a unique id-less product option.",
+      "discriminator": {
+        "propertyName": "scope"
+      },
+      "oneOf": [
+        {
+          "additionalProperties": true,
+          "description": "Selects a publisher-catalog-backed product format option by publisher domain and format option ID.",
+          "properties": {
+            "format_option_id": {
+              "description": "Stable format option ID from the publisher's adagents.json top-level `formats[]`, matching a publisher-catalog-backed entry in the target product's `format_options[]`.",
+              "type": "string"
+            },
+            "publisher_domain": {
+              "description": "Publisher domain where the adagents.json declaring this format option is hosted.",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            },
+            "scope": {
+              "const": "publisher",
+              "description": "Reference resolves against the named publisher's adagents.json top-level `formats[]` catalog.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "scope",
+            "publisher_domain",
+            "format_option_id"
+          ],
+          "title": "Publisher Catalog Format Option Reference",
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "description": "Selects a product-local format option by ID within the enclosing package/product context. This branch deliberately forbids `publisher_domain` (`publisher_domain: false` in the schema) because product-local references are namespaced by the enclosing product only; include `scope: \"publisher\"` when the selector must cross into a publisher catalog.",
+          "properties": {
+            "format_option_id": {
+              "description": "Stable format option ID from the target product's inline `format_options[]`.",
+              "type": "string"
+            },
+            "publisher_domain": false,
+            "scope": {
+              "const": "product",
+              "description": "Reference resolves only against the target product's inline `format_options[]`.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "scope",
+            "format_option_id"
+          ],
+          "title": "Product-Local Format Option Reference",
+          "type": "object"
+        }
+      ],
+      "title": "Format Option Reference",
+      "type": "object"
+    },
+    "mismatch_reason": {
+      "description": "Machine-readable modern mismatch branch.",
+      "enum": [
+        "asset_outside_acceptance",
+        "document_version_mismatch"
+      ],
+      "type": "string"
+    },
+    "observed_document_vast_version": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Raw version observed on the inspected VAST document whose root is being validated. `null` means the required version attribute was missing. This field is intentionally not limited to the governed supported-version enum so diagnostics can report future or invalid document values."
+    },
+    "product_vast_versions": {
+      "items": {
+        "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
+        "enum": [
+          "2.0",
+          "3.0",
+          "4.0",
+          "4.1",
+          "4.2",
+          "4.3"
+        ],
+        "title": "VAST Version",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "seller_vast_versions": {
+      "items": {
+        "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
+        "enum": [
+          "2.0",
+          "3.0",
+          "4.0",
+          "4.1",
+          "4.2",
+          "4.3"
+        ],
+        "title": "VAST Version",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "supported_versions": {
+      "deprecated": true,
+      "description": "Deprecated 3.x compatibility field. For an acceptance mismatch, this is the effective product/seller intersection when known. Modern emitters use the typed sets and mismatch_reason.",
+      "items": {
+        "$comment": "VAST 4.3 ships no XSD of its own: IAB's `vast_4.2.xsd` remains the authoritative schema for 4.3 documents, so a validator MUST NOT reject a tag declaring `version=\"4.3\"` for want of a 4.3 schema. VAST 4.4 is deliberately absent because `vast_4.4.xsd` is annotated 'DRAFT for working group discussion' and is not a published specification; add it once IAB publishes it, not before. This file is the single source of truth for the roster, per the Enum Consolidation rule in docs/spec-guidelines.md, and other schemas `$ref` it rather than restating the list.",
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Supported VAST (Video Ad Serving Template) specification versions. Covers every version published by IAB Tech Lab, through VAST 4.3 (released December 2022). The value mirrors the `version` attribute a VAST document declares on its root element.",
+        "enum": [
+          "2.0",
+          "3.0",
+          "4.0",
+          "4.1",
+          "4.2",
+          "4.3"
+        ],
+        "title": "VAST Version",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "title": "VAST Version Mismatch Details",
+  "type": "object"
+}
