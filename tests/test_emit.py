@@ -96,6 +96,7 @@ from codegen.harness import (
     violated_keywords,
 )
 from codegen.lower import rules
+import corpus
 import populations
 from conftest import refusal_from
 
@@ -1261,6 +1262,17 @@ NO_PAYLOAD_PAIRS: tuple[str, ...] = (
 #: which ``media-buy/get-media-buy-delivery-response.json#`` alone is 1,846.8 s on a
 #: 2,701,506-byte resolved schema.  That one is ``check_accepts``'s cost and not this
 #: file's.
+#:
+#: **AND THAT COST IS NOW MEASURED AND HELD** (``adcp-client-python-10l.51``).  Over all
+#: 1,664 pairs, single process: ``check_pair`` is 2,015.6 s, of which ``check_accepts`` is
+#: 2,000.8 s (99.3%) and ``from_schema`` ALONE is 1,509.9 s -- **74.9% of the pair and
+#: 75.5% of the accepts check** -- against 0.35 s for the half that constructs, dumps and
+#: re-validates.  The grading is three parts in ten thousand of the pair; the rest is
+#: building a strategy over a record the suite has already built one over.  So the drawn
+#: instances are held content-addressed in ``tests/corpus.py`` and replayed, which is what
+#: both readers below pass ``corpus=`` for -- and the two passes over this population,
+#: this one and the parametrised test, now fill and read ONE corpus rather than drawing
+#: the same 1,664 instances twice.
 GRADED_REPORTS_GROUP = "graded_reports"
 
 
@@ -1286,7 +1298,10 @@ def graded_reports() -> list[tuple[Graded, PairReport]]:
     that constant are three of the four readers paying the full pass on three different
     workers.  A fifth reader added here takes the mark too, or it adds a whole pass.
     """
-    return [(g, check_pair(pair_of(g), custom_formats=FORMAT_STRATEGIES)) for g in graded()]
+    return [
+        (g, check_pair(pair_of(g), custom_formats=FORMAT_STRATEGIES, corpus=corpus.STORE))
+        for g in graded()
+    ]
 
 
 @pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
@@ -1409,7 +1424,7 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
     while the three tests reading a population TOTAL are one item each.
     """
     pair = pair_of(row)
-    rep = check_pair(pair, custom_formats=FORMAT_STRATEGIES)
+    rep = check_pair(pair, custom_formats=FORMAT_STRATEGIES, corpus=corpus.STORE)
     assert rep.missing_formats == []
     assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
     if rep.accepts.outcome != "strategy_error":
