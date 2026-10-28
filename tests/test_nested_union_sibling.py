@@ -724,6 +724,86 @@ def test_the_selector_is_derived_from_two_declarations_and_not_listed_here() -> 
     )
 
 
+#: The clause §8 WITHDREW, pinned as ABSENT (``adcp-client-python-10l.47``).  §5's cell
+#: read "Shapes nested -> one type ``A | B``; a sibling beside it refuses" after §8 had
+#: already decided the composition answer at a union in ANY position, so the one document
+#: disagreed with itself for as long as the two readings coexisted.  A VALUE pin, in the
+#: shape ``tests/test_decision_set.py`` names third: the copy is COMPARED and never used,
+#: so a copy that went stale can only redden.
+WITHDRAWN = "a sibling beside it refuses"
+
+#: The triple the four readers of §3 derive from, pinned beside the prose.  The
+#: correction is a SENTENCE change and must be only that: the effect decides admission
+#: and whether a handler owes a lowering, ``rendered`` decides the compared set, and
+#: ``descends`` decides where the walk takes the branches.
+_UNION_CELL = (keywords.Effect.TYPE, False, keywords.Position.BRANCH)
+
+
+def test_the_cell_the_four_readers_read_states_the_composition_answer() -> None:
+    """§5's own text, which is the cell's, agrees with §8 -- and no reader is a new one.
+
+    The acceptance this row is about: the cell states the base-plus-branches answer for a
+    sibling a CLASS carries, keeps ``A | B`` for a union stating nothing beside the
+    combinator, and keeps the refusal for a sibling NO class carries -- which is the
+    screen's own sentence, graded above and reachable by
+    ``test_a_constraining_sibling_of_a_nested_union_still_refuses``.
+
+    Four claims, and the last two are what say the edit added no fifth copy.
+
+    * ONE CELL answers at ROOT and at every nested position.  The union row declares no
+      ``PROP``/``ELEM``/``MAPV`` override, so ``keywords.cell`` hands back the row's
+      default at each -- the same object -- and the widening cannot be written at one
+      position and withheld at another.
+    * The withdrawn clause is gone and the refusal is CONDITIONAL on the carrier.
+    * The four readers of architecture §3 still read this cell, and each answer is a
+      function of the pinned triple and not of the prose: admission and lowering off the
+      effect, the compared set off ``rendered``, the descent off ``descends``.
+    * The prose reaches NO reader under ``codegen/``.  ``compiler._screen`` is the one
+      place a cell's ``compiles`` becomes a refusal's detail, and it reads it only where
+      the effect is ``REFUSE``; this cell's is ``TYPE``, so the sentence is read by the
+      grid renderer in ``tests/test_keywords.py`` and by nothing else.  That is why the
+      cell may say what a class CARRIES and must not enumerate which keywords those are:
+      ``union.carried_by_a_class`` derives that set, and a list here would be a copy with
+      no reader to keep it honest.
+    """
+    answer = keywords.cell("oneOf", keywords.Position.ROOT)
+    assert answer is not None
+    for position in (
+        keywords.Position.PROP,
+        keywords.Position.ELEM,
+        keywords.Position.MAPV,
+    ):
+        assert keywords.cell("oneOf", position) is answer, position
+    # ``anyOf`` is ``oneOf``'s row: ``_with_rungs`` rebuilds each cell, so the two are
+    # EQUAL rather than identical, and the correction reached both because there is one
+    # declaration above that assignment.
+    for position in (keywords.Position.ROOT, keywords.Position.PROP):
+        assert keywords.cell("anyOf", position) == answer, position
+
+    assert WITHDRAWN not in answer.compiles, answer.compiles
+    assert "A sibling a CLASS carries" in answer.compiles, answer.compiles
+    assert "at a union in ANY position" in answer.compiles, answer.compiles
+    assert "A sibling no class carries refuses" in answer.compiles, answer.compiles
+    # And the clause that is still TRUE survived: a nested union stating nothing beside
+    # the combinator is one type, which is what ``union.nested`` is for.
+    assert "with nothing beside the combinator" in answer.compiles, answer.compiles
+
+    assert (answer.effect, answer.rendered, answer.descends) == _UNION_CELL, answer
+    at = keywords.Position.PROP
+    # admission and lowering: a TYPE effect is a fact the node's own kind consumes, so the
+    # screen admits it only where the handler claims it, and ``union.nested`` is what does.
+    assert keywords.lowers(answer)
+    assert "oneOf" in keywords.combinators(at)
+    assert "oneOf" not in keywords.rule_sources(at)
+    # grading: the compared set is the rendered column, and a combinator is graded by
+    # DESCENDING it rather than by comparing it as a value.
+    assert "oneOf" not in keywords.rendered_at(at)
+    # descent: where the walk takes the branches, which is the position they are parsed at.
+    assert keywords.descends_at(at)["oneOf"] is keywords.Position.BRANCH
+    # the prose reaches no reader: ``_screen`` quotes ``compiles`` on a REFUSE cell alone.
+    assert answer.effect is not keywords.Effect.REFUSE
+
+
 def test_the_measured_case_emits_the_shape_section_8_names() -> None:
     """§8's decided lowering, read off the classes the run WROTE.
 
