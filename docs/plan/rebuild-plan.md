@@ -1281,6 +1281,35 @@ count non-zero, and this is the rule that grades them. Row `.21`'s fourth instal
 implementing §5(b) as written, measuring 22 pairs red where the declaration census was empty, and
 declining to edit §8 to suit its own code.
 
+**An ANNOTATION is not a fact these three checks grade, at any pointer (added 2026-10-27).**
+The predicate is `bundle.is_an_annotation(keyword, position)` — §1's own, the one `record`
+already reads to settle a `$ref`'s sibling, so this is a third reader of one line and not a
+second judgement. An annotation is a key whose cell compiles to no type, no field and no rule,
+which is what "states nothing about acceptance" IS; so `added`, `missing` or `differs` on one
+reports a difference that cannot change what a payload is accepted as, and these checks grade
+acceptance.
+
+*Why it is stated here rather than left implicit.* Row `97w`'s sixth instalment wrote the
+carrier that composes a branch's restatement with the root's declaration of the same property,
+measured **`emitted 908 / refused 146`** with 12 documents newly emitting, and then found two
+strictly contradictory gradings of one `description`: carrying annotations on descent makes the
+comparison report a non-fact, which is what
+`test_the_difference_between_the_two_halves_is_a_schema_fact` exists to forbid, while stripping
+them moves the same `description` from `added` at the element pointer to `missing` at the branch
+pointer. It reported both readings and changed neither side.
+
+Both readings are answers to the wrong question. **There is no pointer at which an annotation is
+graded**, because it is not among the facts being compared — so the composition lands and the
+`description` is simply not a difference. A model that carries a description at a pointer the
+document states it at differently accepts exactly the same payloads.
+
+*What this does NOT license.* A description reaching the consumer is worth something, and
+dropping every one of them silently would be a real regression — just not an acceptance one. So
+annotation COVERAGE is its own obligation, graded separately: every description the document
+states reaches some emitted class. It belongs with §5's ergonomic rows and not among these
+three, because a check that mixes acceptance with ergonomics reports a defect in one as a defect
+in the other, which is the confusion this clause removes.
+
 A check is exhaustive over the set of nodes it claims, or it does not exist. A check that
 enumerates a subset reports on that subset only, and says so.
 
