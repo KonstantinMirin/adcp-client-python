@@ -4345,10 +4345,29 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "media-buy/create-media-buy-request.json": "required",
         "media-buy/create-media-buy-response.json": "$ref",
         "media-buy/decline-proposals-response.json": "required",
-        "media-buy/get-reporting-status-response.json": "oneOf",
+        # ``oneOf`` -> ``$ref`` and ``anyOf`` -> ``$ref`` at
+        # ``adcp-client-python-10l.66``, and this is THE PIN WORKING for the two roots
+        # whose BRANCH is itself a union of shapes.  ``_plan`` claimed the ROOT's
+        # combinator and not a nested one, so the screen answered "a later D2 row does"
+        # of a keyword whose cell at BRANCH is ``Effect.TYPE`` at rung ``JOIN``.  The
+        # branch loop recurses now, exactly as §5's cell says -- "a sibling a CLASS
+        # carries -> that same base-plus-branches shape, at a union in ANY position" --
+        # with the enclosing union's base as the nested base's base, so both roots get
+        # past the branch and report what is actually behind it.
+        #
+        # ``get-reporting-status-response`` reaches §5(b)'s restatement row at
+        # ``/oneOf/0/oneOf/0/properties/view``: the inner branch restates a ``$ref``
+        # property as ``{"const": ..., "type": "string"}``, which neither matches nor
+        # narrows, and that row is unwritten -- a DEFERRAL, and another lane's.
+        # ``proposal-refinement`` reaches a CHAIN at ``/properties/criteria`` onto
+        # ``media-buy/product-discovery-criteria.json``, which runs out to
+        # ``core/postal-country-system.json``'s ``/anyOf/4`` branch-naming VERDICT, so it
+        # joins :data:`VERDICTS` behind the six ``adcp-client-python-10l.35`` put there.
+        # Emitted is unchanged at 923 on both trees; ``accounted`` rose 958 -> 959.
+        "media-buy/get-reporting-status-response.json": "$ref",
         "media-buy/list-products-response.json": "$ref",
         "media-buy/media-buy-commitment-response.json": "$ref",
-        "media-buy/proposal-refinement.json": "anyOf",
+        "media-buy/proposal-refinement.json": "$ref",
         "media-buy/refine-proposals-response.json": "type",
         "media-buy/request-proposals-request.json": "required",
         "media-buy/request-proposals-response.json": "$ref",
@@ -8753,6 +8772,22 @@ VERDICTS = frozenset(
         "core/product-offer-filters.json",
         "media-buy/product-discovery-criteria.json",
         "media-buy/list-products-request.json",
+        # **A SEVENTH JOINS THAT SAME CHAIN AT ``adcp-client-python-10l.66``, and it is
+        # the sixth document behind the verdict named just above rather than a new
+        # claim.**  ``lower/union.py``'s ``_plan`` deferred a branch that is ITSELF a
+        # ``oneOf``/``anyOf`` of shapes -- "a later D2 row does", of a keyword whose cell
+        # at BRANCH is a lowering effect at rung JOIN -- which is the fourth handler of
+        # the defect the six above record.  The branch loop writes the cell's own answer
+        # now (the siblings become a base, each branch a subclass, and the enclosing
+        # union's base is that base's base), so ``media-buy/proposal-refinement.json``
+        # gets past ``/oneOf/1`` and reports its real obstruction: a ``$ref`` at
+        # ``/properties/criteria`` onto ``media-buy/product-discovery-criteria.json``,
+        # which is in this set two lines up, and the chain runs out to
+        # ``core/postal-country-system.json``'s ``/anyOf/4`` branch-naming verdict.
+        # ``accounted`` rose 958 -> 959 and the emitted set is byte-identical: nothing
+        # stopped emitting, nothing started refusing, and one more document stopped being
+        # counted as clearable work that no row was going to clear.
+        "media-buy/proposal-refinement.json",
     }
 )
 
