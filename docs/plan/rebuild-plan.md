@@ -939,6 +939,36 @@ That is the asymmetry Group A does not have, and it is why the two shapes separa
 dropped is the shape precision of the branches, the type widens by §2's ladder, and the gap is
 declared and attributed.
 
+### A presence clause whose required half is a disjunction of groups (decided 2026-10-29)
+
+Group A's clause carries "its OWN required group" — one group, read as a conjunction of names.
+Four documents spell that half as a DISJUNCTION: `formats/canonical/image.json`,
+`formats/canonical/html5.json` and `formats/canonical/display_tag.json` at `/allOf/1`, and
+`governance/check-governance-request.json` at `/allOf/1`. One branch of each states an `anyOf`
+of `required` groups where the others state `required` directly.
+
+**A clause's required half is a disjunction of GROUPS, which is what its forbidden half already
+is.** `Presence.forbid` holds groups because `not: {"required": [a, b]}` forbids the PAIR and
+says nothing about either name alone. The same reading of the required half makes
+`required: [a, b]` the single group `((a, b),)` and an `anyOf` over `required` the groups it
+states. A clause holds when at least one of its groups is present in full, and a clause stating
+no group states no requirement and holds. One field means one thing — the groups this branch's
+requiredness admits — where a second field beside it would make one clause carry two readings of
+one keyword.
+
+Both halves derive from `schema.required_groups`, which already reads `required` and a
+combinator over `required` into groups. That is §11's one reading with two readers: the `not`
+half and the required half reach the same derivation from the two sides of one branch.
+
+Dropping the disjunct is not available, measured on `image.json`, whose four size modes are
+`{}`, `{min_width}`, `{width, height}` and `{sizes}`. With the disjunct dropped the rule rejects
+`{}`, which the document admits as the "none" mode, so the model is TIGHTER than its document.
+§2 admits a widening and never a narrowing.
+
+`RequiredGroups` reads the same document fact as a RULE and stays separate, for the reason
+`Presence` states itself: a clause has no `errors` because a branch is not violated on its own,
+and only the combinator above it decides how many branches an instance may satisfy.
+
 ---
 
 ## 6. Keywords we admit and do not compile
