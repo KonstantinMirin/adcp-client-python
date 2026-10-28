@@ -88,6 +88,18 @@ _AN_ANNOTATION = compiler.Target(
     kind=compiler.TargetKind.ANNOTATION,
 )
 
+#: The conjunct NODE that named it.  The row is handed the parsed reference beside the
+#: target (``adcp-client-python-10l.68``), because §5's distribution clause declares a
+#: class per branch FROM it -- a node the arms below never reach, so the probes carry the
+#: real one rather than a stand-in and the row's signature is exercised as the walk
+#: builds it.
+_THE_REFERENCE = schema_parse.parse(
+    {"$ref": _AN_ENUM},
+    pointer="/properties/kind/allOf/0",
+    position=Position.CONJ,
+    source=schema_parse.Source(document="probe.json"),
+)
+
 from nodeset import claimed, partitions
 
 REPO = Path(__file__).resolve().parents[1]
@@ -109,6 +121,12 @@ class Site(NamedTuple):
     beside: tuple[str, ...]
     validators: tuple[Any, ...]
     refusal: Refusal | None
+    #: §5's DISTRIBUTION clause answered: the target's branches, handed back for
+    #: ``lower_composition`` to declare one subclass per branch over this node's class.
+    #: ``None`` at every site the clause does not reach, which is every site that is not
+    #: a union target beside declared fields -- so the row's THIRD outcome is observed
+    #: here rather than inferred from a document emitting.
+    distributed: tuple[str, ...] | None
 
 
 @functools.cache
@@ -160,8 +178,15 @@ def _reaching() -> tuple[Site, ...]:
                 targets=len(conjoined),
                 a_class_as_well=bool(fields_declared or bases),
                 beside=tuple(sorted({k for one in rule_nodes for k in one})),
-                validators=() if isinstance(answer, Refusal) else answer.type.validators,
+                validators=(
+                    answer.type.validators if isinstance(answer, compiler.Decided) else ()
+                ),
                 refusal=answer if isinstance(answer, Refusal) else None,
+                distributed=(
+                    tuple(b.symbol for b in answer.of)
+                    if isinstance(answer, compiler.TargetBranches)
+                    else None
+                ),
             )
         )
         return answer
@@ -244,6 +269,34 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
             (s.at, s.symbol) for s in sites if s.targets == 1 and not s.a_class_as_well
         },
     )
+    # **§5's DISTRIBUTION clause, graded inside the ``a_class_as_well`` part**
+    # (``adcp-client-python-10l.68``).  The clause of 53cb6100 gives that part a THIRD
+    # outcome -- "a UNION root beside a node that DOES declare fields distributes" -- so
+    # the part no longer means "refused", and its two halves are named here rather than
+    # left to a document's emission to imply.  Measured over the 1,054 portable
+    # documents: **4 sites, 2 distribute and 2 refuse**.  The two that distribute are the
+    # nodes whose OWN declaration carries every field --
+    # ``core/package-signal-targeting.json`` at ``/allOf/0`` and
+    # ``core/product-filters.json`` at ``/properties/signal_targeting/items/allOf/0`` --
+    # and the two that refuse carry theirs in a sibling conjunct, which is
+    # ``compiler._distributes``' two screens.
+    a_class = [s for s in sites if s.targets == 1 and s.a_class_as_well]
+    partitions(
+        claimed("sites at a node that is a class as well", {(s.at, s.symbol) for s in a_class}),
+        distributes={(s.at, s.symbol) for s in a_class if s.distributed is not None},
+        refuses={(s.at, s.symbol) for s in a_class if s.distributed is None},
+    )
+    assert all(
+        s.refusal is not None for s in a_class if s.distributed is None
+    ), [s.at for s in a_class if s.distributed is None and s.refusal is None]
+    # Every distributing site hands back the TARGET's branches and at least two of them:
+    # a union of one is not a union, and a distribution over no branch would be a class
+    # with an empty ``_branch_models``.
+    assert all(len(s.distributed) > 1 for s in a_class if s.distributed), [
+        (s.at, s.distributed) for s in a_class if s.distributed is not None
+    ]
+    assert any(s.distributed for s in a_class), "no site distributes, so §5's clause is ungraded"
+
     reaches = [s for s in sites if s.targets == 1 and not s.a_class_as_well]
     with_a_rule = claimed(
         "sites stating a rule beside the conjoined type",
@@ -535,7 +588,7 @@ def test_a_rule_kind_that_is_no_callable_on_the_value_refuses_and_names_itself()
     )
     answer = compiler._the_conjuncts_own_type(  # noqa: SLF001 -- the arm's only caller
         node,
-        [("/properties/kind/allOf/0", _AN_ANNOTATION)],
+        [("/properties/kind/allOf/0", _AN_ANNOTATION, _THE_REFERENCE)],
         fields_declared=(),
         bases=(),
         rule_nodes=[conjunct],
@@ -573,7 +626,7 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
     target = _AN_ANNOTATION
     answer = compiler._the_conjuncts_own_type(  # noqa: SLF001 -- the arm's only caller
         node,
-        [("/properties/kind/allOf/0", target)],
+        [("/properties/kind/allOf/0", target, _THE_REFERENCE)],
         fields_declared=(),
         bases=(),
         rule_nodes=[{"not": {"const": "video"}}, {"not": {"const": "audio"}}],
@@ -585,7 +638,7 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
     # second statement and not about the position.
     one = compiler._the_conjuncts_own_type(  # noqa: SLF001
         node,
-        [("/properties/kind/allOf/0", target)],
+        [("/properties/kind/allOf/0", target, _THE_REFERENCE)],
         fields_declared=(),
         bases=(),
         rule_nodes=[{"not": {"const": "video"}}],
