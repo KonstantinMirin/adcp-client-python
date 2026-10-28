@@ -36,12 +36,24 @@ if per:
     print(f"SUM OF ALL WORKERS: {sum(per.values()):.1f} s")
 
 peak = collections.defaultdict(float)
+# ...and the peak CONCURRENT total, which is the figure the OOM killer acts on.  The
+# per-process peak alone does not decide the ceiling: twenty-four workers peaking at
+# different moments cost less than their peaks summed, and only the per-SAMPLE sum says
+# how much.
+at_sample = collections.defaultdict(float)
+live = collections.Counter()
 for line in open(rss, errors="replace"):
     parts = line.split()
     if len(parts) == 3:
         peak[parts[1]] = max(peak[parts[1]], float(parts[2]) / 1024)
+        at_sample[parts[0]] += float(parts[2]) / 1024
+        live[parts[0]] += 1
 if peak:
     vals = sorted(peak.values(), reverse=True)
     print(f"PEAK RSS per process, MB: max {vals[0]:.0f}, median {vals[len(vals)//2]:.0f}, "
           f"min {vals[-1]:.0f}, over {len(vals)} processes")
     print("  top:", ", ".join(f"{v:.0f}" for v in vals[:12]))
+    worst = max(at_sample, key=lambda t: at_sample[t])
+    print(f"PEAK CONCURRENT TOTAL: {at_sample[worst]/1024:.2f} GB over {live[worst]} "
+          f"processes, at sample {worst}")
+    print(f"  samples: {len(at_sample)}, max processes alive at once: {max(live.values())}")
