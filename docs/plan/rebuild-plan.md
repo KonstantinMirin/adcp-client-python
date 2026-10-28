@@ -972,6 +972,20 @@ Dropping the disjunct is not available, measured on `image.json`, whose four siz
 `Presence` states itself: a clause has no `errors` because a branch is not violated on its own,
 and only the combinator above it decides how many branches an instance may satisfy.
 
+**A conjunction of a group with a disjunction of groups DISTRIBUTES into a disjunction of
+groups**, which is the same principle the `$ref` row's distribution clause states one row above:
+conjunction distributes over disjunction. `required_groups` reads an `allOf` of single-group
+conjuncts as one group, the union of their names; an `allOf` whose conjuncts each give a LIST of
+groups is the product of those lists with the names unioned per combination, and the single-group
+case is that product over one-element lists. So
+`allOf: [{"required": [g]}, {"anyOf": [{"required": [a]}, {"required": [b]}]}]` is the two groups
+`((g, a), (g, b))`, which is what the document says and what `governance/check-governance-request.json`
+states at `/allOf/1`.
+
+The product arm never takes `partial`, for the reason the `allOf` arm already does not: dropping an
+unreadable conjunct from a product leaves FEWER names in each group, which under a `not` forbids
+MORE, and a rule stronger than its document is the narrowing §2 refuses.
+
 ---
 
 ## 6. Keywords we admit and do not compile
