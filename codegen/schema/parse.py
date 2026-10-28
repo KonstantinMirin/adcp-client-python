@@ -888,21 +888,34 @@ def presence_only(raw: Mapping[str, Any], position: Position = Position.ROOT) ->
 #: FORBIDS.  A plain pair and not a runtime dataclass, because ``schema/`` reads the
 #: document and ``adcp.types._runtime`` is the model layer's side of the seam -- the
 #: lowering builds :class:`adcp.types._runtime.Presence` out of this.
-Clause = tuple[tuple[str, ...], tuple[tuple[str, ...], ...]]
+Clause = tuple[tuple[tuple[str, ...], ...], tuple[tuple[str, ...], ...]]
 
 
 def presence_clause(branch: Any, position: Position) -> Clause | None:
     """``branch`` as a presence statement, or ``None`` if it says anything else.
 
     **§5, "A union of presence-only branches that also forbid" (decided 2026-10-27).** A
-    branch of a presence-only union states ``required`` and, optionally, a ``not`` over
-    ``required`` groups: "every name in R present and no group of F present in full".
-    Both halves belong to the SAME branch, which is why they are read together and
-    returned paired -- a ``not`` lifted off its branch and stated beside the combinator
-    forbids its groups unconditionally, and ``core/catchment.json`` is the measurement:
-    it states three methods and forbids the other two per method, so a rule holding the
-    union of the three ``not``\\ s forbids all three and refuses every payload the
-    document admits.
+    branch of a presence-only union states its requiredness and, optionally, a ``not``
+    over ``required`` groups: "at least one group of R present in full and no group of F
+    present in full".  Both halves belong to the SAME branch, which is why they are read
+    together and returned paired -- a ``not`` lifted off its branch and stated beside the
+    combinator forbids its groups unconditionally, and ``core/catchment.json`` is the
+    measurement: it states three methods and forbids the other two per method, so a rule
+    holding the union of the three ``not``\\ s forbids all three and refuses every
+    payload the document admits.
+
+    **BOTH HALVES ARE GROUPS** (§5, "A presence clause whose required half is a
+    disjunction of groups", decided 2026-10-29).  ``required: [a, b]`` is the single
+    group ``((a, b),)`` and an ``anyOf`` over ``required`` is the groups it states, which
+    is the reading ``forbid`` already had and for the same reason -- a group is what is
+    satisfied, and a name on its own is not.  Measured over every combinator node of the
+    1,054 portable documents: **3 branches state the disjunctive spelling** and all three
+    are the ``responsive`` arm of one size mutex, at ``/allOf/1/oneOf/2`` of
+    ``formats/canonical/{image,html5,display_tag}.json``.  **0 branches state
+    ``required: []``**, so routing the required half through :func:`required_groups` --
+    which answers ``None`` for an empty name list -- takes no clause out that the
+    conjunctive reading admitted, and the rule tuples the bundle already carries do not
+    move.
 
     A branch whose ``not`` does not reduce to groups is NOT a presence clause: it
     constrains something a rule cannot say, so the node is a combinator of shapes and
@@ -910,15 +923,17 @@ def presence_clause(branch: Any, position: Position) -> Clause | None:
     make the rule say less than the branch with nothing to report it.
 
     **A branch that FORBIDS and requires nothing is a presence clause, and its required
-    group is EMPTY** (``adcp-client-python-10l.64``).  §5's row is "each clause carries
-    its OWN required group and its own forbidden groups, because the ``not`` is per
-    branch", and the section's own reason for the kind is "every branch constrains which
-    keys are present and nothing else, so it is a rule on the root's class and not a
-    branch class" -- which a branch stating only a ``not`` over required groups satisfies.
-    Nothing in either sentence asks the required half to be non-empty, and
+    half carries NO GROUP** (``adcp-client-python-10l.64``).  §5's row is "each clause
+    carries its OWN required group and its own forbidden groups, because the ``not`` is
+    per branch", and the section's own reason for the kind is "every branch constrains
+    which keys are present and nothing else, so it is a rule on the root's class and not
+    a branch class" -- which a branch stating only a ``not`` over required groups
+    satisfies.  Nothing in either sentence asks the required half to be non-empty, and
     :meth:`adcp.types._runtime.Presence.holds` reads an empty ``require`` as the
-    quantifier over no names that it is: the clause is then exactly "no group of F
-    present", which is the branch.
+    requirement over no groups that it is: the clause is then exactly "no group of F
+    present", which is the branch.  Under GROUPS that case is a written term of
+    ``holds`` rather than a vacuous ``all(())``, because ``any(())`` is False -- the one
+    way this generalisation could have silently broken a clause it already admitted.
 
     A branch declaring NOTHING at all stays out, and that is the gate this keeps: §5's
     ``type`` row reads such a node as ``{}``, "which IS true", so it is not a statement
@@ -932,11 +947,32 @@ def presence_clause(branch: Any, position: Position) -> Clause | None:
     if not isinstance(branch, Mapping):
         return None
     declared = {k for k in branch if keywords.declares(k, position)}
-    if not declared or not declared <= {"required", "not"}:
+    if not declared:
         return None
-    if "required" in declared and not isinstance(branch["required"], list):
-        return None
-    require = tuple(n for n in branch.get("required", ()) if isinstance(n, str))
+    # **BOTH HALVES REACH ONE DERIVATION, from the two sides of one branch** (§5, "A
+    # presence clause whose required half is a disjunction of groups", 2026-10-29; §11's
+    # one reading with two readers).  The ``not`` half was always
+    # :func:`required_groups`; the REQUIRED half is the same function asked of everything
+    # the branch declares BESIDE its ``not``, so ``required: [a, b]`` is the single group
+    # ``((a, b),)`` and an ``anyOf`` over ``required`` is the groups it states.  The
+    # screen is that function's own -- it admits ``required``, an ``anyOf`` of groups and
+    # an ``allOf`` of single-group conjuncts, and answers ``None`` for anything else --
+    # so this function keeps no parser and no keyword set of its own.  The set it used to
+    # carry, ``declared <= {"required", "not"}``, is what kept the four documents of
+    # ``adcp-client-python-10l.75`` out: a branch spelling its requirement
+    # DISJUNCTIVELY was read as a union of SHAPES, of a node where no branch declares a
+    # property, a type word or any value constraint.
+    demanded = declared - {"not"}
+    require: tuple[tuple[str, ...], ...] = ()
+    if demanded:
+        # **A branch that FORBIDS and requires nothing keeps its empty ``require``**
+        # (``adcp-client-python-10l.64``), which is this arm being skipped rather than
+        # ``required_groups`` being asked about an empty mapping -- that call answers
+        # ``None`` and would take the clause out.
+        groups = required_groups({k: branch[k] for k in demanded}, position)
+        if groups is None:
+            return None
+        require = tuple(groups)
     if "not" not in declared:
         return (require, ())
     forbid = required_groups(branch["not"], position)

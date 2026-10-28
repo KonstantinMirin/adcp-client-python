@@ -311,31 +311,61 @@ class RequiredGroups(TheValueIsTheObject):
 
 @dataclass(frozen=True)
 class Presence:
-    """One branch of a presence-only union, BOTH halves of it: the names the branch
-    requires, and the groups it forbids.
+    """One branch of a presence-only union, BOTH halves of it: the groups of names the
+    branch's requiredness admits, and the groups it forbids.
 
     A clause and not a rule -- it has no ``errors`` -- for :class:`Match`'s reason: a
     branch is not violated on its own, and only the combinator above it decides how many
-    branches an instance may satisfy.
+    branches an instance may satisfy.  That is also why :class:`RequiredGroups` stays a
+    separate kind while reading the same document fact.
 
     ``forbid`` holds GROUPS and not names, because ``not: {"required": [a, b]}`` forbids
     the PAIR and says nothing about either name alone.  A single-name group is the
     ``anyOf``-of-``required`` spelling, where each name is forbidden on its own.
+
+    **``require`` holds GROUPS for the same reason** (rebuild-plan.md section 5, "A
+    presence clause whose required half is a disjunction of groups", decided
+    2026-10-29).  ``required: [a, b]`` is the single group ``((a, b),)`` and an ``anyOf``
+    over ``required`` is the groups it states; the clause holds when AT LEAST ONE group
+    is present in full.  One field and not a second beside it, because both spellings are
+    the one thing "the groups this branch's requiredness admits" -- two fields would make
+    one clause carry two readings of one keyword.
+
+    **A clause stating NO group states no requirement and HOLDS, and that is written
+    explicitly.**  The conjunctive reading got it from ``all(())``; ``any(())`` is False,
+    so the empty case has to be its own term or a branch that only forbids -- which
+    ``adcp-client-python-10l.64`` admitted on purpose -- would start rejecting every
+    payload.  An empty GROUP inside a non-empty ``require`` is vacuously present, which
+    is ``all(())`` again and is why that half carries no ``group and`` guard: the guard on
+    ``forbid`` is there because an empty forbidden group would otherwise forbid
+    unconditionally, and the two halves differ in exactly that.  ``required_groups``
+    emits no empty group, so neither case is reachable from a document today.
     """
 
-    require: tuple[str, ...] = ()
+    require: tuple[tuple[str, ...], ...] = ()
     forbid: tuple[tuple[str, ...], ...] = ()
 
     def holds(self, keys: frozenset[str]) -> bool:
-        return all(name in keys for name in self.require) and not any(
+        return (
+            not self.require
+            or any(all(name in keys for name in group) for group in self.require)
+        ) and not any(
             group and all(name in keys for name in group) for group in self.forbid
         )
 
     def spelled(self) -> str:
         """The clause as text, for the detail of a refusal."""
         parts = []
-        if self.require:
-            parts.append(f"{', '.join(repr(n) for n in self.require)} present")
+        if len(self.require) == 1:
+            parts.append(f"{', '.join(repr(n) for n in self.require[0])} present")
+        elif self.require:
+            parts.append(
+                "at least one of "
+                + " / ".join(
+                    ", ".join(repr(n) for n in group) for group in self.require
+                )
+                + " present"
+            )
         for group in self.forbid:
             if len(group) == 1:
                 parts.append(f"{group[0]!r} absent")
