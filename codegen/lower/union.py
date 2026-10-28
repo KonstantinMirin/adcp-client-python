@@ -459,12 +459,13 @@ class Branch:
     #: its enclosing union knows about it (:attr:`nodes.Union.branches`).
     parsed: "nodes.Node"
     inherits: Inherited | None = None
-    #: The names this branch forbids ONE AT A TIME (``compiler.Rules.forbids``), which
-    #: is §4's third dispatch source read in the idiom §4 itself names: "each branch
-    #: forbidding a name the other requires".  ``frozenset()`` for a bare ``$ref``
-    #: branch, for :func:`admits_only_what_it_declares`' reason -- a ``not`` is a fact
-    #: about the NODE, the node here is the reference, and ``compiler.Shape`` carries
-    #: the target's properties and ``required`` and not its rules.
+    #: The names this branch forbids ONE AT A TIME (:func:`forbidden_names`, over
+    #: ``compiler.Rules.forbids``), which is §4's third dispatch source read in the idiom
+    #: §4 itself names: "each branch forbidding a name the other requires".
+    #: ``frozenset()`` for a bare ``$ref`` branch, for :func:`closures_of`' reason -- a
+    #: ``not`` is a fact about the NODE, the node here is the reference, and
+    #: ``compiler.Shape`` carries the target's properties and ``required`` and not its
+    #: rules.
     forbids: frozenset[str] = frozenset()
 
     @property
@@ -672,29 +673,65 @@ def _why_no_pin(planned: Sequence[Branch]) -> str:
 # --------------------------------------------------------------------------- #
 # §4's THIRD dispatch source: branches no instance satisfies twice
 # --------------------------------------------------------------------------- #
-def requires(plan: Branch) -> frozenset[str]:
-    """The names this branch requires.
+def demands(plan: Branch) -> frozenset[frozenset[str]]:
+    """Each set of names at least ONE of which every instance of this branch carries.
 
-    Its own ``required``, or -- for a bare ``$ref`` branch -- the target's, which is
-    where that branch's fields come from (§4's two bases).  One reading, beside
-    :attr:`Branch.properties`, which answers the same question about the other half of a
-    branch's shape.
+    ``schema.demanded_names`` of its own declaration -- which reads the branch's
+    ``required``, the presence combinator it states, and both of those inside any
+    ``allOf`` conjunct of it -- or, for a bare ``$ref`` branch, one singleton per name
+    the TARGET requires, which is where that branch's fields come from (§4's two bases).
+    One reading, beside :attr:`Branch.properties`, which answers the same question about
+    the other half of a branch's shape.
+
+    **A SET OF SETS and not a set of names, because a branch's requirement is not always
+    one name.**  ``brand.json``'s branch 3 states ``anyOf: [{"required": ["brands"]},
+    {"required": ["brand_refs"]}]``, so every instance of it carries one of the two and a
+    sibling forbidding both is disjoint from it -- where neither name alone is required.
+    A plain ``required: [a, b]`` yields the two singletons ``{a}`` and ``{b}``, which is
+    exactly the reading :func:`separates` had before the groups arrived.
     """
     if plan.inherits is not None:
-        return frozenset(plan.inherits.shape.required)
-    required = plan.node.get("required") if isinstance(plan.node, Mapping) else None
-    return frozenset(required) if isinstance(required, list) else frozenset()
+        return frozenset(frozenset({n}) for n in plan.inherits.shape.required)
+    return schema.demanded_names(plan.node, Position.BRANCH)
 
 
-def admits_only_what_it_declares(plan: Branch) -> bool:
-    """Does this branch FORBID every name outside its own property map?
+def requires(plan: Branch) -> frozenset[str]:
+    """The names this branch requires ON THEIR OWN.
+
+    :func:`demands`' singleton groups, which is what "this key is present in every
+    instance" means -- the question §4's FOURTH separator asks of the branch that PINS a
+    value (an instance omitting the key satisfies the forbidding branch too, so the pin
+    separates nothing).  Read off the one reading rather than off the declaration a
+    second time: a branch whose ``required`` sits in an ``allOf`` conjunct requires those
+    names just as much, and two readings is how the two separators come to disagree about
+    one branch.
+    """
+    return frozenset(name for group in demands(plan) for name in group if len(group) == 1)
+
+
+def closures_of(plan: Branch) -> tuple[frozenset[str], ...]:
+    """For each view of this branch that FORBIDS every name outside its own property map,
+    the names that map declares.
+
+    **It was ``admits_only_what_it_declares`` and answered a BOOLEAN**, which is the name
+    for a question about one node; the answer is now one map per closed VIEW of the
+    branch, so the name follows the answer rather than outliving it.
 
     ``additionalProperties: false`` says so, and a ``patternProperties`` beside it takes
     it back for whatever the pattern matches -- so a node carrying one admits names this
-    cannot enumerate and the answer is no.
+    cannot enumerate and is not one of these views.  ``schema.closed_maps`` is the
+    reading and it ranges over the branch and its ``allOf`` conjuncts alike, because
+    draft-07 conjoins a conjunct with the node that holds it: a conjunct closing the
+    instance over its own four properties closes it, whatever the branch states above.
 
-    **A bare ``$ref`` branch answers NO, and that is §4's own instruction rather than a
-    gap this hides.**  Closure is a fact about the NODE, the branch's node is the
+    **ONE ENTRY PER CLOSED VIEW, and the map is that view's own.**  Closure is a fact
+    about the NODE: a conjunct stating ``additionalProperties: false`` beside
+    ``properties: {a}`` says the instance's members are inside ``{a}``, and the branch's
+    other views do not widen that.  So a demanded name outside ANY ONE of these maps is
+    a name the branch refuses, and :func:`separates` asks the question of each in turn.
+
+    **A bare ``$ref`` branch yields NONE, and that is §4's own instruction rather than a
+    gap this hides.**  Closure is a fact about the node, the branch's node is the
     reference, and ``compiler.Shape`` carries a target's properties and its ``required``
     and not its ``additionalProperties`` -- so the derivation cannot read the target's
     closure from here, and §4 says "a pair the derivation cannot separate is treated as
@@ -702,18 +739,40 @@ def admits_only_what_it_declares(plan: Branch) -> bool:
     source exists to avoid".  Reading it would need ``compiler.Shape`` to carry the fact,
     which is a change to the shared record and not this row's.
     """
-    if not isinstance(plan.node, Mapping):
-        return False
-    return (
-        plan.node.get("additionalProperties") is False
-        and "patternProperties" not in plan.node
-    )
+    return schema.closed_maps(plan.node, Position.BRANCH)
+
+
+def forbidden_names(parsed: "nodes.Node", raw: Any) -> frozenset[str]:
+    """The names this branch forbids ONE AT A TIME, over the branch AND its conjuncts.
+
+    ``compiler.rules_at`` is the one reduction of a ``not`` over ``required`` into
+    ``ForbiddenGroups`` (§4's second separator reads the rule the branch already
+    carries), and its ``also`` argument is the mechanism that already exists for "the
+    other nodes whose rules belong to THIS class, which is what a draft-07 ``allOf``
+    conjunct is".  So the widening is the argument, filled from
+    ``schema.applies_to_one_instance``, and not a second reduction of the keyword.
+
+    **The measured case.**
+    ``account/sync-accounts-request.json#/properties/accounts/items/oneOf`` states its two
+    branches' guards as ``allOf`` conjuncts of ``not: {"required": [...]}`` -- four on one
+    branch and six on the other, each forbidding a name the other branch requires -- and
+    read off the branch node alone each branch forbids NOTHING, so the pair was
+    inseparable and the union carried an UNDERDETERMINED declaration it had not earned.
+    ``brand.json``'s branch 4 is the same idiom with the ``not`` inside ``allOf[0]``
+    beside that conjunct's ``type`` and ``properties``.
+
+    ONE reading for the two places a branch is planned -- :func:`_plan` and
+    :func:`_undetermined` -- so a root branch and a nested one cannot come to forbid
+    different names.
+    """
+    views = schema.applies_to_one_instance(raw, Position.BRANCH)
+    return compiler.rules_at(parsed, *views[1:], position=Position.BRANCH).forbids
 
 
 def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
     """What tells these two branches apart, or ``None`` where nothing does.
 
-    §4's third dispatch source names three separators and all three are here, each
+    §4's third dispatch source names four separators and all four are here, each
     read off the branches themselves:
 
     * **one property pinned to different ``const`` values** -- an instance carrying one
@@ -721,10 +780,40 @@ def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
     * **a ``required`` name one branch declares and another forbids** -- an instance
       carrying the name fails the forbidding branch and one without it fails the
       requiring branch;
+    * **one branch forbidding a VALUE another pins**;
     * **scalar branches of different ``type``**.
 
     ``a_type`` and ``b_type`` are the ``type`` the DOCUMENT applies to each branch
     (:func:`applied_type`), because a branch stating none of its own has the root's.
+
+    **THE FOUR ARE UNCHANGED AND WHERE EACH ONE IS READ IS WIDER, 2026-10-28**
+    (``adcp-client-python-10l.30``).  Measured over the authored unions of 3.2 whose
+    branches are all shapes -- 169 of them, 112 with a ``$ref`` branch -- a pass with the
+    narrow readings left pairs nothing separated that the DOCUMENTS do separate, in their
+    own idiom, one level away from where each reading looked.  Four readings widened and
+    no fifth separator added:
+
+    1. **A ``not`` guard reached through an ``allOf``.**  Draft-07 conjoins a conjunct
+       with the node that holds it, so a ``not`` a conjunct states forbids a name for the
+       branch.  ``schema.applies_to_one_instance`` is the descent and
+       ``compiler.rules_at``'s ``also`` already took it for a composing class, which is
+       where :func:`_plan` now hands the conjuncts.
+       ``account/sync-accounts-request.json#/properties/accounts/items/oneOf`` is the
+       measured case -- each branch's guards are four and six ``allOf`` conjuncts of
+       ``not: {"required": [...]}`` and the pair was inseparable.
+    2. **A presence group counts toward what a branch REQUIRES** (:func:`demands`): a
+       branch stating ``anyOf: [{"required": ["brands"]}, {"required": ["brand_refs"]}]``
+       does require one of them.  ``formats/canonical/display_tag.json``, ``html5.json``
+       and ``image.json`` separate "responsive" from "none" on it, and ``brand.json``'s
+       branch 3 separates from its branch 1.
+    3. **A closed branch separates by what it does not DECLARE, at every closed VIEW of
+       it** (:func:`closures_of`) -- a conjunct that closes the instance
+       over its own map closes it.
+    4. **The type separator one level down**, at ``items``, for two array branches.
+
+    Each is a reading of a separator §4 already names, at a position the reading did not
+    reach, and every one is DERIVED from the declaration: nothing here matches a set of
+    document names, and a branch added upstream is read by the same descent.
 
     **MEASURED, one separator at a time, by turning each off and re-emitting.**  Over the
     7 roots that reach the derivation (30 pairs, 24 of them separated):
@@ -736,16 +825,39 @@ def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
       **732 -> 689**, which is the whole weight of the source;
     * the scalar type decides 0, and off, nothing moves.
 
-    **The third separator's set is empty at this position, and it is written anyway.**
-    Two checks upstream make it so: :func:`lower_union` refuses a root whose own ``type``
-    is neither absent nor ``"object"``, and :func:`_plan` refuses a branch whose own
-    ``type`` is neither -- so every branch the derivation is handed has an applied type of
-    ``None`` or ``"object"`` and no pair of them differs as scalars.  A union whose
-    branches ARE scalars is a root scalar and reaches :func:`_alias` instead, which
-    declares no branch classes and so needs no dispatch at all.  It is written because §4
-    names three separators and a derivation missing one is narrower than the section it
-    implements, and it is GRADED directly on a constructed pair -- the same ground
-    :func:`declares_a_class` keeps its 0-of-126 guard on.
+    **MEASURED, one separator at a time, by turning each off and re-emitting.**  Over the
+    7 roots that reach the derivation (30 pairs, 24 of them separated):
+
+    * the pinned ``const`` decides 6 pairs, all of ``core/audience-selector.json``, whose
+      four branches pin ``value_type`` three ways and ``type`` the fourth.  Off: emitted
+      732 -> 730, that root and ``governance/audience-constraints.json`` behind it;
+    * the required/forbidden name decides 18 pairs across 5 roots.  Off: emitted
+      **732 -> 689**, which is the whole weight of the source;
+    * the scalar type decides 0, and off, nothing moves.
+
+    **The TYPE separator's set is empty at this position, in both its arms, and it is
+    written anyway.**  Two checks upstream make it so: :func:`lower_union` refuses a root
+    whose own ``type`` is neither absent nor ``"object"``, and :func:`_plan` refuses a
+    branch whose own ``type`` is neither -- so every branch the derivation is handed has
+    an applied type of ``None`` or ``"object"``, no pair of them differs as scalars, and
+    no pair of them is two arrays.  A union whose branches ARE scalars is a root scalar
+    and reaches :func:`_alias` instead, which declares no branch classes and so needs no
+    dispatch at all; a union of ARRAY branches is excluded by the shape gate both halves
+    of §8's third equality apply, for the same reason -- there are no branch classes for
+    a declaration order to choose between.  It is written because §4 names the separator
+    and a derivation missing one is narrower than the section it implements, and it is
+    GRADED directly on the bundle's own nodes -- the same ground :func:`declares_a_class`
+    keeps its 0-of-126 guard on.
+
+    **What the ELEMENT arm cannot read, said here rather than discovered later.**
+    ``brand.json#/definitions/localized_string_list`` states its second branch's element
+    type as ``items: {"$ref": "#/definitions/localized_string_list_entry"}``, and the
+    fact is then in the TARGET: ``schema.element_word`` reads the word off this node and
+    answers ``None``, so the pair is not separated.  Resolving a local reference is not a
+    reading of this node -- it is what ``compiler.local_reference`` DECLARES, which a
+    derivation may not do (:func:`_undetermined`'s pure-map rule) -- so the arm fires on
+    a pair that states both element words and leaves this one to §4's "a pair the
+    derivation cannot separate is treated as overlapping".
     """
     first, second = pins(a.properties), pins(b.properties)
     for key in sorted(set(first) & set(second)):
@@ -772,21 +884,35 @@ def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
         # the clearest of: its two branches require ``verdict`` and ``errors``, forbid
         # nothing and close nothing, so one instance satisfies both.  They are §4's
         # UNDERDETERMINED row and step 10's.
-        forbidden = sorted(requires(one) & other.forbids)
-        if forbidden:
-            return (
-                f"one branch requires {forbidden} and the other forbids every one of "
-                "them by name (a not over required)"
-            )
-        if not admits_only_what_it_declares(other):
-            continue
-        declared = set(other.properties or {})
-        forbidden = sorted(requires(one) - declared)
-        if forbidden:
-            return (
-                f"one branch requires {forbidden} and the other declares no such "
-                "property and admits no name outside its own map"
-            )
+        # **A GROUP AT A TIME, which is what "a name one branch declares" is once the
+        # branch states its requirement as a presence combinator** (:func:`demands`).
+        # Every instance of ``one`` carries some name of the group, so a branch forbidding
+        # EVERY name in it admits no instance of ``one`` -- and for a singleton group that
+        # is the one-name reading this arm had.  ``formats/canonical/display_tag.json``,
+        # ``html5.json`` and ``image.json`` are the measured case: the "responsive" branch
+        # states ``anyOf`` over ``min_width`` / ``max_width`` / ``min_height`` /
+        # ``max_height`` and the "none" branch forbids all four, so every instance of the
+        # first carries a name the second refuses.  Read name by name the group requires
+        # nothing and the pair is inseparable, which is what the document does not say.
+        for group in sorted(demands(one), key=sorted):
+            if group <= other.forbids:
+                return (
+                    f"one branch requires one of {sorted(group)} and the other forbids "
+                    "every one of them by name (a not over required)"
+                )
+            # **CLOSURE, asked of each closed VIEW of the other branch.**  A name outside
+            # a closed map is a name that branch refuses, so a group every one of whose
+            # names it never declares separates the pair exactly as a ``not`` by name
+            # does: an instance of ``one`` carries one of them and the closed branch
+            # admits no member outside its own map.  ``brand.json`` separates its branch 3
+            # from its branch 1 this way -- branch 3 requires one of ``brands`` /
+            # ``brand_refs`` and branch 1 is closed over a map declaring neither.
+            for declared in closures_of(other):
+                if not group & declared:
+                    return (
+                        f"one branch requires one of {sorted(group)} and the other "
+                        "declares no such property and admits no name outside its own map"
+                    )
     for one, other in ((a, b), (b, a)):
         # **§4's FOURTH separator, added 2026-10-27: one branch forbids a VALUE another
         # pins.**  It exists because neither separator above was sound for a real union:
@@ -814,6 +940,33 @@ def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
     scalars = a_type not in (None, "object") and b_type not in (None, "object")
     if scalars and a_type != b_type:
         return f"the branches are scalars of type {a_type!r} and {b_type!r}"
+    if a_type == b_type == "array":
+        # **THE TYPE SEPARATOR ONE LEVEL DOWN, which is where an array branch states
+        # what its instance is.**  Two branches of the same container word are not told
+        # apart by the word, and ``items`` describes every member -- so an array of
+        # strings and an array of objects are separated by any member either one carries,
+        # for the same reason two scalar branches of different ``type`` are.
+        # ``brand.json#/definitions/localized_string_list`` is the bundle's case: two
+        # ``type: array`` branches, one of strings and one of entries.
+        #
+        # **The EMPTY ARRAY is why both halves of ``element_word`` are read.**  ``[]``
+        # satisfies ``items`` vacuously, so two arrays of disjoint element types both
+        # admit it; ``minItems`` of at least 1 on either branch is what refuses it, and a
+        # pair where neither branch refuses it overlaps at exactly that value.  §4's "a
+        # pair the derivation cannot separate is treated as overlapping" makes that a
+        # refusal to separate rather than a judgement.
+        a_word, a_nonempty = schema.element_word(a.node, Position.BRANCH)
+        b_word, b_nonempty = schema.element_word(b.node, Position.BRANCH)
+        if (
+            a_word is not None
+            and b_word is not None
+            and a_word != b_word
+            and (a_nonempty or b_nonempty)
+        ):
+            return (
+                f"the branches are arrays whose elements are {a_word!r} and {b_word!r}, "
+                "and one of them refuses the empty array"
+            )
     return None
 
 
@@ -1618,7 +1771,7 @@ def _undetermined(node: "nodes.Union", mod: compiler.Module) -> None:
             # :class:`compiler.Shape` is not a class, so ``inherits`` stays ``None`` and
             # the shape gate below drops the whole union.
             inherits=_targeted(raw, parsed.pointer, mod),
-            forbids=compiler.rules_at(parsed, position=Position.BRANCH).forbids,
+            forbids=forbidden_names(parsed, raw),
         )
         for parsed, raw in zip(node.branches, node.branch_raw, strict=True)
     ]
@@ -1824,8 +1977,13 @@ def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal
     # is the names this branch's ``not`` forbids by name, which is §4's third source
     # (:func:`separates`), so the rule the branch carries and the separator the root is
     # dispatched by cannot disagree about what a ``not`` over ``required`` says.
+    #
+    # The SCREEN is this node's own, which is what a keyword screen asks (``rules_at``:
+    # "a keyword screen is asked about one node, and each conjunct is screened by its own
+    # call at its own pointer"), and the FORBIDDEN NAMES range over the branch's
+    # conjuncts too -- :func:`forbidden_names`, whose docstring carries the measured case.
     stated = compiler.rules_at(parsed, position=Position.BRANCH)
-    forbids = stated.forbids
+    forbids = forbidden_names(parsed, branch)
     refused = compiler.check_keywords(  # the walk's own check
         parsed,
         BRANCH_CLAIMS | stated.screen,

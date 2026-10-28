@@ -882,6 +882,151 @@ def required_groups(
     return None
 
 
+def applies_to_one_instance(node: Any, position: Position) -> list[Mapping[str, Any]]:
+    """``node`` and every node its ``allOf`` applies to the SAME instance.
+
+    Draft-07 conjoins an ``allOf`` conjunct with the node that holds it, so a fact a
+    conjunct states is a fact about the instance the node describes -- which is D7's own
+    wording and the reason ``compiler.lower_composition`` reads a conjunct's
+    ``properties`` as the composing node's fields and hands its rule sources to
+    ``compiler.rules_at`` as that node's own.  Every reading of a BRANCH's declaration
+    owes the same descent, and §4's disjointness derivation is three of them: what the
+    branch requires, what it forbids, and what it declares while admitting nothing else.
+
+    **The measured case, and why the descent is not optional**:
+    ``account/sync-accounts-request.json#/properties/accounts/items/oneOf`` states its
+    two branches' guards as ``allOf: [{"not": {"required": ["account"]}}, ...]`` rather
+    than at the branch's top level, and ``brand.json``'s catch-all branch 4 carries a
+    ``not`` forbidding every sibling's discriminant inside ``allOf[0]``.  Read at the top
+    level alone both branch pairs are inseparable and the document's own idiom says they
+    are not.
+
+    A conjunct that is a ``$ref`` contributes NOTHING, which is the conservative
+    direction and the one §4 already takes for a bare ``$ref`` branch: the fact is in the
+    target, resolving it is not a reading of this node, and "a pair the derivation cannot
+    separate is treated as overlapping, because admitting a union on an unproven
+    disjointness is the defect this source exists to avoid".  Flattened to any depth,
+    because an ``allOf`` of an ``allOf`` conjoins just the same.
+    """
+    if not isinstance(node, Mapping):
+        return []
+    out = [node]
+    if "allOf" in {k for k in node if keywords.declares(k, position)}:
+        conjuncts = node["allOf"]
+        if isinstance(conjuncts, list):
+            for conjunct in conjuncts:
+                if isinstance(conjunct, Mapping) and "$ref" not in conjunct:
+                    out.extend(applies_to_one_instance(conjunct, position))
+    return out
+
+
+def demanded_names(node: Any, position: Position) -> frozenset[frozenset[str]]:
+    """Each set of names at least ONE of which every instance of ``node`` carries.
+
+    §4's second separator asks "a ``required`` name one branch declares and another
+    forbids", and the name a branch declares is not always one name: a branch stating
+    ``anyOf: [{"required": ["brands"]}, {"required": ["brand_refs"]}]`` beside its own
+    ``required`` does require one of the two, so a sibling that forbids BOTH -- by name,
+    or by being closed and declaring neither -- is disjoint from it.  That is the
+    quantity, and it is returned as a set of SETS because the separator is a question
+    about each alternative group and not about one name:
+    :func:`codegen.lower.union.separates` separates the pair where every name of some
+    group is forbidden, which for a singleton group is exactly the reading it already had.
+
+    Three sources, each over :func:`applies_to_one_instance` so a conjunct's statement
+    counts:
+
+    * ``required: [a, b]`` -> ``{a}`` and ``{b}``, two groups, because each name is
+      present on its own;
+    * a ``oneOf``/``anyOf`` of branches that each guarantee a name -> ONE group, the
+      union of what the branches guarantee.  Whichever branch an instance satisfies, that
+      branch's names are present and they are inside the union, so the union has a member
+      present.  A branch guaranteeing NOTHING -- ``{"properties": {...}}`` with no
+      ``required`` -- makes the whole combinator guarantee nothing, which is why
+      ``adagents.json``'s 6-branch ``anyOf`` yields no group: its first branch states a
+      property map and no ``required``, so an instance can satisfy the combinator while
+      carrying none of the other five names.
+    * a conjunct of either shape, recursively.
+
+    **The DUAL of :func:`required_groups` and not a second copy of it.**  That function
+    reduces a subschema to the groups whose presence SATISFIES it, which is what an
+    enclosing ``not`` negates; this one reads an ASSERTED node for what it guarantees.
+    The two answers differ at the keyword that matters most: ``required: [a, b]``
+    satisfies as one group ``(a, b)`` and guarantees two, ``{a}`` and ``{b}``.  Reading
+    one through the other would make the separator weaker than the document at every
+    branch that states a plain ``required``.
+    """
+    out: set[frozenset[str]] = set()
+    for view in applies_to_one_instance(node, position):
+        declared = {k for k in view if keywords.declares(k, position)}
+        required = view.get("required")
+        if "required" in declared and isinstance(required, list):
+            out |= {frozenset({n}) for n in required if isinstance(n, str)}
+        for combinator in UNION:
+            if combinator not in declared or not isinstance(view.get(combinator), list):
+                continue
+            guaranteed: set[str] = set()
+            for branch in view[combinator]:
+                names = {n for group in demanded_names(branch, position) for n in group}
+                if not names:
+                    guaranteed = set()
+                    break
+                guaranteed |= names
+            if guaranteed:
+                out.add(frozenset(guaranteed))
+    return frozenset(out)
+
+
+def closed_maps(node: Any, position: Position) -> tuple[frozenset[str], ...]:
+    """For each view of ``node`` that admits only what it declares, the names it declares.
+
+    ``additionalProperties: false`` says an instance's members lie inside that node's own
+    ``properties``, so a name the node never declares is a name it REFUSES -- which is
+    §4's second separator read off closure rather than off a ``not``.  A
+    ``patternProperties`` beside it takes the closure back for whatever the pattern
+    matches, so such a view admits names this cannot enumerate and is not one.
+
+    One entry per closed view, because closure is a fact about the NODE and not about the
+    conjunction: a conjunct stating ``additionalProperties: false`` beside its own
+    ``properties`` closes the instance over THAT map, and the node's other views do not
+    widen it.  So a demanded name outside ANY ONE of these maps is refused, and the
+    separator asks the question of each in turn.
+    """
+    return tuple(
+        frozenset(view.get("properties") or {})
+        for view in applies_to_one_instance(node, position)
+        if view.get("additionalProperties") is False and "patternProperties" not in view
+    )
+
+
+def element_word(node: Any, position: Position) -> tuple[Any, bool]:
+    """The ``type`` this node applies to every ELEMENT, and whether it refuses ``[]``.
+
+    §4's fourth separator is "scalar branches of different ``type``", and an array branch
+    states its instance's type one level down: ``items`` describes every member, so two
+    array branches whose elements are a string and an object are told apart by any
+    member.  ``brand.json#/definitions/localized_string_list`` is the bundle's case --
+    two ``type: array`` branches, one of strings and one of entries.
+
+    **The EMPTY ARRAY is why the second half of the answer is here.**  ``[]`` satisfies
+    ``items`` vacuously, so two arrays of disjoint element types both admit it and the
+    pair is NOT disjoint on the element word alone.  ``minItems`` of 1 or more is what
+    refuses it, and a pair where neither branch refuses it overlaps at exactly that one
+    value -- which §4's "a pair the derivation cannot separate is treated as overlapping"
+    makes a refusal to separate rather than a judgement call.
+
+    The word is ``None`` where ``items`` states none, which includes an ``items`` that is
+    a ``$ref``: the fact is in the target and resolving it is not a reading of this node
+    (:func:`applies_to_one_instance`'s own rule).
+    """
+    if not isinstance(node, Mapping):
+        return None, False
+    items = node.get("items")
+    word = items.get("type") if isinstance(items, Mapping) else None
+    minimum = node.get("minItems")
+    return word, isinstance(minimum, int) and not isinstance(minimum, bool) and minimum >= 1
+
+
 def forbidden_values(sub: Any, position: Position) -> dict[str, Any]:
     """Each ``(key, value)`` pair ``sub``'s ``not`` forbids, read off a PINNED property.
 
@@ -904,6 +1049,12 @@ def forbidden_values(sub: Any, position: Position) -> dict[str, Any]:
     the reading cannot take contributes nothing and the others still contribute theirs,
     which is ``required_groups``' ``partial`` rule for the same reason: under a ``not``,
     forbidding less is the safe direction.
+
+    **Read over every view of ``sub``** (:func:`applies_to_one_instance`), because a
+    branch's guard sits inside one of its ``allOf`` conjuncts as often as at its top
+    level and draft-07 conjoins the two: a ``not`` a conjunct states is a statement about
+    the instance the branch describes.  The same descent the other two readings of a
+    branch's declaration take.
     """
     out: dict[str, Any] = {}
 
@@ -929,8 +1080,8 @@ def forbidden_values(sub: Any, position: Position) -> dict[str, Any]:
         elif isinstance(declaration.get("enum"), list) and len(declaration["enum"]) == 1:
             out[name] = declaration["enum"][0]
 
-    if isinstance(sub, Mapping):
-        member(sub.get("not"))
+    for view in applies_to_one_instance(sub, position):
+        member(view.get("not"))
     return out
 
 

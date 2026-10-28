@@ -3821,6 +3821,107 @@ def _pins(node: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _views(node: Any) -> list[Mapping[str, Any]]:
+    """``node`` and every node its ``allOf`` applies to the SAME instance.
+
+    **A second spelling of ``codegen.schema.parse.applies_to_one_instance``, over the
+    DOCUMENT**, for :func:`separates`' reason: a verifier that asked the walk which nodes
+    a branch's facts are stated at would compare the walk's answer with itself.
+
+    Draft-07 conjoins an ``allOf`` conjunct with the node that holds it, so a ``not``, a
+    ``required``, a ``properties`` or an ``additionalProperties`` a conjunct states is a
+    statement about the instance the branch describes.  Every reading below ranges over
+    these views rather than over the branch node alone, which is the widening
+    ``adcp-client-python-10l.30`` landed: ``account/sync-accounts-request.json`` states
+    its two branches' ``not`` guards as four and six ``allOf`` conjuncts, and read at the
+    top level alone each branch forbids nothing.
+
+    A ``$ref`` conjunct contributes NOTHING: the fact is in the target, and §4's "a pair
+    the derivation cannot separate is treated as overlapping" is what that costs.
+    Flattened to any depth, because an ``allOf`` of an ``allOf`` conjoins just the same.
+    """
+    if not isinstance(node, Mapping):
+        return []
+    out = [node]
+    if isinstance(node.get("allOf"), list):
+        for conjunct in node["allOf"]:
+            if isinstance(conjunct, Mapping) and "$ref" not in conjunct:
+                out.extend(_views(conjunct))
+    return out
+
+
+def _demands(node: Mapping[str, Any]) -> frozenset[frozenset[str]]:
+    """Each set of names at least ONE of which every instance of ``node`` carries.
+
+    **A second spelling of ``codegen.schema.parse.demanded_names``, over the DOCUMENT.**
+
+    §4's second separator asks for "a ``required`` name one branch declares", and a
+    branch does not always declare one name: ``anyOf: [{"required": ["brands"]},
+    {"required": ["brand_refs"]}]`` requires one of two, so a sibling forbidding both is
+    disjoint from it.  So the answer is a set of SETS -- a plain ``required: [a, b]``
+    gives the singletons ``{a}`` and ``{b}``, and a combinator gives one set, the union of
+    what its branches guarantee.  A branch guaranteeing nothing makes its combinator
+    guarantee nothing, because an instance can then satisfy the combinator carrying none
+    of the other branches' names.
+    """
+    out: set[frozenset[str]] = set()
+    for view in _views(node):
+        required = view.get("required")
+        if isinstance(required, list):
+            out |= {frozenset({n}) for n in required if isinstance(n, str)}
+        for keyword in _COMBINATORS:
+            branches = view.get(keyword)
+            if not isinstance(branches, list) or not branches:
+                continue
+            guaranteed: set[str] = set()
+            for branch in branches:
+                names = {
+                    n
+                    for group in (_demands(branch) if isinstance(branch, Mapping) else ())
+                    for n in group
+                }
+                if not names:
+                    guaranteed = set()
+                    break
+                guaranteed |= names
+            if guaranteed:
+                out.add(frozenset(guaranteed))
+    return frozenset(out)
+
+
+def _closed_maps(node: Mapping[str, Any]) -> tuple[frozenset[str], ...]:
+    """For each view of ``node`` that admits only what it declares, the names it declares.
+
+    ``additionalProperties: false`` puts an instance's members inside that view's own
+    ``properties``, so a name the view never declares is a name it refuses.  A
+    ``patternProperties`` beside it takes the closure back for whatever the pattern
+    matches.  One entry per closed view, because closure is a fact about the NODE: a
+    conjunct closing the instance over its own map closes it, and the branch's other views
+    do not widen that.
+    """
+    return tuple(
+        frozenset(view.get("properties") or {})
+        for view in _views(node)
+        if view.get("additionalProperties") is False and "patternProperties" not in view
+    )
+
+
+def _element(node: Mapping[str, Any]) -> tuple[Any, bool]:
+    """The ``type`` ``node`` applies to every ELEMENT, and whether it refuses ``[]``.
+
+    An array branch states what its instance is one level down, so two array branches
+    whose elements are a string and an object are told apart by any member -- the type
+    separator at the position an array states it.  ``[]`` satisfies ``items`` vacuously,
+    so the pair is disjoint only where one of the two refuses the empty array, which
+    ``minItems`` of at least 1 is.  The word is ``None`` where ``items`` states none,
+    which includes an ``items`` that is a ``$ref``.
+    """
+    items = node.get("items")
+    word = items.get("type") if isinstance(items, Mapping) else None
+    minimum = node.get("minItems")
+    return word, isinstance(minimum, int) and not isinstance(minimum, bool) and minimum >= 1
+
+
 def _forbids(node: Mapping[str, Any]) -> frozenset[str]:
     """The names ``node`` forbids ONE AT A TIME, read off its ``not`` over ``required``.
 
@@ -3866,7 +3967,8 @@ def _forbids(node: Mapping[str, Any]) -> frozenset[str]:
                 for member in sub[keyword]:
                     groups(member)
 
-    groups(node.get("not"))
+    for view in _views(node):
+        groups(view.get("not"))
     return frozenset(found)
 
 
@@ -3909,7 +4011,8 @@ def _forbidden_values(node: Mapping[str, Any]) -> dict[str, Any]:
         elif isinstance(declaration.get("enum"), list) and len(declaration["enum"]) == 1:
             out[name] = declaration["enum"][0]
 
-    member(node.get("not"))
+    for view in _views(node):
+        member(view.get("not"))
     return out
 
 
@@ -3924,24 +4027,42 @@ def separates(a: Mapping[str, Any], b: Mapping[str, Any], a_type: Any, b_type: A
     exactly here: if the verifier asked the walk which unions it could not separate, the
     equality below would compare the walk's answer with itself.
 
-    Section 4's three separators, each read off the branch nodes of the record:
+    Section 4's four separators, each read off the branch nodes of the record:
 
     * one property pinned to different single values;
     * a ``required`` name one branch declares and the other forbids -- BY NAME, through a
       ``not`` over ``required`` (:func:`_forbids`), which is the idiom §4 itself names
       ("each branch forbidding a name the other requires"), or by admitting no name
       outside its own map;
+    * one branch forbidding a VALUE another pins;
     * scalar branches of different ``type``.
+
+    **WHERE each one is read is wider, 2026-10-28** (``adcp-client-python-10l.30``), and
+    the four readings moved on this side for the reason they moved on the walk's: the
+    documents separate these pairs in their own idiom, one level from where each reading
+    looked.  A ``not`` and a ``required`` and a closure are read over every view of the
+    branch (:func:`_views`, the ``allOf`` descent draft-07 already asserts); what a branch
+    requires is a set of GROUPS, so a presence combinator counts (:func:`_demands`);
+    closure is asked of each closed view (:func:`_closed_maps`); and the type separator
+    descends to ``items`` for two array branches (:func:`_element`).  No fifth separator:
+    each is a reading of one §4 names.
+
+    The two spellings moved in the same commit and each was written from §4 rather than
+    from the other, which is what keeps the equality an instrument: the walk reads the
+    branch through ``compiler.rules_at`` and ``codegen.schema.parse``, and this reads the
+    document node.
     """
     first, second = _pins(a), _pins(b)
     for key in sorted(set(first) & set(second)):
         if first[key] != second[key]:
             return f"{key!r} is pinned two ways"
     for one, other in ((a, b), (b, a)):
-        required = {n for n in (one.get("required") or []) if isinstance(n, str)}
-        named = sorted(required & _forbids(other))
-        if named:
-            return f"one branch requires {named} and the other forbids each by name"
+        for group in sorted(_demands(one), key=sorted):
+            if group <= _forbids(other):
+                return (
+                    f"one branch requires one of {sorted(group)} and the other forbids "
+                    "each by name"
+                )
     for one, other in ((a, b), (b, a)):
         # **§4's FOURTH separator (2026-10-27): one branch forbids a VALUE another pins.**
         # The pinning branch must also REQUIRE the key, or an instance of it omitting the
@@ -3957,16 +4078,33 @@ def separates(a: Mapping[str, Any], b: Mapping[str, Any], a_type: Any, b_type: A
         if named:
             return f"one branch pins {named} to a value the other forbids outright"
     for one, other in ((a, b), (b, a)):
-        closed = other.get("additionalProperties") is False and "patternProperties" not in other
-        if not closed:
-            continue
-        declared = set(other.get("properties") or {})
-        required = {n for n in (one.get("required") or []) if isinstance(n, str)}
-        if required - declared:
-            return f"one branch requires {sorted(required - declared)} and the other forbids it"
+        for declared in _closed_maps(other):
+            for group in sorted(_demands(one), key=sorted):
+                if not group & declared:
+                    return (
+                        f"one branch requires one of {sorted(group)} and the other "
+                        "forbids every one of them"
+                    )
     scalars = a_type not in (None, "object") and b_type not in (None, "object")
     if scalars and a_type != b_type:
         return f"the branches are scalars of type {a_type!r} and {b_type!r}"
+    if a_type == b_type == "array":
+        # The type separator one level down, at ``items``: two branches of one container
+        # word are not told apart by the word, and the element schema describes every
+        # member.  ``[]`` satisfies ``items`` vacuously, so one of the two has to refuse
+        # the empty array or the pair overlaps at exactly that value.
+        one_word, nonempty_a = _element(a)
+        two_word, nonempty_b = _element(b)
+        if (
+            one_word is not None
+            and two_word is not None
+            and one_word != two_word
+            and (nonempty_a or nonempty_b)
+        ):
+            return (
+                f"the branches are arrays whose elements are {one_word!r} and "
+                f"{two_word!r}, and one of them refuses the empty array"
+            )
     return None
 
 
