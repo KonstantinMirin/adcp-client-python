@@ -2076,12 +2076,49 @@ def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal
         # declares none of its own, and ``lower_composition`` reads the conjunct list
         # for them.
         return Branch(pointer=pointer, node=branch, parsed=parsed, forbids=forbids)
-    if "properties" not in branch:
+    if isinstance(parsed, nodes.Typeless):
+        # **A branch declaring nothing about an object's MEMBERS has no subclass to be**,
+        # and the keyword that is the reason is ``type``: §5's ``type`` row reads a node
+        # stating neither a word nor a member keyword as ``{}``, which IS ``true``, so
+        # such a branch admits every instance the base admits and there is nothing for a
+        # subclass to narrow.  **The question is asked of the parser's own
+        # classification** -- :class:`nodes.Typeless` IS that reading of that row, made at
+        # that arm -- and not of a keyword set written again here, which would be a second
+        # copy of §5's arm order for the two to disagree through (§11).  A branch the
+        # parser classified as some other kind is not this one and keeps its own refusal:
+        # the branch loop below reports a ``Reference``, an ``Enumeration`` or a
+        # ``Constant`` on the keyword that classified it.
+        #
+        # **It no longer reaches a branch that states ``required`` and no property map.**
+        # That sentence read "a branch declaring no property constrains only requiredness:
+        # that is a rule on the root's class (D2, D6), not a branch class" and the cell
+        # says otherwise: §5's ``oneOf``/``anyOf`` row answers a presence rule only where
+        # the union is presence-only in EVERY branch -- ``parse.presence_only``, which
+        # keeps the combinator out of the union arm entirely and sends it to
+        # ``lower/rules.py`` -- and measured over the 1,054 portable documents 0 of the 8
+        # unions reaching this refusal is one.  Every one of them is MIXED, so the row
+        # that decides them is the same row's other sentence: "a branch that differs in a
+        # type, a bound, a format, a nested shape or its ``required`` is a branch of
+        # shapes and takes the base-plus-branches answer."  §5's ``required`` row says
+        # what that branch class is -- "BRANCH -> the branch class's requiredness" -- and
+        # the branch's own ``not`` is already a rule on it, through the ``rules_at``
+        # screen above that ``forbids`` reads.
+        #
+        # What was missing was the CARRIER, which is ``adcp-client-python-10l.34``'s own
+        # note: such a branch parsed as :class:`nodes.Typeless`, which has no ``required``
+        # field, so the names reached nothing.  It parses as an object with an empty
+        # property map now (``schema.parse``'s ``type`` arm), and the branch loop's object
+        # arm declares it by ``compiler.lower_composition`` over the base -- which is how
+        # ``account/sync-accounts-request.json`` already emits the identical shape stated
+        # through an ``allOf`` conjunct.
+        #
+        # The KIND is the cell's (``compiler.kind_for``) and not minted here.
         return Refusal(
-            "required" if "required" in branch else "type",
+            "type",
             pointer,
-            "a branch declaring no property constrains only requiredness: that is a rule "
-            "on the root's class (D2, D6), not a branch class (step 7's row)",
-            kind=Kind.DEFERRED,
+            "a branch declaring neither a property map nor a requiredness narrows "
+            "nothing of the base: section 5's type row reads such a node as {}, which "
+            "IS true, so there is no subclass for this branch to be",
+            kind=compiler.kind_for("type", Position.BRANCH),
         )
     return Branch(pointer=pointer, node=branch, parsed=parsed, forbids=forbids)

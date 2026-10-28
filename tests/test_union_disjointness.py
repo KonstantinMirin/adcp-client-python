@@ -194,7 +194,7 @@ def test_scalar_branches_of_different_type_separate_a_pair_and_the_walk_delivers
 def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_the_rest() -> (
     None
 ):
-    """The population, named and partitioned: 41 roots reach the hand-off from §4's first
+    """The population, named and partitioned: 46 roots reach the hand-off from §4's first
     source, and each one is either pairwise disjoint or refused on overlap.
 
     The partition is the assertion, because the two outcomes are different facts and
@@ -252,10 +252,27 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
             "core/postal-country-system.json",
             "creative/get-creative-features-response.json",
             "creative/sync-creatives-response.json",
+            # **5 MORE AT ``adcp-client-python-10l.58``, and they are GROWTH: the set read
+            # 41 and reads 46, with nothing removed.**  Each of the five states a branch
+            # whose whole declaration is a ``required`` (and, in four of them, a ``not``
+            # over ``required`` groups), which ``union._plan`` refused before any branch
+            # was planned -- so the root never got as far as §4's question about its
+            # branches and this derivation's DENOMINATOR did not count it.  §5's
+            # ``oneOf``/``anyOf`` row makes such a branch a branch of SHAPES ("a branch
+            # that differs in ... its ``required``") and §5's ``required`` row at BRANCH
+            # makes its class the base's requiredness narrowed, so the branches plan and
+            # the root reaches the derivation.  All five are in the DISJOINT half: none
+            # joins ``OVERLAPPING_ROOTS`` and none declares an UNDERDETERMINED, which is
+            # the partition below asserting it rather than this comment.
+            "error-details/vast-version-mismatch.json",
             "media-buy/build-creative-response.json",
+            "media-buy/buy-products-request.json",
+            "media-buy/create-media-buy-request.json",
             "media-buy/create-media-buy-response.json",
+            "media-buy/decline-proposals-response.json",
             "media-buy/log-event-response.json",
             "media-buy/provide-performance-feedback-response.json",
+            "media-buy/request-proposals-request.json",
             "media-buy/request-proposals-response.json",
             "media-buy/sync-audiences-response.json",
             "media-buy/sync-catalogs-response.json",
@@ -409,6 +426,18 @@ def _reaching(population: list[str]) -> tuple[Any, set[str | None]]:
     believes it produces.  By ``title``, because that is the only name of the document in
     scope there -- the function is handed the union NODE, whose title is its own
     annotation (:attr:`codegen.schema.nodes.Base.title`).
+
+    **``emit.emit`` and NOT ``compiled``, which is this function's whole correctness
+    argument** (``adcp-client-python-10l.58``).  ``tests/compiled.py`` returns a RESULT and
+    not a run -- a hit unpickles one and the walk does not execute -- so the trace below
+    recorded nothing whenever some earlier test in the same worker had already compiled
+    this population, and the set this function exists to derive came back EMPTY.  The
+    assertion then read "the derivation reaches no root at all", which is green against no
+    pinned set and red against every one, so the test's outcome was a function of which
+    worker compiled first.  ``compiled``'s own docstring names the escape hatch for the
+    other caller that cannot take a shared value ("a test that needs to mutate one must
+    call ``emit.emit`` directly and say why"); a caller that needs to OBSERVE the walk is
+    the same category, and this is the reason.
     """
     seen: set[str | None] = set()
     real = lower_union.overlapping
@@ -427,7 +456,7 @@ def _reaching(population: list[str]) -> tuple[Any, set[str | None]]:
 
     lower_union.overlapping = traced  # type: ignore[assignment]
     try:
-        return compiled(BUNDLE, population), seen
+        return emit.emit(BUNDLE, population), seen
     finally:
         lower_union.overlapping = real  # type: ignore[assignment]
 

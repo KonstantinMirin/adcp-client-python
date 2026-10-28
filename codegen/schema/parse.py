@@ -253,15 +253,49 @@ def parse(
 
     word = raw.get("type")
     if word is None:
-        if "properties" in raw and (position is Position.ROOT or objectish or applied == "object"):
+        # **A node stating no ``type`` word is an OBJECT where it states something about
+        # an object's MEMBERS and an enclosing node applies ``object`` to the same
+        # instance** -- §5 of the semantics document's ``type`` row, "absent beside
+        # ``properties`` -> an object, where an enclosing node applies ``type: object`` to
+        # the same instance".
+        #
+        # **The row's members are the property MAP and the REQUIREDNESS over it, and this
+        # arm reads both** (``adcp-client-python-10l.58``).  It read ``properties`` alone,
+        # so a node stating ``required`` and no map fell through to
+        # :class:`nodes.Typeless` -- **which carries no ``required`` field** -- and the
+        # names the document states reached no node field at all.  §5's ``required`` row
+        # decides the fact at every one of those positions ("BRANCH -> the branch class's
+        # requiredness"; "ROOT beside a union -> required on the base's fields"), and the
+        # carrier is one :class:`nodes.Object` already has: ``compiler.lower_composition``
+        # takes :attr:`nodes.Object.required` off every kind that can state one, so the
+        # names reach the class that narrows them without a second reading anywhere.
+        # ``_object`` reads a missing map as ``{}``, which is what such a node declares.
+        #
+        # **The requiredness half is asked of the CELL at this position, because that is
+        # where §5 splits it**: ``required`` compiles to the node's own TYPE at every
+        # position but RULE, where its cell is a presence RULE -- the ``RequiredGroups``
+        # and ``ForbiddenGroups`` ``lower/rules.py`` writes on the ENCLOSING class.  A
+        # node under a ``not``, an ``if`` or a ``then`` is at RULE and is not a class, so
+        # it stays typeless and its names reach the rule reader that already has them.
+        # Read off the table rather than by naming the position, so the split moves with
+        # the row; measured, the three documents whose nested class names this clause
+        # moved when it was asked unconditionally are all ``not``/``if``/``then`` nodes.
+        #
+        # A ``required`` that is not a list of names is NOT screened out here: it is a
+        # SHAPE fault, :func:`_faults` carries it, and the object row is what raises it
+        # (§4) -- routing the node by its own keyword is what gets the fault reported
+        # instead of read as silence.
+        if ("properties" in raw or _requires_as_a_type(raw, position)) and (
+            position is Position.ROOT or objectish or applied == "object"
+        ):
             return _object(raw, common, pointer, position, source)
         if not isinstance(applied, str) or applied == "object":
             # An APPLIED ``object`` is already answered, by the clause above: §5 of the
             # semantics document's ``type`` row is "absent beside ``properties`` -> an
             # object, where an enclosing node applies ``type: object`` to the same
-            # instance", and a node stating neither a word nor a property map has no
-            # property map for that row to read -- §5 reads it as ``{}``, which IS
-            # ``true``.  A non-object word has no such clause: the word alone decides.
+            # instance", and a node stating neither a word nor a MEMBER keyword has
+            # nothing for that row to read -- §5 reads it as ``{}``, which IS ``true``.
+            # A non-object word has no such clause: the word alone decides.
             return nodes.Typeless(**common)
         # **The word an enclosing node asserts about the SAME instance decides the kind
         # where the node states none** -- §4 of the semantics document's ``type`` row and
@@ -738,6 +772,26 @@ def _pattern_count(raw: Mapping[str, Any]) -> int | None:
 # --------------------------------------------------------------------------- #
 # the classification the table answers
 # --------------------------------------------------------------------------- #
+def _requires_as_a_type(raw: Mapping[str, Any], position: Position) -> bool:
+    """Does this node state a ``required`` that compiles to its OWN type here?
+
+    §5's ``required`` row splits on exactly one position: at RULE it is "a presence rule:
+    ``RequiredGroups``, ``ForbiddenGroups`` under ``not``, the keys a ``Match`` clause
+    tests under ``if``, ``ConditionalRequired`` / ``NegatedConditional`` under ``then`` /
+    ``else``" -- a fact about the ENCLOSING class, which ``lower/rules.py`` writes and
+    which needs no node of its own.  Everywhere else the row is the requiredness OF the
+    node ("BRANCH -> the branch class's requiredness", "ROOT beside a union -> required on
+    the base's fields"), which is :attr:`nodes.Object.required` and
+    ``compiler.lower_composition``'s reading of it.
+
+    So the split is the CELL's ``effect`` and this is a reader of the table, the way
+    :func:`_rule_sources` and :func:`presence_only` are -- not a position named here,
+    which would be a second copy of the row for the two to disagree through (§11).
+    """
+    answer = keywords.cell("required", position)
+    return "required" in raw and answer is not None and answer.effect is keywords.Effect.TYPE
+
+
 def _rule_sources(raw: Mapping[str, Any], position: Position) -> dict[str, Any]:
     """The keywords on this node whose cell at ``position`` compiles to a RULE, plus a
     combinator the node states only to say which KEYS are present.

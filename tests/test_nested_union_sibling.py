@@ -193,6 +193,13 @@ def test_the_comparison_does_not_look_for_the_keyword_at_the_pointer_it_sits_at(
     )
 
 
+#: The phrase that identifies :data:`union._NESTED_SIBLING` in a refusal's own sentence.
+#: ONE spelling, because three checks read it -- the perturbation below, the whole-run
+#: exit condition and its per-document form -- and a phrase retyped at each is three
+#: readings of one sentence for two of them to drift from.
+_CARRIER = "no slot for a fact of its own"
+
+
 def test_a_constraining_sibling_of_a_nested_union_still_refuses() -> None:
     """The perturbation: the screen was narrowed by ONE NAME.
 
@@ -213,7 +220,7 @@ def test_a_constraining_sibling_of_a_nested_union_still_refuses() -> None:
         assert (row["keyword"], row["pointer"]) == ("minLength", "/properties/goal"), (
             row
         )
-        assert "no slot for a fact of its own" in row["detail"], row
+        assert _CARRIER in row["detail"], row
     finally:
         shutil.rmtree(admitted)
         shutil.rmtree(refused)
@@ -676,11 +683,7 @@ def test_the_population_the_widening_is_about_is_derived_off_the_bundle() -> Non
     }
     assert THE_NINE <= documents, sorted(THE_NINE - documents)
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
-    assert [
-        d
-        for d, r in out.refusals.items()
-        if "no slot for a fact of its own" in r["detail"]
-    ] == []
+    assert [d for d, r in out.refusals.items() if _CARRIER in r["detail"]] == []
     # Partitioned rather than summed: one of the nine emits and the other eight report a
     # next obstruction that belongs to another row.
     partitions(
@@ -689,11 +692,23 @@ def test_the_population_the_widening_is_about_is_derived_off_the_bundle() -> Non
         refuses_on_its_own_next_obstruction=THE_NINE - set(out.emitted),
     )
     assert MEASURED_CASE in out.emitted, out.refusals.get(MEASURED_CASE)
-    # And each of the eight is refused somewhere OTHER than its own union node, which is
-    # the per-document form of the exit condition above: the carrier is not what stops it.
+    # And each of the eight is refused on something OTHER than the sibling carrier, which
+    # is the per-document form of the exit condition above: the carrier is not what stops
+    # it.
+    #
+    # **It reads the SENTENCE and not the POINTER** (``adcp-client-python-10l.58``).  It
+    # asked that the refusal's POINTER be none of the document's composing sites, which
+    # was the same question for as long as the only refusal that could be reported at
+    # such a node was this carrier's.  It is not any more:
+    # ``formats/canonical/coordinated_placements.json``'s branch at
+    # ``/properties/components/items/anyOf/1`` is ITSELF a union composing siblings, so
+    # once the enclosing union's branch screen reaches that branch the refusal it returns
+    # -- another row's, on the branch's nested ``oneOf``, with this carrier's sentence
+    # nowhere in it -- is reported AT a composing site.  The pointer was a PROXY for the
+    # sentence; the claim is about the sentence, so the sentence is what is read, in the
+    # one spelling the whole-run check above uses.
     for document in sorted(THE_NINE - set(out.emitted)):
-        at = {p for d, p in COMPOSING_SITES if d == document}
-        assert out.refusals[document]["pointer"] not in at, out.refusals[document]
+        assert _CARRIER not in out.refusals[document]["detail"], out.refusals[document]
 
 
 def test_the_selector_is_derived_from_two_declarations_and_not_listed_here() -> None:
