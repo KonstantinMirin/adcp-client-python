@@ -1270,6 +1270,8 @@ def fields(
     declared_at: Mapping[str, str] | None = None,
     distinct: Collection[str] = (),
     reuse: Mapping[str, ir.Field] | None = None,
+    carried: Collection[str] = (),
+    position: Position = Position.ROOT,
 ) -> list[ir.Field] | Refusal:
     """The decided properties for one property map, children declared first.
 
@@ -1329,14 +1331,48 @@ def fields(
     gate.  A REUSED key takes the flag off the field it reuses instead: the
     ``uniqueItems`` was claimed by the rule on the class that decided it, which a
     subclass inherits, so the subclass's own rules do not name the key.
+
+    ``carried`` names the required keys whose presence the CLASS enforces by something
+    that is NOT a field of its own, so they are not undeclared and get no field here.
+    **One caller passes a non-empty one and §5's ``required`` row is the whole of why**:
+    at a ROOT beside a union the row reads "required on the base's fields, and the names
+    recorded in ``_ROOT_REQUIRED``, so a refusal can separate a field the root requires
+    from one that SELECTS A BRANCH" -- which presupposes that a name selecting a branch
+    is not a field of the base.  ``core/product-format-declaration.json`` is that
+    sentence's own shape: its root requires ``format_kind`` (the discriminator §4
+    derives) and ``params``, its 15 root properties declare neither, and each of its 16
+    branches declares AND requires both -- so the branch classes are what hold the
+    fields, the branches' own requiredness is what enforces the presence, and
+    :attr:`adcp.types._base.BranchDispatchMixin._ROOT_REQUIRED` is what names the two in
+    the DOCUMENT's vocabulary when no branch admits a payload
+    (``_base.BranchDispatchMixin._no_branch``, which reads the raw mapping and not the
+    model).  Measured over every node of the 1,054 portable documents: **2 union nodes
+    state a ``required`` naming a key their own ``properties`` do not declare** --
+    ``core/product-format-declaration.json`` at ``/`` and
+    ``creative/validate-input-request.json`` at ``/properties/targets/items`` -- and in
+    BOTH every branch declares and requires every such name.
+
+    ``position`` is the node's own, and it is here for ONE reason: the refusal below
+    reads its kind off the ``required`` cell at that position (:func:`kind_for`,
+    architecture §3's "a refusal's kind is derived from the cell and never chosen at a
+    raise site") rather than naming one.  Defaulted to ROOT for :func:`rules_at`'s
+    reason -- every position a class can sit at reads the same ``TYPE`` cell, so the
+    answer does not move -- and both callers pass the node's own anyway.
     """
-    undeclared = [r for r in required if r not in props and r not in inherited]
+    held = (*inherited, *carried)
+    undeclared = [r for r in required if r not in props and r not in held]
     if undeclared:
         return Refusal(
             "required",
             pointer,
-            f"required names no property declares: {undeclared} (step 7's rule, not a field)",
-            kind=Kind.DEFERRED,
+            f"required names no property declares: {undeclared} -- section 5's required "
+            "row makes that a presence rule with no field, and a rule renders nothing in "
+            "a model's JSON schema while the same row's cell is rendered=True, so section "
+            "8 compares the keyword and reports the name the model's required omits "
+            "(measured: differs at this pointer's /required).  A FIELD for the key makes "
+            "required match and adds a model-only properties entry section 8 has no fold "
+            "for, so neither half of the row is written",
+            kind=kind_for("required", position),
         )
 
     built: list[ir.Field] = []
@@ -1692,7 +1728,9 @@ def lower_object(
     if "required" in node.faults:
         return Refusal("required", pointer, node.faults["required"], kind=Kind.VERDICT)
     required = node.required
-    built = fields(node.properties, required, pointer, mod, distinct=stated.distinct)
+    built = fields(
+        node.properties, required, pointer, mod, distinct=stated.distinct, position=position
+    )
     if isinstance(built, Refusal):
         return built
     return declare_object(
@@ -2994,6 +3032,18 @@ def lower_composition(
         # two halves of one claim, so the row that writes the tuple passes the keys.
         distinct=(*stated.distinct, *sorted(inherited_distinct - set(stated.distinct))),
         reuse=reuse,
+        # **§5's ``required`` row at ROOT beside a union, which is the one place a
+        # required name is neither a field of this class nor undeclared**: the row puts
+        # the root's own names in ``_ROOT_REQUIRED`` precisely "so a refusal can
+        # separate a field the root requires from one that SELECTS A BRANCH", and a
+        # name selecting a branch is declared by the BRANCH classes this caller is
+        # declaring -- not by the base.  :attr:`UnionBase.root_required` is the same
+        # tuple :func:`declare_object` writes onto the class, so the names the base
+        # does not hold a field for and the names it reports on are one reading.
+        # Empty for every other row, where a required name no view declares has
+        # nothing to carry it and :func:`fields` says so.
+        carried=() if union is None else union.root_required,
+        position=position,
     )
     if isinstance(decided, Refusal):
         return decided
