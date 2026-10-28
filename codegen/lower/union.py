@@ -125,11 +125,17 @@ the dispatch derivation already owes (the ``not``s sit in the branches' CONJUNCT
 ``compiler.rules_at`` of the branch node does not read them, so §4's third source cannot
 separate the pair and §8's third equality holds in both directions).
 
-A CONFLICT, recorded and not resolved: §5's ``oneOf``/``anyOf`` cell still reads "Shapes
-nested -> one type ``A | B``; a sibling beside it refuses", which is the narrower reading
-§8 widened.  The cell's text is ``codegen/keywords.py``'s and §5's grid is generated from
-it, so the two sides disagree in one document.  Neither is edited here: §8 is the later
-decision, dated, with its reason and its measured case, and this module implements it.
+THAT CONFLICT IS CLOSED (``adcp-client-python-10l.47``).  §5's ``oneOf``/``anyOf`` cell
+read "Shapes nested -> one type ``A | B``; a sibling beside it refuses", which is the
+narrower reading §8 widened, and the two sides disagreed in one document.  The cell's
+text is ``codegen/keywords.py``'s and §5's grid is generated from it, so the correction
+is a SOURCE edit: the cell now gives the base-plus-branches answer to a sibling a CLASS
+carries at a union in any position, keeps ``A | B`` for a union stating nothing beside
+the combinator, and keeps the refusal for a sibling NO class carries -- which is
+:data:`keywords._NESTED_SIBLING`, reached through :func:`nested` and by no document of
+3.2.  The cell says what a class CARRIES and not which keywords those are, because
+:func:`carried_by_a_class` derives that set and a list in the prose would be a fifth
+copy beside §3's four readers.
 
 WHAT THE ROOT MAY NOT CARRY, and this is the one refusal that is about the GRADER rather
 than about a missing lowering.  A root ``allOf``, ``properties``, ``required`` or
