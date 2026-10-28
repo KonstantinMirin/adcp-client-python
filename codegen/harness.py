@@ -75,6 +75,7 @@ dict section 6 deleted.
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from contextlib import contextmanager
 from collections import Counter
@@ -82,10 +83,12 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+import hypothesis
 import jsonschema
 from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
 from hypothesis.errors import HypothesisException
+import hypothesis_jsonschema
 from hypothesis_jsonschema import _canonicalise as _hjs_canon
 from hypothesis_jsonschema import from_schema
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
@@ -216,6 +219,120 @@ def resolve(
 
 def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrategy:
     return from_schema(schema, custom_formats=dict(custom_formats))
+
+
+#: The identity of ``from_schema``'s own behaviour, in the key below.  The drawn stream is
+#: a function of the library as much as of the schema, so a version bump MISSES every
+#: entry and the population is re-drawn -- which is the honest direction: a held instance
+#: from an older generator is a witness the generator in use would not have produced, and
+#: the suite would then grade a stream nothing in the tree produces.
+_DRAW_VERSION = f"hypothesis={hypothesis.__version__} hjs={hypothesis_jsonschema.__version__}"
+
+
+def corpus_key(
+    schema: Mapping[str, Any], *, examples: int, custom_formats: Mapping[str, Any] = ()
+) -> str:
+    """The content address of the instances :func:`check_accepts` draws from ``schema``.
+
+    **The whole of why a delta needs no dependency graph.**  Four things decide what a draw
+    may legitimately produce -- the schema handed to ``from_schema``, the example count, the
+    format strategies and the generator itself -- and all four are hashed here, so a hit
+    cannot describe a schema the harness was not asked about.
+
+    **It is a content address and NOT a claim that the draw is a pure function of them**,
+    and that distinction is measured rather than assumed: over two full passes of the same
+    1,664 pairs at the same pinned inputs, **23 pairs (1.4%) drew a different instance**,
+    and re-running one identical 208-pair shard of one pass differed from itself on 3.  The
+    seed is not the cause -- ``_SETTINGS`` fixes ``derandomize`` -- nor is
+    ``PYTHONHASHSEED``, nor the recursion limit; what moves is process-global state inside
+    ``hypothesis`` whose lifetime garbage collection governs, so the witness a pair gets
+    today depends on what else its worker drew and when the collector ran.  **Which is why
+    the held instance is re-offered to the DOCUMENT before it counts**
+    (:func:`corpus_defect`) instead of being trusted because its key matched: the key says
+    the SCHEMA has not moved, and the document says the instance is still one it admits.
+    Holding the witness makes the suite's evidence reproducible where the draw does not --
+    ``_SETTINGS``' own comment intends exactly that and does not achieve it.
+
+    **The schema is the self-contained record's own node, which is what makes the key
+    cover the dependency closure.**  ``bundle.record`` inlines every cross-document
+    ``$ref`` and rewrites nothing, so the packaged document carries its whole dependency
+    closure as literal text -- measured on the committed tree at 889 records, 41.7 MB,
+    **87 remaining ``$ref`` occurrences and every one of them LOCAL** (``#/...``, a pointer
+    into the same record).  ``check_pair``'s schema is read out of that one record through
+    ``applied_schema`` and inlined by :func:`resolve` against that same record, so no byte
+    of any other document reaches this call.
+
+    Therefore a change to a dependency changes the dependent's key BY CONSTRUCTION: the
+    inlined copy is part of the dependent's record, the record's bytes change, the node's
+    bytes change, and the hash changes with them.  ``Provenance``'s title appears 419 times
+    across 134 records and ``Image Asset``'s 199 times across 109, so editing either moves
+    every one of those keys in the same commit that moves the record -- without an edge
+    list, and without a hand-maintained map that could disagree with the inliner.  A map
+    would be the second copy ``docs/plan/architecture.md`` §3 forbids; this derives the
+    same answer from the bytes the draw actually reads.
+
+    The serialisation is ``json.dumps(..., sort_keys=True)``, the same canonical spelling
+    ``canonicalisation_shared_within_one_call`` keys its within-call memo with, so the two
+    cannot disagree about when two schemas are the same schema.
+    """
+    material = json.dumps(
+        {
+            "schema": schema,
+            "examples": examples,
+            "formats": sorted(custom_formats),
+            "draw": _DRAW_VERSION,
+        },
+        sort_keys=True,
+        default=repr,
+    )
+    return hashlib.sha256(material.encode()).hexdigest()
+
+
+def corpus_defect(
+    schema: dict, held: Any, examples: int, *, validator_cls: Any = None
+) -> str:
+    """Why ``held`` may NOT stand in for this pair's draw, or ``""`` when it may.
+
+    **A held corpus is a derived equality and never a stored answer**, which is the shape
+    ``codegen.dump_exemptions`` is built in and for the same reason: an entry nobody
+    re-derives is an allowlist of payloads that silently stops covering the schema.  So
+    every instance is re-offered to the DOCUMENT before it is allowed to count, and the
+    count is checked against the obligation the caller asked for:
+
+    * **fewer instances than ``examples``** -- including none at all, which is the one
+      failure mode a cache of this shape can have.  §8's accepts draw is what PROVES a
+      widening rather than believing it, so an empty or short entry that read as "the
+      obligation passed" would be the cache grading something else.  It is a defect here,
+      not a fallback, because a store that can hand back the wrong count is broken and a
+      silent re-draw would hide it for as long as it kept happening.
+    * **an instance the document REFUSES**.  The key already makes this unreachable --
+      it hashes the schema the instance was drawn from -- so reaching it means the store
+      answered for a key it was not asked about, and that is the one way a stale entry
+      could grade a model against the wrong document.  ``is False`` and not ``is not
+      True``: a document ``jsonschema`` cannot build a validator from states nothing
+      about any instance, and the accepts check's own dump half already reads that
+      answer the same way.
+
+    Both are reported by :attr:`AcceptsResult.outcome` as ``corpus_rejected``, which
+    :attr:`PairReport.outcome` turns into ``accepts:corpus_rejected``: a verdict on the
+    pair, with the instance count at zero, so the pair reddens twice over rather than
+    passing on evidence it does not have.
+    """
+    if not isinstance(held, list) or len(held) != examples:
+        n = len(held) if isinstance(held, list) else "a non-list"
+        return (
+            f"the held corpus carries {n} instances where the obligation is {examples}; "
+            "an entry that cannot cover the draw is not evidence"
+        )
+    cls = validator_cls or validator_for(schema)
+    for i, instance in enumerate(held):
+        if conforms(schema, instance, validator_cls=cls) is False:
+            broke = violated_keywords(schema, instance, validator_cls=cls)
+            return (
+                f"the document refuses held instance {i} on {', '.join(broke)}"
+                f": {_dump(instance)}"
+            )
+    return ""
 
 
 @contextmanager
@@ -542,6 +659,7 @@ class FormatStrategyVerdict:
 class AcceptsResult:
     examples: int = 0
     #: pass | model_refused_valid | model_dropped_a_fact | strategy_error | model_error
+    #: | corpus_rejected
     outcome: str = "unrun"
     detail: str = ""
     counterexample: str = ""
@@ -573,6 +691,16 @@ class AcceptsResult:
     #: node and the label is recorded only where that refuses it.
     dump_exempt: list[str] = field(default_factory=list)
 
+    #: How many of :attr:`examples` came from a held corpus instead of a draw, and the key
+    #: they were held under.  **REPORTED for ``dump_exempt``'s reason**: the instances are
+    #: the same instances either way -- re-offered to the document before they count
+    #: (:func:`corpus_defect`) -- but a reader of a green pair is entitled to know which run
+    #: paid for its evidence, and a census that cannot tell the two apart cannot measure a
+    #: cold run against a warm one.  ``replayed == 0`` with ``examples > 0`` is a pair that
+    #: drew; ``replayed == examples`` is a pair that did not.
+    replayed: int = 0
+    corpus_key: str = ""
+
 
 @dataclass
 class LivenessResult:
@@ -597,7 +725,16 @@ class LivenessResult:
 _SETTINGS = dict(
     deadline=None,
     database=None,
-    derandomize=True,  # byte-identical example stream across runs
+    # **What this buys and what it does NOT, measured rather than assumed.**  It fixes the
+    # SEED, so the same strategy yields the same stream; it does not make the drawn
+    # instance a function of the schema.  Over two full passes of the same 1,664 pairs at
+    # the same pinned inputs, 23 (1.4%) drew a different instance, and one identical
+    # 208-pair shard re-run differed from itself on 3 -- not on the seed, not on
+    # ``PYTHONHASHSEED`` and not on the recursion limit, but on process-global state inside
+    # ``hypothesis`` whose lifetime garbage collection governs.  ``corpus_key`` and the
+    # store behind it are what make the witness reproducible; this makes it cheap to
+    # reproduce once held.
+    derandomize=True,  # one seed per call; see above for what that does and does not fix
     suppress_health_check=list(HealthCheck),
 )
 
@@ -814,6 +951,7 @@ def check_accepts(
     dump: Callable[[Any], Any] | None = None,
     seen: list[Any] | None = None,
     ref: SchemaRef | None = None,
+    corpus: Any = None,
 ) -> AcceptsResult:
     """The accepts check: every instance the schema admits, ``accept`` admits --
     and what it constructed, DUMPED back out, is an instance the schema admits too.
@@ -861,6 +999,35 @@ def check_accepts(
     reach a different failure -- it can only simplify the one already reported in
     ``counterexample``.  ``Phase.target`` is out with it because no call site
     supplies a ``target()``, so it had nothing to steer.
+
+    **``corpus`` makes the draw DELTA-BASED, and it is the caller's OBJECT and not a path.**
+    ``from_schema`` is the overwhelming majority of this check's cost over the graded
+    population and the suite regenerates the same instances every run from inputs every one
+    of which is in git, so the instances are held content-addressed by :func:`corpus_key`
+    and replayed.  The object is anything with ``get(key)`` answering a held list or
+    ``None`` and ``put(key, instances)`` holding one; **this module computes the key and
+    reads no path, no filesystem and nothing of the vocabulary it is pointed at**, which is
+    ``docs/plan/architecture.md`` §9's import rule and the reason this harness can grade
+    output that does not exist yet.  Where the store lives is the caller's business, and
+    ``tests/corpus.py`` is one answer.
+
+    Three branches, and each is reported rather than silent:
+
+    * **a hit** -- the instances are re-offered to the DOCUMENT
+      (:func:`corpus_defect`) and then run through the SAME ``body`` a draw runs through,
+      so ``accept``, ``dump``, the exemption reading and every counter are the ones a
+      drawing run produced.  The instance reaching the class is the identical instance;
+      only ``from_schema`` is skipped.  :attr:`AcceptsResult.replayed` says so.
+    * **a held entry that cannot stand in** -- ``corpus_rejected``, with ZERO instances
+      graded, so :attr:`PairReport.outcome` reddens the pair twice over.  Never a silent
+      re-draw: a store answering with the wrong count, or with an instance the document
+      refuses, is broken, and a fallback would hide it for as long as it kept happening.
+    * **a miss** -- the draw runs exactly as it always did and the instances are offered
+      to the store afterwards, and only where the draw produced the whole obligation, so a
+      short or errored draw is never held.  A miss therefore COSTS and cannot pass:
+      adding a document adds one key, changing one changes that key and every dependent's
+      with it (the record inlines, so their bytes moved too), and an absent corpus is one
+      full cold run.
     """
     res = AcceptsResult()
     cf = dict(custom_formats)
@@ -902,15 +1069,35 @@ def check_accepts(
             )
         res.round_tripped += 1
 
+    #: The held instances, or ``None`` for a miss and for a caller that supplied no store.
+    #: Both answer "draw", and they are not the same thing to a reader: a miss is a key
+    #: this corpus has never been asked for, which is what a new or changed record
+    #: produces.
+    held = None
+    if corpus is not None:
+        res.corpus_key = corpus_key(schema, examples=examples, custom_formats=cf)
+        held = corpus.get(res.corpus_key)
+    if held is not None:
+        defect = corpus_defect(schema, held, examples, validator_cls=validator_cls)
+        if defect:
+            res.outcome = "corpus_rejected"
+            res.detail = f"{defect} (key {res.corpus_key[:16]})"[:400]
+            return res
+
     try:
-        with canonicalisation_shared_within_one_call():
-            run = given(instance=strategy(schema, cf))(body)
-            run = settings(
-                max_examples=examples,
-                phases=[Phase.explicit, Phase.generate],
-                **_SETTINGS,
-            )(run)
-            run()
+        if held is None:
+            with canonicalisation_shared_within_one_call():
+                run = given(instance=strategy(schema, cf))(body)
+                run = settings(
+                    max_examples=examples,
+                    phases=[Phase.explicit, Phase.generate],
+                    **_SETTINGS,
+                )(run)
+                run()
+        else:
+            for instance in held:
+                res.replayed += 1
+                body(instance)
         res.outcome = "pass"
     except _DumpRefused as e:
         res.outcome = "model_dropped_a_fact"
@@ -933,6 +1120,20 @@ def check_accepts(
         res.outcome = "model_error"
         res.detail = f"{type(e).__name__}: {e}"[:400]
         res.counterexample = _dump(seen[-1]) if seen else ""
+    #: Held only where the draw produced the WHOLE obligation, so a draw that errored
+    #: part-way leaves no entry and the next run draws again.  **After the handlers and
+    #: not inside the ``try``, which is what makes a FAILING pair cheap too**: an instance
+    #: that reddens the pair is the one a reader most wants back, and holding it keeps the
+    #: counterexample reproducible rather than re-derived.  ``strategy_error`` is excluded
+    #: because what it reports is that the generator produced nothing for this schema, and
+    #: an entry would then claim a draw happened.
+    #:
+    #: The count is :attr:`AcceptsResult.examples` and not ``len(seen)``, because ``seen``
+    #: is the CALLER's list and a caller may hand one that already holds something: what
+    #: this call drew is what ``body`` counted.
+    if corpus is not None and held is None and res.outcome != "strategy_error":
+        if res.examples == examples:
+            corpus.put(res.corpus_key, seen[-examples:])
     return res
 
 
@@ -4285,6 +4486,7 @@ def check_pair(
     *,
     accepts_examples: int = 1,
     custom_formats: Mapping[str, Any] = (),
+    corpus: Any = None,
 ) -> PairReport:
     """ONE CLASS AGAINST ONE SCHEMA: the whole harness, per section 6.
 
@@ -4309,6 +4511,12 @@ def check_pair(
     (:func:`refusing_payload`) and screened by the document, so it costs no draw.
     That is the one place a pair's instance is reused, and the reuse is why there are
     two document validations per pair instead of thousands.
+
+    **``corpus`` is handed straight to the accepts check and to nothing else**, which is
+    the whole of its reach: the liveness payload and §8's obligation both read the
+    instance the accepts check produced, so a replayed instance reaches them exactly as a
+    drawn one does and neither needs a store of its own.  :func:`check_accepts` says what
+    a hit, a miss and a rejected entry each do.
     """
     rep = PairReport(
         name=pair.name, model_repr=getattr(pair.model, "__name__", repr(pair.model))[:120]
@@ -4352,6 +4560,7 @@ def check_pair(
         custom_formats=custom_formats,
         seen=accepted,
         ref=pair.ref,
+        corpus=corpus,
     )
     #: Measured only where the generator errored, because that is the only pair the
     #: measurement says anything about -- 2 of 1,079 on the emitted tree, so the

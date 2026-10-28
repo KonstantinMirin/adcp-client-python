@@ -18,3 +18,7 @@ docs/plan/*.html
 
 # pytest report artifacts: a run is a dated measurement, not source.
 test-results/
+
+# the accepts corpus: drawn instances held between runs, keyed by the record they were
+# drawn from (tests/corpus.py).  A derived artifact, regenerated on a miss.
+.accepts-corpus/
