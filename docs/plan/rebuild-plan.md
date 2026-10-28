@@ -163,21 +163,10 @@ fields. Where no class sits above the value — a root array, a mapping value, a
 entry, a union branch — the rule hangs off the value's own annotated type as an after-validator
 (`AtLeastOne`, `NotValue`, `Distinct`).
 
-**A value-level rule may state which KEYS the value supplied, and the three kinds above are not
-the limit (added 2026-10-28).** The distinction this paragraph draws is about where a rule
-HANGS, not about what it may read: "a class can read sibling fields" is about reading the
-siblings *of* the value, and a callable on the value reads the value's **own** members as freely
-as a class reads its fields. At a position with no class above it, the value *is* the object, so
-`ForbiddenGroups`, `RequiredGroups` and `PresenceGroups` are admissible there as
-`_runtime.ValueRule`s — "a callable on the value, and all it is" — without a new kind.
-
-Six documents refuse today for want of this sentence, and the refusal they carry asks for "a
-value-level presence kind that §2 does not name". It is not a new kind that was missing; it is
-this clause. `core/product.json` and `core/canonical-product.json` at
-`/properties/publisher_properties/items/allOf/0` are the measured case: `PublisherPropertySelector`
-is the node's own type by §5's `$ref` row at CONJ, a conjunct states `not` beside it, §5's `not`
-row makes that a `ForbiddenGroups`, and the node has no class — but the value it annotates is
-exactly the object whose keys the rule forbids.
+This paragraph decides where a rule hangs, not what it may read. A rule on the value reads the
+value's own members as a rule on a class reads its fields, so a kind naming KEYS —
+`ForbiddenGroups`, `RequiredGroups`, `PresenceGroups` — hangs off the value's own annotated type
+wherever no class sits above it.
 
 A rule's condition tests membership as well as equality: a `Match` clause reads a property's
 `const` or `enum`, and also `value in field`.
@@ -537,15 +526,7 @@ module is its namespace and `§9`'s rule is that a document's output may not dep
 documents the run includes.
 
 *What this costs:* a long name becomes the exception it was meant to be, arising only where one
-document genuinely says `context` twice. **Measured on the tree the rule produced
-(`adcp-client-python-10l.50`):** 2,144 classes, median name 17 characters against 26, and
-235 / 75 / 19 / 8 longer than 30 / 40 / 50 / 60 against 808 / 364 / 141 / 47. Of 2,226 named
-positions 2,116 keep §4's short name, 107 spend one ancestor segment and 3 spend two; 25 lengthen
-against a name the module IMPORTS, which is the other half of its namespace — a class named
-`Field` beside `from pydantic import Field` makes every `Annotated[X, Field(…)]` in the module
-call the class. The longest name left is a branch named by its own sorted `required` set and the
-second is a `definitions` entry's `<Root><Key>`: both are ONE segment, so the collision rule has
-nothing to spend on either, and shortening them would be an edit to the rules above. The failure it avoids is the one the upstream v9 SDK
+document genuinely says `context` twice. The failure it avoids is the one the upstream v9 SDK
 measures — 1,092 of its 4,360 classes are numbered variants, `WholesaleFeedEvent1` through
 `WholesaleFeedEvent9` — because a numeric suffix carries no information about which position it
 names, where an ancestor segment does.
@@ -1274,26 +1255,14 @@ instance the branch describes, so a field the branch inherits from the base is a
 states and not one it added. A pair the payload generator cannot draw for still has to pass the
 comparison, and names the shape that blocked the draw.
 
-**At a union in ANY position, not only a root one (widened 2026-10-27).** This rule read "a
-branch class of a ROOT union … under the ROOT's siblings", and the restriction was never
-justified: the reason above is draft-07's evaluation rule, which does not care where the union
-sits. The cost of the narrower reading was 9 documents blocking 42 — group G2 of
-`docs/plan/reasons-vs-rows.md` — refused on the ground that pushing the sibling into each branch
-"states it at a pointer the document does not", which is the exact objection this rule exists to
-answer.
+**At a union in ANY position, not only a root one.** The reason above is draft-07's evaluation
+rule, which does not care where the union sits.
 
-**So a sibling beside a union lowers by COMPOSITION, and nothing is approximated.** The siblings
-become a base class; each branch becomes a subclass narrowing what it narrows; the union is over
-the subclasses. `account/sync-accounts-request.json` at `/properties/accounts/items` is the
-measured case: `type: object`, `additionalProperties: true`, 16 declared `properties` and 2
-`dependencies` at the node, and two `oneOf` branches that declare **no properties at all** and
-differ only in `required` — `[brand, operator, billing]` against `[account]`. Every fact is kept,
-the branches separate on disjoint `required`, and each branch class is paired against its node
-read under those siblings, so the inherited fields are facts its node states.
-
-Where a branch also *restates* a property the siblings declare, the restatement composes by the
-conjunct rule below; composition and intersection are the same operation reached from two
-directions.
+So a sibling beside a union lowers by COMPOSITION and nothing is approximated: the siblings
+become a base class, each branch becomes a subclass narrowing what it narrows, and the union is
+over the subclasses. Where a branch also restates a property the siblings declare, the
+restatement composes by the conjunct rule below — composition and intersection are the same
+operation reached from two directions.
 
 **The dual of that rule, for a node whose `type` is a LIST (added 2026-10-26).** A class cut
 out of a type list is paired with its node read at **its own type word**, not at the whole list.
@@ -1315,68 +1284,29 @@ class is graded against the shape it actually describes. Row `.20` found this by
 documents into the three checks, reported it, and declined to invent the rule — which is why it
 is here and not in a handler.
 
-**The third pairing rule, for a node at a CONJUNCT of an `allOf` (added 2026-10-27).** A class,
-root model or alias cut out at `…/allOf/N` is paired with its node read **as the composition** —
-the intersection of every conjunct of that `allOf`, taken with the keywords stated beside the
+**The third pairing rule, for a node at a CONJUNCT of an `allOf`.** A class, root model or
+alias cut out at `…/allOf/N` is paired with its node read **as the composition** — the
+intersection of every conjunct of that `allOf`, taken with the keywords stated beside the
 `allOf`. Not with the conjunct's own text.
 
-The reason is the union-branch rule's reason, and the two are the same rule about different
-combinators. Draft-07's `allOf` holds every conjunct against the SAME instance, so a fact a
-sibling conjunct states is a fact this node's instance must satisfy. It is not a fact this class
-*added*, any more than a base's field is one a union branch added.
+Draft-07's `allOf` holds every conjunct against the same instance, so a fact a sibling conjunct
+states is a fact this node's instance must satisfy, not one this class added. Pairing against the
+conjunct's own text instead reports every such fact as `added`, which is the comparison's word
+for a model NARROWER than its document — so the instrument would report the faithful model as the
+defect it exists to catch. `added` is therefore never declarable.
 
-Pairing against the conjunct's own text instead inverts the comparison's meaning. Every fact the
-other conjuncts contribute reads as `added`, and `added` is the comparison's word for *the model
-is narrower than its document* — the one defect §2 forbids outright. So the instrument would
-report the faithful model as the defect it exists to catch, 18 times over, and the only way to
-quiet it would be to let `added` be declared away. That is the repair to refuse: `added` is how a
-tightened model is caught, and a declarable `added` is no instrument at all.
+This rule is what makes §5's `properties` row at CONJ gradable.
 
-`core/assets/url-asset.json` is the measured case, at
-`/properties/macro_declarations/items/allOf/1/properties/location`. One conjunct declares
-`location` whole, with `field` as `{"type": "string", "enum": ["url", "markup", "content",
-"ad_request_url", "clickthrough_url"]}`; the other declares `{"properties": {"field": {"const":
-"url"}}}` and nothing else. The composition is `field` as `{"type": "string", "const": "url"}`,
-because `"url"` is a member of the enum — expressible exactly, so **the model keeps the fact and
-no approximation arises**. Read as the composition, both halves state `const` and the pair is
-silent. Read as the conjunct's own text, the same faithful model reports a `missing const`
-beside an `added enum`: one fact, counted twice, in opposite directions.
-
-This rule is why §5's `properties` row at CONJ is reachable. That row was decided and
-unimplemented because a `SchemaRef` carrying an `allOf` segment had nowhere to be graded — zero
-such classes exist in the committed tree, so the gap was invisible. Writing the row makes the
-count non-zero, and this is the rule that grades them. Row `.21`'s fourth instalment found it by
-implementing §5(b) as written, measuring 22 pairs red where the declaration census was empty, and
-declining to edit §8 to suit its own code.
-
-**An ANNOTATION is not a fact these three checks grade, at any pointer (added 2026-10-27).**
-The predicate is `bundle.is_an_annotation(keyword, position)` — §1's own, the one `record`
-already reads to settle a `$ref`'s sibling, so this is a third reader of one line and not a
-second judgement. An annotation is a key whose cell compiles to no type, no field and no rule,
+**An ANNOTATION is not a fact these three checks grade, at any pointer.** The predicate is
+`bundle.is_an_annotation(keyword, position)` — §1's own, the one `record` already reads to settle
+a `$ref`'s sibling. An annotation is a key whose cell compiles to no type, no field and no rule,
 which is what "states nothing about acceptance" IS; so `added`, `missing` or `differs` on one
 reports a difference that cannot change what a payload is accepted as, and these checks grade
 acceptance.
 
-*Why it is stated here rather than left implicit.* Row `97w`'s sixth instalment wrote the
-carrier that composes a branch's restatement with the root's declaration of the same property,
-measured **`emitted 908 / refused 146`** with 12 documents newly emitting, and then found two
-strictly contradictory gradings of one `description`: carrying annotations on descent makes the
-comparison report a non-fact, which is what
-`test_the_difference_between_the_two_halves_is_a_schema_fact` exists to forbid, while stripping
-them moves the same `description` from `added` at the element pointer to `missing` at the branch
-pointer. It reported both readings and changed neither side.
-
-Both readings are answers to the wrong question. **There is no pointer at which an annotation is
-graded**, because it is not among the facts being compared — so the composition lands and the
-`description` is simply not a difference. A model that carries a description at a pointer the
-document states it at differently accepts exactly the same payloads.
-
-*What this does NOT license.* A description reaching the consumer is worth something, and
-dropping every one of them silently would be a real regression — just not an acceptance one. So
-annotation COVERAGE is its own obligation, graded separately: every description the document
-states reaches some emitted class. It belongs with §5's ergonomic rows and not among these
-three, because a check that mixes acceptance with ergonomics reports a defect in one as a defect
-in the other, which is the confusion this clause removes.
+Annotation COVERAGE is its own obligation, graded with §5's ergonomic rows and not among these
+three: every description the document states reaches some emitted class. A check that mixes
+acceptance with ergonomics reports a defect in one as a defect in the other.
 
 A check is exhaustive over the set of nodes it claims, or it does not exist. A check that
 enumerates a subset reports on that subset only, and says so.
