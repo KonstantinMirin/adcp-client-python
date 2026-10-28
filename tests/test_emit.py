@@ -4207,7 +4207,13 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "core/account-identity-change-preview.json": "$ref",
         "core/assets/asset-union.json": "$ref",
         "core/assets/daast-asset.json": "properties",
-        "core/assets/display-tag-asset.json": "items",
+        # ``core/assets/display-tag-asset.json``'s line is DELETED at
+        # ``adcp-client-python-97w``'s sixth instalment: its ``/oneOf/0`` spells in full
+        # the composition the two documents above it spell as a bare overlay, and
+        # ``compiler._conjoins`` reads a restatement that holds the base's own
+        # declaration as one of its conjuncts as the narrowing it is -- so the document
+        # emits.  The two above still refuse, on a PAIRING gap rather than on this one;
+        # that bead carries the measurement.
         "core/assets/vast-asset.json": "properties",
         "core/async-response-data.json": "$ref",
         "core/canonical-placement.json": "$ref",
