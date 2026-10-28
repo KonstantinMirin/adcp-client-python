@@ -22,6 +22,21 @@ packaged records are committed artifacts, ``_SETTINGS`` sets ``derandomize``, an
 scratch on every invocation, twice per pair per run -- once in
 ``test_emit.graded_reports`` and once in the parametrised per-pair test.
 
+Timed on the two documents worth timing, each by itself, cold against warm:
+
+===================================================  =========  ==========  ========
+``check_pair`` on one document                       node bytes     cold s    warm s
+===================================================  =========  ==========  ========
+``core/macro-declaration.json#``                        44,949     151.51     0.013
+``media-buy/get-media-buy-delivery-response.json#``  2,701,506   2,356.66     0.389
+===================================================  =========  ==========  ========
+
+Of the first, 151.24 s is inside ``from_schema`` -- 99.8% of the pair.  Of the second only
+527.07 s is, and the other 1,830 s is the generation the strategy then drives; the corpus
+replaces both, because what it holds is the instance and not the strategy.  Over all 1,664
+pairs in one process the same comparison is **2,015.6 s cold against 39.6 s warm**, with
+1,662 replayed, 0 rejected and every verdict identical.
+
 **WHAT MAKES THE DELTA CORRECT WITHOUT A DEPENDENCY GRAPH.**  ``harness.corpus_key``
 carries the argument; the short form is that ``bundle.record`` inlines every
 cross-document ``$ref``, measured on the committed tree at **87 remaining ``$ref``
