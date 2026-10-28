@@ -242,9 +242,17 @@ def parse(
     if "$ref" in raw:
         return _reference(raw, common, position)
     if "enum" in raw:
-        return _enumeration(raw, common)
+        return _enumeration(raw, common, position)
     if "const" in raw:
-        return nodes.Constant(value=raw["const"], word=raw.get("type"), **common)
+        # ``facts`` for :class:`nodes.Scalar`'s reason and by the same derivation: a
+        # keyword that constrains this node's VALUE is decided by the pin, and the row
+        # cannot ask whether ``"US"`` matches ``^[A-Z]{2}$`` without the expression.
+        return nodes.Constant(
+            value=raw["const"],
+            word=raw.get("type"),
+            facts=value_facts(raw, position),
+            **common,
+        )
     combinator = next((kw for kw in UNION if isinstance(raw.get(kw), list)), None)
     if combinator is not None and not presence_only(raw, position):
         return _union(raw, common, combinator, pointer, position, source)
@@ -333,7 +341,9 @@ def _reference(raw: Mapping[str, Any], common: dict, position: Position) -> node
 DESCRIPTIONS = ("enumDescriptions", "x-enum-descriptions")
 
 
-def _enumeration(raw: Mapping[str, Any], common: dict) -> nodes.Enumeration:
+def _enumeration(
+    raw: Mapping[str, Any], common: dict, position: Position
+) -> nodes.Enumeration:
     """``enum``: the members, their descriptions from EITHER spelling, the stated word.
 
     The spellings are merged rather than chosen between, and the order is §6's own: a
@@ -353,6 +363,11 @@ def _enumeration(raw: Mapping[str, Any], common: dict) -> nodes.Enumeration:
         members=tuple(members) if isinstance(members, list) else (),
         descriptions=texts,
         word=raw.get("type"),
+        # ``facts`` for :class:`nodes.Constant`'s reason and by the same derivation: a
+        # keyword constraining this node's value is decided by the closed member set,
+        # and the row cannot ask whether ``"DE"`` matches ``^[A-Z]{2}$`` without the
+        # expression.
+        facts=value_facts(raw, position),
         **common,
     )
 

@@ -23,6 +23,7 @@ from typing import Any
 
 from codegen import compiler, ir
 from codegen import constraints as constraints_module
+from codegen import keywords
 from codegen.keywords import Position
 from codegen.compiler import SCALAR, Decided, Module, check_keywords
 from codegen.refusal import Kind, Refusal
@@ -337,6 +338,46 @@ def null(node: nodes.Null, mod: Module) -> Decided | Refusal:
     return Decided(ir.TypeRef("None"))
 
 
+def no_type_to_lower_onto(refused: Refusal, node: nodes.Typeless) -> Refusal:
+    """The screen's refusal with the TYPELESS row's own sentence, where the key lowers.
+
+    §5's ``type`` row gives a node stating no word ``Any``, and ``Any`` is not a type a
+    fact binds to: §2's "constraints bind to the type, not the field" has no type here to
+    bind to, no class above the value and no container to put the fact inside.  So the
+    keyword is neither lowered nor deferrable to "a later D2 row" -- it already lowers at
+    every position the walk decides a node at, which is what makes that sentence a promise
+    of a row nobody will write.  What clears it is §2's LADDER, at the rung the cell itself
+    names (:attr:`codegen.keywords.Cell.widens_to`), and the rung is §5(b)'s widening row
+    rather than this one: a widening is DECLARED, and minting a declaration in a lowering
+    is how a drop comes to be attributed to a document that states its fact plainly.
+
+    **The kind travels unchanged and the CELL decides which keys this answers for.**  The
+    screen already derived the kind from the table (``compiler.kind_for``), so nothing is
+    minted here; and the test is ``keywords.lowers``, never the refusal's own sentence --
+    a key with NO ROW and a key the table REFUSES each keep the words §3 and §7 give them,
+    because this row has nothing to add about either.
+
+    Measured over the 1,054 portable documents: one node reaches it,
+    ``compliance/comply-test-controller-response.json`` at
+    ``/oneOf/6/properties/recorded_calls/items/properties/payload``, which states a
+    ``maxLength`` and no ``type`` -- its description says the value is "object when
+    content_type is JSON-shaped ... string otherwise", so the bound is the string arm's
+    and the document states no arms.
+    """
+    answer = keywords.cell(refused.keyword, node.position)
+    if answer is None or not keywords.lowers(answer):
+        return refused
+    return Refusal(
+        refused.keyword,
+        refused.pointer,
+        "a typeless node is Any (§5's type row, 'absent -> Any') and Any is no type to "
+        "lower onto: the keyword binds to a type, a class or a container and this node "
+        f"names none, so what clears it is §2's ladder at rung {answer.widens_to} -- "
+        "§5(b)'s widening row, which declares the drop, and not this one",
+        kind=refused.kind,
+    )
+
+
 def typeless(node: nodes.Typeless, mod: Module) -> Decided | Refusal:
     """No type and no kind keyword: a ``not`` over a value, or nothing.
 
@@ -389,21 +430,78 @@ def typeless(node: nodes.Typeless, mod: Module) -> Decided | Refusal:
             ir.TypeRef("typing.Any"),
             rules=stated.rules,
         )
+    # **THE ``type`` ROW'S OWN LAST CLAUSE, which is this row's and not a later one's.**
+    # §5's ``type`` cell reads "Absent -> ``Any``; absent beside ``properties`` -> an
+    # object, where an enclosing node applies ``type: object`` to the same instance, and
+    # refused otherwise", and a :class:`nodes.Typeless` node STATING ``properties`` is
+    # exactly that last word: the parser's ``type``-absent arm hands the node to the
+    # object row at ROOT, at a branch of a root union and wherever
+    # ``bundle.constrained_to_object`` puts the pointer in the applied set, so reaching
+    # this function with a property map means no enclosing node applies the word.
+    #
+    # The screen below would otherwise answer for the three object-shaped keywords with
+    # "a later D2 row does" -- and there is no later row, because ``properties``,
+    # ``required`` and ``additionalProperties`` each have a lowering cell at this
+    # position and lower everywhere a class is reached.  What is missing is the CLASS,
+    # and the row says why one cannot be built: read by its own draft the node admits
+    # every non-object as well, so a class is narrower than the document and ``Any`` is
+    # wider, and §2 admits neither direction silently.
+    #
+    # **The ANSWER is ``compiler.lower_object``'s, because the obstruction is the same
+    # one**: that row refuses the identical shape where the parser does reach the object
+    # kind (a ROOT, a branch of a root union), on the same keyword, and
+    # ``test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_non_object``
+    # is where it is graded.  One shape, one keyword, one direction.
+    #
+    # **The WORDING is deliberately not that row's**, and the reason is a measurement
+    # rather than taste: ``test_applied_schema.py``'s
+    # ``test_no_document_in_the_bundle_reaches_the_refusal_any_more`` identifies
+    # ``lower_object``'s arm by its text ("nothing enclosing it") and asserts its
+    # population is 0 over the whole bundle.  That row's population IS 0 -- the parser
+    # only reaches the object kind at a position something applies the word at, or at a
+    # ROOT, and no portable root states a bare property map -- and a shared sentence would
+    # make the measurement ambiguous between two rows instead of wrong about one.
+    #
+    # Reported on ``type``, which is the keyword that is the reason -- the node's own
+    # declaration is complete and it is the absent word that refuses it -- and with the
+    # KIND the table gives that keyword at this position (``compiler.kind_for``), so no
+    # kind is minted here.  **That makes it a DEFERRAL where ``lower_object``'s is a
+    # VERDICT, and the difference is not this row's to settle**: ``type``'s cell is a
+    # lowering effect at all nine positions, so ``kind_for`` can only answer DEFERRED for
+    # it, while ``lower_object`` mints its kind at the raise site.  The derivation is the
+    # half §3 asks for, so it is the half kept here, and the disagreement is reported as
+    # a request rather than closed by minting a sixteenth hand-written verdict.
+    #
+    # Measured over the 1,054 portable documents: the one document this reaches is
+    # ``protocol/get-adcp-capabilities-response.json``, at a branch of a NESTED union
+    # whose own ``items`` states no type word either.
+    if "properties" in node.declares:
+        return Refusal(
+            "type",
+            node.pointer,
+            "a node declaring properties must declare type: object and this one declares "
+            "no type word at all, with no enclosing node applying one to the same "
+            "instance: the document admits a non-object that no class can, and the Any "
+            "every other typeless node takes is wider than the properties it declares "
+            "(§5's type row, 'refused otherwise')",
+            kind=compiler.kind_for("type", node.position),
+        )
     # ``rules.ON_A_VALUE`` for :func:`lower`'s reason, which does not depend on the type
     # word being present: a ``not`` is a statement about which VALUES the node admits, so
     # D4 leaves it to the schema half, and a node with no ``type`` has no less of a value
     # than a node with one.
-    # **The refusal that stood here is DELETED, and it was dead code.**  It read
-    # ``set(node) & set(ir.FACTS)`` and answered "a typeless node carrying a constraint
-    # has nothing to apply it to", as a VERDICT -- but every one of those eleven keywords
-    # has a cell that LOWERS at all eight positions the walk decides a node at, so the
-    # screen above refuses it first, by name, as the DEFERRAL ``kind_for`` reads off the
-    # cell.  The one position whose cells carry nothing for seven of them is RULE, and a
-    # node at RULE is never handed to the dispatch (§4).  Measured over the table at every
-    # position, so the deletion moves no document and loses no refusal.
+    # **The refusal that stood here was DELETED as dead code, and the sentence the screen
+    # answered with in its place was wrong.**  It read ``set(node) & set(ir.FACTS)`` and
+    # answered "a typeless node carrying a constraint has nothing to apply it to", as a
+    # VERDICT -- and the screen does refuse those eleven keywords first, by name, as the
+    # DEFERRAL ``kind_for`` reads off the cell.  What was lost with the arm is the WHY:
+    # the screen's own sentence is "a later D2 row does", and there is no later row for a
+    # ``maxLength`` -- the keyword lowers at every position the walk decides a node at.
+    # :func:`no_type_to_lower_onto` is the deleted arm's sentence restored WITHOUT its
+    # minted kind, which is what the arm got wrong and the screen got right.
     refused = check_keywords(node, {*lower_rules.ON_A_VALUE}, mod=mod)
     if refused is not None:
-        return refused
+        return no_type_to_lower_onto(refused, node)
     # §4's typeless row, with §5's ``not`` row on it where the document states one: a
     # typeless node is ``Any``, and ``Annotated[Any, AfterValidator(NotValue(…)))]`` is
     # ``Any`` minus the values the document excludes, which is the document's own reading

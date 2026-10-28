@@ -46,6 +46,7 @@ from pydantic import ValidationError
 from adcp.types import _base
 from adcp.types._base import AdCPBaseModel, SchemaRef, applied_schema, schema_at
 from codegen import bundle, emit, harness, keywords
+from codegen import refusal as refusal_module
 from conftest import refusal_from
 
 from tests.nodeset import claimed, partitions, ratchet
@@ -767,11 +768,23 @@ def test_a_properties_hop_carries_nothing_because_it_names_another_instance(tmp_
     A root declaring ``type: object`` says nothing about the value at one of its keys,
     and ``jsonschema`` agrees -- the document admits ``"inner": "a string"``.
 
-    The keyword asserted is the one that actually fires, and it is not ``type``: a
-    typeless node carrying ``properties`` never reaches ``lower_object``, because
-    ``emit._decide``'s typeless arm screens the keyword first.  So the emitter refuses
-    this node twice over, and asserting ``type`` would be asserting a code path this
-    document does not take.
+    The keyword asserted is the one that actually fires, and it is ``type``.
+
+    **It read ``properties`` until ``adcp-client-python-10l.35``, and that WAS the
+    defect** rather than a code path worth pinning.  A typeless node carrying
+    ``properties`` does not reach ``lower_object`` -- the typeless row is screened at its
+    own node first -- and the screen's own sentence for a lowering cell is "this step
+    lowers no such keyword (a later D2 row does)".  There is no later row: ``properties``
+    lowers at every position a class is reached, so the refusal named a keyword that is
+    not the reason and promised a row nobody would write.  The docstring's own words for
+    the old state were "the emitter refuses this node twice over".
+
+    The typeless row answers for it now, on ``type``, in ``lower_object``'s own direction
+    -- "the document admits a non-object that no class can", §5's ``type`` row read at
+    its last clause -- so the node is refused ONCE, on the keyword that is the reason, at
+    the same pointer it always named.  The two rows keep separate WORDING on purpose, and
+    ``test_no_document_in_the_bundle_reaches_the_refusal_any_more`` above is why: it
+    identifies ``lower_object``'s arm by its text and measures its population at 0.
     """
     inner = {"properties": {"a": {"type": "string"}}, "required": ["a"]}
     doc = {
@@ -790,7 +803,11 @@ def test_a_properties_hop_carries_nothing_because_it_names_another_instance(tmp_
 
     out = emit.emit(_write(tmp_path, {"core/probe.json": doc}), ["core/probe.json"])
     row = out.refusals["core/probe.json"]
-    assert (row["keyword"], row["pointer"]) == ("properties", "/oneOf/0/properties/inner"), row
+    assert (row["keyword"], row["pointer"]) == ("type", "/oneOf/0/properties/inner"), row
+    # The reason, and not a row waiting to be written: the screen's "a later D2 row does"
+    # is what this assertion used to read, for a keyword that already lowers everywhere.
+    assert "admits a non-object that no class can" in row["detail"], row
+    assert refusal_module.DEFERRED_TO_A_LATER_ROW not in row["detail"], row
 
 
 def test_a_node_declaring_another_type_is_refused_whatever_encloses_it() -> None:
