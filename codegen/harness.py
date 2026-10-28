@@ -424,6 +424,29 @@ def violated_keywords(schema: dict, instance: Any, *, validator_cls=None) -> lis
     return sorted(set(out))
 
 
+#: The verifier's descent, by how each keyword holds its subschema.  Applied to BOTH
+#: sides -- the document of record and the model's rendered schema -- so a keyword is
+#: here only if one of the two can spell it.
+#:
+#: **Five keywords left at ``adcp-client-python-10l.52``, each measured 0 on both sides
+#: over all 1,054 portable documents and all 1,628 graded pairs.**  Four of them no
+#: input of this pipeline can produce at all: ``unevaluatedProperties``,
+#: ``unevaluatedItems`` and ``dependentSchemas`` are draft 2019-09 vocabulary and every
+#: one of the 1,054 portable documents declares draft-07, while the model side is
+#: pydantic 2.13's rendering, which emits none of the three; ``prefixItems`` is 2020-12's
+#: and pydantic emits it only for a fixed-length tuple, which section 5's ``items`` row
+#: refuses ("a list-valued ``items`` -> refused: that is tuple validation"), so no
+#: emitted class carries one.  The fifth, ``additionalItems``, IS draft-07 vocabulary and
+#: bundle 3.2 simply states none -- so this is the one entry a later bundle version can
+#: make live again, and the cost of its absence is that a subschema held under it would
+#: not be walked on either side.
+#:
+#: **Those five were the WHOLE of the drift from the one descent table**, which is the
+#: measurement that says the removal is exactly a removal: with them gone,
+#: ``set(_DESCEND_ONE) | set(_DESCEND_MAP) | set(_DESCEND_LIST)`` equals
+#: ``set(keywords.descends_at(Position.ROOT))`` in both directions.  The three tuples
+#: restating the column is still ``docs/plan/architecture.md`` section 11's repetition and
+#: is not fixed here -- what is fixed is that the two readings no longer DISAGREE.
 _DESCEND_ONE = (
     "items",
     "additionalProperties",
@@ -433,12 +456,9 @@ _DESCEND_ONE = (
     "then",
     "else",
     "propertyNames",
-    "additionalItems",
-    "unevaluatedProperties",
-    "unevaluatedItems",
 )
-_DESCEND_MAP = ("properties", "$defs", "definitions", "patternProperties", "dependentSchemas")
-_DESCEND_LIST = ("oneOf", "anyOf", "allOf", "prefixItems")
+_DESCEND_MAP = ("properties", "$defs", "definitions", "patternProperties")
+_DESCEND_LIST = ("oneOf", "anyOf", "allOf")
 
 
 #: ``bundle.escape_key``, not a second copy: a pointer segment is spelled by four
