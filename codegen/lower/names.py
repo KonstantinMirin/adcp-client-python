@@ -73,6 +73,7 @@ naming rule, so it stays refused.
 
 from __future__ import annotations
 
+import keyword as _keyword
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
@@ -100,7 +101,17 @@ SCOPE = (
 def class_name(title: str) -> str:
     """``pascal_case`` that keeps an acronym: only the first letter of a word is
     touched, so ``TMPX Chunk`` stays ``TMPXChunk`` and does not become
-    ``TmpxChunk``."""
+    ``TmpxChunk``.
+
+    **A keyword is NOT suffixed here, and that is measured rather than tidy**
+    (``adcp-client-python-10l.37``).  A title is one SEGMENT of a chain and a keyword is
+    a property of the whole SPELLING, so the guard belongs where the spelling is made
+    (:func:`spelling`).  Put here it moved two symbols the grammar never objected to:
+    ``core/geo-region-support.json``'s ``CountriesValueTrue`` and
+    ``governance/sync-plans-request.json``'s ``BudgetTrue`` are both ``_suffixed`` onto
+    their parent -- §4 names a pinned branch ``<Base><Const>`` -- so the segment is
+    ``True`` and the name is not.
+    """
     words: list[str] = []
     cur = ""
     for ch in title:
@@ -137,8 +148,34 @@ def spelling(chain: tuple[str, ...], depth: int) -> str:
     ``depth`` 1 is the name §4 derives, each further step is the next nearest ancestor
     prepended (§4's collision rule, :func:`spell`), and ``len(chain)`` is the whole path
     -- which is the name this emitter gave every position before the rule was written.
+
+    **A SPELLING PYTHON RESERVES IS SUFFIXED, which is :func:`field_name`'s own loop at
+    the other half of the seam** (``adcp-client-python-10l.37``).  ``str.isidentifier``
+    -- the check ``emit`` makes of a root's derived symbol -- answers ``True`` for every
+    keyword, so ``class None(Base):`` passed every guard this compiler had and the
+    module it was written into did not PARSE.  A keyword is a name the grammar has
+    taken, which is the fact :func:`spell`'s ``occupied`` already carries for a name an
+    IMPORT has taken; the two answers differ only because a position can lengthen past
+    an import and none can lengthen past the grammar -- a ROOT and a titled BRANCH are
+    chains of one.  So the spelling moves by the one character ``field_name`` moves it
+    by, and it moves HERE rather than in :func:`class_name` because the question is
+    about the whole name: two of this tree's symbols end in a ``True`` segment and
+    neither is a keyword.  Two positions that collide after the suffix collide for
+    :func:`spell` to see, because this is the function it compares.
+
+    Nothing is lost, because a class's identity is its ``__adcp_schema__`` pointer and
+    not its symbol -- the difference from a FIELD, where the wire name is kept as an
+    alias because the document's accepted set depends on it.
+
+    Measured over the committed tree: **2 positions**, the branches
+    ``formats/canonical/display_tag.json#/allOf/1/oneOf/3`` and
+    ``formats/canonical/image.json#/allOf/1/oneOf/3``, each titled "none".  No other
+    symbol in the tree moves by one character.
     """
-    return "".join(chain[max(len(chain) - depth, 0) :])
+    name = "".join(chain[max(len(chain) - depth, 0) :])
+    while _keyword.iskeyword(name):
+        name += "_"
+    return name
 
 
 def entry_key(pointer: str) -> str:
@@ -324,8 +361,6 @@ def field_name(key: str, reserved: frozenset[str] = frozenset()) -> str:
     name = "".join(c if c.isalnum() or c == "_" else "_" for c in key).lstrip("_")
     if not name or name[0].isdigit():
         name = f"f_{name}"
-    import keyword as _keyword
-
     while _keyword.iskeyword(name) or name.startswith("model_") or name in reserved:
         name += "_"
     return name

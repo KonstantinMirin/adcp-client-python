@@ -1159,9 +1159,17 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
         # 18 roots reach this over the 1,054 portable documents and 13 of them report
         # their own deeper obstruction once the dispatch stops refusing, each by name,
         # keyword and pointer -- so the declaration frees 5 and is a step for the rest.
+        #
+        # **AT :attr:`nodes.Union.stated_at` AND NOT AT THIS NODE'S POINTER**
+        # (``adcp-client-python-10l.37``), which is the same pointer for every union that
+        # writes its combinator beside its own keywords and the CONJUNCT's for one that
+        # writes it inside an ``allOf``.  ``harness.inseparable_unions`` reads the
+        # document and yields the pointer the keyword is WRITTEN at, so a declaration at
+        # the composed node instead would put §8's third equality on two spellings of one
+        # union.
         approximate.declare(
             mod,
-            f"{pointer}/{kw}",
+            f"{node.stated_at}/{kw}",
             kw,
             node.position,
             node.branch_raw,
@@ -1765,7 +1773,7 @@ def _undetermined(node: "nodes.Union", mod: compiler.Module) -> None:
     a refusal propagates and this does not, so a branch that refuses below simply takes
     the document with it and the declaration goes with the module nobody emits.
     """
-    kw, pointer = node.combinator, node.pointer
+    kw = node.combinator
     if len(node.branches) < 2 or not all(isinstance(b, Mapping) for b in node.branch_raw):  # noqa: PLR2004
         return
     planned = [
@@ -1798,9 +1806,12 @@ def _undetermined(node: "nodes.Union", mod: compiler.Module) -> None:
         return
     if not overlapping(planned, node):
         return
+    # :attr:`nodes.Union.stated_at` for :func:`lower_union`'s reason, one position over:
+    # the pointer is where the document WRITES the combinator, which both sides of §8's
+    # third equality read.
     approximate.declare(
         mod,
-        f"{pointer}/{kw}",
+        f"{node.stated_at}/{kw}",
         kw,
         node.position,
         node.branch_raw,
