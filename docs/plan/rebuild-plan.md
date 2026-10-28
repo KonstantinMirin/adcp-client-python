@@ -163,6 +163,22 @@ fields. Where no class sits above the value — a root array, a mapping value, a
 entry, a union branch — the rule hangs off the value's own annotated type as an after-validator
 (`AtLeastOne`, `NotValue`, `Distinct`).
 
+**A value-level rule may state which KEYS the value supplied, and the three kinds above are not
+the limit (added 2026-10-28).** The distinction this paragraph draws is about where a rule
+HANGS, not about what it may read: "a class can read sibling fields" is about reading the
+siblings *of* the value, and a callable on the value reads the value's **own** members as freely
+as a class reads its fields. At a position with no class above it, the value *is* the object, so
+`ForbiddenGroups`, `RequiredGroups` and `PresenceGroups` are admissible there as
+`_runtime.ValueRule`s — "a callable on the value, and all it is" — without a new kind.
+
+Six documents refuse today for want of this sentence, and the refusal they carry asks for "a
+value-level presence kind that §2 does not name". It is not a new kind that was missing; it is
+this clause. `core/product.json` and `core/canonical-product.json` at
+`/properties/publisher_properties/items/allOf/0` are the measured case: `PublisherPropertySelector`
+is the node's own type by §5's `$ref` row at CONJ, a conjunct states `not` beside it, §5's `not`
+row makes that a `ForbiddenGroups`, and the node has no class — but the value it annotates is
+exactly the object whose keys the rule forbids.
+
 A rule's condition tests membership as well as equality: a `Match` clause reads a property's
 `const` or `enum`, and also `value in field`.
 
