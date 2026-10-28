@@ -17,6 +17,11 @@ fact reaches the WRONG thing, or it is dropped in silence, or the walk refuses.
 * an array's or a mapping's own bound at a BRANCH -- **on the branch's own type, never
   on the field holding the union** (section 5's ``minItems``/``maxItems`` and
   ``minProperties``/``maxProperties`` rows).
+* a ROOT ``required`` naming a key only the BRANCHES declare -- **recorded in
+  ``_ROOT_REQUIRED``, with no field on the base** (section 5's ``required`` row at
+  ROOT beside a union).  The branch classes hold the fields and their own requiredness
+  is what refuses a payload omitting one; the base carries the names so the refusal is
+  reported on the document's own ``required`` rather than on the combinator.
 
 Every perturbation here is a PAIR of documents differing in the one key being judged,
 so a passing arm and a failing arm are separated by the judged dimension and by
@@ -26,10 +31,13 @@ nothing else.
 from __future__ import annotations
 
 import json
+import sys
+import types
 from pathlib import Path
 from typing import Any
 
 import jsonschema
+from pydantic import ValidationError
 
 from compiled import compiled
 from codegen import bundle, emit
@@ -359,3 +367,127 @@ def test_a_stores_extra_key_type_is_enforced_although_pydantic_renders_none() ->
     except Exception:  # noqa: BLE001 -- the type is pydantic's and the claim is refusal
         return
     raise AssertionError("a key past the document's bound was accepted")
+
+
+# --------------------------------------------------------------------------- #
+# a ROOT required naming a key only the branches declare
+# --------------------------------------------------------------------------- #
+def _union_root(required: list[str]) -> dict:
+    """One union root whose branches declare two keys the root's properties do not.
+
+    The shape ``core/product-format-declaration.json`` states at ``/``: a
+    discriminated ``oneOf`` whose every branch declares AND requires ``kind`` and
+    ``value``, beside a root ``properties`` that declares neither.  ``required`` is the
+    judged key and the only difference between the two arms.
+    """
+    def branch(tag: str, word: str) -> dict:
+        return {
+            "title": f"Probe {tag.upper()}",
+            "properties": {"kind": {"const": tag}, "value": {"type": word}},
+            "required": ["kind", "value"],
+        }
+
+    return {
+        "title": "Probe",
+        "type": "object",
+        "properties": {"label": {"type": "string"}},
+        "required": required,
+        "oneOf": [branch("a", "string"), branch("b", "integer")],
+    }
+
+
+def _emitted_model(document: str, out: emit.Emitted) -> Any:
+    """The emitted module's root symbol, EXECUTED rather than inspected.
+
+    A constructed document is not in the shipped package, so the text is run into a
+    namespace of its own -- the same reading ``test_emit._constructed`` takes, and for
+    its reason: a test that inspects the text passes on a rendering that does not run,
+    and this row's claim is about an accepted set.  The relative import lines are
+    dropped because the sibling modules do not exist here; this document references
+    nothing, so nothing is pre-bound.
+    """
+    text = out.files[document.replace(".json", ".py")]
+    module = types.ModuleType("_inner_facts_union_fixture")
+    sys.modules[module.__name__] = module
+    try:
+        exec(  # noqa: S102 -- executing the compiler's own output is the point
+            "\n".join(x for x in text.splitlines() if not x.startswith("from .")),
+            module.__dict__,
+        )
+    finally:
+        del sys.modules[module.__name__]
+    return module.__dict__[module.__all__[0]]
+
+
+def test_a_root_required_the_branches_declare_is_root_required_and_not_a_field(
+    tmp_path,
+) -> None:
+    """Section 5's ``required`` row at ROOT beside a union, both arms.
+
+    The row reads "required on the base's fields, and the names recorded in
+    ``_ROOT_REQUIRED``, so a refusal can separate a field the root requires from one
+    that SELECTS A BRANCH" -- which presupposes that a name selecting a branch is not a
+    field of the base.  ``compiler.fields`` refused the document instead, on the ground
+    that the name is a presence rule with no field, and
+    ``core/product-format-declaration.json`` was 1 of this row's 3 primary refusals and
+    8 of the 11 documents the row held.
+
+    The ``jsonschema`` lines are what make this a measurement: the document refuses a
+    payload carrying only ``label`` and admits one carrying both branch keys, so the
+    claim about the model is a claim about the document's own accepted set and not
+    about the rendering.  Both directions are asserted, because a base that gained a
+    required ``kind`` FIELD would also refuse the first payload -- and would then state
+    a ``properties`` entry its document does not.
+    """
+    judged = _union_root(["kind", "value"])
+    control = _union_root(["label"])
+    assert not jsonschema.Draft7Validator(judged).is_valid({"label": "x"})
+    assert jsonschema.Draft7Validator(judged).is_valid({"kind": "a", "value": "s"})
+    both = {"label": "x", "kind": "a", "value": "s"}
+    assert jsonschema.Draft7Validator(control).is_valid(both)
+
+    bundle_at = _write(tmp_path / "judged", {"core/probe.json": judged})
+    out = emit.emit(bundle_at, ["core/probe.json"])
+    assert out.refusals == {}, out.refusals
+    base = _emitted_model("core/probe.json", out)
+
+    # The names are the BASE's record and not its fields: a field for either would
+    # shadow the branches' own typed declaration with whatever the root says about it,
+    # which is nothing.
+    assert base._ROOT_REQUIRED == ("kind", "value"), base._ROOT_REQUIRED
+    assert sorted(base.model_fields) == ["label"], sorted(base.model_fields)
+    # **AND THE BASE'S RENDERED SCHEMA STATES NO ``required``, which is the one fact
+    # section 8 has no reading for yet.**  Pinned here rather than left to the merge
+    # gate: the keyword's cell is ``rendered=True``, so ``harness.compared_facts``
+    # compares it, and ``_ROOT_REQUIRED`` is a ``ClassVar`` that no
+    # ``model_json_schema()`` carries -- so a base paired against its root node reports
+    # the document's two names ``missing``.  The fact is NOT dropped: section 8 pairs
+    # each branch class with "its branch node read UNDER THE ROOT'S SIBLINGS", where
+    # both names are the branch's own ``required`` and are compared and matched, and the
+    # model refuses a payload omitting either (below).  So the reading section 8 owes is
+    # that a root ``required`` the BRANCHES declare is graded at the branch pairs, and
+    # it lives in ``codegen/harness.py``.
+    assert "required" not in base.model_json_schema(), base.model_json_schema()
+
+    # The accepted set, through the base's own dispatch: the branches' requiredness is
+    # what refuses, and ``_ROOT_REQUIRED`` is what names it on the document's keyword.
+    assert base.model_validate({"kind": "a", "value": "s"}).value == "s"
+    try:
+        base.model_validate({"label": "x"})
+    except ValidationError as err:
+        # The error TYPE and its LOCATION, which is the claim: ``_no_branch`` reports a
+        # root-required field on the DOCUMENT's own ``required`` at its own location,
+        # and the combinator only where nothing of ``_ROOT_REQUIRED`` is absent.
+        reported = {(e["type"], e["loc"]) for e in err.errors()}
+    else:
+        raise AssertionError("a payload the document refuses was accepted")
+    assert reported == {("required", ("kind",)), ("required", ("value",))}, reported
+
+    # The control arm: a root ``required`` naming a root PROPERTY is a field's
+    # requiredness exactly as it was, and ``_ROOT_REQUIRED`` carries it too.
+    bundle_at = _write(tmp_path / "control", {"core/probe.json": control})
+    out = emit.emit(bundle_at, ["core/probe.json"])
+    assert out.refusals == {}, out.refusals
+    other = _emitted_model("core/probe.json", out)
+    assert other._ROOT_REQUIRED == ("label",), other._ROOT_REQUIRED
+    assert other.model_json_schema()["required"] == ["label"], other.model_json_schema()
