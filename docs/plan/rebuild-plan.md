@@ -477,8 +477,18 @@ reached first.
 - **Root**: `pascal_case(title)`, acronyms kept; where the title is missing or derives no
   identifier, `pascal_case` of the document's own file stem.
 - **Nested**: `pascal_case(property)` — `<Property>` for a property, `<Property>Item` for an array
-  element, `<Property>Value` for a mapping value, `<Root><Key>` for a `definitions` entry. The
+  element, `<Property>Value` for a mapping value, `<Key>` for a `definitions` entry. The
   module path already carries the document, so a nested name does not repeat it.
+
+  **The `definitions` entry dropped its `<Root>` prefix on 2026-10-28**, for the sentence above
+  it: the module carries the document. `core/verification-token-claims.json` declares
+  `VerificationTokenGradingProfile` and the old rule spelled it
+  `AgenticAdvertisingOrgVerificationTokenClaimsVerificationTokenGradingProfile` — 75 characters in
+  a module already named `core/verification_token_claims.py`. The prefix was there because this
+  section had no collision rule when it was written; it has one now, so the prefix is what the
+  collision rule spends when two entries of one module need it, not what every entry pays up
+  front. **This is a function of the one document and carries no dependency on a sibling set**, so
+  it is insertion-stable — unlike the branch rule tried and reverted at `64d0f897`.
 - **Union branch**: its own `title`; else the `const` it pins on the discriminating property; else
   its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
 
