@@ -230,6 +230,26 @@ def parse(
     # else it declares.  ``nodes.Union.siblings`` is where ``allOf`` goes when a union
     # claims the node, which is why the union arm is read before the ``allOf`` arm (§5's
     # ``allOf`` row: "beside a union → the same, onto the base").
+    #
+    # **A node's own NON-OBJECT ``type`` word claims it before the ``allOf`` arm too, for
+    # the reason the union arm does** (``adcp-client-python-10l.64``).  "A node that
+    # composes is a composition whatever else it declares" reads a composition as an
+    # OBJECT -- bases, fields, ``extra``, rules -- and §5's ``$ref`` row at CONJ already
+    # decides the other case by name: "Where it is not -- a scalar, an enum, **a
+    # container**, or a union root ... the target is this node's own TYPE, and the other
+    # conjuncts and the ``allOf``'s siblings constrain it, which is §2's intersection at a
+    # node that declares no fields of its own."  A node stating ``type: array`` beside an
+    # ``allOf`` is that clause with the type read off the node's own word instead of off a
+    # reference: the array IS the type, and the conjuncts constrain it.  So the word claims
+    # the node, the conjunct list travels on the kind the word selects
+    # (:attr:`nodes.Array.conjuncts`, :attr:`nodes.Union.siblings`'s own arrangement) and
+    # the kind's handler is the one reader of it.
+    #
+    # Measured over every node of the 1,054 portable documents: **4 composing nodes state
+    # a non-object ``type`` word and all 4 state ``array``** -- the same 4
+    # ``compiler.declare_object``'s type screen measured.  A word no handler claims the
+    # keyword for refuses on ``allOf`` through that handler's own screen, with the kind the
+    # cell gives it, which is loud and is not a verdict about the document.
     if "$ref" in raw:
         return _reference(raw, common, position)
     if "enum" in raw:
@@ -247,7 +267,7 @@ def parse(
     combinator = next((kw for kw in UNION if isinstance(raw.get(kw), list)), None)
     if combinator is not None and not presence_only(raw, position):
         return _union(raw, common, combinator, pointer, position, source)
-    if isinstance(raw.get("allOf"), list):
+    if isinstance(raw.get("allOf"), list) and raw.get("type") in (None, "object"):
         return _composition(raw, common, pointer)
 
     word = raw.get("type")
@@ -533,15 +553,27 @@ def _array(
     raw: Mapping[str, Any], common: dict, pointer: str, source: Source, word: Any = None
 ) -> nodes.Array:
     """``type: array``: the element at ELEM, the LIST's own bound, ``distinct``, the
-    ``contains`` predicate as stated.
+    ``contains`` predicate as stated, and the ``allOf`` conjuncts that constrain it.
 
     :attr:`nodes.Array.distinct` is the third rewrite retired on the array side:
     ``compiler.fields`` stripped ``uniqueItems`` off a property's declaration before the
     array row saw it, so the array was decided from a mapping the document does not state.
     The fact is read once here and the class holding the array reads it off the node.
+
+    :attr:`nodes.Array.conjuncts` is the arm order's own clause, stated where that comment
+    states it: a ``type: array`` beside an ``allOf`` is §5's ``$ref`` row at CONJ reached
+    through the node's own word, so the conjunct list travels on the kind the word selects
+    and ``lower.containers.array`` reads it.  Built exactly as :func:`_composition` builds
+    it, with the CONJ pointer, so a refusal inside one names the conjunct's own node.
     """
     items = raw.get("items")
     return nodes.Array(
+        conjuncts=tuple(
+            nodes.Conjunct(pointer=f"{pointer}/allOf/{i}", raw=conjunct)
+            for i, conjunct in enumerate(raw["allOf"])
+        )
+        if isinstance(raw.get("allOf"), list)
+        else (),
         element=(
             parse(items, pointer=f"{pointer}/items", position=Position.ELEM, source=source)
             if isinstance(items, Mapping)
