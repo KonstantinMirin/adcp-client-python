@@ -381,6 +381,25 @@ def _cut_to_its_own_word(node: dict) -> dict:
     return {**node, "type": "object"}
 
 
+def _descended(statements: list, key: str) -> list:
+    """Every statement in ``statements``, read at ``key``.
+
+    One hop of a pointer, applied to the statements held against the instance the hop
+    is leaving.  draft-07 holds a conjunct and the node it composes against one
+    instance, so a hop to a different instance -- a ``properties`` key, an ``items``,
+    a mapping value -- moves both: ``allOf/0/properties/x`` and ``properties/x``
+    constrain one value.  A statement that says nothing at this key drops out, which is
+    what makes this total rather than partial.
+
+    It is deliberately blind to whether ``key`` names a KEYWORD or a property NAME,
+    because the walk it mirrors is: a pointer alternates ``properties`` with a property
+    name and both are a dict lookup, so one operation answers the whole descent and no
+    reading of the pointer's segments is needed (``docs/plan/architecture.md`` §3, "a
+    node's position is never recovered from a pointer string").
+    """
+    return [s[key] for s in statements if isinstance(s, dict) and isinstance(s.get(key), dict)]
+
+
 def applied_schema(root: dict, pointer: str) -> dict:
     """The node at ``pointer``, carrying the ``type`` the document applies to it.
 
@@ -476,17 +495,35 @@ def applied_schema(root: dict, pointer: str) -> dict:
             cutting = node.get("allOf") if part == "allOf" and isinstance(node, dict) else None
         else:
             enclosing = None  # the hop moves to a different instance
-            conjoined = []
             cutting = None
         key = part.replace("~1", "/").replace("~0", "~")
         if not same_instance:
-            # The hop moves to a different instance, and it moves every sibling conjunct
-            # to THAT SAME instance: draft-07 applies ``allOf/0/properties/x`` and
-            # ``allOf/1/properties/x`` to one value.  A sibling silent at this key says
-            # nothing about it and drops out.
-            siblings = [
-                s[key] for s in siblings if isinstance(s, dict) and isinstance(s.get(key), dict)
-            ]
+            # The hop moves to a different instance, and it moves every statement held
+            # against THIS instance to THAT SAME instance: draft-07 applies
+            # ``allOf/0/properties/x`` and ``allOf/1/properties/x`` to one value.  A
+            # statement silent at this key says nothing about it and drops out.
+            #
+            # **The ENCLOSING statements descend by the same operation, where they used
+            # to be DROPPED**, and that is §8's union-branch pairing rule followed as
+            # far as the pointer goes: "a branch class of a union is paired with its
+            # branch node read under the union's siblings", and a class the branch
+            # declares BELOW a property of its own is still describing an instance the
+            # root's declaration of that property applies to.  Dropped at the first such
+            # hop, the composition §2's intersection rule writes is graded against the
+            # branch's bare overlay alone, and every fact the root contributes reads as
+            # ``added`` -- the comparison's word for a model NARROWER than its document,
+            # which is the one defect §2 forbids outright.  Measured on
+            # ``core/assets/vast-asset.json`` and ``core/assets/daast-asset.json``: 4
+            # element pairs reported 46 ``added`` facts, every one stated by the root two
+            # hops up.  ``core/assets/display-tag-asset.json`` is the control -- it
+            # spells the composition in its own branch text, so the ``allOf`` cut already
+            # carried it and the pair grades the same either way.
+            #
+            # There is one operation and not two: :func:`_descended` is what the sibling
+            # carrier already did, and the two lists differ in where they came from and
+            # not in how they travel.
+            conjoined = _descended(conjoined, key)
+            siblings = _descended(siblings, key)
         node = node[key]
     if not isinstance(node, dict):
         raise LookupError(f"{pointer} is {type(node).__name__}, not a schema")

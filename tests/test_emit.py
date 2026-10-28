@@ -4251,16 +4251,25 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "content-standards/get-content-standards-response.json": "$ref",
         "content-standards/list-content-standards-response.json": "$ref",
         "core/account-identity-change-preview.json": "$ref",
+        # ``core/assets/asset-union.json`` keeps its line and its keyword and its
+        # refusal is a DIFFERENT one at ``adcp-client-python-10l.21``'s seventh
+        # instalment -- the PREDICTED verdict rise.  It was CHAINED through
+        # ``core/assets/vast-asset.json``, which emits now, so the walk gets further and
+        # names its own obstruction at ``/oneOf/3``: a ``$ref`` branch onto a union ROOT,
+        # "VASTAsset is not a class, so it cannot be a base".  That is a separate
+        # obstruction and row ``10l.30`` measured the same document independently (210 of
+        # 235 inseparable ``$ref``-branch pairs), so two lanes have now found it.
         "core/assets/asset-union.json": "$ref",
-        "core/assets/daast-asset.json": "properties",
-        # ``core/assets/display-tag-asset.json``'s line is DELETED at
-        # ``adcp-client-python-97w``'s sixth instalment: its ``/oneOf/0`` spells in full
-        # the composition the two documents above it spell as a bare overlay, and
-        # ``compiler._conjoins`` reads a restatement that holds the base's own
-        # declaration as one of its conjuncts as the narrowing it is -- so the document
-        # emits.  The two above still refuse, on a PAIRING gap rather than on this one;
-        # that bead carries the measurement.
-        "core/assets/vast-asset.json": "properties",
+        # **``core/assets/daast-asset.json`` and ``core/assets/vast-asset.json`` are
+        # DELETED at ``adcp-client-python-10l.21``'s seventh instalment, and
+        # ``core/assets/display-tag-asset.json``'s line went at ``97w``'s sixth.**  All
+        # three spell one composition -- the branch's element overlay over the root's
+        # ``{"items": {"$ref": core/macro-declaration.json}}`` -- and display-tag spells
+        # it in full in its own branch text, which ``compiler._conjoins`` reads.  These
+        # two spell it as a bare overlay: §2's intersection rule writes the composition
+        # at ``items`` now, the base's reference survives it as a ``$ref`` CONJUNCT, and
+        # §8's pairing carries the enclosing statement DOWN by key so that the composed
+        # element class can be graded.  Both emit, with 9 documents chained behind them.
         "core/async-response-data.json": "$ref",
         "core/canonical-placement.json": "$ref",
         "core/postal-area.json": "$ref",
@@ -8329,6 +8338,35 @@ VERDICTS = frozenset(
         # unresolved-target sentence filed as ``adcp-client-python-g31``; and
         # ``media-buy/get-products-request.json`` reaches its chain only because its own
         # worded nested union stopped refusing.
+        # **SIX JOIN AT ``adcp-client-python-10l.21``'s SEVENTH INSTALMENT, AND THE RISE
+        # WAS PREDICTED BEFORE THE ROW WAS WRITTEN.**  §2's intersection rule writes the
+        # composition at ``items`` and the base's reference survives it as a conjunct, so
+        # ``core/assets/vast-asset.json`` emits -- and ``core/assets/asset-union.json``
+        # was CHAINED behind it.  With its target emitting the walk gets further and the
+        # union reports its own obstruction at ``/oneOf/3``: a ``$ref`` BRANCH onto a
+        # union ROOT, "VASTAsset is not a class, so it cannot be a base (a scalar root is
+        # an Annotated alias, and subclassing one is a TypeError at import)".
+        # ``vast-asset``'s own root is a union, so the branch names no class, and a
+        # ``$ref`` branch onto a union root is a separate obstruction that no row has
+        # written.
+        #
+        # Five more arrive as that document's claim and not as new ones -- each was
+        # already a DEFERRED chain through it and re-resolves with it:
+        # ``core/localized-creative-asset.json`` at ``/allOf/0``, then
+        # ``core/creative-localization-readback.json`` and
+        # ``core/creative-localization.json`` behind that, then
+        # ``creative/list-creatives-response.json`` and
+        # ``creative/sync-creatives-response.json`` behind those.
+        #
+        # Row ``10l.30`` measured the same document independently -- 210 of its 235
+        # inseparable ``$ref``-branch pairs -- so two lanes have now found the same
+        # obstruction from two directions.
+        "core/assets/asset-union.json",
+        "core/localized-creative-asset.json",
+        "core/creative-localization-readback.json",
+        "core/creative-localization.json",
+        "creative/list-creatives-response.json",
+        "creative/sync-creatives-response.json",
         "media-buy/update-media-buy-request.json",
         "media-buy/get-products-request.json",
         "core/requirements/offering-asset-constraint.json",
@@ -8586,8 +8624,26 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # the portable population (845 -> 885).  26 of the 37 were reached only through a
     # chain, so 26 chains left with them, and four more re-rooted onto their own
     # documents' obstructions.
-    assert len(chained) >= 105, len(chained)
+    # **105 -> 98 AT THE SEVENTH INSTALMENT, AND THE MOVE IS EMISSION PLUS ONE CHAIN
+    # THAT RE-ROOTED.**  §2's intersection rule writes the composition at ``items`` and
+    # the base's reference survives it as a conjunct, so ``core/assets/vast-asset.json``
+    # and ``core/assets/daast-asset.json`` emit and 11 documents left the refusal set
+    # over the portable population (897 -> 908).  NINE of the ten chains that left are
+    # those documents' inheritors -- ``core/offering-asset-group.json`` and the eight
+    # ``*-item.json`` documents -- and the tenth is
+    # ``core/assets/asset-union.json``, which stopped being chained at all: its target
+    # emits, so the walk gets further and it mints its OWN verdict at ``/oneOf/3``, a
+    # ``$ref`` branch onto a union root.
+    assert len(chained) >= 98, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
+    # **AND THE VERDICT HALF ROSE 32 -> 37 AT THE SEVENTH INSTALMENT, WHICH IS A
+    # PREDICTED RISE AND NOT A REGRESSION.**  The floor below is deliberately NOT raised
+    # to 37: §8 retired the verdict ceiling because the count "is not monotone under
+    # progress", and a floor re-measured upward here would oblige the row that clears
+    # ``core/assets/asset-union.json``'s obstruction to loosen it.  What moved is
+    # attributable by name -- the five chains through ``asset-union`` re-resolved from
+    # DEFERRED to VERDICT when it stopped being chained and minted its own, so the
+    # deferred half fell 76 -> 61 by the same five plus the ten that left ``chained``.
     # **50 -> 44 AT ``adcp-client-python-10l.21``'s SECOND INSTALMENT, and this floor
     # falls for the reason the one above it does.**  It is a floor on the VERDICT half of
     # the chains, so it moves whenever a verdict stops being one -- and §8 retired the
@@ -9113,48 +9169,64 @@ def test_a_const_node_inlined_through_a_ref_keeps_its_annotations() -> None:
     assert _narrows_nothing("default", "OKP", {"const": "OKP"}) is False
     assert _narrows_nothing("minLength", 1, {"const": "OKP"}) is False
 
-    # Both directions at the node: a model that DROPS the document's own description
-    # reddens, which is the defect that matters, and one that INVENTS one reddens too,
-    # which is what the deleted row used to let through.
+    # Both directions at the node: the description is LOOKED FOR whether the model
+    # drops the document's own or invents one the document does not state -- which is
+    # what the deleted row changed, since the row excused the keyword and so stopped it
+    # being looked for at all.
+    #
+    # **It asserted the two REPORTS -- ``model_drops_a_fact`` with the fact in
+    # ``missing``, and the fact in ``added`` -- and §8's annotation clause (added
+    # 2026-10-27) moved that half** (``adcp-client-python-10l.21``'s seventh
+    # instalment): "``added``, ``missing`` or ``differs`` on an annotation reports a
+    # difference that cannot change what a payload is accepted as."  So what is asserted
+    # is the COUNT, in both directions and each against the same pair with the
+    # description taken away -- which says the fact is in the compared set at this
+    # pointer and reaches the reading, and is the half the row's deletion was about.
+    # The row itself is graded on ``_narrows_nothing`` three lines above, unchanged.
     doc = {
         "type": "object",
         "properties": {"k": {"const": "OKP", "description": "d"}},
         "required": ["k"],
         "additionalProperties": False,
     }
-    dropped = compare_schema(
-        doc,
-        _constructed(
-            {
-                "title": "NoDoc",
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {"k": {"type": "string", "const": "OKP"}},
-                "required": ["k"],
-            }
-        )[0],
-    )
-    assert dropped.outcome == "model_drops_a_fact", dropped
-    assert any("description" in m for m in dropped.missing), dropped.missing
-
-    invented = compare_schema(
+    silent_model = _constructed(
         {
+            "title": "NoDoc",
             "type": "object",
-            "properties": {"k": {"const": "OKP"}},
-            "required": ["k"],
             "additionalProperties": False,
-        },
-        _constructed(
-            {
-                "title": "HasDoc",
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {"k": {"type": "string", "const": "OKP", "description": "d"}},
-                "required": ["k"],
-            }
-        )[0],
+            "properties": {"k": {"type": "string", "const": "OKP"}},
+            "required": ["k"],
+        }
+    )[0]
+    undescribed = {**doc, "properties": {"k": {"const": "OKP"}}}
+    dropped = compare_schema(doc, silent_model)
+    # The DOCUMENT's description is one more compared fact than the same document
+    # without it, so it is looked for at ``/properties/k`` and not excused away.
+    assert dropped.compared == compare_schema(undescribed, silent_model).compared + 1, (
+        dropped.compared,
+        compare_schema(undescribed, silent_model).compared,
     )
-    assert any("description" in a for a in invented.added), invented
+    # §8's clause: no difference about it is reported in any direction.
+    assert (dropped.added, dropped.missing, dropped.differs) == ([], [], []), dropped
+    assert not harness.grades_a_difference("description", keywords.Position.PROP)
+
+    described_model = _constructed(
+        {
+            "title": "HasDoc",
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"k": {"type": "string", "const": "OKP", "description": "d"}},
+            "required": ["k"],
+        }
+    )[0]
+    invented = compare_schema(undescribed, described_model)
+    # The MODEL's description is one more model fact than the same model without it, so
+    # the other direction looks for it too -- which is what the deleted row stopped.
+    assert invented.model_facts == compare_schema(undescribed, silent_model).model_facts + 1, (
+        invented.model_facts,
+        compare_schema(undescribed, silent_model).model_facts,
+    )
+    assert (invented.added, invented.missing, invented.differs) == ([], [], []), invented
 
 
 def test_the_const_row_has_exactly_one_lowering() -> None:

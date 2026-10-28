@@ -3002,23 +3002,23 @@ class Holds(StrEnum):
 #: ``items``" and §5's ``properties`` row are the two sentences, and this is the ONE
 #: declaration the readers take them from: :func:`_at_least_as_tight`, which asks whether
 #: the pair at such a keyword composes, and :func:`_intersection`, which writes the
-#: composition at ``properties``.  The pair of keywords was spelled in both functions,
+#: composition at both of them.  The pair of keywords was spelled in both functions,
 #: which is the second copy of one keyword decision ``docs/plan/architecture.md`` §3
 #: forbids.
 #:
-#: **KNOWN GAP, reported rather than closed** (``adcp-client-python-97w``, sixth
-#: instalment): the two readers do not yet agree at ``items``.  The predicate recurses
-#: there and the merge takes the CHILD's element declaration whole, so a base that
-#: declares its element as a ``$ref`` has the reference dropped and the restatement's
-#: bare overlay stands alone -- measured, 14 sites share ``items`` with different values
-#: and 8 of them lose a base's element declaration that way, which is what refuses
-#: ``core/assets/vast-asset.json`` and ``core/assets/daast-asset.json``.  Writing the
-#: composition there is a two-line change to the loop in :func:`_intersection` and it
-#: does not land, because what it produces cannot be GRADED: the conjunction §5 names
-#: arrives at the element pointer from an ENCLOSING declaration, and §8's pairing --
-#: ``adcp.types._base.applied_schema`` -- drops an enclosing statement at the first hop
-#: that moves to another instance.  The bead carries the measurement and both candidate
-#: readings of that drop.
+#: **The GAP at ``items`` is CLOSED** (``adcp-client-python-10l.21``, seventh
+#: instalment).  The predicate recursed there and the merge took the CHILD's element
+#: declaration whole, so a base that declares its element as a ``$ref`` had the
+#: reference dropped and the restatement's bare overlay stood alone -- 14 sites share
+#: ``items`` with different values and 8 of them lost a base's element declaration that
+#: way, which refused ``core/assets/vast-asset.json``,
+#: ``core/assets/daast-asset.json`` and the 9 documents chained behind them.
+#: :func:`_intersection` writes the composition at ``Holds.ONE`` now, the base's
+#: reference survives it as a ``$ref`` CONJUNCT where both sides declare an object, and
+#: §8's pairing carries the enclosing statement DOWN by key instead of dropping it at
+#: the first hop that moves to another instance (``adcp.types._base.applied_schema``) so
+#: that the composition can be graded.  Measured: emitted 897 -> 908, 0 documents
+#: stopped, 0 previously-emitted module modified, 0 facts red in any direction.
 #:
 #: Not the table's ``descends`` column, which is a wider reading: that column answers
 #: where the subschemas a structural keyword holds SIT (``codegen.keywords.descends_at``,
@@ -3059,6 +3059,38 @@ def _at_least_as_tight(
         if not isinstance(c, int | float) or not isinstance(b, int | float):
             return False
         return c >= b if _BOUNDS[keyword] > 0 else c <= b
+    if keyword == "$ref":
+        # **Two whole-content references are ordered by their TARGETS and by nothing
+        # else**, which is :meth:`Module.resolve_node`'s one documented site: "two
+        # declarations that are each a bare ``$ref`` state the same KIND of thing about
+        # an instance and whether one narrows the other is a fact about the two TARGETS,
+        # which no amount of reading the two references can answer."
+        #
+        # :func:`_restatement` reads a bare reference through :func:`_dereferenced`
+        # before it compares anything, so at the NODE level this question is already
+        # answered.  It arrives here from one level down: :func:`_intersection`'s
+        # composition at ``items`` meets two element declarations that are each a bare
+        # reference, and the keyword they SHARE is ``$ref`` itself.  Without this arm the
+        # pair is unordered, the loop takes the BASE's reference as the tighter value,
+        # and the composition is LOOSER than the restatement -- measured on
+        # ``core/media-buy-frequency-cap-requirement.json``, whose
+        # ``/allOf/1/properties/supported_control_modes/items`` references a one-member
+        # enumeration where the base it composes references a three-member one: the
+        # field left the class entirely, and three emitted modules changed.  6 sites,
+        # all in that document.
+        #
+        # ``None`` from the resolver is every undecidable case at once -- a local
+        # reference, a fragment, a URI naming no document, a target that refused -- and
+        # it answers False here, which is this predicate's own rule: "a keyword this
+        # cannot read is not tight enough and the caller refuses."
+        if resolve is None or not isinstance(c, str) or not isinstance(b, str):
+            return False
+        target_c, target_b = resolve(c), resolve(b)
+        return (
+            isinstance(target_c, dict)
+            and isinstance(target_b, dict)
+            and _restatement(target_c, target_b, resolve) is not None
+        )
     held = HOLDS.get(keyword)
     if held is not None:
         # **An overlay under a SUBSCHEMA-VALUED keyword: the rule holds at any depth,
@@ -3212,8 +3244,74 @@ def _intersection(
                     if isinstance(c[kw][k], dict) and isinstance(b[kw][k], dict)
                 },
             }
+        elif (
+            HOLDS.get(kw) is Holds.ONE
+            and isinstance(c[kw], dict)
+            and isinstance(b[kw], dict)
+        ):
+            # **At ``items`` the composition is written too, for the reason the
+            # ``properties`` arm above gives**: §2's intersection rule "holds at ANY
+            # DEPTH, including an overlay under ``items``", so the element declaration
+            # of the composition is the intersection of the two element declarations
+            # and not the tighter one WHOLESALE.  :data:`HOLDS` is the one declaration
+            # of which keywords recurse and the two arms are now the same rule read at
+            # ``Holds.ONE`` and at ``Holds.PER_KEY``.
+            #
+            # Taking the child's element whole is what this arm replaces, and it is the
+            # same shadow: ``core/assets/vast-asset.json``'s ``/oneOf/0`` restates
+            # ``macro_declarations`` as ``{"items": {"properties": {"location": ...}}}``
+            # over the root's ``{"items": {"$ref": T}}``, so the child's element alone
+            # is a TYPELESS node declaring one property -- every fact behind ``T``
+            # dropped -- and the array row refuses it on ``properties``.  Measured
+            # before this arm: 14 sites share ``items`` with different values and 8 of
+            # them lose a base's element declaration, which refused
+            # ``core/assets/vast-asset.json``, ``core/assets/daast-asset.json`` and the
+            # 9 documents chained behind them.
+            #
+            # A LIST-valued ``items`` is draft-07's tuple form, where position matters
+            # and the two lists are not composed by this rule, so it falls through to
+            # the tightness arm below with every other non-mapping value.
+            merged[kw] = _intersection(c[kw], b[kw], resolve)
         elif not _at_least_as_tight(kw, c[kw], b[kw], resolve):
             merged[kw] = b[kw]
+    # **The base's reference SURVIVES as a ``$ref`` CONJUNCT where both declarations
+    # declare ``properties``**, which is §5's ``properties`` row at CONJ read where the
+    # base spells its whole content as a reference: "two object declarations compose as
+    # an ``allOf`` of the two at that property".  The arm above drops the base's
+    # ``$ref`` because draft-07 reads ``{"$ref": T, "const": v}`` as ``T`` alone -- and
+    # that is right for a child constraining the instance ITSELF, where there is no
+    # spelling of the conjunction at the node.  Where both sides declare an object there
+    # is one, and it is the document's own: an ``allOf`` member.
+    #
+    # Appended BESIDE the child's own keywords, ``{**child, "allOf": [*child's
+    # conjuncts, base]}``, and never as ``{"allOf": [base, child]}``.  Wrapped the other
+    # way the child's declarations sit under a synthetic ``…/allOf/1`` and every nested
+    # class is stamped at a pointer the document does not have, so
+    # ``adcp.types._base.applied_schema`` raises ``KeyError: 'allOf'`` when the pair is
+    # graded.  Appended, only the conjunct's OWN index is synthetic and that costs
+    # nothing: a bare ``$ref`` conjunct declares no class, so no pointer below it is
+    # ever stamped.
+    #
+    # The measured site is ``core/assets/vast-asset.json`` and
+    # ``core/assets/daast-asset.json`` at ``/oneOf/N/properties/macro_declarations``,
+    # whose element overlay ``{"properties": {"location": ...}}`` composes with the
+    # root's ``{"$ref": core/macro-declaration.json}``.
+    # ``core/assets/display-tag-asset.json`` is the control: it SPELLS the same
+    # composition in its own branch text (:func:`_conjoins`), its element declares
+    # ``allOf`` and not ``properties``, so this arm does not fire and the document's own
+    # conjunct list is what stands.
+    conjoined_the_reference = (
+        set(b) == {"$ref"}
+        and "$ref" not in merged
+        and "properties" in c
+        and "properties" in _constraining(_dereferenced(base, resolve))
+    )
+    if conjoined_the_reference:
+        own_conjuncts = merged.get("allOf")
+        merged["allOf"] = [
+            *(own_conjuncts if isinstance(own_conjuncts, list) else []),
+            {"$ref": b["$ref"]},
+        ]
     resolved = _dereferenced(child, resolve)
     # **The BASE is gap-filled THROUGH ITS OWN REFERENCE, for the same reason the child
     # is read through one.**  §6's description-authority clause 3 is "silence
@@ -3243,9 +3341,13 @@ def _intersection(
     # ``{"$ref": "core/task-status.json", "description": "Current AdCP task state or
     # structured outcome..."}``: read target-first, 11 pairs reported the TARGET's
     # description where the composed document states the envelope's own.
+    # The gate reads "the base's reference reaches the composed node NOWHERE", so the
+    # conjunct arm above satisfies it the way a surviving ``$ref`` key does: where the
+    # reference is still there, the base's own declaration is what applies and the
+    # child has something to disagree with, which is this gate's own reason.
     based = (
         {**_dereferenced(base, resolve), **base}
-        if "$ref" in b and "$ref" not in merged
+        if "$ref" in b and "$ref" not in merged and not conjoined_the_reference
         else base
     )
     annotated = {
