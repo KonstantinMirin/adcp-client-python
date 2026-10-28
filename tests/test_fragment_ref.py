@@ -1285,9 +1285,22 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     # than reading the section's name.  ``brand.json`` joined at ``/definitions/colors``
     # and that is ``adcp-client-python-857``, a latent collision the overlap used to
     # stand in front of.
+    #
+    # **AND THAT REPLACEMENT PIN CLEARED AT ``adcp-client-python-10l.55``, THE FIFTH
+    # TIME THIS POINTER HAS MOVED AND THE SECOND TIME BY EMITTING.**
+    # ``core/creative-localization-readback.json`` refused at that pointer because the
+    # branch there is a ``$ref`` onto ``core/localized-creative-asset.json``, chained to
+    # ``core/assets/asset-union.json``, whose own ``$ref`` branch onto the UNION root
+    # ``VASTAsset`` the branch row refused for not being a class.  It is one, the gate
+    # reads ``compiler.TargetKind`` now, and the whole chain emits.
+    #
+    # The pin moves to ``brand/verify-brand-claim-response.json``, which is the same
+    # depth claim through the same number of hops -- a section entry, an ``allOf``
+    # conjunct, a property -- so what this assertion says is unchanged: the walk
+    # DESCENDS into a section rather than reading the section's name.
     claimed("documents refusing inside a definitions section", inside)
-    assert inside["core/creative-localization-readback.json"] == (
-        "/definitions/resolvedAssets/patternProperties/^[a-z0-9_]+$/anyOf/0"
+    assert inside["brand/verify-brand-claim-response.json"] == (
+        "/definitions/signed_response/allOf/1/properties/payload"
     )
     # Pinned by name because a count alone cannot say the pointer went INTO a
     # section.  This was ``core/response-payload-jws-envelope.json`` at

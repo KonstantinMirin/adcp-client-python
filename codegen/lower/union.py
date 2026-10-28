@@ -1710,16 +1710,21 @@ def _targeted(raw: Mapping[str, Any], at: str, mod: compiler.Module) -> Inherite
     :func:`_inherited`'s reading without its refusals, for the one caller that is asking
     a QUESTION about the branches rather than declaring them: §4's dispatch derivation
     needs the target's property map and nothing else, and a target that is not a class --
-    or a reference the run did not resolve -- is simply not a shape, which the caller's
+    or a reference the run did not resolve -- names no property map, which the caller's
     own gate already answers for.  Refusing here instead would refuse a document for a
     derivation that is allowed to answer "I cannot separate these".
+
+    **"Not a class" is :attr:`compiler.TargetKind.ANNOTATION` and not a missing shape**
+    (``adcp-client-python-10l.55``), which is the same reading :func:`_inherited` makes,
+    one function away: a UNION root is a class whose own ``properties`` carry a pin like
+    any other's, so a branch referencing one is separable where that pin is distinct.
     """
     if set(raw) - {"description", "deprecated"} != {"$ref"}:
         return None
     target = mod.target(raw["$ref"], at)
-    if isinstance(target, Refusal) or target.shape is None:
+    if isinstance(target, Refusal) or target.kind is compiler.TargetKind.ANNOTATION:
         return None
-    return Inherited(symbol=target.symbol, shape=target.shape)
+    return Inherited(symbol=target.symbol, shape=target.declares)
 
 
 def _undetermined(node: "nodes.Union", mod: compiler.Module) -> None:
@@ -1898,24 +1903,44 @@ def _inherited(parsed: "nodes.Node", mod: compiler.Module) -> Inherited | Refusa
     a reference names -- and a lowering may not import ``bundle`` at all (§3's one
     dispatch seam).
 
-    The SHAPE is then whichever side declared the class: ``mod.shapes`` for a local
-    target, which ``compiler.declare_object`` wrote while ``local_reference`` was
-    declaring it, and ``mod.target`` for one in another document, which is the same lookup
-    the run resolved before this document was parsed.  A target that is not a class has no shape
-    on either side and refuses here, for the reason a ``$ref`` conjunct refuses as a
-    base: §4 "What becomes what" makes a scalar root an ``Annotated`` alias,
-    and subclassing one is a ``TypeError`` at import.
+    **THE QUESTION IS "IS THE TARGET A CLASS", AND IT IS ASKED OF
+    :class:`compiler.TargetKind`** (``adcp-client-python-10l.55``).  It was asked of
+    whether the target had a :class:`compiler.Shape`, and the two come apart at exactly
+    one of §4's three root outcomes:
+
+    * a flat OBJECT root -- a class, and its shape is the fields this branch inherits.
+    * a UNION root -- a class as well (``BranchDispatchMixin`` plus the model base), whose
+      shape is the root's OWN fields.  §4's branch rule wants it: "the target, which
+      supplies the fields, and the union's base, which supplies the dispatch", and §4
+      part 3 is what makes it sound -- "the class that gets the union is the one that
+      DECLARES ``_branch_models``", so a branch subclassing it keeps its own schema.
+    * a SCALAR root -- an ``Annotated`` alias, not a class at all, and subclassing one is
+      a ``TypeError`` at import.  The refusal below is this case's and names it.
+
+    Asking for a shape refused the middle one with the last one's sentence: measured,
+    ``core/assets/asset-union.json`` at ``/oneOf/3`` reported "VASTAsset is not a class"
+    of a class, because ``emit.answer`` nulled a union base's shape on §5's ``$ref`` row
+    at CONJ -- a different POSITION's answer to a different question.
+
+    **BOTH ARMS READ ONE CARRIER**, which is :class:`compiler.Target`: the LOCAL arm is
+    told apart by :attr:`nodes.Reference.head` -- the parser's own reading of the document
+    half, so this row re-reads no ``#`` (§3's one dispatch seam) -- and
+    ``compiler.local_target`` wraps the two records ``declare_object`` wrote for a node of
+    THIS module in the same carrier the run built for a node of another.  So the kind is
+    one derivation (``compiler.target_kind``) and the shape is one invariant
+    (:attr:`compiler.Target.declares`), stated once each rather than once per arm.
     """
     pointer, uri = parsed.pointer, getattr(parsed, "uri", "")
     decided = compiler.lower_node(parsed, mod)
     if isinstance(decided, Refusal):
         return decided
     symbol = decided.type.path
-    shape = mod.shapes.get(symbol)
-    if shape is None and not decided.type.local:
+    if not decided.type.local:
         # Not a symbol at all -- a scalar, a container or a literal -- so there is no
-        # class and :meth:`compiler.Module.target` would be asked about a reference whose
-        # target this very call already resolved.
+        # class, and nothing names a declaration to ask the kind of.  Asked FIRST, before
+        # either lookup: a container's :attr:`ir.TypeRef.path` is ``""``, which is also
+        # the pointer of the document's ROOT, so a lookup keyed on the path would hand
+        # this branch the root's own class.
         return Refusal(
             "$ref",
             pointer,
@@ -1925,20 +1950,23 @@ def _inherited(parsed: "nodes.Node", mod: compiler.Module) -> Inherited | Refusa
             "branch is a class with two bases and an annotation cannot be one of them",
             kind=Kind.VERDICT,
         )
-    if shape is None:
-        bound = mod.target(uri, pointer)
-        if isinstance(bound, Refusal):
-            return bound
-        shape = bound.shape
-    if shape is None:
+    bound = (
+        mod.target(uri, pointer)
+        if getattr(parsed, "head", "")
+        else compiler.local_target(mod, symbol)
+    )
+    if isinstance(bound, Refusal):
+        return bound
+    if bound.kind is compiler.TargetKind.ANNOTATION:
         return Refusal(
             "$ref",
             pointer,
-            f"{symbol} is not a class, so it cannot be a base (a scalar root is an "
-            "Annotated alias, and subclassing one is a TypeError at import)",
+            f"{symbol} is not a class but an Annotated alias, which section 4 makes of a "
+            "SCALAR root, and subclassing one is a TypeError at import -- so it cannot be "
+            "the base a $ref branch takes its fields from",
             kind=Kind.VERDICT,
         )
-    return Inherited(symbol=symbol, shape=shape)
+    return Inherited(symbol=symbol, shape=bound.declares)
 
 
 def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal:

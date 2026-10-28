@@ -138,6 +138,18 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     Measured at ``14cef36`` over the 1,054 portable documents: 30 calls, of which 25 state
     one target and no fields -- 16 with no rule beside the type and **9 with one, every one
     a ``not``**, splitting 6 / 2 / 1 across §5's three answers.
+
+    **RE-MEASURED AT ``adcp-client-python-10l.55``: 37 calls, 32 with one target and no
+    fields -- 21 with no rule and 11 with one, splitting 7 / 2 / 2.**  The row that moved
+    it emits ``core/assets/asset-union.json``, so every node whose ``$ref`` conjunct
+    resolves to that UNION root reaches this arm for the first time.  Ten of the eleven
+    rules are still a ``not``; the eleventh is the first CONDITIONAL at this position --
+    ``core/localized-creative-asset.json`` at ``/allOf/0``, whose other conjunct is an
+    ``if``/``then`` -- and §5's ``then`` cell decides it by name: "its ``properties`` ->
+    nothing on the model; the schema half narrows the value."  That ``then`` states
+    ``properties`` and nothing else, so it is the ``nothing_on_the_model`` part below,
+    beside the one ``not`` that was already there, and the cell's ``rendered=False`` is
+    why §8 compares no fact at the pointer.
     """
     sites = _reaching()
     every = claimed("calls of section 5's $ref row at CONJ", {(s.at, s.symbol) for s in sites})
@@ -156,10 +168,19 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
         "sites stating a rule beside the conjoined type",
         {(s.at, s.symbol) for s in reaches if s.beside},
     )
-    # Every one of them is a ``not`` -- the one rule keyword that can land on a node with
-    # no object to carry a rule tuple (``lower.rules.ON_A_VALUE``), which is that
-    # constant's own measurement read at this position.
-    assert {s.beside for s in reaches if s.beside} == {("not",)}, sorted(
+    # Two rule shapes reach this position, and ``ON_A_VALUE`` is still the one keyword
+    # that can land ON THE VALUE: a ``not``, which that constant names and which the
+    # ``a_notvalue_on_the_type`` part below is the population of.
+    #
+    # **An ``if``/``then`` joined at ``adcp-client-python-10l.55``**
+    # (``core/localized-creative-asset.json`` at ``/allOf/0``, the first conditional this
+    # arm has seen) and it reaches the OTHER part: §5's ``then`` cell says "its
+    # ``properties`` -> nothing on the model; the schema half narrows the value", this
+    # ``then`` states ``properties`` and nothing else, so the model carries nothing and
+    # the document's own ``strict_validate`` is what enforces the conditional.  That is
+    # the same answer §5's ``not`` row's last clause gives, which is why the two share a
+    # part rather than needing a fourth.
+    assert {s.beside for s in reaches if s.beside} == {("not",), ("if", "then")}, sorted(
         {s.beside for s in reaches if s.beside}
     )
     assert lower_rules.ON_A_VALUE == frozenset({"not"}), lower_rules.ON_A_VALUE

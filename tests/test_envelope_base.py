@@ -73,6 +73,13 @@ MEMBERS = frozenset(
 #: reach.  Their refusals belong to §14 steps 9 and 10 and not to this row; when one of
 #: those steps lands, the member's class takes the base with no change here but this set,
 #: which is why it is a set and not a tolerance.
+#:
+#: **ONE LEFT AT ``adcp-client-python-10l.55`` BY EMITTING, which is the move this set
+#: is written to absorb.**  ``creative/sync-creatives-response.json#/oneOf/1`` chained
+#: four documents deep onto ``core/assets/asset-union.json``, whose ``$ref`` branch onto
+#: the UNION root ``VASTAsset`` the branch row refused for not being a class.  It is one;
+#: the gate reads ``compiler.TargetKind`` now, the document emits, and its member class
+#: takes the base with no change here but this entry.
 WAITING = frozenset(
     {
         "account/sync-accounts-response.json#/oneOf/1",
@@ -82,7 +89,6 @@ WAITING = frozenset(
         "brand/verify-brand-claims-response.json#/oneOf/1",
         "content-standards/get-content-standards-response.json#/oneOf/1",
         "content-standards/list-content-standards-response.json#/oneOf/1",
-        "creative/sync-creatives-response.json#/oneOf/1",
         "media-buy/build-creative-response.json#/oneOf/4",
         "media-buy/create-media-buy-response.json#/oneOf/1",
         "media-buy/update-media-buy-response.json#/oneOf/1",

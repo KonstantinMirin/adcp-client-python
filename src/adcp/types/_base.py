@@ -76,7 +76,17 @@ import functools
 import json
 from collections.abc import Callable, Mapping
 from importlib import resources
-from typing import Annotated, Any, ClassVar, Literal, NamedTuple, TypeVar, Union
+from typing import (
+    Annotated,
+    Any,
+    ClassVar,
+    Literal,
+    NamedTuple,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 
 import jsonschema
 from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter
@@ -683,8 +693,26 @@ def strict_alias(ref: SchemaRef, symbol: str, alias: Any) -> Callable[[Any], Any
     ``config=`` is also the only channel here, because pydantic refuses a
     ``config=`` on a ``TypeAdapter`` over a ``BaseModel`` -- which is why a class
     takes it off the class and an alias takes it here.
+
+    **AN ALIAS WHOSE TYPE IS A MODEL TAKES NO ``config=``, AND THAT IS THE SAME
+    SENTENCE READ FORWARD** (``adcp-client-python-10l.55``).  The channel exists for a
+    type with nowhere to carry a config; a model carries its own, and
+    ``AdCPBaseModel.model_config`` already states :data:`REGEX_ENGINE` -- so passing one
+    is both meaningless and a ``PydanticUserError`` at import.  §5's ``$ref`` row at CONJ
+    is the position that reaches it: ``core/localized-creative-asset.json`` composes a
+    bare ``$ref`` onto a UNION root, which that row makes "this node's own TYPE", so the
+    root is an ``Annotated`` alias over ``AssetVariant``.  The narrowing the config closed
+    stays closed, because the engine it sets is the one the model's own config sets.
     """
-    adapter = TypeAdapter(alias, config=ConfigDict(regex_engine=REGEX_ENGINE))
+    held = alias
+    while get_origin(held) is Annotated:
+        held = get_args(held)[0]
+    carries_its_own = isinstance(held, type) and issubclass(held, BaseModel)
+    adapter = (
+        TypeAdapter(alias)
+        if carries_its_own
+        else TypeAdapter(alias, config=ConfigDict(regex_engine=REGEX_ENGINE))
+    )
 
     def strict_validate(payload: Any) -> Any:
         _refuse_at(ref, payload, symbol)
