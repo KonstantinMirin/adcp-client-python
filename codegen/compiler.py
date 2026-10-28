@@ -3610,7 +3610,13 @@ def _distribute(
                 "them with the branch's hop and this run resolved none",
                 kind=kind_for("allOf", Position.CONJ),
             )
-        mod.hops[pointer] = replace(branch.naming, parent=base, refuses=True)
+        # ``refuses`` was deleted at ``adcp-client-python-10l.41``, which replaced the
+        # flag with the PRESENCE of ``names.Branch.index``.  Nothing is passed in its
+        # place: this docstring's own sentence says the naming facts "were recorded by
+        # the module that declared it", so the target branch's hop already carries the
+        # index its declaring module gave it, and restating one here would overwrite a
+        # recorded fact with this loop's position.
+        mod.hops[pointer] = replace(branch.naming, parent=base)
         mod.importing(branch.symbol, branch.where)
         inherited = branch.declares.description
         made = declare_object(
