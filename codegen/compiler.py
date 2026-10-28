@@ -2199,16 +2199,16 @@ def _the_conjuncts_own_type(
     phrase is the whole of the screen below: the row holds **at a node that declares no
     fields of its own**.  A node declaring one is a different shape -- the instance must
     be the target AND carry those properties, and a Python type that is the target
-    cannot state a property.  Measured over the 1,054 portable documents, of the 35 nodes
-    whose ``$ref`` conjunct resolves to something that is not a class a model can extend:
-    **32 declare no fields and 3 do**, and all 3 of those name a UNION root --
-    ``core/package-signal-targeting.json``, whose root states ``properties`` beside the
-    conjunct; ``core/product-filters.json`` at ``/properties/signal_targeting/items``,
-    which states one property beside it; and ``core/vendor-pricing-option.json``, whose
-    other conjunct is an inline object.  (The 32 split 22 ANNOTATION / 10 UNION, so the
-    kind is not what sorts the two arms: WHAT THE NODE DECLARES is.)  A fourth,
-    ``core/audience-evidence.json`` at ``/properties/attestation_refs/items/allOf/1
-    /properties/subject``, joined them once row ``.59`` cleared the shape in front of it.
+    cannot state a property.  **WHAT THE NODE DECLARES sorts the two arms, and the
+    target's KIND does not** -- a census here would say which documents reached each arm
+    on the day it was taken, and this one moved twice before the reading was written down.
+    The two arms are:
+
+    * the node declares no fields -- the target is this node's own type, which is the
+      clause above.  An ANNOTATION target is always here, because it has no field set to
+      compose with;
+    * the node declares fields -- §5's distribution clause, because a UNION root has one
+      field set per branch and conjunction distributes over disjunction.
 
     **THE 4 DISTRIBUTE, and §5's ``$ref`` row says so** (53cb6100, and
     ``adcp-client-python-10l.68``) -- 2 of them all the way, and 2 as far as
