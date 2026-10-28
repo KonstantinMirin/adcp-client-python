@@ -280,7 +280,11 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         return composing_at_a_root(node, mod, *rest, **kw)
 
     with mock.patch.object(compiler, "lower_composition", without_the_root_arm):
-        without = compiled(BUNDLE, pop)
+        # ``emit.emit`` and NOT ``compiled``: this is a PERTURBATION, and
+        # ``tests/compiled.py``'s key is a digest of ``codegen/``'s source, which a
+        # runtime patch does not move -- so the cache would hand back the UNPERTURBED
+        # compile and the delta below would be zero against itself.
+        without = emit.emit(BUNDLE, pop)
 
     claimed("bundle.portable", docs)
     # N over this population on the merged table (43 when this lane measured it

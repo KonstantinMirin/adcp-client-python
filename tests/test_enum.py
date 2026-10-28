@@ -1059,7 +1059,13 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
     original = keywords.TABLE
     try:
         keywords.TABLE = without
-        refusing = compiled(BUNDLE, population())
+        # ``emit.emit`` and NOT ``compiled``: swapping the TABLE is a runtime
+        # perturbation, and ``tests/compiled.py``'s key is a digest of ``codegen/``'s
+        # SOURCE -- which a reassignment does not move.  The cache would price the row
+        # against the UNMODIFIED table, so the four documents below would be measured
+        # against themselves.  Enforced by
+        # ``tests/test_no_cached_compile_under_a_perturbation.py``.
+        refusing = emit.emit(BUNDLE, population())
     finally:
         keywords.TABLE = original
     # **THE PRICE IS FOUR DOCUMENTS NOW, NOT THREE, AND THAT IS

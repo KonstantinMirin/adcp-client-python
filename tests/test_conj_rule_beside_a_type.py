@@ -116,7 +116,12 @@ def _reaching() -> list[Site]:
 
     compiler._the_conjuncts_own_type = spy  # noqa: SLF001
     try:
-        compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+        # ``emit.emit`` and NOT ``compiled``: this installs a SPY, so the walk has to
+        # RUN.  ``tests/compiled.py``'s key is a digest of ``codegen/``'s source and
+        # cannot see a runtime patch, so a cache hit unpickles a result the spy never
+        # saw and ``seen`` comes back empty -- green cold, red warm, with nothing
+        # changed between the runs.  Measured at the row that found it.
+        emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
     finally:
         compiler._the_conjuncts_own_type = original  # noqa: SLF001
     return seen
