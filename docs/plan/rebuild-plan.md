@@ -528,23 +528,6 @@ longer fatal.
 
 ### A union root: the base, the branches, and how a payload reaches its branch
 
-**A union of OTHER DOCUMENTS is a union alias, not a base plus branches (added 2026-10-28).**
-Where every branch of a root union is a bare `$ref`, the document emits
-`Annotated[A | B | …, Field(discriminator=<property>)]` over the targets' own classes — and no
-base, no branch subclass, no derived branch name. The targets are already classes; a branch that
-adds nothing to one is that one.
-
-Three documents: `core/assets/asset-union.json` (21 branches), `core/requirements/asset-requirements.json`
-(12), `core/pricing-option.json` (10). The base-plus-branches shape produced 21 subclasses of
-nothing for the first and two refusals that both dissolve here — `asset-union` minted a verdict
-at `/oneOf/3` reading "VASTAsset is not a class, so it cannot be a base" when `VASTAsset` is a
-class (it is itself a union base), and `asset-requirements` minted one on `title` because a
-branch "has no identity to derive a name from" when an alias branch needs no name at all.
-
-A referrer still imports one symbol, which is what the base was for. `isinstance` against a
-`X | Y` alias works from Python 3.10, and the discriminator rides on the alias where the document
-states one.
-
 A `oneOf`/`anyOf` root emits a **base** carrying `BranchDispatchMixin` plus **one class per
 branch**, and the base's name is what every referrer imports. A branch whose schema is a `$ref` is
 a class with **two bases**: the target, which supplies the fields, and the union's base, which
