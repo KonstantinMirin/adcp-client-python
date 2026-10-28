@@ -2043,9 +2043,17 @@ def _the_conjuncts_own_type(
       - **2 over ``required``** -- ``core/canonical-product.json`` and
         ``core/product.json``, whose ``publisher_properties`` items state
         ``not: {"required": ["publisher_domains"]}`` beside a union root -- which §5's row
-        decides as ``ForbiddenGroups``, a rule on a CLASS this node does not have.  §2's
-        three value-rule kinds are each about a VALUE, so a statement about which KEYS an
-        instance supplied has no kind to be, and the refusal says exactly that.
+        decides as ``ForbiddenGroups``, a rule on a CLASS this node does not have.  **§2's
+        clause of 2026-10-28 is what these two were waiting for** and it is not a fourth
+        kind: "a value-level rule may state which KEYS the value supplied, and the three
+        kinds above are not the limit ... at a position with no class above it, the value
+        *is* the object, so ``ForbiddenGroups``, ``RequiredGroups`` and ``PresenceGroups``
+        are admissible there as ``_runtime.ValueRule``s".  So the rule hangs on
+        ``PublisherPropertySelector``, this node's own type, and
+        ``lower.rules.as_the_object`` is the one reading of which of a class's rules may
+        -- ``isinstance(rule, ValueRule)``, a property of the kind.  The refusal these two
+        carried asked for "a value-level presence kind that section 2 does not name";
+        nothing was missing but the sentence (``adcp-client-python-10l.63``).
       - **1 over another shape** -- ``core/budget-allocation.json``'s
         ``optimization_goals`` items -- which is §5's ``not`` row's own last clause,
         "nothing on the model; the schema half answers and the ceiling is named", and the
@@ -2118,32 +2126,44 @@ def _the_conjuncts_own_type(
                 )
             beside[key] = stating
     if beside:
-        on_a_class = rules_at(node, *rule_nodes, position=node.position).rules
-        if on_a_class:
-            # §2's FIRST half, at a node that has no class: the statement is about which
-            # KEYS are present (``not`` over ``required`` -> ``ForbiddenGroups``), and
-            # the three value-rule kinds §2 names -- ``AtLeastOne``, ``NotValue``,
-            # ``Distinct`` -- are all about a VALUE.  So the rule has somewhere to live
-            # and no kind to live as, which is a different obstruction from the one above
-            # and is reported as itself rather than folded into it.
-            #
-            # 2 sites over the portable population, both a ``$ref`` to
-            # ``core/publisher-property-selector.json`` beside
-            # ``not: {"required": ["publisher_domains"]}``:
-            # ``core/canonical-product.json`` and ``core/product.json``, at
-            # ``/properties/publisher_properties/items/allOf/0``.
+        # §2's clause of 2026-10-28, which is what this position needed and the reason
+        # the two documents below stopped refusing: "a value-level rule may state which
+        # KEYS the value supplied, and the three kinds above are not the limit ... at a
+        # position with no class above it, the value IS the object, so ForbiddenGroups,
+        # RequiredGroups and PresenceGroups are admissible there as _runtime.ValueRules
+        # -- 'a callable on the value, and all it is' -- without a new kind".  So a rule
+        # the CLASS half wrote still hangs here, on the value's own annotated type, and
+        # ``lower.rules.as_the_object`` is the one reading of which of them may: the test
+        # is ``isinstance(rule, ValueRule)``, a property of the KIND, so this arm carries
+        # no list of the kinds §2's clause names.
+        #
+        # 2 sites over the portable population, both a ``$ref`` to
+        # ``core/publisher-property-selector.json`` beside
+        # ``not: {"required": ["publisher_domains"]}``:
+        # ``core/canonical-product.json`` and ``core/product.json``, at
+        # ``/properties/publisher_properties/items/allOf/0``, each now carrying
+        # ``ForbiddenGroups((('publisher_domains',),))`` on ``PublisherPropertySelector``.
+        at_the_value = lower_rules.as_the_object(
+            rules_at(node, *rule_nodes, position=node.position).rules
+        )
+        if at_the_value.declined:
+            # A kind that is NOT a callable on the value: it reads the keys an instance
+            # supplied through a class, so it has nowhere to live at a position with no
+            # class, and §2 admits no drop by silence.  0 sites over the portable
+            # population -- every rule this arm lowers is one of §2's clause's three --
+            # so this is written so the first one is loud, exactly as the two-conjuncts
+            # arm above is.  ``UniqueItems`` is the instructive one: it names a SIBLING
+            # field's array, which is a name the VALUE supplied and not the value.
             return Refusal(
                 "allOf",
                 where,
                 f"{symbol} is this node's own TYPE (section 5's $ref row at CONJ) and a "
-                f"conjunct states {sorted(beside)} beside it, which section 5's not row "
-                f"decides as {', '.join(sorted(type(r).__name__ for r in on_a_class))} -- "
-                "a rule on a CLASS, and this node has none.  Section 2 hangs a rule with "
-                "no class above the value off the value's own annotated type, and the "
-                "three kinds it names there (AtLeastOne, NotValue, Distinct) are each "
-                "about a VALUE: a statement about which KEYS an instance supplied has "
-                "nowhere on an ir.TypeRef to live, so the faithful answer needs a "
-                "value-level presence kind that section 2 does not name",
+                f"conjunct states {sorted(beside)} beside it, which lowers to "
+                f"{', '.join(sorted(type(r).__name__ for r in at_the_value.declined))} -- "
+                "a rule on a CLASS, and this node has none.  Section 2's value-level "
+                "clause admits a rule on the value's own annotated type where the KIND "
+                "is a callable on the value, and this one is not: it reads the keys an "
+                "instance supplied through a class, so hanging it here would drop it",
                 kind=conj,
             )
         # §2's SECOND half, which is the one this position takes: the rule hangs off the
@@ -2153,11 +2173,21 @@ def _the_conjuncts_own_type(
         # for the same statement beside a scalar's own type: ``not``'s cell is
         # ``rendered=False``, so section 8 compares no fact at this pointer and the
         # document's own ``strict_validate`` is what enforces it.
+        #
+        # The two orders are CONCATENATED and not merged, because the two halves are
+        # disjoint per keyword shape and one of them is always empty: ``on_a_value``
+        # reads a statement about a VALUE (a ``not`` over a ``const`` or an ``enum``, a
+        # ``contains``) and ``as_the_object`` carries a statement about which KEYS
+        # arrived, and the reductions in ``lower.rules`` are what split them.  Each half
+        # is already a function of the document's content (P7).
         return Decided(
             ir.TypeRef(
                 symbol,
                 local=True,
-                validators=lower_rules.on_a_value(beside, contains=beside.get("contains")),
+                validators=(
+                    *lower_rules.on_a_value(beside, contains=beside.get("contains")),
+                    *at_the_value.carried,
+                ),
             )
         )
     return Decided(ir.TypeRef(symbol, local=True))

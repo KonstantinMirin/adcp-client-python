@@ -24,17 +24,28 @@ graded here against the bundle's own nodes:
 ``not`` over           §5's ``not`` row says            what this position does
 ======================  ===============================  ==================================
 a ``const`` / ``enum``  a ``NotValue`` after-validator   writes it onto the type
-``required``            a ``ForbiddenGroups`` *rule*     refuses: there is no class
+``required``            a ``ForbiddenGroups`` *rule*     writes it onto the type
 any other shape         "nothing on the model"           emits, the schema half answers
 ======================  ===============================  ==================================
 
-The middle row is the one that still refuses and it is reported as ITSELF rather than
-folded into the old deferral: the rule has somewhere to live -- the value's annotated type
--- and no kind to live AS, because the three kinds §2 names there (``AtLeastOne``,
-``NotValue``, ``Distinct``) are each about a VALUE and this statement is about which KEYS
-an instance supplied.  Whether §2 gains a fourth, value-level presence kind is a decision
-for the owner, so the refusal names the gap instead of declaring a widening for it --
-which is §9's first mistake and what ``7044c5ab`` withdrew for ``uniqueItems``.
+**The middle row REFUSED until §2's clause of 2026-10-28, and the fix was a sentence and
+not a kind** (``adcp-client-python-10l.63``).  The refusal said the rule had somewhere to
+live -- the value's annotated type -- and no kind to live AS, because the three kinds §2
+named there (``AtLeastOne``, ``NotValue``, ``Distinct``) are each about a VALUE and this
+statement is about which KEYS an instance supplied.  §2 now answers it directly: "**a
+value-level rule may state which KEYS the value supplied, and the three kinds above are
+not the limit.**  The distinction §2 draws is about where a rule HANGS, not about what it
+may read ... at a position with no class above it, the value *is* the object, so
+``ForbiddenGroups``, ``RequiredGroups`` and ``PresenceGroups`` are admissible there as
+``_runtime.ValueRule``s -- 'a callable on the value, and all it is' -- without a new
+kind."  So no widening was declared and none was needed, which is what ``7044c5ab``
+withdrew for ``uniqueItems`` and what §9's first mistake is.
+
+``adcp.types._runtime.TheValueIsTheObject`` is that clause and nothing more -- one
+``__call__`` over the kind's own ``errors`` -- and ``lower.rules.as_the_object`` is the
+one reading of which of a class's rules the value may carry: ``isinstance(rule,
+ValueRule)``, a property of the KIND, so neither ``compiler.py`` nor this file holds a
+list of the three names.
 """
 
 from __future__ import annotations
@@ -42,17 +53,40 @@ from __future__ import annotations
 import functools
 import json
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Annotated, Any, NamedTuple
 
 import jsonschema
+import pytest
+from pydantic import AfterValidator, TypeAdapter, ValidationError
+from pydantic_core import PydanticCustomError
 
-from adcp.types._runtime import NotValue
+from adcp.types._base import AdCPBaseModel
+from adcp.types._runtime import (
+    ForbiddenGroups,
+    NotValue,
+    Presence,
+    PresenceGroups,
+    PropertyCount,
+    RequiredGroups,
+    ValueRule,
+)
 from compiled import compiled
-from codegen import bundle, compiler, emit, ir
+from codegen import bundle, compiler, emit, ir, render
 from codegen.keywords import Position
 from codegen.lower import rules as lower_rules
 from codegen.refusal import Refusal
 from codegen.schema import parse as schema_parse
+
+#: The ``$ref`` the constructed probes below name, and the :class:`compiler.Target` it
+#: resolves to: an ANNOTATION, which is the kind that makes §5's ``$ref`` row at CONJ
+#: give the node the target as its own TYPE rather than as a base.
+_AN_ENUM = "https://adcontextprotocol.org/schemas/3.2.4/enums/media-type.json"
+_AN_ANNOTATION = compiler.Target(
+    "",
+    "MediaType",
+    document="enums/media-type.json",
+    kind=compiler.TargetKind.ANNOTATION,
+)
 
 from nodeset import claimed, partitions
 
@@ -185,6 +219,18 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     ``properties`` and nothing else, so it is the ``nothing_on_the_model`` part below,
     beside the one ``not`` that was already there, and the cell's ``rendered=False`` is
     why §8 compares no fact at the pointer.
+
+    **AND AT ``adcp-client-python-10l.63``: 40 calls, 36 with one target and no fields --
+    25 with no rule and 11 with one, and the inner split moves 9 / 0 / 2.**  §2's clause
+    of 2026-10-28 is the whole of that move: the two ``not``-over-``required`` sites now
+    WRITE a ``ForbiddenGroups`` onto the value's own annotated type instead of refusing,
+    so ``declined_for_want_of_a_callable`` is the part that is expected EMPTY -- named
+    rather than dropped, and graded on a constructed node by
+    :func:`test_a_rule_kind_that_is_no_callable_on_the_value_refuses_and_names_itself`,
+    which is the same arrangement ``two_non_class_targets`` has.  ``a_class_as_well``
+    grew 3 -> 4 on ``core/audience-evidence.json``, whose ``$ref`` conjunct now resolves
+    to the ``AttestationSubject`` union root: that is ``adcp-client-python-10l.59``'s
+    OPEN numbered request and not this row's, so the part grows and the property holds.
     """
     sites = _reaching()
     every = claimed("calls of section 5's $ref row at CONJ", {(s.at, s.symbol) for s in sites})
@@ -204,8 +250,12 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
         {(s.at, s.symbol) for s in reaches if s.beside},
     )
     # Two rule shapes reach this position, and ``ON_A_VALUE`` is still the one keyword
-    # that can land ON THE VALUE: a ``not``, which that constant names and which the
-    # ``a_notvalue_on_the_type`` part below is the population of.
+    # whose VALUE half this module reads off the declaration: a ``not`` over a ``const``
+    # or an ``enum``, which that constant names.  §2's clause of 2026-10-28 does not move
+    # it, and that is the point of the clause: the other shape of ``not`` is lowered by
+    # the CLASS half exactly as before and is then hung on the value because the KIND is
+    # a callable on it, so ``ON_A_VALUE`` gains nothing and
+    # ``lower.rules.as_the_object`` reads no keyword at all.
     #
     # **An ``if``/``then`` joined at ``adcp-client-python-10l.55``**
     # (``core/localized-creative-asset.json`` at ``/allOf/0``, the first conditional this
@@ -229,17 +279,27 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     }
     partitions(
         with_a_rule,
-        a_notvalue_on_the_type=wrote,
-        no_kind_for_a_presence_rule=refused,
+        on_the_types_own_annotation=wrote,
+        declined_for_want_of_a_callable=refused,
         nothing_on_the_model=carried,
     )
-    # Each part named, so a part that emptied reddens with the shape named rather than
-    # the partition silently holding over two of three.
+    # **BOTH kinds that reach the type's own annotation, named**, which is §2's clause of
+    # 2026-10-28 graded over the bundle's own nodes: a statement about a VALUE takes
+    # ``NotValue`` and a statement about which KEYS arrived takes ``ForbiddenGroups``, and
+    # the clause is the reason the second one is here at all.  Each is asserted PRESENT
+    # below, so a row that lost one reddens with the kind named rather than leaving the
+    # partition green over the other.
+    bound = {type(v).__name__ for s in reaches if s.beside for v in s.validators}
+    assert bound == {"NotValue", "ForbiddenGroups"}, sorted(bound)
     assert all(
-        isinstance(v, NotValue) for s in reaches if s.beside for v in s.validators
+        isinstance(v, ValueRule) for s in reaches if s.beside for v in s.validators
     ), [s for s in reaches if s.beside]
-    assert wrote, "no site writes a NotValue, so §2's second half is ungraded here"
-    assert refused, "no site refuses, so the clause below holds vacuously"
+    assert wrote, "no site writes a value rule, so §2's second half is ungraded here"
+    # EXPECTED EMPTY, and named rather than dropped: every rule this arm lowers is one of
+    # the kinds §2's clause admits, so the decline is graded on a constructed node by
+    # ``test_a_rule_kind_that_is_no_callable_on_the_value_refuses_and_names_itself`` --
+    # the arrangement ``two_non_class_targets`` above already has.
+    assert not refused, sorted(refused)
     assert carried, "no site carries nothing, so §5's last `not` clause is ungraded here"
 
 
@@ -251,6 +311,14 @@ def test_the_two_halves_of_section_2_are_one_readers_answer() -> None:
     most one of ``rules.lower_declaration`` (the class half) and ``rules.on_a_value`` (the
     value half) returns anything, so the arm that fires is a consequence of the reading
     rather than a choice at the site.
+
+    **§2's clause of 2026-10-28 does not move this and that is the point of it.**  The
+    clause is about the POSITION a lowered rule may hang at, not about which half a
+    keyword's shape takes: a ``not`` over a ``const`` is still a statement about a VALUE
+    and a ``not`` over ``required`` is still lowered by the class half, and
+    ``rules.as_the_object`` re-reads no keyword -- it asks whether the KIND is a callable
+    on the value.  So ``on_a_value`` answers exactly what it answered before, and a
+    change that made it claim ``required`` too would redden here.
     """
     shapes: dict[str, dict[str, Any]] = {
         "a const": {"not": {"const": "x"}},
@@ -277,42 +345,206 @@ def test_the_two_halves_of_section_2_are_one_readers_answer() -> None:
     )
 
 
-def test_a_presence_rule_beside_a_conjoined_type_refuses_and_names_the_gap() -> None:
-    """The middle row, by document and pointer, with the sentence a reader needs.
+def test_a_presence_rule_beside_a_conjoined_type_hangs_on_the_types_own_annotation() -> None:
+    """The middle row, by document and pointer, now that §2's clause answers it.
 
     ``core/canonical-product.json`` and ``core/product.json`` state
     ``publisher_properties`` items as ``allOf: [{$ref: publisher-property-selector},
     {not: {required: ["publisher_domains"]}}]``.  The target is a union ROOT, so §5's row
     makes it the node's own type; the ``not`` is over ``required``, so §5's ``not`` row
-    decides ``ForbiddenGroups`` -- a rule on a class, and the node has none.
+    decides ``ForbiddenGroups`` -- a rule on a class, and the node has none.  §2's clause
+    of 2026-10-28 is the half that was missing and it is not a kind: "at a position with
+    no class above it, the value *is* the object", so the rule hangs on
+    ``PublisherPropertySelector`` itself.
 
-    The refusal is a DEFERRAL and names the missing KIND rather than the missing row,
-    because what obstructs it is a decision about §2's own list of value-rule kinds.
+    **Three claims, and the first is the one the row was filed for**: the sentence asking
+    for "a value-level presence kind that section 2 does not name" is gone from the whole
+    run; the two sites carry the rule the document's own ``not`` states; and neither
+    document refuses at this pointer any more.
+
+    What neither document does yet is EMIT, and this test does not claim it: both are
+    CHAINED behind ``core/tracker-execution-selector.json``
+    ``/oneOf/1/properties/vast_versions``, §5(b)'s restatement row and another row's
+    obstruction.  So the chain target is read off the run rather than pinned -- a row
+    that clears it makes these two emit and must not redden here.
     """
     out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
-    named = claimed(
-        "documents refused for a presence rule beside a conjoined type",
-        {
-            document
-            for document, row in out.refusals.items()
-            # PRIMARY only: a chained refusal QUOTES its target's whole sentence, so the
-            # substring reaches every document behind these two.
-            if row["kind"] != "chained" and "value-level presence kind" in row["detail"]
-        },
+    stating = claimed(
+        "documents stating a presence rule beside a conjoined type",
+        {"core/canonical-product.json", "core/product.json"},
+        inside=set(bundle.portable(BUNDLE)),
     )
-    assert named == {"core/canonical-product.json", "core/product.json"}, sorted(named)
-    for document in sorted(named):
-        row = out.refusals[document]
-        assert row["keyword"] == "allOf", row
-        assert row["resolved"] == "deferred", row
-        assert row["pointer"].endswith("/properties/publisher_properties/items/allOf/0"), row
-        assert "ForbiddenGroups" in row["detail"], row
-        # The document's own statement, so the sentence is about this node and not a
-        # neighbour's.
-        node = bundle.node_at(
-            bundle.read(BUNDLE, document), row["pointer"].rsplit("/allOf/", 1)[0]
+    # (1) **Nobody asks for the kind any more.**  PRIMARY only, because a chained refusal
+    # QUOTES its target's whole sentence and the substring would reach every document
+    # behind a refusal that still carried it.
+    assert not [
+        document
+        for document, row in out.refusals.items()
+        if row["kind"] != "chained" and "value-level presence kind" in row["detail"]
+    ], sorted(
+        document
+        for document, row in out.refusals.items()
+        if row["kind"] != "chained" and "value-level presence kind" in row["detail"]
+    )
+    # (2) The rule each site carries, DERIVED from the document's own statement rather
+    # than written out here, so a reading that started forbidding a different group
+    # reddens.
+    sites = [s for s in _reaching() if s.symbol == "PublisherPropertySelector"]
+    assert len(sites) == len(stating), sites
+    for document, site in zip(sorted(stating), sorted(sites), strict=True):
+        node = bundle.node_at(bundle.read(BUNDLE, document), site.at.rsplit("/allOf/", 1)[0])
+        forbidden = node["allOf"][1]["not"]["required"]
+        assert site.at.endswith("/properties/publisher_properties/items/allOf/0"), site
+        assert site.refusal is None, site.refusal
+        assert site.validators == (ForbiddenGroups((tuple(forbidden),)),), site
+    # (3) And no refusal of either document is this node's: the row is cleared, whatever
+    # stands in front of the document next.
+    for document in sorted(stating):
+        row = out.refusals.get(document)
+        if row is None:
+            continue
+        assert row["kind"] == "chained", row
+        assert not row["pointer"].endswith(
+            "/properties/publisher_properties/items/allOf/0"
+        ), row
+
+
+def test_the_presence_kinds_read_the_values_own_members_at_either_place() -> None:
+    """§2's clause as the RUNTIME holds it: one kind, one ``errors``, two callers.
+
+    ``adcp.types._runtime.TheValueIsTheObject`` is the clause and nothing more, so the
+    property to grade is that the two callers AGREE: ``Rule.errors(keys, values)`` -- what
+    ``RuleBound`` asks of a class's rule -- and ``ValueRule.__call__(value)`` -- what
+    pydantic asks of an annotation's -- decide the same payload the same way, and the
+    keyword a refusal names is the document's own either way.
+
+    All three kinds §2's clause names, because the clause names three and only
+    ``ForbiddenGroups`` has a site in this bundle: a kind admitted by the sentence and
+    broken would be found by the next document and not by this suite.
+
+    **A value that is no object is returned untouched**, which is :class:`Distinct`'s
+    measured reason read for a statement about properties: the annotated type can be one
+    arm of a union whose other arms are a string or a number, and draft-07 applies
+    ``required`` to an object alone -- so refusing there would make the model narrower
+    than its document, which §2 forbids.
+    """
+    forbids = ForbiddenGroups((("a", "b"),))
+    requires = RequiredGroups((("a",), ("b",)), "oneOf")
+    presence = PresenceGroups((Presence(("a",), (("b",),)), Presence(("b",), (("a",),))), "oneOf")
+    cases: list[tuple[Any, dict[str, Any], str | None]] = [
+        (forbids, {"a": 1, "b": 2}, "not"),
+        (forbids, {"a": 1}, None),
+        (forbids, {}, None),
+        (requires, {"a": 1}, None),
+        (requires, {"a": 1, "b": 2}, "oneOf"),
+        (requires, {}, "oneOf"),
+        (presence, {"a": 1}, None),
+        (presence, {"a": 1, "b": 2}, "oneOf"),
+        (presence, {}, "oneOf"),
+    ]
+    seen: set[str] = set()
+    for rule, payload, keyword in cases:
+        # The class half, which is what ``RuleBound`` evaluates.
+        through_a_class = [e[0] for e in rule.errors(frozenset(payload), payload)]
+        assert through_a_class == ([keyword] if keyword else []), (rule, payload)
+        # The value half, on the same payload, through ``ValueRule.__call__``.
+        assert isinstance(rule, ValueRule), rule
+        try:
+            assert rule(payload) is payload, (rule, payload)
+            through_the_value = None
+        except PydanticCustomError as refusal:
+            through_the_value = refusal.type
+        assert through_the_value == keyword, (rule, payload, through_the_value)
+        seen.add(type(rule).__name__)
+    assert seen == {"ForbiddenGroups", "RequiredGroups", "PresenceGroups"}, sorted(seen)
+    # No object, so nothing to say about its properties -- and an EMPTY key set is not
+    # the answer either, which is why ``_members`` returns ``None``: ``RequiredGroups``
+    # over ``{}`` refuses above, and it must not refuse a string.
+    for rule, _payload, _keyword in cases:
+        for value in ("not an object", 7, None, ["a"]):
+            assert rule(value) == value, (rule, value)
+
+
+def test_a_presence_rule_on_a_value_is_enforced_through_a_rendered_annotation() -> None:
+    """The other two halves of the path: the RENDERER and pydantic.
+
+    The two bundle sites are in documents that do not emit yet -- both are chained behind
+    §5(b)'s restatement row -- so the annotation this row writes has no module in the
+    tree to be read out of, and the pipeline is graded at its two remaining seams
+    instead.  Named as the gap it is: when
+    ``core/tracker-execution-selector.json`` clears, ``core/product.json`` emits and
+    ``tests/test_emit.py``'s ``VALUE_RULE_CARRIERS`` gains a ``ForbiddenGroups`` row at
+    ``core/product.json`` / ``CONJ`` (``adcp-client-python-10l.63``).
+
+    1. ``render.alias`` composes ``Annotated[T, AfterValidator(ForbiddenGroups(...))]``
+       and REPORTS every symbol it names, which is the measured trap: a part spelled in
+       the text and not passed through the model layer reaches the module as a
+       ``NameError``.
+    2. pydantic enforces it at the position the row writes -- a MODEL as the annotated
+       type -- so the after-validator is handed a built model and :func:`supplied` reads
+       the keys that arrived.  Both directions, because a narrowing is the failure that
+       matters.
+    """
+    rule = ForbiddenGroups((("publisher_domains",),))
+    rendered = render.alias(
+        ir.AliasDecl(
+            "PublisherPropertySelectorNoDomains",
+            ir.TypeRef("PublisherPropertySelector", local=True, validators=(rule,)),
         )
-        assert node["allOf"][1] == {"not": {"required": ["publisher_domains"]}}, node["allOf"]
+    )
+    assert "AfterValidator(ForbiddenGroups((('publisher_domains',),)))" in rendered.text, (
+        rendered.text
+    )
+    assert ("adcp.types._runtime", "ForbiddenGroups") in rendered.imports, rendered.imports
+
+    class Selector(AdCPBaseModel):
+        publisher_domains: list[str] | None = None
+        publisher_ids: list[str] | None = None
+
+    adapter = TypeAdapter(Annotated[Selector, AfterValidator(rule)])
+    assert adapter.validate_python({"publisher_ids": ["p"]}).publisher_ids == ["p"]
+    with pytest.raises(ValidationError) as caught:
+        adapter.validate_python({"publisher_domains": ["example.com"]})
+    assert "not" in {e["type"] for e in caught.value.errors()}, caught.value.errors()
+
+
+def test_a_rule_kind_that_is_no_callable_on_the_value_refuses_and_names_itself() -> None:
+    """The decline, on a constructed node: the part of the partition above that is empty.
+
+    §2's clause admits a class's rule onto the value "as a ``_runtime.ValueRule`` -- a
+    callable on the value, and all it is" -- so a kind that is NOT one has nowhere to live
+    at a position with no class, and §2 admits no drop by silence.  0 sites over the
+    portable population, because every rule this arm lowers is one of the clause's three,
+    which is why this is graded on a node built here.
+
+    ``minProperties`` is the probe and the reason is the kind it lowers to:
+    :class:`adcp.types._runtime.PropertyCount` counts the keys that arrived through the
+    class's own field set, so it is a :class:`Rule` and no ``ValueRule``, and
+    ``lower.rules.as_the_object`` declines it by asking the KIND rather than by consulting
+    a list.
+    """
+    conjunct = {"minProperties": 1, "additionalProperties": True}
+    assert lower_rules.as_the_object(
+        lower_rules.lower_declaration(conjunct, Position.CONJ).rules
+    ) == lower_rules.AsTheObject(declined=(PropertyCount(minimum=1, maximum=None),))
+    node = schema_parse.parse(
+        {"allOf": [{"$ref": _AN_ENUM}, conjunct]},
+        pointer="/properties/kind",
+        position=Position.PROP,
+        source=schema_parse.Source(document="probe.json"),
+    )
+    answer = compiler._the_conjuncts_own_type(  # noqa: SLF001 -- the arm's only caller
+        node,
+        [("/properties/kind/allOf/0", _AN_ANNOTATION)],
+        fields_declared=(),
+        bases=(),
+        rule_nodes=[conjunct],
+    )
+    assert isinstance(answer, Refusal), answer
+    assert (answer.keyword, answer.resolved) == ("allOf", "deferred"), answer
+    # The KIND names itself, which is what keeps the decline from being a silent drop.
+    assert "PropertyCount" in answer.detail, answer.detail
+    assert "is a callable on the value, and this one is not" in answer.detail, answer.detail
 
 
 def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() -> None:
@@ -326,7 +558,7 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
     node = schema_parse.parse(
         {
             "allOf": [
-                {"$ref": "https://adcontextprotocol.org/schemas/3.2.4/enums/media-type.json"},
+                {"$ref": _AN_ENUM},
                 {"not": {"const": "video"}},
                 {"not": {"const": "audio"}},
             ]
@@ -336,14 +568,9 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
         source=schema_parse.Source(document="probe.json"),
     )
     # The row reads the TARGET and not a symbol (``adcp-client-python-10l.59``), so the
-    # probe builds the one a ``$ref`` to an enumeration resolves to: an ANNOTATION, which
-    # is the kind that makes §5's row give the node the target as its own TYPE.
-    target = compiler.Target(
-        "",
-        "MediaType",
-        document="enums/media-type.json",
-        kind=compiler.TargetKind.ANNOTATION,
-    )
+    # probe uses the one a ``$ref`` to an enumeration resolves to: ``_AN_ANNOTATION``,
+    # the kind that makes §5's row give the node the target as its own TYPE.
+    target = _AN_ANNOTATION
     answer = compiler._the_conjuncts_own_type(  # noqa: SLF001 -- the arm's only caller
         node,
         [("/properties/kind/allOf/0", target)],
