@@ -26,6 +26,7 @@ import pytest
 from adcp.types._base import SchemaBound, schema_at
 from adcp.types._schemas.core.error import Error
 from adcp.types.envelopes import FailedResponse
+from compiled import compiled
 from codegen import bundle, emit, keywords
 from codegen.lower import envelope
 from tests.nodeset import claimed
@@ -73,6 +74,13 @@ MEMBERS = frozenset(
 #: reach.  Their refusals belong to §14 steps 9 and 10 and not to this row; when one of
 #: those steps lands, the member's class takes the base with no change here but this set,
 #: which is why it is a set and not a tolerance.
+#:
+#: **ONE LEFT AT ``adcp-client-python-10l.55`` BY EMITTING, which is the move this set
+#: is written to absorb.**  ``creative/sync-creatives-response.json#/oneOf/1`` chained
+#: four documents deep onto ``core/assets/asset-union.json``, whose ``$ref`` branch onto
+#: the UNION root ``VASTAsset`` the branch row refused for not being a class.  It is one;
+#: the gate reads ``compiler.TargetKind`` now, the document emits, and its member class
+#: takes the base with no change here but this entry.
 WAITING = frozenset(
     {
         "account/sync-accounts-response.json#/oneOf/1",
@@ -82,7 +90,6 @@ WAITING = frozenset(
         "brand/verify-brand-claims-response.json#/oneOf/1",
         "content-standards/get-content-standards-response.json#/oneOf/1",
         "content-standards/list-content-standards-response.json#/oneOf/1",
-        "creative/sync-creatives-response.json#/oneOf/1",
         "media-buy/build-creative-response.json#/oneOf/4",
         "media-buy/create-media-buy-response.json#/oneOf/1",
         "media-buy/update-media-buy-response.json#/oneOf/1",
@@ -100,7 +107,7 @@ def whole() -> emit.Emitted:
     """One run over the whole portable population, shared by the three tests that read
     a figure off it.  ``functools.cache`` and not a fixture, because the result is a pure
     function of the bundle and the emitter and a run costs a minute and a half."""
-    return emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    return compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
 
 
 @functools.cache
@@ -356,7 +363,7 @@ def test_the_base_module_is_a_function_of_the_bundle_and_not_of_the_run() -> Non
     """
     document = "brand/creative-approval-response.json"
     rel = emit.module_path(document) + ".py"
-    alone = emit.emit(BUNDLE, [document])
+    alone = compiled(BUNDLE, [document])
     # Against the COMMITTED artifacts, which is the whole-population run's own output
     # (``tests/test_emit.py``'s byte compare is what keeps them that): comparing a
     # one-document run with a second whole-bundle run here would cost a second emission

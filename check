@@ -1,0 +1,154 @@
+#!/bin/sh
+# A shell preamble, not a python shebang: the interpreter must be the project's own
+# .venv (jsonschema, hypothesis and pydantic live there and nowhere else), and
+# PYTHONPATH must carry BOTH roots -- "." for codegen and "src" for adcp. PYTHONPATH=.
+# alone resolves adcp from an editable .pth in whatever worktree installed it, which
+# silently grades a mix of two trees. Measured; see the bd memory on sibling worktrees.
+"""true" 2>/dev/null
+exec env PYTHONPATH=.:src "$(dirname "$0")/.venv/bin/python" "$0" "$@"
+"""
+"""The fast loop: the three numbers in 0.06 s, or one document's report in seconds.
+
+**Why this exists.**  The full suite is the GATE, not the loop, and a lane that runs it to
+answer "did my change work" waits 40 minutes for a number it can have instantly.  Two
+caches make that true -- ``tests/compiled.py`` holds one compile per population keyed on
+the compiler's own source, and ``tests/corpus.py`` holds the accepts draw keyed on the
+record -- and this is the one command that reads them.
+
+::
+
+    ./check                          the three numbers over the whole bundle
+    ./check core/assets/url-asset.json [...]      those documents' report, with reasons
+    ./check --primary                every PRIMARY refusal, grouped by keyword
+    ./check --why core/foo.json      the full refusal sentence for one document
+
+A document argument needs no bundle path: it is relative to ``schemas/cache/3.2``.
+
+**The numbers this prints are the ones a delivery reports**, read the way the directive
+requires them: ``emitted`` and ``refused`` with its ``resolved`` split, ``accounted``, and
+primary/chained off ``Refusal.kind`` and never off a sentence.  They are never summed.
+"""
+
+import collections
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "tests"))
+
+BUNDLE = Path("schemas/cache/3.2")
+
+
+def _out(population: list[str] | None = None):
+    from codegen import bundle
+
+    from compiled import compiled
+
+    return compiled(BUNDLE, population or sorted(bundle.portable(BUNDLE)))
+
+
+def numbers() -> int:
+    """The three numbers, which is what a delivery reports."""
+    started = time.time()
+    out = _out()
+    kinds = collections.Counter(
+        str(refusal["kind"]).split(".")[-1] for refusal in out.refusals.values()
+    )
+    resolved = collections.Counter(
+        str(refusal["resolved"]).split(".")[-1] for refusal in out.refusals.values()
+    )
+    facts = sum(len(v) for v in out.approximations.values())
+    chained = kinds["chained"]
+    print(
+        f"emitted {len(out.emitted)} / refused {len(out.refusals)} "
+        f"(deferred {resolved['deferred']}, verdict {resolved['verdict']}); "
+        f"accounted {len(out.emitted) + resolved['verdict']}"
+    )
+    print(
+        f"kind: verdict {kinds['verdict']}, deferred {kinds['deferred']}, "
+        f"chained {chained}  ->  primary {len(out.refusals) - chained}, chained {chained}"
+    )
+    print(f"approximated {facts} facts in {len(out.approximations)} documents")
+    print(f"({time.time() - started:.2f} s)", file=sys.stderr)
+    return 0
+
+
+def primary() -> int:
+    """Every primary refusal, grouped by the keyword it reports on.
+
+    Primary is read off ``Refusal.kind``, never off the sentence: a chained refusal's
+    detail quotes its target's, so a grep over the text counts one obstruction once per
+    quoting document.  That mistake has been made five times in this epic and
+    ``refusal.Kind``'s docstring records four of them.
+    """
+    out = _out()
+    rows = [
+        (document, refusal)
+        for document, refusal in out.refusals.items()
+        if str(refusal["kind"]).split(".")[-1] != "chained"
+    ]
+    by_keyword = collections.defaultdict(list)
+    for document, refusal in rows:
+        by_keyword[refusal["keyword"]].append((document, refusal))
+    print(f"{len(rows)} PRIMARY refusals over {len(by_keyword)} keywords\n")
+    for keyword, group in sorted(by_keyword.items(), key=lambda kv: -len(kv[1])):
+        print(f"  {keyword}  ({len(group)})")
+        for document, refusal in sorted(group):
+            kind = str(refusal["kind"]).split(".")[-1]
+            print(f"     {kind:9} {document}  at {refusal['pointer'] or '/'}")
+    return 0
+
+
+def why(documents: list[str]) -> int:
+    """The full refusal sentence for each named document, or that it emits."""
+    out = _out()
+    for document in documents:
+        refusal = out.refusals.get(document)
+        if refusal is None:
+            module = out.emitted.get(document)
+            print(f"EMITS  {document}  ->  {module}")
+            continue
+        print(
+            f"REFUSED {document}\n"
+            f"   kind={str(refusal['kind']).split('.')[-1]} "
+            f"resolved={str(refusal['resolved']).split('.')[-1]} "
+            f"keyword={refusal['keyword']} pointer={refusal['pointer'] or '/'}\n"
+            f"   {refusal['detail']}\n"
+        )
+    return 0
+
+
+def report(documents: list[str]) -> int:
+    """Those documents and their closure, the way ``python -m codegen`` reports them.
+
+    A closure and not the whole bundle, because a lane iterating on one document wants
+    its answer in seconds and does not need the other 1,050.
+    """
+    import subprocess
+
+    return subprocess.call(
+        [
+            sys.executable,
+            "-m",
+            "codegen",
+            "--bundle",
+            str(BUNDLE),
+            "--tree",
+            "/tmp/check-tree",
+            *documents,
+        ]
+    )
+
+
+def main(argv: list[str]) -> int:
+    if not argv:
+        return numbers()
+    if argv[0] == "--primary":
+        return primary()
+    if argv[0] == "--why":
+        return why(argv[1:])
+    return report(argv)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

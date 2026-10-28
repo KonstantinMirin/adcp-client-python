@@ -84,20 +84,24 @@ def _root(node: nodes.Reference, mod: Module) -> Decided | Refusal:
     target is an alias, an enumeration or a root model there is nothing to subclass and
     the symbol is bound to the target by identity" -- has **population 0** over the
     portable set: 1 document states a bare-``$ref`` root
-    (``core/signal-pricing-option.json``) and its target is a class.  ``Target.shape`` is
-    the reading of "is a class", and it is ``None`` for a union ROOT as well as for an
-    alias: ``emit.resolve`` declines to hand a union base's shape across a module
-    boundary, which is the answer §5's ``$ref`` row at CONJ already gives ("a union root,
-    whose instance is one of its branches ... is not a class a model can extend") and
-    which §4 part 3 makes load-bearing here -- a subclass of a union base declared
+    (``core/signal-pricing-option.json``) and its target is a class.
+    :class:`compiler.TargetKind` is the reading of WHICH class, and this row wants
+    :attr:`compiler.TargetKind.CLASS` alone: a union ROOT is a class and still has no
+    subclass here, which is the answer §5's ``$ref`` row at CONJ already gives ("a union
+    root, whose instance is one of its branches ... is not a class a model can extend")
+    and which §4 part 3 makes load-bearing -- a subclass of a union base declared
     elsewhere keeps its OWN schema, so it would accept none of the branches.
+
+    **The gate is the KIND and not ``shape is None``** (``adcp-client-python-10l.55``):
+    a union root records a :class:`compiler.Shape` like every other class, so the two
+    questions came apart and the answer this row wants is the kind's.
     """
     target = mod.target(node.uri, node.pointer)
     if isinstance(target, Refusal):
         # The run's own refusal for this site, unchanged (§6), and the CHAIN is the
         # run's to mint: the target is where the obstruction is.
         return target
-    if target.shape is None:
+    if target.kind is not compiler.TargetKind.CLASS:
         return Refusal(
             "$ref",
             node.pointer,
@@ -117,13 +121,13 @@ def _root(node: nodes.Reference, mod: Module) -> Decided | Refusal:
         (),
         # What the class INHERITS, which is the whole of the target's own shape: this
         # subclass declares nothing, so there is nothing to overlay.
-        target.shape,
+        target.declares,
         bases=(ir.TypeRef(target.symbol, local=True),),
         # §6's description-authority rule, clause 3: this node's own ``description``
         # sibling where it states one -- §5's ``$ref`` row says the sibling's
         # description wins -- and the target's where it is silent.  ``declare_object``
         # reads the node's first and falls back to this.
-        description=target.shape.description,
+        description=target.declares.description,
     )
     if isinstance(declared, Refusal):
         return declared

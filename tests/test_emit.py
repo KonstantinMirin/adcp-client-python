@@ -97,6 +97,7 @@ from codegen.harness import (
 )
 from codegen.lower import rules
 import corpus
+from compiled import compiled
 import populations
 from conftest import refusal_from
 
@@ -554,7 +555,7 @@ def test_step_sevens_population_is_counted_as_an_object_root_and_nothing_else() 
     the object arm is what read it, which is the half the table used to stand in for.
     """
     assert object_rules(), "step 7's population is empty; this would be vacuous"
-    out = emit.emit(BUNDLE, object_rules())
+    out = compiled(BUNDLE, object_rules())
     for document in object_rules():
         doc = bundle.read(BUNDLE, document)
         counting = [c.__name__ for c in ROOT_POPULATIONS if c(doc)]
@@ -563,7 +564,7 @@ def test_step_sevens_population_is_counted_as_an_object_root_and_nothing_else() 
 
 
 def test_every_named_document_is_either_emitted_or_refused_by_name_and_keyword() -> None:
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     assert set(population()) <= set(out.emitted) | set(out.refusals)
     assert not set(out.emitted) & set(out.refusals)
     for document, row in out.refusals.items():
@@ -593,7 +594,7 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
     ImportError and the closure is not broken.  Both skipped populations are asserted
     non-empty below, so neither is a silent hole.
     """
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     pulled_in = set(out.emitted) - set(population())
     assert pulled_in, "no document was reached through a reference; the walk graded nothing"
     assert "core/creative-revision-id.json" in pulled_in
@@ -685,7 +686,7 @@ def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
       nested class is a subschema (and the previous arrangement could not bind
       one at all -- a nested class had no row and so no ``strict_validate``).
     """
-    emitted = set(emit.emit(BUNDLE, population()).emitted)
+    emitted = set(compiled(BUNDLE, population()).emitted)
     rows = graded()
     assert {g.ref.document for g in rows} == emitted
     roots = [g for g in rows if g.ref.pointer == "#"]
@@ -3197,7 +3198,7 @@ def _symbol(document: str) -> str:
     # from ``compiler.class_name`` over the document's own title.  So this reads index 0
     # instead of filtering by name or re-deriving the title, and if that order ever
     # changes the assertion over there fails before anything here does.
-    return importlib.import_module(emit.emit(BUNDLE, [document]).emitted[document]).__all__[0]
+    return importlib.import_module(compiled(BUNDLE, [document]).emitted[document]).__all__[0]
 
 
 def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
@@ -4072,7 +4073,7 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     what it is for.  The 37 + 9 split the previous revision quoted was measured when
     ``allOf`` was 46 and is not re-measured here; what is asserted is the row.
     """
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     roots = union_roots()
     emitted = [d for d in roots if d in out.emitted]
     refused = [d for d in roots if d in out.refusals]
@@ -4268,15 +4269,14 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "content-standards/get-content-standards-response.json": "$ref",
         "content-standards/list-content-standards-response.json": "$ref",
         "core/account-identity-change-preview.json": "$ref",
-        # ``core/assets/asset-union.json`` keeps its line and its keyword and its
-        # refusal is a DIFFERENT one at ``adcp-client-python-10l.21``'s seventh
-        # instalment -- the PREDICTED verdict rise.  It was CHAINED through
-        # ``core/assets/vast-asset.json``, which emits now, so the walk gets further and
-        # names its own obstruction at ``/oneOf/3``: a ``$ref`` branch onto a union ROOT,
-        # "VASTAsset is not a class, so it cannot be a base".  That is a separate
-        # obstruction and row ``10l.30`` measured the same document independently (210 of
-        # 235 inseparable ``$ref``-branch pairs), so two lanes have now found it.
-        "core/assets/asset-union.json": "$ref",
+        # **``core/assets/asset-union.json``'s LINE IS DELETED AT
+        # ``adcp-client-python-10l.55``, and the document EMITS.**  It held ``$ref`` for
+        # the branch row's "VASTAsset is not a class", which asked whether the target had
+        # a ``compiler.Shape`` and reported the answer as a statement about classes --
+        # two different questions once §4's three root outcomes are told apart, because a
+        # UNION root is a class whose shape ``emit.answer`` nulled on §5's ``$ref`` row at
+        # CONJ.  The gate reads ``compiler.TargetKind`` now and §4's own sentence stands:
+        # a ``$ref`` branch is a class with two bases, the target supplying the fields.
         # **``core/assets/daast-asset.json`` and ``core/assets/vast-asset.json`` are
         # DELETED at ``adcp-client-python-10l.21``'s seventh instalment, and
         # ``core/assets/display-tag-asset.json``'s line went at ``97w``'s sixth.**  All
@@ -4325,7 +4325,9 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         # ``core/rights-constraint.json``.  The site itself composed; what is left is
         # another document's obstruction.
         "creative/preview-creative-response.json": "$ref",
-        "creative/sync-creatives-response.json": "$ref",
+        # ``creative/sync-creatives-response.json``'s line is deleted at
+        # ``adcp-client-python-10l.55`` with ``core/assets/asset-union.json``'s: it held
+        # the chain through it, four documents deep, and the whole chain emits.
         "error-details/vast-version-mismatch.json": "required",
         "media-buy/build-creative-response.json": "$ref",
         "media-buy/buy-products-request.json": "required",
@@ -4722,7 +4724,13 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
         for path, (name, _type) in held.items():
             if uri.endswith(path):
                 module = f".{path.rsplit('/', 1)[-1].removesuffix('.json')}"
-                sites[(uri, pointer)] = compiler.Target(module, name)
+                # No :class:`compiler.Shape`, so the fixture's targets are the
+                # aliases and enumerations they have always been: ``Target.kind`` has no
+                # default, so which of §4's three root outcomes a target is gets stated
+                # here rather than inferred from the absent shape.
+                sites[(uri, pointer)] = compiler.Target(
+                    module, name, kind=compiler.TargetKind.ANNOTATION
+                )
                 break
         else:
             raise AssertionError(f"the fixture binds no target for {uri}")
@@ -4820,7 +4828,7 @@ def test_every_root_reaches_one_arm_and_the_populations_partition_the_bundle() -
     claimed("documents exactly one population counts", by_count[1], inside=documents)
 
     uncounted = claimed("roots no population counts", by_count[0], inside=documents)
-    out = emit.emit(BUNDLE, sorted(uncounted))
+    out = compiled(BUNDLE, sorted(uncounted))
     # **The arm ANSWERS, and an answer is an emission or a refusal** --
     # ``adcp-client-python-10l.20`` is what makes the first half live.  §4's table gives
     # a root stating no schema keyword a PERMISSIVE ROOT MODEL and §5's group (a) gives a
@@ -5027,7 +5035,7 @@ def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it()
     # ``definitions`` entries are back in their own documents' modules, because the rule
     # lives on the ALIAS the entry emits and a referrer imports that symbol -- so the
     # fact has one spelling again (P2) rather than a declaration per referrer.
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     blocked = {
         d: out.refusals[d]["pointer"]
         for d, r in out.refusals.items()
@@ -5094,7 +5102,7 @@ def test_a_root_array_is_a_root_model_carrying_its_bound_and_its_uniqueItems_rul
       installs, which is what makes "the keyword is enforced, not dropped" true rather
       than claimed.
     """
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     roots = claimed(
         "root arrays in the bundle",
         [d for d in bundle.portable(BUNDLE) if bundle.read(BUNDLE, d).get("type") == "array"],
@@ -5229,13 +5237,33 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         inlined = tuple(
             f"{p}/" for p, _, _ in bundle.references(bundle.read(BUNDLE, row.ref.document))
         )
+        # **THE POSITION IS THE DOCUMENT'S AND NOT THE PAIR'S, which is what makes "one
+        # entry per AUTHORED mapping" true rather than intended**
+        # (``adcp-client-python-10l.55``).  ``pointer`` is relative to the PAIR's node, so
+        # a mapping inside a document with two graded pairs above it was two entries, and
+        # the prefix test just above compared that relative pointer against a
+        # document-absolute reference list and so did not bite at a nested pair at all.
+        # Both are the same mistake: the authored POSITION of a mapping is a fact about
+        # the document, and a pair is only how the walk reached it.
+        #
+        # So the key is ``(document, the document-absolute pointer)`` and the entries
+        # collapse onto it -- which is also what the loop below needs, since it opens the
+        # document's own packaged schema and reads the node at that pointer.  A ROOT pair
+        # prepends ``""``, so every entry pinned before this row is unchanged; what the
+        # change removes is four copies of ``core/creative-localization-readback.json``'s
+        # two mappings that ``creative/sync-creatives-response.json`` inlines through
+        # ``/properties/localization``, and the duplicate readings of two authored
+        # mappings that are reached from more than one pair.
+        at = row.ref.pointer.lstrip("#")
         for pointer, node in bundle.nodes(doc):
             if node.get("type") == "object" and "properties" not in node:
-                mappings.add((f"{row.ref.document}{row.ref.pointer}", pointer or "/"))
-                if {"propertyNames", "patternProperties"} & set(node) and not pointer.startswith(
+                where = f"{at}{pointer}" or "/"
+                mappings.add((f"{row.ref.document}#", where))
+                if {"propertyNames", "patternProperties"} & set(node) and not f"{at}{pointer}".startswith(
                     inlined
                 ):
-                    constrained.append((f"{row.ref.document}{row.ref.pointer}", pointer or "/"))
+                    constrained.append((f"{row.ref.document}#", where))
+    constrained = sorted(set(constrained))
     # The mapping population is asserted NON-EMPTY rather than counted -- the claim is
     # about the constrained keys among them, which are named, and the denominator's
     # job is to say that mappings were reached at all.  A count of them is a reading of
@@ -5284,12 +5312,44 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     # union -- the ``type`` word §5(a)'s first bullet puts in every branch -- and its
     # ``/properties/metro`` is a mapping whose key states a ``pattern``, so it joins by
     # the mechanism the other ten joined by and not by a change to what the test means.
+    # **11 -> 14 AT ``adcp-client-python-10l.55``, and the three are three authored
+    # mappings in three newly emitting documents.**
+    # ``core/assets/asset-union.json`` emits -- a ``$ref`` branch onto a union root is
+    # §4's two bases, once the gate asks ``compiler.TargetKind`` rather than whether the
+    # target has a ``compiler.Shape`` -- and three of the documents chained behind it come
+    # with it.  The three mappings are ``core/creative-localization.json``'s
+    # ``target_variants/items/properties/assets``,
+    # ``core/creative-localization-readback.json``'s ``definitions/resolvedAssets`` and
+    # ``creative/sync-creatives-response.json``'s
+    # ``creatives/items/properties/assignment_errors``; every one states
+    # ``patternProperties`` with a non-``false`` ``additionalProperties``, so its KEY is a
+    # bare ``str`` -- §5(b)'s reading, which is the branch below and the same answer
+    # ``core/creative-assets.json`` already takes.
+    #
+    # **And the denominator's own sentence is TRUE now rather than intended**: one entry
+    # per AUTHORED mapping, keyed by the document and the pointer the document writes it
+    # at.  The three documents are what made the difference visible -- ``assets`` sits
+    # inside ``core/creative-localization.json``'s root pair AND inside its
+    # ``target_variants/items`` pair, and ``assignment_errors`` inside three of
+    # ``sync-creatives-response``'s, so a per-pair key graded one authored node two and
+    # three times.  Four more entries were ``sync-creatives-response`` re-counting
+    # ``creative-localization-readback``'s two mappings, which the record inlines through
+    # ``/properties/localization`` and which that document's own module is what spells.
     assert constrained == [
         ("core/creative-assets.json#", "/"),
+        ("core/creative-localization-readback.json#", "/definitions/resolvedAssets"),
+        (
+            "core/creative-localization.json#",
+            "/properties/target_variants/items/properties/assets",
+        ),
         ("core/geo-breakdown-support.json#", "/properties/metro"),
         ("core/geo-region-support.json#", "/properties/countries"),
         ("core/product-change-map.json#", "/"),
         ("core/store-item.json#", "/properties/hours"),
+        (
+            "creative/sync-creatives-response.json#",
+            "/oneOf/0/properties/creatives/items/properties/assignment_errors",
+        ),
         ("governance/reported-outcome-error.json#", "/definitions/bounded_object"),
         ("media-buy/acceptance-policy-profile.json#", "/properties/region_aliases"),
         ("trusted-match/identity-match-response.json#", "/properties/tmpx_providers"),
@@ -5326,14 +5386,29 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         # would be a model narrower than its document, which is the direction §2 forbids.
         if node.get("additionalProperties") is not False and "patternProperties" in node:
             assert f"dict[str," in _source(path), document
-            (declared,) = [
-                one
-                for one in harness.declarations_of(
-                    importlib.import_module(emit.PACKAGE + "." + emit.module_path(path).replace("/", "."))
-                )
+            # **The declaration is looked for on the MODULE AND on every class the module
+            # defines, and what is asserted is that the POINTER is declared**
+            # (``adcp-client-python-10l.55``).  §7 puts an approximation on the object
+            # holding the node's schema -- "beside the module for an alias", on the CLASS
+            # otherwise, which is the split ``graded()`` already draws -- and
+            # ``render.declared_at``'s containment rule means every class whose own
+            # pointer CONTAINS this one carries it.  So the honest reading is membership
+            # and not a single holder: a module-only read found the root positions this
+            # test held until now and nothing at a nested one, and unpacking one holder
+            # finds three for ``creative/sync-creatives-response.json`` -- the union base
+            # at ``#``, the branch at ``#/oneOf/0`` and the item class that states the
+            # mapping.  Re-deriving which of them SHOULD carry it would be a second copy
+            # of the containment rule.
+            holder = importlib.import_module(
+                emit.PACKAGE + "." + emit.module_path(path).replace("/", ".")
+            )
+            at = f"#{'' if pointer == '/' else pointer}"
+            assert at in {
+                one.pointer
+                for held in (holder, *(v for v in vars(holder).values() if isinstance(v, type)))
+                for one in harness.declarations_of(held)
                 if one.keyword == "patternProperties"
-            ]
-            assert declared.pointer == f"#{'' if pointer == '/' else pointer}", declared
+            }, (document, pointer)
             continue
         key = node.get("propertyNames") or {"pattern": next(iter(node["patternProperties"]))}
         # **A CLOSED key set is a ``Literal`` and not an alias**, so it is read off the
@@ -5402,7 +5477,9 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         "constructed.json",
         doc,
         {
-            (uri, pointer): compiler.Target(".tag", "Tag")
+            (uri, pointer): compiler.Target(
+                ".tag", "Tag", kind=compiler.TargetKind.ANNOTATION
+            )
             for pointer, uri, _ in bundle.references(doc)
         },
     )
@@ -5611,7 +5688,7 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
     # the module the run writes, with every member of the document's own enum in it.
     hours = bundle.read(BUNDLE, "core/store-item.json")
     members = hours["properties"]["hours"]["propertyNames"]["enum"]
-    out = emit.emit(BUNDLE, ["core/store-item.json"])
+    out = compiled(BUNDLE, ["core/store-item.json"])
     assert "core/store-item.json" not in out.refusals, out.refusals
     assert "core/catchment.json" not in out.refusals, out.refusals
     written = out.files["core/store_item.py"]
@@ -5659,7 +5736,7 @@ def test_a_key_schema_at_a_rule_position_states_nothing_and_does_not_refuse() ->
         and set(pointer.strip("/").split("/")) & set(bundle.CONDITIONAL)
     }
     claimed("key schemas at a rule position", at_a_rule)
-    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     assert sorted(at_a_rule) == [
         "core/catalog-item-availability-state.json#/allOf/0/else",
         "core/catalog-item-availability-update-result.json#/allOf/0/then",
@@ -5795,7 +5872,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     ]
     claimed("documents mentioning additionalProperties", mentions, inside=bundle.portable(BUNDLE))
     assert set(typed) <= set(mentions), sorted(set(typed) - set(mentions))
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     # The emitted list and the store sites are DIFFERENT facts, and both are asserted:
     # a typed ``additionalProperties`` on a node with no ``properties`` is a MAPPING,
     # which the row above lowers, while the extras store needs a node declaring BOTH.
@@ -6178,7 +6255,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # arm and a constraint is emitted and is NOT a violation here.
     from codegen.lower import containers as lower_containers
 
-    emitted = emit.emit(BUNDLE, population()).emitted
+    emitted = compiled(BUNDLE, population()).emitted
     carried = frozenset().union(*lower_containers.ARM.values())
     assert [
         (d, p)
@@ -6374,7 +6451,7 @@ def test_a_constraint_inside_a_container_is_named_and_nothing_is_left_refused() 
     document's ``items`` keywords against the model's at every array property, so
     it is not restated here.
     """
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
 
     # Every document the earlier revisions named as refused HERE, now emitted.
     released = claimed(
@@ -6458,7 +6535,7 @@ def test_one_documents_module_is_the_same_text_alone_as_with_the_whole_bundle() 
     """
     document = "creative/preview-render.json"
     rel = emit.module_path(document) + ".py"
-    whole = emit.emit(BUNDLE, population())
+    whole = compiled(BUNDLE, population())
     assert document in whole.emitted, sorted(whole.refusals)[:5]
     # The three facts that make this document a real test of the property, each read as
     # the names themselves rather than as a count: a pinned count is not a ratchet.
@@ -6486,7 +6563,7 @@ def test_one_documents_module_is_the_same_text_alone_as_with_the_whole_bundle() 
         "from ..core.preview_renderer_metadata import PreviewRendererMetadata"
     ], imported
 
-    alone = emit.emit(BUNDLE, [document])
+    alone = compiled(BUNDLE, [document])
     assert alone.files[rel] == whole.files[rel]
     # And the two tables the naming pass produces are the same, which says the text
     # agreeing is not two different symbol tables rendering alike.
@@ -6504,7 +6581,7 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     and the recorded text was the OLD renderer's, so the comparison graded the
     change rather than the inputs.
     """
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     # The alias module is written BESIDE the tree, because an alias belongs to no
     # document and so has no domain to live under (D5), and it is public where
     # ``_schemas`` is not.  ``write`` takes that directory explicitly and has no
@@ -6676,7 +6753,7 @@ def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> 
     """
     monkeypatch.setattr(constraints_module, "_digest", lambda pattern: "C0111DED")
     with pytest.raises(constraints_module.AliasCollision) as caught:
-        emit.emit(BUNDLE, population())
+        compiled(BUNDLE, population())
     assert "StrMatchingC0111DED" in str(caught.value), str(caught.value)
     assert "two distinct constraints" in str(caught.value)
 
@@ -6686,7 +6763,7 @@ def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> 
     # count of what the run writes beside the tree and a second such artifact arrived
     # (``codegen/lower/envelope.py``) without changing anything this test is about.
     monkeypatch.undo()
-    assert sorted(emit.emit(BUNDLE, population()).beside) == [
+    assert sorted(compiled(BUNDLE, population()).beside) == [
         "constraints.py",
         "envelopes.py",
     ]
@@ -7535,7 +7612,7 @@ def test_a_conditional_that_narrows_a_value_is_the_schemas_and_not_a_rules() -> 
     # observes a statement about a VALUE, and the schema half refuses the same
     # payload on ``maximum`` -- which is the whole of what this test claims, now
     # measured on the production entry point instead of on a document's absence.
-    assert emit.emit(BUNDLE, [document]).refusals == {}, "it refused once; see above"
+    assert compiled(BUNDLE, [document]).refusals == {}, "it refused once; see above"
     emitted = next(g for g in graded() if g.ref == SchemaRef(document, "#"))
     assert [type(r).__name__ for r in emitted.model.__dict__.get("_adcp_rules", ())] == [
         "Dependencies"
@@ -7976,7 +8053,7 @@ def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
     assert [(d, p) for d, p, n in nodes if "enum" in n] == []
 
     portable = bundle.portable(BUNDLE)
-    out = emit.emit(BUNDLE, portable)
+    out = compiled(BUNDLE, portable)
     assert len(out.emitted) + len(out.refusals) == len(portable)
     on_const = {d: r for d, r in out.refusals.items() if r["keyword"] == "const"}
     assert on_const == {}, on_const
@@ -7998,7 +8075,7 @@ def test_every_portable_document_is_emitted_or_refused_by_name() -> None:
     KEYWORD, never by a tally.
     """
     portable = set(bundle.portable(BUNDLE))
-    out = emit.emit(BUNDLE, sorted(portable))
+    out = compiled(BUNDLE, sorted(portable))
     emitted, refused = set(out.emitted), set(out.refusals)
 
     assert portable, "empty population: the assertion below would pass vacuously"
@@ -8074,7 +8151,7 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     so the population this clause ranges over is the population it ranged over before.
     """
     portable = sorted(bundle.portable(BUNDLE))
-    out = emit.emit(BUNDLE, portable)
+    out = compiled(BUNDLE, portable)
     # The document TOTAL is not restated here: it is another test's assertion and it
     # moves whenever a row admits more of the bundle, which would make this check's
     # failure read as a dedup defect.  What this one needs is only that the loop below
@@ -8434,12 +8511,29 @@ VERDICTS = frozenset(
         # Row ``10l.30`` measured the same document independently -- 210 of its 235
         # inseparable ``$ref``-branch pairs -- so two lanes have now found the same
         # obstruction from two directions.
-        "core/assets/asset-union.json",
-        "core/localized-creative-asset.json",
-        "core/creative-localization-readback.json",
-        "core/creative-localization.json",
-        "creative/list-creatives-response.json",
-        "creative/sync-creatives-response.json",
+        #
+        # **ALL SIX OF THOSE LEAVE AT ``adcp-client-python-10l.55``, FIVE BY EMITTING AND
+        # ONE BY BECOMING A DEFERRAL.**  The branch row asked whether the target had a
+        # :class:`compiler.Shape` and reported the answer as "is not a class"; §4's three
+        # root outcomes make those two different questions, because a UNION root is a
+        # class (``BranchDispatchMixin`` plus the model base) whose shape
+        # ``emit.answer`` nulled on §5's ``$ref`` row at CONJ -- another POSITION's answer.
+        # The gate reads :class:`compiler.TargetKind` now, so a scalar root still refuses
+        # and a union root is the base §4 says it is.
+        #
+        # The five that EMIT are ``core/assets/asset-union.json`` itself and four of the
+        # documents chained behind it: ``core/localized-creative-asset.json``,
+        # ``core/creative-localization-readback.json``,
+        # ``core/creative-localization.json`` and
+        # ``creative/sync-creatives-response.json``.  The sixth,
+        # ``creative/list-creatives-response.json``, re-resolves onto a DIFFERENT chain
+        # and is a DEFERRAL there: ``/properties/creatives/items/properties/rights/items``
+        # -> ``core/rights-constraint.json`` -> ``core/attestation-reference.json``, which
+        # refuses at ``/properties/embedded_credential/properties/value`` on ``minLength``
+        # -- a constrained arm of a type list beside another live arm, which is row
+        # ``10l.45`` and unwritten code rather than the document's problem.  So the
+        # verdict term falls by 6 and ``accounted`` by 1, which is the correction the
+        # floor below reports.
         "media-buy/update-media-buy-request.json",
         "media-buy/get-products-request.json",
         "core/requirements/offering-asset-constraint.json",
@@ -8574,7 +8668,7 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     the only thing a producer can pass.
     """
     portable = bundle.portable(BUNDLE)
-    out = emit.emit(BUNDLE, portable)
+    out = compiled(BUNDLE, portable)
 
     # **The grading assertion, and it comes first.**  Every ``Kind`` is final,
     # pending or delegating, and no member is two of those -- so a fifth kind is a
@@ -8736,7 +8830,20 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # ``core/assets/asset-union.json``, which stopped being chained at all: its target
     # emits, so the walk gets further and it mints its OWN verdict at ``/oneOf/3``, a
     # ``$ref`` branch onto a union root.
-    assert len(chained) >= 98, len(chained)
+    # **98 -> 94 AT ``adcp-client-python-10l.55``, AND ALL FOUR ARE EMISSION.**  That
+    # ``/oneOf/3`` verdict is gone -- the branch row reads ``compiler.TargetKind`` instead
+    # of asking whether the target has a ``compiler.Shape``, so a union root is the base
+    # §4 says it is -- and ``core/assets/asset-union.json`` emits with four of the five
+    # documents that chained behind it: ``core/localized-creative-asset.json``,
+    # ``core/creative-localization-readback.json``, ``core/creative-localization.json``
+    # and ``creative/sync-creatives-response.json``.  The fifth,
+    # ``creative/list-creatives-response.json``, is STILL CHAINED and is counted here:
+    # its chain re-rooted onto ``core/rights-constraint.json`` ->
+    # ``core/attestation-reference.json``, whose ``minLength`` on a constrained arm of a
+    # type list is row ``10l.45``'s deferral.  So the floor falls by exactly the four
+    # that emit, which is the move this floor's own paragraph above says it is re-measured
+    # for.
+    assert len(chained) >= 94, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
     # **AND THE VERDICT HALF ROSE 32 -> 37 AT THE SEVENTH INSTALMENT, WHICH IS A
     # PREDICTED RISE AND NOT A REGRESSION.**  The floor below is deliberately NOT raised
@@ -9431,10 +9538,17 @@ CONJUNCT_PARTS = (
 #: NAME.  `partitions` is satisfied by an empty part without saying so, and a part with
 #: no member today is the one the next cleared document arrives in.
 #:
-#: ``nothing`` is empty HERE and has one member over the whole bundle: the one conjunct
-#: with no constraining key at all is ``creative/sync-creatives-response.json`` at
-#: ``/oneOf/0/properties/creatives/items/allOf/2``, an ``x-adcp-validation`` extension,
-#: and that node is not one the emitted tree declares a class at.
+#: ``nothing`` was empty HERE with one member over the whole bundle --
+#: ``creative/sync-creatives-response.json`` at
+#: ``/oneOf/0/properties/creatives/items/allOf/2``, an ``x-adcp-validation`` extension --
+#: "and that node is not one the emitted tree declares a class at".
+#: **IT IS NOW, AT ``adcp-client-python-10l.55``, AND THE SITE THAT ARRIVED IS THE ONE
+#: THIS ENTRY PREDICTED BY NAME.**  That document chained four deep onto
+#: ``core/assets/asset-union.json``, whose ``$ref`` branch onto a UNION root the branch
+#: row refused for not being a class; the gate reads ``compiler.TargetKind`` now, the
+#: document emits, and the node its ``/oneOf/0/properties/creatives/items`` composes is a
+#: class with that conjunct on it.  So every part of :data:`CONJUNCT_PARTS` has a site and
+#: this tuple is EMPTY -- which is the direction it exists for, said for the fourth time.
 #: **``fields+required`` LEFT at ``adcp-client-python-10l.20``**, which is the direction
 #: this tuple exists for: "a part with no member today is the one the next cleared
 #: document arrives in".  §5's ``$ref`` row at CONJ made a non-class target the composing
@@ -9451,7 +9565,7 @@ CONJUNCT_PARTS = (
 #: the first time when ``compiler._reused`` stopped refusing a re-used field whose type
 #: names a symbol the base IMPORTED and started taking it from the declaring module --
 #: which is the direction this tuple exists for, again.
-CONJUNCT_PARTS_WITH_NO_SITE = ("nothing",)
+CONJUNCT_PARTS_WITH_NO_SITE = ()
 
 #: Every conjunct in the WHOLE portable set that states ``additionalProperties``, as
 #: ``"<document> <pointer>"``.  Section 5's ``additionalProperties`` row gives four
@@ -9550,7 +9664,7 @@ def test_a_conjunct_states_the_extra_identity_and_composes_its_own_conjuncts() -
     assert nested == NESTED_CONJUNCT_SITES, nested ^ NESTED_CONJUNCT_SITES
 
     document, symbol, rule = NESTED_CONJUNCT_RULE
-    out = emit.emit(BUNDLE, [document])
+    out = compiled(BUNDLE, [document])
     assert document in out.emitted, out.refusals.get(document)
     cls = getattr(importlib.import_module(out.emitted[document]), symbol)
     spelled = [type(r).__name__ for r in cls.__dict__.get("_adcp_rules", ())]
@@ -9586,13 +9700,16 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
     """
     from codegen.lower import rules as rules_lowering
 
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     assert out.emitted, "nothing emitted: every clause below would pass vacuously"
     known = set(bundle.portable(BUNDLE))
 
     documents: set[str] = set()
     composing: set[str] = set()
     sites: set[str] = set()
+    #: Composing nodes whose declaration is an ``Annotated`` alias and not a class, which
+    #: is §5's ``$ref`` row at CONJ answering with the node's own TYPE.  Named below.
+    not_a_class: set[str] = set()
     field_keys = required_names = foreign_names = 0
     # Keyed by the decision's own cases and holding the SITES, so a part is a set this
     # check can partition rather than an integer it can only compare.  Seeded with every
@@ -9619,7 +9736,25 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
             # conjuncts this grades, so the tie is part of THIS clause's input.
             written = out.files[f"{emit.module_path(document)}.py"]
             assert written == (TREE / f"{emit.module_path(document)}.py").read_text(), document
-            cls = getattr(module, here[pointer])
+            declared_here = getattr(module, here[pointer])
+            if not isinstance(declared_here, type):
+                # **A COMPOSING NODE THAT IS NOT A CLASS, and §5's ``$ref`` row at CONJ
+                # is the sentence** (``adcp-client-python-10l.55``): "where it is not a
+                # class declaring fields -- a scalar, an enum, a container, or a union
+                # root -- the target is this node's own TYPE".  So the node declares an
+                # ``Annotated`` ALIAS and there is no class for clauses 0 to 4 to read: a
+                # conjunct's ``properties`` are not fields of anything, and
+                # ``_adcp_rules`` has no class to be bound on.
+                #
+                # Named rather than skipped, and the name is the whole of the handling:
+                # the conjuncts of such a node never enter ``sites``, so the partition
+                # below is over the conjuncts of the nodes that ARE classes and stays
+                # total.  One member over this population, and it arrived when
+                # ``core/assets/asset-union.json`` began emitting -- the first ROOT whose
+                # whole content is a composition onto a union root.
+                not_a_class.add(f"{document} {pointer}")
+                continue
+            cls = declared_here
             ancestry = {base.__name__ for base in cls.__mro__}
             rule_nodes = [node]
             # The SAME worklist ``compiler.lower_composition`` walks, because section 5's
@@ -9730,6 +9865,11 @@ def test_every_conjunct_contributes_every_part_of_itself() -> None:
     # the site it is, not as two integers that both changed.
     claimed("documents whose class composes", documents, inside=set(out.emitted))
     claimed("composing nodes", composing)
+    # The composing nodes that declare no class, by NAME: §5's ``$ref`` row at CONJ makes
+    # a non-class target the node's own TYPE, so the node is an alias and the clauses
+    # above have nothing to read.  Pinned by name because the set is how a reader knows
+    # which nodes the partition below does NOT range over.
+    assert not_a_class == {"core/localized-creative-asset.json "}, sorted(not_a_class)
     partitions(
         claimed("conjuncts of a composing node", sites),
         **{name.replace("+", "_"): members for name, members in parts.items()},

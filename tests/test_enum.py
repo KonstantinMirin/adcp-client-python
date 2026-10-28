@@ -48,6 +48,7 @@ from codegen.lower import names
 from codegen.schema import nodes as schema_nodes
 from codegen.schema import parse as schema_parse
 from codegen import refusal as refusal_module
+from compiled import compiled
 import populations
 from conftest import refusal_from
 from tests.test_emit import BUNDLE, graded, population, TREE
@@ -122,7 +123,7 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     """
     roots = claimed("root enums", root_enums(), inside=population())
 
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     emitted = [d for d in roots if d in out.emitted]
     refused = {d: out.refusals[d] for d in roots if d in out.refusals}
     # EVERY root enum emits and the refusal branch is EMPTY -- asserted as the
@@ -412,7 +413,7 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
             if len(set(spelled)) == len(spelled):
                 nodes.add((document, pointer))
             else:  # the one colliding node's document refuses before this is read
-                assert document not in emit.emit(BUNDLE, population()).emitted, (document, pointer)
+                assert document not in compiled(BUNDLE, population()).emitted, (document, pointer)
     # The enum NODES the walk reaches, as a non-empty set.  It is deliberately NOT
     # derived from the enum CLASS count above -- a node under a position that reuses an
     # already-declared class is reached without adding one, and the two figures were
@@ -609,7 +610,7 @@ def test_a_root_enum_binds_its_schema_and_strict_validate_at_module_scope() -> N
     constructor half returns the member.
     """
     document = next(
-        d for d in root_enums() if d in emit.emit(BUNDLE, population()).emitted
+        d for d in root_enums() if d in compiled(BUNDLE, population()).emitted
     )
     module = importlib.import_module(
         f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}"
@@ -644,7 +645,7 @@ def test_the_schema_comparison_is_what_grades_this_row() -> None:
     widened one so the two reports are read against each other rather than in
     isolation.
     """
-    document = next(d for d in root_enums() if d in emit.emit(BUNDLE, population()).emitted)
+    document = next(d for d in root_enums() if d in compiled(BUNDLE, population()).emitted)
     doc = schema_at(SchemaRef(document, "#"))
     module = importlib.import_module(
         f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}"
@@ -828,7 +829,7 @@ def test_the_colliding_node_is_in_the_bundle_and_its_document_refuses_earlier() 
     node = bundle.read(BUNDLE, document)["properties"]["clicktag_macro"]
     assert node["enum"] == ["clickTag", "clickTAG"]
     assert len({lower_enum.member_name(v) for v in node["enum"]}) == 1
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     # THE KEYWORD IS NO LONGER PINNED HERE, which is this file's own precedent --
     # 9cd0aeaa9, "stop pinning the keyword a negative fixture refuses on".  This
     # refusal has read ``allOf`` at ``/allOf/0``, then ``$ref`` at ``/allOf/0``,
@@ -897,7 +898,7 @@ def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one()
 
     in_bundle = integer_enum_nodes(list(bundle.portable(BUNDLE)))
     claimed("integer enum nodes in the bundle", in_bundle)
-    reached = integer_enum_nodes(sorted(emit.emit(BUNDLE, population()).emitted))
+    reached = integer_enum_nodes(sorted(compiled(BUNDLE, population()).emitted))
     # Every one of them, which is what makes the tree half below non-vacuous.
     assert reached == in_bundle, (reached, in_bundle)
     assert sorted({d for d, _ in reached}) == [
@@ -1034,7 +1035,7 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
     assert keywords.cell("enumMetadata", Position.ROOT).effect is keywords.Effect.NOTHING
     assert keywords.grid_of("enumMetadata") == keywords.ADMITTED
     assert "enumMetadata" not in lower_enum.CLAIMS
-    out = emit.emit(BUNDLE, population())
+    out = compiled(BUNDLE, population())
     # **THE PRICED SET, NOT ITS SIZE.**  The comment below prices unannotating the
     # keyword, and a count of three went stale as an ARGUMENT while staying green as an
     # assertion: ``core/media-buy-available-action-id.json`` carries ``enumMetadata``,
@@ -1058,7 +1059,7 @@ def test_enum_metadata_is_an_annotation_of_the_bundle_and_the_cost_is_named() ->
     original = keywords.TABLE
     try:
         keywords.TABLE = without
-        refusing = emit.emit(BUNDLE, population())
+        refusing = compiled(BUNDLE, population())
     finally:
         keywords.TABLE = original
     # **THE PRICE IS FOUR DOCUMENTS NOW, NOT THREE, AND THAT IS

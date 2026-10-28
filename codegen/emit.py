@@ -1300,8 +1300,10 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
                     kind=Kind.DEFERRED,
                 )
             symbol = bound.symbols[edge.into]
-        # ``shape`` is ``None`` for a target that is not a class -- D2's
-        # root-scalar alias, and a named node that is not one either -- which is
+        # ``kind`` is WHICH of §4's three outcomes the target's node became
+        # (:func:`compiler.target_kind`), and it is what every row wanting the target as
+        # a BASE reads.  ``shape`` is ``None`` for a target that is not a class at all --
+        # D2's root-scalar alias, and a named node that is not one either -- which is
         # what lets a composing row refuse it as a base rather than writing a
         # module that cannot be imported.
         #
@@ -1314,27 +1316,31 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         # target imported -- so a composing subclass takes each symbol from its
         # declarer, which is §1's one import path per class.
         #
-        # **A UNION BASE's shape does not cross, and §5's ``$ref`` row at CONJ is
-        # the sentence** (§14 step 9): "where it is not a class declaring fields --
-        # a scalar, an enum, a container, or a UNION ROOT, whose instance is one of
-        # its branches -- it is not a class a model can extend: the target is this
-        # node's own TYPE."  A base records a shape like any other class now,
-        # because §4's "a branch composes its own with them" needs it INSIDE the
-        # declaring module, so the reading that keeps a union root out of a
-        # reuser's bases is here, where the :class:`Target` is built -- and it is
-        # read off ``ClassDecl.branches``, the fact that says the instance is one of
-        # the branches, rather than off a second flag.  Before step 9 the union row
-        # declared its base outside ``declare_object`` and so recorded nothing,
-        # which is the same answer this gives.
-        declared = mod.at.get(edge.into)
-        dispatches = isinstance(declared, ir.ClassDecl) and declared.branches is not None
-        shape = None if dispatches else mod.shapes.get(edge.into)
+        # **A UNION BASE CROSSES AS ``TargetKind.UNION``, and the shape crosses with
+        # it** (``adcp-client-python-10l.55``).  §5's ``$ref`` row at CONJ is one
+        # sentence -- "where it is not a class declaring fields -- a scalar, an enum,
+        # a container, or a UNION ROOT, whose instance is one of its branches -- it is
+        # not a class a model can extend: the target is this node's own TYPE" -- and
+        # §4's union row is another: a ``$ref`` BRANCH is "a class with two bases: the
+        # target, which supplies the fields, and the union's base, which supplies the
+        # dispatch".  The two positions give a union root OPPOSITE answers, so what
+        # crosses is the FACT and not one position's verdict on it: this builds the
+        # kind off ``ClassDecl.branches`` -- the field that says the instance is one of
+        # the branches, and the one ``render`` writes ``_branch_models`` off -- and
+        # each row reads the kind its own position decides on.
+        #
+        # Nulling the shape here was that verdict baked in, and it was read by a third
+        # position as "not a class": §4's branch row refused
+        # ``core/assets/asset-union.json`` at ``/oneOf/3`` because ``VASTAsset`` had no
+        # shape, with a sentence about a scalar alias that ``VASTAsset`` is not.
+        shape = mod.shapes.get(edge.into)
         return Target(
             relative_module(document, edge.target),
             symbol,
             None if shape is None else _bound_shape(shape, bound.symbols),
             edge.target,
-            _importable(document, edge.target, bound.symbols, mod.imported),
+            kind=compiler.target_kind(mod.at.get(edge.into)),
+            imports=_importable(document, edge.target, bound.symbols, mod.imported),
         )
 
     def resolve(document: str) -> dict[tuple[str, str], Target | Refusal]:

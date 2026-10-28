@@ -73,6 +73,7 @@ from pathlib import Path
 from typing import Any
 
 from adcp.types._base import schema_at
+from compiled import compiled
 from codegen import bundle, compiler, emit, harness, keywords
 from codegen.lower import names
 from codegen.lower import union as lower_union
@@ -137,7 +138,7 @@ def test_the_position_this_row_is_about_is_a_real_population() -> None:
     claimed(
         "nested discriminator sites", [(d, p) for d, ps in sites.items() for p in ps]
     )
-    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     partitions(
         documents,
         emits=documents & set(out.emitted),
@@ -170,7 +171,7 @@ def test_the_comparison_does_not_look_for_the_keyword_at_the_pointer_it_sits_at(
     at = claimed(f"{document}'s discriminator sites", _sites(read))
     assert at == {"/properties/goal"}, sorted(at)
 
-    out = emit.emit(BUNDLE, [document])
+    out = compiled(BUNDLE, [document])
     assert document in out.emitted, out.refusals.get(document)
     resolved = bundle.record(BUNDLE, document)
     classes = _declared(out, document)
@@ -491,7 +492,7 @@ def test_the_comparison_finds_the_type_word_at_the_union_s_own_pointer() -> None
     assert at == {"/items"}, sorted(at)
     assert read["items"]["type"] == "object", read["items"].get("type")
 
-    out = emit.emit(BUNDLE, [document])
+    out = compiled(BUNDLE, [document])
     assert document in out.emitted, out.refusals.get(document)
     resolved = bundle.record(BUNDLE, document)
     root = claimed(
@@ -674,7 +675,7 @@ def test_the_population_the_widening_is_about_is_derived_off_the_bundle() -> Non
         "pinned and not derived": sorted(COMPOSING_SITES - pairs),
     }
     assert THE_NINE <= documents, sorted(THE_NINE - documents)
-    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     assert [
         d
         for d, r in out.refusals.items()
@@ -828,7 +829,7 @@ def test_the_measured_case_emits_the_shape_section_8_names() -> None:
     """
     read = bundle.read(BUNDLE, MEASURED_CASE)
     node = bundle.node_at(read, AT)
-    out = emit.emit(BUNDLE, [MEASURED_CASE])
+    out = compiled(BUNDLE, [MEASURED_CASE])
     assert MEASURED_CASE in out.emitted, out.refusals.get(MEASURED_CASE)
     classes = {c.__adcp_schema__.pointer: c for c in _declared(out, MEASURED_CASE)}
     base = classes[f"#{AT}"]
@@ -864,7 +865,7 @@ def test_the_branch_pairs_are_graded_under_the_siblings_and_report_nothing() -> 
     node the siblings are stated at: a sibling dropped instead of composed would be
     ``missing`` there.
     """
-    out = emit.emit(BUNDLE, [MEASURED_CASE])
+    out = compiled(BUNDLE, [MEASURED_CASE])
     assert MEASURED_CASE in out.emitted, out.refusals.get(MEASURED_CASE)
     resolved = bundle.record(BUNDLE, MEASURED_CASE)
     at = {f"#{AT}", f"#{AT}/oneOf/0", f"#{AT}/oneOf/1"}

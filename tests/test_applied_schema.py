@@ -45,6 +45,7 @@ from pydantic import ValidationError
 
 from adcp.types import _base
 from adcp.types._base import AdCPBaseModel, SchemaRef, applied_schema, schema_at
+from compiled import compiled
 from codegen import bundle, emit, harness, keywords
 from codegen import refusal as refusal_module
 from conftest import refusal_from
@@ -448,8 +449,21 @@ def test_what_is_conjoined_at_a_constrained_node_is_its_object_type_and_its_root
 #: way: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False`` for both.
 #: What does hold for them, measured directly, is the clause the per-row loop is about:
 #: the schema each class NAMES refuses a string and ``accept("a string")`` raises.
+#:
+#: **TWENTY-ONE more at ``adcp-client-python-10l.55``, and they are the FIRST members
+#: whose reason is the reference itself rather than a ``not``.**
+#: ``core/assets/asset-union.json`` emits -- the branch row asked whether a ``$ref``
+#: branch's target had a ``compiler.Shape`` and reported "VASTAsset is not a class" of a
+#: class, and it asks ``compiler.TargetKind`` now -- so its 21 branch classes join this
+#: population.  Each branch's whole text is ``{"$ref": <an asset document>}`` and every
+#: one of those targets states ``type: "object"`` at its root, so the BARE node refuses a
+#: string through the reference, before the root's own ``type`` is applied: the enclosing
+#: ``type`` adds nothing and this test's bare-versus-applied contrast has no content at
+#: them.  Measured directly, the same way every member above was:
+#: ``Draft7Validator(<the branch node>).is_valid("a string")`` is ``False`` for all 21.
 ALREADY_AN_OBJECT_ITSELF = frozenset(
     {
+        *(f"core/assets/asset-union.json#/oneOf/{i}" for i in range(21)),
         "account/sync-accounts-request.json#/properties/accounts/items/oneOf/0",
         "account/sync-accounts-request.json#/properties/accounts/items/oneOf/1",
         "core/canonical-media-buy-action.json#/oneOf/0",
@@ -520,10 +534,15 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
         if f"{g.ref.document}{g.ref.pointer}" not in ALREADY_AN_OBJECT_ITSELF
     ]
     # The pairs at a constrained node, non-empty -- the per-row loop below is the
-    # obligation and 59 is the number of rows this emitted tree gives it.  WHICH
+    # obligation and 64 is the number of rows this emitted tree gives it.  WHICH
     # documents they come from is the fact worth pinning and it is named below.
     claimed("pairs at a node its own document constrains", {g.ref for g in rows})
     assert {g.ref.document for g in rows} == {
+        # **``core/assets/asset-union.json`` JOINED THE POPULATION AT
+        # ``adcp-client-python-10l.55`` AND CONTRIBUTES NO ROW**, which is why it is not
+        # named here: its 21 branch classes are all in ``ALREADY_AN_OBJECT_ITSELF``, each
+        # for that set's own measured reason -- a branch whose whole text is a ``$ref``
+        # onto an object root refuses a non-object before anything enclosing it applies.
         # **TWO more at ``adcp-client-python-10l.21``'s SEVENTH instalment**, and they
         # arrive by that row's emission rather than by anything about this mechanism:
         # ``core/assets/vast-asset.json`` and ``core/assets/daast-asset.json`` emit now
@@ -640,7 +659,7 @@ def test_all_eleven_emit_and_the_residue_is_empty() -> None:
     # so a document moving from one to the other is caught by the partition rather than
     # by a count that stays 11 either way.
     partitions(eleven, now_emitted=NOW_EMITTED, still_refused=set(STILL_REFUSED))
-    out = emit.emit(BUNDLE, eleven)
+    out = compiled(BUNDLE, eleven)
     assert set(NOW_EMITTED) <= set(out.emitted), sorted(set(NOW_EMITTED) - set(out.emitted))
     for document, (keyword, pointer) in STILL_REFUSED.items():
         row = out.refusals[document]
@@ -660,7 +679,7 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     reach it, and a bundle that gains such a document gains it here.
     """
     portable = claimed("bundle.portable", bundle.portable(BUNDLE))
-    out = emit.emit(BUNDLE, sorted(portable))
+    out = compiled(BUNDLE, sorted(portable))
     partitions(portable, emitted=set(out.emitted), refused=set(out.refusals))
     # Re-pinned 674 -> 686 on bcb0b8ca8, and this is the EMITTED count over all
     # 1,054 portable documents -- NOT the 682 the committed tree holds, which is
@@ -1029,6 +1048,14 @@ def test_the_population_of_document_side_local_refs_is_not_empty() -> None:
     # eighteen more documents under it, and every reference in all 21 resolves through
     # ``applied_schema`` above.
     assert set(per_document) == {
+        # **One more at ``adcp-client-python-10l.55``**, and it is a document that
+        # EMITS: ``core/creative-localization-readback.json`` chained onto
+        # ``core/assets/asset-union.json``, whose ``$ref`` branch onto the UNION root
+        # ``VASTAsset`` the branch row refused for not being a class.  It is one, the
+        # gate reads ``compiler.TargetKind`` now, and the document's own
+        # ``#/definitions/resolvedAssets`` reference reaches this loop and resolves
+        # through the widened scope exactly as the rest do.
+        "core/creative-localization-readback.json",
         # **Two more at ``adcp-client-python-10l.21``'s third instalment**, both §14 step
         # 9's first faithful row: a ``type`` word beside a NESTED combinator is in every
         # branch already (``union.nested``'s screen claims it), so these two emit and the
