@@ -5208,8 +5208,24 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
         # ``governance/policy-entry.json`` and
         # ``media-buy/acceptance-policy-catalog.json``, which both reach
         # ``media-buy/acceptance-policy-profile.json``'s ``region_aliases``).
+        #
+        # **PAIR-RELATIVE, and it was document-relative** -- which made the filter work
+        # at a ROOT pair and fire at none of the nested ones, because ``schema_at``
+        # hands over the SUB-NODE and ``bundle.references`` names a pointer from the
+        # document root.  Latent until a document emitted whose remote reference sits
+        # under a nested pair: ``governance/get-plan-audit-logs-response.json``
+        # (``adcp-client-python-10l.45``) references
+        # ``governance/reported-outcome-error.json`` at
+        # ``/properties/plans/items/properties/entries/items/properties/error``, and its
+        # two nested ``items`` pairs each counted that one authored mapping three more
+        # times -- 11 entries became 17, every new one a COPY.  The fix is the filter
+        # saying what this comment already says at every pair and not only at a root
+        # one; the literal below is unchanged by it.
+        at = row.ref.pointer.removeprefix("#")
         inlined = tuple(
-            f"{p}/" for p, _, _ in bundle.references(bundle.read(BUNDLE, row.ref.document))
+            f"{p.removeprefix(at)}/"
+            for p, _, _ in bundle.references(bundle.read(BUNDLE, row.ref.document))
+            if p == at or p.startswith(f"{at}/")
         )
         for pointer, node in bundle.nodes(doc):
             if node.get("type") == "object" and "properties" not in node:
@@ -5868,6 +5884,15 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
         "core/store-item.json",
         "core/tasks-list-response.json",
         "error-details/vendor-error-codes.json",
+        # **ONE MORE at ``adcp-client-python-10l.45``**, and it is the MAPPING path
+        # rather than a store, so the store list below is unchanged by it.  The document
+        # is reached only through a ``$ref`` onto ``core/attestation-reference.json``,
+        # whose one obstruction was a type list with a constrained arm; the comparison
+        # folds that now (``harness._type_list``), so both emit.  Its typed
+        # ``additionalProperties`` are the record's inlined copies of
+        # ``governance/reported-outcome-error.json``'s ``bounded_object``, which is
+        # already in this list on its own account.
+        "governance/get-plan-audit-logs-response.json",
         "governance/policy-entry.json",
         "governance/reported-outcome-error.json",
         "media-buy/acceptance-policy-profile.json",
@@ -6075,11 +6100,44 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
 
     assert compare_schema(listed, Wider).outcome == "model_drops_a_fact"
     assert compare_schema(listed, Narrower).outcome == "model_drops_a_fact"
-    # And a branch carrying more than a type is NOT folded, so a union of constrained
-    # types keeps its branches and its constraints are still compared.
-    assert harness._normalize(  # noqa: SLF001 -- the normalization under test
+    # **A branch carrying its own CONSTRAINT folds too, and it folds to the type list
+    # PLUS the per-arm fact.**  This read the other way round -- the fold required every
+    # branch to be bare and this asserted that a constrained one was left alone -- and
+    # that reading is what refused ``core/attestation-reference.json`` and the 43
+    # documents referencing it.  The new reading is not weaker: the keyword arrives at
+    # the node the document states it on, so it is COMPARED where it was previously
+    # unreadable, and the four ways a model can be wrong about it are each asserted
+    # below.  ``harness._type_list`` is the lift and ``keywords.ARM`` is what says which
+    # arm a key belongs to.
+    normalize = harness._normalize  # noqa: SLF001 -- the normalization under test
+    assert normalize(
         {"anyOf": [{"type": "string", "minLength": 2}, {"type": "integer"}]}, {}
-    ) == {"anyOf": [{"type": "string", "minLength": 2}, {"type": "integer"}]}
+    ) == {"type": ["string", "integer"], "minLength": 2}
+    # The model's own shape for the bundle's one such node: pydantic has no spelling of
+    # ``dict[str, Any]`` that omits ``additionalProperties: true``, so the ``object`` arm
+    # carries a key the document is silent about -- and the lift reads the branch the way
+    # ``_silent_about_extras`` reads the node, which is why the pair below reports no
+    # ``added`` and why the arm counts as BARE here.
+    assert normalize(
+        {"anyOf": [{"additionalProperties": True, "type": "object"}, {"minLength": 1, "type": "string"}]},
+        {},
+    ) == {"type": ["object", "string"], "minLength": 1}
+    # And the shapes that are NOT a type list are still left alone, each for its own
+    # reason, because the lift is only lossless where all four gates hold.  An ``enum``
+    # is in no arm and applies to every instance, so lifting it would refuse every
+    # object; a repeated word is not a type list at all; ``integer`` and ``number`` share
+    # the numeric arm, so two branches have two values for one position; and a branch
+    # holding a SUBSCHEMA is a class on the model's side, which the document spells
+    # inline -- 7 pairs of this bundle fall from ``pass`` without that last gate.
+    for branches in (
+        [{"type": "object"}, {"type": "string", "enum": ["a"]}],
+        [{"type": "object"}, {"type": "string", "description": "d"}],
+        [{"type": "string", "minLength": 1}, {"type": "string", "maxLength": 3}],
+        [{"type": "integer", "minimum": 0}, {"type": "number", "minimum": 1}],
+        [{"type": "boolean"}, {"type": "object", "properties": {"k": {"type": "string"}}}],
+        [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1}],
+    ):
+        assert normalize({"anyOf": branches}, {}) == {"anyOf": branches}, branches
 
     # The bare case renders as a union of the document's own types, and nothing else.
     doc = {
@@ -6112,10 +6170,10 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     )
     assert "Annotated[str | int, Field(min_length=4)]" in escaped.text, escaped.text
 
-    # **D5's alias module removed that obstacle, and the node STILL refuses -- on the
-    # grader rather than on the rendering.**  Both halves are asserted, because the
-    # refusal's reason changed and a test that only re-asserted the refusal would not
-    # have noticed.
+    # **D5's alias module removed that obstacle and the GRADER now reads the shape, so
+    # the node EMITS.**  Both halves are asserted -- the arm carries its own bound, and
+    # the comparison reads it -- because a cell that only stopped asserting the refusal
+    # would pass for a row that silently dropped the bound onto the field again.
     armed = {
         "title": "MS",
         "type": "object",
@@ -6124,9 +6182,9 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     }
     named = constraints_module.symbol("string", {"minLength": 4})
 
-    # Half one: the arm IS nameable now, and that model's accepted set is the
-    # document's -- the integer arm takes no string bound. Built by hand from the
-    # alias the emitter would have used, because the emitter refuses to reach it.
+    # Half one: the arm IS nameable, and that model's accepted set is the document's --
+    # the integer arm takes no string bound.  Built from the alias the emitter uses,
+    # which the walk's own rendering is asserted against below.
     arm_alias = {"StrMinLen4": None}
     exec(render.constraints_module({named: ("string", {"minLength": 4}, None)}), arm_alias)  # noqa: S102
 
@@ -6138,38 +6196,59 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     with pytest.raises(ValidationError):
         Armed.model_validate({"v": "abc"})  # the string arm keeps its own bound
 
-    # Half two, and the reason the row refuses anyway: the comparison folds a model's
-    # ``anyOf`` into a document's type LIST only where every branch is a bare type, so
-    # it reads this FAITHFUL model as dropping both facts.  Emitting a node no check
-    # can grade is what the refusal prevents.
-    blind = compare_schema(armed, Armed)
-    assert blind.outcome == "model_drops_a_fact", blind
-    assert {m.split(": ")[0] for m in blind.missing} == {
-        "/properties/v/type",
-        "/properties/v/minLength",
-    }, blind.missing
+    # Half two: the comparison READS that shape.  It used to fold a model's ``anyOf``
+    # into a document's type LIST only where every branch was bare, so it reported this
+    # FAITHFUL model as dropping ``/type`` and ``/minLength`` both, and the row refused
+    # the document rather than emit a node no check could grade.  The fold lifts each
+    # arm's own keywords now, so the pair is silent -- and the reading is STRONGER than
+    # the refusal it replaces, which is asserted by the three ways a model can be wrong
+    # about it below rather than by the pass alone.
+    assert compare_schema(armed, Armed).outcome == "pass", compare_schema(armed, Armed)
 
-    caught = refusal_from(emit.lower_document("ms.json", armed))
-    assert caught.keyword == "minLength", caught.keyword
-    assert "every branch is a bare type" in caught.detail, caught.detail
-    # And it costs no document: 0 multi-type node in an EMITTED document states a
-    # constraint WITH TWO OR MORE LIVE ARMS, which is why this is graded on a
-    # constructed one. The live count is the whole of the condition -- with one live
-    # arm the node is ``T | None``, which the comparison reads exactly (see
-    # ``test_a_declared_null_is_never_read_as_absence``) -- so a node with one live
-    # arm and a constraint is emitted and is NOT a violation here.
+    class Dropped(AdCPBaseModel):
+        v: str | int  # the arm's bound is gone
+
+    class Tightened(AdCPBaseModel):
+        v: Annotated[str, Field(min_length=8)] | int  # the arm's bound, narrowed
+
+    class Lost(AdCPBaseModel):
+        v: arm_alias[named] | int | bool  # an arm the document does not name
+
+    dropped = compare_schema(armed, Dropped)
+    assert dropped.outcome == "model_drops_a_fact", dropped
+    assert {m.split(": ")[0] for m in dropped.missing} == {"/properties/v/minLength"}, dropped.missing
+    tightened = compare_schema(armed, Tightened)
+    assert tightened.outcome == "model_drops_a_fact", tightened
+    assert {d.split(": ")[0] for d in tightened.differs} == {
+        "/properties/v/minLength"
+    }, tightened.differs
+    lost = compare_schema(armed, Lost)
+    assert lost.outcome == "model_drops_a_fact", lost
+    assert {d.split(": ")[0] for d in lost.differs} == {"/properties/v/type"}, lost.differs
+
+    # **And the node now EMITS, over the bundle's own population.**  This asserted the
+    # empty list -- "0 multi-type node in an EMITTED document states a constraint with
+    # two or more live arms" -- which was true only because the row refused every
+    # document carrying one.  The set is named instead of counted, so a node arriving
+    # here is attributable: the bundle has exactly one, and it is the site
+    # ``adcp-client-python-10l.45`` names.
     from codegen.lower import containers as lower_containers
 
     emitted = emit.emit(BUNDLE, population()).emitted
     carried = frozenset().union(*lower_containers.ARM.values())
-    assert [
+    assert sorted(
         (d, p)
         for d in emitted
         for p, node in bundle.nodes(bundle.read(BUNDLE, d))
         if isinstance(node.get("type"), list)
         and set(node) & carried
         and len([k for k in node["type"] if k != "null"]) > 1
-    ] == []
+    ) == [
+        (
+            "core/attestation-reference.json",
+            "/properties/embedded_credential/properties/value",
+        )
+    ]
 
     # **A null arm no longer refuses: it is an ARM.** The refusal stood on the
     # grader, and the grader reads it now -- so the cell asserts the EMISSION and the
@@ -8447,6 +8526,41 @@ VERDICTS = frozenset(
         # ONE naming collision left in the bundle is
         # ``trusted-match/provider-registration.json`` above, where the two chains are
         # equal and no ancestor separates them (``adcp-client-python-10l.42``).
+        #
+        # **SIX JOINED AT ``adcp-client-python-10l.45``, and all six are documents
+        # GETTING FURTHER into an obstruction this set already owns.**  Nothing new is
+        # claimed and nothing is absorbed by a number: the comparison folds a type list
+        # whose arm carries a constraint (``harness._type_list``), so
+        # ``core/attestation-reference.json`` emits, and the chain that stood on it
+        # re-roots onto what each document's own text runs into next.
+        #
+        # ``core/audience-evidence.json`` is the ONE primary verdict of the six: its
+        # ``/properties/attestation_refs/items/allOf/1/properties/subject/allOf/0``
+        # states a ``$ref`` at a CONJUNCT whose target is not a class, which §5's
+        # ``$ref`` row at CONJ makes the node's own TYPE -- a clause that does not hold
+        # at a node declaring no field, and the same claim
+        # ``core/requirements/asset-requirements.json`` above already carries.  The other
+        # five are CHAINS onto it: ``core/audience-evidence-selection.json`` through
+        # ``/properties/evidence``, ``core/package.json`` through that, and
+        # ``core/media-buy.json``, ``media-buy/create-media-buy-response.json`` and
+        # ``media-buy/update-media-buy-response.json`` through ``core/package.json``.
+        # Each was CHAINED-onto-a-deferral before and is CHAINED-onto-a-verdict now, so
+        # what moved is the resolved kind and not the kind: ``accounted`` counts them,
+        # which is the whole reason the resolved split exists.
+        #
+        # The two documents that did NOT join are the two the row cleared outright --
+        # ``core/attestation-reference.json`` and
+        # ``governance/get-plan-audit-logs-response.json``, which emit -- and two more
+        # left the chain to mint their own DEFERRALS rather than verdicts
+        # (``core/rights-constraint.json`` and
+        # ``core/rights-attestation-evaluation.json``, on a ``format`` this step does
+        # not lower).
+        "core/audience-evidence.json",
+        "core/audience-evidence-selection.json",
+        "core/package.json",
+        "core/media-buy.json",
+        "media-buy/create-media-buy-response.json",
+        "media-buy/update-media-buy-response.json",
     }
 )
 
@@ -8647,7 +8761,18 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # ``core/assets/asset-union.json``, which stopped being chained at all: its target
     # emits, so the walk gets further and it mints its OWN verdict at ``/oneOf/3``, a
     # ``$ref`` branch onto a union root.
-    assert len(chained) >= 98, len(chained)
+    # **98 -> 94 AT ``adcp-client-python-10l.45``, AND THE MOVE IS EMISSION PLUS THREE
+    # CHAINS THAT RE-ROOTED.**  The comparison folds a type list whose arm carries a
+    # constraint (``harness._type_list``), so ``core/attestation-reference.json`` emits
+    # and with it ``governance/get-plan-audit-logs-response.json``, which was reached
+    # only through a chain onto it -- one chain gone.  The other three are chains that
+    # stopped being chains: the walk gets further and each mints its OWN primary refusal
+    # -- ``core/rights-constraint.json`` and ``core/rights-attestation-evaluation.json``
+    # on a ``format`` this step does not lower, and ``core/audience-evidence.json`` on
+    # §5's ``$ref`` row at CONJ.  Every other chain stayed a chain; five of them now
+    # resolve onto a VERDICT rather than onto a deferral, which moves the resolved split
+    # and not this count.
+    assert len(chained) >= 94, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
     # **AND THE VERDICT HALF ROSE 32 -> 37 AT THE SEVENTH INSTALMENT, WHICH IS A
     # PREDICTED RISE AND NOT A REGRESSION.**  The floor below is deliberately NOT raised

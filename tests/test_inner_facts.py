@@ -262,9 +262,16 @@ RELEASED: dict[str, tuple[str, ...]] = {
 #: ``properties`` row at CONJ composes per key now, and
 #: ``core/product-card-reference-asset.json`` chained behind the first of them.  All
 #: three emit.
+#: **ONE ENTRY LEFT AT ``adcp-client-python-10l.45``, and it is the same shrink.**
+#: ``governance/get-plan-audit-logs-response.json`` chained through
+#: ``core/attestation-reference.json``, whose
+#: ``/properties/embedded_credential/properties/value`` is a ``type`` LIST with a
+#: constraint on one arm -- a shape the comparison could not read, so the row refused
+#: the document rather than emit a node no check grades.  ``harness._type_list`` folds a
+#: model's ``anyOf`` of arms back to the list plus the per-arm facts, so the node is
+#: GRADED and both documents emit.
 STILL_REFUSED: dict[str, str] = {
     "core/media-buy.json": "$ref",
-    "governance/get-plan-audit-logs-response.json": "$ref",
 }
 
 

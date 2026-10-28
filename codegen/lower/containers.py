@@ -164,10 +164,14 @@ KEY_BOUNDS = ("minProperties", "maxProperties")
 #: keyword on this arm" -- and a keyword no arm can carry constrains nothing at all,
 #: so it is refused rather than dropped.  Applying it to every arm instead is the
 #: narrowing half of the same defect.
-#: **It is ``codegen/schema/parse.py``'s now**, because the CUT is: §2's multi-type
-#: rewrite is retired by the parser making the reading once, so the table it reads has to
-#: be where the reading is.  Re-bound here so this module's own screen keeps one spelling
-#: of it, and ``parse.value_facts`` reads the same rows to derive what ``ir.FACTS`` was.
+#: **It is ``codegen/keywords.py``'s now**, reached through ``codegen/schema/parse.py``,
+#: and the move is one step further than §2's: the parser makes the CUT once, and the
+#: verifier's fold from a model ``anyOf`` back to a document type list is that cut's
+#: INVERSE, so the two must read one declaration or they disagree silently about which
+#: arm owns a keyword.  §9 forbids the verifier the walk and permits it the keyword
+#: table, so the table is in the table.  Re-bound here so this module's own screen keeps
+#: one spelling of it, and ``parse.value_facts`` reads the same rows to derive what
+#: ``ir.FACTS`` was.
 ARM = nodes_parse.ARM
 
 
@@ -690,14 +694,25 @@ def multi_type(node: nodes.MultiType, mod: Module) -> Decided | Refusal:
     silently makes the model wider than its document, and applying it to every arm
     makes it narrower.  Both halves of that are this row's named defect.
 
-    **And an arm that DOES carry a constraint refuses, but no longer for the
-    rendering's sake.**  The split only exists if the constraint can sit on the arm,
-    and the compiler's ``DataType`` carries none -- so before D5's alias module the
-    keyword reached the FIELD and bounded the whole union, ``Annotated[str | int,
-    Field(min_length=4)]``, applying the string's bound to the integer arm. The alias
+    **An arm that DOES carry a constraint is an arm, and it refused TWICE before it
+    emitted.**  The split only exists if the constraint can sit on the arm, and the
+    compiler's ``DataType`` carries none -- so before D5's alias module the keyword
+    reached the FIELD and bounded the whole union, ``Annotated[str | int,
+    Field(min_length=4)]``, applying the string's bound to the integer arm.  The alias
     module removed that: ``StrMinLen4 | int`` is what it lowers to, and that model's
-    accepted set IS the document's. The refusal stands on the GRADER instead, and the
-    body below carries the measurement.
+    accepted set IS the document's.  The refusal then stood on the GRADER -- the schema
+    comparison folded a model's ``anyOf`` back into the document's ``type`` list only
+    where every branch was a bare type, so it read a faithful model as dropping both
+    the type list and the constraint -- and that was an instrument defect in the same
+    place as the ``null`` arm's below, fixed the same way: ``harness._type_list`` lifts
+    each arm's own keywords back onto the list it folds to, reading ``keywords.ARM``,
+    which is the CUT this row makes.  So the node is graded and the refusal is retired
+    rather than restated with a new reason.
+
+    It was worth 1 primary refusal -- ``core/attestation-reference.json`` at
+    ``/properties/embedded_credential/properties/value``, ``["object", "string"]``
+    with ``minLength`` -- and 43 documents transitively, which was the largest cascade
+    per primary refusal in the report.
 
     **A ``null`` arm is an ARM, and it used to refuse on the grader.**  ``None``
     was always a perfectly good arm and the compiler always folded it with D4's own
@@ -732,54 +747,29 @@ def multi_type(node: nodes.MultiType, mod: Module) -> Decided | Refusal:
     )
     if refused is not None:
         return refused
-    stated = list(node.stated)
-    live = [k for k in kinds if k != "null"]
-    if stated and len(live) > 1:
-        # **A CONSTRAINED arm refuses WHERE MORE THAN ONE ARM IS LIVE, and the reason
-        # is the GRADER rather than the rendering.**  D5's alias module removed the
-        # rendering obstacle -- the arm's own type carries its own bound, so
-        # ``StrMinLen4 | int`` is what this lowers to and the string's keyword no
-        # longer reaches the field and bounds the integer arm.  Measured: that
-        # model's accepted set IS the document's.
-        #
-        # What has no answer is grading THAT shape.  ``harness._normalize`` folds a
-        # model's ``anyOf`` back into the document's ``type`` LIST only where EVERY
-        # branch is a bare ``{"type": X}`` -- a constrained branch is not one, and
-        # folding it would throw that branch's constraint away -- so the comparison
-        # reads such a model as stating neither the ``type`` list nor the constraint,
-        # and reports a faithful node as dropping two facts.  Re-measured on
-        # ``{"type": ["string", "integer"], "minLength": 4}`` and on the same node
-        # with a ``null`` beside it: ``model_drops_a_fact`` both times, missing
-        # ``/type`` and ``/minLength``.
-        #
-        # **``len(live) > 1`` is the whole of what changed, and it is a measurement.**
-        # With exactly ONE live arm the node is ``T | None``, which is case 1 of the
-        # fold rather than case 2 -- and case 1 keeps the live branch's OWN keys, so
-        # the constraint is compared where it sits.  Measured in both directions on
-        # the two documents this gains: ``{"type": ["number", "null"], "minimum": 0,
-        # "maximum": 1}`` passes against a faithful model, reports ``/minimum`` and
-        # ``/maximum`` against one that drops them and ``/maximum`` against one that
-        # widens to ``ge=0`` alone; ``{"type": ["string", "null"], "format":
-        # "date-time"}`` passes against ``AwareDatetime | None`` and reports
-        # ``/format`` against ``str | None``.  So the node is graded in that shape and
-        # refusing it would refuse a document the instrument reads.
-        #
-        # Emitting a node no check can grade is the widening this pipeline exists to
-        # remove, and it still costs no document in the blind shape: 0 multi-type node
-        # with two live arms and a constraint sits in a document the emitter reaches.
-        # It is lifted the rest of the way by teaching the comparison to compare a
-        # constrained union branch-wise, which is the harness's row and not this one's.
-        return Refusal(
-            stated[0],
-            pointer,
-            f"{sorted(kinds)} states {stated} with {len(live)} live arms, which D5's "
-            "alias module can now put on an arm's own type -- but the schema "
-            "comparison folds a model's anyOf back into a type LIST only where every "
-            "branch is a bare type, so a constrained branch beside another live arm "
-            "reads as dropping both the type list and the constraint and the node "
-            "would be emitted ungraded",
-            kind=Kind.DEFERRED,
-        )
+    # **THE CONSTRAINED-ARM REFUSAL STOOD HERE AND IS RETIRED, on the instrument's side
+    # and not by a widening here.**  It fired where the node stated a keyword some arm
+    # carries and more than one arm was live, and its reason was never the rendering --
+    # D5's alias module puts the bound on the arm's own type, so ``StrMinLen1 | dict[str,
+    # Any]`` is what this lowers to and the string's keyword never reaches the field to
+    # bound the object arm.  Its reason was the GRADER: ``harness._normalize`` folded a
+    # model's ``anyOf`` back into the document's ``type`` LIST only where every branch
+    # was a bare ``{"type": X}``, so it read a faithful model as stating neither the
+    # type list nor the constraint and reported two facts missing.
+    #
+    # That is an instrument defect in the same place as the ``null`` arm's, and it is
+    # fixed in the same place: ``harness._type_list`` lifts each arm's own keywords back
+    # onto the type list it folds to, reading ``keywords.ARM`` -- the very table this row
+    # cuts by -- so the fold is the cut's inverse and the node is graded at its own
+    # pointer, with the ``type`` list and the ``minLength`` each compared.
+    #
+    # Nothing is admitted in exchange.  A fold the gates do not admit leaves the node a
+    # combinator, which states no fact in ``compared_facts``, so such a pair REDDENS
+    # rather than passing blind -- the fail-safe direction, and the reason this row does
+    # not need to re-derive the fold's conditions to know it is safe to emit.  Measured
+    # over all 1,054 portable documents: 1 multi-type node states a keyword with two
+    # live arms, 0 repeat a type word, and 0 state a keyword two live arms carry.
+    #
     # **§2's SECOND node rewrite, retired on the multi-type side.**  The cut -- one
     # mapping per type word, each holding only the keywords that word can carry -- is a
     # reading the PARSER makes once (``schema.parse.ARM``), at the position that implies

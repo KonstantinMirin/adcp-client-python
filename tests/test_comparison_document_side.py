@@ -248,6 +248,15 @@ def test_a_constraint_sibling_of_a_local_reference_is_the_stated_ceiling() -> No
 #: ``#/properties/duration_ms_range/items``).
 BARE_TYPES = {"oneOf": [{"type": "boolean"}, {"type": "number"}, {"type": "string"}]}
 NULL_ARM = {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}
+#: The third shape, and it is the bundle's own: a type list one of whose ARMS carries a
+#: constraint.  ``core/attestation-reference.json`` at
+#: ``/properties/embedded_credential/properties/value`` states ``["object", "string"]``
+#: with ``minLength: 1``, and the fold used to require every branch to be bare -- so the
+#: emitter refused that document and the 27 that reference it rather than emit a node no
+#: check could read (``adcp-client-python-10l.45``).  The second branch here is the model's
+#: own spelling of the object arm: pydantic has no ``dict[str, Any]`` that omits
+#: ``additionalProperties: true``, and that key is in the object's arm, so it lifts.
+ARMED = {"anyOf": [{"type": "string", "minLength": 2}, {"type": "object"}]}
 #: THE TWO UNIONS AS THE DELEGATED RESOLVER USED TO WRITE THEM.  It wrote a finite
 #: type out as its members while inlining, so a document REFERENCING one of the
 #: shapes above arrived with its boolean branch as ``{"enum": [false, true]}`` and its
@@ -275,13 +284,24 @@ class FaithfulNullArm(Base):
     v: Annotated[int, Field(ge=0)] | None
 
 
+class FaithfulArmed(Base):
+    v: Annotated[str, Field(min_length=2)] | dict[str, Any]
+
+
 def test_a_faithful_class_over_a_folded_document_union_adds_nothing() -> None:
-    """Both fold arms, read off the document instead of the model only.
+    """All three fold arms, read off the document instead of the model only.
 
     Before this, the document's node stated nothing in ``FACTS`` -- ``oneOf`` and
     ``anyOf`` are not facts -- while the model's node folded to a ``type`` list,
     so the list arrived as ``added``: 5 facts over 5 pairs for the bare-type arm
     and 4 over 2 for the null arm.
+
+    **The constrained arm is the third, and it reported in BOTH directions before the
+    lift.**  Each side spells the node its own way -- the document a type list beside
+    a ``minLength``, the model a union of an alias and a mapping -- so neither the list
+    nor the bound was read on the model's side, and a faithful class reported as
+    dropping two facts.  ``harness._type_list`` lifts each arm's own keywords onto the
+    list it folds to, which is the inverse of the cut ``schema.parse`` makes.
     """
     bare = graded(holder(BARE_TYPES), FaithfulBareTypes)
     assert (bare.added, bare.missing, bare.differs) == ([], [], []), bare
@@ -290,6 +310,10 @@ def test_a_faithful_class_over_a_folded_document_union_adds_nothing() -> None:
     nul = graded(holder(NULL_ARM), FaithfulNullArm)
     assert (nul.added, nul.missing, nul.differs) == ([], [], []), nul
     assert nul.outcome == "pass", nul
+
+    armed = graded(holder(ARMED), FaithfulArmed)
+    assert (armed.added, armed.missing, armed.differs) == ([], [], []), armed
+    assert armed.outcome == "pass", armed
 
 
 @pytest.mark.parametrize(
@@ -317,10 +341,12 @@ def test_a_branch_the_resolver_used_to_rewrite_is_now_compared_as_written(
 def test_a_rewritten_branch_does_not_make_the_fold_a_licence() -> None:
     """A union whose branch states anything but a bare ``type`` is left alone.
 
-    The surviving arm folds only where EVERY branch is a bare ``{"type": X}`` -- §9's
-    "a type list rendered as a union" -- so a union carrying a value set in any branch
-    is left alone and a model stating a type list over it is reported, which is what
-    keeps the arm from excusing a model that invented a type.
+    The surviving arm folds only where every branch states a ``type`` WORD -- §9's
+    "a type list rendered as a union" -- so a branch that is a VALUE SET states no arm
+    for the fold to be, the union is left alone, and a model stating a type list over it
+    is reported, which is what keeps the arm from excusing a model that invented a type.
+    A branch may carry its OWN constraints beside that word (``harness._type_list``);
+    what it may not do is omit the word.
     """
     for branch in ({"enum": [False]}, {"enum": ["a", "b"]}, {"const": "x"}):
         node = {"oneOf": [branch, {"type": "number"}]}
@@ -360,11 +386,32 @@ class InventsABoundInsideTheBranch(Base):
     v: Annotated[int, Field(ge=0, le=9)] | None
 
 
+class DropsTheArmsBound(Base):
+    v: str | dict[str, Any]
+
+
+class ContradictsTheArmsBound(Base):
+    v: Annotated[str, Field(min_length=5)] | dict[str, Any]
+
+
+class DropsAnArmOfTheList(Base):
+    v: Annotated[str, Field(min_length=2)]
+
+
+class InventsAnArmOfTheList(Base):
+    v: Annotated[str, Field(min_length=2)] | dict[str, Any] | int
+
+
 #: Every way a model can disagree with a fact the document states ONE LEVEL DOWN,
 #: inside the branch the fold restored.  The bound (``minimum``) is the
 #: interesting one: it is not a ``type`` word, so it reaches the comparison only
 #: through the fold, and a fold that restored the type and dropped the bound
 #: would pass all three of the ``type`` rows above.
+#:
+#: **The ARMED rows are the same four for the constrained-arm lift**, and they are what
+#: makes that lift the stronger reading rather than a wider one: the bound reaches the
+#: comparison only through it, so a lift that restored the type list and threw the arm's
+#: keyword away would pass every ``type`` row here.
 FOLD_MUST_REPORT = [
     (BARE_TYPES, FewerTypes, "differs", "/properties/v/type"),
     (BARE_TYPES, MoreTypes, "differs", "/properties/v/type"),
@@ -372,6 +419,10 @@ FOLD_MUST_REPORT = [
     (NULL_ARM, DropsTheBranchesBound, "missing", "/properties/v/minimum"),
     (NULL_ARM, ContradictsTheBranchesBound, "differs", "/properties/v/minimum"),
     (NULL_ARM, InventsABoundInsideTheBranch, "added", "/properties/v/maximum"),
+    (ARMED, DropsTheArmsBound, "missing", "/properties/v/minLength"),
+    (ARMED, ContradictsTheArmsBound, "differs", "/properties/v/minLength"),
+    (ARMED, DropsAnArmOfTheList, "differs", "/properties/v/type"),
+    (ARMED, InventsAnArmOfTheList, "differs", "/properties/v/type"),
 ]
 
 
@@ -428,12 +479,39 @@ def test_a_null_the_model_admits_at_a_REQUIRED_key_is_not_read_as_absence() -> N
 
 
 #: The unions the fold must LEAVE ALONE, each with the reason.  A fold that took
-#: any of these would throw a fact away, and a thrown-away fact is a green cell
-#: nobody re-reads.
+#: any of these would throw a fact away, or state one the union does not, and either
+#: is a green cell nobody re-reads.
+#:
+#: **The first four replace one entry that is now FOLDED**, "two live branches and one
+#: carries more than a type word" -- the reading that cost the emitter
+#: ``core/attestation-reference.json``.  The replacement is not a weaker list: it names
+#: the four conditions that actually make the lift lossless, where the old entry named
+#: one condition that was merely sufficient, and each of the four is a shape whose lift
+#: would be WRONG rather than one nobody had looked at.  The fourth is the one with a
+#: live population -- 7 pairs of this bundle fell from ``pass`` without it, every model
+#: faithful (``harness._type_list``).
 NEVER_FOLDED = [
     (
-        {"anyOf": [{"type": "string", "minLength": 2}, {"type": "integer"}]},
-        "two live branches and one carries more than a type word",
+        {"anyOf": [{"type": "string", "minLength": 1}, {"type": "string", "maxLength": 3}]},
+        "two branches name ONE type, which no type list expresses",
+    ),
+    (
+        {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "number", "minimum": 1}]},
+        "integer and number share the numeric arm, so one key has two values",
+    ),
+    (
+        {"anyOf": [{"type": "object"}, {"type": "string", "enum": ["a"]}]},
+        "an enum is in no arm and applies to every type, so lifting it refuses objects",
+    ),
+    (
+        {
+            "oneOf": [
+                {"type": "boolean"},
+                {"type": "object", "properties": {"k": {"type": "string"}}},
+            ]
+        },
+        "a branch holding a SUBSCHEMA is a class on the model's side, so a lift reading "
+        "the document's spelling of it would fire on one side only",
     ),
     (
         {"oneOf": [{"type": "integer"}, {"type": "number"}]},
@@ -1489,6 +1567,16 @@ def test_a_branch_reference_to_a_bare_type_folds_to_the_type_list_it_spells() ->
 
     And it excuses nothing: a model listing FEWER types than the folded list still
     reports, which is the half that keeps the arm honest.
+
+    **The fold reads an ARM now, not only a bare type, so the measurement is restated
+    against the four gates rather than against the one.**  Each of the four key sets is
+    excluded, and by a named gate: ``{const, type}`` (21 sites) by the ARM gate, since
+    ``const`` is in no arm; ``{oneOf}`` (3) by the type-word gate, since a target whose
+    content is a combinator states no word; ``{additionalProperties, properties,
+    required, type}`` (5) by the SUBSCHEMA gate, since ``properties`` holds one -- and by
+    the distinct-word gate too, every branch of those unions resolving to ``object``; and
+    ``{additionalProperties, description, properties, required, type}`` (4) by those two
+    plus the ARM gate.  So the cell is still empty on this tree, with a reason per shape.
     """
     from codegen.harness import _normalize  # noqa: PLC0415
 

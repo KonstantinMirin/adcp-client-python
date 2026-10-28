@@ -2687,6 +2687,99 @@ def _conjoined_type(node: dict, kw: str, branches: list[dict]) -> tuple[dict, li
     return {k: v for k, v in node.items() if k != "type"} | {kw: conjoined}, conjoined
 
 
+def _type_list(live: list[dict]) -> tuple[list[str], dict] | None:
+    """A union of ARMS read back as the ``type`` LIST it spells, plus the per-arm facts.
+
+    ``None`` where these branches are not a type list, and that is the FAIL-SAFE
+    direction every gate below is in: the caller leaves the node as a combinator, it
+    states no fact in :func:`compared_facts`, and the pair reddens rather than passing
+    blind.
+
+    **This is the inverse of ``schema.parse``'s CUT, and it reads the same
+    declaration.**  draft-07 applies a constraint keyword only to instances of the type
+    it is defined for, so a node whose ``type`` is a list and which states ``minLength``
+    means "``minLength`` on the string arm" -- which is the reading the walk makes when
+    it cuts the node into one member per word (``keywords.ARM``), and pydantic has no
+    spelling for the result but a union of the arms.  Lifting each arm's own keywords
+    back onto the list is therefore not an approximation of the union: it is the
+    document's own node, respelled.
+
+    **The gates, and each is what makes the lift LOSSLESS rather than merely green.**
+
+    * **Every branch states a ``type`` WORD of the vocabulary.**  A branch with no
+      ``type`` of its own has no arm to be -- a bare ``$ref`` the hop could not resolve,
+      a branch that is itself a combinator -- and a branch whose ``type`` is itself a
+      list is not an arm either.  Read with ``get``, because a typeless branch reaches
+      here: ``_normalize`` counts a branch as LIVE by its type not being ``null``, which
+      a branch stating no type satisfies.
+    * **The words are DISTINCT.**  A type LIST is a set of words -- ``multi_type``
+      refuses a repeated one by name -- so two branches naming one type are a union of
+      two differently-constrained instances of that type, which no type list expresses.
+      Measured over all 1,054 portable documents: 0 of the bundle's 62 multi-type nodes
+      repeats a word, so the gate costs no site and keeps the rule off a shape nobody
+      showed it.
+    * **Every key a branch carries beside ``type`` is one that word's ARM carries.**
+      This is the whole of the lift's soundness and not a tidiness check: a keyword in
+      the arm is ignored for every other type, so moving it to the node changes no
+      accepted set, while a keyword that is NOT -- an ``enum``, a ``const``, a
+      ``description`` -- applies to every instance or to none, and lifting it would state
+      a fact about the other arms that the union does not.  So ``{"anyOf": [{"type":
+      "object"}, {"type": "string", "enum": ["a"]}]}`` does not fold, and that is
+      correct: as a type list it would refuse every object.
+    * **And that key holds no SUBSCHEMA**, which is what keeps the lift off a branch the
+      two sides spell differently.  ``keywords.descends_at`` is the one descent column;
+      a key in it holds a subschema, and §4 makes a branch holding one a CLASS or a
+      ``list[X]`` -- which pydantic spells as a ``$ref`` with a ``title`` it derives, so
+      the model's branch and the document's are not the same shape and a lift reading one
+      of them fires on ONE SIDE ONLY.  That is not a hypothetical: it is the measurement
+      ``_conjoined_type`` already carries for the hoist (11 pairs reported a drop and 4
+      an addition, every one faithful), and re-measured here over the graded population
+      without this gate, **7 pairs fell from ``pass`` to ``model_drops_a_fact``** --
+      ``sponsored-intelligence/si-capabilities.json`` and its two session documents,
+      whose ``modalities`` properties are a ``oneOf`` of a ``boolean`` and an OBJECT
+      WITH ``properties``; ``brand/get-brand-identity-response.json``'s ``colors`` and
+      ``fonts``; and ``core/creative-item.json``.  Every one of those models is
+      faithful.  A branch whose own content is a scalar CONSTRAINT has no such problem:
+      D5's alias module puts the bound on the arm's own type, so both sides write
+      ``{"type": "string", "minLength": 1}`` and the lift fires on both.
+    * **No two branches lift the same key.**  ``integer`` and ``number`` share the
+      numeric ARM, so a union of both carrying a ``minimum`` has two values for one
+      position on the node and the lift has no answer; a repeated word is already gone
+      by the gate above.  0 nodes of the bundle state a keyword two live arms carry.
+
+    The subschema gate costs this bundle no site of the shape this exists for: measured
+    over all 1,054 portable documents, the one multi-type node stating a keyword beside
+    two live arms states ``minLength``, and the ``object`` arm with ``properties``
+    (``core/delivery-metrics.json#/properties/quartile_data``) has ONE live arm and so
+    takes the ``null`` fold instead.  A document whose type list puts ``properties`` on
+    an object arm beside another live arm reddens rather than passing blind, and closing
+    that needs ``compare`` to recurse into a union's branches pairwise -- the reading
+    ``_conjoined_type``'s own ceiling names, and still not this function's.
+    """
+    words = [b.get("type") for b in live]
+    if not all(isinstance(w, str) and w in keywords.ARM for w in words):
+        return None
+    if len(set(words)) != len(words):
+        return None
+    descends = keywords.descends_at(Position.ROOT)  # the ONE descent column, position-free
+    arms: dict = {}
+    for branch, word in zip(live, words, strict=True):
+        # The branch is read the way the NODE is: ``additionalProperties: true`` on a
+        # mapping that declares no property is the silence it is, by the one function
+        # that says so -- and read HERE because the gate below asks what the branch
+        # STATES, and a key stating nothing must not decide it.  §4's ``dict[K, V]``
+        # row is why it arrives at all: pydantic has no spelling of ``dict[str, Any]``
+        # that omits the keyword, so the model's ``object`` arm carries it and the
+        # document's is silent.
+        for key, value in _silent_about_extras(branch).items():
+            if key == "type":
+                continue
+            if key not in keywords.ARM[word] or key in descends or key in arms:
+                return None
+            arms[key] = value
+    return words, arms
+
+
 def _normalize(
     node: Any,
     root: Any,
@@ -2782,7 +2875,7 @@ def _normalize(
       presence question at all (an ``items``, a root, a mapping's value), so a
       null branch at one of those is still read as absence.  Closing that needs a
       third state on the axis rather than a wider rule here.
-    * **A union of BARE types is a ``type`` LIST.**  draft-07 lets a node name
+    * **A union of ARMS is a ``type`` LIST.**  draft-07 lets a node name
       several types at once and pydantic has no spelling for that but a union, so
       ``{"type": ["number", "string"]}`` comes back
       ``{"anyOf": [{"type": "number"}, {"type": "string"}]}`` -- one fact in two
@@ -2792,21 +2885,26 @@ def _normalize(
       comparison said ``model_drops_a_fact`` twice for a model that states exactly
       what its document states.
 
-      The fold applies only where EVERY branch is a bare ``{"type": X}``.  A
-      branch carrying anything else is a union of constrained types rather than a
-      type list, and folding it would throw that branch's constraint away -- so
-      such a union is left alone and compares as it is.  It also cannot excuse an
-      omission in either direction: a model listing more types than the document
-      still differs after the fold, and a model listing fewer never folds into a
-      match.
+      **A BRANCH CARRIES ITS OWN CONSTRAINTS, and the lift is the CUT'S INVERSE.**
+      This read "the fold applies only where EVERY branch is a bare ``{"type":
+      X}``", and that reading cost the bundle its one node stating a keyword
+      beside a type list with two live arms -- ``core/attestation-reference.json``
+      at ``/properties/embedded_credential/properties/value``, ``["object",
+      "string"]`` with ``minLength: 1`` -- and cost it transitively, because 43
+      documents reference that one.  The walk CUTS such a node into one arm per
+      word, each arm carrying only what that word carries (``keywords.ARM``), and
+      D5's alias module puts the bound on the arm's own type; so the model is
+      ``dict[str, Any] | StrMinLen1``, its accepted set IS the document's, and the
+      only thing that could not happen was GRADING it.  Folding to the type list
+      and dropping the constraint would have been the widening this module's folds
+      exist not to be, which is why the earlier reading refused the document
+      instead of mis-grading it.  :func:`_type_list` carries the lift, its four
+      gates, and the KNOWN CEILING for a branch with an annotation.
 
-      **KNOWN CEILING: a bare type beside a DESCRIPTION does not fold either.**
-      ``{"type": "string", "description": "..."}`` is a bare type as far as the
-      accepted set goes, but this keeps the exact-key test -- folding would throw the
-      branch's own description away, and the direction of the miss is safe: the node
-      stays a combinator,
-      states no fact in :func:`compared_facts`, and the pair reddens rather than passing
-      blind.  0 of the 3 fold positions in this bundle carry one.
+      It cannot excuse an omission in either direction: a model listing more
+      types than the document still differs after the fold, a model listing fewer
+      never folds into a match, and a model that drops an arm's constraint folds
+      to a node that does not state the keyword and is reported at it.
     * **The outer keys win.**  ``default`` and ``description`` sit outside the
       ``anyOf`` and the type facts inside the branch.
 
@@ -2889,14 +2987,22 @@ def _normalize(
             if isinstance(kind, list) and "null" in kind:
                 return one
             return node
-        if len(nulls) <= 1 and len(live) > 1 and all(set(b) == {"type"} for b in live):
-            kinds = [b["type"] for b in live]
+        folded = _type_list(live) if len(nulls) <= 1 and len(live) > 1 else None
+        if folded is not None:
+            kinds, arms = folded
             if kw == "oneOf" and {"integer", "number"} <= set(kinds):
                 # The one overlap in draft-07's type vocabulary: both branches admit
                 # ``5``, so this ``oneOf`` refuses every integer and the type list
                 # admits it.  Folding would state a fact the document does not.
                 return node
-            return {"type": [*kinds, "null"] if keep_null and nulls else kinds, **outer}
+            # The per-arm facts sit between the type list and the OUTER keys, because
+            # outer still wins: a ``default`` or a ``description`` beside the combinator
+            # is the node's own and an arm cannot carry one anyway (``keywords.ARM``).
+            return {
+                "type": [*kinds, "null"] if keep_null and nulls else kinds,
+                **arms,
+                **outer,
+            }
         # **DELETED WITH THE DELEGATED RESOLVER (§9): the same-title lift.**  It fired
         # where every branch of a combinator carried the SAME ``title``, which was the
         # signature of ``canonicalish`` rewriting a root ``if``/``then`` into an

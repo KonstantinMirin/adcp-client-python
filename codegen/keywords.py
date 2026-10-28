@@ -1539,6 +1539,50 @@ TABLE: Mapping[str, Row] = _with_rungs(
     }
 )
 
+_NUMERIC = frozenset({"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"})
+
+#: Which constraint keywords each ``type`` word can carry.  draft-07 applies a
+#: constraint keyword only to an instance OF the type it is defined for and ignores it
+#: for every other type, so a ``type`` LIST means "this keyword on this arm".
+#:
+#: **DECLARED SEMANTICS, which is why it is in this module and not in the walk.**  That
+#: sentence is draft-07's, not this compiler's, and it is read by BOTH halves of the
+#: pipeline for two operations that are each other's inverse:
+#:
+#: * the walk CUTS a type list into one arm per word, each holding only what that word
+#:   carries (``schema.parse`` builds :attr:`nodes.MultiType.members` from this);
+#: * the verifier FOLDS a model's ``anyOf`` of such arms back into the document's type
+#:   list plus the per-arm facts (``harness._normalize``).
+#:
+#: A fold that read a different table from the cut would disagree with it about which
+#: arm owns a keyword, and the disagreement would be silent in the direction that
+#: matters: a keyword lifted onto the wrong arm states a fact at a type the document
+#: says nothing about.  ``docs/plan/architecture.md`` §9 is the rule that puts it here --
+#: the verifier may not read the walk, and "sharing DATA is a different matter from
+#: sharing a READING: the keyword table is the declared semantics, and both halves must
+#: read the same declaration or the grade means nothing."
+#:
+#: It is NOT :func:`grid_of`, and the difference is not cosmetic: ``properties`` and
+#: ``required`` are in the STRUCTURE grid while being object-only keywords, and the
+#: OBJECTS grid carries ``minProperties``, ``patternProperties`` and ``dependencies``,
+#: which this table deliberately does not -- a node stating one of those beside a type
+#: list refuses by name (``lower.containers.multi_type``) rather than being cut onto an
+#: arm no row decided.  The grid is which SUB-TABLE a row renders into; this is which
+#: INSTANCE TYPE its keyword constrains.
+#:
+#: A ``description`` is in no arm, deliberately: it is a statement about the instance
+#: that every word carries equally, and ``schema.parse`` copies it into every member for
+#: that reason.
+ARM: Mapping[str, frozenset[str]] = {
+    "string": frozenset({"format", "minLength", "maxLength", "pattern"}),
+    "integer": _NUMERIC,
+    "number": _NUMERIC,
+    "boolean": frozenset(),
+    "null": frozenset(),
+    "array": frozenset({"items", "uniqueItems", "minItems", "maxItems"}),
+    "object": frozenset({"properties", "required", "additionalProperties", "propertyNames"}),
+}
+
 
 # --------------------------------------------------------------------------- #
 # the readings

@@ -107,23 +107,14 @@ UNION = tuple(
     k for k, p in keywords.descends_at(Position.ROOT).items() if p is Position.BRANCH
 )
 
-#: Which constraint keywords each ``type`` word can carry, for the multi-type cut.
-#: draft-07 applies a constraint keyword only to an instance OF the type it is defined
-#: for and ignores it for every other type, so a ``type`` LIST means "this keyword on
-#: this arm" -- which is the reading :attr:`nodes.MultiType.members` is, made once here
-#: rather than by a handler re-cutting the node.  Moved from ``lower/containers.py``
-#: unchanged in substance: §2's third node rewrite is retired by MOVING the cut to the
-#: parser, not by restating it.
-_NUMERIC = frozenset({"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"})
-ARM: Mapping[str, frozenset[str]] = {
-    "string": frozenset({"format", "minLength", "maxLength", "pattern"}),
-    "integer": _NUMERIC,
-    "number": _NUMERIC,
-    "boolean": frozenset(),
-    "null": frozenset(),
-    "array": frozenset({"items", "uniqueItems", "minItems", "maxItems"}),
-    "object": frozenset({"properties", "required", "additionalProperties", "propertyNames"}),
-}
+#: Which constraint keywords each ``type`` word can carry, for the multi-type CUT, read
+#: off :data:`codegen.keywords.ARM` -- which is where it now lives, because the cut is
+#: not its only reader.  It was here, and before that in ``lower/containers.py``; the
+#: verifier's fold from a model ``anyOf`` back to a document type list is the CUT'S
+#: INVERSE and has to read the same declaration, and §9 forbids the verifier the walk.
+#: So the table moved to the one module both halves may read and this is the name the
+#: parse keeps using.
+ARM: Mapping[str, frozenset[str]] = keywords.ARM
 
 #: An ARRAY's own bounds and a MAPPING's own bounds, in the document's spelling: how long
 #: the list may be, and how many keys the mapping may carry.  Both are the CONTAINER's
@@ -552,9 +543,10 @@ def _multi_type(
     # It is not in :data:`ARM`, and deliberately: that table is "the keywords that type
     # can carry", a per-word CONSTRAINT question, and a description is a statement about
     # the instance that every word carries equally.  Putting it in ARM would also put it
-    # in ``carried`` and so in :attr:`nodes.MultiType.stated`, which is the set of
-    # constraint keywords the node states and which the row reports a keyword no arm can
-    # carry out of.
+    # in the screen ``lower.containers.multi_type`` admits a keyword by, so a document
+    # could state a description a NON-OBJECT arm then carries into its own node -- and
+    # it would put it in ``harness._type_list``'s liftable set, where it is the one key
+    # that must not lift (it belongs to every arm equally, not to one).
     annotated = {k: v for k, v in raw.items() if k == "description"}
     members = tuple(
         parse(
@@ -570,13 +562,13 @@ def _multi_type(
         for word in words
         if isinstance(word, str)
     )
-    carried = frozenset().union(*(ARM.get(w, frozenset()) for w in words)) if words else frozenset()
-    return nodes.MultiType(
-        words=tuple(words),
-        members=members,
-        stated=tuple(sorted(set(raw) & carried)),
-        **common,
-    )
+    # **``stated`` went with the constrained-arm refusal.**  It carried "the keywords
+    # this node states that SOME arm carries", and its one reader was the refusal
+    # ``lower.containers.multi_type`` took where such a keyword sat beside two live arms.
+    # That refusal is retired -- ``harness._type_list`` folds a constrained arm, so the
+    # node is graded -- and a node field no reader reads is a second copy of ``set(raw) &
+    # carried`` waiting to disagree with the screen that derives it.
+    return nodes.MultiType(words=tuple(words), members=members, **common)
 
 
 def _union(
