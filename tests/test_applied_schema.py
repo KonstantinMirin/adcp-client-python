@@ -45,6 +45,7 @@ from pydantic import ValidationError
 
 from adcp.types import _base
 from adcp.types._base import AdCPBaseModel, SchemaRef, applied_schema, schema_at
+from compiled import compiled
 from codegen import bundle, emit, harness, keywords
 from conftest import refusal_from
 
@@ -639,7 +640,7 @@ def test_all_eleven_emit_and_the_residue_is_empty() -> None:
     # so a document moving from one to the other is caught by the partition rather than
     # by a count that stays 11 either way.
     partitions(eleven, now_emitted=NOW_EMITTED, still_refused=set(STILL_REFUSED))
-    out = emit.emit(BUNDLE, eleven)
+    out = compiled(BUNDLE, eleven)
     assert set(NOW_EMITTED) <= set(out.emitted), sorted(set(NOW_EMITTED) - set(out.emitted))
     for document, (keyword, pointer) in STILL_REFUSED.items():
         row = out.refusals[document]
@@ -659,7 +660,7 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     reach it, and a bundle that gains such a document gains it here.
     """
     portable = claimed("bundle.portable", bundle.portable(BUNDLE))
-    out = emit.emit(BUNDLE, sorted(portable))
+    out = compiled(BUNDLE, sorted(portable))
     partitions(portable, emitted=set(out.emitted), refused=set(out.refusals))
     # Re-pinned 674 -> 686 on bcb0b8ca8, and this is the EMITTED count over all
     # 1,054 portable documents -- NOT the 682 the committed tree holds, which is

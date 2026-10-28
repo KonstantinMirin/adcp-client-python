@@ -32,6 +32,7 @@ import pytest
 from pydantic import ValidationError
 
 from adcp.types._base import BranchDispatchMixin
+from compiled import compiled
 from codegen import bundle, compiler, emit, harness
 from codegen.lower import union as lower_union
 from codegen.refusal import Kind
@@ -309,7 +310,7 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
     over the roots alone would not see them.
     """
     population = sorted(bundle.portable(BUNDLE))
-    out = emit.emit(BUNDLE, population)
+    out = compiled(BUNDLE, population)
     roots = claimed(
         "union roots with a bare $ref branch",
         [

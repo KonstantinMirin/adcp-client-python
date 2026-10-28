@@ -26,6 +26,7 @@ import pytest
 from adcp.types._base import SchemaBound, schema_at
 from adcp.types._schemas.core.error import Error
 from adcp.types.envelopes import FailedResponse
+from compiled import compiled
 from codegen import bundle, emit, keywords
 from codegen.lower import envelope
 from tests.nodeset import claimed
@@ -100,7 +101,7 @@ def whole() -> emit.Emitted:
     """One run over the whole portable population, shared by the three tests that read
     a figure off it.  ``functools.cache`` and not a fixture, because the result is a pure
     function of the bundle and the emitter and a run costs a minute and a half."""
-    return emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    return compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
 
 
 @functools.cache
@@ -356,7 +357,7 @@ def test_the_base_module_is_a_function_of_the_bundle_and_not_of_the_run() -> Non
     """
     document = "brand/creative-approval-response.json"
     rel = emit.module_path(document) + ".py"
-    alone = emit.emit(BUNDLE, [document])
+    alone = compiled(BUNDLE, [document])
     # Against the COMMITTED artifacts, which is the whole-population run's own output
     # (``tests/test_emit.py``'s byte compare is what keeps them that): comparing a
     # one-document run with a second whole-bundle run here would cost a second emission

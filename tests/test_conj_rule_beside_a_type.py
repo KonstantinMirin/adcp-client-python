@@ -46,6 +46,7 @@ from typing import Any, NamedTuple
 import jsonschema
 
 from adcp.types._runtime import NotValue
+from compiled import compiled
 from codegen import bundle, compiler, emit, ir
 from codegen.keywords import Position
 from codegen.lower import rules as lower_rules
@@ -115,7 +116,7 @@ def _reaching() -> list[Site]:
 
     compiler._the_conjuncts_own_type = spy  # noqa: SLF001
     try:
-        emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+        compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     finally:
         compiler._the_conjuncts_own_type = original  # noqa: SLF001
     return seen
@@ -233,7 +234,7 @@ def test_a_presence_rule_beside_a_conjoined_type_refuses_and_names_the_gap() -> 
     The refusal is a DEFERRAL and names the missing KIND rather than the missing row,
     because what obstructs it is a decision about §2's own list of value-rule kinds.
     """
-    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     named = claimed(
         "documents refused for a presence rule beside a conjoined type",
         {

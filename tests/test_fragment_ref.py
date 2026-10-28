@@ -46,6 +46,7 @@ from pydantic import ValidationError
 from codegen import bundle, compiler, emit
 from codegen.keywords import Position
 from codegen.refusal import Kind, Refusal
+from compiled import compiled
 import populations
 from conftest import refusal_from
 
@@ -396,7 +397,7 @@ def test_the_named_node_population_is_read_off_the_bundle_and_not_off_a_run() ->
     assert "core/bidding-policy-capability.json" not in absolute
 
     document = "core/version-envelope.json"
-    alone = emit.emit(BUNDLE, [document])
+    alone = compiled(BUNDLE, [document])
     assert alone.files[f"{emit.module_path(document)}.py"] == (
         TREE / f"{emit.module_path(document)}.py"
     ).read_text()
@@ -415,7 +416,7 @@ def test_a_named_node_is_declared_once_in_its_own_module_and_the_property_uses_i
     byte compare below, separately.  Read off the AST, not the text.
     """
     document = "core/version-envelope.json"
-    tree = ast.parse(emit.emit(BUNDLE, [document]).files[f"{emit.module_path(document)}.py"])
+    tree = ast.parse(compiled(BUNDLE, [document]).files[f"{emit.module_path(document)}.py"])
     aliases = {
         t.target.id: t.value
         for t in tree.body
@@ -768,7 +769,7 @@ def test_no_document_of_the_bundle_declares_two_symbols_at_one_pointer() -> None
     """And the guard above is not firing in the real bundle: every pointer the whole
     population declares at carries exactly one symbol, which is what makes
     ``Module.declared`` a map a reference can read."""
-    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     double = {
         d: r
         for d, r in out.refusals.items()
@@ -786,7 +787,7 @@ def test_the_committed_tree_is_the_fresh_emission_of_the_derived_population() ->
     """
     document = "core/version-envelope.json"
     rel = f"{emit.module_path(document)}.py"
-    assert emit.emit(BUNDLE, [document]).files[rel] == (TREE / rel).read_text()
+    assert compiled(BUNDLE, [document]).files[rel] == (TREE / rel).read_text()
 
 
 def test_the_emitted_module_imports_and_the_aliased_fields_still_decide() -> None:
@@ -1179,7 +1180,7 @@ def test_no_document_of_the_bundle_refuses_on_a_definition_section_any_more() ->
     cannot tell a document that moved from one the selectors stopped claiming.
     """
     portable = claimed("bundle.portable", bundle.portable(BUNDLE))
-    out = emit.emit(BUNDLE, sorted(portable))
+    out = compiled(BUNDLE, sorted(portable))
     partitions(portable, emitted=set(out.emitted), refused=set(out.refusals))
     on_sections = {
         d: r for d, r in out.refusals.items() if r["keyword"] in ("definitions", "$defs")
@@ -1221,7 +1222,7 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
       properties name are emitted over step 1, 2 and 4's population, and no member of
       that population references two of the three from anywhere else.
     """
-    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     inside = {
         d: r["pointer"]
         for d, r in out.refusals.items()
@@ -1329,7 +1330,7 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
             or populations.composes_at_the_root(read(d))
         }
     )
-    reached = set(emit.emit(BUNDLE, pop).emitted)
+    reached = set(compiled(BUNDLE, pop).emitted)
     known = set(bundle.portable(BUNDLE))
     for document in (
         "enums/governance-domain.json",
@@ -1781,7 +1782,7 @@ def test_the_one_bare_ref_root_in_the_bundle_reports_its_targets_refusal(tmp_pat
     """
     assert len(bare_ref_roots()) == BARE_REF_ROOTS, bare_ref_roots()
     assert bare_ref_roots() == ["core/signal-pricing-option.json"], bare_ref_roots()
-    out = emit.emit(BUNDLE, bare_ref_roots())
+    out = compiled(BUNDLE, bare_ref_roots())
     r = out.refusals["core/signal-pricing-option.json"]
     assert r["kind"] == "chained", r
     assert "core/vendor-pricing-option.json is refused" in r["detail"], r

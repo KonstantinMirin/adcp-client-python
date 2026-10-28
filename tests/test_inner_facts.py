@@ -31,6 +31,7 @@ from typing import Any
 
 import jsonschema
 
+from compiled import compiled
 from codegen import bundle, emit
 from codegen.ir import MISSING
 
@@ -185,7 +186,7 @@ def test_every_drop_the_run_reports_is_a_default_on_a_property_its_document_requ
     a document refused on another row's keyword never reaches ``compiler.fields`` at
     all and its default is neither dropped nor rendered.
     """
-    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     reported = claimed(
         "drops the run reported",
         {(d, p) for d, sites in out.drops.items() for p in sites},
@@ -276,7 +277,7 @@ def test_every_document_this_row_releases_emits_and_the_rest_name_their_next_key
     row owns and the seven it cleared a refusal for without finishing, which is what a
     later re-derivation of the ownership can be checked against.
     """
-    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
     released = claimed(
         "documents this row releases",
         {d for names in RELEASED.values() for d in names},

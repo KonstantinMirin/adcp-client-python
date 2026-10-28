@@ -47,6 +47,7 @@ from codegen.harness import Pair, check_pair, compare_schema
 from codegen.lower import names, union
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes, parse as schema_parse
+from compiled import compiled
 import populations
 from conftest import refusal_from
 
@@ -240,7 +241,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     )
     claimed("this step's population", pop, inside=docs)
 
-    with_row = emit.emit(BUNDLE, pop)
+    with_row = compiled(BUNDLE, pop)
     # Removing THIS ARM at THIS POSITION, rather than emptying the walk: the other
     # arms are other steps' and a verdict read with them absent is a verdict about a
     # compiler nobody runs.
@@ -279,7 +280,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         return composing_at_a_root(node, mod, *rest, **kw)
 
     with mock.patch.object(compiler, "lower_composition", without_the_root_arm):
-        without = emit.emit(BUNDLE, pop)
+        without = compiled(BUNDLE, pop)
 
     claimed("bundle.portable", docs)
     # N over this population on the merged table (43 when this lane measured it

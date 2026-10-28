@@ -36,6 +36,7 @@ from typing import Any, Literal
 from pydantic import create_model
 
 from adcp.types._base import UNDERDETERMINED, SchemaRef, schema_at
+from compiled import compiled
 from codegen import bundle, emit, harness, keywords
 from codegen.keywords import Rung
 from codegen.lower import union as lower_union
@@ -426,7 +427,7 @@ def _reaching(population: list[str]) -> tuple[Any, set[str | None]]:
 
     lower_union.overlapping = traced  # type: ignore[assignment]
     try:
-        return emit.emit(BUNDLE, population), seen
+        return compiled(BUNDLE, population), seen
     finally:
         lower_union.overlapping = real  # type: ignore[assignment]
 
