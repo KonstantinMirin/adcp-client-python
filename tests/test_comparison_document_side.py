@@ -1171,7 +1171,11 @@ def test_the_document_side_states_the_narrowing_conjuncts_description_and_not_th
     # and the gap-fill beneath it writes the conjunct's -- so both directions the two
     # deleted pairs covered are read off what the DOCUMENT then states: it states a
     # description at all, and the one it states is the NARROWING view's.
-    stated = _composed({**WIDE_ELEMENT, "allOf": [NARROW_ELEMENT]})
+    # Both conjuncts are stated INLINE, so the root this is read against resolves
+    # nothing and is the node itself -- which is what a caller grading a bare node
+    # supplies and is the fail-safe direction.
+    node = {**WIDE_ELEMENT, "allOf": [NARROW_ELEMENT]}
+    stated = _composed(node, node)
     assert "description" in stated, stated
     assert stated["description"] == NARROW_ELEMENT["description"], stated
     assert stated["description"] != WIDE_ELEMENT["description"], stated
@@ -1731,3 +1735,300 @@ def test_the_bundles_union_branch_references_are_counted_by_shape() -> None:
     assert siblinged == set(), sorted(siblinged)  # 0 of 33 carry a key beside the $ref
     assert chained == set(), sorted(chained)  # 0 targets are themselves a bare $ref
     assert bare_typed == set(), sorted(bare_typed)  # 0 targets are exactly {"type": X}
+
+
+# --------------------------------------------------------------------------- #
+# reading seven: an `allOf` CONJUNCT that is a bare local `$ref`
+# (adcp-client-python-fte)
+# --------------------------------------------------------------------------- #
+# Reading one takes the local reference at the NODE and reading three takes it at a
+# union BRANCH.  It was not taken at an `allOf` CONJUNCT, and `_composed` folds a
+# conjunct's unconditional facts into the node it composes -- so a conjunct left as a
+# pointer stated nothing in `FOLDED_FACTS`, folded to NOTHING, and a composing subclass
+# that inherits exactly what the pointer names reported as ADDING its own base's facts.
+# Measured over the graded tree: 21 pairs and 217 added facts, in
+# `core/registry-event.json` (whose branch payloads compose a `#/$defs/*Payload`) and
+# `core/account-identity-change-preview.json` (whose `nonblocking_impacts` element
+# composes `#/definitions/impact` with an overlay narrowing `effect`).
+#
+# The hop is `_branch_target` -- the SAME function reading three uses, because a branch
+# and a conjunct are the same POSITION: a member of a combinator list spelled as a
+# pointer.  So it is ONE HOP, gated on the member being BARE, and every test below is a
+# perturbation that must still REPORT, for the reason the module docstring gives.
+#: The conjunct's target, and the shape `#/definitions/impact` has: an object stating
+#: four facts, one of them inside a property.
+CONJUNCT_TARGET = {
+    "type": "object",
+    "required": ["a"],
+    "properties": {"a": {"type": "string", "minLength": 3}},
+    "additionalProperties": False,
+}
+
+#: The OVERLAY beside it, and the shape `nonblocking_impacts`' second conjunct has: a
+#: view that narrows one property of the base and states nothing else.  Here so the
+#: agreeing case exercises the `properties` STASH as well as the hop -- the merged
+#: node's `/properties/a` is the BASE's declaration and the overlay's arrives as the
+#: `allOf` `_composed` folds on descent.
+OVERLAY = {"properties": {"a": {"minLength": 5}}}
+
+
+def composed_root(*conjuncts: dict, **targets: dict) -> dict:
+    """A node whose ``allOf`` points into a ``definitions`` section beside it.
+
+    The shape ``core/account-identity-change-preview.json`` has, and the shape that has
+    no reading without the root: the conjunct's pointer names a SIBLING of the node it
+    is a conjunct of.
+    """
+    return {"definitions": dict(targets), "allOf": list(conjuncts)}
+
+
+REFERENCING_CONJUNCT = composed_root(
+    {"$ref": "#/definitions/base"}, OVERLAY, base=CONJUNCT_TARGET
+)
+
+
+# Exactly what `REFERENCING_CONJUNCT` composes: the base's four facts with the
+# overlay's `minLength` where §2's intersection puts it.  NO DOCSTRING, for the reason
+# the fixtures above carry one comment about: pydantic renders one as a `description`.
+class FaithfulSubclass(Base):
+    a: Annotated[str, Field(min_length=5)]
+
+
+def composed_graded(root: dict, model: Any = FaithfulSubclass) -> ComparisonResult:
+    """The composing node, graded as a pair: the node IS the document."""
+    return compare_schema(root, model, document=root)
+
+
+def test_a_faithful_class_behind_a_local_reference_CONJUNCT_adds_nothing() -> None:
+    """The defect, stated as the assertion that it is fixed.
+
+    ``allOf`` conjoins, so the base's ``type``, ``required``, ``additionalProperties``
+    and its property ARE this node's -- which is exactly what a composing subclass
+    flattens into itself.  Without the hop the conjunct states none of them, the merged
+    node carries only the overlay's ``properties``, and all four of the base's facts
+    plus the property arrive as ``added``: the model reported NARROWER than its
+    document, for a class that is exactly its document.  That is
+    ``test_a_faithful_class_behind_a_local_reference_adds_nothing``'s sentence at the
+    conjunct position.
+
+    The ``no_root`` half is that defect reproduced through the same function, so this
+    test holds both readings at once and cannot pass by the reading doing nothing.
+    """
+    with_root = composed_graded(REFERENCING_CONJUNCT)
+    assert with_root.added == [], with_root.added
+    assert with_root.missing == [], with_root.missing
+    assert with_root.differs == [], with_root.differs
+    assert with_root.outcome == "pass", with_root
+
+    # The same node with no root: the pointer does not resolve, the conjunct folds to
+    # nothing, and the facts the class correctly carries are reported.  THIS IS THE
+    # FAIL-SAFE DIRECTION -- an unresolvable conjunct reddens the pair rather than
+    # passing it blind.
+    no_root = compare_schema(
+        {k: v for k, v in REFERENCING_CONJUNCT.items() if k != "definitions"},
+        FaithfulSubclass,
+    )
+    assert no_root.added, "an unresolved conjunct must not pass as agreement"
+    assert no_root.outcome == "model_adds_a_fact", no_root.outcome
+
+
+def test_an_unresolvable_local_reference_CONJUNCT_still_reddens() -> None:
+    """A conjunct naming nothing is not read as "the document states nothing and the
+    model is free"."""
+    res = composed_graded(
+        composed_root({"$ref": "#/definitions/no-such-base"}, OVERLAY, base=CONJUNCT_TARGET)
+    )
+    assert res.added, res
+    assert res.outcome == "model_adds_a_fact", res.outcome
+
+
+# `minLength` dropped from the composed property.
+class OmitsAFactOfTheConjunctsTarget(Base):
+    a: str
+
+
+# `minLength` present and wrong -- the base's 3 rather than the composed 5.
+class ContradictsAFactOfTheConjunctsTarget(Base):
+    a: Annotated[str, Field(min_length=3)]
+
+
+# A `pattern` nothing in the document states.
+class InventsAFactTheConjunctsTargetDoesNotState(Base):
+    a: Annotated[str, Field(min_length=5, pattern="^x")]
+
+
+class DropsAPropertyOfTheConjunctsTarget(Base):
+    pass
+
+
+#: The four ways a model can be wrong about a fact the document states only behind a
+#: conjunct's pointer, each with the bucket it must land in and the pointer it must
+#: name.  A reading that resolved the document too far reports none of them, which is
+#: why this list and not the agreeing case is the test.
+CONJUNCT_MUST_REPORT = [
+    (OmitsAFactOfTheConjunctsTarget, "missing", "/properties/a/minLength"),
+    (ContradictsAFactOfTheConjunctsTarget, "differs", "/properties/a/minLength"),
+    (InventsAFactTheConjunctsTargetDoesNotState, "added", "/properties/a/pattern"),
+    (DropsAPropertyOfTheConjunctsTarget, "missing", "/properties/a"),
+]
+
+
+@pytest.mark.parametrize(
+    ("model", "bucket", "pointer"),
+    CONJUNCT_MUST_REPORT,
+    ids=[m.__name__ for m, _, _ in CONJUNCT_MUST_REPORT],
+)
+def test_a_disagreement_behind_a_conjuncts_local_reference_is_still_reported(
+    model: Any, bucket: str, pointer: str
+) -> None:
+    res = composed_graded(REFERENCING_CONJUNCT, model)
+    assert pointer in keys(getattr(res, bucket)), (bucket, res)
+
+
+#: The two shapes the gate keeps the hop OUT of, each of which must leave the model's
+#: facts REPORTED.  Both are fail-safe by the same mechanism as a union branch's: no
+#: hop happens, the conjunct states nothing, and the pair reddens.
+CONJUNCT_NOT_REACHED = [
+    (
+        composed_root(
+            {"$ref": "#/definitions/base", "description": "a sibling"},
+            OVERLAY,
+            base=CONJUNCT_TARGET,
+        ),
+        "a conjunct carrying a key beside the $ref is not BARE",
+    ),
+    (
+        composed_root(
+            {"$ref": "#/definitions/hop"},
+            OVERLAY,
+            hop={"$ref": "#/definitions/base"},
+            base=CONJUNCT_TARGET,
+        ),
+        "the target is itself a reference, and the hop is ONE hop",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("root", "why"),
+    CONJUNCT_NOT_REACHED,
+    ids=[w[:44].replace(" ", "-") for _, w in CONJUNCT_NOT_REACHED],
+)
+def test_a_conjunct_the_hop_does_not_reach_still_reports_the_models_facts(
+    root: dict, why: str
+) -> None:
+    res = composed_graded(root)
+    assert "/type" in keys(res.added), f"{why}: {res}"
+    assert res.outcome == "model_adds_a_fact", (why, res.outcome)
+
+
+def test_a_conjunct_whose_TARGET_is_a_union_is_kept_and_not_folded() -> None:
+    """The one bundle site whose conjunct resolves to a node carrying a union, and the
+    clause that already covers an INLINE one, reached through a pointer.
+
+    ``_composed`` keeps a conjunct whose own statement is a combinator -- a branch's
+    properties are satisfied by SOME branch, so folding them in would state a fact the
+    document does not, but the combinator itself IS an assertion the composed node
+    makes.  Read off the conjuncts as WRITTEN that clause could not see a pointer, so
+    ``core/registry-event.json``'s ``#/$defs/publisherAdagentsPayload`` arm lost its
+    assertion as well as its facts.  Resolved, the two spellings answer alike.
+    """
+    from codegen.harness import _composed, _entails_type  # noqa: PLC0415
+
+    union_target = {"anyOf": [{"type": "object"}, {"type": "object", "title": "other"}]}
+    root = composed_root({"$ref": "#/definitions/u"}, u=union_target)
+    stated = _composed(root, root)
+    assert stated.get("allOf") == [union_target], stated
+    assert _entails_type(stated, "object") is True
+    for other in ("string", "array", "integer", "number", "boolean", "null"):
+        assert _entails_type(stated, other) is False, other
+
+
+def test_the_bundles_conjunct_references_are_counted_by_shape() -> None:
+    """Every site the hop can fire at as a CONJUNCT, enumerated off the records BY
+    SHAPE, with the shapes the gate excludes named and at zero sites.
+
+    The standard ``adcp-client-python-10l.18`` set, and the companion of
+    :func:`test_the_bundles_union_branch_references_are_counted_by_shape`: a reading
+    whose population nobody split can quietly cover something it was never shown.
+
+    **The record and not the raw bundle**, for that test's reason: ``bundle.record``
+    inlines a REMOTE reference and leaves a LOCAL one exactly as written, so a record
+    carries 0 remote conjuncts and the local sites are the whole population.
+    """
+    from codegen.harness import _branch_target, _target  # noqa: PLC0415
+
+    local: dict[tuple[str, str], tuple[str, ...]] = {}
+    remote: set[tuple[str, str]] = set()
+    siblinged: set[tuple[str, str]] = set()
+    unresolved: set[tuple[str, str]] = set()
+    chained: set[tuple[str, str]] = set()
+
+    def visit(node: Any, pointer: str, document: str, root: Any) -> None:
+        if isinstance(node, dict):
+            conjuncts = node.get("allOf")
+            if isinstance(conjuncts, list):
+                for i, c in enumerate(conjuncts):
+                    if not (isinstance(c, dict) and isinstance(c.get("$ref"), str)):
+                        continue
+                    at = (document, f"{pointer}/allOf/{i}")
+                    if not c["$ref"].startswith("#"):
+                        remote.add(at)
+                        continue
+                    if set(c) != {"$ref"}:
+                        siblinged.add(at)
+                    target = _branch_target(c, root)
+                    if target is c:
+                        unresolved.add(at)
+                        local[at] = ()
+                        continue
+                    if set(target) == {"$ref"}:
+                        chained.add(at)
+                    local[at] = tuple(sorted(target))
+            for key, value in node.items():
+                visit(value, f"{pointer}/{key}", document, root)
+        elif isinstance(node, list):
+            for i, value in enumerate(node):
+                visit(value, f"{pointer}/{i}", document, root)
+
+    documents = claimed("bundle.portable", bundle.portable(BUNDLE))
+    for document in sorted(documents):
+        record = bundle.record(BUNDLE, document)
+        if isinstance(record, Refusal):
+            continue
+        visit(record, "", document, record)
+
+    sites = claimed("allOf conjuncts that are a local $ref, in a record", set(local))
+    # **BY SHAPE, and the shape is whether the target carries a COMBINATOR** -- which is
+    # what decides whether ``_composed`` folds the conjunct's facts or keeps the
+    # conjunct as the assertion it makes.
+    combinator = {a for a in sites if {"oneOf", "anyOf"} & set(local[a])}
+    partitions(
+        sites,
+        target_states_facts={a for a in sites if local[a] and a not in combinator},
+        target_carries_a_combinator=combinator,
+    )
+    # The 5 documents that WRITE one.  Two of them are the pair this row fixed; the
+    # other three compose a base the comparison already read right, because their
+    # conjunct's own facts were never the fact in dispute.
+    assert {d for d, _ in sites} == {
+        "brand.json",
+        "core/account-identity-change-preview.json",
+        "core/format.json",
+        "core/registry-event.json",
+        "trusted-match/context-match-response.json",
+    }, sorted({d for d, _ in sites})
+    # ONE site resolves to a node carrying a union, and it is named so a second reddens
+    # here with its pointer rather than arriving under the ``kept`` clause unseen.
+    assert combinator == {
+        ("core/registry-event.json", "/oneOf/16/properties/payload/allOf/0")
+    }, sorted(combinator)
+    # **THE SHAPES EXCLUDED, BY NAME AND AT ZERO SITES.**  Each is a cell the gate keeps
+    # the hop out of, and each is empty on this tree -- so none of them is what makes
+    # the sites above green, and a document arriving in one of them reddens here rather
+    # than being covered silently.
+    assert remote == set(), sorted(remote)  # record inlines every remote reference
+    assert siblinged == set(), sorted(siblinged)  # all 54 carry no key beside the $ref
+    assert unresolved == set(), sorted(unresolved)  # all 54 resolve
+    assert chained == set(), sorted(chained)  # 0 targets are themselves a bare $ref
+    assert _target("#/nowhere", {"definitions": {}}) is None  # and the fail-safe holds
