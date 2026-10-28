@@ -88,6 +88,7 @@ import jsonschema
 from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
 from hypothesis.errors import HypothesisException
+from hypothesis.internal.conjecture.engine import BUFFER_SIZE as _HYPOTHESIS_BUFFER_SIZE
 import hypothesis_jsonschema
 from hypothesis_jsonschema import _canonicalise as _hjs_canon
 from hypothesis_jsonschema import from_schema
@@ -1560,6 +1561,80 @@ def _placed(instance: Any, path: Sequence[Any], value: Any) -> Any:
     return out
 
 
+def _demanding(path: Sequence[Any]) -> dict:
+    """The schema that DEMANDS an instance location, derived from the path alone.
+
+    §8: "every position a widening can land at has an instance location."  A borrowed
+    payload may not HAVE it -- :func:`_reached` creates an intermediate node the draw
+    omitted, but a branch of the document's own union can refuse the location outright,
+    and then there is nothing to create.  Measured on
+    ``compliance/comply-test-controller-response.json``, whose ``recorded_calls`` items
+    node pairs ``attestation_mode: digest`` with ``not: {"required": ["payload"]}``: a
+    payload with a ``payload`` key added is a payload the document REFUSES, so the
+    placement says nothing about the class however many borrowed instances are tried.
+
+    So the obligation asks the document for an instance that has the location, by
+    conjoining this with the document's own schema (``{"allOf": [schema, demand]}``).
+    **It is a reading of the POINTER and not of the document**: a key segment demands
+    the key, an index segment demands a list long enough to hold it, and the draw is
+    the document's own -- the conjunction can only NARROW what hypothesis draws from,
+    never admit something the document does not.  A document whose location is
+    genuinely unreachable makes the conjunction unsatisfiable, and the draw then fails
+    and the widening is reported ``unproved``, which is the right answer for a pointer
+    no instance can carry.
+
+    It costs a whole-document draw, which is why it is the LAST candidate: the borrowed
+    instances cost nothing and answer for every declaration whose location the accepts
+    draw already reached.  Measured over the declared set: 1 of 13 declarations needs
+    it, and only because of that ``not``.
+    """
+    if not path:
+        return {}
+    segment, rest = path[0], path[1:]
+    inner = _demanding(rest)
+    if isinstance(segment, int):
+        demand: dict[str, Any] = {"type": "array", "minItems": segment + 1}
+        if inner:
+            demand["items"] = inner
+        return demand
+    demand = {"type": "object", "required": [segment]}
+    if inner:
+        demand["properties"] = {segment: inner}
+    return demand
+
+
+def _bases(
+    schema: dict,
+    path: Sequence[Any],
+    instances: Sequence[Any],
+    cf: Mapping[str, Any],
+    memo: list[Any],
+) -> Iterator[Any]:
+    """The base payloads §8's obligation may place a drawn value into, cheapest first.
+
+    Every instance the accepts check already drew, then -- only if none of them hosted
+    the location -- one drawn from the document CONJOINED with :func:`_demanding`, whose
+    docstring carries why that last one exists and what it costs.  A generator, so the
+    extra draw is not paid for at all where a borrowed instance answers.
+
+    ``memo`` is the caller's one-slot store for that draw, held across the value classes
+    of ONE declaration: the demand is a function of the pointer alone, so every class of
+    a declaration wants the same base and drawing it twice doubles the only expensive
+    thing here.  An empty list means "not drawn yet"; a list holding ``None`` means the
+    draw was tried and failed, which is remembered for the same reason.
+    """
+    yield from instances or (None,)
+    if not path:
+        return
+    if not memo:
+        try:
+            memo.append(one_instance({"allOf": [schema, _demanding(path)]}, cf))
+        except Exception:  # noqa: BLE001 -- an undrawable demand is an unproved widening
+            memo.append(None)
+    if memo[0] is not None:
+        yield memo[0]
+
+
 @dataclass
 class WideningResult:
     """Whether each declared approximation really WIDENS, by value and by pointer.
@@ -1605,16 +1680,35 @@ def check_widening(
     declared: Sequence[Approximation],
     *,
     at: str = "#",
-    instance: Any = None,
+    instances: Sequence[Any] = (),
     custom_formats: Mapping[str, Any] = (),
 ) -> WideningResult:
     """Section 8's accepts OBLIGATION, one declaration at a time.
 
-    ``instance`` is a payload the accepts check already drew for this pair, which is what
-    keeps this from costing a second whole-document draw: the obligation is about the value
-    at ONE pointer, so the rest of the payload is any payload the document admits.  With
-    none supplied the obligation can still run for a declaration at the pair's own root,
-    where the drawn class value IS the whole instance.
+    ``instances`` are the payloads the accepts check already drew for this pair, which is
+    what keeps this from costing a second whole-document draw: the obligation is about the
+    value at ONE pointer, so the rest of the payload is any payload the document admits.
+    With none supplied the obligation can still run for a declaration at the pair's own
+    root, where the drawn class value IS the whole instance.
+
+    **It is a SEQUENCE and the obligation walks it, which is ``_reached``'s own rule one
+    level up.**  That function already says "a drawn payload that happened to omit an
+    optional property on the way to that location does not refute [section 8's claim] --
+    it says only that the draw went another way", and creates the node the document's own
+    subschema describes.  A branch of the node's own ``oneOf`` can refuse the location
+    outright, and then there is nothing to create: measured on
+    ``compliance/comply-test-controller-response.json``, whose ``recorded_calls`` items
+    pair ``attestation_mode: digest`` with ``not: {required: [payload]}`` -- so the
+    declaration on ``payload``'s ``maxLength`` is placeable only in the ``raw`` branch,
+    and the accepts check's FIRST draw is a digest call.  The base instance is a free
+    choice the draw already made several times over, so the obligation takes one that
+    admits the location instead of reporting the draw's own branch as a widening nobody
+    proved.
+
+    The walk cannot turn a narrowing into a pass: a candidate is skipped only where the
+    DOCUMENT refuses the placed payload, which is decided before the entry point is
+    offered anything, so every candidate that reaches ``accept`` is graded and the first
+    one's verdict stands.
 
     Each class is a RESTRICTION of the document's own node (:func:`value_classes`), so a
     value drawn from it is a value the document admits -- asserted against the node anyway,
@@ -1663,6 +1757,9 @@ def check_widening(
                 "keyword, so the widening is declared and unproved"
             )
             continue
+        # One slot per DECLARATION for :func:`_bases`'s demanded draw, because the demand
+        # is a function of the pointer and every value class of one declaration shares it.
+        demanded: list[Any] = []
         for label, restriction in classes:
             try:
                 value = one_instance(restriction, cf)
@@ -1677,17 +1774,28 @@ def check_widening(
                     "document's own node refuses -- the restriction is not one"
                 )
                 continue
-            payload = _placed(_reached(schema, relative, instance, cf), path, value)
+            # The base instance is a FREE CHOICE among the ones the accepts check already
+            # drew, and :func:`_demanding` is the last resort where none of them can host
+            # the location.  Two reasons are reported apart: nowhere to put the value, or
+            # a placed payload the document refuses.
+            payload = None
+            refused = False
+            for base in _bases(schema, path, instances, cf, demanded):
+                attempt = _placed(_reached(schema, relative, base, cf), path, value)
+                if attempt is None:
+                    continue
+                if conforms(schema, attempt, validator_cls=validator_cls) is False:
+                    refused = True
+                    continue
+                payload = attempt
+                break
             if payload is None:
-                res.unproved.append(
-                    f"{one.pointer}/{one.keyword}: {label} has nowhere to go in the drawn "
-                    f"instance at {list(path)}"
-                )
-                continue
-            if conforms(schema, payload, validator_cls=validator_cls) is False:
                 res.unproved.append(
                     f"{one.pointer}/{one.keyword}: {label} placed at {list(path)} makes a "
                     "payload the document refuses, so it says nothing about the class"
+                    if refused
+                    else f"{one.pointer}/{one.keyword}: {label} has nowhere to go in the "
+                    f"drawn instance at {list(path)}"
                 )
                 continue
             try:
@@ -1719,6 +1827,83 @@ def at_or_none(doc: Any, pointer: str) -> Any:
         return None
 
 
+#: **The length floor ``hypothesis`` refuses outright**, read off the library's own
+#: constant rather than restated: ``ListStrategy.__init__`` raises ``InvalidArgument``
+#: -- "can never generate a value, because min_size is larger than Hypothesis supports"
+#: -- for any ``min_size`` above it, and every string strategy is a collection strategy.
+#: So this is a ceiling on the INSTRUMENT and says nothing about any document.  Imported
+#: rather than written down (it is 8,192 on the pinned ``hypothesis``), for the reason
+#: ``lower.const.LITERALS`` reads ``DataType.literals``'s annotation: a copy of a
+#: library's limit goes stale at a version bump and the check then reports the wrong
+#: reason for a value it cannot draw.
+_DRAWABLE_SIZE: int = _HYPOTHESIS_BUFFER_SIZE
+
+#: Every keyword that constrains a STRING's content rather than its length, plus the
+#: whole-instance keywords a padded value could fail.  :func:`_padded_string` refuses to
+#: build a value for a schema stating any of them, because the pad is "a" repeated and
+#: nothing here knows what else would satisfy them.  Length is the only axis it answers.
+_PAD_FORBIDS = frozenset(
+    {
+        "pattern",
+        "format",
+        "enum",
+        "const",
+        "contentMediaType",
+        "contentEncoding",
+        "not",
+        "allOf",
+        "anyOf",
+        "oneOf",
+        "if",
+        "$ref",
+    }
+)
+
+
+def _padded_string(schema: Mapping[str, Any]) -> str | None:
+    """A string at a length floor :data:`_DRAWABLE_SIZE` puts out of ``hypothesis``'s
+    reach, or ``None`` where this function has no business building one.
+
+    **The gap this closes is the INSTRUMENT's and not a document's**, which is why the
+    answer is to reach the value rather than to drop the class.  §8: "The draw COVERS the
+    node's admissible space by constraint class; it does not sample it", and §9: "A check
+    is exhaustive over the set of nodes it claims, or it does not exist."  A ``maxLength``
+    class pins the length at the bound (:func:`value_classes`), and a bound above
+    ``hypothesis``'s own buffer makes that pin undrawable -- so §8's accepts obligation
+    reported ``unproved_widening`` for a widening that is perfectly real, on a limit of
+    the drawing library.
+
+    **It is gated by SHAPE and then checked by the DOCUMENT.**  The gate is
+    :data:`_PAD_FORBIDS` plus a ``type`` that admits a string: a repeated character
+    satisfies a node whose only string-applicable statements are its two length bounds,
+    and this function declines every other node rather than guessing.  The check is
+    :func:`check_widening`'s own, which validates the value against the document's node
+    AND against the whole document before it counts -- so a value this builds wrongly is
+    reported ``unproved``, never passed.  Two independent gates, and the second is the
+    document's own validator.
+
+    Measured over the 1,054 portable documents: **one** declaration reaches it,
+    ``compliance/comply-test-controller-response.json``'s ``maxLength: 65536`` on a
+    typeless node, which is the first bound-keyword widening the bundle has declared.
+    Every other bound the obligation draws is inside ``hypothesis``'s reach and never
+    arrives here.
+    """
+    floor = schema.get("minLength")
+    if not isinstance(floor, int) or isinstance(floor, bool) or floor <= _DRAWABLE_SIZE:
+        return None
+    if _PAD_FORBIDS & set(schema):
+        return None
+    word = schema.get("type")
+    if word is not None and word != "string" and not (
+        isinstance(word, list) and "string" in word
+    ):
+        return None
+    ceiling = schema.get("maxLength")
+    if isinstance(ceiling, int) and ceiling < floor:
+        return None
+    return "a" * floor
+
+
 def one_instance(schema: Mapping[str, Any], custom_formats: Mapping[str, Any]) -> Any:
     """ONE value the schema admits.
 
@@ -1726,7 +1911,14 @@ def one_instance(schema: Mapping[str, Any], custom_formats: Mapping[str, Any]) -
     ``given`` machinery :func:`check_accepts` runs, with one example, and keeps the first
     value.  ``derandomize`` is on in :data:`_SETTINGS`, so the value is the same on every
     run -- which is what makes a narrowing this check reports reproducible from the report.
+
+    :func:`_padded_string` is asked FIRST and answers for one shape only: a length floor
+    the library refuses to draw at all.  Its docstring carries the reasoning and the
+    gates; everything else is ``hypothesis``'s as it always was.
     """
+    padded = _padded_string(schema)
+    if padded is not None:
+        return padded
     drawn: list[Any] = []
 
     def body(instance: Any) -> None:
@@ -4693,17 +4885,20 @@ def check_pair(
     #: 769-module tree as it stands -- which is section 14 step 8's exit condition read
     #: from the verifier's side.
     #:
-    #: The instance is the accepts check's OWN first draw, so the obligation costs one draw
+    #: The instances are the accepts check's OWN draws, so the obligation costs one draw
     #: per value class and no whole-document draw.  With none -- the accepts check drew
     #: nothing -- only a declaration at the pair's own root can be proved, and every other
-    #: one is reported ``unproved`` rather than passed.
+    #: one is reported ``unproved`` rather than passed.  **The whole list and not the
+    #: first**: a declaration can sit at a property one branch of the node's own union
+    #: forbids, and :func:`check_widening` says why the base instance is a free choice
+    #: among draws the pair has already paid for.
     if pair.declared:
         rep.widening = check_widening(
             drawn_from,
             pair.accept,
             pair.declared,
             at=pair.ref.pointer if pair.ref is not None else "#",
-            instance=accepted[0] if accepted else None,
+            instances=accepted,
             custom_formats=custom_formats,
         )
     return rep

@@ -8056,13 +8056,17 @@ def test_a_keyword_beside_a_const_is_decided_by_the_pin() -> None:
     document's own set; or it does not, and the node admits NOTHING.  Both directions
     below, on the same keyword.
 
-    :data:`codegen.lower.const.CLAIMS` is still two keywords, because the node's own
-    facts are not a property of the row: they are whatever the document states beside
-    this pin, derived once by the parser from the table
-    (``codegen.schema.parse.value_facts``), and :func:`codegen.lower.const.lower` claims
-    them beside ``CLAIMS``.
+    :data:`codegen.lower.const.CLAIMS` names ``format`` beside the pin and the type word
+    and nothing else, because the node's own FACTS are not a property of the row: they
+    are whatever the document states beside this pin, derived once by the parser from the
+    table (``codegen.schema.parse.value_facts``), and
+    :func:`codegen.lower.const.lower` claims them beside ``CLAIMS``.  ``format`` is in
+    ``CLAIMS`` and not in the facts for the reason ``value_facts`` excludes it -- "the
+    kind consumes it in a field of its own" -- and the row's answer for it is the other
+    one of the two: a fact is decided by the pin and DROPPED, a ``format`` RIDES.
+    ``test_a_format_beside_a_const_rides_on_the_annotation`` grades that arm.
     """
-    assert lower_const.CLAIMS == frozenset({"type", "const"})
+    assert lower_const.CLAIMS == frozenset({"type", "const", "format"})
     # the pin CONTRADICTS the constraint: the node admits nothing, so a Literal of the
     # value would be a model wider than its schema.  Reported on ``const``, which is the
     # keyword the node is refused BY -- the sibling is stated plainly and is satisfiable.
@@ -8094,6 +8098,78 @@ def test_a_keyword_beside_a_const_is_decided_by_the_pin() -> None:
         }
     )
     assert patterned.model_json_schema()["properties"]["k"]["const"] == "US"
+
+
+def test_a_format_beside_a_const_rides_on_the_annotation() -> None:
+    """A ``format`` beside a pin: the row consumes it and the ANNOTATION carries it.
+
+    **This was ``refusal.DEFERRED_TO_A_LATER_ROW``, and that was row ``10l.35``'s defect
+    arriving a second time.**  The sentence -- "this step lowers no such keyword (a later
+    D2 row does)" -- promises a row for a position that needs one, and ``format`` needs
+    none: its cell LOWERS at every one of §3's nine positions, so there is no later row
+    to write and the promise could never be kept.  The first clause below is that, read
+    off the table rather than restated, which is the one reading that cannot go stale if
+    a cell moves.
+
+    **The row's answer is §5's ``format`` row's own fallback.**  Its first choice --
+    "Selects a TYPE where the document's draft asserts the format and a type is named"
+    -- has nothing to select at a pin: §5's ``const`` row already decides the type, and a
+    ``Literal`` of one URI string is narrower than any URL type a ``uri`` could name, so
+    substituting one would WIDEN a node whose whole content is one value. So the row
+    takes "Otherwise rides as ``json_schema_extra={"format": …}`` on the field", which is
+    ``compiler.Decided.format`` and ``render._field``, exactly as an unselected format on
+    a plain scalar does.
+
+    **Both halves name it, and that is why this is not an approximation.** A fact the
+    model drops is the thing §2's ladder is for, and the module's own ceiling note says
+    what a dropped keyword costs here: §8 reads the document's keyword as *missing*.  A
+    ridden format is RENDERED, so the comparison has the keyword on both sides and
+    passes -- which the ``compare_schema`` clause asserts rather than assumes, in both
+    directions, at the position the bundle reaches the shape at.
+
+    The shape is §2's intersection rule again and the population is **2**, measured over
+    the nodes the walk decides: ``core/attestation-reference.json``'s ``claim_type`` is
+    ``{"type": "string", "format": "uri"}`` and two documents restate it with a pin.  So
+    the last clause asserts the bundle's own two, by name -- neither refuses on
+    ``format`` any more.
+    """
+    for position in keywords.Position:
+        cell = keywords.cell("format", position)
+        assert cell is not None and keywords.lowers(cell), position
+
+    doc = {
+        "title": "Pinned",
+        "type": "object",
+        "properties": {
+            "claim_type": {
+                "type": "string",
+                "format": "uri",
+                "const": "https://adcontextprotocol.org/claims/rights/grant",
+            }
+        },
+        "required": ["claim_type"],
+    }
+    model, text = _constructed(doc)
+    rendered = model.model_json_schema()["properties"]["claim_type"]
+    assert rendered["const"] == "https://adcontextprotocol.org/claims/rights/grant", rendered
+    assert rendered["format"] == "uri", rendered
+    assert "AnyUrl" not in text and "HttpUrl" not in text, text
+
+    # Graded at the DOCUMENT, which is where §8's pair sits: the format rides on the
+    # FIELD, so the annotation alone does not carry it and a comparison handed the
+    # annotation would report the document's own keyword as missing -- the exact reading
+    # a dropped format would give, and therefore no grade of the ride at all.
+    graded = compare_schema(doc, model)
+    assert graded.outcome == "pass", graded
+    assert "format" not in str(graded.missing + graded.differs + graded.added), graded
+
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    on_format = {
+        document: r["pointer"]
+        for document, r in out.refusals.items()
+        if r["keyword"] == "format"
+    }
+    assert on_format == {}, on_format
 
 
 def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
