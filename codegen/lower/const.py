@@ -87,17 +87,24 @@ the ceiling.
 
 from __future__ import annotations
 
+from typing import Any
+
 import jsonschema
 
 from codegen import compiler, ir
 from codegen.schema import nodes
 from codegen.refusal import Kind, Refusal
 
-#: The cells a ``const`` node CONSUMES -- this row's own coverage, which is what a
-#: screen's second argument is once the table decides admission.  Two keywords, because
-#: two keywords is the whole vocabulary the bundle writes beside a ``const``;
-#: ``description`` is a caller's concern (the parent's field carries it) and the table
-#: admits it as the annotation §6 says it is.
+#: The cells a ``const`` node consumes WHATEVER IT STATES -- the pin itself and the type
+#: word, which is this row's own coverage independent of any node.  ``description`` is a
+#: caller's concern (the parent's field carries it) and the table admits it as the
+#: annotation §6 says it is.
+#:
+#: **The node's own :attr:`nodes.Constant.facts` are claimed BESIDE it**, and they are
+#: not listed here because they are not a property of the row: they are whatever
+#: constraint of its own value this node states, derived once by the parser from the
+#: table (``parse.value_facts``).  :func:`lower` claims them because the PIN DECIDES THEM
+#: -- see :func:`decides`.
 CLAIMS = frozenset({"type", "const"})
 
 #: The value types the COMPILER can spell as a ``Literal``, which is where the one
@@ -120,6 +127,24 @@ CLAIMS = frozenset({"type", "const"})
 LITERALS = (bool, int, str)
 
 
+def decides(node: nodes.Constant) -> dict[str, Any]:
+    """The node's own statements about its value, as the draft-07 schema they are.
+
+    The node's ``type`` word and its :attr:`nodes.Constant.facts` -- every keyword that
+    constrains the pinned instance and holds no subschema, derived once by the parser
+    from the table (``parse.value_facts``).  Written as a SCHEMA rather than as a set of
+    names because the row's answer is a validation and not a reading: the document's own
+    validator says whether the pin satisfies the node, so there is no second reading of
+    draft-07 here to drift from the schema half's.
+
+    ``{}`` where the node states a bare ``const``, which every value is valid against.
+    """
+    stated = dict(node.facts)
+    if node.word is not None:
+        stated["type"] = node.word
+    return stated
+
+
 def lower(node: nodes.Constant, mod: compiler.Module) -> compiler.Decided | Refusal:
     """What one ``const`` node IS: the value it pins.
 
@@ -128,9 +153,42 @@ def lower(node: nodes.Constant, mod: compiler.Module) -> compiler.Decided | Refu
     ``typing.Literal`` import.  This row builds no annotation text and takes no
     ``Module``, which is also what fixed a mangling the hand-built spelling had: see
     :attr:`codegen.ir.TypeRef.literals`.
+
+    **A CONSTRAINT BESIDE THE PIN IS DECIDED BY THE PIN, and that is one check and not a
+    second lowering of the keyword.**  The ``pattern`` cell at PROP lowers ("``pattern``
+    on the type, as a named alias"), and a handler answering "a later D2 row does" for it
+    promises a row that cannot exist -- the keyword already lowers at every position.
+    What the row owes is the intersection, and a one-member value set makes it trivial:
+    ``{v}`` intersected with any non-descending constraint is ``{v}`` where the pin
+    satisfies the constraint and EMPTY where it does not.  So
+
+    * the pin satisfies it -> ``Literal[v]`` is exactly the document's own set.  Nothing
+      is dropped and no approximation is declared, because nothing is approximated: the
+      constraint narrows nothing the ``const`` has not already decided, so a model that
+      restates it and one that does not admit the same instances.  **KNOWN CEILING, named
+      because this bundle does not reach it**: a ``Literal`` renders ``const`` and a type
+      word and no ``pattern``, so §8 would report the document's own ``pattern`` as
+      *missing* at a pair -- the entailment that already derives a type word FROM the
+      ``const`` (``harness._entails_type``) has no clause for a constraint the ``const``
+      satisfies.  Population 0 today: the one node the intersection rule reaches is in a
+      document refused on its branch names, so no emitted pair carries one, and the step
+      whose population reaches one adds the comparison's own row rather than this one
+      hiding the fact with a ``WithJsonSchema``;
+    * the pin does not -> the node admits NOTHING, and a ``Literal`` of the value would
+      be a model wider than its schema.  That is the refusal the row already had for the
+      ``type`` word alone, now asked of everything the node states, because the ``type``
+      word was never special: it is one of the node's statements about its own value.
+
+    Measured on ``core/postal-country-system.json``: §2's intersection rule merges the
+    root's ``{"type": "string", "pattern": "^[A-Z]{2}$"}`` for ``country`` with a branch's
+    ``{"const": "US"}``, so the merged node states a ``pattern`` beside the pin -- which
+    is why the module docstring's "nothing else appears beside a ``const`` anywhere in the
+    bundle" is a measurement of the RAW bundle and not of the nodes the walk decides.
     """
     pointer = node.pointer
-    refused = compiler.check_keywords(node, CLAIMS, mod=mod)
+    # The node's own facts are claimed BESIDE :data:`CLAIMS`, because the pin decides
+    # them: the keyword is consumed here and not deferred to a row that cannot exist.
+    refused = compiler.check_keywords(node, CLAIMS | set(node.facts), mod=mod)
     if refused is not None:
         return refused
     value = node.value
@@ -143,18 +201,23 @@ def lower(node: nodes.Constant, mod: compiler.Module) -> compiler.Decided | Refu
             "with no document, pointer or keyword in the message",
             kind=Kind.VERDICT,
         )
-    # **The node's own ``type`` is the only thing left that can refuse the value.**
-    # The screen above admits exactly :data:`CLAIMS` plus the cells that constrain no
-    # instance, so by here the node states ``const``, a ``type`` word and annotations --
-    # and a ``const`` validates against its own ``const``.  So the question is whether
-    # the word admits the value, which is what :attr:`nodes.Constant.word` is.
-    if not jsonschema.Draft7Validator(
-        {"type": node.word} if node.word is not None else {}
-    ).is_valid(value):
+    # **The node's own statements are the only thing left that can refuse the value.**
+    # The screen above admits exactly :data:`CLAIMS`, the node's own facts and the cells
+    # that constrain no instance, so by here the node states ``const``, a ``type`` word,
+    # its value constraints and annotations -- and a ``const`` validates against its own
+    # ``const``.  So the question is whether the rest of the node admits the value, which
+    # is what :func:`decides` is.  The keyword each statement is REPORTED by is the
+    # document's own, in sorted order, so the report is a function of the document and not
+    # of the order a mapping was built in.
+    stated = decides(node)
+    for keyword, fact in sorted(stated.items()):
+        if jsonschema.Draft7Validator({keyword: fact}).is_valid(value):
+            continue
         return Refusal(
             "const",
             pointer,
-            f"const {value!r} is not a {node.word!r}: the node admits nothing",
+            f"const {value!r} does not satisfy the {keyword} {fact!r} stated beside it: "
+            "the node admits nothing",
             kind=Kind.VERDICT,
         )
     return compiler.Decided(ir.TypeRef(literals=(value,)))

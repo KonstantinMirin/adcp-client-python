@@ -74,6 +74,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import jsonschema
+
 from codegen import compiler, ir
 from codegen.compiler import Decided, Module
 from codegen.keywords import Position
@@ -175,9 +177,30 @@ def lower(
     # emitting a keyword no section names, which is §9's "a keyword handled in code but
     # named in none of §5, §6 or §7 is an invented rule" arriving through a screen that
     # was not there.
-    refused = compiler.check_keywords(node, CLAIMS, mod=mod)
+    #
+    # **The node's own facts are claimed BESIDE :data:`CLAIMS`, because the MEMBERS
+    # decide them**, and that is the same reading ``lower.const`` makes of a one-member
+    # set read over more members.  A ``pattern`` beside an ``enum`` lowers at every
+    # position, so "a later D2 row does" promises a row that cannot exist; what the row
+    # owes is the intersection, and a closed value set makes it a validation:
+    # ``{m1..mn}`` intersected with a non-descending constraint is the members every one
+    # of them satisfies.  Where ALL do, the enumeration is exactly the document's set and
+    # nothing is dropped; where one does not, the document admits a strict subset of the
+    # members and :func:`excluded` refuses, because an enumeration listing a value the
+    # document excludes is wider than its schema.
+    #
+    # The docstring's "0 carrying a constraint keyword beside the ``enum``" is a
+    # measurement of the RAW bundle; §2's intersection rule merges a root's constrained
+    # property with a branch's value set and hands the merged declaration back to the
+    # parser, so the nodes the walk decides do reach one --
+    # ``core/postal-country-system.json#/anyOf/3/properties/country``, where the root's
+    # ``^[A-Z]{2}$`` lands beside ``["DE", "CH", "AT"]``.
+    refused = compiler.check_keywords(node, CLAIMS | set(node.facts), mod=mod)
     if refused is not None:
         return refused
+    outside = excluded(node)
+    if outside is not None:
+        return outside
     if resolves_no_name(node, of_a_root_union=of_a_root_union):
         return literal(node)
     # **Declared at the node's POINTER, with no name of its own** (§7): the enumeration
@@ -190,6 +213,41 @@ def lower(
     if collision is not None:
         return collision
     return Decided(ir.TypeRef(node.pointer, local=True))
+
+
+def excluded(node: nodes.Enumeration) -> Refusal | None:
+    """The refusal for a member the node's OWN constraints exclude, or ``None``.
+
+    §2's intersection rule can put a constraint of the value beside a closed value set,
+    and the two then disagree about what the node admits: the document's set is
+    ``{members} ∩ {the constraint}``, so a member outside the constraint is a value the
+    enumeration offers and the document refuses.  Dropping it would be this compiler
+    rewriting the document's own ``enum`` -- §8 compares that keyword for equality, so the
+    rewrite would report as *differs* -- and keeping it is a model wider than its schema,
+    which is the defect P3 exists to remove.  So the node is refused, on the KEYWORD that
+    excludes the member, and the upstream fix is the document stating the set it means.
+
+    Asked of the document's own validator rather than of a table of this module's, for
+    :func:`codegen.lower.const.decides`'s reason: one reading of draft-07, and it is the
+    schema half's.
+
+    Population 0 over the 1,054 portable documents: the one node the intersection rule
+    reaches states ``^[A-Z]{2}$`` beside ``["DE", "CH", "AT"]`` and all three members
+    match.  Reached only by a document whose own two statements disagree.
+    """
+    for keyword, fact in sorted(node.facts.items()):
+        check = jsonschema.Draft7Validator({keyword: fact})
+        outside = [m for m in node.members if not check.is_valid(m)]
+        if outside:
+            return Refusal(
+                keyword,
+                node.pointer,
+                f"the {keyword} {fact!r} excludes {outside!r} of the node's own members: "
+                "the document admits fewer values than the enumeration would offer, and "
+                "neither dropping a member nor keeping one states the document's set",
+                kind=Kind.VERDICT,
+            )
+    return None
 
 
 def resolves_no_name(node: nodes.Enumeration, *, of_a_root_union: bool = False) -> bool:

@@ -4216,8 +4216,10 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     #   chains through ``content-standards/content-standards.json`` and
     #   ``core/budget-allocation.json``, ``title`` for a branch D3 cannot name
     #   (``creative/get-creative-features-response.json``,
-    #   ``trusted-match/provider-registration.json``), ``pattern`` for
-    #   ``core/postal-country-system.json``, ``anyOf`` for ``adagents.json``'s conjunct
+    #   ``trusted-match/provider-registration.json`` -- and
+    #   ``core/postal-country-system.json`` joined them at
+    #   ``adcp-client-python-10l.35``, see its line below), ``anyOf`` for
+    #   ``adagents.json``'s conjunct
     #   and ``$ref`` for ``brand.json``, which is ``adcp-client-python-857``.
     #
     # Three more left by EMITTING on §5(b)'s ``uniqueItems`` row:
@@ -4288,7 +4290,23 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "core/async-response-data.json": "$ref",
         "core/canonical-placement.json": "$ref",
         "core/postal-area.json": "$ref",
-        "core/postal-country-system.json": "pattern",
+        # ``pattern`` -> ``title`` at ``adcp-client-python-10l.35``, and this is THE PIN
+        # WORKING.  §2's intersection rule merges the root's
+        # ``{"type": "string", "pattern": "^[A-Z]{2}$"}`` for ``country`` into each
+        # ``anyOf`` branch's ``{"const": "US"}`` / ``{"enum": [...]}``, and the ``const``
+        # and ``enum`` rows answered "a later D2 row does" for the ``pattern`` -- a row
+        # that cannot exist, since the keyword lowers at every position.  Both rows claim
+        # it now, because the PIN decides it: the value satisfies the pattern, so the
+        # ``Literal``/enumeration is exactly the document's own set.  The document reports
+        # its own next obstruction instead, and it is D3's: ``/anyOf/4`` pins a ``const``
+        # on BOTH of its properties, so no single one is the discriminator and the branch
+        # has no identity to derive a name from.  A VERDICT, which is the honest direction
+        # -- and the five documents chained behind this one became verdicts with it
+        # (``core/postal-area.json``, ``core/offering.json``,
+        # ``core/product-offer-filters.json``,
+        # ``media-buy/product-discovery-criteria.json``,
+        # ``media-buy/list-products-request.json``), so ``accounted`` rose 961 -> 967.
+        "core/postal-country-system.json": "title",
         "core/product-format-declaration.json": "required",
         "core/registry-event.json": "$ref",
         # ``$ref`` -> ``title`` at ``adcp-client-python-10l.21``'s third instalment: its
@@ -7949,19 +7967,59 @@ def test_a_const_that_cannot_be_a_literal_is_refused_by_name() -> None:
     assert model.model_json_schema()["properties"]["k"]["const"] == 3
 
 
-def test_a_keyword_beside_a_const_refuses_rather_than_being_dropped() -> None:
-    """The row's screen, probed by making it fail.
+def test_a_keyword_beside_a_const_is_decided_by_the_pin() -> None:
+    """A constraint of the value beside a ``const``: the PIN decides it, both ways.
 
-    :data:`codegen.lower.const.CLAIMS` is two keywords because two is the whole
-    vocabulary the bundle writes beside a ``const``, asserted over all 1,486 nodes
-    below.  A third would be a constraint applied to a value the ``Literal`` has
-    already pinned, and dropping it silently is the defect P3 removes -- so it
-    refuses, by the keyword's own name.
+    **This test asserted the row DEFERRED the keyword, and that was the defect**
+    (``adcp-client-python-10l.35``).  ``minLength`` lowers at every position the walk
+    decides a node at, so "a later D2 row does" promised a row nobody would write; §2's
+    intersection rule reaches the shape for real -- a root's constrained property merged
+    with a branch's ``{"const": v}`` -- and ``core/postal-country-system.json`` was
+    refused on it, blocking five more documents through a ``$ref``.
+
+    What the row owes is the intersection, and a one-member value set makes it a
+    validation: the pin satisfies the constraint, and ``Literal[v]`` is exactly the
+    document's own set; or it does not, and the node admits NOTHING.  Both directions
+    below, on the same keyword.
+
+    :data:`codegen.lower.const.CLAIMS` is still two keywords, because the node's own
+    facts are not a property of the row: they are whatever the document states beside
+    this pin, derived once by the parser from the table
+    (``codegen.schema.parse.value_facts``), and :func:`codegen.lower.const.lower` claims
+    them beside ``CLAIMS``.
     """
     assert lower_const.CLAIMS == frozenset({"type", "const"})
+    # the pin CONTRADICTS the constraint: the node admits nothing, so a Literal of the
+    # value would be a model wider than its schema.  Reported on ``const``, which is the
+    # keyword the node is refused BY -- the sibling is stated plainly and is satisfiable.
     r = _const_refusal({"type": "string", "const": "x", "minLength": 2})
-    assert r.keyword == "minLength", r
+    assert r.keyword == "const", r
     assert r.pointer == "/properties/k", r
+    assert "does not satisfy the minLength 2" in r.detail, r
+    assert "the node admits nothing" in r.detail, r
+    assert r.kind is refusal_module.Kind.VERDICT, r
+    # the pin SATISFIES it: the Literal is the document's whole set and the keyword is
+    # consumed rather than deferred to a row that cannot exist.
+    model, _ = _constructed(
+        {
+            "title": "Satisfies",
+            "type": "object",
+            "properties": {"k": {"type": "string", "const": "xyz", "minLength": 2}},
+            "required": ["k"],
+        }
+    )
+    assert model.model_json_schema()["properties"]["k"]["const"] == "xyz"
+    # and the shape the bundle actually reaches, which is the one the bead names: §2's
+    # intersection puts the root's ``pattern`` beside a branch's pin.
+    patterned, _ = _constructed(
+        {
+            "title": "Patterned",
+            "type": "object",
+            "properties": {"k": {"type": "string", "pattern": "^[A-Z]{2}$", "const": "US"}},
+            "required": ["k"],
+        }
+    )
+    assert patterned.model_json_schema()["properties"]["k"]["const"] == "US"
 
 
 def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
@@ -8541,6 +8599,37 @@ VERDICTS = frozenset(
         # ONE naming collision left in the bundle is
         # ``trusted-match/provider-registration.json`` above, where the two chains are
         # equal and no ancestor separates them (``adcp-client-python-10l.42``).
+        #
+        # **SIX JOINED AT ``adcp-client-python-10l.35``, and every one arrives on a
+        # verdict this set already names rather than on a new claim.**  The ``const`` and
+        # ``enum`` rows deferred a ``pattern`` §2's intersection rule put beside their
+        # value set -- "a later D2 row does", of a keyword that lowers at every position,
+        # so the promised row cannot exist.  Both rows claim it now (the PIN decides a
+        # constraint of its own value), and ``core/postal-country-system.json`` gets
+        # further and reports its OWN obstruction at ``/anyOf/4``: D3's branch-naming
+        # row, "no title, no discriminator const and no required set".  That is the SAME
+        # verdict ``core/requirements/asset-requirements.json`` and
+        # ``creative/get-creative-features-response.json`` already carry above, and the
+        # branch earns it for the reason D3 names -- it pins a ``const`` on BOTH its
+        # properties, so no single property is the discriminator and the branch has no
+        # identity to derive a name from.
+        #
+        # The other five were already DEFERRED chains through it and re-resolve with it,
+        # outward along the ``$ref`` edges: ``core/postal-area.json`` at
+        # ``/anyOf/0/allOf/0``, then ``core/offering.json`` and
+        # ``core/product-offer-filters.json`` behind that, then
+        # ``media-buy/product-discovery-criteria.json`` and
+        # ``media-buy/list-products-request.json`` behind those.  ``accounted`` rose
+        # 961 -> 967 and the emitted set is byte-identical, which is what "a verdict
+        # arriving is attributable" means here: nothing stopped emitting, nothing started
+        # refusing, and six documents stopped being counted as clearable work that no row
+        # was going to clear.
+        "core/postal-country-system.json",
+        "core/postal-area.json",
+        "core/offering.json",
+        "core/product-offer-filters.json",
+        "media-buy/product-discovery-criteria.json",
+        "media-buy/list-products-request.json",
     }
 )
 

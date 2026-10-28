@@ -180,14 +180,30 @@ class Enumeration(Base):
     #: The ``type`` word the node states, where it states one.  The BASE is read off
     #: the members and not off this, which is what admits the typeless enum nodes.
     word: Any = None
+    #: :class:`Constant`'s field, for :class:`Constant`'s reason: a CLOSED value set
+    #: decides every constraint of its own instance, member by member, so the ``enum``
+    #: row answers a ``pattern`` beside the members by asking whether the members
+    #: satisfy it.  Read by the same one derivation (``parse.value_facts``).
+    facts: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, kw_only=True)
 class Constant(Base):
-    """Selected by ``const``: the value it pins."""
+    """Selected by ``const``: the value it pins, and the constraints that value decides.
+
+    :attr:`facts` is :class:`Scalar`'s field, read by the same one derivation
+    (``parse.value_facts``), and it is here because a one-member value set DECIDES every
+    constraint of its own instance: ``{v}`` intersected with any non-descending
+    constraint is either ``{v}`` or empty, so the ``const`` row answers a ``pattern``, a
+    ``minLength`` or a ``minimum`` beside the pin by asking whether the pin satisfies it
+    -- which is exactly what the row already did with the node's own ``type`` word.  A
+    node carries no mapping (see the module docstring), so the VALUES the row validates
+    against travel as a field like every other fact.
+    """
 
     value: Any
     word: Any = None
+    facts: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, kw_only=True)
