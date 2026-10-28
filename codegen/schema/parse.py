@@ -242,6 +242,10 @@ def parse(
             value=raw["const"],
             word=raw.get("type"),
             facts=value_facts(raw, position),
+            # ``format`` for :class:`nodes.Scalar`'s reason and read the same way: it is
+            # excluded from :func:`value_facts` precisely because the kind consumes it in
+            # a field of its own, so a kind that can state one carries the field.
+            format=raw.get("format") if isinstance(raw.get("format"), str) else None,
             **common,
         )
     combinator = next((kw for kw in UNION if isinstance(raw.get(kw), list)), None)
@@ -295,7 +299,14 @@ def parse(
             # instance", and a node stating neither a word nor a MEMBER keyword has
             # nothing for that row to read -- §5 reads it as ``{}``, which IS ``true``.
             # A non-object word has no such clause: the word alone decides.
-            return nodes.Typeless(**common)
+            #
+            # ``facts`` by the same derivation as :class:`nodes.Scalar`'s, and the kind
+            # needs them because NOTHING here can decide them: ``Any`` is no type for a
+            # constraint to bind to, so the row declares a widening and a declaration
+            # carries the fact the DOCUMENT states (§9).  The node built from a
+            # non-mapping above carries none, which is right: it is not a schema and
+            # states no fact.
+            return nodes.Typeless(facts=value_facts(raw, position), **common)
         # **The word an enclosing node asserts about the SAME instance decides the kind
         # where the node states none** -- §4 of the semantics document's ``type`` row and
         # ``_base.applied_schema``'s own rule, which is what the SCHEMA half of every

@@ -809,7 +809,7 @@ def test_the_accepts_obligation_passes_a_real_widening_and_fails_a_narrowing() -
     """
     one = _declaration_for_tags()
     proved = harness.check_widening(
-        WIDE_DOCUMENT, Wide.model_validate, (one,), instance={"tags": ["a", "b"]}
+        WIDE_DOCUMENT, Wide.model_validate, (one,), instances=({"tags": ["a", "b"]},)
     )
     assert proved.outcome == "pass", (proved.narrowings, proved.unproved)
     assert proved.accepted >= 1
@@ -821,7 +821,7 @@ def test_the_accepts_obligation_passes_a_real_widening_and_fails_a_narrowing() -
         tags: list[str] = Field(min_length=3)
 
     caught = harness.check_widening(
-        WIDE_DOCUMENT, Narrowed.model_validate, (one,), instance={"tags": ["a", "b"]}
+        WIDE_DOCUMENT, Narrowed.model_validate, (one,), instances=({"tags": ["a", "b"]},)
     )
     assert caught.outcome == "narrowing_wearing_a_declaration", (caught.narrowings, caught.unproved)
     assert "#/properties/tags/uniqueItems" in caught.narrowings[0]
@@ -892,7 +892,7 @@ def test_the_accepts_obligation_catches_row_10s_live_narrowing() -> None:
 
     declaration = approximate(SchemaRef(NARROWED, NARROWED_AT), "format", Position.ELEM, "uri")
     res = harness.check_widening(
-        drawn_from, model.strict_validate, (declaration,), instance=seen[0]
+        drawn_from, model.strict_validate, (declaration,), instances=seen[:1]
     )
     assert res.outcome == "narrowing_wearing_a_declaration", (res.unproved, res.narrowings)
     refused = {line.split(" -- ")[0].split(": ", 1)[1] for line in res.narrowings}
@@ -924,19 +924,19 @@ def test_a_declaration_whose_classes_cannot_be_enumerated_is_unproved_and_not_a_
         "minProperties": 1,
     }
     unplaceable = approximate(_ref("#/propertyNames"), "maxLength", Position.KEY, 4)
-    res = harness.check_widening(document, lambda x: x, (unplaceable,), instance={"name": "a"})
+    res = harness.check_widening(document, lambda x: x, (unplaceable,), instances=({"name": "a"},))
     assert res.outcome == "unproved_widening"
     assert "describes no instance location" in res.unproved[0]
 
     absent = approximate(_ref("#/properties/name"), "maxLength", Position.PROP, 4)
-    res = harness.check_widening(document, lambda x: x, (absent,), instance={"name": "a"})
+    res = harness.check_widening(document, lambda x: x, (absent,), instances=({"name": "a"},))
     assert res.outcome == "unproved_widening"
     assert "states no such keyword" in res.unproved[0]
 
     assert harness.value_classes("frobnicate", {"frobnicate": 1}) == ()
     unrowed = approximate(_ref("#"), "frobnicate", Position.ROOT, 1)
     res = harness.check_widening(
-        {**document, "frobnicate": 1}, lambda x: x, (unrowed,), instance={"name": "a"}
+        {**document, "frobnicate": 1}, lambda x: x, (unrowed,), instances=({"name": "a"},)
     )
     assert res.outcome == "unproved_widening"
     assert "no value class is derivable" in res.unproved[0]
@@ -984,7 +984,7 @@ def test_a_mapping_value_has_an_instance_location_and_the_key_is_drawn() -> None
     assert harness.conforms({"type": "string", "pattern": "^[A-Z]{2}$"}, key) is not False
 
     proved = harness.check_widening(
-        patterned, Mapped.model_validate, (one,), instance={"scopes": {}}
+        patterned, Mapped.model_validate, (one,), instances=({"scopes": {}},)
     )
     assert proved.outcome == "pass", (proved.narrowings, proved.unproved)
     assert proved.accepted >= 1
@@ -1004,7 +1004,7 @@ def test_a_mapping_value_has_an_instance_location_and_the_key_is_drawn() -> None
     }
     assert harness.instance_path(at, unreadable) is None
     blind = harness.check_widening(
-        unreadable, Mapped.model_validate, (one,), instance={"scopes": {}}
+        unreadable, Mapped.model_validate, (one,), instances=({"scopes": {}},)
     )
     assert blind.outcome == "unproved_widening"
     assert "describes no instance location" in blind.unproved[0]
@@ -1025,7 +1025,7 @@ def test_an_underdetermined_declaration_is_not_claimed_by_the_accepts_obligation
         _ref("#/oneOf"), "oneOf", Position.ROOT, [{}, {}], kind=UNDERDETERMINED
     )
     res = harness.check_widening(
-        WIDE_DOCUMENT, Wide.model_validate, (invisible,), instance={"tags": ["a"]}
+        WIDE_DOCUMENT, Wide.model_validate, (invisible,), instances=({"tags": ["a"]},)
     )
     assert res.declarations == 0
     assert res.outcome == "no_declarations"

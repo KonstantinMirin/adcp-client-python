@@ -199,11 +199,21 @@ class Constant(Base):
     -- which is exactly what the row already did with the node's own ``type`` word.  A
     node carries no mapping (see the module docstring), so the VALUES the row validates
     against travel as a field like every other fact.
+
+    :attr:`format` is :class:`Scalar`'s field for :class:`Scalar`'s reason, and it is NOT
+    one of :attr:`facts`: ``parse.value_facts`` excludes ``format`` because "the kind
+    consumes it in a field of its own", and a kind that can state one needs the field to
+    consume it in.  It is a separate field rather than a fact because the two get
+    different answers from the ``const`` row -- a fact is DECIDED by the pin and then
+    dropped, a ``format`` RIDES on the annotation (§5's ``format`` row: "Otherwise rides
+    as ``json_schema_extra={"format": …}`` on the field") -- so a ``format`` folded into
+    ``facts`` would be dropped by the row that validates them away.
     """
 
     value: Any
     word: Any = None
     facts: Mapping[str, Any] = field(default_factory=dict)
+    format: str | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -435,7 +445,21 @@ class Null(Base):
 
 @dataclass(frozen=True, kw_only=True)
 class Typeless(Base):
-    """No type and no kind keyword: a ``not`` over a value, or nothing."""
+    """No type and no kind keyword: a ``not`` over a value, or nothing.
+
+    :attr:`facts` is :class:`Scalar`'s field, read by the same one derivation
+    (``parse.value_facts``), and the kind needs it for the OPPOSITE reason the value-set
+    kinds do.  A ``const`` carries its facts so the PIN can decide them; a typeless node
+    carries them because nothing can decide them -- §5's ``type`` row makes this node
+    ``Any``, §2 binds a constraint to the type, and ``Any`` is no type to bind to.  So
+    the row's answer is §2's ladder, and a widening is DECLARED with the fact the
+    document states: ``approximate.declare`` takes that value, and §9 forbids
+    approximating on anything but the document's own (``codegen.lower.scalars.typeless``).
+    Without the field the row would have the keyword's NAME off :attr:`Base.declares` and
+    not its value, and a declaration naming no fact is one §8 cannot grade.
+    """
+
+    facts: Mapping[str, Any] = field(default_factory=dict)
 
 
 #: **The closed sum.**  §5's dispatch is an exhaustive ``match`` over exactly these,
