@@ -117,7 +117,7 @@ _D8 = (
     "stating a property count it does not let a reader satisfy"
 )
 
-#: **The whole exemption.**  Seven positions: six on :data:`ORIGIN_ONLY`, which are
+#: **The whole exemption.**  Nine positions: eight on :data:`ORIGIN_ONLY`, which are
 #: DERIVED against the packaged tree, and one on ``minProperties``, which is pinned.
 #:
 #: Three of the four are one authored node, ``core/attestation-issuer.json``'s
@@ -235,6 +235,40 @@ EXEMPT: tuple[Exemption, ...] = (
         # other ORIGIN_ONLY entry names, which is the property the split was made for.
         document="error-details/governance-agent-not-accepted.json",
         pointer="/oneOf/0/properties/attempted_agent_origin",
+        keyword="pattern",
+        value=ORIGIN_ONLY,
+        reason=_RFC,
+    ),
+    Exemption(
+        # **A FIFTH and a SIXTH packaged copy of entry one's authored node**, by the
+        # same mechanism as entries two, four and five: the record inlines
+        # ``core/attestation-issuer.json``'s origin branch, so each is a position of its
+        # own packaged document and the pair graded against it is a different pair.  The
+        # bundle SOURCE states the pattern at neither document.
+        #
+        # Both reached a pair when ``adcp-client-python-10l.45`` made
+        # ``core/attestation-reference.json`` emit: its one obstruction was a type list
+        # with a constrained arm, which the comparison can now FOLD -- and
+        # ``governance/get-plan-audit-logs-response.json`` referenced it, so the two
+        # documents emit together.
+        #
+        # This is the derived check's own growth channel and not a rise of the
+        # shrink-only pin: ``PIN`` covers the entries that are NOT ORIGIN_ONLY, is still
+        # 1, and is untouched.  The growth is explained by the same upstream issue every
+        # other ORIGIN_ONLY entry names.
+        document="core/attestation-reference.json",
+        pointer="/properties/issuer/oneOf/2/properties/origin",
+        keyword="pattern",
+        value=ORIGIN_ONLY,
+        reason=_RFC,
+    ),
+    Exemption(
+        document="governance/get-plan-audit-logs-response.json",
+        pointer=(
+            "/properties/plans/items/properties/entries/items/properties/"
+            "runtime_attestations/items/properties/reference/properties/issuer/"
+            "oneOf/2/properties/origin"
+        ),
         keyword="pattern",
         value=ORIGIN_ONLY,
         reason=_RFC,

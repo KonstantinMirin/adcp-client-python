@@ -426,9 +426,6 @@ class MultiType(Base):
     #: :attr:`words` exactly when every entry is one, which is the only case the row
     #: reaches the members at all.
     members: tuple[Node, ...]
-    #: The keywords the node states that SOME arm carries, for the one refusal §5's
-    #: own rows do not decide (a constrained arm beside another live arm).
-    stated: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)
