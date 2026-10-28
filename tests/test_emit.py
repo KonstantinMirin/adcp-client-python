@@ -1230,24 +1230,66 @@ NO_PAYLOAD_PAIRS: tuple[str, ...] = (
 )
 
 
+#: **The xdist work unit the four readers of :func:`graded_reports` share**, and the
+#: reason it has to exist: ``functools.cache`` is per PROCESS, and xdist's default
+#: scheduler assigns by test, so four readers of one cached pass land on up to four
+#: workers and the pass is paid once per worker.
+#:
+#: Measured, full suite at ``-n 24`` on the base of ``adcp-client-python-10l.31``, with
+#: the default ``--dist=load``:
+#:
+#: ===================================================== ======= ========
+#: reader                                                 worker  seconds
+#: ===================================================== ======= ========
+#: ``..._the_liveness_check_reaches_every_pair_...``       gw11     3152.4
+#: ``..._the_harness_result_is_counted_over_...``          gw22     3027.9
+#: ``..._a_refused_payload_is_derived_for_every_pair_...`` gw8      2675.4
+#: ``..._the_non_pass_pairs_are_named_and_attributed``     gw22        0.0
+#: ===================================================== ======= ========
+#:
+#: 8,855 s in three items, 31% of the run's whole 28,172 s of test time, for work the
+#: docstring below already says is one pass -- and the fourth row is the PROOF: it
+#: landed on gw22 beside the second, read the warm cache, and cost nothing.
+#:
+#: ``--dist=loadgroup`` in ``pyproject.toml`` is what reads this mark.  Grouped and
+#: re-measured at ``-n 10``, the four are one unit of **3,314.5 s** on one worker and the
+#: other nine finish in 1,331-2,111 s: the run went 4,084 s -> 3,322 s and its worker time
+#: 28,172 s -> 17,061 s, with the same three failures by name.
+#:
+#: **The unit is then the whole ceiling**, 3,314.5 s against a 3,322 s run, so no ``-n``
+#: and no scheduler shortens it further -- 1,628 pairs graded serially in one process, of
+#: which ``media-buy/get-media-buy-delivery-response.json#`` alone is 1,846.8 s on a
+#: 2,701,506-byte resolved schema.  That one is ``check_accepts``'s cost and not this
+#: file's.
+GRADED_REPORTS_GROUP = "graded_reports"
+
+
 @functools.cache
 def graded_reports() -> list[tuple[Graded, PairReport]]:
     """Every graded pair, graded ONCE.
 
-    **One pass over the population, shared by the three tests that read a total.**
-    Each of them used to grade all 1,055 pairs itself, so the suite made three
-    passes and two of them were single indivisible pytest items -- xdist
+    **One pass over the population, shared by the four tests that read a total.**
+    Each of them used to grade every pair itself -- 1,055 of them then and 1,628 of them
+    now -- so the suite made four
+    passes and each was a single indivisible pytest item -- xdist
     distributes BY TEST, so a test looping the population cannot be split and the
     other workers cannot help it.  Caching here makes the pole one pass instead of
-    three; the per-pair test below stays parametrised, because that is the form
+    four; the per-pair test below stays parametrised, because that is the form
     xdist CAN spread.
 
     ``functools.cache`` and not a fixture, because ``graded()`` and ``pair_of``
     are module functions and the reports are a pure function of the emitted tree.
+
+    **And the cache does not cross a PROCESS, so every reader carries
+    :data:`GRADED_REPORTS_GROUP`.**  Without the mark the sentence above is true of a
+    serial run and false of every parallel one, which is every run: the figures beside
+    that constant are three of the four readers paying the full pass on three different
+    workers.  A fifth reader added here takes the mark too, or it adds a whole pass.
     """
     return [(g, check_pair(pair_of(g), custom_formats=FORMAT_STRATEGIES)) for g in graded()]
 
 
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
 def test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for() -> None:
     """``no_payload`` is the complement of the accepts check's draw, and nothing else.
 
@@ -2412,6 +2454,7 @@ def _matching(pattern: str, examples: int = 2) -> list[str]:
     return out
 
 
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
 def test_the_harness_result_is_counted_over_the_whole_population() -> None:
     """One number for the harness, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 1,055 of them by eye.
@@ -2584,6 +2627,7 @@ UNDRAWABLE_POSITION = (
 UNDRAWABLE_PATTERN = "^https://github\\.com/"
 
 
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
 def test_the_non_pass_pairs_are_named_and_attributed() -> None:
     """Every pair that is not ``pass``, by name, with what it is.
 
@@ -2798,6 +2842,7 @@ def test_no_instrument_is_the_designed_outcome_for_a_measured_shape() -> None:
     assert node["format"] == "uri" and node["pattern"] == UNDRAWABLE_PATTERN
 
 
+@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
 def test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for() -> None:
     """The liveness check's own denominator, and what it is NOT.
 

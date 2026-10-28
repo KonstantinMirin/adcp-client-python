@@ -82,14 +82,67 @@ testpaths = ["tests"]
 # three by name. A faster suite that grades something else would not be faster,
 # so the identity of the failure set is the thing to check if this ever changes.
 #
-# ``auto`` scales down on a smaller machine and ``--maxprocesses`` caps it,
-# because MEMORY and not CPU is this suite's ceiling: each worker imports the
-# whole emitted tree and builds hypothesis strategies, and runs here have been
-# killed by the OOM killer at fifteen Python processes against 5 GB of swap.
-# Ten is the measured-stable figure WITH a lane's own suite running beside it,
-# which is the normal case during an epic. Override upward on an idle machine
-# with ``-n 14``; a single test still runs alone under ``-n 0``.
-addopts = "-n auto --maxprocesses=10"
+# **THAT PAIR IS KEPT AS A RATIO AND IS STALE AS AN ABSOLUTE.**  The emitted set has
+# grown eleven-fold in wall clock since it was taken while the passing count grew 4%
+# (``adcp-client-python-10l.31``'s note carries the curve), and the figures below are the
+# current ones. No serial figure is restated beside them because none was taken: a serial
+# run of this suite is the 17,061 s of worker time the last row of the table reports.
+#
+# **MEMORY IS NOT THIS SUITE'S CEILING AND THE OOM FIGURE DOES NOT REPRODUCE.**  The
+# line this replaces said "runs here have been killed by the OOM killer at fifteen
+# Python processes against 5 GB of swap", and re-measured at
+# ``adcp-client-python-10l.31`` on this box -- 24 cores, 125 GB of RAM, 88 GB of it
+# available -- a full run at ``-n 24`` peaks at **10.35 GB resident across all 25
+# processes at once**: 1,211 MB in the worst worker, 331 MB median. Swap is 4,090 MB with
+# 2,625 MB of it long since paged out by other services, and it moved by 2 MB across the
+# whole 57-minute run. Fifteen workers is about 6.5 GB. Whatever that figure measured, it
+# was not this suite on this machine, and a cap set to protect memory protects nothing.
+# ``rss_sampler.sh`` takes the figure and ``suite_report.py`` reduces it; the sampler
+# scopes to one run's own process tree, because the form that summed every ``.venv``
+# process on the box could not be read during an epic, which is when it is read.
+#
+# **WHAT THE CEILING IS INSTEAD: ONE INDIVISIBLE WORK UNIT.**  Three full runs on this
+# tree, same bundle, same pins, and the SAME THREE FAILURES BY NAME in all three:
+#
+#     -n 10  --dist=load       4,084 s (68:03)   3 failed, 2,158 passed
+#     -n 24  --dist=load       3,425 s (57:05)   3 failed, 2,158 passed   28,172 s of
+#                                                                         worker time
+#     -n 10  --dist=loadgroup  3,322 s (55:22)   3 failed, 2,159 passed   17,061 s
+#
+# Fourteen extra workers buy 16%, and the per-worker totals say why: at ``-n 24`` the
+# slowest worker was 3,415.0 s against a 3,425 s run, so **the wall clock is the slowest
+# WORKER and nothing else**.  28,172 s of test time would finish in 1,174 s at perfect
+# balance across 24 and cannot, because ten items are 52% of it and the largest is
+# 3,152 s.  The fourteen also cost throughput rather than buying it: the same suite is
+# 28,172 s of worker time at ``-n 24`` and 17,061 s at ``-n 10``, and only 5,700 s of
+# that gap is the duplicated pass the next paragraph removes.
+#
+# So ``--maxprocesses`` STAYS AT TEN, for the measured reason and not the old one: ten
+# workers finish everything divisible in 2,111 s, the extra fourteen buy 16%, and leaving
+# them free is what lets a second lane's suite run beside this one -- the normal case
+# during an epic.  Override upward on an idle machine with ``-n 24`` for that 16%; a
+# single test still runs alone under ``-n 0``.
+#
+# ``--dist=loadgroup`` is what moved the figure, and it is ``load`` plus one rule: tests
+# sharing an ``xdist_group`` mark go to one worker.  ``tests/test_emit.py``'s
+# ``graded_reports`` is a ``functools.cache``d pass over every graded pair, read by four
+# tests -- and ``functools.cache`` DOES NOT CROSS A PROCESS, so under ``load`` three of
+# the four landed on gw11, gw22 and gw8 and each paid the whole pass (3,152.4 s,
+# 3,027.9 s, 2,675.4 s: 31% of the run, for work that is one pass), while the fourth
+# landed on gw22 beside one of them and cost 0.0 s -- which is the proof.  Grouped, the
+# four are one unit of 3,314.5 s on one worker and the other nine workers finish in
+# 1,331-2,111 s.  ``tests/test_every_check_names_its_set.py`` gates the mark, so a fifth
+# reader cannot quietly add a fourth pass.
+#
+# **THE NEXT BOUND IS THAT UNIT, AND IT IS NOT A SCHEDULING PROBLEM.**  At ``-n 10
+# --dist=loadgroup`` the grouped unit is 3,314.5 s against a 3,322 s run and everything
+# else is done at 2,111 s, so no ``-n`` and no scheduler touches it: what the unit does is
+# grade 1,628 pairs serially in one process, and ONE of them --
+# ``media-buy/get-media-buy-delivery-response.json#``, a 2,701,506-byte resolved schema --
+# is 1,846.8 s of it at ``-n 10`` and 1,916.7 s at ``-n 24``.  Of that pair's own cost,
+# ``check_accepts`` is all but 0.3 s.  Shortening it is a change to ``codegen/harness.py``
+# and to nothing in this file.
+addopts = "-n auto --maxprocesses=10 --dist=loadgroup"
 
 # --------------------------------------------------------------------------- #
 # the type checker, which section 14 step 6 makes the TEST for the decision layer

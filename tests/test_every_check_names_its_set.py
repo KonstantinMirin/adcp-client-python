@@ -300,3 +300,70 @@ def test_no_check_ranges_over_a_derived_set_without_naming_it() -> None:
         if len(live.get(name, [])) < UNNAMED_CEILING[name]
     }
     assert stale == {}, f"lower these ceilings to the live count: {stale}"
+
+
+#: **The cached whole-population pass, and the mark that makes the cache work.**
+#: ``tests/test_emit.py``'s ``graded_reports`` is ``functools.cache``d and its docstring
+#: says the cache "makes the pole one pass instead of four" -- which is true of a serial
+#: run and false of a parallel one, because ``functools.cache`` is per PROCESS.  Measured
+#: at ``adcp-client-python-10l.31``, full suite at ``-n 24`` with the default
+#: ``--dist=load``: three of the four readers landed on gw11, gw22 and gw8 and each paid
+#: the whole pass (3,152.4 s, 3,027.9 s, 2,675.4 s), 31% of the run's 28,172 s of test
+#: time; the fourth landed on gw22 beside one of them and cost 0.0 s.
+#:
+#: So the mark is the instrument and this is its gate: a reader of the pass carries
+#: ``xdist_group``, or it adds a whole pass to the slowest worker and nothing says so.
+#: ``--dist=loadgroup`` in ``pyproject.toml`` is what reads the mark.
+CACHED_PASS = "graded_reports"
+CACHED_PASS_GROUP = "xdist_group"
+
+
+def readers_of_the_cached_pass(path: pathlib.Path) -> dict[str, bool]:
+    """Every test function in one file that calls :data:`CACHED_PASS`, and whether it
+    carries the group mark.
+
+    An AST reading like the two above, and deliberately as simple: a ``Call`` to the
+    name anywhere inside a ``test_`` function, against a decorator whose attribute is
+    ``xdist_group``.  It cannot see a reader that reaches the pass through a helper, and
+    there is none -- the pass is a module function and every reader calls it by name.
+    """
+    out: dict[str, bool] = {}
+    for node in ast.walk(ast.parse(path.read_text())):
+        if not isinstance(node, ast.FunctionDef) or not node.name.startswith("test_"):
+            continue
+        calls = any(
+            isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == CACHED_PASS
+            for n in ast.walk(node)
+        )
+        if not calls:
+            continue
+        out[node.name] = any(
+            isinstance(d, ast.Call)
+            and isinstance(d.func, ast.Attribute)
+            and d.func.attr == CACHED_PASS_GROUP
+            for d in node.decorator_list
+        )
+    return out
+
+
+def test_every_reader_of_the_cached_pass_is_grouped_onto_one_worker() -> None:
+    """The cache is per process, so the readers have to be on one process.
+
+    The claim is about the SUITE's cost and not about any pair's verdict, which is why it
+    is graded here rather than in ``test_emit.py``: the readers all pass either way, and
+    what the mark decides is whether the pass is computed once or once per worker.
+    """
+    live = {p.name: readers_of_the_cached_pass(p) for p in _suite()}
+    readers = claimed(
+        f"readers of {CACHED_PASS}",
+        {f"{name}::{fn}" for name, fns in live.items() for fn in fns},
+    )
+    assert len(readers) >= 4, sorted(readers)
+    ungrouped = sorted(
+        f"{name}::{fn}" for name, fns in live.items() for fn, marked in fns.items() if not marked
+    )
+    assert ungrouped == [], (
+        f"each of these calls {CACHED_PASS} and will recompute the whole pass on its own "
+        f"worker; mark it @pytest.mark.{CACHED_PASS_GROUP}(test_emit.GRADED_REPORTS_GROUP): "
+        f"{ungrouped}"
+    )
