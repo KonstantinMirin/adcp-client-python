@@ -7,7 +7,8 @@ pointer, and returns the module with a symbol table -- by §4 of
 ``docs/plan/rebuild-plan.md``'s rules: the root by ``pascal_case(title)``; a nested
 declaration by its OWN position (``<Property>`` at PROP, ``<Property>Item`` at ELEM,
 ``<Property>Value`` at MAPV, ``<Root><Key>`` at DEF); a branch by its own ``title``, else
-the ``const`` it pins on the discriminating property, else its sorted ``required`` set.
+the ``const`` it pins on the discriminating property, else its sorted ``required`` set,
+else its index among the branches (``<Base>Branch<i>``).
 
 **A nested name is its own position and not the path to it, and §4's collision rule is
 what pays for that** (:data:`COLLISION`, :func:`spell`).  "The module path already
@@ -64,11 +65,21 @@ binds the name ITS OWN position derives -- never a sibling position's name, whic
 read as one branch carrying another's type and would make a public symbol a function of
 which key the walk reached first.
 
-Two refusals are this pass's, and both are VERDICTS of the document: two pointers
-deriving one name, and a branch with no identity.  ``docs/plan/architecture.md`` §13
-item 7 records the one case that reaches the second -- an untitled ``enum`` branch of a
-root union whose only other branch is a constrained string -- and §4 gives no fourth
-naming rule, so it stays refused.
+**ONE refusal is this pass's, and it is a VERDICT of the document: two pointers deriving
+one name.**  A branch with no identity was the second, and §4 has the fourth naming rule
+that retires it (``docs/plan/architecture.md`` §13 item 7, closed 2026-10-26): a branch
+with no ``title``, no pinned ``const`` and no ``required`` set takes its **index among the
+branches**, ``<Base>Branch<i>``.  A name is not an acceptance fact, so the fallback
+neither widens nor narrows and costs no approximation; the index is a function of the
+branch's own position in its own document, so no census over the run enters and the
+refusal was minting a verdict where §4 states a fallback.
+
+**The index is the LAST rung and is accepted only there.**  A positional name carries
+nothing about which position it names -- the upstream v9 SDK numbers 1,092 of its 4,360
+classes and renames a sibling when a branch is inserted ahead of it -- so §4 reaches for
+it only after the three IDENTITY rungs have each been tried and found nothing.  A document
+that gives a branch no identity at all leaves nothing else, and an index at least says
+WHICH branch.  :func:`branch_identity` is the one place the order is written.
 """
 
 from __future__ import annotations
@@ -197,10 +208,11 @@ class Entry:
 
 @dataclass(frozen=True)
 class Branch:
-    """A branch of ``oneOf``/``anyOf``: the three FACTS §4's three rules read, as values.
+    """A branch of ``oneOf``/``anyOf``: the FACTS §4's four rules read, as values.
 
     §4 "Names"'s branch rules are "its own ``title``, else the ``const`` it pins on the
-    discriminating property, else its sorted ``required`` set", and each of the three is a
+    discriminating property, else its sorted ``required`` set, else its index among the
+    branches", and each of the first three is a
     fact of the branch's own DECLARATION.  The declaration is ``lower/union.py``'s to read
     -- §6 keeps that reading at the declaration level and
     ``tests/test_import_rule.py``'s ``MAY_READ_A_DECLARATION`` names the module -- so what
@@ -213,11 +225,19 @@ class Branch:
     -- the TARGET's, because §4 says a ``$ref`` branch's fields are the target's and the
     walk is what resolved them.
 
-    :attr:`refuses` is the difference between the two positions a branch is named at.  A
-    ROOT union declares one class per branch, so a branch with no identity is a document
-    this emitter cannot name and the document refuses; a NESTED union is a TYPE, and a
-    branch that lowers to an annotation needs no name at all, so it falls back to the
-    union's own derived name rather than refusing a union the walk can lower.
+    :attr:`index` is the fourth rule's own fact, and its PRESENCE is the difference
+    between the two positions a branch is named at.  A ROOT union declares one class per
+    branch, so a root branch needs a name of its own whatever it states and the walk
+    records its index; a NESTED union is a TYPE, and a branch that lowers to an annotation
+    needs no name at all, so the walk records none and §4's fourth rung has nothing to
+    apply -- the branch falls back to the union's own derived name, which is what a member
+    type has always been spelled with.  One field carries that difference because it IS
+    that difference: a second boolean beside it would be a second copy of the decision.
+
+    It is a FIELD and never recovered from the pointer string.  The branch's pointer ends
+    in the index and §6 forbids reading a position out of a pointer -- the union is what
+    knows its branch order, so the union hands the hop its index, exactly as it hands the
+    branch the fact that it is a root union's branch.
     """
 
     parent: str
@@ -227,7 +247,9 @@ class Branch:
     pin: Any = None
     #: Its ``required`` set, as the document lists it.
     required: tuple[str, ...] = ()
-    refuses: bool = False
+    #: Its index among its union's branches, in the document's own order, where the branch
+    #: is a CLASS and so needs a name of its own; ``None`` where it is a member type.
+    index: int | None = None
 
 
 @dataclass(frozen=True)
@@ -257,12 +279,13 @@ Hop = Root | Property | Item | Value | Entry | Branch | Unnamed
 # §4's branch rules
 # --------------------------------------------------------------------------- #
 def branch_identity(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | None:
-    """§4 "Names"'s three branch rules, in order, as the branch's own SEGMENTS, or
+    """§4 "Names"'s four branch rules, in order, as the branch's own SEGMENTS, or
     ``None`` where none of them applies.
 
     A title names ITSELF, so it is a chain of one and the branch's ancestors are no part
-    of it.  A ``const`` or a required set is spelled ON the parent's own last segment, so
-    a branch named by either shares its base's spelling.  The required-set key is
+    of it.  A ``const``, a required set or an index is spelled ON the parent's own last
+    segment, so a branch named by any of them shares its base's spelling -- which is what
+    §4 writes for the fourth rule as well, ``<Base>Branch<i>``.  The required-set key is
     deliberate: it is stable when the spec adds an OPTIONAL field and renames exactly
     when requiredness changes, which is a semantic change a caller should meet as an
     ``ImportError`` rather than as a silent repoint.
@@ -275,7 +298,17 @@ def branch_identity(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | N
     **A name is never derived from the neighbourhood.**  The rule a previous generator
     reached for -- name the sole classed branch after its PARENT -- makes a class name a
     function of what its siblings happen to be, so adding a branch renames an unrelated
-    class.  §4 has no such rule and the caller refuses or falls back instead.
+    class.  §4 has no such rule, and its fourth rung is not that rule either: an index is
+    a fact of the branch's OWN position, so what it reads is where this branch is and
+    never what its siblings happen to state.  Inserting a branch AFTER this one moves no
+    name, which is the property :data:`INDEX_IS_THE_LAST_RUNG` states and
+    ``tests/test_names_collision.py`` grades.
+
+    **The index is the LAST rung and only the last.**  It is tried after all three
+    identity rungs have answered nothing, because a positional name says nothing about
+    what it names; where an identity exists the identity wins, and a branch whose index
+    the walk did not record (a nested union's, which needs no name of its own) answers
+    ``None`` and takes the union's own derived name.
     """
     if hop.title:
         return (class_name(hop.title),)
@@ -283,13 +316,19 @@ def branch_identity(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | N
         return _suffixed(parent, class_name(str(hop.pin)))
     if hop.required:
         return _suffixed(parent, "".join(class_name(str(k)) for k in sorted(hop.required)))
+    if hop.index is not None:
+        return _suffixed(parent, f"Branch{hop.index}")
     return None
 
 
-NO_IDENTITY = (
-    "no title, no discriminator const and no required set: this branch has no "
-    "identity to derive a name from, and D3 refuses rather than naming it after "
-    "its siblings"
+#: §4's fourth branch rule and the one ground it stands on, in the section's own terms.
+#: QUOTED by the check that grades it (``tests/test_names_collision.py``), so the sentence
+#: the code states and the sentence a check reports against are one string.
+INDEX_IS_THE_LAST_RUNG = (
+    "a branch with no title, no pinned const and no required set takes its index among "
+    "the branches, <Base>Branch<i>; a name is not an acceptance fact, so the fallback "
+    "neither widens nor narrows, and the index is a fact of the branch's own position, "
+    "so inserting a branch after it moves no name (section 4)"
 )
 
 
@@ -451,6 +490,13 @@ def segments(
     states, exactly as the property is part of ``<Property>Item``.  A branch TITLE names
     itself, so it starts a chain and its ancestors are no part of it.
 
+    **An INDEX is a fact of the node's own position and so it is a fact of its path**, and
+    that is why §4's fourth branch rung does not cost this function its first paragraph: a
+    branch's index is where it sits under its own combinator, not a reading of what its
+    siblings state, so inserting a branch after it renames nothing.  The index arrives as
+    a field on the hop (:class:`Branch`) because §6 forbids recovering a position from the
+    pointer string that happens to end in it.
+
     ``seen`` is the pointers already on this fold, so a hop table that named a pointer
     through itself answers once rather than recurring.  The parser gives a child a
     pointer strictly below its parent's, so the population is 0; it is written because
@@ -478,11 +524,13 @@ def segments(
     if isinstance(hop, Value):
         return _suffixed(parent, "Value")
     derived = branch_identity(hop, parent)
-    if derived is not None:
-        return derived
-    if hop.refuses:
-        return Refusal("title", pointer, NO_IDENTITY, kind=Kind.VERDICT)
-    return parent
+    # A branch whose four rungs all answer nothing is a NESTED union's branch and nothing
+    # else -- §4's fourth rung always answers for a branch that is a class, because the
+    # union records its index -- and a member type takes the union's own derived name.
+    # **This arm used to mint a VERDICT here**, and it was minting one where §4 states a
+    # fallback; the raise site is gone with it, which is one of the hand-written
+    # ``Kind`` arguments ``docs/plan/architecture.md`` §3 counts.
+    return parent if derived is None else derived
 
 
 #: §4's collision rule, in the section's own words.  QUOTED by the checks that grade it
