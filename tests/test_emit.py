@@ -5967,9 +5967,22 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # ``governance/policy-entry.json`` behind it; each declares a typed
     # ``additionalProperties`` of its own.  All three are the MAPPING path, so the store
     # list below is unchanged by them.
+    #
+    # **``brand.json`` joins at ``adcp-client-python-857``, and it is the STORE path six
+    # times over** -- the first addition to this list the extras store's own defect was
+    # holding back, and the one that more than doubles the store list below.  It declared an
+    # ``AliasDecl`` and then a ``ClassDecl`` at ``/definitions/colors`` and refused:
+    # §4 parses a class's extras store at the CLASS's pointer, the store was reaching
+    # ``emit.decide_type``, and that wrapper names the node at a pointer the bundle's
+    # ``$ref``\\ s name.  Four of the document's six store sites sit at such a pointer
+    # (``colors``, ``fonts``, ``border_radius``, ``elevation``), so the walk met the
+    # collision at the first of them and the other five sites were never graded.
+    # ``compiler.declare_object`` sends the store to the DISPATCH now.  Named rather
+    # than counted, and the six rows are in the store list below.
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
         "a2ui/component.json",
+        "brand.json",
         "brand/get-brand-identity-response.json",
         "brand/search-brands-response.json",
         "collection/get-collection-list-response.json",
@@ -6048,7 +6061,24 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # so the store's annotation carries ``AfterValidator(Distinct())`` -- the first store
     # in the tree whose annotation holds a CALL, which the four-character split hid every
     # name inside.
+    # **FIVE -> ELEVEN at ``adcp-client-python-857``, and all six are ``brand.json``'s.**
+    # The document is the store's own defect report: §4 parses the store at the CLASS's
+    # pointer, the store was reaching ``emit.decide_type``, and the wrapper named the
+    # node at ``/definitions/colors`` -- a pointer the document's own ``$ref`` names --
+    # so an ``AliasDecl`` landed where ``declare_object`` was about to write the
+    # ``ClassDecl``.  Four of the six (``colors``, ``fonts``, ``border_radius``,
+    # ``elevation``) sit at a bundle-named pointer and would each have collided; the
+    # walk reported the first.  The store now reaches the DISPATCH, which makes no
+    # statement about a pointer the store does not own, and the six sites are graded
+    # for the first time.  They are also the first store sites BELOW a document root
+    # that are not inside a union branch.
     assert [row for row in store if row[0] in out.emitted] == [
+        ("brand.json", "/definitions/colors"),
+        ("brand.json", "/definitions/fonts"),
+        ("brand.json", "/definitions/border_radius"),
+        ("brand.json", "/definitions/elevation"),
+        ("brand.json", "/definitions/spacing/properties/scale"),
+        ("brand.json", "/definitions/visual_guidelines/properties/type_scale"),
         ("brand/get-brand-identity-response.json", "/oneOf/0/properties/fonts"),
         ("core/canonical-media-buy-features.json", "/"),
         ("core/media-buy-features.json", "/"),

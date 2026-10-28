@@ -912,10 +912,26 @@ class Module:
             # The symmetric failure to the one above, and the same kind of thing: a
             # pointer names ONE node of a document, so two symbols at one pointer
             # means a fragment reference to it would import whichever the walk
-            # happened to declare last.  Measured 0 times over the whole population
-            # -- the root's pointer is written once, by the row, and every nested
-            # declaration sits at its own node -- so this refuses rather than
-            # ordering them.
+            # happened to declare last.  So this refuses rather than ordering them.
+            #
+            # **The population is 0 and it has been 1, which is the measurement worth
+            # keeping** (``adcp-client-python-857``, and ``10l.53``, which filed the
+            # stale "measured 0 times" this comment used to carry).  Every nested
+            # declaration sits at its own node and the root's pointer is written once
+            # by the row -- with ONE exception, and §4 puts it there deliberately: the
+            # extras store of a class with a typed ``additionalProperties`` is parsed
+            # at the CLASS's own pointer.  Routed through ``emit.decide_type``, the
+            # store took that pointer's name entry and declared an ``AliasDecl`` at it
+            # moments before :func:`declare_object` declared the ``ClassDecl``, and
+            # this arm fired once over the 1,054 portable documents: ``brand.json`` at
+            # ``/definitions/colors``, whose twelve properties and whose typed
+            # ``additionalProperties`` are all the same local ``$ref``.  The fix is in
+            # :func:`declare_object`, where the store now reaches THE DISPATCH rather
+            # than the walk wrapper, because the three things the wrapper adds are
+            # statements about the node that OWNS the pointer and the store does not
+            # own this one.  A figure claiming 0 where the population is not 0 invites
+            # a later row to delete a reachable arm, so the reading is written out
+            # rather than the number alone.
             return Refusal(
                 "$ref",
                 pointer,
@@ -1570,7 +1586,35 @@ def declare_object(
         # No hop: the parser builds the extras store at the CLASS's own pointer, because
         # it is the same instance re-read (§4), so it inherits the class's own name entry
         # and its VALUE hangs off that pointer like any mapping's.
-        store = lower_node(extras, mod)
+        #
+        # **THE DISPATCH AND NOT THE WALK WRAPPER, and §4's shared pointer is the whole
+        # reason.**  ``lower_node`` is ``emit.decide_type``, which is the dispatch plus
+        # three statements about THE NODE AT A POINTER -- adopt the class an earlier
+        # node of identical content declared at it, name the node where the bundle's
+        # ``$ref``\\ s name its pointer, and seed the content memo at it.  A pointer
+        # names ONE node, and the store is the one node in the tree that does not own
+        # the pointer it carries: §4 hands it the CLASS's, so all three of those
+        # statements are about the class standing here and none is about the store.
+        # Routed through the wrapper they fire on the store, which declares an alias at
+        # the class's own pointer moments before this function declares the class --
+        # ``Module.declare``'s collision, measured on ``brand.json`` at
+        # ``/definitions/colors``, a bundle-named class whose twelve properties and
+        # whose typed ``additionalProperties`` are all one local ``$ref``.  The alias
+        # would also be WRONG where it did not collide: a ``$ref`` to
+        # ``#/definitions/colors`` names the object, so the symbol at that pointer is
+        # the class and never the ``dict[K, V]`` its extras store comes to.
+        #
+        # The store's own CHILDREN keep the wrapper: its value sits at MAPV under
+        # ``<pointer>/additionalProperties`` and its key at KEY, each at a pointer it
+        # owns, and ``containers.mapping`` reaches both through ``lower_node`` as any
+        # mapping's children are reached.  So a named or collapsed node inside the
+        # store is named and collapsed exactly as it would be anywhere else.
+        #
+        # Imported on use, for the reason :func:`rules_at` is: ``codegen.lower.decide``
+        # imports this module, and D13 fixes the direction, so this side is the lazy one.
+        from codegen.lower.decide import decide as dispatch
+
+        store = dispatch(extras, mod)
         if isinstance(store, Refusal):
             return store
         extra_type = store.type

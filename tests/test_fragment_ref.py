@@ -729,8 +729,17 @@ def test_two_symbols_at_one_pointer_is_refused_rather_than_ordered() -> None:
     """A pointer names ONE node, so two symbols at one pointer would make a fragment
     reference import whichever the walk declared last.
 
-    Measured 0 times over the whole population, so this grades the guard on a
-    ``Module`` directly -- the symmetric case to the duplicate-NAME refusal beside it.
+    The population is 0, so this grades the guard on a ``Module`` directly -- the
+    symmetric case to the duplicate-NAME refusal beside it.
+
+    **It has been 1, and the measurement is why the guard stays**
+    (``adcp-client-python-857``): ``brand.json`` at ``/definitions/colors`` declared an
+    ``AliasDecl`` and then a ``ClassDecl`` at one pointer, because §4 parses a class's
+    extras store at the CLASS's own pointer and the store was reaching
+    ``emit.decide_type`` -- which names
+    the node at a pointer the bundle's ``$ref``\\ s name.  ``compiler.declare_object``
+    sends the store to THE DISPATCH now, so the only node that does not own the pointer
+    it carries makes no statement about it, and the test below reads 0 again.
 
     **The two halves are checked in two places now, because §14 step 7 split them.**
     ``Module.declare`` keeps the POINTER check, which is a fact about the walk; the
