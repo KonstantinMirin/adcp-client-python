@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "catalogRequirement": {
+      "additionalProperties": false,
+      "description": "Required country/type pairs and optional exact catalog versions for one identifier system. Country keys prevent a false Cartesian product between countries and place types.",
+      "properties": {
+        "countries": {
+          "additionalProperties": {
+            "items": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "anyOf": [
+                {
+                  "enum": [
+                    "airport",
+                    "borough",
+                    "city",
+                    "city_region",
+                    "commune",
+                    "county",
+                    "district",
+                    "municipality",
+                    "neighborhood",
+                    "post_town",
+                    "prefecture",
+                    "province",
+                    "quarter",
+                    "state",
+                    "territory",
+                    "ward"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "format": "uri",
+                  "pattern": "^https://",
+                  "type": "string"
+                }
+              ],
+              "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+              "examples": [
+                "city",
+                "municipality",
+                "borough",
+                "neighborhood",
+                "post_town",
+                "city_region",
+                "county",
+                "https://seller.example/geo/place-types/trade-area"
+              ],
+              "title": "Geographic Place Type"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[A-Z]{2}$"
+          },
+          "type": "object"
+        },
+        "system_versions": {
+          "description": "Optional exact catalog versions that must remain selectable. Versions are opaque strings, not ordered ranges.",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "countries"
+      ],
+      "type": "object"
+    }
+  },
+  "description": "Identifier systems and collision-safe country/type pairs the buyer must be allowed to select later.",
+  "properties": {
+    "systems": {
+      "additionalProperties": {
+        "$ref": "#/definitions/catalogRequirement"
+      },
+      "minProperties": 1,
+      "propertyNames": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "anyOf": [
+          {
+            "enum": [
+              "geonames",
+              "google_ads",
+              "microsoft_ads"
+            ],
+            "type": "string"
+          },
+          {
+            "format": "uri",
+            "pattern": "^https://",
+            "type": "string"
+          }
+        ],
+        "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
+        "examples": [
+          "geonames",
+          "google_ads",
+          "microsoft_ads",
+          "https://seller.example/geo/catalogs/places"
+        ],
+        "title": "Geographic Place Identifier System"
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "systems"
+  ],
+  "title": "Geographic Place Requirement",
+  "type": "object"
+}

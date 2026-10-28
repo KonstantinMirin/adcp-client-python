@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "required": [
+        "property_ids"
+      ]
+    },
+    {
+      "required": [
+        "identifiers"
+      ]
+    }
+  ],
+  "description": "A collection's presence on a specific publisher platform. For a channel collection, this is a carriage assertion: property_ids identify the host surfaces carrying the channel, while identifiers identify the channel in the host's catalog or an independent metadata system. This publisher-authored assertion supports discovery and cross-seller matching but does not authorize a sale; authorization remains rooted in the host publisher's collection-scoped authorized_agents entry.",
+  "properties": {
+    "identifiers": {
+      "description": "Identifiers for the collection on this publisher, including publisher-scoped channel/EPG identifiers and platform-independent metadata identifiers",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Type of distribution identifier",
+            "enum": [
+              "apple_podcast_id",
+              "spotify_collection_id",
+              "rss_url",
+              "podcast_guid",
+              "amazon_music_id",
+              "iheart_id",
+              "podcast_index_id",
+              "youtube_channel_id",
+              "youtube_channel_handle",
+              "youtube_channel_url",
+              "youtube_playlist_id",
+              "amazon_title_id",
+              "platform_channel_id",
+              "roku_channel_id",
+              "pluto_channel_id",
+              "tubi_id",
+              "peacock_id",
+              "tiktok_id",
+              "twitch_channel",
+              "imdb_id",
+              "gracenote_id",
+              "eidr_id",
+              "domain",
+              "substack_id"
+            ],
+            "enumDescriptions": {
+              "amazon_music_id": "Amazon Music / Audible ID",
+              "amazon_title_id": "Amazon Prime Video title ID",
+              "apple_podcast_id": "Apple Podcasts collection ID",
+              "domain": "Show's own website domain",
+              "eidr_id": "EIDR (Entertainment Identifier Registry) \u2014 ISO 10528 for audiovisual content",
+              "gracenote_id": "Gracenote TMS ID \u2014 industry standard for TV metadata",
+              "iheart_id": "iHeartRadio collection ID",
+              "imdb_id": "IMDb title ID \u2014 platform-independent cross-reference",
+              "peacock_id": "Peacock content ID",
+              "platform_channel_id": "Stable channel identifier assigned by the platform named in the enclosing distribution's publisher_domain. Use as the portable fallback when no platform-specific identifier type exists; identity is the tuple (publisher_domain, value), so this type is only meaningful inside a distribution entry and MUST NOT appear in bare {type, value} contexts (distribution_ids sources, exclude filters). Use the platform's stable catalog identifier, not an EPG position number \u2014 hosts renumber lineups.",
+              "pluto_channel_id": "Pluto TV channel ID",
+              "podcast_guid": "Podcasting 2.0 GUID",
+              "podcast_index_id": "PodcastIndex.org ID",
+              "roku_channel_id": "Roku Channel ID",
+              "rss_url": "Canonical RSS feed URL",
+              "spotify_collection_id": "Spotify collection URI",
+              "substack_id": "Substack publication identifier",
+              "tiktok_id": "TikTok account ID",
+              "tubi_id": "Tubi content ID",
+              "twitch_channel": "Twitch channel name",
+              "youtube_channel_handle": "YouTube channel handle such as @example. Useful as a discovery alias; channel ID is preferred for canonical matching.",
+              "youtube_channel_id": "YouTube channel ID. Preferred canonical identifier for YouTube channels; handles and URLs are discovery aliases that should resolve to this when possible.",
+              "youtube_channel_url": "YouTube channel URL such as https://www.youtube.com/@example or https://www.youtube.com/channel/UC.... Useful as a discovery alias; channel ID is preferred for canonical matching.",
+              "youtube_playlist_id": "YouTube playlist ID (for series within a channel)"
+            },
+            "title": "Distribution Identifier Type",
+            "type": "string"
+          },
+          "value": {
+            "description": "The identifier value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "property_ids": {
+      "description": "Publisher-scoped property IDs from publisher_domain's adagents.json that carry this collection. For owner-sold channel inventory, these identify the host apps without requiring the host to publish channel-owner placement definitions.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.",
+        "examples": [
+          "cnn_ctv_app",
+          "homepage",
+          "mobile_ios",
+          "instagram"
+        ],
+        "pattern": "^[a-z0-9_]+$",
+        "title": "Property ID",
+        "type": "string",
+        "x-entity": "property"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "publisher_domain": {
+      "description": "Domain of the publisher platform where the collection is distributed (e.g., 'youtube.com', 'spotify.com'). Property IDs and publisher-scoped identifiers in this object resolve in this publisher's namespace.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "publisher_domain"
+  ],
+  "title": "Collection Distribution",
+  "type": "object"
+}

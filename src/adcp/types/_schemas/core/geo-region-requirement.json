@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Buyer minimum requirements for ISO 3166-2 subdivision values that must remain independently selectable later. Country keys prevent a false cross-country capability claim. all_values requires support for every protocol-valid ISO subdivision active in the seller's support snapshot when the declaration is issued; values requests an exact finite candidate set. Exact delivery values known now belong in get_products.targeting_overlay instead.",
+  "properties": {
+    "countries": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "all_values": {
+                "const": true,
+                "description": "Require every protocol-valid ISO 3166-2 subdivision active in the seller's returned support snapshot for this country to remain selectable.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "all_values"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "values": {
+                "description": "Exact finite set of ISO 3166-2 identifiers the buyer may select later.",
+                "items": {
+                  "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "values"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "description": "Required ISO subdivision support keyed by ISO 3166-1 alpha-2 country.",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[A-Z]{2}$"
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "countries"
+  ],
+  "title": "Geographic Region Requirement",
+  "type": "object",
+  "x-adcp-validation": {
+    "spec": "docs/media-buy/advanced-topics/targeting.mdx#geo_regions",
+    "verifier_constraints": {
+      "country_prefix_matches_map_key": {
+        "map_field": "countries",
+        "values_field": "values"
+      }
+    }
+  }
+}

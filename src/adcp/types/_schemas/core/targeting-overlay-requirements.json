@@ -1,0 +1,1499 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "browserRequirement": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/required"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Require later package-level selection for the listed canonical browser families. The requirement matches unrestricted true support or structured support containing every requested family.",
+          "properties": {
+            "families": {
+              "items": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Portable browser families for targeting the impression delivery and rendering environment, not a post-click landing-page browser. Values identify browser families, not versions or seller-native browser IDs, and MUST NOT be inferred solely from operating system, device, web/mobile-web inventory, or placement. android_webview means an impression reliably classified as rendering in Android WebView. other means a seller-recognized browser family that is not explicitly enumerated; unknown means the seller cannot classify the browser into a recognized family.",
+                "enum": [
+                  "chrome",
+                  "safari",
+                  "firefox",
+                  "edge",
+                  "opera",
+                  "samsung_internet",
+                  "android_webview",
+                  "other",
+                  "unknown"
+                ],
+                "title": "Browser Family",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "families"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "daypartRequirement": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/required"
+        },
+        {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "iana_timezones"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "timezone_modes": {
+                    "contains": {
+                      "const": "iana"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "description": "Require later package-level daypart selection using each listed timezone mode. Structured product support must contain every requested mode. For backward compatibility, daypart_targets support true satisfies inventory_local requirements only and does not satisfy requirements for iana.",
+          "properties": {
+            "iana_timezones": {
+              "description": "Exact concrete IANA timezone identifiers that must remain selectable after discovery. Valid only when timezone_modes includes iana.",
+              "items": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Concrete timezone identifier in the implementation's supported IANA Time Zone Database, such as America/New_York, CET, or UTC.",
+                "maxLength": 255,
+                "minLength": 1,
+                "not": {
+                  "const": "inventory_local"
+                },
+                "pattern": "^[A-Za-z0-9._+-]+(?:/[A-Za-z0-9._+-]+)*$",
+                "title": "IANA Timezone Identifier",
+                "type": "string",
+                "x-adcp-validation": {
+                  "iana_timezone": "value_must_resolve_in_the_implementations_supported_IANA_TZDB"
+                },
+                "x-added-in": "3.2.0"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "timezone_modes": {
+              "items": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Clock modes a product supports for daypart targeting.",
+                "enum": [
+                  "inventory_local",
+                  "iana"
+                ],
+                "title": "Daypart Timezone Mode",
+                "type": "string",
+                "x-added-in": "3.2.0"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "timezone_modes"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "keywordRequirement": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/required"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "supported_match_types": {
+              "items": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Keyword targeting match type. broad: ads may serve on queries semantically related to the keyword. phrase: ads serve when the query contains the keyword phrase. exact: ads serve only when the query matches the keyword exactly.",
+                "enum": [
+                  "broad",
+                  "phrase",
+                  "exact"
+                ],
+                "enumDescriptions": {
+                  "broad": "Ads may serve on queries semantically related to the keyword",
+                  "exact": "Ads serve only when the query matches the keyword exactly",
+                  "phrase": "Ads serve when the query contains the keyword phrase in order"
+                },
+                "title": "Match Type",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "supported_match_types"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "metroRequirement": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/required"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "systems": {
+              "items": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Metro area classification systems for geographic targeting",
+                "enum": [
+                  "nielsen_dma",
+                  "uk_itl1",
+                  "uk_itl2",
+                  "eurostat_nuts2",
+                  "custom"
+                ],
+                "title": "Metro Area System",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "systems"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "required": {
+      "const": true,
+      "type": "boolean"
+    }
+  },
+  "description": "Buyer minimum requirements for targeting dimensions that will be selected on packages later. This request shape deliberately excludes seller limits such as max_values_per_package and max_packages. Matching is capability containment: where a field permits a boolean form, a requirement value of true matches product support true or any valid positive support object, and product support true satisfies every protocol-valid structured requirement except daypart_targets, where true promises inventory_local only. Otherwise, structured product support must contain the structured requirement. For geo_regions and geo_regions_exclude, every requested country must exist; requested all_values requires supported all_values; and requested values must be a subset of supported values unless support declares all_values. For geo_places and geo_places_exclude, every requested system and country key must exist and each requested place-type and system-version array must be a subset of the corresponding product array. Include and exclude fields match independently. Every valid structured requirement or support object represents a positive capability; empty, extension-only, and false-only objects are invalid. Object fields the buyer did not request do not participate. Missing or unknown required fields do not match. Numeric seller limits are disclosed only in Product.overlay_support and never participate in matching. Legacy frequency_cap: true matches only the unchanged broad declaration. frequency_cap_support matches either legacy true or a containing structured declaration; an empty object requests either positive form. A requirement carries at most one of the two.",
+  "minProperties": 1,
+  "not": {
+    "required": [
+      "frequency_cap",
+      "frequency_cap_support"
+    ]
+  },
+  "properties": {
+    "age_restriction": {
+      "$ref": "#/definitions/required"
+    },
+    "audience_exclude": {
+      "$ref": "#/definitions/required"
+    },
+    "audience_include": {
+      "$ref": "#/definitions/required"
+    },
+    "browser": {
+      "$ref": "#/definitions/browserRequirement"
+    },
+    "browser_exclude": {
+      "$ref": "#/definitions/browserRequirement"
+    },
+    "collection_list": {
+      "$ref": "#/definitions/required"
+    },
+    "collection_list_exclude": {
+      "$ref": "#/definitions/required"
+    },
+    "daypart_targets": {
+      "$ref": "#/definitions/daypartRequirement"
+    },
+    "demographics": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/required"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "age": {
+              "$ref": "#/definitions/required"
+            }
+          },
+          "required": [
+            "age"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "device_platform": {
+      "$ref": "#/definitions/required"
+    },
+    "device_platform_exclude": {
+      "$ref": "#/definitions/required"
+    },
+    "device_type": {
+      "$ref": "#/definitions/required"
+    },
+    "device_type_exclude": {
+      "$ref": "#/definitions/required"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "frequency_cap": {
+      "$ref": "#/definitions/required"
+    },
+    "frequency_cap_support": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Minimum structured package-cap support. Matches a broad legacy frequency_cap: true or a containing frequency_cap_support object. Mutually exclusive with a frequency_cap: true requirement, which would exclude every constrained product.",
+      "properties": {
+        "mutable_fields": {
+          "description": "Require each listed logical field to be mutable after creation. Matches a product whose mutable_fields contains every listed value, or a product that omits mutable_fields, or legacy frequency_cap: true. A product declaring mutable_fields: [] is create-only and never matches a non-empty list.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A logical frequency-cap field that a product implementation can change after creation. suppress covers the effective cooldown whether represented by suppress or the deprecated suppress_minutes alias.",
+            "enum": [
+              "max_impressions",
+              "per",
+              "window",
+              "suppress"
+            ],
+            "title": "Frequency Cap Mutable Field",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "supported_control_modes": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A supported package frequency-cap control shape.",
+            "enum": [
+              "max_impressions",
+              "suppress",
+              "max_impressions_and_suppress"
+            ],
+            "title": "Frequency Cap Control Mode",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "supported_per_units": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Unit of measurement for reach and audience size metrics. Different channels and measurement providers count reach in fundamentally different units, making cross-channel comparison impossible without declaring the unit.",
+            "enum": [
+              "individuals",
+              "households",
+              "devices",
+              "accounts",
+              "cookies",
+              "custom"
+            ],
+            "enumDescriptions": {
+              "accounts": "Unique logged-in accounts (platform-specific identity).",
+              "cookies": "Unique browser cookies.",
+              "custom": "Seller-defined reach unit. Describe in ext. For a Product.identity declaration with persistent_identifier false, describe the unit in Product.identity.reach_methodology.",
+              "devices": "Unique device identifiers (IDFA, GAID, CTV device ID).",
+              "households": "Unique households or TV homes.",
+              "individuals": "Unique people. Panel-based or identity-resolved measurement."
+            },
+            "title": "Reach Unit",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "supported_suppression_units": {
+          "description": "Require each listed unit to be a supported suppress unit after seller-wide inheritance.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A duration unit supported for a frequency-cap window or suppression period.",
+            "enum": [
+              "seconds",
+              "minutes",
+              "hours",
+              "days",
+              "campaign"
+            ],
+            "title": "Frequency Cap Duration Unit",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "supported_window_units": {
+          "description": "Require each listed unit to be a supported max_impressions.window unit after seller-wide inheritance.",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "A duration unit supported for a frequency-cap window or suppression period.",
+            "enum": [
+              "seconds",
+              "minutes",
+              "hours",
+              "days",
+              "campaign"
+            ],
+            "title": "Frequency Cap Duration Unit",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "title": "Frequency Cap Requirements",
+      "type": "object"
+    },
+    "geo_countries": {
+      "$ref": "#/definitions/required"
+    },
+    "geo_countries_exclude": {
+      "$ref": "#/definitions/required"
+    },
+    "geo_metros": {
+      "$ref": "#/definitions/metroRequirement"
+    },
+    "geo_metros_exclude": {
+      "$ref": "#/definitions/metroRequirement"
+    },
+    "geo_places": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "definitions": {
+        "catalogRequirement": {
+          "additionalProperties": false,
+          "description": "Required country/type pairs and optional exact catalog versions for one identifier system. Country keys prevent a false Cartesian product between countries and place types.",
+          "properties": {
+            "countries": {
+              "additionalProperties": {
+                "items": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "airport",
+                        "borough",
+                        "city",
+                        "city_region",
+                        "commune",
+                        "county",
+                        "district",
+                        "municipality",
+                        "neighborhood",
+                        "post_town",
+                        "prefecture",
+                        "province",
+                        "quarter",
+                        "state",
+                        "territory",
+                        "ward"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "format": "uri",
+                      "pattern": "^https://",
+                      "type": "string"
+                    }
+                  ],
+                  "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+                  "examples": [
+                    "city",
+                    "municipality",
+                    "borough",
+                    "neighborhood",
+                    "post_town",
+                    "city_region",
+                    "county",
+                    "https://seller.example/geo/place-types/trade-area"
+                  ],
+                  "title": "Geographic Place Type"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "minProperties": 1,
+              "propertyNames": {
+                "pattern": "^[A-Z]{2}$"
+              },
+              "type": "object"
+            },
+            "system_versions": {
+              "description": "Optional exact catalog versions that must remain selectable. Versions are opaque strings, not ordered ranges.",
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "countries"
+          ],
+          "type": "object"
+        }
+      },
+      "description": "Identifier systems and collision-safe country/type pairs the buyer must be allowed to select later.",
+      "properties": {
+        "systems": {
+          "additionalProperties": {
+            "additionalProperties": false,
+            "description": "Required country/type pairs and optional exact catalog versions for one identifier system. Country keys prevent a false Cartesian product between countries and place types.",
+            "properties": {
+              "countries": {
+                "additionalProperties": {
+                  "items": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "airport",
+                          "borough",
+                          "city",
+                          "city_region",
+                          "commune",
+                          "county",
+                          "district",
+                          "municipality",
+                          "neighborhood",
+                          "post_town",
+                          "prefecture",
+                          "province",
+                          "quarter",
+                          "state",
+                          "territory",
+                          "ward"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "format": "uri",
+                        "pattern": "^https://",
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+                    "examples": [
+                      "city",
+                      "municipality",
+                      "borough",
+                      "neighborhood",
+                      "post_town",
+                      "city_region",
+                      "county",
+                      "https://seller.example/geo/place-types/trade-area"
+                    ],
+                    "title": "Geographic Place Type"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "minProperties": 1,
+                "propertyNames": {
+                  "pattern": "^[A-Z]{2}$"
+                },
+                "type": "object"
+              },
+              "system_versions": {
+                "description": "Optional exact catalog versions that must remain selectable. Versions are opaque strings, not ordered ranges.",
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "countries"
+            ],
+            "type": "object"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "anyOf": [
+              {
+                "enum": [
+                  "geonames",
+                  "google_ads",
+                  "microsoft_ads"
+                ],
+                "type": "string"
+              },
+              {
+                "format": "uri",
+                "pattern": "^https://",
+                "type": "string"
+              }
+            ],
+            "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
+            "examples": [
+              "geonames",
+              "google_ads",
+              "microsoft_ads",
+              "https://seller.example/geo/catalogs/places"
+            ],
+            "title": "Geographic Place Identifier System"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "systems"
+      ],
+      "title": "Geographic Place Requirement",
+      "type": "object",
+      "x-adcp-schema-uri": "/schemas/core/geo-place-requirement.json"
+    },
+    "geo_places_exclude": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "definitions": {
+        "catalogRequirement": {
+          "additionalProperties": false,
+          "description": "Required country/type pairs and optional exact catalog versions for one identifier system. Country keys prevent a false Cartesian product between countries and place types.",
+          "properties": {
+            "countries": {
+              "additionalProperties": {
+                "items": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "airport",
+                        "borough",
+                        "city",
+                        "city_region",
+                        "commune",
+                        "county",
+                        "district",
+                        "municipality",
+                        "neighborhood",
+                        "post_town",
+                        "prefecture",
+                        "province",
+                        "quarter",
+                        "state",
+                        "territory",
+                        "ward"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "format": "uri",
+                      "pattern": "^https://",
+                      "type": "string"
+                    }
+                  ],
+                  "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+                  "examples": [
+                    "city",
+                    "municipality",
+                    "borough",
+                    "neighborhood",
+                    "post_town",
+                    "city_region",
+                    "county",
+                    "https://seller.example/geo/place-types/trade-area"
+                  ],
+                  "title": "Geographic Place Type"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "minProperties": 1,
+              "propertyNames": {
+                "pattern": "^[A-Z]{2}$"
+              },
+              "type": "object"
+            },
+            "system_versions": {
+              "description": "Optional exact catalog versions that must remain selectable. Versions are opaque strings, not ordered ranges.",
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "countries"
+          ],
+          "type": "object"
+        }
+      },
+      "description": "Identifier systems and collision-safe country/type pairs the buyer must be allowed to select later.",
+      "properties": {
+        "systems": {
+          "additionalProperties": {
+            "additionalProperties": false,
+            "description": "Required country/type pairs and optional exact catalog versions for one identifier system. Country keys prevent a false Cartesian product between countries and place types.",
+            "properties": {
+              "countries": {
+                "additionalProperties": {
+                  "items": {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "airport",
+                          "borough",
+                          "city",
+                          "city_region",
+                          "commune",
+                          "county",
+                          "district",
+                          "municipality",
+                          "neighborhood",
+                          "post_town",
+                          "prefecture",
+                          "province",
+                          "quarter",
+                          "state",
+                          "territory",
+                          "ward"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "format": "uri",
+                        "pattern": "^https://",
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Canonical place classification. Registered tokens have protocol-defined meanings. Catalog-specific classifications without a registered mapping MUST use an absolute HTTPS URI controlled by the vocabulary owner; consumers compare URI types as exact opaque strings.",
+                    "examples": [
+                      "city",
+                      "municipality",
+                      "borough",
+                      "neighborhood",
+                      "post_town",
+                      "city_region",
+                      "county",
+                      "https://seller.example/geo/place-types/trade-area"
+                    ],
+                    "title": "Geographic Place Type"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "minProperties": 1,
+                "propertyNames": {
+                  "pattern": "^[A-Z]{2}$"
+                },
+                "type": "object"
+              },
+              "system_versions": {
+                "description": "Optional exact catalog versions that must remain selectable. Versions are opaque strings, not ordered ranges.",
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "countries"
+            ],
+            "type": "object"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "anyOf": [
+              {
+                "enum": [
+                  "geonames",
+                  "google_ads",
+                  "microsoft_ads"
+                ],
+                "type": "string"
+              },
+              {
+                "format": "uri",
+                "pattern": "^https://",
+                "type": "string"
+              }
+            ],
+            "description": "Collision-safe identifier namespace for geographic places. Registered tokens have protocol-defined semantics. Unregistered systems MUST use an absolute HTTPS URI controlled by the catalog owner; consumers compare URI systems as exact opaque strings.",
+            "examples": [
+              "geonames",
+              "google_ads",
+              "microsoft_ads",
+              "https://seller.example/geo/catalogs/places"
+            ],
+            "title": "Geographic Place Identifier System"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "systems"
+      ],
+      "title": "Geographic Place Requirement",
+      "type": "object",
+      "x-adcp-schema-uri": "/schemas/core/geo-place-requirement.json"
+    },
+    "geo_postal_areas": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/required"
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "allOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "items": {
+                  "enum": [
+                    "postal_code",
+                    "custom"
+                  ]
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "description": "Declares supported postal area systems. Native support is keyed by ISO 3166-1 alpha-2 country with arrays of country-local postal systems. Deprecated country-fused boolean aliases may be included during migration.",
+              "properties": {
+                "AT": {
+                  "items": {
+                    "const": "plz"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "AU": {
+                  "items": {
+                    "const": "postcode"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "BR": {
+                  "items": {
+                    "const": "cep"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "CA": {
+                  "items": {
+                    "enum": [
+                      "fsa",
+                      "full"
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "CH": {
+                  "items": {
+                    "const": "plz"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "DE": {
+                  "items": {
+                    "const": "plz"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "FR": {
+                  "items": {
+                    "const": "code_postal"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "GB": {
+                  "items": {
+                    "enum": [
+                      "outward",
+                      "full"
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "IN": {
+                  "items": {
+                    "const": "pin"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "US": {
+                  "items": {
+                    "enum": [
+                      "zip",
+                      "zip_plus_four"
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "ZA": {
+                  "items": {
+                    "const": "postal_code"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "at_plz": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "au_postcode": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "ca_fsa": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "ca_full": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "ch_plz": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "de_plz": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "fr_code_postal": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "gb_full": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "gb_outward": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "us_zip": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "us_zip_plus_four": {
+                  "deprecated": true,
+                  "type": "boolean"
+                }
+              },
+              "propertyNames": {
+                "anyOf": [
+                  {
+                    "pattern": "^[A-Z]{2}$"
+                  },
+                  {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "deprecated": true,
+                    "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
+                    "enum": [
+                      "us_zip",
+                      "us_zip_plus_four",
+                      "gb_outward",
+                      "gb_full",
+                      "ca_fsa",
+                      "ca_full",
+                      "de_plz",
+                      "fr_code_postal",
+                      "au_postcode",
+                      "ch_plz",
+                      "at_plz"
+                    ],
+                    "title": "Country-Fused Postal Code System",
+                    "type": "string"
+                  }
+                ]
+              },
+              "title": "Postal Area Support",
+              "type": "object"
+            },
+            {
+              "minProperties": 1,
+              "properties": {
+                "at_plz": {
+                  "const": true
+                },
+                "au_postcode": {
+                  "const": true
+                },
+                "ca_fsa": {
+                  "const": true
+                },
+                "ca_full": {
+                  "const": true
+                },
+                "ch_plz": {
+                  "const": true
+                },
+                "de_plz": {
+                  "const": true
+                },
+                "fr_code_postal": {
+                  "const": true
+                },
+                "gb_full": {
+                  "const": true
+                },
+                "gb_outward": {
+                  "const": true
+                },
+                "us_zip": {
+                  "const": true
+                },
+                "us_zip_plus_four": {
+                  "const": true
+                }
+              },
+              "type": "object"
+            }
+          ],
+          "description": "Non-vacuous postal capability used for hard targeting requirements and product overlay support. At least one native system array or true-valued deprecated alias is required. The general seller-capabilities postal schema remains permissive for backward compatibility, but an empty or false-only map cannot satisfy a hard discovery requirement.",
+          "title": "Positive Postal Area Support"
+        }
+      ]
+    },
+    "geo_postal_areas_exclude": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/required"
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "allOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "items": {
+                  "enum": [
+                    "postal_code",
+                    "custom"
+                  ]
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "description": "Declares supported postal area systems. Native support is keyed by ISO 3166-1 alpha-2 country with arrays of country-local postal systems. Deprecated country-fused boolean aliases may be included during migration.",
+              "properties": {
+                "AT": {
+                  "items": {
+                    "const": "plz"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "AU": {
+                  "items": {
+                    "const": "postcode"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "BR": {
+                  "items": {
+                    "const": "cep"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "CA": {
+                  "items": {
+                    "enum": [
+                      "fsa",
+                      "full"
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "CH": {
+                  "items": {
+                    "const": "plz"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "DE": {
+                  "items": {
+                    "const": "plz"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "FR": {
+                  "items": {
+                    "const": "code_postal"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "GB": {
+                  "items": {
+                    "enum": [
+                      "outward",
+                      "full"
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "IN": {
+                  "items": {
+                    "const": "pin"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "US": {
+                  "items": {
+                    "enum": [
+                      "zip",
+                      "zip_plus_four"
+                    ]
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "ZA": {
+                  "items": {
+                    "const": "postal_code"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "at_plz": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "au_postcode": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "ca_fsa": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "ca_full": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "ch_plz": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "de_plz": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "fr_code_postal": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "gb_full": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "gb_outward": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "us_zip": {
+                  "deprecated": true,
+                  "type": "boolean"
+                },
+                "us_zip_plus_four": {
+                  "deprecated": true,
+                  "type": "boolean"
+                }
+              },
+              "propertyNames": {
+                "anyOf": [
+                  {
+                    "pattern": "^[A-Z]{2}$"
+                  },
+                  {
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "deprecated": true,
+                    "description": "Deprecated country-fused postal code systems for geographic targeting. Prefer postal-system with an explicit ISO 3166-1 alpha-2 country on postal area objects.",
+                    "enum": [
+                      "us_zip",
+                      "us_zip_plus_four",
+                      "gb_outward",
+                      "gb_full",
+                      "ca_fsa",
+                      "ca_full",
+                      "de_plz",
+                      "fr_code_postal",
+                      "au_postcode",
+                      "ch_plz",
+                      "at_plz"
+                    ],
+                    "title": "Country-Fused Postal Code System",
+                    "type": "string"
+                  }
+                ]
+              },
+              "title": "Postal Area Support",
+              "type": "object"
+            },
+            {
+              "minProperties": 1,
+              "properties": {
+                "at_plz": {
+                  "const": true
+                },
+                "au_postcode": {
+                  "const": true
+                },
+                "ca_fsa": {
+                  "const": true
+                },
+                "ca_full": {
+                  "const": true
+                },
+                "ch_plz": {
+                  "const": true
+                },
+                "de_plz": {
+                  "const": true
+                },
+                "fr_code_postal": {
+                  "const": true
+                },
+                "gb_full": {
+                  "const": true
+                },
+                "gb_outward": {
+                  "const": true
+                },
+                "us_zip": {
+                  "const": true
+                },
+                "us_zip_plus_four": {
+                  "const": true
+                }
+              },
+              "type": "object"
+            }
+          ],
+          "description": "Non-vacuous postal capability used for hard targeting requirements and product overlay support. At least one native system array or true-valued deprecated alias is required. The general seller-capabilities postal schema remains permissive for backward compatibility, but an empty or false-only map cannot satisfy a hard discovery requirement.",
+          "title": "Positive Postal Area Support"
+        }
+      ]
+    },
+    "geo_proximity": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/required"
+        },
+        {
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "radius"
+              ]
+            },
+            {
+              "required": [
+                "travel_time"
+              ]
+            },
+            {
+              "required": [
+                "geometry"
+              ]
+            },
+            {
+              "required": [
+                "transport_modes"
+              ]
+            }
+          ],
+          "properties": {
+            "geometry": {
+              "$ref": "#/definitions/required"
+            },
+            "radius": {
+              "$ref": "#/definitions/required"
+            },
+            "transport_modes": {
+              "items": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "description": "Transportation modes for isochrone-based catchment area calculations. Determines how travel time translates to geographic reach.",
+                "enum": [
+                  "walking",
+                  "cycling",
+                  "driving",
+                  "public_transport"
+                ],
+                "enumDescriptions": {
+                  "cycling": "Bicycle travel on roads and cycle paths",
+                  "driving": "Motor vehicle travel on road networks",
+                  "public_transport": "Public transit including bus, rail, metro, and ferry",
+                  "walking": "Pedestrian travel on walkable paths and sidewalks"
+                },
+                "title": "Transport Mode",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "travel_time": {
+              "$ref": "#/definitions/required"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "geo_regions": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/required"
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "description": "Buyer minimum requirements for ISO 3166-2 subdivision values that must remain independently selectable later. Country keys prevent a false cross-country capability claim. all_values requires support for every protocol-valid ISO subdivision active in the seller's support snapshot when the declaration is issued; values requests an exact finite candidate set. Exact delivery values known now belong in get_products.targeting_overlay instead.",
+          "properties": {
+            "countries": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "all_values": {
+                        "const": true,
+                        "description": "Require every protocol-valid ISO 3166-2 subdivision active in the seller's returned support snapshot for this country to remain selectable.",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "all_values"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "values": {
+                        "description": "Exact finite set of ISO 3166-2 identifiers the buyer may select later.",
+                        "items": {
+                          "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      }
+                    },
+                    "required": [
+                      "values"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "description": "Required ISO subdivision support keyed by ISO 3166-1 alpha-2 country.",
+              "minProperties": 1,
+              "propertyNames": {
+                "pattern": "^[A-Z]{2}$"
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "countries"
+          ],
+          "title": "Geographic Region Requirement",
+          "type": "object",
+          "x-adcp-schema-uri": "/schemas/core/geo-region-requirement.json",
+          "x-adcp-validation": {
+            "spec": "docs/media-buy/advanced-topics/targeting.mdx#geo_regions",
+            "verifier_constraints": {
+              "country_prefix_matches_map_key": {
+                "map_field": "countries",
+                "values_field": "values"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "geo_regions_exclude": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/required"
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "description": "Buyer minimum requirements for ISO 3166-2 subdivision values that must remain independently selectable later. Country keys prevent a false cross-country capability claim. all_values requires support for every protocol-valid ISO subdivision active in the seller's support snapshot when the declaration is issued; values requests an exact finite candidate set. Exact delivery values known now belong in get_products.targeting_overlay instead.",
+          "properties": {
+            "countries": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "all_values": {
+                        "const": true,
+                        "description": "Require every protocol-valid ISO 3166-2 subdivision active in the seller's returned support snapshot for this country to remain selectable.",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "all_values"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "values": {
+                        "description": "Exact finite set of ISO 3166-2 identifiers the buyer may select later.",
+                        "items": {
+                          "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$",
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      }
+                    },
+                    "required": [
+                      "values"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "description": "Required ISO subdivision support keyed by ISO 3166-1 alpha-2 country.",
+              "minProperties": 1,
+              "propertyNames": {
+                "pattern": "^[A-Z]{2}$"
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "countries"
+          ],
+          "title": "Geographic Region Requirement",
+          "type": "object",
+          "x-adcp-schema-uri": "/schemas/core/geo-region-requirement.json",
+          "x-adcp-validation": {
+            "spec": "docs/media-buy/advanced-topics/targeting.mdx#geo_regions",
+            "verifier_constraints": {
+              "country_prefix_matches_map_key": {
+                "map_field": "countries",
+                "values_field": "values"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "keyword_targets": {
+      "$ref": "#/definitions/keywordRequirement"
+    },
+    "language": {
+      "$ref": "#/definitions/required"
+    },
+    "negative_keywords": {
+      "$ref": "#/definitions/keywordRequirement"
+    },
+    "placement_selection": {
+      "$ref": "#/definitions/required"
+    },
+    "property_list": {
+      "$ref": "#/definitions/required"
+    },
+    "property_list_exclude": {
+      "$ref": "#/definitions/required"
+    },
+    "signal_targeting_groups": {
+      "$ref": "#/definitions/required"
+    },
+    "store_catchments": {
+      "$ref": "#/definitions/required"
+    }
+  },
+  "title": "Targeting Overlay Requirements",
+  "type": "object"
+}
