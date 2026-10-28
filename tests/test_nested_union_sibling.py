@@ -255,13 +255,19 @@ def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None
     # walk extracts the three facts and the pass decides which one wins.
     def identity(branch: Any, key: str | None) -> str | None:
         hop = lower_union._naming_facts(  # noqa: SLF001 -- the test is the caller
-            branch, branch.get("properties"), key, refuses=False
+            branch, branch.get("properties"), key
         )
         # §4's branch rules answer with the branch's own SEGMENTS now
-        # (``adcp-client-python-10l.50``), because which of the three facts wins decides
+        # (``adcp-client-python-10l.50``), because which of the facts wins decides
         # whether the parent's spelling is part of the name: a ``const`` pin is spelled
         # ON it and a title names itself.  The parent here is a chain of one, ``X``, and
         # what is compared is the name that chain spells.
+        #
+        # §4's FOURTH rung answers ``None`` here and that is this position's own rule:
+        # ``_naming_facts`` reads the three DECLARED facts and ``union.nested`` records no
+        # INDEX, because a nested union's branch is a member type that needs no name of
+        # its own (``adcp-client-python-10l.41``).  So "no identity at all" below is still
+        # the exact claim -- a ROOT union's branch would take ``XBranch<i>``.
         segments = names.branch_identity(hop, ("X",))
         return None if segments is None else "".join(segments)
 

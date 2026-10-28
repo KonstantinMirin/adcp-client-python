@@ -205,7 +205,7 @@ def test_a_ref_branch_is_a_class_with_two_bases_and_the_dispatch_is_derived() ->
         shutil.rmtree(at)
 
 
-def test_a_ref_branch_root_with_no_derivable_dispatch_refuses_on_nothing_of_its_own() -> None:
+def test_a_ref_branch_root_with_no_derivable_dispatch_names_its_branches_by_index() -> None:
     """**The dispatch mints NO refusal at all now, which is §4's own answer written**
     (``adcp-client-python-10l.21``): "a union matching none of the three emits a plain
     ``A | B`` over its branches and declares an UNDERDETERMINED approximation at the
@@ -216,18 +216,21 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_refuses_on_nothing_of_its_
     refused with had to be a DEFERRAL rather than a verdict, because a verdict counts a
     clearable document as finally refused.  The declaration answers that question
     differently and better -- there is no refusal to carry a kind -- so what is left to
-    assert is that the dispatch is silent and each fixture reaches ITS OWN next
-    obstruction, which here is D3's naming pass: a bare ``$ref`` branch with no title,
-    no pin and no ``required`` has no identity to derive a class name from, and the one
-    with a repeated pin derives the SAME name twice.  Both are properties of the
-    document, so both are verdicts, and both are decided elsewhere and already live in
-    the tree (``creative/get-creative-features-response.json`` and
-    ``trusted-match/provider-registration.json`` carry them).
+    assert is that the dispatch is silent and each fixture reaches ITS OWN next outcome.
+
+    **Two of the three now EMIT** (``adcp-client-python-10l.41``): §4's fourth branch
+    rung names a branch with no identity by its INDEX, ``<Base>Branch<i>``, so a bare
+    ``$ref`` branch with no title, no pin and no ``required`` of its own is named rather
+    than refused.  The third still refuses, and on the OTHER naming mechanism: two
+    branches pinning one ``const`` derive the SAME name, and both chains are one segment,
+    so §4's collision rule has nothing to lengthen by.  That is the bundle's own
+    ``trusted-match/provider-registration.json`` in a fixture, and
+    ``adcp-client-python-10l.42`` is the row that owns it.
 
     Three fixtures, because "no shared distinct const" has three shapes: no pin at all,
-    a pin only one branch carries, and one pin repeated.  That the three reach two
-    DIFFERENT naming refusals is what says the dispatch stopped standing in front of
-    them.
+    a pin only one branch carries, and one pin repeated.  That the first two emit and the
+    third refuses on a DIFFERENT sentence is what says the dispatch stopped standing in
+    front of §4's naming rules.
 
     ``tests/test_union_disjointness.py::
     test_a_root_whose_branches_overlap_declares_underdetermined_and_emits`` is where the
@@ -243,28 +246,41 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_refuses_on_nothing_of_its_
         name: {**doc, "properties": {**doc["properties"], "kind": {"type": "string", "const": "pet"}}}
         for name, doc in _PINNED.items()
     }
-    for targets in (unpinned, one_sided, repeated):
+    # Neither branch has an identity, so BOTH take §4's fourth rung; with one pin only
+    # the pinned branch takes rung 2 and the other the index, which is the two rungs
+    # meeting in one module.
+    for targets, want in ((unpinned, ["AnimalBranch0", "AnimalBranch1"]),
+                          (one_sided, ["AnimalBranch1", "AnimalCat"])):
         at = _fixture(_ROOT, targets)
         try:
             out = emit.emit(at, ["root.json"])
-            # The TARGETS emit -- they are reached through the ``$ref`` and each one is
-            # an ordinary object root.  It is the union ROOT that refuses.
-            assert "root.json" not in out.emitted, out.emitted
-            row = out.refusals["root.json"]
-            # NOT the combinator and NOT the root: the dispatch declared and the walk
-            # went on, so what refuses is a BRANCH, on D3's own keyword.
-            assert row["keyword"] == "title", row
-            assert row["pointer"].startswith("/oneOf/"), row
-            assert "OVERLAP" not in row["detail"], row
-            assert "salesagent-j3k2l.60" not in row["detail"], row
-            # A property of the DOCUMENT -- this branch has no identity, or two derive
-            # one name -- so a verdict, and the sentence says which of the two.
-            assert row["kind"] is Kind.VERDICT, row
-            assert ("no identity to derive a name from" in row["detail"]) or (
-                "derive the class name" in row["detail"]
-            ), row
+            assert not out.refusals, out.refusals
+            text = out.files["root.py"]
+            for name in want:
+                assert f"class {name}(Animal, " in text, (name, text)
         finally:
             shutil.rmtree(at)
+
+    at = _fixture(_ROOT, repeated)
+    try:
+        out = emit.emit(at, ["root.json"])
+        # The TARGETS emit -- they are reached through the ``$ref`` and each one is an
+        # ordinary object root.  It is the union ROOT that refuses.
+        assert "root.json" not in out.emitted, out.emitted
+        row = out.refusals["root.json"]
+        # NOT the combinator and NOT the root: the dispatch declared and the walk went
+        # on, so what refuses is a BRANCH, on D3's own keyword.
+        assert row["keyword"] == "title", row
+        assert row["pointer"].startswith("/oneOf/"), row
+        assert "OVERLAP" not in row["detail"], row
+        assert "salesagent-j3k2l.60" not in row["detail"], row
+        # A property of the DOCUMENT -- two of its nodes derive one name -- so a verdict,
+        # and the sentence is the collision's and no longer the identity's.
+        assert row["kind"] is Kind.VERDICT, row
+        assert "derive the class name 'AnimalPet'" in row["detail"], row
+        assert "no identity to derive a name from" not in row["detail"], row
+    finally:
+        shutil.rmtree(at)
 
 
 def test_a_ref_branch_whose_target_is_not_a_class_refuses_by_name() -> None:

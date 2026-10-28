@@ -14,7 +14,7 @@ from .locale_tag import LanguageTag
 from .localized_creative_asset import LocalizedCreativeAsset
 
 
-class CreativeLocalizationSource(AdCPBaseModel):
+class Source(AdCPBaseModel):
     """
     Identity and locale of the source variant. Its asset payload is the parent creative's top-level `assets` object. Source identifies production provenance; it is not implicitly the serving default.
     """
@@ -26,7 +26,7 @@ class CreativeLocalizationSource(AdCPBaseModel):
     locale: LanguageTag
 
 
-class CreativeLocalizationTargetVariantsItem(AdCPBaseModel):
+class TargetVariantsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -39,7 +39,7 @@ class CreativeLocalizationTargetVariantsItem(AdCPBaseModel):
     assets: Annotated[dict[StrMatchingE02C3DE8, LocalizedCreativeAsset | NonEmptyList[LocalizedCreativeAsset]], Field(description='Materialized locale-specific asset overrides keyed by the same slot IDs as the source creative. Missing slots inherit source assets.', min_length=1)]
 
 
-class CreativeLocalizationLocaleFallbacksItem(AdCPBaseModel):
+class LocaleFallbacksItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -48,7 +48,7 @@ class CreativeLocalizationLocaleFallbacksItem(AdCPBaseModel):
     locale_variant_id: Annotated[StrMinLen1MaxLen255, Field(description='Source or target locale variant to serve when this explicit fallback rule matches.')]
 
 
-class CreativeLocalizationUnmatchedLocaleAction(StrEnum):
+class UnmatchedLocaleAction(StrEnum):
     """
     Required seller behavior when neither strict RFC 4647 Lookup nor an explicit locale_fallbacks rule matches. serve_default serves default_locale_variant_id; do_not_serve makes this creative ineligible for that opportunity.
     """
@@ -68,11 +68,11 @@ class CreativeLocalization(AdCPBaseModel):
         UniqueItems('target_variants'),
         UniqueItems('locale_fallbacks'),
     )
-    source: Annotated[CreativeLocalizationSource, Field(description="Identity and locale of the source variant. Its asset payload is the parent creative's top-level `assets` object. Source identifies production provenance; it is not implicitly the serving default.")]
-    target_variants: Annotated[list[CreativeLocalizationTargetVariantsItem], Field(description='Complete desired target-locale set for this creative. May be empty for a monolingual source-only creative. Every target contains materialized locale-specific asset overrides. Missing slots inherit source assets; after inheritance every resolved variant MUST satisfy the selected creative format.', json_schema_extra={'uniqueItems': True}, max_length=50, min_length=0)]
-    locale_fallbacks: Annotated[list[CreativeLocalizationLocaleFallbacksItem] | None, Field(description='Optional explicit language-family substitutions evaluated only when strict RFC 4647 Lookup finds no equal available tag for the current requested preference. For each preference in order, the seller checks progressively truncated ranges from most to least specific and applies the first rule whose language_range equals that candidate. A rule may map a regional request to a different materialized regional variant, but no substitution is inferred when a rule is absent.', json_schema_extra={'uniqueItems': True}, max_length=50, min_length=1)] = None
+    source: Annotated[Source, Field(description="Identity and locale of the source variant. Its asset payload is the parent creative's top-level `assets` object. Source identifies production provenance; it is not implicitly the serving default.")]
+    target_variants: Annotated[list[TargetVariantsItem], Field(description='Complete desired target-locale set for this creative. May be empty for a monolingual source-only creative. Every target contains materialized locale-specific asset overrides. Missing slots inherit source assets; after inheritance every resolved variant MUST satisfy the selected creative format.', json_schema_extra={'uniqueItems': True}, max_length=50, min_length=0)]
+    locale_fallbacks: Annotated[list[LocaleFallbacksItem] | None, Field(description='Optional explicit language-family substitutions evaluated only when strict RFC 4647 Lookup finds no equal available tag for the current requested preference. For each preference in order, the seller checks progressively truncated ranges from most to least specific and applies the first rule whose language_range equals that candidate. A rule may map a regional request to a different materialized regional variant, but no substitution is inferred when a rule is absent.', json_schema_extra={'uniqueItems': True}, max_length=50, min_length=1)] = None
     default_locale_variant_id: Annotated[StrMinLen1MaxLen255, Field(description='The source or target locale_variant_id used when neither strict RFC 4647 Lookup nor an explicit locale_fallbacks rule matches and unmatched_locale_action is serve_default.')]
-    unmatched_locale_action: Annotated[CreativeLocalizationUnmatchedLocaleAction, Field(description='Required seller behavior when neither strict RFC 4647 Lookup nor an explicit locale_fallbacks rule matches. serve_default serves default_locale_variant_id; do_not_serve makes this creative ineligible for that opportunity.')]
+    unmatched_locale_action: Annotated[UnmatchedLocaleAction, Field(description='Required seller behavior when neither strict RFC 4647 Lookup nor an explicit locale_fallbacks rule matches. serve_default serves default_locale_variant_id; do_not_serve makes this creative ineligible for that opportunity.')]
 
 
 __all__ = ["CreativeLocalization"]

@@ -39,7 +39,7 @@ class SyncCreativesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEn
     )
 
 
-class SyncCreativesSuccessCreativesItem(AdCPBaseModel):
+class CreativesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -83,7 +83,7 @@ class SyncCreativesSuccess(SyncCreativesResponse):
         Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/assignment_errors', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-zA-Z0-9_-]+$': {'type': 'string', 'description': 'Error message for this package assignment'}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
     )
     dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)')] = None
-    creatives: Annotated[list[SyncCreativesSuccessCreativesItem], Field(description="Results for each creative processed. Items with action='failed' indicate per-item validation/processing failures, not operation-level failures.")]
+    creatives: Annotated[list[CreativesItem], Field(description="Results for each creative processed. Items with action='failed' indicate per-item validation/processing failures, not operation-level failures.")]
     sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

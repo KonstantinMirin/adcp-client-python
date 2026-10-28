@@ -14,7 +14,7 @@ from .locale_tag import LanguageTag
 from .localized_creative_asset import LocalizedCreativeAsset
 
 
-class CreativeLocalizationReadbackUnmatchedLocaleAction(StrEnum):
+class UnmatchedLocaleAction(StrEnum):
     """
     Final action after strict Lookup and explicit locale_fallbacks both miss.
     """
@@ -22,7 +22,7 @@ class CreativeLocalizationReadbackUnmatchedLocaleAction(StrEnum):
     DO_NOT_SERVE = 'do_not_serve'
 
 
-class CreativeLocalizationReadbackLocaleFallbacksItem(AdCPBaseModel):
+class LocaleFallbacksItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -75,9 +75,9 @@ class CreativeLocalizationReadback(AdCPBaseModel):
         UniqueItems('variants'),
     )
     default_locale_variant_id: Annotated[StrMinLen1MaxLen255, Field(description='The source or target locale variant used after strict Lookup and explicit fallback rules both miss when unmatched_locale_action is serve_default.')]
-    unmatched_locale_action: Annotated[CreativeLocalizationReadbackUnmatchedLocaleAction, Field(description='Final action after strict Lookup and explicit locale_fallbacks both miss.')]
+    unmatched_locale_action: Annotated[UnmatchedLocaleAction, Field(description='Final action after strict Lookup and explicit locale_fallbacks both miss.')]
     locale_matching: Annotated[Literal['rfc4647_lookup'], Field(description="Strict RFC 4647 section 3.4 Lookup applied to an ordered language-preference list supplied by the seller's serving environment. AdCP does not carry or define how that list is derived. The seller progressively truncates each requested range and matches only an available canonical tag equal to that range; it does not prefix-match sibling regional tags.")]
-    locale_fallbacks: Annotated[list[CreativeLocalizationReadbackLocaleFallbacksItem] | None, Field(description='Exact buyer-declared language-family substitutions preserved from sync. For each requested preference, rules are checked from the most specific progressively truncated range to the least specific only after strict Lookup finds no equal available tag for that preference.', json_schema_extra={'uniqueItems': True}, max_length=50, min_length=1)] = None
+    locale_fallbacks: Annotated[list[LocaleFallbacksItem] | None, Field(description='Exact buyer-declared language-family substitutions preserved from sync. For each requested preference, rules are checked from the most specific progressively truncated range to the least specific only after strict Lookup finds no equal available tag for that preference.', json_schema_extra={'uniqueItems': True}, max_length=50, min_length=1)] = None
     variants: Annotated[list[SourceLocalizationReadback | TargetLocalizationReadback], Field(description='The source variant followed by every target variant, or only the source for monolingual topology. Assets are fully resolved after source inheritance. The enclosing creative status applies to the set as a whole.', json_schema_extra={'uniqueItems': True}, max_length=51, min_length=1)]
 
 

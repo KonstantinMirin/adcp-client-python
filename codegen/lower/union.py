@@ -364,11 +364,16 @@ def _const_pin(props: Any, named: str | None) -> Any:
     return next(iter(pinned.values())) if len(pinned) == 1 else None
 
 
-def _naming_facts(branch: Any, props: Any, named: str | None, *, refuses: bool) -> Any:
-    """The three facts §4 "Names"'s branch rules read, off one branch's declaration.
+def _naming_facts(branch: Any, props: Any, named: str | None) -> Any:
+    """The three DECLARED facts §4 "Names"'s branch rules read, off one branch's
+    declaration.
 
     One reading for the two positions a branch is named at, so a root branch and a nested
     one cannot come to read one declaration differently.
+
+    §4's fourth rule reads a fact of the branch's POSITION and not of its declaration --
+    its index among the branches -- so the caller records that one, and only where the
+    branch is a class needing a name of its own (:attr:`names.Branch.index`).
     """
     title = branch.get("title") if isinstance(branch, Mapping) else None
     required = branch.get("required") if isinstance(branch, Mapping) else None
@@ -377,7 +382,6 @@ def _naming_facts(branch: Any, props: Any, named: str | None, *, refuses: bool) 
         title=title if isinstance(title, str) and title else None,
         pin=_const_pin(props, named),
         required=tuple(required) if isinstance(required, list) else (),
-        refuses=refuses,
     )
 
 
@@ -1171,16 +1175,19 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
     # inputs the rules read are recorded here -- the branch's own declaration, the
     # dispatch property the pin is looked for on, and the property map the readings range
     # over, which for a bare ``$ref`` branch is the TARGET's -- and ``lower/names.py``
-    # derives the name.  ``refuses=True`` because a ROOT union declares one class per
-    # branch: a branch with no identity is a document this emitter cannot name.
+    # derives the name.  The INDEX is recorded too, which §4's fourth rung names a branch
+    # by (``<Base>Branch<i>``): a ROOT union declares one class per branch, so a root
+    # branch needs a name of its own whatever it declares, and the union is what knows its
+    # branch order -- a child never reconstructs its position from its pointer (§6).
     #
-    # The two refusals that stood here are both that pass's now and both VERDICTS: a
-    # branch with no identity, and two branches deriving one class name (which is the
-    # module-wide check, so it also catches a branch colliding with a class elsewhere in
-    # the document -- strictly wider than the per-union check it replaces).
-    for plan in planned:
+    # One refusal that stood here is that pass's now and it is a VERDICT: two branches
+    # deriving one class name (which is the module-wide check, so it also catches a branch
+    # colliding with a class elsewhere in the document -- strictly wider than the per-union
+    # check it replaces).  The other -- a branch with no identity -- is gone entirely,
+    # because §4's fourth rung answers for every branch whose index is recorded.
+    for i, plan in enumerate(planned):
         mod.hops[plan.pointer] = replace(
-            _naming_facts(plan.node, plan.properties, named, refuses=True), parent=pointer
+            _naming_facts(plan.node, plan.properties, named), parent=pointer, index=i
         )
 
     mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
@@ -1837,11 +1844,15 @@ def _arms(node: "nodes.Union", mod: compiler.Module) -> compiler.Decided | Refus
                 f"a branch is {type(branch).__name__}, not a schema",
                 kind=Kind.VERDICT,
             )
-        # **§4 "Names"'s branch rules as a HOP**, with ``refuses=False``: a nested union
-        # is a TYPE, so a branch that lowers to an annotation needs no name and falls back
-        # to the union's own derived name rather than refusing a union the walk can lower.
+        # **§4 "Names"'s branch rules as a HOP, and NO INDEX**: a nested union is a TYPE,
+        # so a branch that lowers to an annotation needs no name of its own, and §4's
+        # fourth rung has nothing to apply -- the branch falls back to the union's own
+        # derived name, which is what a member type has always been spelled with.  Spending
+        # the index here would put ``Branch<i>`` into an ancestor segment of every class
+        # the branch declares BELOW it, which §4's nested rule is the whole argument
+        # against.
         mod.hops[at] = replace(
-            _naming_facts(branch, branch.get("properties"), named, refuses=False),
+            _naming_facts(branch, branch.get("properties"), named),
             parent=pointer,
         )
         # A NESTED union's branch is NOT ``objectish``: §4 makes a branch of a ROOT union
