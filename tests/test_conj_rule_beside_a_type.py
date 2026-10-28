@@ -39,6 +39,7 @@ which is §9's first mistake and what ``7044c5ab`` withdrew for ``uniqueItems``.
 
 from __future__ import annotations
 
+import functools
 import json
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -76,12 +77,25 @@ class Site(NamedTuple):
     refusal: Refusal | None
 
 
-def _reaching() -> list[Site]:
+@functools.cache
+def _reaching() -> tuple[Site, ...]:
     """Every node of the portable population that reaches §5's ``$ref``-row-at-CONJ.
 
     Recorded AT THE CALL rather than selected by a second reading of the bundle: the row
     holds only where the target resolves to something with no :class:`compiler.Shape`,
     which is a fact about the RUN and not about any one document's text.
+
+    **``emit.emit`` and not ``compiled``, and the cache is this function's own.**  A spy
+    observes the COMPILE, and ``tests/compiled.py``'s key covers the bundle, the
+    population and every ``.py`` under ``codegen/`` -- not a monkeypatch -- so a warm
+    entry serves a run this spy never saw and the site list comes back EMPTY.  Measured at
+    ``adcp-client-python-10l.59``: cold, 37 sites and green; warm, 0 sites, and the
+    assertions over them held vacuously until ``nodeset.claimed`` caught the empty set.
+    That is the same carve-out ``compiled``'s own docstring states for a caller that
+    MUTATES the result -- "call ``emit.emit`` directly and say why" -- read for a caller
+    that instruments it, and the price is one uncached whole-bundle compile for this file
+    (``adcp-client-python-10l.49``'s population, named there).  ``functools.cache`` keeps
+    it to one per process, which is why the return is a tuple.
     """
     seen: list[Site] = []
     original = compiler._the_conjuncts_own_type  # noqa: SLF001 -- the test is the caller
@@ -104,7 +118,11 @@ def _reaching() -> list[Site]:
         seen.append(
             Site(
                 at=conjoined[0][0],
-                symbol=conjoined[0][1],
+                # The row is handed the TARGET and not its symbol alone, because the
+                # refusal for a node declaring fields names WHICH of §5's non-class
+                # targets this one is (``adcp-client-python-10l.59``).  The site is still
+                # identified by the symbol, which is what the pointer pairs with.
+                symbol=conjoined[0][1].symbol,
                 targets=len(conjoined),
                 a_class_as_well=bool(fields_declared or bases),
                 beside=tuple(sorted({k for one in rule_nodes for k in one})),
@@ -116,10 +134,10 @@ def _reaching() -> list[Site]:
 
     compiler._the_conjuncts_own_type = spy  # noqa: SLF001
     try:
-        compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+        emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
     finally:
         compiler._the_conjuncts_own_type = original  # noqa: SLF001
-    return seen
+    return tuple(seen)
 
 
 def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_population() -> None:
@@ -143,7 +161,16 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     **RE-MEASURED AT ``adcp-client-python-10l.55``: 37 calls, 32 with one target and no
     fields -- 21 with no rule and 11 with one, splitting 7 / 2 / 2.**  The row that moved
     it emits ``core/assets/asset-union.json``, so every node whose ``$ref`` conjunct
-    resolves to that UNION root reaches this arm for the first time.  Ten of the eleven
+    resolves to that UNION root reaches this arm for the first time.
+
+    **AND AT ``adcp-client-python-10l.59``: 35 calls, and ``two_non_class_targets`` is
+    EMPTY.**  The two that filled it -- ``core/targeting.json`` and
+    ``core/targeting-input.json``, each composing two roots that state ``if``/``then`` and
+    nothing else -- take §2's intersection over DECLARATIONS instead: a target declaring
+    only rule sources contributes a RULE to the composing node and never reaches this row
+    (``compiler._a_rule_the_target_states``).  The other two parts are unmoved at 3 and
+    32, and so is the 11 / 7 / 2 / 2 split below, which is why that part emptying is the
+    whole of the change here.  Ten of the eleven
     rules are still a ``not``; the eleventh is the first CONDITIONAL at this position --
     ``core/localized-creative-asset.json`` at ``/allOf/0``, whose other conjunct is an
     ``if``/``then`` -- and §5's ``then`` cell decides it by name: "its ``properties`` ->
@@ -301,9 +328,18 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
         position=Position.PROP,
         source=schema_parse.Source(document="probe.json"),
     )
+    # The row reads the TARGET and not a symbol (``adcp-client-python-10l.59``), so the
+    # probe builds the one a ``$ref`` to an enumeration resolves to: an ANNOTATION, which
+    # is the kind that makes §5's row give the node the target as its own TYPE.
+    target = compiler.Target(
+        "",
+        "MediaType",
+        document="enums/media-type.json",
+        kind=compiler.TargetKind.ANNOTATION,
+    )
     answer = compiler._the_conjuncts_own_type(  # noqa: SLF001 -- the arm's only caller
         node,
-        [("/properties/kind/allOf/0", "MediaType")],
+        [("/properties/kind/allOf/0", target)],
         fields_declared=(),
         bases=(),
         rule_nodes=[{"not": {"const": "video"}}, {"not": {"const": "audio"}}],
@@ -315,7 +351,7 @@ def test_two_conjuncts_stating_one_rule_keyword_refuse_rather_than_drop_one() ->
     # second statement and not about the position.
     one = compiler._the_conjuncts_own_type(  # noqa: SLF001
         node,
-        [("/properties/kind/allOf/0", "MediaType")],
+        [("/properties/kind/allOf/0", target)],
         fields_declared=(),
         bases=(),
         rule_nodes=[{"not": {"const": "video"}}],
