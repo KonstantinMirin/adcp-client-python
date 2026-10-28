@@ -21,7 +21,7 @@ class FrequencyCapImpressionConstraints(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/frequency-cap-impression-constraints.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=('allowed_values',), forbid=(('minimum',), ('maximum',))), Presence(require=('minimum', 'maximum'), forbid=(('allowed_values',),))), 'oneOf'),
+        PresenceGroups((Presence(require=(('allowed_values',),), forbid=(('minimum',), ('maximum',))), Presence(require=(('minimum', 'maximum'),), forbid=(('allowed_values',),))), 'oneOf'),
         UniqueItems('allowed_values'),
     )
     minimum: IntMin1 | None = None

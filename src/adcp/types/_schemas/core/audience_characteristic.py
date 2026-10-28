@@ -47,7 +47,7 @@ class AudienceCharacteristic(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-characteristic.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=('value',), forbid=(('range',),)), Presence(require=('range',), forbid=(('value',),))), 'anyOf'),
+        PresenceGroups((Presence(require=(('value',),), forbid=(('range',),)), Presence(require=(('range',),), forbid=(('value',),))), 'anyOf'),
     )
     dimension: Annotated[Literal['age'] | AdCPUrl, Field(description='Canonical dimension name or HTTPS URI. AdCP 3.2 defines `age`; other values remain provider- or taxonomy-scoped.')]
     value: Annotated[str | float | bool | Annotated[NonEmptyList[str | float | bool], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())] | None, Field(description='Scalar or set value for the dimension.')] = None
