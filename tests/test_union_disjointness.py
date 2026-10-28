@@ -844,3 +844,473 @@ def test_collapsing_the_one_pinned_value_site_reports_three_added_facts() -> Non
             node, cls, document=schema_at(SchemaRef(ref.document, "#")), at=ref.pointer
         )
         assert got.outcome == "pass", (symbol, got)
+
+
+# --------------------------------------------------------------------------- #
+# WHERE each separator is read, widened 2026-10-28 (``adcp-client-python-10l.30``)
+# --------------------------------------------------------------------------- #
+#: What the widened arms' answers say, so a test can tell which reading decided a pair
+#: without a second copy of the rules.
+GROUPED = "requires one of"
+ELEMENTS = "are arrays whose elements are"
+
+
+def _planned(document: str, pointer: str, raw: Any) -> lower_union.Branch:
+    """One branch of a REAL document, planned the way :func:`union._plan` plans it.
+
+    The forbidden names come from ``union.forbidden_names``, which is the walk's one
+    reading of them, so what these tests ask is what the walk asks.  Nothing here
+    resolves a reference: a branch that is or contains a ``$ref`` is read exactly as the
+    derivation reads it, which is the whole of why its facts can be out of reach.
+    """
+    parsed = schema_parse.parse(
+        raw,
+        pointer=pointer,
+        position=keywords.Position.BRANCH,
+        source=schema_parse.Source(document=document),
+    )
+    return lower_union.Branch(
+        pointer=pointer,
+        node=raw,
+        parsed=parsed,
+        forbids=lower_union.forbidden_names(parsed, raw),
+    )
+
+
+def _branches(document: str, pointer: str, keyword: str) -> list[lower_union.Branch]:
+    """Every branch of one authored union, planned.  ``pointer`` addresses the node."""
+    node = bundle.node_at(bundle.read(BUNDLE, document), pointer)
+    assert isinstance(node, dict), (document, pointer)
+    return [
+        _planned(document, f"{pointer}/{keyword}/{i}", raw)
+        for i, raw in enumerate(node[keyword])
+    ]
+
+
+def test_a_not_guard_inside_an_allOf_conjunct_forbids_a_name_for_the_branch() -> None:
+    """GAP 1: draft-07 conjoins an ``allOf`` conjunct with the node that holds it, so a
+    ``not`` a conjunct states forbids a name for the BRANCH.
+
+    ``account/sync-accounts-request.json#/properties/accounts/items/oneOf`` is the
+    measured case and it is the bundle's own idiom: ``ProvisioningMode`` requires
+    ``[brand, operator, billing]`` and forbids ``account`` in ``allOf[0]``;
+    ``SettingsUpdateMode`` requires ``account`` and forbids ``brand`` in its own.  So
+    each branch forbids a name the other requires -- which is the sentence §4 writes --
+    and read off the branch node alone each forbids NOTHING.
+
+    The PERTURBATION is the conjunct list removed and nothing else, and it has to leave
+    the pair inseparable: that is what says the conjuncts are the reason rather than
+    something else about these two branches.  Both directions, because
+    :func:`union.separates` asks the question each way round.
+    """
+    one, two = _branches(
+        "account/sync-accounts-request.json", "/properties/accounts/items", "oneOf"
+    )
+    assert lower_union.forbidden_names(one.parsed, one.node) == frozenset(
+        {"account", "revision", "operator_identity", "destination_billing_entity"}
+    ), lower_union.forbidden_names(one.parsed, one.node)
+    assert GROUPED in (lower_union.separates(one, two, "object", "object") or ""), one
+    assert GROUPED in (lower_union.separates(two, one, "object", "object") or ""), two
+
+    flat = [
+        _planned(
+            "probe.json",
+            plan.pointer,
+            {k: v for k, v in plan.node.items() if k != "allOf"},
+        )
+        for plan in (one, two)
+    ]
+    assert lower_union.separates(*flat, "object", "object") is None, flat
+    assert lower_union.separates(*flat[::-1], "object", "object") is None, flat
+
+
+def test_a_presence_group_counts_toward_what_a_branch_requires() -> None:
+    """GAP 2: a branch stating ``anyOf: [{"required": [a]}, {"required": [b]}]`` DOES
+    require one of them, so a sibling forbidding both is disjoint from it.
+
+    Two measured cases and they take the two halves of §4's second separator:
+
+    * ``formats/canonical/display_tag.json``, ``html5.json`` and ``image.json`` separate
+      their "responsive" branch from their "none" branch, the first requiring one of four
+      bound names through an ``anyOf`` and the second forbidding all seven by name;
+    * ``brand.json``'s branch 3 requires one of ``brands`` / ``brand_refs`` and its
+      branch 1 is CLOSED over a map declaring neither.
+
+    The quantity is a set of SETS and that is the point: no single name is required by the
+    "responsive" branch, so a reading over names alone requires nothing of it and the pair
+    is inseparable -- which is what the document does not say.  The perturbation is the
+    presence combinator removed, and each pair has to go back to inseparable.
+    """
+    for document in (
+        "formats/canonical/display_tag.json",
+        "formats/canonical/html5.json",
+        "formats/canonical/image.json",
+    ):
+        planned = _branches(document, "/allOf/1", "oneOf")
+        titles = [plan.node.get("title") for plan in planned]
+        responsive, none = (planned[titles.index(t)] for t in ("responsive", "none"))
+        assert GROUPED in (lower_union.separates(responsive, none, None, None) or ""), (
+            document
+        )
+        bare = _planned(
+            document,
+            responsive.pointer,
+            {k: v for k, v in responsive.node.items() if k != "anyOf"},
+        )
+        assert lower_union.separates(bare, none, None, None) is None, document
+
+    house, portfolio = (_branches("brand.json", "", "oneOf")[i] for i in (1, 3))
+    assert FORBIDDEN in (lower_union.separates(portfolio, house, "object", "object") or ""), (
+        portfolio
+    )
+    bare = _planned(
+        "brand.json",
+        portfolio.pointer,
+        {k: v for k, v in portfolio.node.items() if k != "anyOf"},
+    )
+    assert lower_union.separates(bare, house, "object", "object") is None, bare
+
+
+def test_a_closed_conjunct_separates_by_what_it_does_not_declare() -> None:
+    """GAP 3: ``additionalProperties: false`` puts an instance's members inside THAT
+    view's own ``properties``, and a conjunct is a view of the branch.
+
+    The arm at the branch NODE is not new and decides the ``brand.json`` pair the test
+    above names.  What is new is that it is asked of each closed VIEW, so a branch whose
+    closure and whose property map sit in an ``allOf`` conjunct is read -- and the
+    bundle's own count of pairs decided by THAT is derived here rather than claimed:
+    ``0`` branches of 3.2 close the instance in a conjunct and nowhere else, so the
+    widening is written for the first document that does and graded on a constructed pair.
+    """
+    closed = _planned(
+        "probe.json",
+        "/oneOf/0",
+        {"type": "object", "allOf": [{"additionalProperties": False, "properties": {"a": {}}}]},
+    )
+    demanding = _planned(
+        "probe.json", "/oneOf/1", {"type": "object", "required": ["b"], "properties": {"b": {}}}
+    )
+    assert lower_union.closures_of(closed) == (frozenset({"a"}),), closed
+    assert FORBIDDEN in (lower_union.separates(demanding, closed, "object", "object") or "")
+    assert FORBIDDEN in (lower_union.separates(closed, demanding, "object", "object") or "")
+    # And the same two branches with the conjunct's closure taken back by a pattern: the
+    # view admits names this cannot enumerate, so it is not a closed view at all.
+    patterned = _planned(
+        "probe.json",
+        "/oneOf/0",
+        {
+            "type": "object",
+            "allOf": [
+                {
+                    "additionalProperties": False,
+                    "patternProperties": {"^x_": {}},
+                    "properties": {"a": {}},
+                }
+            ],
+        },
+    )
+    assert lower_union.closures_of(patterned) == (), patterned
+    assert lower_union.separates(demanding, patterned, "object", "object") is None
+
+    # The bundle's own count, DERIVED over the set it ranges over and named: every
+    # branch of every authored union of 3.2 that does NOT close at its own node, paired
+    # with whether a CONJUNCT of it closes.  None of them does, which is why the
+    # per-view descent decides no pair of this bundle and is graded on the constructed
+    # pair above -- and the first document to state one reddens the assertion by name.
+    conjunct_closures = claimed(
+        "branches of an authored union that do not close at their own node",
+        [
+            (
+                f"{document}#{pointer}/{keyword}/{i}",
+                bool(schema_parse.closed_maps(raw, keywords.Position.BRANCH)),
+            )
+            for document in sorted(bundle.portable(BUNDLE))
+            for doc in [bundle.read(BUNDLE, document)]
+            for pointer, node in harness._rule_free_nodes(doc)
+            for keyword in ("oneOf", "anyOf")
+            if isinstance(node.get(keyword), list)
+            for i, raw in enumerate(node[keyword])
+            if isinstance(raw, dict) and raw.get("additionalProperties") is not False
+        ],
+    )
+    assert [at for at, closes in sorted(conjunct_closures) if closes] == []
+
+
+def test_two_array_branches_separate_on_their_element_type() -> None:
+    """GAP 4: §4's type separator at the position an ARRAY branch states what its
+    instance is -- ``items``, which describes every member.
+
+    Two halves and the second is what makes it sound.  ``[]`` satisfies ``items``
+    vacuously, so two arrays of disjoint element types both admit it and the pair is NOT
+    disjoint on the element word alone; ``minItems`` of at least 1 on either branch is
+    what refuses it.  A pair where neither refuses it overlaps at exactly that one value,
+    and §4's "a pair the derivation cannot separate is treated as overlapping" is what
+    the arm then does.
+
+    **The bundle's own case does NOT fire, and the reason is derived here rather than
+    left to be discovered.**  ``brand.json#/definitions/localized_string_list`` is two
+    ``type: array`` branches, one of strings and one of entries -- and the second states
+    its element type as ``items: {"$ref": "#/definitions/localized_string_list_entry"}``,
+    so the fact is in the TARGET.  ``schema.element_word`` reads the word off the node and
+    answers ``None``.  Resolving a local reference is what ``compiler.local_reference``
+    DECLARES, which a derivation may not do, so the pair stays unseparated and the
+    document says the word one hop away from where the arm can read it.
+    """
+    strings = _planned("probe.json", "/oneOf/0", {"type": "array", "items": {"type": "string"}})
+    objects = _planned(
+        "probe.json", "/oneOf/1", {"type": "array", "items": {"type": "object"}, "minItems": 1}
+    )
+    assert ELEMENTS in (lower_union.separates(strings, objects, "array", "array") or "")
+    assert ELEMENTS in (lower_union.separates(objects, strings, "array", "array") or "")
+    empty_too = _planned("probe.json", "/oneOf/1", {"type": "array", "items": {"type": "object"}})
+    assert lower_union.separates(strings, empty_too, "array", "array") is None
+    assert lower_union.separates(strings, objects, "array", "object") is None
+
+    reference, = [
+        raw
+        for raw in bundle.node_at(
+            bundle.read(BUNDLE, "brand.json"), "/definitions/localized_string_list"
+        )["oneOf"]
+        if isinstance(raw.get("items"), dict) and "$ref" in raw["items"]
+    ]
+    assert schema_parse.element_word(reference, keywords.Position.BRANCH) == (None, True)
+    held = _planned("brand.json", "/definitions/localized_string_list/oneOf/1", reference)
+    assert lower_union.separates(strings, held, "array", "array") is None
+
+
+def test_eight_open_branches_requiring_one_name_separate_on_their_nested_nots() -> None:
+    """``compliance/comply-test-controller-response.json``, the reference case: eight
+    branches all ``additionalProperties: true`` and all requiring ``success``.
+
+    Nothing closes and no two pin a value, so the whole of the separation is the second
+    separator read through ``not: {"anyOf": [...]}`` -- ``SeedSuccess`` forbids all seven
+    siblings' discriminants that way, and each of the other seven forbids the names its
+    siblings require.  Every pair of the 28 separates, which is asserted over the pairs
+    rather than on a sample.
+    """
+    planned = _branches("compliance/comply-test-controller-response.json", "", "oneOf")
+    pairs = claimed(
+        "the pairs of the eight-branch controller response",
+        [(i, j) for i in range(len(planned)) for j in range(i + 1, len(planned))],
+    )
+    # Every branch is OPEN and requires ``success``, and the one property every branch
+    # PINS is pinned to two values over eight branches -- so there is no dispatch key and
+    # closure separates nothing.  All derived, so the claim about what does separate them
+    # is about these branches and not about a reading of their titles.
+    for plan in planned:
+        assert plan.node["additionalProperties"] is True, plan
+        assert frozenset({"success"}) in lower_union.demands(plan), plan
+        assert lower_union.closures_of(plan) == (), plan
+    shared = set.intersection(*(set(lower_union.pins(p.properties)) for p in planned))
+    assert shared == {"success"}, shared
+    assert {lower_union.pins(p.properties)["success"] for p in planned} == {True, False}
+    assert lower_union.discriminator(planned, None) == "", planned
+    # The pin separates the error branch from the seven successes and nothing else, so
+    # the pairs AMONG the successes are the ``not: {"anyOf": [...]}`` reading's alone.
+    successes = [i for i, p in enumerate(planned) if lower_union.pins(p.properties)["success"]]
+    among = claimed(
+        "pairs among the seven branches pinning success to one value",
+        [(i, j) for i in successes for j in successes if i < j],
+    )
+    assert among < pairs, sorted(among - pairs)
+    for i, j in sorted(among):
+        assert GROUPED in (
+            lower_union.separates(planned[i], planned[j], "object", "object") or ""
+        ), (i, j)
+    unseparated = [
+        (i, j)
+        for i, j in sorted(pairs)
+        if lower_union.separates(planned[i], planned[j], "object", "object") is None
+    ]
+    assert unseparated == [], unseparated
+
+
+#: Every authored union of 3.2 whose branches are all shapes and that states no ``$ref``
+#: anywhere inside a branch, and that the two readings of §4's third source still cannot
+#: separate.  **Named and not counted**, because what each one is matters: a union a
+#: separator could reach would leave this set, and a new one joining it is a document the
+#: derivation has stopped reading.
+#:
+#: Every member but one is an ``anyOf`` the document states as a CONSTRAINT -- branches
+#: that narrow one shape rather than alternating between shapes, which §4 compiles to a
+#: rule (``AtLeastOne`` / ``PresenceGroups``) and not to a discriminated union, so no
+#: separator is owed one.  ``adagents.json#/oneOf/1/allOf/0/anyOf`` says so in its own
+#: ``$comment``: "Each arm asserts non-emptiness directly."  The two ``viewability``
+#: nodes state one branch that forbids four metrics and one that requires ``standard``;
+#: ``core/postal-country-system.json`` narrows ``country`` and ``system`` ten ways; and
+#: the last three are "at least one of these two keys".
+_INSEPARABLE_CONSTRAINTS = frozenset(
+    {
+        "adagents.json#/oneOf/1/allOf/0/anyOf",
+        "core/canonical-forecast-point.json#/properties/viewability/anyOf",
+        "core/forecast-point.json#/properties/viewability/anyOf",
+        "core/postal-country-system.json#/anyOf",
+        "media-buy/buy-products-request.json#/anyOf",
+        "media-buy/request-proposals-request.json#/anyOf",
+        "trusted-match/provider-registration.json#/anyOf",
+    }
+)
+#: The union whose branches GENUINELY overlap: both open, each requiring a name the other
+#: neither forbids nor fails to declare, so ``{"format_id_glob": …, "structural": …}``
+#: satisfies both.  §4's UNDERDETERMINED row and no separator reaches it -- the fact
+#: dropped is which branch an overlapping payload becomes, and the declaration says so.
+_GENUINELY_OVERLAPPING = frozenset(
+    {
+        "registries/v1-canonical-mapping.json"
+        "#/properties/mappings/items/properties/v1_pattern/oneOf",
+    }
+)
+
+
+def test_a_fact_a_ref_conjunct_holds_is_out_of_the_derivations_reach() -> None:
+    """``brand.json``'s pair 2/4, named here because the document DOES separate it and
+    neither reading can say so.
+
+    Branch 2 is closed over a map declaring neither ``id`` nor ``names``; branch 4
+    requires both, through ``allOf[1]``, which is ``$ref: "#/definitions/brand"``.  So
+    the separating fact is in the target and :func:`schema_parse.applies_to_one_instance`
+    contributes nothing for a ``$ref`` conjunct -- the conservative direction §4 names,
+    because resolving a local reference is what ``compiler.local_reference`` DECLARES and
+    a derivation may not declare anything.
+
+    Both halves are derived: that the conjunct is a reference, and that the target states
+    the two names.  Written so that a row which teaches the derivation to read a
+    conjunct's target reddens here and takes the pair with it.
+    """
+    document = bundle.read(BUNDLE, "brand.json")
+    closed, catchall = (_branches("brand.json", "", "oneOf")[i] for i in (2, 4))
+    (reference,) = [c for c in catchall.node["allOf"] if "$ref" in c]
+    assert reference["$ref"] == "#/definitions/brand", reference
+    target = bundle.node_at(document, "/definitions/brand")
+    assert set(target["required"]) == {"id", "names"}, target["required"]
+    assert not set(target["required"]) & set(closed.node["properties"]), closed.node
+    assert lower_union.closures_of(closed), closed
+    assert lower_union.demands(catchall) == frozenset(), catchall
+    assert lower_union.separates(closed, catchall, "object", "object") is None
+
+
+def _authored_unions() -> list[tuple[str, str, list[dict], list[Any]]]:
+    """Every authored union of 3.2 whose branches are all SHAPES, with the applied type.
+
+    The GATE is the one both halves of §8's third equality already apply -- a branch is a
+    shape where its node under the enclosing ``type`` is an object -- because that is the
+    set where branch CLASSES exist and a declaration order has something to choose
+    between.  A presence-only combinator is excluded for the same reason: it lowers to a
+    rule on the enclosing class (``schema.presence_only``, the parser's own reading).
+    """
+    out = []
+    for document in sorted(bundle.portable(BUNDLE)):
+        doc = bundle.read(BUNDLE, document)
+        for pointer, node in harness._rule_free_nodes(doc):
+            for keyword in ("oneOf", "anyOf"):
+                branches = node.get(keyword)
+                if not isinstance(branches, list) or len(branches) < 2:
+                    continue
+                if not all(isinstance(b, dict) for b in branches):
+                    continue
+                if schema_parse.presence_only({keyword: branches}, keywords.Position.ROOT):
+                    continue
+                applied = [b.get("type") or node.get("type") for b in branches]
+                if not all(
+                    t == "object" or (t is None and b.get("properties"))
+                    for t, b in zip(applied, branches, strict=True)
+                ):
+                    continue
+                base = "" if pointer == "/" else pointer
+                out.append((f"{document}#{base}/{keyword}", keyword, branches, applied))
+    return out
+
+
+def _states_a_reference(node: Any) -> bool:
+    """Does this branch state a ``$ref`` anywhere inside it?
+
+    The population §4's derivation is measured over EXCLUDES these, and the exclusion is
+    a statement about where the facts are: a separator of such a branch may live in the
+    target, which neither reading resolves.  Asked of the whole subtree and not of the
+    branch's top level, because a conjunct, a property or an element carries one too.
+    """
+    if isinstance(node, dict):
+        return "$ref" in node or any(_states_a_reference(v) for v in node.values())
+    if isinstance(node, list):
+        return any(_states_a_reference(v) for v in node)
+    return False
+
+
+def test_the_two_readings_of_separability_agree_over_every_authored_union() -> None:
+    """§8's third equality asked of the DERIVATION itself rather than of its declarations.
+
+    The walk reads a branch through ``compiler.rules_at`` and ``codegen.schema.parse``;
+    the verifier reads the document node.  Section 9 keeps them separate spellings on
+    purpose -- "one body of code deciding what the model states and what the document
+    states agrees with itself by construction, so a defect in it is green on both sides"
+    -- and this is what says the two spellings answer the same question: over every
+    authored union of shapes, pair by pair, the two agree on every pair.
+
+    Asserted on the PAIRS and not on a count, so a reading that separated a different
+    pair of the same union reddens.
+    """
+    unions = claimed("authored unions of 3.2 whose branches are all shapes", {
+        at for at, _, _, _ in _authored_unions()
+    })
+    assert len(unions) == len(_authored_unions()), "two unions at one pointer"
+    disagreed = []
+    for at, _, branches, applied in _authored_unions():
+        for i in range(len(branches)):
+            for j in range(i + 1, len(branches)):
+                walk = lower_union.separates(
+                    _planned(at, f"{at}/{i}", branches[i]),
+                    _planned(at, f"{at}/{j}", branches[j]),
+                    applied[i],
+                    applied[j],
+                )
+                record = harness.separates(branches[i], branches[j], applied[i], applied[j])
+                if (walk is None) != (record is None):
+                    disagreed.append((at, i, j, walk, record))
+    assert disagreed == [], disagreed
+
+
+def test_every_union_the_derivation_cannot_separate_is_named_and_partitioned() -> None:
+    """The census the row is graded on, DERIVED on both sides and partitioned by name.
+
+    The population is the authored unions of shapes that state no ``$ref`` inside a
+    branch -- 112 of the 169 do, and §4's reading of one of those may live in the target,
+    which is a separate measurement and not this one's.  What is asserted is that every
+    union of the remainder the derivation cannot separate is one of three named things,
+    and that both readings produce the same remainder:
+
+    * an ``anyOf`` the document states as a CONSTRAINT, which §4 compiles to a rule and
+      not to a discriminated union, so it needs no separator at all;
+    * a union whose branches GENUINELY overlap -- open, each requiring a name the others
+      neither forbid nor fail to declare -- which is §4's UNDERDETERMINED row.
+
+    A union LEAVING the remainder is the row working and reddens here by name, which is
+    what the row's own four readings did to ``account/sync-accounts-request.json``.
+    """
+    population = claimed(
+        "authored unions of shapes stating no $ref inside a branch",
+        [
+            (at, keyword, tuple(range(len(branches))))
+            for at, keyword, branches, _ in _authored_unions()
+            if not any(_states_a_reference(b) for b in branches)
+        ],
+    )
+    inseparable = {
+        at: [
+            (i, j)
+            for i in range(len(branches))
+            for j in range(i + 1, len(branches))
+            if harness.separates(branches[i], branches[j], applied[i], applied[j]) is None
+        ]
+        for at, keyword, branches, applied in _authored_unions()
+        if not any(_states_a_reference(b) for b in branches)
+    }
+    remainder = claimed(
+        "unions of the non-$ref population the derivation cannot separate",
+        {at for at, pairs in inseparable.items() if pairs},
+        inside={at for at, _, _ in population},
+    )
+    partitions(
+        remainder,
+        a_constraint=_INSEPARABLE_CONSTRAINTS,
+        genuinely_overlapping=_GENUINELY_OVERLAPPING,
+    )
