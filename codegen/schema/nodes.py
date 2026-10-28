@@ -403,7 +403,7 @@ class Array(Base):
     #: and an array stating its own ``items`` is that clause with the type read off the
     #: node's own word instead of off a reference.  So the array is the TYPE and the
     #: conjuncts constrain it, which is what ``lower.containers.array`` reads them as:
-    #: rules, hung where §2 hangs a rule over a value.
+    #: rules, declared where §2 declares a rule over a value.
     #:
     #: Carried the way :attr:`Union.siblings` carries the same keyword for the same
     #: reason -- a kind that claims the node before ``parse``'s ``allOf`` arm has to
