@@ -230,6 +230,26 @@ def parse(
     # else it declares.  ``nodes.Union.siblings`` is where ``allOf`` goes when a union
     # claims the node, which is why the union arm is read before the ``allOf`` arm (§5's
     # ``allOf`` row: "beside a union → the same, onto the base").
+    #
+    # **A node's own NON-OBJECT ``type`` word claims it before the ``allOf`` arm too, for
+    # the reason the union arm does** (``adcp-client-python-10l.64``).  "A node that
+    # composes is a composition whatever else it declares" reads a composition as an
+    # OBJECT -- bases, fields, ``extra``, rules -- and §5's ``$ref`` row at CONJ already
+    # decides the other case by name: "Where it is not -- a scalar, an enum, **a
+    # container**, or a union root ... the target is this node's own TYPE, and the other
+    # conjuncts and the ``allOf``'s siblings constrain it, which is §2's intersection at a
+    # node that declares no fields of its own."  A node stating ``type: array`` beside an
+    # ``allOf`` is that clause with the type read off the node's own word instead of off a
+    # reference: the array IS the type, and the conjuncts constrain it.  So the word claims
+    # the node, the conjunct list travels on the kind the word selects
+    # (:attr:`nodes.Array.conjuncts`, :attr:`nodes.Union.siblings`'s own arrangement) and
+    # the kind's handler is the one reader of it.
+    #
+    # Measured over every node of the 1,054 portable documents: **4 composing nodes state
+    # a non-object ``type`` word and all 4 state ``array``** -- the same 4
+    # ``compiler.declare_object``'s type screen measured.  A word no handler claims the
+    # keyword for refuses on ``allOf`` through that handler's own screen, with the kind the
+    # cell gives it, which is loud and is not a verdict about the document.
     if "$ref" in raw:
         return _reference(raw, common, position)
     if "enum" in raw:
@@ -242,17 +262,30 @@ def parse(
             value=raw["const"],
             word=raw.get("type"),
             facts=value_facts(raw, position),
+            # ``format`` for :class:`nodes.Scalar`'s reason and read the same way: it is
+            # excluded from :func:`value_facts` precisely because the kind consumes it in
+            # a field of its own, so a kind that can state one carries the field.
+            format=raw.get("format") if isinstance(raw.get("format"), str) else None,
             **common,
         )
     combinator = next((kw for kw in UNION if isinstance(raw.get(kw), list)), None)
     if combinator is not None and not presence_only(raw, position):
         return _union(raw, common, combinator, pointer, position, source)
-    if isinstance(raw.get("allOf"), list):
+    if isinstance(raw.get("allOf"), list) and raw.get("type") in (None, "object"):
         # **A combinator of SHAPES one of this node's own conjuncts carries**, which
         # draft-07 applies to the same instance, so §5's ``oneOf``/``anyOf`` row at CONJ
         # answers it: "one class per branch over the composed bases".  Read AFTER the
         # node's own combinator, for the arm order's own reason -- a node stating one
         # itself has already said which branch list is its instance's.
+        #
+        # **INSIDE the word gate ``adcp-client-python-10l.64`` put on this arm, and for
+        # that row's own reason**: the cell answers "one class per branch", a node
+        # stating ``type: array`` beside an ``allOf`` is a container whose conjuncts
+        # constrain it, and a container has no branch classes.  Measured over the 1,054
+        # portable documents: all 4 composing nodes stating a non-object word state
+        # ``array`` and none of them carries a combinator in a conjunct, so the gate
+        # moves no document -- it is written this way so the first that does is read by
+        # the word rather than by this reading.
         borne = _borne_by_a_conjunct(raw, position)
         if borne is not None:
             return _union(raw, common, borne[1], pointer, position, source, borne=borne[0])
@@ -338,7 +371,14 @@ def parse(
             # instance", and a node stating neither a word nor a MEMBER keyword has
             # nothing for that row to read -- §5 reads it as ``{}``, which IS ``true``.
             # A non-object word has no such clause: the word alone decides.
-            return nodes.Typeless(**common)
+            #
+            # ``facts`` by the same derivation as :class:`nodes.Scalar`'s, and the kind
+            # needs them because NOTHING here can decide them: ``Any`` is no type for a
+            # constraint to bind to, so the row declares a widening and a declaration
+            # carries the fact the DOCUMENT states (§9).  The node built from a
+            # non-mapping above carries none, which is right: it is not a schema and
+            # states no fact.
+            return nodes.Typeless(facts=value_facts(raw, position), **common)
         # **The word an enclosing node asserts about the SAME instance decides the kind
         # where the node states none** -- §4 of the semantics document's ``type`` row and
         # ``_base.applied_schema``'s own rule, which is what the SCHEMA half of every
@@ -576,15 +616,27 @@ def _array(
     raw: Mapping[str, Any], common: dict, pointer: str, source: Source, word: Any = None
 ) -> nodes.Array:
     """``type: array``: the element at ELEM, the LIST's own bound, ``distinct``, the
-    ``contains`` predicate as stated.
+    ``contains`` predicate as stated, and the ``allOf`` conjuncts that constrain it.
 
     :attr:`nodes.Array.distinct` is the third rewrite retired on the array side:
     ``compiler.fields`` stripped ``uniqueItems`` off a property's declaration before the
     array row saw it, so the array was decided from a mapping the document does not state.
     The fact is read once here and the class holding the array reads it off the node.
+
+    :attr:`nodes.Array.conjuncts` is the arm order's own clause, stated where that comment
+    states it: a ``type: array`` beside an ``allOf`` is §5's ``$ref`` row at CONJ reached
+    through the node's own word, so the conjunct list travels on the kind the word selects
+    and ``lower.containers.array`` reads it.  Built exactly as :func:`_composition` builds
+    it, with the CONJ pointer, so a refusal inside one names the conjunct's own node.
     """
     items = raw.get("items")
     return nodes.Array(
+        conjuncts=tuple(
+            nodes.Conjunct(pointer=f"{pointer}/allOf/{i}", raw=conjunct)
+            for i, conjunct in enumerate(raw["allOf"])
+        )
+        if isinstance(raw.get("allOf"), list)
+        else (),
         element=(
             parse(items, pointer=f"{pointer}/items", position=Position.ELEM, source=source)
             if isinstance(items, Mapping)
@@ -984,15 +1036,35 @@ def presence_clause(branch: Any, position: Position) -> Clause | None:
     constrains something a rule cannot say, so the node is a combinator of shapes and
     §5's union row answers it.  Reading it as a clause and dropping the ``not`` would
     make the rule say less than the branch with nothing to report it.
+
+    **A branch that FORBIDS and requires nothing is a presence clause, and its required
+    group is EMPTY** (``adcp-client-python-10l.64``).  §5's row is "each clause carries
+    its OWN required group and its own forbidden groups, because the ``not`` is per
+    branch", and the section's own reason for the kind is "every branch constrains which
+    keys are present and nothing else, so it is a rule on the root's class and not a
+    branch class" -- which a branch stating only a ``not`` over required groups satisfies.
+    Nothing in either sentence asks the required half to be non-empty, and
+    :meth:`adcp.types._runtime.Presence.holds` reads an empty ``require`` as the
+    quantifier over no names that it is: the clause is then exactly "no group of F
+    present", which is the branch.
+
+    A branch declaring NOTHING at all stays out, and that is the gate this keeps: §5's
+    ``type`` row reads such a node as ``{}``, "which IS true", so it is not a statement
+    about presence and ``lower.union``'s own row is what reports it.
+
+    Measured over every combinator node of the 1,054 portable documents: **2 sites
+    change**, and they are the two this row cleared -- ``core/forecast-point.json`` and
+    ``core/canonical-forecast-point.json`` at ``/properties/viewability``, whose ``anyOf``
+    is "forbid all four measurement keys, or require ``standard``".
     """
     if not isinstance(branch, Mapping):
         return None
     declared = {k for k in branch if keywords.declares(k, position)}
-    if not declared <= {"required", "not"} or "required" not in declared:
+    if not declared or not declared <= {"required", "not"}:
         return None
-    if not isinstance(branch["required"], list):
+    if "required" in declared and not isinstance(branch["required"], list):
         return None
-    require = tuple(n for n in branch["required"] if isinstance(n, str))
+    require = tuple(n for n in branch.get("required", ()) if isinstance(n, str))
     if "not" not in declared:
         return (require, ())
     forbid = required_groups(branch["not"], position)

@@ -912,10 +912,26 @@ class Module:
             # The symmetric failure to the one above, and the same kind of thing: a
             # pointer names ONE node of a document, so two symbols at one pointer
             # means a fragment reference to it would import whichever the walk
-            # happened to declare last.  Measured 0 times over the whole population
-            # -- the root's pointer is written once, by the row, and every nested
-            # declaration sits at its own node -- so this refuses rather than
-            # ordering them.
+            # happened to declare last.  So this refuses rather than ordering them.
+            #
+            # **The population is 0 and it has been 1, which is the measurement worth
+            # keeping** (``adcp-client-python-857``, and ``10l.53``, which filed the
+            # stale "measured 0 times" this comment used to carry).  Every nested
+            # declaration sits at its own node and the root's pointer is written once
+            # by the row -- with ONE exception, and §4 puts it there deliberately: the
+            # extras store of a class with a typed ``additionalProperties`` is parsed
+            # at the CLASS's own pointer.  Routed through ``emit.decide_type``, the
+            # store took that pointer's name entry and declared an ``AliasDecl`` at it
+            # moments before :func:`declare_object` declared the ``ClassDecl``, and
+            # this arm fired once over the 1,054 portable documents: ``brand.json`` at
+            # ``/definitions/colors``, whose twelve properties and whose typed
+            # ``additionalProperties`` are all the same local ``$ref``.  The fix is in
+            # :func:`declare_object`, where the store now reaches THE DISPATCH rather
+            # than the walk wrapper, because the three things the wrapper adds are
+            # statements about the node that OWNS the pointer and the store does not
+            # own this one.  A figure claiming 0 where the population is not 0 invites
+            # a later row to delete a reachable arm, so the reading is written out
+            # rather than the number alone.
             return Refusal(
                 "$ref",
                 pointer,
@@ -1570,7 +1586,35 @@ def declare_object(
         # No hop: the parser builds the extras store at the CLASS's own pointer, because
         # it is the same instance re-read (§4), so it inherits the class's own name entry
         # and its VALUE hangs off that pointer like any mapping's.
-        store = lower_node(extras, mod)
+        #
+        # **THE DISPATCH AND NOT THE WALK WRAPPER, and §4's shared pointer is the whole
+        # reason.**  ``lower_node`` is ``emit.decide_type``, which is the dispatch plus
+        # three statements about THE NODE AT A POINTER -- adopt the class an earlier
+        # node of identical content declared at it, name the node where the bundle's
+        # ``$ref``\\ s name its pointer, and seed the content memo at it.  A pointer
+        # names ONE node, and the store is the one node in the tree that does not own
+        # the pointer it carries: §4 hands it the CLASS's, so all three of those
+        # statements are about the class standing here and none is about the store.
+        # Routed through the wrapper they fire on the store, which declares an alias at
+        # the class's own pointer moments before this function declares the class --
+        # ``Module.declare``'s collision, measured on ``brand.json`` at
+        # ``/definitions/colors``, a bundle-named class whose twelve properties and
+        # whose typed ``additionalProperties`` are all one local ``$ref``.  The alias
+        # would also be WRONG where it did not collide: a ``$ref`` to
+        # ``#/definitions/colors`` names the object, so the symbol at that pointer is
+        # the class and never the ``dict[K, V]`` its extras store comes to.
+        #
+        # The store's own CHILDREN keep the wrapper: its value sits at MAPV under
+        # ``<pointer>/additionalProperties`` and its key at KEY, each at a pointer it
+        # owns, and ``containers.mapping`` reaches both through ``lower_node`` as any
+        # mapping's children are reached.  So a named or collapsed node inside the
+        # store is named and collapsed exactly as it would be anywhere else.
+        #
+        # Imported on use, for the reason :func:`rules_at` is: ``codegen.lower.decide``
+        # imports this module, and D13 fixes the direction, so this side is the lazy one.
+        from codegen.lower.decide import decide as dispatch
+
+        store = dispatch(extras, mod)
         if isinstance(store, Refusal):
             return store
         extra_type = store.type
@@ -1890,14 +1934,22 @@ def _refuse_a_combinator_of_shapes(
     :attr:`nodes.Union.stated_at` is the pointer the document states the keyword at, so
     the refusal names where it is written rather than where it applies.
 
-    Measured over the 1,054 portable documents: **1 node**, ``adagents.json`` at
-    ``/oneOf/1``, whose ``/oneOf/1/allOf/0`` is a 6-branch ``anyOf``.  It is a BRANCH of
-    a root union, so §8's "a sibling a class carries -> that same base-plus-branches
-    shape, at a union in ANY position" would make it a second base INSIDE a branch of
-    the first -- and a branch class's whole point is that it descends from the union's
-    own base, which nothing yet writes for a base of a base.  So the obstruction is
-    unwritten code and :func:`kind_for` reads the cell for the kind rather than this
-    site minting one.
+    **Its population is 0 and it is written anyway, which is the point of a backstop.**
+    The one node that reached it was ``adagents.json`` at ``/oneOf/1``, whose
+    ``/oneOf/1/allOf/0`` is a 6-branch ``anyOf``; ``adcp-client-python-10l.66`` landed
+    §5's own answer for a branch that is ITSELF a union -- ``lower.union``'s branch loop
+    recurses into ``lower_union`` with the enclosing base -- and that arm is read BEFORE
+    the composing one, so such a branch no longer arrives here.  Measured after that
+    merge by tracing every call: **0 of the 1,054 portable documents reach
+    ``lower_composition`` with a :class:`nodes.Union` and no ``UnionBase``.**  The arm
+    stays because what it refuses is not a shape the bundle happens to state but a
+    CALLER that forgot the branches: a fact dropped with nothing to report it is the one
+    outcome §2 does not permit at any rung, and the two arms are not duplicates -- one
+    is §5's answer and this is the assertion that the answer was taken.
+
+    :func:`kind_for` reads the cell for the kind rather than this site minting one, which
+    is ``docs/plan/architecture.md`` §3's rule and holds whether or not a document is
+    ever reported by it.
     """
     if isinstance(node, nodes.Union):
         return Refusal(
@@ -2076,9 +2128,17 @@ def _the_conjuncts_own_type(
       - **2 over ``required``** -- ``core/canonical-product.json`` and
         ``core/product.json``, whose ``publisher_properties`` items state
         ``not: {"required": ["publisher_domains"]}`` beside a union root -- which §5's row
-        decides as ``ForbiddenGroups``, a rule on a CLASS this node does not have.  §2's
-        three value-rule kinds are each about a VALUE, so a statement about which KEYS an
-        instance supplied has no kind to be, and the refusal says exactly that.
+        decides as ``ForbiddenGroups``, a rule on a CLASS this node does not have.  **§2's
+        clause of 2026-10-28 is what these two were waiting for** and it is not a fourth
+        kind: "a value-level rule may state which KEYS the value supplied, and the three
+        kinds above are not the limit ... at a position with no class above it, the value
+        *is* the object, so ``ForbiddenGroups``, ``RequiredGroups`` and ``PresenceGroups``
+        are admissible there as ``_runtime.ValueRule``s".  So the rule hangs on
+        ``PublisherPropertySelector``, this node's own type, and
+        ``lower.rules.as_the_object`` is the one reading of which of a class's rules may
+        -- ``isinstance(rule, ValueRule)``, a property of the kind.  The refusal these two
+        carried asked for "a value-level presence kind that section 2 does not name";
+        nothing was missing but the sentence (``adcp-client-python-10l.63``).
       - **1 over another shape** -- ``core/budget-allocation.json``'s
         ``optimization_goals`` items -- which is §5's ``not`` row's own last clause,
         "nothing on the model; the schema half answers and the ceiling is named", and the
@@ -2151,32 +2211,44 @@ def _the_conjuncts_own_type(
                 )
             beside[key] = stating
     if beside:
-        on_a_class = rules_at(node, *rule_nodes, position=node.position).rules
-        if on_a_class:
-            # §2's FIRST half, at a node that has no class: the statement is about which
-            # KEYS are present (``not`` over ``required`` -> ``ForbiddenGroups``), and
-            # the three value-rule kinds §2 names -- ``AtLeastOne``, ``NotValue``,
-            # ``Distinct`` -- are all about a VALUE.  So the rule has somewhere to live
-            # and no kind to live as, which is a different obstruction from the one above
-            # and is reported as itself rather than folded into it.
-            #
-            # 2 sites over the portable population, both a ``$ref`` to
-            # ``core/publisher-property-selector.json`` beside
-            # ``not: {"required": ["publisher_domains"]}``:
-            # ``core/canonical-product.json`` and ``core/product.json``, at
-            # ``/properties/publisher_properties/items/allOf/0``.
+        # §2's clause of 2026-10-28, which is what this position needed and the reason
+        # the two documents below stopped refusing: "a value-level rule may state which
+        # KEYS the value supplied, and the three kinds above are not the limit ... at a
+        # position with no class above it, the value IS the object, so ForbiddenGroups,
+        # RequiredGroups and PresenceGroups are admissible there as _runtime.ValueRules
+        # -- 'a callable on the value, and all it is' -- without a new kind".  So a rule
+        # the CLASS half wrote still hangs here, on the value's own annotated type, and
+        # ``lower.rules.as_the_object`` is the one reading of which of them may: the test
+        # is ``isinstance(rule, ValueRule)``, a property of the KIND, so this arm carries
+        # no list of the kinds §2's clause names.
+        #
+        # 2 sites over the portable population, both a ``$ref`` to
+        # ``core/publisher-property-selector.json`` beside
+        # ``not: {"required": ["publisher_domains"]}``:
+        # ``core/canonical-product.json`` and ``core/product.json``, at
+        # ``/properties/publisher_properties/items/allOf/0``, each now carrying
+        # ``ForbiddenGroups((('publisher_domains',),))`` on ``PublisherPropertySelector``.
+        at_the_value = lower_rules.as_the_object(
+            rules_at(node, *rule_nodes, position=node.position).rules
+        )
+        if at_the_value.declined:
+            # A kind that is NOT a callable on the value: it reads the keys an instance
+            # supplied through a class, so it has nowhere to live at a position with no
+            # class, and §2 admits no drop by silence.  0 sites over the portable
+            # population -- every rule this arm lowers is one of §2's clause's three --
+            # so this is written so the first one is loud, exactly as the two-conjuncts
+            # arm above is.  ``UniqueItems`` is the instructive one: it names a SIBLING
+            # field's array, which is a name the VALUE supplied and not the value.
             return Refusal(
                 "allOf",
                 where,
                 f"{symbol} is this node's own TYPE (section 5's $ref row at CONJ) and a "
-                f"conjunct states {sorted(beside)} beside it, which section 5's not row "
-                f"decides as {', '.join(sorted(type(r).__name__ for r in on_a_class))} -- "
-                "a rule on a CLASS, and this node has none.  Section 2 hangs a rule with "
-                "no class above the value off the value's own annotated type, and the "
-                "three kinds it names there (AtLeastOne, NotValue, Distinct) are each "
-                "about a VALUE: a statement about which KEYS an instance supplied has "
-                "nowhere on an ir.TypeRef to live, so the faithful answer needs a "
-                "value-level presence kind that section 2 does not name",
+                f"conjunct states {sorted(beside)} beside it, which lowers to "
+                f"{', '.join(sorted(type(r).__name__ for r in at_the_value.declined))} -- "
+                "a rule on a CLASS, and this node has none.  Section 2's value-level "
+                "clause admits a rule on the value's own annotated type where the KIND "
+                "is a callable on the value, and this one is not: it reads the keys an "
+                "instance supplied through a class, so hanging it here would drop it",
                 kind=conj,
             )
         # §2's SECOND half, which is the one this position takes: the rule hangs off the
@@ -2186,11 +2258,21 @@ def _the_conjuncts_own_type(
         # for the same statement beside a scalar's own type: ``not``'s cell is
         # ``rendered=False``, so section 8 compares no fact at this pointer and the
         # document's own ``strict_validate`` is what enforces it.
+        #
+        # The two orders are CONCATENATED and not merged, because the two halves are
+        # disjoint per keyword shape and one of them is always empty: ``on_a_value``
+        # reads a statement about a VALUE (a ``not`` over a ``const`` or an ``enum``, a
+        # ``contains``) and ``as_the_object`` carries a statement about which KEYS
+        # arrived, and the reductions in ``lower.rules`` are what split them.  Each half
+        # is already a function of the document's content (P7).
         return Decided(
             ir.TypeRef(
                 symbol,
                 local=True,
-                validators=lower_rules.on_a_value(beside, contains=beside.get("contains")),
+                validators=(
+                    *lower_rules.on_a_value(beside, contains=beside.get("contains")),
+                    *at_the_value.carried,
+                ),
             )
         )
     return Decided(ir.TypeRef(symbol, local=True))

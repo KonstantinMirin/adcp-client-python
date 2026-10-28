@@ -53,13 +53,23 @@ did not exist the compiler read "we cannot express it" off their absence and DEC
 an approximation for each such array -- 13 of 17 -- which is worse than a refusal,
 because an approximation looks accounted for.  Nothing about a named alias ever
 prevented a rule from living on it; nobody had written the kinds.
+
+**AND THE THREE ARE NOT THE LIMIT** (§2, added 2026-10-28).  "A value-level rule may
+state which KEYS the value supplied ... at a position with no class above it, the value
+*is* the object, so ``ForbiddenGroups``, ``RequiredGroups`` and ``PresenceGroups`` are
+admissible there as ``ValueRule``s -- 'a callable on the value, and all it is' -- without
+a new kind."  :class:`TheValueIsTheObject` is that sentence and nothing more: it gives a
+key-presence kind a ``__call__`` that reads the value's own members and hands them to the
+kind's own ``errors``, so one dataclass states one thing at both of §2's places.  Six
+documents refused for want of the sentence, each asking for "a value-level presence kind
+that §2 does not name"; no kind was missing.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, ClassVar, Protocol
+from typing import Any, ClassVar, Protocol, runtime_checkable
 
 from pydantic import BaseModel, model_validator
 from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError
@@ -109,6 +119,72 @@ class Rule(Protocol):
     """
 
     def errors(self, keys: frozenset[str], values: Mapping[str, Any]) -> Iterator[Error]: ...
+
+
+def _members(value: Any) -> tuple[frozenset[str], Mapping[str, Any]] | None:
+    """The keys ``value`` supplied and their values, or ``None`` if it is no object.
+
+    The two shapes a value arrives as, and both are read the way the class half reads a
+    model: :func:`supplied` for an :class:`AdCPBaseModel`, so an alias is the document's
+    own spelling on either path, and a ``Mapping``'s own keys for a value that never
+    became one (a ``dict[str, Any]`` field, an undeclared branch).
+
+    ``None`` -- rather than an empty pair -- for anything else, and the caller returns
+    the value untouched: :class:`Distinct`'s measured reason, read for a statement about
+    PROPERTIES.  The annotated type can be one arm of a union whose other arms are a
+    string or a number, and draft-07 applies ``required``, ``not``/``required`` and a
+    presence-only combinator to an OBJECT alone, so refusing on a scalar would make the
+    model narrower than its document.  An empty pair would do exactly that, because a
+    ``required`` group is unsatisfied by the empty key set.
+    """
+    if isinstance(value, BaseModel):
+        return supplied(value)
+    if isinstance(value, Mapping):
+        return frozenset(value), value
+    return None
+
+
+class TheValueIsTheObject:
+    """§2's clause of 2026-10-28: a rule about which KEYS the value supplied is ALSO a
+    :class:`ValueRule`, so ONE kind serves both places §2 hangs a rule.
+
+    "**A value-level rule may state which KEYS the value supplied, and the three kinds
+    above are not the limit.**  The distinction §2 draws is about where a rule HANGS, not
+    about what it may read: 'a class can read sibling fields' is about reading the
+    siblings *of* the value, and a callable on the value reads the value's **own**
+    members as freely as a class reads its fields.  At a position with no class above it,
+    the value *is* the object, so ``ForbiddenGroups``, ``RequiredGroups`` and
+    ``PresenceGroups`` are admissible there as ``_runtime.ValueRule``s -- 'a callable on
+    the value, and all it is' -- without a new kind."
+
+    **Which is why this is a mixin and not a fourth kind.**  Six documents refused for
+    want of that sentence, and the refusal they carried asked for "a value-level presence
+    kind that §2 does not name".  A new kind would have been a second declaration of one
+    statement: ``__call__`` re-decides nothing, it reads the value's own members
+    (:func:`_members`) and hands them to the kind's OWN ``errors``, so a kind cannot come
+    to say one thing on a class and another on a value.
+
+    The FIRST refusal is raised rather than every one collected, which is
+    :func:`_violation`'s shape and every value rule's: pydantic calls this inside an
+    ``AfterValidator`` while it is building the value, where there is no error list to
+    join.  The class half still reports all of them, because :class:`RuleBound` has one.
+
+    ``loc`` is dropped for the reason :func:`_violation` gives -- the validator sits on a
+    type reachable through a field, a mapping key and a union arm, so the path to the
+    value is the one thing it cannot know -- and the ``keyword`` is kept, which is what
+    makes a value rule's refusal read the same as a class rule's.
+    """
+
+    def __call__(self, value: Any) -> Any:
+        members = _members(value)
+        if members is None:
+            return value
+        # ``self.errors`` is the kind's own: this class is mixed into a :class:`Rule` and
+        # declares no ``errors`` of its own, because a stub here would SHADOW the
+        # reading on a kind that forgot to write one and refuse nothing in silence.
+        for keyword, _loc, detail, _given in self.errors(*members):  # type: ignore[attr-defined]
+            raise _violation(keyword, detail)
+        return value
 
 
 @dataclass(frozen=True)
@@ -164,7 +240,7 @@ class PropertyCount:
 
 
 @dataclass(frozen=True)
-class ForbiddenGroups:
+class ForbiddenGroups(TheValueIsTheObject):
     """``not`` over ``required``: no listed group of keys may be present in full.
 
     One dataclass covers both shapes the bundle spells, because they are the same
@@ -191,7 +267,7 @@ class ForbiddenGroups:
 
 
 @dataclass(frozen=True)
-class RequiredGroups:
+class RequiredGroups(TheValueIsTheObject):
     """``oneOf`` / ``anyOf`` over ``required``: which groups of keys may be present.
 
     ``anyOf`` is AT LEAST ONE group present in full; ``oneOf`` is EXACTLY ONE.  One
@@ -269,7 +345,7 @@ class Presence:
 
 
 @dataclass(frozen=True)
-class PresenceGroups:
+class PresenceGroups(TheValueIsTheObject):
     """``oneOf`` / ``anyOf`` whose every branch states ``required`` AND a ``not`` over
     ``required``: one rule whose CLAUSES are the branches.
 
@@ -377,6 +453,7 @@ class UniqueItems:
 # --------------------------------------------------------------------------- #
 # the rules that hang on a VALUE, where no class sits above it
 # --------------------------------------------------------------------------- #
+@runtime_checkable
 class ValueRule(Protocol):
     """What a rule bound to a TYPE is, and all it is: a callable on the value.
 
@@ -394,7 +471,22 @@ class ValueRule(Protocol):
     is building the value, and :class:`RuleBound` calls a :class:`Rule` after the model
     is built.
 
-    The three kinds take no model and no field name, which is the whole point of the
+    A kind may be BOTH, and §2's clause of 2026-10-28 is why: "the three kinds above are
+    not the limit ... at a position with no class above it, the value *is* the object, so
+    ``ForbiddenGroups``, ``RequiredGroups`` and ``PresenceGroups`` are admissible there
+    as ``_runtime.ValueRule``s -- 'a callable on the value, and all it is' -- without a
+    new kind."  :class:`TheValueIsTheObject` is the one implementation of that, so the
+    three carry one ``errors`` and one ``__call__`` over it.
+
+    **``runtime_checkable``, because the protocol IS the admissibility test.**  "A
+    callable on the value, and all it is" is a property of the KIND, so
+    ``codegen.lower.rules.as_the_object`` asks ``isinstance(rule, ValueRule)`` rather
+    than carrying a list of which kinds §2's clause names -- a list would be a second
+    copy of the clause, and a kind that is not one (``Dependencies``,
+    ``PropertyCount``, ``ConditionalRequired``, ``UniqueItems``) then falls through to a
+    refusal that names it rather than being dropped in silence.
+
+    Each kind takes no model and no field name, which is the whole point of the
     position they serve: the same ``Annotated[list[X], ...]`` is correct inside
     ``dict[K, V]``, inside a union arm and as a module-level alias, so a rule written
     onto it travels with the type exactly as a bound does (§2, "constraints bind to the

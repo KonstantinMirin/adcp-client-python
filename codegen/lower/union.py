@@ -33,14 +33,17 @@ WHAT A BRANCH IS.  A branch is a class this module DECLARES: from the branch's o
 ``properties``; or, where the branch COMPOSES, from ``compiler.lower_composition`` with
 this base as its ``bases`` (``salesagent-j3k2l.40``); or, where the branch is a bare
 ``$ref``, **from TWO BASES** -- the target, which supplies the fields, and this union's
-base, which supplies the dispatch (§4, ``salesagent-j3k2l.59``).  Everything else refuses
+base, which supplies the dispatch (§4, ``salesagent-j3k2l.59``); or, where the branch is
+ITSELF a ``oneOf``/``anyOf`` of shapes, from THIS FUNCTION AGAIN, with the branch's own
+siblings as the inner base and this base as that base's base
+(:class:`Enclosing`, ``adcp-client-python-10l.66``).  Everything else refuses
 by name, pointer and keyword, because §7's done-when for this step is *one subclass per
 branch* and each of these has no subclass to give:
 
 * a ``required``-only overlay, which constrains requiredness and nothing else: that is a
   rule on the root's class (D2, D6), step 7's row;
-* a scalar or array branch (step 6, D2), a nested ``oneOf``/``anyOf``/``not``/``if``, or an
-  ``enum``.  A branch carrying a bare ``const`` is a SCALAR branch and is refused as one:
+* a scalar or array branch (step 6, D2), a nested ``not``/``if``, or an ``enum``.
+  A branch carrying a bare ``const`` is a SCALAR branch and is refused as one:
   the ``const`` pins the branch's whole value, so there is no property map to declare a
   subclass from.  D2's ``const`` row (``codegen.lower.const``) decides a branch's
   PROPERTIES, which is where the discriminating pin sits, and this module no longer
@@ -230,10 +233,16 @@ ROOT_CONJUNCTS = ("allOf", "properties", "required", "additionalProperties")
 #: D6's rule families are NOT listed here and are added per branch by
 #: ``compiler.rules_at``, which is what keeps the distinction this module's docstring
 #: draws: a branch's ``anyOf`` of ``required`` groups is a RULE on that branch's own
-#: class, and a branch's ``oneOf`` of SHAPES is a nested union this row still refuses.
-#: One predicate decides both (``rules.presence_only``, reached through the compiler
-#: because a lowering cannot import a sibling lowering), so there is no second reading
-#: for the two to disagree through.
+#: class, and a branch's ``oneOf`` of SHAPES is a NESTED UNION, which the parser
+#: classifies :class:`nodes.Union` and :func:`_plan` claims off that node's own
+#: ``combinator`` field.  One predicate decides which of the two it is
+#: (``rules.presence_only``, reached through the compiler because a lowering cannot
+#: import a sibling lowering), so there is no second reading for the two to disagree
+#: through -- and the combinator is NOT in this set, because a branch that is a union is
+#: not "a class this module declares from its own property map" but the recursion the
+#: branch loop takes (:class:`Enclosing`).  A keyword claimed by the SHAPE the parser
+#: found is claimed at the call, beside the screen, exactly as ``lower/const.py`` claims
+#: a const node's own facts.
 #:
 #: ``const`` and ``allOf`` are both in the set for ``ROOT_CLAIMS``'s reason, and
 #: neither because this module lowers one: left out, the keyword screen reports them
@@ -426,6 +435,36 @@ class Inherited:
     """
 
     symbol: str
+    shape: compiler.Shape
+
+
+@dataclass(frozen=True)
+class Enclosing:
+    """The union base a NESTED union's own base subclasses, and what that base declares.
+
+    §5's ``oneOf``/``anyOf`` cell gives the base-plus-branches shape "at a union in ANY
+    position", and a union sitting at a BRANCH of another union is the one position where
+    that answer is reached with a class already waiting above it: §4 makes a branch of a
+    root union a CLASS whose base is the union base, because that is what
+    ``isinstance(payload, Base)`` is.  So the nested base is declared with this one as
+    ``bases`` and this one's :class:`compiler.Shape` as ``inherits``, which is exactly the
+    pair the branch loop's other three arms already hand their readers -- one reading of
+    "what a branch of this union inherits", whichever shape the branch turns out to be.
+
+    **``BranchDispatchMixin`` is NOT named again beside it**, and that is the whole reason
+    this is a carrier rather than a ``bases`` tuple the caller composes.  The mixin has to
+    come FIRST so the MRO finds its ``__get_pydantic_core_schema__``
+    (``compiler.lower_composition``'s ``base_if_none_composes`` records the measurement),
+    and the enclosing base already carries it there -- so naming it beside the enclosing
+    base puts a class before its own subclass and Python refuses to build the module.  The
+    nested base inherits the hook with its own ``_branch_models``, which is what makes a
+    payload reaching the outer arm dispatch again inside it.
+    """
+
+    #: The enclosing union's base, by POINTER until ``lower/names.py`` binds it (§7).
+    base: ir.TypeRef
+    #: What that base declares, read off the record ``declare_object`` wrote for it --
+    #: :func:`lower_union`'s own ``base_shape``, for :attr:`Branch`'s reason.
     shape: compiler.Shape
 
 
@@ -998,7 +1037,12 @@ def overlapping(planned: Sequence[Branch], node: "nodes.Union") -> list[str]:
     ]
 
 
-def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
+def lower_union(
+    node: "nodes.Union",
+    mod: compiler.Module,
+    *,
+    enclosing: "Enclosing | None" = None,
+) -> str | Refusal:
     """Emit the base, the branches and the module trailer; return the base's symbol.
 
     **CONVERTED to node fields.**  The combinator is :attr:`nodes.Union.combinator`, the
@@ -1009,7 +1053,9 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
     declaration.  The root's four conjunct-ish siblings are :attr:`nodes.Union.siblings`.
 
     The pointer is the node's own and is the ROOT's -- ``""`` -- for every call §5's one
-    path makes here: a union below a root is :func:`nested`.
+    path makes here through :func:`lower`.  ``enclosing`` is the other caller: this
+    function reached from its OWN branch loop, for a branch that is itself a union
+    (:class:`Enclosing`).
     """
     kw, pointer = node.combinator, node.pointer
     # **A root D6 rule is the BASE's**, and the base is the one class every branch
@@ -1225,6 +1271,13 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
     # reaches it with an empty conjunct list and no declarations, which is the same
     # empty class this site used to build by hand -- measured byte for byte over the 38
     # union bases the tree already carried.
+    #
+    # **A base ENCLOSED by another union's branch takes that base and names neither the
+    # mixin nor the model class** (:class:`Enclosing`): both arrive through it, in the MRO
+    # order it already fixed, and naming either one beside it puts a class before its own
+    # subclass.  Same sentence as ``base_if_none_composes``'s, at the other end -- there
+    # the caller says what the base would be if nothing composed, here it says what the
+    # base IS.
     stated_base = compiler.lower_composition(
         node,
         mod,
@@ -1234,8 +1287,18 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
         # conjuncts' own classes, and naming it beside them puts a class before two of
         # its own subclasses (``compiler.lower_composition``'s
         # ``base_if_none_composes``).
-        bases=(ir.TypeRef("BranchDispatchMixin", local=True),),
-        base_if_none_composes=ir.TypeRef("AdCPBaseModel", local=True),
+        bases=(
+            (enclosing.base,)
+            if enclosing is not None
+            else (ir.TypeRef("BranchDispatchMixin", local=True),)
+        ),
+        base_if_none_composes=(
+            None if enclosing is not None else ir.TypeRef("AdCPBaseModel", local=True)
+        ),
+        # §4's "a branch composes its own with them", at a branch that is a union: the
+        # enclosing base's fields are this base's inheritance, so §2's restatement rule
+        # decides a property both declare instead of this base shadowing the field.
+        inherits=None if enclosing is None else enclosing.shape,
         union=compiler.UnionBase(
             root_required=tuple(node.required),
             discriminator=on,
@@ -1335,6 +1398,49 @@ def lower_union(node: "nodes.Union", mod: compiler.Module) -> str | Refusal:
             )
             if isinstance(declared, Refusal):
                 return declared
+            continue
+        # **A branch that is ITSELF a union, which is the cell's own answer read at the
+        # one position that encloses it in a class** (``adcp-client-python-10l.66``).
+        # §5's ``oneOf``/``anyOf`` cell at BRANCH is ``Effect.TYPE`` at rung ``JOIN`` and
+        # it says what to do with the node this branch is: "a sibling a CLASS carries ->
+        # that same base-plus-branches shape, at a union in ANY position: the siblings
+        # become the base, each branch becomes a subclass narrowing what it narrows, and
+        # the union is over the subclasses."  This function IS that shape, so the arm is
+        # a recursion and not a second reader -- :class:`Enclosing` is the whole of what
+        # the inner call needs that the outer one did not have.
+        #
+        # ``plan.parsed`` and not a second look at the keys: the PARSER classified this
+        # node a :class:`nodes.Union` by §5's arm order, which is the same classification
+        # the Typeless and Object arms below are asked of (§11 -- a keyword set written
+        # again here is the second copy for the two to disagree through).
+        #
+        # It sits BEFORE the ``allOf`` arm because §5's ``allOf`` row beside a union is
+        # "the same, onto the base": such a node is a :class:`nodes.Union` whose conjunct
+        # list is a SIBLING (:attr:`nodes.Union.siblings`), and ``lower_composition``
+        # reads it from there -- routed to the composition arm instead, the branches
+        # would be dropped.
+        #
+        # **Unconditional, where :func:`lower` asks :func:`composes_its_siblings` first,
+        # and the reason is §4's and not a preference.**  That selector exists to tell a
+        # union that needs a CLASS to carry a sibling from one that needs only a type, and
+        # it already answers ``True`` for the ROOT position regardless -- "a document must
+        # export one importable symbol".  A branch of a root union is the other position
+        # where a class is required whatever the node states: §4 makes every branch a
+        # class because ``isinstance(payload, Base)`` is what the dispatch IS, and
+        # ``A | B`` answers that for nothing.  So the disjunction is the same one, read at
+        # the position that supplies the base.  Measured over the 1,054 portable
+        # documents: **4 union branches reach this arm and all 4 state a sibling a class
+        # carries**, so the clause moves no document today and is written for the reason
+        # :func:`lower`'s own is -- the first branch to be a bare union of shapes gets the
+        # class its enclosing dispatch needs instead of a type nothing can subclass.
+        if isinstance(plan.parsed, nodes.Union):
+            inner = lower_union(
+                plan.parsed,
+                mod,
+                enclosing=Enclosing(ir.TypeRef(pointer, local=True), base_shape),
+            )
+            if isinstance(inner, Refusal):
+                return inner
             continue
         # **A branch of a ROOT union is a class whatever it states** (§4), so the branch
         # is parsed ``objectish`` -- the union telling its branch what it knows about
@@ -2027,11 +2133,25 @@ def _plan(node: "nodes.Union", i: int, mod: compiler.Module) -> Branch | Refusal
     # "a keyword screen is asked about one node, and each conjunct is screened by its own
     # call at its own pointer"), and the FORBIDDEN NAMES range over the branch's
     # conjuncts too -- :func:`forbidden_names`, whose docstring carries the measured case.
+    #
+    # **The branch's own COMBINATOR is claimed where the branch IS a union**
+    # (``adcp-client-python-10l.66``).  §5's ``oneOf``/``anyOf`` cell at BRANCH is a
+    # lowering effect and the branch loop writes what it decides, so the generic
+    # "a later D2 row does" promised a row that does not exist -- the same defect
+    # ``adcp-client-python-10l.35`` closed in ``lower/const.py``, ``lower/enum.py`` and
+    # ``lower/scalars.py``, at the fourth handler of it.  The keyword is taken off
+    # :attr:`nodes.Union.combinator`, the FIELD the parser filled when it classified this
+    # node, so there is no second reading of which keywords are union keywords here --
+    # the set would be :data:`UNION` spelled again, and :data:`UNION` is itself derived
+    # from the declaration's descent column.
     stated = compiler.rules_at(parsed, position=Position.BRANCH)
     forbids = forbidden_names(parsed, branch)
+    nested_union = (
+        frozenset({parsed.combinator}) if isinstance(parsed, nodes.Union) else frozenset()
+    )
     refused = compiler.check_keywords(  # the walk's own check
         parsed,
-        BRANCH_CLAIMS | stated.screen,
+        BRANCH_CLAIMS | stated.screen | nested_union,
         mod=mod,
     )
     if refused is not None:

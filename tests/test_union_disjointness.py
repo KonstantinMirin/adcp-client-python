@@ -37,7 +37,7 @@ from pydantic import create_model
 
 from adcp.types._base import UNDERDETERMINED, SchemaRef, schema_at
 from compiled import compiled
-from codegen import bundle, emit, harness, keywords
+from codegen import bundle, compiler, emit, harness, keywords
 from codegen.keywords import Rung
 from codegen.lower import union as lower_union
 from codegen.refusal import Kind
@@ -1563,14 +1563,52 @@ def test_a_union_of_shapes_reaching_the_composing_row_without_a_caller_refuses()
     ``UnionBase`` would build the composed class with the branch list DROPPED, so it
     refuses -- by the keyword, at the pointer the document writes it at.
 
-    ``adagents.json`` is the one site over the 1,054 portable documents: its
-    ``/oneOf/1`` is a BRANCH of its own root union, and a branch class exists to descend
-    from that root's base, so §8's "base-plus-branches at a union in ANY position" would
-    need a base of a base -- which nothing writes.  The refusal is therefore a DEFERRAL
-    and its kind is the CELL's (``compiler.kind_for``), not this site's.
+    **Its population is 0 and the test grades BOTH halves, because that is what a
+    backstop is.**  ``adagents.json`` at ``/oneOf/1`` was the one node that reached it;
+    ``adcp-client-python-10l.66`` landed §5's own answer for a branch that is ITSELF a
+    union -- ``union.lower_union``'s branch loop recurses with the enclosing base -- and
+    that arm is read BEFORE the composing one, so no document arrives here any more.  The
+    arm is not a duplicate of it: one is the cell's answer and this is the assertion that
+    the answer was TAKEN.  A fact dropped with nothing to report it is the one outcome §2
+    does not permit at any rung, so the guard is graded directly rather than deleted for
+    having no population.
+
+    The DECISION is graded at :func:`compiler._refuse_a_combinator_of_shapes`, which is
+    the whole of it, and the POPULATION by tracing every call the walk makes.
     """
-    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
-    row = out.refusals["adagents.json"]
-    assert (row["keyword"], row["pointer"]) == ("anyOf", "/oneOf/1/allOf/0"), row
-    assert str(row["kind"]).split(".")[-1] == "deferred", row
-    assert "the branch list would be dropped" in row["detail"], row
+    node = schema_parse.parse(
+        bundle.node_at(bundle.read(BUNDLE, "adagents.json"), "/oneOf/1"),
+        pointer="/oneOf/1",
+        position=keywords.Position.BRANCH,
+        source=schema_parse.Source(document="adagents.json"),
+        objectish=True,
+    )
+    assert isinstance(node, nodes.Union), type(node).__name__
+    # The keyword is NOT in the node's own declares -- the conjunct states it -- which is
+    # exactly why the screen reading could not see it and the kind has to be the subject.
+    assert "anyOf" not in node.declares, node.declares
+    refusal = compiler._refuse_a_combinator_of_shapes(node, frozenset())
+    assert refusal is not None
+    assert (refusal.keyword, refusal.pointer) == ("anyOf", "/oneOf/1/allOf/0"), refusal
+    assert "the branch list would be dropped" in refusal.detail, refusal
+    # The kind is the CELL's and not this site's (``docs/plan/architecture.md`` §3).
+    assert refusal.kind == compiler.kind_for("anyOf", keywords.Position.BRANCH), refusal
+
+    # And no document of the bundle reaches it, traced at the call rather than asserted
+    # from the refusal set: a stale guard is one whose population a reader cannot see.
+    reached: list[tuple[str, str]] = []
+    real = compiler.lower_composition
+
+    def traced(node: Any, mod: Any, **kw: Any) -> Any:
+        if isinstance(node, nodes.Union) and kw.get("union") is None:
+            reached.append((mod.source.document, node.stated_at))
+        return real(node, mod, **kw)
+
+    compiler.lower_composition = traced  # type: ignore[assignment]
+    lower_union.compiler.lower_composition = traced  # type: ignore[assignment]
+    try:
+        emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    finally:
+        compiler.lower_composition = real  # type: ignore[assignment]
+        lower_union.compiler.lower_composition = real  # type: ignore[assignment]
+    assert reached == [], sorted(set(reached))
