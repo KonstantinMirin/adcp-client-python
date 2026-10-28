@@ -1140,6 +1140,169 @@ def test_a_local_reference_cycle_refuses_rather_than_recurring(tmp_path: Path) -
     assert "local reference cycle" in refusal_for(root, "core/loop.json")["detail"]
 
 
+#: A local pointer reached through an ``allOf`` CONJUNCT, which is
+#: ``adcp-client-python-10l.43``'s shape: the conjunct arm of ``compiler.lower_composition``
+#: is the one caller that meets a reference without going through
+#: ``nodes.Reference.head``, so it asked the binder for a pointer that is not a binding at
+#: all.  Both halves of the live population are here -- a conjunct that restates a property
+#: (``core/account-identity-change-preview.json``) and one that states only ``required``
+#: (``core/registry-event.json``) -- because the second reaches ``compiler._reused``, whose
+#: import screen is about crossing a module boundary and this does not cross one.
+CONJUNCT_LOCAL = {
+    "title": "Preview",
+    "type": "object",
+    "properties": {
+        # The restating half: the conjunct declares a property the BASE declares, so
+        # section 2's restatement rule reads the local base's Shape.
+        "narrowed": {
+            "allOf": [
+                {"$ref": "#/definitions/impact"},
+                {"properties": {"effect": {"enum": ["kept", "redone"]}}},
+            ]
+        },
+        # The ANNOTATION-ONLY half: the conjunct restates a key the base declares with
+        # nothing but a ``description``, so the subclass re-uses the base's DECIDED field
+        # (``compiler._reused``) -- whose type names a POINTER this module declares
+        # (``#/definitions/area``) and imports from nowhere.  Probed by making it fail:
+        # with the screen asked of ``source is None`` alone, this refuses with "symbols no
+        # document this run lowered declares" of a symbol in its own module.
+        "stricter": {
+            "allOf": [
+                {"$ref": "#/definitions/impact"},
+                {
+                    "type": "object",
+                    "required": ["reason"],
+                    "properties": {"area": {"description": "Which area."}},
+                },
+            ]
+        },
+    },
+    "required": ["narrowed", "stricter"],
+    "definitions": {
+        "impact": {
+            "type": "object",
+            "properties": {
+                "area": {"$ref": "#/definitions/area"},
+                "effect": {"type": "string", "enum": ["kept", "redone", "blocked"]},
+                "reason": {"type": "string", "minLength": 1},
+            },
+            "required": ["effect"],
+            "additionalProperties": False,
+        },
+        "area": {"type": "string", "enum": ["account_id", "billing"]},
+    },
+}
+
+
+def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolver(
+    tmp_path: Path,
+) -> None:
+    """``adcp-client-python-10l.43``: the conjunct arm asks the RESOLVER, not the binder.
+
+    A local pointer as an ``allOf`` conjunct is an ordinary draft-07 document, and the walk
+    already has the one resolver for it -- ``compiler.local_reference``, which
+    ``lower.references.lower`` reaches by branching on the document half.
+    ``compiler.lower_composition``'s conjunct arm asked ``Module.target`` for every
+    reference instead, so a local one got ``emit.answer``'s loud "this is not a binding at
+    all" as the DOCUMENT's verdict -- charging two documents for a routing gap in the
+    compiler.
+
+    Four facts, and each fails on its own:
+
+    * the document EMITS, which is the routing;
+    * the composed class's BASE is a class this module DECLARES, so the base came from the
+      local resolver and not from a binder;
+    * no import is written for it, which is what a binding would have produced -- a local
+      :class:`compiler.Target` carries an EMPTY module, so recording one would name ``""``
+      as the module to import from;
+    * the re-used field's type names the entry's OWN pointer-derived symbol, which is
+      ``compiler._reused``'s "the base is in this module" arm reached through a
+      :class:`compiler.Target` rather than through its absence.
+    """
+    root = write_bundle(tmp_path, {"core/preview.json": CONJUNCT_LOCAL})
+    out = emit.emit(root, ["core/preview.json"])
+    assert out.refusals == {}, out.refusals
+    # The closure is this document ALONE: a local pointer names no other document.
+    assert sorted(out.emitted) == ["core/preview.json"], out.emitted
+
+    source = out.files["core/preview.py"]
+    declared = declared_in(source)
+    # D3's nested rule: the entry is a class of this module, named for its own key.
+    assert isinstance(declared.get("PreviewImpact"), ast.ClassDef), sorted(declared)
+    # The two composing nodes are classes of this module whose base is that entry's
+    # class -- which is what says the conjunct became a BASE through the local resolver.
+    # Named and not counted: a count says nothing about WHICH node composed, and a
+    # fixture that stopped composing one of the two would hold the count by accident.
+    composed = [
+        c
+        for c in ast.parse(source).body
+        if isinstance(c, ast.ClassDef) and [b.id for b in c.bases] == ["PreviewImpact"]
+    ]
+    assert {c.name for c in composed} == {"Narrowed", "Stricter"}, [c.name for c in composed]
+
+    imported = {
+        a.name
+        for n in ast.walk(ast.parse(source))
+        if isinstance(n, ast.ImportFrom)
+        for a in n.names
+    }
+    assert "PreviewImpact" not in imported, sorted(imported)
+    # No import is written from an EMPTY module, which is what a local Target's
+    # ``module`` is and what ``Target.where`` would have handed ``Module.importing``.
+    assert "from  import" not in source, source
+
+    # The annotation-only restatement re-uses the base's decided field, whose type names
+    # the entry this module declares for ``#/definitions/area`` -- so ``_reused``'s "the
+    # base is in this module" arm was reached through a :class:`compiler.Target` rather
+    # than through its absence, and the document's own description rides on it.
+    reusing = next(c for c in composed if "area" in fields_of(source, c.name))
+    area = fields_of(source, reusing.name)["area"]
+    assert "PreviewArea" in {n.id for n in ast.walk(area) if isinstance(n, ast.Name)}, (
+        ast.unparse(area)
+    )
+    assert "Which area." in ast.unparse(area), ast.unparse(area)
+    assert "PreviewArea" not in imported, sorted(imported)
+
+
+def test_the_bundles_two_conjunct_local_pointers_emit_and_their_chains_clear() -> None:
+    """The LIVE half of ``adcp-client-python-10l.43``, over the whole portable set.
+
+    ``core/account-identity-change-preview.json`` at
+    ``/definitions/nonblocking_impacts/items/allOf/0`` (``#/definitions/impact``) and
+    ``core/registry-event.json`` at ``/oneOf/0/properties/payload/allOf/0``
+    (``#/$defs/propertyPayload``) were the two sites in the bundle where a local pointer is
+    reached through a conjunct, both reported as VERDICTS, and each blocked one more
+    document through the chain.  All four emit.
+
+    Asserted as EMISSION and not as the absence of a sentence: a chained refusal quotes its
+    target's detail, so a grep over the text counts one obstruction once per quoting
+    document, which is the mistake ``refusal.Kind``'s docstring records four of.
+    """
+    portable = claimed("bundle.portable", bundle.portable(BUNDLE))
+    out = compiled(BUNDLE, sorted(portable))
+    freed = claimed(
+        "documents the conjunct-local routing gap held",
+        [
+            "core/account-identity-change-preview.json",
+            "core/registry-event.json",
+            # The two the group blocked transitively.
+            "account/sync-accounts-response.json",
+            "core/registry-feed-response.json",
+        ],
+        inside=portable,
+    )
+    assert freed <= set(out.emitted), sorted(freed - set(out.emitted))
+    # And no document is left reporting that sentence at all, in either direction: it is
+    # the run's answer at a site only ``lower.union._targeted`` now reaches, and that
+    # caller reads it as "this branch names no class" rather than refusing on it.
+    said = {
+        d: r["pointer"]
+        for d, r in out.refusals.items()
+        if "is a pointer into this document" in r["detail"]
+    }
+    assert said == {}, said
+
+
 def test_two_entry_keys_deriving_one_name_fail_the_build(tmp_path: Path) -> None:
     """``class_name`` strips punctuation, so ``a_b`` and ``a.b`` derive one symbol.
 
@@ -1319,8 +1482,25 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     # section being read.  It held across 0130e5fc9, where the membership of the
     # other seven changed and the count went 7 -> 8, and across
     # ``salesagent-j3k2l.40``, where ``brand.json`` joined and took it 8 -> 9.
-    assert inside["core/account-identity-change-preview.json"] == (
-        "/definitions/nonblocking_impacts/items/allOf/0"
+    #
+    # **AND IT CLEARED AT ``adcp-client-python-10l.43``, THE THIRD TIME THIS SECOND PIN
+    # HAS MOVED AND THE SECOND TIME BY EMITTING.**
+    # ``core/account-identity-change-preview.json`` refused at
+    # ``/definitions/nonblocking_impacts/items/allOf/0`` because the conjunct there is a
+    # LOCAL ``$ref`` -- ``#/definitions/impact``, a pointer into its own document -- and
+    # ``lower_composition``'s conjunct arm asked the binder for it.  It asks
+    # ``compiler.local_reference`` now (``compiler._conjunct_base``) and the document
+    # emits, which is the same clearing as the first pin's: a routing gap charged to a
+    # document, not a fact about the document.
+    #
+    # The pin moves to ``brand/verify-brand-claims-response.json``, the SIBLING of the
+    # first pin at the same pointer -- a section entry, an ``allOf`` conjunct, a property,
+    # three hops past the section name -- so what this assertion says is unchanged, and
+    # the two pins are now two independently-named documents rather than two depths.
+    # There are 3 members left and ``brand.json``'s pointer is two hops, so these two are
+    # the whole of the deep evidence.
+    assert inside["brand/verify-brand-claims-response.json"] == (
+        "/definitions/signed_response/allOf/1/properties/payload"
     )
 
     # ``governance/policy-entry.json`` EMITS at ``adcp-client-python-10l.21``'s second

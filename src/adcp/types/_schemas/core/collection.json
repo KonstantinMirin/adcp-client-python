@@ -1,0 +1,548 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "A recurring inventory container \u2014 a named program, publication, event series, rotation, or programmed channel that produces bookable installments on a defined cadence. The kind field indicates how to interpret this collection: 'series' for TV/podcast programs, 'publication' for print/newsletter titles, 'event_series' for live events, 'rotation' for DOOH scheduling, and 'channel' for continuously programmed audio or video streams regardless of carriage or monetization model. Declared in the publisher's adagents.json and referenced by products via collection selectors.",
+  "properties": {
+    "cadence": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "How frequently the collection releases new installments",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly",
+        "seasonal",
+        "event",
+        "irregular"
+      ],
+      "enumDescriptions": {
+        "daily": "New installments every day or weekday",
+        "event": "One-time or occasional special events",
+        "irregular": "No predictable schedule",
+        "monthly": "New installments monthly (magazines, newsletters)",
+        "seasonal": "Installments released in defined seasons with breaks between",
+        "weekly": "New installments weekly"
+      },
+      "title": "Collection Cadence",
+      "type": "string"
+    },
+    "collection_id": {
+      "description": "Publisher-assigned identifier for this collection. Declared in the publisher's adagents.json collections array. Products reference collections via collection selectors with publisher_domain and collection_ids. Use distribution identifiers for cross-seller matching across publishers.",
+      "type": "string",
+      "x-entity": "collection"
+    },
+    "content_rating": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Baseline content rating for the collection. Individual installments may override this.",
+      "properties": {
+        "rating": {
+          "description": "Rating value within the system (e.g., 'TV-PG', 'R', 'explicit')",
+          "type": "string"
+        },
+        "system": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Rating system used",
+          "enum": [
+            "tv_parental",
+            "mpaa",
+            "podcast",
+            "esrb",
+            "bbfc",
+            "fsk",
+            "acb",
+            "chvrs",
+            "csa",
+            "pegi",
+            "custom"
+          ],
+          "enumDescriptions": {
+            "acb": "Australian Classification Board (G, PG, M, MA15+, R18+)",
+            "bbfc": "British Board of Film Classification (U, PG, 12A, 12, 15, 18, R18)",
+            "chvrs": "Canadian Home Video Rating System (G, PG, 14A, 18A, R, A)",
+            "csa": "Conseil superieur de l'audiovisuel / Arcom (-10, -12, -16, -18) \u2014 France",
+            "custom": "Publisher-defined rating system with free-form values",
+            "esrb": "Entertainment Software Rating Board (E, E10+, T, M, AO) \u2014 US/Canada",
+            "fsk": "Freiwillige Selbstkontrolle der Filmwirtschaft (0, 6, 12, 16, 18) \u2014 Germany",
+            "mpaa": "Motion Picture Association film ratings (G, PG, PG-13, R, NC-17)",
+            "pegi": "Pan European Game Information (3, 7, 12, 16, 18) \u2014 pan-European gaming",
+            "podcast": "Podcast content advisories (clean, explicit)",
+            "tv_parental": "US TV Parental Guidelines (TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA)"
+          },
+          "title": "Content Rating System",
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "rating"
+      ],
+      "title": "Content Rating",
+      "type": "object"
+    },
+    "deadline_policy": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Default deadline rules for installments of this collection. Agents compute absolute deadlines from each installment's scheduled_at and these lead times. Installments with explicit deadlines override this policy. Only meaningful when installments carry scheduled_at; a continuously programmed channel collection without enumerated installments has no deadlines to derive.",
+      "minProperties": 1,
+      "properties": {
+        "booking_lead_days": {
+          "description": "Days before scheduled_at by which the placement must be booked",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "business_days_only": {
+          "default": false,
+          "description": "When true, lead_days counts business days (Mon-Fri) rather than calendar days. Defaults to false.",
+          "type": "boolean"
+        },
+        "cancellation_lead_days": {
+          "description": "Days before scheduled_at by which cancellation is penalty-free",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "material_stages": {
+          "description": "Default material submission stages. Items MUST be in chronological order (earliest due first). Agents compute due_at as: installment.scheduled_at minus lead_days.",
+          "items": {
+            "additionalProperties": true,
+            "properties": {
+              "label": {
+                "description": "What the seller needs at this stage",
+                "type": "string"
+              },
+              "lead_days": {
+                "description": "Days before scheduled_at this stage is due",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "stage": {
+                "description": "Stage identifier. Standard values: 'draft' (needs seller processing), 'final' (production-ready).",
+                "examples": [
+                  "draft",
+                  "final"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "stage",
+              "lead_days"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "title": "Deadline Policy",
+      "type": "object"
+    },
+    "description": {
+      "description": "What the collection is about",
+      "type": "string"
+    },
+    "distribution": {
+      "description": "Where this collection is distributed. Each entry maps the collection to a publisher platform using host property IDs, identifiers, or both. For channel collections this is the carriage map. It is a publisher assertion for discovery, not sales authorization; buyers validate owner-sold carriage against the host publisher's collection-scoped authorized_agents declaration. Collections SHOULD include at least one platform-independent identifier (imdb_id, gracenote_id, eidr_id) when available.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
+        "anyOf": [
+          {
+            "required": [
+              "property_ids"
+            ]
+          },
+          {
+            "required": [
+              "identifiers"
+            ]
+          }
+        ],
+        "description": "A collection's presence on a specific publisher platform. For a channel collection, this is a carriage assertion: property_ids identify the host surfaces carrying the channel, while identifiers identify the channel in the host's catalog or an independent metadata system. This publisher-authored assertion supports discovery and cross-seller matching but does not authorize a sale; authorization remains rooted in the host publisher's collection-scoped authorized_agents entry.",
+        "properties": {
+          "identifiers": {
+            "description": "Identifiers for the collection on this publisher, including publisher-scoped channel/EPG identifiers and platform-independent metadata identifiers",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "description": "Type of distribution identifier",
+                  "enum": [
+                    "apple_podcast_id",
+                    "spotify_collection_id",
+                    "rss_url",
+                    "podcast_guid",
+                    "amazon_music_id",
+                    "iheart_id",
+                    "podcast_index_id",
+                    "youtube_channel_id",
+                    "youtube_channel_handle",
+                    "youtube_channel_url",
+                    "youtube_playlist_id",
+                    "amazon_title_id",
+                    "platform_channel_id",
+                    "roku_channel_id",
+                    "pluto_channel_id",
+                    "tubi_id",
+                    "peacock_id",
+                    "tiktok_id",
+                    "twitch_channel",
+                    "imdb_id",
+                    "gracenote_id",
+                    "eidr_id",
+                    "domain",
+                    "substack_id"
+                  ],
+                  "enumDescriptions": {
+                    "amazon_music_id": "Amazon Music / Audible ID",
+                    "amazon_title_id": "Amazon Prime Video title ID",
+                    "apple_podcast_id": "Apple Podcasts collection ID",
+                    "domain": "Show's own website domain",
+                    "eidr_id": "EIDR (Entertainment Identifier Registry) \u2014 ISO 10528 for audiovisual content",
+                    "gracenote_id": "Gracenote TMS ID \u2014 industry standard for TV metadata",
+                    "iheart_id": "iHeartRadio collection ID",
+                    "imdb_id": "IMDb title ID \u2014 platform-independent cross-reference",
+                    "peacock_id": "Peacock content ID",
+                    "platform_channel_id": "Stable channel identifier assigned by the platform named in the enclosing distribution's publisher_domain. Use as the portable fallback when no platform-specific identifier type exists; identity is the tuple (publisher_domain, value), so this type is only meaningful inside a distribution entry and MUST NOT appear in bare {type, value} contexts (distribution_ids sources, exclude filters). Use the platform's stable catalog identifier, not an EPG position number \u2014 hosts renumber lineups.",
+                    "pluto_channel_id": "Pluto TV channel ID",
+                    "podcast_guid": "Podcasting 2.0 GUID",
+                    "podcast_index_id": "PodcastIndex.org ID",
+                    "roku_channel_id": "Roku Channel ID",
+                    "rss_url": "Canonical RSS feed URL",
+                    "spotify_collection_id": "Spotify collection URI",
+                    "substack_id": "Substack publication identifier",
+                    "tiktok_id": "TikTok account ID",
+                    "tubi_id": "Tubi content ID",
+                    "twitch_channel": "Twitch channel name",
+                    "youtube_channel_handle": "YouTube channel handle such as @example. Useful as a discovery alias; channel ID is preferred for canonical matching.",
+                    "youtube_channel_id": "YouTube channel ID. Preferred canonical identifier for YouTube channels; handles and URLs are discovery aliases that should resolve to this when possible.",
+                    "youtube_channel_url": "YouTube channel URL such as https://www.youtube.com/@example or https://www.youtube.com/channel/UC.... Useful as a discovery alias; channel ID is preferred for canonical matching.",
+                    "youtube_playlist_id": "YouTube playlist ID (for series within a channel)"
+                  },
+                  "title": "Distribution Identifier Type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "The identifier value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "value"
+              ],
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "property_ids": {
+            "description": "Publisher-scoped property IDs from publisher_domain's adagents.json that carry this collection. For owner-sold channel inventory, these identify the host apps without requiring the host to publish channel-owner placement definitions.",
+            "items": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.",
+              "examples": [
+                "cnn_ctv_app",
+                "homepage",
+                "mobile_ios",
+                "instagram"
+              ],
+              "pattern": "^[a-z0-9_]+$",
+              "title": "Property ID",
+              "type": "string",
+              "x-entity": "property"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "publisher_domain": {
+            "description": "Domain of the publisher platform where the collection is distributed (e.g., 'youtube.com', 'spotify.com'). Property IDs and publisher-scoped identifiers in this object resolve in this publisher's namespace.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publisher_domain"
+        ],
+        "title": "Collection Distribution",
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "genre": {
+      "description": "Genre tags. When genre_taxonomy is present, values are taxonomy IDs (e.g., IAB Content Taxonomy 3.0 codes). Otherwise free-form.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "genre_taxonomy": {
+      "description": "Taxonomy system for genre values (e.g., 'iab_content_3.0'). When present, genre values should be valid taxonomy IDs. Recommended for machine-readable brand safety evaluation.",
+      "type": "string"
+    },
+    "kind": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "What kind of content program this is. Helps agents interpret installments correctly. A channel collection represents the persistent programmed stream; its installments, when present, are scheduled airings or programming blocks. Defaults to 'series' when absent.",
+      "enum": [
+        "series",
+        "publication",
+        "event_series",
+        "rotation",
+        "channel"
+      ],
+      "enumDescriptions": {
+        "channel": "Continuously programmed audio or video stream, regardless of carriage or monetization model; installments are scheduled airings or programming blocks",
+        "event_series": "Live event program; installments are individual event airings",
+        "publication": "Print or newsletter title; installments are issues",
+        "rotation": "DOOH scheduling container; installments are scheduling periods",
+        "series": "TV or podcast program; installments are episodes"
+      },
+      "title": "Collection Kind",
+      "type": "string"
+    },
+    "language": {
+      "description": "Primary language (BCP 47 tag, e.g., 'en', 'es-MX')",
+      "type": "string"
+    },
+    "limited_series": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "When present, this collection is a limited series \u2014 a bounded run with a defined arc, installment count, and end date.",
+      "properties": {
+        "ends": {
+          "description": "When the series ends (ISO 8601)",
+          "format": "date-time",
+          "type": "string"
+        },
+        "starts": {
+          "description": "When the series begins (ISO 8601)",
+          "format": "date-time",
+          "type": "string"
+        },
+        "total_installments": {
+          "description": "Planned number of installments in the series",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total_installments"
+      ],
+      "title": "Limited Series",
+      "type": "object"
+    },
+    "name": {
+      "description": "Human-readable collection name",
+      "type": "string"
+    },
+    "production_quality": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Production quality tier. Seller-declared. Maps to OpenRTB content.prodq (professional=1, prosumer=2, ugc=3).",
+      "enum": [
+        "professional",
+        "prosumer",
+        "ugc"
+      ],
+      "enumDescriptions": {
+        "professional": "Studio-produced content with professional crew and equipment",
+        "prosumer": "Semi-professional production (high-quality independent creators)",
+        "ugc": "User-generated content"
+      },
+      "title": "Production Quality",
+      "type": "string"
+    },
+    "publisher_domain": {
+      "description": "Publisher namespace that owns this collection. Required for supply-path verification when the declaration is read from a cross-origin authoritative document; it must match the publisher whose origin delegated retrieval. A pointer alone cannot claim another publisher's collection. May be omitted for a publisher-origin document, where that origin supplies the namespace.",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "type": "string"
+    },
+    "related_collections": {
+      "description": "Relationships to other collections (spin-offs, companion collections, etc.). Each entry references another collection by collection_id within the same publisher's adagents.json.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "collection_id": {
+            "description": "The related collection's collection_id within this seller's response",
+            "type": "string",
+            "x-entity": "collection"
+          },
+          "relationship": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "How the collections are related",
+            "enum": [
+              "spinoff",
+              "companion",
+              "sequel",
+              "prequel",
+              "crossover"
+            ],
+            "enumDescriptions": {
+              "companion": "A companion collection (behind-the-scenes, reaction, or supplementary content)",
+              "crossover": "Shows that share installments, guests, or story arcs",
+              "prequel": "A predecessor to the referenced collection",
+              "sequel": "A continuation of the referenced collection",
+              "spinoff": "A collection derived from the referenced collection (e.g., an after-collection or character spinoff)"
+            },
+            "title": "Collection Relationship",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collection_id",
+          "relationship"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "season": {
+      "description": "Current or most recent season identifier (e.g., '3', '2026', 'spring_2026'). A lightweight label \u2014 not a full season object.",
+      "type": "string"
+    },
+    "special": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "When present, this collection is a special \u2014 content anchored to a real-world event or occasion. Individual installments may override with their own event context.",
+      "properties": {
+        "category": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Category of the event",
+          "enum": [
+            "awards",
+            "championship",
+            "concert",
+            "conference",
+            "election",
+            "festival",
+            "gala",
+            "holiday",
+            "premiere",
+            "product_launch",
+            "reunion",
+            "tribute"
+          ],
+          "enumDescriptions": {
+            "awards": "Awards ceremony (Grammys, Emmys, Oscars)",
+            "championship": "Championship or tournament event (Super Bowl, World Cup, Olympics)",
+            "concert": "Live concert or music event",
+            "conference": "Industry conference or summit",
+            "election": "Election coverage or political event",
+            "festival": "Festival event (film, music, cultural)",
+            "gala": "Gala, fundraiser, or formal event",
+            "holiday": "Holiday special or seasonal event",
+            "premiere": "Premiere or launch event",
+            "product_launch": "Product reveal or launch event",
+            "reunion": "Reunion or anniversary special",
+            "tribute": "Tribute or memorial special"
+          },
+          "title": "Special Category",
+          "type": "string"
+        },
+        "ends": {
+          "description": "When the event ends (ISO 8601). Omit for single-day events.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the event (e.g., 'Olympics 2028', 'Super Bowl LXI')",
+          "type": "string"
+        },
+        "starts": {
+          "description": "When the event starts (ISO 8601)",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Special",
+      "type": "object"
+    },
+    "status": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Lifecycle status of the collection",
+      "enum": [
+        "active",
+        "hiatus",
+        "ended",
+        "upcoming"
+      ],
+      "enumDescriptions": {
+        "active": "Currently producing and releasing installments",
+        "ended": "No longer producing new installments",
+        "hiatus": "Temporarily paused, expected to resume",
+        "upcoming": "Announced but not yet released"
+      },
+      "title": "Collection Status",
+      "type": "string"
+    },
+    "talent": {
+      "description": "Hosts, recurring cast, creators associated with the collection. Each talent entry may include a brand_url linking to their brand.json identity.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
+        "description": "A person associated with a collection or installment, with an optional link to their brand.json identity",
+        "properties": {
+          "brand_url": {
+            "description": "URL to this person's brand.json entry. Enables buyer agents to evaluate the talent's brand identity and associations.",
+            "format": "uri",
+            "type": "string"
+          },
+          "name": {
+            "description": "Person's name as credited on the collection",
+            "type": "string"
+          },
+          "role": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Role of this person on the collection or installment",
+            "enum": [
+              "host",
+              "guest",
+              "creator",
+              "cast",
+              "narrator",
+              "producer",
+              "correspondent",
+              "commentator",
+              "analyst"
+            ],
+            "enumDescriptions": {
+              "analyst": "Color commentator or subject matter analyst",
+              "cast": "Regular or recurring cast member",
+              "commentator": "Play-by-play or event commentator",
+              "correspondent": "Reporter or field correspondent",
+              "creator": "Collection creator or showrunner",
+              "guest": "Guest appearing on a specific installment",
+              "host": "Primary host or anchor of the collection",
+              "narrator": "Narrator or voiceover",
+              "producer": "Executive or lead producer with on-screen presence"
+            },
+            "title": "Talent Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "name"
+        ],
+        "title": "Talent",
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "collection_id",
+    "name"
+  ],
+  "title": "Collection",
+  "type": "object"
+}
