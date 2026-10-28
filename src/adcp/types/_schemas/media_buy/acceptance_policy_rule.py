@@ -14,7 +14,7 @@ from ..core.ext import ExtensionObject
 from .acceptance_policy_requirement import AcceptancePolicyRequirement
 
 
-class AcceptancePolicyRuleAppliesToItem(StrEnum):
+class AppliesToItem(StrEnum):
     ACCOUNT = 'account'
     MEDIA_BUY = 'media_buy'
     CREATIVE = 'creative'
@@ -24,7 +24,7 @@ class AcceptancePolicyRuleAppliesToItem(StrEnum):
     FORMAT = 'format'
 
 
-class AcceptancePolicyRuleDisposition(StrEnum):
+class Disposition(StrEnum):
     ALLOWED = 'allowed'
     CONDITIONAL = 'conditional'
     PROHIBITED = 'prohibited'
@@ -53,8 +53,8 @@ class AcceptancePolicyRule(AdCPBaseModel):
     advertiser_roles: Annotated[list[StrMatching4D6E1599] | None, Field(description='Registry-extensible roles such as political_actor, election_authority, government_entity, news_publisher, or commercial_advertiser.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     jurisdictions: Annotated[list[StrMatchingEFC12812] | None, Field(description='Delivery jurisdictions where this rule applies. Omission means every jurisdiction served by the seller.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     jurisdiction_groups: Annotated[list[StrMatching4BFFD9A4] | None, Field(description="Named country groups declared by the containing profile's region_aliases. Unknown group IDs invalidate the profile; they never match permissively.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    applies_to: Annotated[list[AcceptancePolicyRuleAppliesToItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    disposition: AcceptancePolicyRuleDisposition
+    applies_to: Annotated[list[AppliesToItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
+    disposition: Disposition
     requirements: Annotated[list[AcceptancePolicyRequirement] | None, Field(min_length=1)] = None
     policy_ids: Annotated[list[StrMinLen1] | None, Field(description='Registry policies that define the exact obligations behind this coarse rule.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     description: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Display-only explanation. Matchers MUST NOT interpret this text as executable instructions or use it to override typed fields.')] = None

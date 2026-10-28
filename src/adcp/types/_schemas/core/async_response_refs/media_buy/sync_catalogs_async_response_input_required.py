@@ -12,7 +12,7 @@ from ...context import ContextObject
 from ...ext import ExtensionObject
 
 
-class SyncCatalogsInputRequiredReason(StrEnum):
+class Reason(StrEnum):
     """
     Reason code indicating why buyer input is needed. APPROVAL_REQUIRED: platform requires explicit approval before activating the catalog. FEED_VALIDATION: feed URL returned unexpected format or schema errors. ITEM_REVIEW: platform flagged items for manual review. FEED_ACCESS: platform cannot access the feed URL (authentication, CORS, etc.).
     """
@@ -30,7 +30,7 @@ class SyncCatalogsInputRequired(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-refs/media-buy/sync-catalogs-async-response-input-required.json', pointer='#')
-    reason: Annotated[SyncCatalogsInputRequiredReason | None, Field(description='Reason code indicating why buyer input is needed. APPROVAL_REQUIRED: platform requires explicit approval before activating the catalog. FEED_VALIDATION: feed URL returned unexpected format or schema errors. ITEM_REVIEW: platform flagged items for manual review. FEED_ACCESS: platform cannot access the feed URL (authentication, CORS, etc.).')] = None
+    reason: Annotated[Reason | None, Field(description='Reason code indicating why buyer input is needed. APPROVAL_REQUIRED: platform requires explicit approval before activating the catalog. FEED_VALIDATION: feed URL returned unexpected format or schema errors. ITEM_REVIEW: platform flagged items for manual review. FEED_ACCESS: platform cannot access the feed URL (authentication, CORS, etc.).')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

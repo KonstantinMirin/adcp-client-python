@@ -19,7 +19,7 @@ from .si_sponsored_context import SISponsoredContext
 from .si_ui_element import SIUIElement
 
 
-class SISendMessageResponseResponse(AdCPBaseModel):
+class Response(AdCPBaseModel):
     """
     Brand agent's response
     """
@@ -32,7 +32,7 @@ class SISendMessageResponseResponse(AdCPBaseModel):
     ui_elements: Annotated[list[SIUIElement] | None, Field(description='Visual components to render (DEPRECATED: use surface instead)')] = None
 
 
-class SISendMessageResponseHandoffType(StrEnum):
+class HandoffType(StrEnum):
     """
     Type of handoff: transaction (ready for ACP checkout) or complete (conversation done)
     """
@@ -40,7 +40,7 @@ class SISendMessageResponseHandoffType(StrEnum):
     COMPLETE = 'complete'
 
 
-class SISendMessageResponseHandoffIntentPrice(AdCPBaseModel):
+class Price(AdCPBaseModel):
     """
     Price information
     """
@@ -49,7 +49,7 @@ class SISendMessageResponseHandoffIntentPrice(AdCPBaseModel):
     currency: str | None = None
 
 
-class SISendMessageResponseHandoffIntent(AdCPBaseModel):
+class Intent(AdCPBaseModel):
     """
     For transaction handoffs: what the user wants to purchase
     """
@@ -59,10 +59,10 @@ class SISendMessageResponseHandoffIntent(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#/properties/handoff/properties/intent')
     action: Annotated[str | None, Field(description="The commerce action (e.g., 'purchase')")] = None
     product: Annotated[dict[str, Any] | None, Field(description='Product details for checkout')] = None
-    price: Annotated[SISendMessageResponseHandoffIntentPrice | None, Field(description='Price information')] = None
+    price: Annotated[Price | None, Field(description='Price information')] = None
 
 
-class SISendMessageResponseHandoffContextForCheckout(AdCPBaseModel):
+class ContextForCheckout(AdCPBaseModel):
     """
     Context to pass to ACP for seamless checkout
     """
@@ -74,7 +74,7 @@ class SISendMessageResponseHandoffContextForCheckout(AdCPBaseModel):
     applied_offers: Annotated[list[str] | None, Field(description='Offer IDs that were applied during the conversation')] = None
 
 
-class SISendMessageResponseHandoff(AdCPBaseModel):
+class Handoff(AdCPBaseModel):
     """
     Handoff request when session_status is pending_handoff
     """
@@ -82,9 +82,9 @@ class SISendMessageResponseHandoff(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#/properties/handoff')
-    type: Annotated[SISendMessageResponseHandoffType | None, Field(description='Type of handoff: transaction (ready for ACP checkout) or complete (conversation done)')] = None
-    intent: Annotated[SISendMessageResponseHandoffIntent | None, Field(description='For transaction handoffs: what the user wants to purchase')] = None
-    context_for_checkout: Annotated[SISendMessageResponseHandoffContextForCheckout | None, Field(description='Context to pass to ACP for seamless checkout')] = None
+    type: Annotated[HandoffType | None, Field(description='Type of handoff: transaction (ready for ACP checkout) or complete (conversation done)')] = None
+    intent: Annotated[Intent | None, Field(description='For transaction handoffs: what the user wants to purchase')] = None
+    context_for_checkout: Annotated[ContextForCheckout | None, Field(description='Context to pass to ACP for seamless checkout')] = None
 
 
 class SISendMessageResponse(AdCPVersionEnvelope, ProtocolEnvelope):
@@ -96,11 +96,11 @@ class SISendMessageResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#')
     session_id: Annotated[str, Field(description='Session identifier')]
-    response: Annotated[SISendMessageResponseResponse | None, Field(description="Brand agent's response")] = None
+    response: Annotated[Response | None, Field(description="Brand agent's response")] = None
     mcp_resource_uri: Annotated[str | None, Field(description='MCP resource URI for hosts with MCP Apps support (e.g., ui://si/session-abc123)')] = None
     sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for sponsored context carried by this brand-agent response. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before presenting, comparing, or otherwise using it.')] = None
     session_status: Annotated[SISessionStatus, Field(description='Current session status. On a successful response, one of: active, pending_handoff, or complete. Terminated sessions return error codes (SESSION_NOT_FOUND or SESSION_TERMINATED) instead of a success response.')]
-    handoff: Annotated[SISendMessageResponseHandoff | None, Field(description='Handoff request when session_status is pending_handoff')] = None
+    handoff: Annotated[Handoff | None, Field(description='Handoff request when session_status is pending_handoff')] = None
     errors: list[Error] | None = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

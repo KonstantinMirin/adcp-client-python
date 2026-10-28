@@ -15,10 +15,10 @@ from ..core.ext import ExtensionObject
 from ..core.opportunity_context import OpportunityContext
 from ..core.push_notification_config import PushNotificationConfig
 from ..core.reporting_webhook import ReportingWebhook
-from ..core.version_envelope import AdCPVersionEnvelope, AdCPVersionEnvelopeAdcpMajorVersion, AdCPVersionEnvelopeAdcpVersion
+from ..core.version_envelope import AdCPVersionEnvelope, AdcpMajorVersion, AdcpVersion
 
 
-class AcceptProposalRequestTotalBudget(AdCPBaseModel):
+class TotalBudget(AdCPBaseModel):
     """
     Execution amount when the committed proposal defines scalable percentages or constraints rather than a fixed total.
     """
@@ -30,7 +30,7 @@ class AcceptProposalRequestTotalBudget(AdCPBaseModel):
     currency: StrMatching43E30B32
 
 
-class AcceptProposalRequestIoAcceptance(AdCPBaseModel):
+class IoAcceptance(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -41,7 +41,7 @@ class AcceptProposalRequestIoAcceptance(AdCPBaseModel):
     signature_id: StrMinLen1 | None = None
 
 
-class AcceptProposalRequestOpportunity(OpportunityContext):
+class Opportunity(OpportunityContext):
     """
     Optional planning-cycle closure. Success infers closed with accepted_with_seller when status is omitted. If the proposal carries opportunity_id, a supplied ID MUST match; the accepted proposal preserves that association.
     """
@@ -60,22 +60,22 @@ class AcceptProposalRequest(AdCPVersionEnvelope):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('packages',), ('purchases',), ('creatives',), ('creative_assignments',))),
     )
-    adcp_version: Annotated[AdCPVersionEnvelopeAdcpVersion | None, Field(description='Release-precision AdCP version (VERSION.RELEASE, e.g. "3.0", "3.1", "3.1-beta"). On a request: the buyer\'s release pin — the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served — clients SHOULD validate the response against that release\'s schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = "3.1.0-beta.1") MUST normalize to release-precision ("3.1-beta.1") before emitting on the wire — meta-field values are NOT valid wire values.')] = None
-    adcp_major_version: Annotated[AdCPVersionEnvelopeAdcpMajorVersion | None, Field(description="DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.")] = None
+    adcp_version: Annotated[AdcpVersion | None, Field(description='Release-precision AdCP version (VERSION.RELEASE, e.g. "3.0", "3.1", "3.1-beta"). On a request: the buyer\'s release pin — the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served — clients SHOULD validate the response against that release\'s schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = "3.1.0-beta.1") MUST normalize to release-precision ("3.1-beta.1") before emitting on the wire — meta-field values are NOT valid wire values.')] = None
+    adcp_major_version: Annotated[AdcpMajorVersion | None, Field(description="DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.")] = None
     idempotency_key: StrMinLen16MaxLen255Matching1E5CF9EB
     name: Annotated[StrMinLen1MaxLen255Matching130C1C9D | None, Field(description='Human-readable MediaBuy name supplied by the buyer for trafficking UI display and operational communication. When supplied, this value wins over proposal.name; the seller MUST persist it and echo it unchanged on the commitment success response and subsequent get_media_buys reads. It is operational metadata outside accepted_proposal and is not covered by proposal_terms_digest or terms_digest. When an acceptance creates a MediaBuy and name is absent, the seller MAY seed the MediaBuy name from proposal.name only when proposal.name already satisfies the MediaBuy name constraints (non-whitespace and no longer than 255 characters); the seller MUST NOT silently truncate or otherwise rewrite it. A seeded value counts as a name created through AdCP and MUST be reported on commitment and read surfaces. This display label is not an identifier or financial reference.')] = None
     account: CanonicalAccountReference
     proposal_id: StrMinLen1
     proposal_terms_digest: Annotated[StrMatching325DEB97, Field(description='terms_digest from the committed proposal. The seller MUST atomically verify both ID and digest before acceptance.')]
-    total_budget: Annotated[AcceptProposalRequestTotalBudget | None, Field(description='Execution amount when the committed proposal defines scalable percentages or constraints rather than a fixed total.')] = None
+    total_budget: Annotated[TotalBudget | None, Field(description='Execution amount when the committed proposal defines scalable percentages or constraints rather than a fixed total.')] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard aggregate daily spend ceiling applied when the committed proposal is accepted. It constrains execution without changing the proposal's negotiated pricing.")] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional shared IANA cap-day timezone override. Requires buyer_timezone_override support. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.')] = None
-    io_acceptance: AcceptProposalRequestIoAcceptance | None = None
+    io_acceptance: IoAcceptance | None = None
     purchase_order_ref: StrMinLen1MaxLen255 | None = None
     governance_context: StrMinLen1MaxLen4096 | None = None
     push_notification_config: PushNotificationConfig | None = None
     reporting_webhook: Annotated[ReportingWebhook | None, Field(description='Optional reporting delivery configuration established atomically when the proposal is accepted. This is execution metadata and does not alter the accepted commercial terms digest.')] = None
-    opportunity: Annotated[AcceptProposalRequestOpportunity | None, Field(description='Optional planning-cycle closure. Success infers closed with accepted_with_seller when status is omitted. If the proposal carries opportunity_id, a supplied ID MUST match; the accepted proposal preserves that association.')] = None
+    opportunity: Annotated[Opportunity | None, Field(description='Optional planning-cycle closure. Success infers closed with accepted_with_seller when status is omitted. If the proposal carries opportunity_id, a supplied ID MUST match; the accepted proposal preserves that association.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

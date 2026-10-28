@@ -13,7 +13,7 @@ from ..enums.right_use import RightUse
 from ..enums.rights_billing_period import RightsBillingPeriod
 
 
-class RightsTermsExclusivity(AdCPBaseModel):
+class Exclusivity(AdCPBaseModel):
     """
     Exclusivity terms if applicable
     """
@@ -42,7 +42,7 @@ class RightsTerms(AdCPBaseModel):
     overage_cpm: NonNegativeFloat | None = None
     start_date: date | None = None
     end_date: date | None = None
-    exclusivity: Annotated[RightsTermsExclusivity | None, Field(description='Exclusivity terms if applicable')] = None
+    exclusivity: Annotated[Exclusivity | None, Field(description='Exclusivity terms if applicable')] = None
 
 
 __all__ = ["RightsTerms"]

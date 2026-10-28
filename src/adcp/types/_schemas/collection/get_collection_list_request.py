@@ -14,7 +14,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class GetCollectionListRequestPagination(AdCPBaseModel):
+class Pagination(AdCPBaseModel):
     """
     Pagination parameters. Uses higher limits than standard pagination because collection lists can contain thousands of entries.
     """
@@ -37,7 +37,7 @@ class GetCollectionListRequest(AdCPVersionEnvelope):
     list_id: Annotated[str, Field(description='ID of the collection list to retrieve')]
     account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise.')] = None
     resolve: Annotated[bool | None, Field(description='Whether to apply filters and return resolved collections (default: true)')] = True
-    pagination: Annotated[GetCollectionListRequestPagination | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because collection lists can contain thousands of entries.')] = None
+    pagination: Annotated[Pagination | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because collection lists can contain thousands of entries.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

@@ -30,7 +30,7 @@ class GetReportingStatusRequestReportingStatusView(StrEnum):
     REVISION = 'revision'
 
 
-class GetReportingStatusRequestPeriod(AdCPBaseModel):
+class Period(AdCPBaseModel):
     """
     Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope.
     """
@@ -62,7 +62,7 @@ class GetReportingStatusRequest(AdCPVersionEnvelope):
     media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId] | None, Field(description='Optional summary/periods scope. Omit for every accessible media buy in the account.', json_schema_extra={'uniqueItems': True}, max_length=100, min_length=1)] = None
     delivery_config_ids: Annotated[list[StrMinLen1MaxLen64MatchingD373B860] | None, Field(description='Optional summary/periods scope. Use to reconcile billing, analytics, and pacing independently. Omit for every active caller-owned configuration.', json_schema_extra={'uniqueItems': True}, max_length=16, min_length=1)] = None
     feed_purposes: Annotated[list[ReportingDeliveryOfferingReportingFeedPurpose] | None, Field(description='Optional summary/periods feed filter. The response echoes exact resolved configuration generations so this never creates an opaque aggregate.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
-    period: Annotated[GetReportingStatusRequestPeriod | None, Field(description="Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope.")] = None
+    period: Annotated[Period | None, Field(description="Half-open summary/periods horizon. Omit for the seller's documented operational default horizon; the response always echoes the evaluated scope.")] = None
     health: Annotated[list[ReportingHealth] | None, Field(description='Periods-view result filter only; it never changes summary health.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     finality: Annotated[list[ReportingFinality] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     reporting_revision_id: Annotated[StrMinLen1MaxLen255Matching67860854 | None, Field(description='Exact retained revision to resolve in revision view.')] = None

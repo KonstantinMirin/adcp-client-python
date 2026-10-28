@@ -13,7 +13,7 @@ from ..enums.reporting_finality import ReportingFinality
 from .reporting_delivery_offering import ReportingDeliveryOfferingReportingFeedPurpose
 
 
-class ReportingDeliveryReadyWebhookReadiness(StrEnum):
+class Readiness(StrEnum):
     AVAILABLE = 'available'
     DELIVERED = 'delivered'
 
@@ -36,7 +36,7 @@ class ReportingDeliveryReadyWebhook(AdCPBaseModel):
     delivery_config_version: IntMin1
     reporting_revision_id: StrMinLen1MaxLen255Matching67860854
     reporting_materialization_id: StrMinLen1MaxLen255Matching67860854
-    readiness: ReportingDeliveryReadyWebhookReadiness
+    readiness: Readiness
     finality: ReportingFinality
     data_through: AwareDatetime | None
     feed_purpose: ReportingDeliveryOfferingReportingFeedPurpose

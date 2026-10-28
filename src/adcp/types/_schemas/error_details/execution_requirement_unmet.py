@@ -12,7 +12,7 @@ from adcp.types.constraints import StrMinLen1
 from ..core.product_execution_requirement import ProductExecutionRequirement
 
 
-class ExecutionRequirementUnmetDetailsUnmetRequirementsItemReason(StrEnum):
+class Reason(StrEnum):
     """
     `not_bound`: the package does not reference a resource of this kind. `not_found`: the referenced resource is not available to the account (for example an `event_source_id` that was never registered through `sync_event_sources`); register or sync it, then retry. `ineligible`: the referenced resource exists but does not satisfy the requirement (for example an event type or catalog type the requirement does not list).
     """
@@ -21,14 +21,14 @@ class ExecutionRequirementUnmetDetailsUnmetRequirementsItemReason(StrEnum):
     INELIGIBLE = 'ineligible'
 
 
-class ExecutionRequirementUnmetDetailsUnmetRequirementsItem(AdCPBaseModel):
+class UnmetRequirementsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/execution-requirement-unmet.json', pointer='#/properties/unmet_requirements/items')
     product_id: Annotated[StrMinLen1, Field(description='Product whose requirement is unmet.')]
     field: Annotated[StrMinLen1, Field(description='Request path where the resource binds, in the same JSONPath-lite form as `error.field`: `packages[i].optimization_goals` or `packages[i].catalogs` on `create_media_buy`; `new_packages[i].…` or `packages[i].…` on `update_media_buy`. For `not_found` and `ineligible`, sellers SHOULD point at the offending entry (for example `packages[0].optimization_goals[1].event_sources[0]` or `packages[0].catalogs[0]`).')]
-    reason: Annotated[ExecutionRequirementUnmetDetailsUnmetRequirementsItemReason, Field(description='`not_bound`: the package does not reference a resource of this kind. `not_found`: the referenced resource is not available to the account (for example an `event_source_id` that was never registered through `sync_event_sources`); register or sync it, then retry. `ineligible`: the referenced resource exists but does not satisfy the requirement (for example an event type or catalog type the requirement does not list).')]
+    reason: Annotated[Reason, Field(description='`not_bound`: the package does not reference a resource of this kind. `not_found`: the referenced resource is not available to the account (for example an `event_source_id` that was never registered through `sync_event_sources`); register or sync it, then retry. `ineligible`: the referenced resource exists but does not satisfy the requirement (for example an event type or catalog type the requirement does not list).')]
     requirement: Annotated[ProductExecutionRequirement, Field(description="The product's declared requirement, echoed so the buyer can fix the request without another `get_products` call.")]
 
 
@@ -40,7 +40,7 @@ class ExecutionRequirementUnmetDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/execution-requirement-unmet.json', pointer='#')
-    unmet_requirements: Annotated[list[ExecutionRequirementUnmetDetailsUnmetRequirementsItem], Field(min_length=1)]
+    unmet_requirements: Annotated[list[UnmetRequirementsItem], Field(min_length=1)]
 
 
 __all__ = ["ExecutionRequirementUnmetDetails"]

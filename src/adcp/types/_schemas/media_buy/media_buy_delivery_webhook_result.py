@@ -19,7 +19,7 @@ from ..enums.delivery_status import DeliveryStatus
 from ..enums.pricing_model import PricingModel
 
 
-class MediaBuyDeliveryWebhookResultNotificationType(StrEnum):
+class NotificationType(StrEnum):
     """
     Type of delivery-report notification: scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = corrected data for the same window, window_update = a wider measurement window supersedes a prior window.
     """
@@ -30,7 +30,7 @@ class MediaBuyDeliveryWebhookResultNotificationType(StrEnum):
     WINDOW_UPDATE = 'window_update'
 
 
-class MediaBuyDeliveryWebhookResultReportingPeriod(AdCPBaseModel):
+class ReportingPeriod(AdCPBaseModel):
     """
     Period covered by the delivery report. start and end are instants on the reporting timezone's period boundaries (the products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC.
     """
@@ -43,7 +43,7 @@ class MediaBuyDeliveryWebhookResultReportingPeriod(AdCPBaseModel):
     timezone: Annotated[StrMinLen1 | None, Field(description="Reporting timezone applied to this report, as 'UTC' or an IANA timezone identifier. Same meaning as get_media_buy_delivery reporting_period.timezone. Sellers SHOULD return it whenever every reported media buy shares one reporting timezone.")] = None
 
 
-class MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemStatus(StrEnum):
+class Status(StrEnum):
     """
     Current media buy lifecycle or reporting status. This is distinct from the webhook envelope's top-level task status.
     """
@@ -59,7 +59,7 @@ class MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemStatus(StrEnum):
     REPORTING_DELAYED = 'reporting_delayed'
 
 
-class MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemTotals(DeliveryMetrics):
+class Totals(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -67,7 +67,7 @@ class MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemTotals(DeliveryMetrics)
     effective_rate: NonNegativeFloat | None = None
 
 
-class MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemByPackageItem(DeliveryMetrics):
+class ByPackageItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -87,22 +87,22 @@ class MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemByPackageItem(DeliveryM
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
-class MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItem(AdCPBaseModel):
+class MediaBuyDeliveriesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-delivery-webhook-result.json', pointer='#/properties/media_buy_deliveries/items')
     media_buy_id: Annotated[str, Field(description="Seller's media buy identifier.")]
     currency: Annotated[StrMatching43E30B32 | None, Field(description="ISO 4217 denomination for monetary values in this media-buy delivery row, including totals, package spend, and currency-denominated package rates. Sellers SHOULD populate this field whenever all monetary values in the row share one currency. For AdCP-authored buys it MUST equal the media-buy currency, and every by_package[].currency MUST equal it. For a legacy or externally created mixed-currency buy, omit this field and all monetary or money-derived values from row totals; report those values only at package level with each package's own currency. AdCP does not perform currency conversion.")] = None
-    status: Annotated[MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemStatus, Field(description="Current media buy lifecycle or reporting status. This is distinct from the webhook envelope's top-level task status.")]
+    status: Annotated[Status, Field(description="Current media buy lifecycle or reporting status. This is distinct from the webhook envelope's top-level task status.")]
     expected_availability: Annotated[AwareDatetime | None, Field(description='When delayed data is expected to be available. Present when status is reporting_delayed.')] = None
     is_adjusted: Annotated[bool | None, Field(description='Indicates this row contains updated data for a previously reported period.')] = None
     is_final: Annotated[bool | None, Field(description="Whether this row's delivery data is final for the reporting period.")] = None
     finalized_at: Annotated[AwareDatetime | None, Field(description='Timestamp when this row became final. Present only when is_final is true.')] = None
     pricing_model: PricingModel | None = None
     pacing_index: Annotated[NonNegativeFloat | None, Field(description='Aggregate media-buy delivery pace relative to the media-buy pacing plan. Authoritative for seller-optimized buys.')] = None
-    totals: MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemTotals
-    by_package: Annotated[list[MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemByPackageItem], Field(description='Metrics broken down by package.')]
+    totals: Totals
+    by_package: Annotated[list[ByPackageItem], Field(description='Metrics broken down by package.')]
 
 
 class MediaBuyDeliveryWebhookResult(AdCPBaseModel):
@@ -113,15 +113,15 @@ class MediaBuyDeliveryWebhookResult(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-delivery-webhook-result.json', pointer='#')
-    notification_type: Annotated[MediaBuyDeliveryWebhookResultNotificationType, Field(description='Type of delivery-report notification: scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = corrected data for the same window, window_update = a wider measurement window supersedes a prior window.')]
+    notification_type: Annotated[NotificationType, Field(description='Type of delivery-report notification: scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = corrected data for the same window, window_update = a wider measurement window supersedes a prior window.')]
     partial_data: Annotated[bool | None, Field(description='Indicates if any media buys in this webhook have missing or delayed data.')] = None
     unavailable_count: Annotated[NonNegativeInt | None, Field(description='Number of media buys with reporting_delayed or failed status when partial_data is true.')] = None
     sequence_number: Annotated[IntMin1 | None, Field(description='Sequential notification number for this reporting webhook stream.')] = None
     next_expected_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp for the next expected notification. Omitted on final notifications.')] = None
-    reporting_period: Annotated[MediaBuyDeliveryWebhookResultReportingPeriod, Field(description="Period covered by the delivery report. start and end are instants on the reporting timezone's period boundaries (the products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC.")]
+    reporting_period: Annotated[ReportingPeriod, Field(description="Period covered by the delivery report. start and end are instants on the reporting timezone's period boundaries (the products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC.")]
     currency: Annotated[StrMatching43E30B32 | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. Optional legacy report-wide ISO 4217 currency code. It may be used only when every monetary value in the report has that denomination. A report can contain media buys with different currencies, so buyers MUST NOT interpret this field as an aggregation currency or evidence of currency conversion. Prefer media_buy_deliveries[].currency when present and package-level currency otherwise.')] = None
     attribution_window: Annotated[AttributionWindow | None, Field(description='Attribution methodology and lookback windows used for conversion metrics in this report.')] = None
-    media_buy_deliveries: Annotated[list[MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItem], Field(description='Delivery rows for one or more media buys included in this notification.')]
+    media_buy_deliveries: Annotated[list[MediaBuyDeliveriesItem], Field(description='Delivery rows for one or more media buys included in this notification.')]
     errors: Annotated[list[Error] | None, Field(description='Task-specific delivery errors or warnings.')] = None
     sandbox: bool | None = None
     context: ContextObject | None = None

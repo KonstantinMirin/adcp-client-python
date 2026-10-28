@@ -15,7 +15,7 @@ from .assets.url_asset import URLAsset
 from .assets.video_asset import VideoAsset
 
 
-class ProductCardReferenceAssetRole(StrEnum):
+class Role(StrEnum):
     """
     Semantic role of this asset. coverage_map: geographic or audience reach visualization; sample_render: mockup of ad placement in context; environment_photo: photo of the physical or digital environment; media_kit: downloadable media kit or spec sheet; logo: seller or property logo; other: seller-defined role (provide role_label).
     """
@@ -38,7 +38,7 @@ class ProductCardReferenceAsset(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('role', True, ('other',)),), require=('role_label',), forbid=()),
     )
-    role: Annotated[ProductCardReferenceAssetRole, Field(description='Semantic role of this asset. coverage_map: geographic or audience reach visualization; sample_render: mockup of ad placement in context; environment_photo: photo of the physical or digital environment; media_kit: downloadable media kit or spec sheet; logo: seller or property logo; other: seller-defined role (provide role_label).')]
+    role: Annotated[Role, Field(description='Semantic role of this asset. coverage_map: geographic or audience reach visualization; sample_render: mockup of ad placement in context; environment_photo: photo of the physical or digital environment; media_kit: downloadable media kit or spec sheet; logo: seller or property logo; other: seller-defined role (provide role_label).')]
     role_label: Annotated[str | None, Field(description="Human-readable label for the asset role. Required when role is 'other'; optional otherwise.")] = None
     asset: Annotated[ImageAsset | VideoAsset | MarkdownAsset | URLAsset, Field(description='The asset payload, discriminated on asset_type (image, video, markdown, url).')]
     description: Annotated[str | None, Field(description='Optional human-readable context about this asset.')] = None

@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from ..provenance import Provenance
 
 
-class HTMLAssetAccessibility(AdCPBaseModel):
+class Accessibility(AdCPBaseModel):
     """
     Self-declared accessibility properties for this opaque creative
     """
@@ -32,7 +32,7 @@ class HTMLAsset(AdCPBaseModel):
     asset_type: Annotated[Literal['html'], Field(description='Discriminator identifying this as an HTML asset. See /schemas/creative/asset-types for the registry.')]
     content: Annotated[str, Field(description='HTML content')]
     version: Annotated[str | None, Field(description="HTML version (e.g., 'HTML5')")] = None
-    accessibility: Annotated[HTMLAssetAccessibility | None, Field(description='Self-declared accessibility properties for this opaque creative')] = None
+    accessibility: Annotated[Accessibility | None, Field(description='Self-declared accessibility properties for this opaque creative')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
 
 

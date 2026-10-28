@@ -13,7 +13,7 @@ from adcp.types.constraints import StrMinLen1MaxLen1000, StrMinLen1MaxLen255
 from .ext import ExtensionObject
 
 
-class CatalogItemAvailabilityUpdateAction(StrEnum):
+class Action(StrEnum):
     """
     suppress makes the item and known derived creative variants ineligible immediately; restore removes the buyer-authored suppression but does not bypass seller controls.
     """
@@ -21,7 +21,7 @@ class CatalogItemAvailabilityUpdateAction(StrEnum):
     RESTORE = 'restore'
 
 
-class CatalogItemAvailabilityUpdateReason(StrEnum):
+class Reason(StrEnum):
     """
     Machine-readable reason for the transition. Use other only when no standard reason applies and explain the condition in reason_detail.
     """
@@ -52,8 +52,8 @@ class CatalogItemAvailabilityUpdate(AdCPBaseModel):
     catalog_generation: Annotated[StrMinLen1MaxLen255, Field(description='Opaque seller-issued token for the catalog incarnation. Obtain it from sync_catalogs discovery or mutation results. A generation mismatch is treated as REFERENCE_NOT_FOUND, preventing a delayed update from affecting a deleted-and-recreated catalog.')]
     item_id: Annotated[StrMinLen1MaxLen255, Field(description='Exact canonical item key used by Catalog.ids. For typed catalogs this is the type-specific identifier field; for product, inventory, and promotion catalogs it is the stable normalized source identifier retained during ingestion.')]
     expected_overlay_revision: Annotated[NonNegativeInt, Field(description='Required optimistic-concurrency token obtained from item_availability_states. Revision 0 is the initial active state. The seller MUST compare this value atomically with the write and return CONFLICT without mutation when it differs from current state.')]
-    action: Annotated[CatalogItemAvailabilityUpdateAction, Field(description='suppress makes the item and known derived creative variants ineligible immediately; restore removes the buyer-authored suppression but does not bypass seller controls.')]
-    reason: Annotated[CatalogItemAvailabilityUpdateReason, Field(description='Machine-readable reason for the transition. Use other only when no standard reason applies and explain the condition in reason_detail.')]
+    action: Annotated[Action, Field(description='suppress makes the item and known derived creative variants ineligible immediately; restore removes the buyer-authored suppression but does not bypass seller controls.')]
+    reason: Annotated[Reason, Field(description='Machine-readable reason for the transition. Use other only when no standard reason applies and explain the condition in reason_detail.')]
     reason_detail: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Optional human-readable context. Required when reason is other. Plain text only; receivers MUST treat it as untrusted buyer input.')] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='Optional expiry for a suppress overlay. At this instant the seller automatically removes the buyer-authored suppression as if it received restore. Valid only with action suppress; omit for an indefinite suppression. Sellers MUST reject a timestamp that is not in the future when the request is processed. On a repeated suppress, this value is complete replacement state: a changed timestamp replaces the prior expiry, and omission clears a prior expiry to make suppression indefinite. Either change returns status applied, not unchanged.')] = None
     ext: ExtensionObject | None = None

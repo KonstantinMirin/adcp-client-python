@@ -17,7 +17,7 @@ from .reporting_native_version_ref import ReportingNativeVersionReference
 from .reporting_verification_profile import ReportingVerificationProfile
 
 
-class ReportingVerificationVerificationPath(StrEnum):
+class VerificationPath(StrEnum):
     """
     Path on which verification succeeded. dataset_share readiness requires representative_consumer; delivered warehouse state requires destination.
     """
@@ -46,12 +46,12 @@ class SHA512PhysicalChecksum(AdCPBaseModel):
     value: StrMatching82F4E987
 
 
-class ReportingVerificationNativeCommitEvidenceObservedThrough(StrEnum):
+class ObservedThrough(StrEnum):
     REPRESENTATIVE_CONSUMER = 'representative_consumer'
     DESTINATION = 'destination'
 
 
-class ReportingVerificationNativeCommitEvidence(AdCPBaseModel):
+class NativeCommitEvidence(AdCPBaseModel):
     """
     Provider-native immutable version evidence observed through the named consumer or destination path.
     """
@@ -60,7 +60,7 @@ class ReportingVerificationNativeCommitEvidence(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-verification.json', pointer='#/properties/native_commit_evidence')
     native_version_ref: ReportingNativeVersionReference
-    observed_through: ReportingVerificationNativeCommitEvidenceObservedThrough
+    observed_through: ObservedThrough
 
 
 class ReportingVerification(AdCPBaseModel):
@@ -78,13 +78,13 @@ class ReportingVerification(AdCPBaseModel):
         ConditionalRequired((Match('verification_profile', True, ('canonical_digest',)),), require=('canonical_content_digest',), forbid=()),
     )
     verified_at: Annotated[AwareDatetime, Field(description='When the producer completed verification through the claimed consumer/destination path.')]
-    verification_path: Annotated[ReportingVerificationVerificationPath, Field(description='Path on which verification succeeded. dataset_share readiness requires representative_consumer; delivered warehouse state requires destination.')]
+    verification_path: Annotated[VerificationPath, Field(description='Path on which verification succeeded. dataset_share readiness requires representative_consumer; delivered warehouse state requires destination.')]
     verification_profile: ReportingVerificationProfile
     row_count: Annotated[NonNegativeInt, Field(description='Verified row count. Zero explicitly distinguishes an empty committed revision from a missing revision.')]
     control_totals: Annotated[list[ReportingControlTotal], Field(description='Profile-defined totals recomputed through verification_path. Names MUST be unique.', json_schema_extra={'uniqueItems': True})]
     canonical_content_digest: ReportingCanonicalContentDigest | None = None
     physical_checksums: Annotated[list[SHA256PhysicalChecksum | SHA512PhysicalChecksum] | None, Field(description='Method-specific byte/object checksums. Different encodings of the same logical revision normally have different values.', min_length=1)] = None
-    native_commit_evidence: Annotated[ReportingVerificationNativeCommitEvidence | None, Field(description='Provider-native immutable version evidence observed through the named consumer or destination path.')] = None
+    native_commit_evidence: Annotated[NativeCommitEvidence | None, Field(description='Provider-native immutable version evidence observed through the named consumer or destination path.')] = None
 
 
 __all__ = ["ReportingVerification"]

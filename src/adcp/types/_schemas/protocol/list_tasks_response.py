@@ -17,7 +17,7 @@ from ..enums.task_status import TaskStatus
 from ..enums.task_type import TaskType
 
 
-class ListTasksResponseQuerySummaryDomainBreakdown(AdCPBaseModel):
+class DomainBreakdown(AdCPBaseModel):
     """
     Count of tasks by domain
     """
@@ -30,12 +30,12 @@ class ListTasksResponseQuerySummaryDomainBreakdown(AdCPBaseModel):
     creative: Annotated[NonNegativeInt | None, Field(description='Number of creative tasks in results')] = None
 
 
-class ListTasksResponseQuerySummarySortAppliedDirection(StrEnum):
+class Direction(StrEnum):
     ASC = 'asc'
     DESC = 'desc'
 
 
-class ListTasksResponseQuerySummarySortApplied(AdCPBaseModel):
+class SortApplied(AdCPBaseModel):
     """
     Sort order that was applied
     """
@@ -44,10 +44,10 @@ class ListTasksResponseQuerySummarySortApplied(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-response.json', pointer='#/properties/query_summary/properties/sort_applied')
     field: str
-    direction: ListTasksResponseQuerySummarySortAppliedDirection
+    direction: Direction
 
 
-class ListTasksResponseQuerySummary(AdCPBaseModel):
+class QuerySummary(AdCPBaseModel):
     """
     Summary of the query that was executed
     """
@@ -57,13 +57,13 @@ class ListTasksResponseQuerySummary(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-response.json', pointer='#/properties/query_summary')
     total_matching: Annotated[NonNegativeInt | None, Field(description='Total number of tasks matching filters (across all pages)')] = None
     returned: Annotated[NonNegativeInt | None, Field(description='Number of tasks returned in this response')] = None
-    domain_breakdown: Annotated[ListTasksResponseQuerySummaryDomainBreakdown | None, Field(description='Count of tasks by domain')] = None
+    domain_breakdown: Annotated[DomainBreakdown | None, Field(description='Count of tasks by domain')] = None
     status_breakdown: Annotated[dict[str, NonNegativeInt] | None, Field(description='Count of tasks by status')] = None
     filters_applied: Annotated[list[str] | None, Field(description='List of filters that were applied to the query')] = None
-    sort_applied: Annotated[ListTasksResponseQuerySummarySortApplied | None, Field(description='Sort order that was applied')] = None
+    sort_applied: Annotated[SortApplied | None, Field(description='Sort order that was applied')] = None
 
 
-class ListTasksResponseTasksItemDomain(StrEnum):
+class Domain(StrEnum):
     """
     AdCP domain this task belongs to
     """
@@ -72,14 +72,14 @@ class ListTasksResponseTasksItemDomain(StrEnum):
     CREATIVE = 'creative'
 
 
-class ListTasksResponseTasksItem(AdCPBaseModel):
+class TasksItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-response.json', pointer='#/properties/tasks/items')
     task_id: Annotated[str, Field(description='Unique identifier for this task')]
     task_type: Annotated[TaskType, Field(description='Type of AdCP operation')]
-    domain: Annotated[ListTasksResponseTasksItemDomain, Field(description='AdCP domain this task belongs to')]
+    domain: Annotated[Domain, Field(description='AdCP domain this task belongs to')]
     status: Annotated[TaskStatus, Field(description='Current task status')]
     created_at: Annotated[AwareDatetime, Field(description='When the task was initially created (ISO 8601)')]
     updated_at: Annotated[AwareDatetime, Field(description='When the task was last updated (ISO 8601)')]
@@ -95,8 +95,8 @@ class ListTasksResponse(AdCPVersionEnvelope, ProtocolEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/list-tasks-response.json', pointer='#')
-    query_summary: Annotated[ListTasksResponseQuerySummary, Field(description='Summary of the query that was executed')]
-    tasks: Annotated[list[ListTasksResponseTasksItem], Field(description='Array of tasks matching the query criteria')]
+    query_summary: Annotated[QuerySummary, Field(description='Summary of the query that was executed')]
+    tasks: Annotated[list[TasksItem], Field(description='Array of tasks matching the query criteria')]
     pagination: PaginationResponse
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

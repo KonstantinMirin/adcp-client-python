@@ -34,7 +34,7 @@ class GetMediaBuyArtifactsResponse(BranchDispatchMixin, AdCPVersionEnvelope, Pro
     )
 
 
-class GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemBrandContext(AdCPBaseModel):
+class BrandContext(AdCPBaseModel):
     """
     Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.
     """
@@ -43,7 +43,7 @@ class GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemBrandContext(A
     sku_id: Annotated[str | None, Field(description='Product/SKU identifier if applicable')] = None
 
 
-class GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemLocalVerdict(StrEnum):
+class LocalVerdict(StrEnum):
     """
     Seller's local model verdict for this artifact
     """
@@ -52,7 +52,7 @@ class GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemLocalVerdict(S
     UNEVALUATED = 'unevaluated'
 
 
-class GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItem(AdCPBaseModel):
+class ArtifactsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/0/properties/artifacts/items')
     record_id: Annotated[str, Field(description='Unique identifier for this delivery record')]
     timestamp: Annotated[AwareDatetime | None, Field(description='When the delivery occurred')] = None
@@ -60,11 +60,11 @@ class GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItem(AdCPBaseModel
     artifact: Annotated[Artifact, Field(description='Full artifact with content assets')]
     country: Annotated[str | None, Field(description='ISO 3166-1 alpha-2 country code where delivery occurred')] = None
     channel: Annotated[str | None, Field(description='Channel type (e.g., display, video, audio, social)')] = None
-    brand_context: Annotated[GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemBrandContext | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
-    local_verdict: Annotated[GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemLocalVerdict | None, Field(description="Seller's local model verdict for this artifact")] = None
+    brand_context: Annotated[BrandContext | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
+    local_verdict: Annotated[LocalVerdict | None, Field(description="Seller's local model verdict for this artifact")] = None
 
 
-class GetMediaBuyArtifactsResponseArtifactsMediaBuyIdCollectionInfo(AdCPBaseModel):
+class CollectionInfo(AdCPBaseModel):
     """
     Information about artifact collection for this media buy. Sampling is configured at buy creation time — this reports what was actually collected.
     """
@@ -81,8 +81,8 @@ class GetMediaBuyArtifactsResponseArtifactsMediaBuyId(GetMediaBuyArtifactsRespon
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/0')
     media_buy_id: Annotated[str, Field(description='Media buy these artifacts belong to')]
-    artifacts: Annotated[list[GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItem], Field(description='Delivery records with full artifact content')]
-    collection_info: Annotated[GetMediaBuyArtifactsResponseArtifactsMediaBuyIdCollectionInfo | None, Field(description='Information about artifact collection for this media buy. Sampling is configured at buy creation time — this reports what was actually collected.')] = None
+    artifacts: Annotated[list[ArtifactsItem], Field(description='Delivery records with full artifact content')]
+    collection_info: Annotated[CollectionInfo | None, Field(description='Information about artifact collection for this media buy. Sampling is configured at buy creation time — this reports what was actually collected.')] = None
     pagination: PaginationResponse | None = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

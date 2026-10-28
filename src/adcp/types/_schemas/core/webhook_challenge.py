@@ -13,7 +13,7 @@ from adcp.types.constraints import HttpUrl, StrMatchingEF42E836, StrMinLen1MaxLe
 from ..enums.notification_type import NotificationType
 
 
-class WebhookChallengeDeliveryAuthMode(StrEnum):
+class Mode(StrEnum):
     """
     Future webhook delivery authentication mode. `rfc9421` is used when notification_configs[].authentication is absent; Bearer and HMAC-SHA256 are the deprecated legacy modes selected by notification_configs[].authentication.
     """
@@ -22,7 +22,7 @@ class WebhookChallengeDeliveryAuthMode(StrEnum):
     HMAC_SHA256 = 'HMAC-SHA256'
 
 
-class WebhookChallengeDeliveryAuth(AdCPBaseModel):
+class DeliveryAuth(AdCPBaseModel):
     """
     Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.
     """
@@ -34,7 +34,7 @@ class WebhookChallengeDeliveryAuth(AdCPBaseModel):
         ConditionalRequired((Match('mode', True, ('rfc9421',)),), require=(), forbid=('credential_fingerprint',)),
         ConditionalRequired((Match('mode', True, ('Bearer', 'HMAC-SHA256')),), require=('credential_fingerprint',), forbid=()),
     )
-    mode: Annotated[WebhookChallengeDeliveryAuthMode, Field(description='Future webhook delivery authentication mode. `rfc9421` is used when notification_configs[].authentication is absent; Bearer and HMAC-SHA256 are the deprecated legacy modes selected by notification_configs[].authentication.')]
+    mode: Annotated[Mode, Field(description='Future webhook delivery authentication mode. `rfc9421` is used when notification_configs[].authentication is absent; Bearer and HMAC-SHA256 are the deprecated legacy modes selected by notification_configs[].authentication.')]
     credential_fingerprint: Annotated[StrMatchingEF42E836 | None, Field(description='SHA-256 hex fingerprint of the exact legacy credential string supplied in notification_configs[].authentication.credentials. Required when mode is Bearer or HMAC-SHA256; absent for rfc9421.')] = None
 
 
@@ -54,7 +54,7 @@ class WebhookChallenge(AdCPBaseModel):
     account_id: Annotated[str, Field(description='Seller account identifier for the account whose notification_configs[] entry is being challenged.')]
     subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description='Buyer-supplied subscriber identifier from the notification_configs[] entry being challenged.')]
     seller_agent_url: Annotated[HttpUrl, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.')]
-    delivery_auth: Annotated[WebhookChallengeDeliveryAuth, Field(description='Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.')]
+    delivery_auth: Annotated[DeliveryAuth, Field(description='Authentication/signing mode the seller will use for subsequent webhooks delivered to this notification config.')]
     event_types: Annotated[list[NotificationType], Field(description='Normalized notification types requested by the subscriber at the time of the challenge. Part of the endpoint proof scope; changing event_types[] requires a fresh challenge before the new set can become active.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 

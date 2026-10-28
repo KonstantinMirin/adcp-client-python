@@ -18,7 +18,7 @@ from ..enums.task_status import TaskStatus
 from ..enums.task_type import TaskType
 
 
-class GetTaskStatusResponseProgress(AdCPBaseModel):
+class Progress(AdCPBaseModel):
     """
     Progress information for long-running tasks
     """
@@ -32,7 +32,7 @@ class GetTaskStatusResponseProgress(AdCPBaseModel):
     step_number: Annotated[IntMin1 | None, Field(description='Current step number')] = None
 
 
-class GetTaskStatusResponseErrorDetails(AdCPBaseModel):
+class Details(AdCPBaseModel):
     """
     Additional error context
     """
@@ -55,10 +55,10 @@ class GetTaskStatusResponseError(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-task-status-response.json', pointer='#/properties/error')
     code: Annotated[str, Field(description='Error code for programmatic handling')]
     message: Annotated[str, Field(description='Detailed error message')]
-    details: Annotated[GetTaskStatusResponseErrorDetails | None, Field(description='Additional error context')] = None
+    details: Annotated[Details | None, Field(description='Additional error context')] = None
 
 
-class GetTaskStatusResponseHistoryItemType(StrEnum):
+class HistoryItemType(StrEnum):
     """
     Whether this was a request from client or response from server
     """
@@ -66,13 +66,13 @@ class GetTaskStatusResponseHistoryItemType(StrEnum):
     RESPONSE = 'response'
 
 
-class GetTaskStatusResponseHistoryItem(AdCPBaseModel):
+class HistoryItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-task-status-response.json', pointer='#/properties/history/items')
     timestamp: Annotated[AwareDatetime, Field(description='When this exchange occurred (ISO 8601)')]
-    type: Annotated[GetTaskStatusResponseHistoryItemType, Field(description='Whether this was a request from client or response from server')]
+    type: Annotated[HistoryItemType, Field(description='Whether this was a request from client or response from server')]
     data: Annotated[dict[str, Any], Field(description='The full request or response payload')]
 
 
@@ -92,9 +92,9 @@ class GetTaskStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     updated_at: Annotated[AwareDatetime, Field(description='When the task was last updated (ISO 8601)')]
     completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)')] = None
     has_webhook: Annotated[bool | None, Field(description='Whether this task has webhook configuration')] = None
-    progress: Annotated[GetTaskStatusResponseProgress | None, Field(description='Progress information for long-running tasks')] = None
+    progress: Annotated[Progress | None, Field(description='Progress information for long-running tasks')] = None
     error: Annotated[GetTaskStatusResponseError | None, Field(description='Convenience summary for failed tasks. When include_result was true and the canonical terminal result is also present, this error MUST agree with the canonical fatal error in result. A legacy poll carrying only this singular summary proves failure status but not equivalence to a richer terminal webhook artifact.')] = None
-    history: Annotated[list[GetTaskStatusResponseHistoryItem] | None, Field(description='Complete conversation history for this task (only included if include_history was true in request)')] = None
+    history: Annotated[list[HistoryItem] | None, Field(description='Complete conversation history for this task (only included if include_history was true in request)')] = None
     result: Annotated[dict[str, Any] | None, Field(description='Canonical task-specific terminal payload. Present when include_result was true and a completed, failed, or rejected task produced a terminal artifact; canceled tasks may omit it. For failed tasks, the singular error field is a convenience summary and MUST agree with the canonical fatal error represented here. Consumers and sellers MUST resolve and validate the exact schema through manifest.task_result_resolution: use terminal_schema_overrides[task_type] when present, otherwise tools[task_type].response_schema. The polling envelope keeps this field generic so get_task_status does not embed every task response schema.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

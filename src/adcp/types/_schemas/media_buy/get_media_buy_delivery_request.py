@@ -29,21 +29,21 @@ from ..enums.sort_direction import SortDirection
 from ..enums.sort_metric import SortMetric
 
 
-class GetMediaBuyDeliveryRequestAttributionWindowPostClick(Duration):
+class PostClick(Duration):
     """
     Post-click attribution window to apply.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/attribution_window/properties/post_click')
 
 
-class GetMediaBuyDeliveryRequestAttributionWindowPostView(Duration):
+class PostView(Duration):
     """
     Post-view attribution window to apply.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/attribution_window/properties/post_view')
 
 
-class GetMediaBuyDeliveryRequestAttributionWindow(AdCPBaseModel):
+class AttributionWindow(AdCPBaseModel):
     """
     Attribution window to apply for conversion metrics. When provided, the seller returns conversion data using the requested lookback windows instead of their platform default. The seller echoes the applied window in the response. Sellers that do not support configurable windows ignore this field and return their default. Check get_adcp_capabilities conversion_tracking.attribution_windows for available options.
     """
@@ -51,12 +51,12 @@ class GetMediaBuyDeliveryRequestAttributionWindow(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/attribution_window')
-    post_click: Annotated[GetMediaBuyDeliveryRequestAttributionWindowPostClick | None, Field(description='Post-click attribution window to apply.')] = None
-    post_view: Annotated[GetMediaBuyDeliveryRequestAttributionWindowPostView | None, Field(description='Post-view attribution window to apply.')] = None
+    post_click: Annotated[PostClick | None, Field(description='Post-click attribution window to apply.')] = None
+    post_view: Annotated[PostView | None, Field(description='Post-view attribution window to apply.')] = None
     model: Annotated[AttributionModel | None, Field(description='Attribution model to use. When omitted, the seller applies their default model.')] = None
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsCatalogItem(AdCPBaseModel):
+class CatalogItem(AdCPBaseModel):
     """
     Request a negotiated catalog_item breakdown. Omitting this key preserves the automatic behavior — sellers return catalog_item rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.
     """
@@ -69,7 +69,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsCatalogItem(AdCPBaseModel):
     sort_direction: Annotated[SortDirection | None, Field(description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.")] = 'desc'
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsCreative(AdCPBaseModel):
+class Creative(AdCPBaseModel):
     """
     Request a negotiated creative breakdown. Omitting this key preserves the automatic behavior — sellers return creative rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.
     """
@@ -82,7 +82,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsCreative(AdCPBaseModel):
     sort_direction: Annotated[SortDirection | None, Field(description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.")] = 'desc'
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsKeyword(AdCPBaseModel):
+class Keyword(AdCPBaseModel):
     """
     Request a negotiated keyword breakdown. Omitting this key preserves the automatic behavior — sellers return keyword rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.
     """
@@ -95,7 +95,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsKeyword(AdCPBaseModel):
     sort_direction: Annotated[SortDirection | None, Field(description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.")] = 'desc'
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsGeo(AdCPBaseModel):
+class Geo(AdCPBaseModel):
     """
     Request geographic breakdown. Check reporting_capabilities.supports_geo_breakdown for available levels and systems.
     """
@@ -115,7 +115,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsGeo(AdCPBaseModel):
     sort_direction: Annotated[SortDirection | None, Field(description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.")] = 'desc'
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsDeviceType(AdCPBaseModel):
+class DeviceType(AdCPBaseModel):
     """
     Request device type breakdown.
     """
@@ -129,7 +129,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsDeviceType(AdCPBaseModel):
     cursor: Annotated[str | None, Field(description="Opaque cursor from a previous response's by_device_type_pagination to fetch the next page of a truncated by_device_type breakdown. Omit for the first page. limit, sort_by, and sort_direction MUST be repeated unchanged across paged requests for the same logical query.")] = None
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsDevicePlatform(AdCPBaseModel):
+class DevicePlatform(AdCPBaseModel):
     """
     Request device platform breakdown.
     """
@@ -143,7 +143,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsDevicePlatform(AdCPBaseModel)
     cursor: Annotated[str | None, Field(description="Opaque cursor from a previous response's by_device_platform_pagination to fetch the next page of a truncated by_device_platform breakdown. Omit for the first page. limit, sort_by, and sort_direction MUST be repeated unchanged across paged requests for the same logical query.")] = None
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsFormat(AdCPBaseModel):
+class Format(AdCPBaseModel):
     """
     Request delivery broken down by canonical creative format kind. This dimension is negotiated on the GET path. Reporting webhook configuration does not negotiate or guarantee dimensional breakdowns, although a webhook payload may carry the same fields as an extension.
     """
@@ -156,7 +156,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsFormat(AdCPBaseModel):
     sort_direction: Annotated[SortDirection | None, Field(description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.")] = 'desc'
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsAudience(AdCPBaseModel):
+class Audience(AdCPBaseModel):
     """
     Request audience segment breakdown.
     """
@@ -170,7 +170,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsAudience(AdCPBaseModel):
     cursor: Annotated[str | None, Field(description="Opaque cursor from a previous response's by_audience_pagination to fetch the next page of a truncated by_audience breakdown. Omit for the first page. limit, sort_by, and sort_direction MUST be repeated unchanged across paged requests for the same logical query.")] = None
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsDemographic(AdCPBaseModel):
+class Demographic(AdCPBaseModel):
     """
     Request delivery broken down by demographic. Check the product's reporting_capabilities.supports_demographic_breakdown independently from demographic_targeting. When age_ranges is present, every requested range MUST be exactly supported by exact_predicates or equal one of the declared enumerated_intervals; sellers MUST reject unsupported ranges with UNSUPPORTED_FEATURE rather than silently widen or narrow them.
     """
@@ -187,7 +187,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsDemographic(AdCPBaseModel):
     sort_direction: Annotated[SortDirection | None, Field(description="Direction for sort_by ordering. Defaults to 'desc' (largest first). 'asc' enables bottom-N queries (e.g., the 25 worst placements by viewable_rate) that cannot be recovered from a truncated descending pull. Sellers MUST apply the requested direction to the applied sort metric — direction has no availability fallback.")] = 'desc'
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsSpot(AdCPBaseModel):
+class Spot(AdCPBaseModel):
     """
     Request a spot-level as-run airing log for broadcast TV, radio, or other scheduled inventory. Rows are ordered by aired_at ascending. When limit is omitted, sellers SHOULD return the complete log for the requested reporting period.
     """
@@ -198,7 +198,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsSpot(AdCPBaseModel):
     limit: Annotated[IntMin1 | None, Field(description='Optional maximum number of spot rows to return. When the response is incomplete because of this limit or a seller-imposed maximum, by_spot_truncated is true.')] = None
 
 
-class GetMediaBuyDeliveryRequestReportingDimensionsPlacement(AdCPBaseModel):
+class Placement(AdCPBaseModel):
     """
     Request placement breakdown.
     """
@@ -212,7 +212,7 @@ class GetMediaBuyDeliveryRequestReportingDimensionsPlacement(AdCPBaseModel):
     cursor: Annotated[str | None, Field(description="Opaque cursor from a previous response's by_placement_pagination to fetch the next page of a truncated by_placement breakdown. Omit for the first page. limit, sort_by, and sort_direction MUST be repeated unchanged across paged requests for the same logical query.")] = None
 
 
-class GetMediaBuyDeliveryRequestReportingDimensions(AdCPBaseModel):
+class ReportingDimensions(AdCPBaseModel):
     """
     Request dimensional breakdowns in delivery reporting. Each key enables a specific breakdown dimension within by_package — include as an empty object (e.g., "device_type": {}) to activate with defaults. Omit entirely for no breakdowns (backward compatible). Unsupported dimensions are silently omitted from the response. For every requested dimension that the product declares supported, the seller MUST return the corresponding array (possibly empty) and its truncated flag. Metric-sorted dimensions also return their applied-sort echoes; demographic and property-grain arrays also return their suppressed flag. Spot uses aired_at ordering and has no sort echoes. Note: keyword, catalog_item, and creative breakdowns are returned automatically when the seller supports them; including their keys here is optional and upgrades them to this negotiated contract without changing the automatic default.
     """
@@ -220,17 +220,17 @@ class GetMediaBuyDeliveryRequestReportingDimensions(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-request.json', pointer='#/properties/reporting_dimensions')
-    catalog_item: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsCatalogItem | None, Field(description='Request a negotiated catalog_item breakdown. Omitting this key preserves the automatic behavior — sellers return catalog_item rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
-    creative: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsCreative | None, Field(description='Request a negotiated creative breakdown. Omitting this key preserves the automatic behavior — sellers return creative rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
-    keyword: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsKeyword | None, Field(description='Request a negotiated keyword breakdown. Omitting this key preserves the automatic behavior — sellers return keyword rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
-    geo: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsGeo | None, Field(description='Request geographic breakdown. Check reporting_capabilities.supports_geo_breakdown for available levels and systems.')] = None
-    device_type: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsDeviceType | None, Field(description='Request device type breakdown.')] = None
-    device_platform: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsDevicePlatform | None, Field(description='Request device platform breakdown.')] = None
-    format: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsFormat | None, Field(description='Request delivery broken down by canonical creative format kind. This dimension is negotiated on the GET path. Reporting webhook configuration does not negotiate or guarantee dimensional breakdowns, although a webhook payload may carry the same fields as an extension.')] = None
-    audience: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsAudience | None, Field(description='Request audience segment breakdown.')] = None
-    demographic: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsDemographic | None, Field(description="Request delivery broken down by demographic. Check the product's reporting_capabilities.supports_demographic_breakdown independently from demographic_targeting. When age_ranges is present, every requested range MUST be exactly supported by exact_predicates or equal one of the declared enumerated_intervals; sellers MUST reject unsupported ranges with UNSUPPORTED_FEATURE rather than silently widen or narrow them.")] = None
-    spot: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsSpot | None, Field(description='Request a spot-level as-run airing log for broadcast TV, radio, or other scheduled inventory. Rows are ordered by aired_at ascending. When limit is omitted, sellers SHOULD return the complete log for the requested reporting period.')] = None
-    placement: Annotated[GetMediaBuyDeliveryRequestReportingDimensionsPlacement | None, Field(description='Request placement breakdown.')] = None
+    catalog_item: Annotated[CatalogItem | None, Field(description='Request a negotiated catalog_item breakdown. Omitting this key preserves the automatic behavior — sellers return catalog_item rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
+    creative: Annotated[Creative | None, Field(description='Request a negotiated creative breakdown. Omitting this key preserves the automatic behavior — sellers return creative rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
+    keyword: Annotated[Keyword | None, Field(description='Request a negotiated keyword breakdown. Omitting this key preserves the automatic behavior — sellers return keyword rows at their discretion with no truncation contract. Including it (even as {}) makes the truncation disclosure and applied-sort echo binding.')] = None
+    geo: Annotated[Geo | None, Field(description='Request geographic breakdown. Check reporting_capabilities.supports_geo_breakdown for available levels and systems.')] = None
+    device_type: Annotated[DeviceType | None, Field(description='Request device type breakdown.')] = None
+    device_platform: Annotated[DevicePlatform | None, Field(description='Request device platform breakdown.')] = None
+    format: Annotated[Format | None, Field(description='Request delivery broken down by canonical creative format kind. This dimension is negotiated on the GET path. Reporting webhook configuration does not negotiate or guarantee dimensional breakdowns, although a webhook payload may carry the same fields as an extension.')] = None
+    audience: Annotated[Audience | None, Field(description='Request audience segment breakdown.')] = None
+    demographic: Annotated[Demographic | None, Field(description="Request delivery broken down by demographic. Check the product's reporting_capabilities.supports_demographic_breakdown independently from demographic_targeting. When age_ranges is present, every requested range MUST be exactly supported by exact_predicates or equal one of the declared enumerated_intervals; sellers MUST reject unsupported ranges with UNSUPPORTED_FEATURE rather than silently widen or narrow them.")] = None
+    spot: Annotated[Spot | None, Field(description='Request a spot-level as-run airing log for broadcast TV, radio, or other scheduled inventory. Rows are ordered by aired_at ascending. When limit is omitted, sellers SHOULD return the complete log for the requested reporting period.')] = None
+    placement: Annotated[Placement | None, Field(description='Request placement breakdown.')] = None
     property: Annotated[DeliveryBreakdownControls | None, Field(description='Request delivery by canonical publisher property. Check reporting_capabilities.supports_property_breakdown.')] = None
     collection: Annotated[DeliveryBreakdownControls | None, Field(description='Request delivery by canonical content collection. Check reporting_capabilities.supports_collection_breakdown.')] = None
     installment: Annotated[DeliveryBreakdownControls | None, Field(description='Request delivery by canonical installment within a collection. Check reporting_capabilities.supports_installment_breakdown.')] = None
@@ -263,8 +263,8 @@ class GetMediaBuyDeliveryRequest(AdCPVersionEnvelope):
     requested_metrics: Annotated[list[AvailableMetric] | None, Field(description="Optional list of metrics to include in the response. When omitted, all available metrics are included (unchanged behavior). Applies to every metrics-bearing object in the response: totals, by_package, daily and window slices, and breakdown rows. impressions and spend are always included regardless of this list, except that a legacy or externally created mixed-currency buy MUST omit monetary and money-derived values from media-buy and window totals, MUST omit daily_breakdown, and MUST report monetary values only on currency-qualified package rows (including window package rows). Requesting a leaf metric identity returns its canonical nested carrier — e.g. requesting viewable_rate returns the viewability object, requesting quartile_75 returns quartile_data — never a flat duplicate. Metrics requested but not available for this buy are omitted from the response without error; contract accountability is unchanged — missing_metrics still reconciles against committed_metrics, but sellers MUST NOT list a metric in missing_metrics when its absence is solely due to this narrowing. Must be a subset of the product's reporting_capabilities.available_metrics; values outside the declared set are ignored. Subset evaluation follows the container-subsumption rule in enums/available-metric.json. Sort is evaluated before narrowing: excluding a metric from this list never triggers the sort_by fallback, and breakdown rows may be ordered by a metric absent from the narrowed payload — the applied-sort echo still names it. Same narrowing semantics as reporting_webhook.requested_metrics, with one shape difference: this field requires at least one entry when present (omit it entirely for full payloads), while the webhook field permits an empty array with the same meaning as omission.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     time_granularity: Annotated[ReportingFrequency | None, Field(description="Per-window slice granularity for the pull, using the same vocabulary as reporting_webhook.reporting_frequency. When set, the seller returns per-window delivery slices over the date range — useful for reconstructing data a buyer's webhook receiver missed, since the slice payload is shape-aligned with what reporting_webhook would have delivered for the same window. Capability-scoped: the value MUST be one of the seller's declared reporting_capabilities.windowed_pull_granularities; otherwise the seller MUST return UNSUPPORTED_GRANULARITY. When set to daily, weekly, monthly, or quarterly and the in-scope packages span more than one reporting timezone, the seller MUST return VALIDATION_ERROR. When omitted, behavior is unchanged (cumulative aggregates plus optional daily breakdowns per existing fields).")] = None
     include_window_breakdown: Annotated[bool | None, Field(description="When true, the response includes media_buy_deliveries[].windows[] — an array of per-window delivery slices over the date range at the requested time_granularity. Ignored when time_granularity is omitted. Each window's payload mirrors what reporting_webhook would have delivered for the same window, enabling lossless GET-path recovery for buyers who missed webhook fires. Omit or set false to reduce response size when only cumulative aggregates are needed.")] = False
-    attribution_window: Annotated[GetMediaBuyDeliveryRequestAttributionWindow | None, Field(description='Attribution window to apply for conversion metrics. When provided, the seller returns conversion data using the requested lookback windows instead of their platform default. The seller echoes the applied window in the response. Sellers that do not support configurable windows ignore this field and return their default. Check get_adcp_capabilities conversion_tracking.attribution_windows for available options.')] = None
-    reporting_dimensions: Annotated[GetMediaBuyDeliveryRequestReportingDimensions | None, Field(description='Request dimensional breakdowns in delivery reporting. Each key enables a specific breakdown dimension within by_package — include as an empty object (e.g., "device_type": {}) to activate with defaults. Omit entirely for no breakdowns (backward compatible). Unsupported dimensions are silently omitted from the response. For every requested dimension that the product declares supported, the seller MUST return the corresponding array (possibly empty) and its truncated flag. Metric-sorted dimensions also return their applied-sort echoes; demographic and property-grain arrays also return their suppressed flag. Spot uses aired_at ordering and has no sort echoes. Note: keyword, catalog_item, and creative breakdowns are returned automatically when the seller supports them; including their keys here is optional and upgrades them to this negotiated contract without changing the automatic default.')] = None
+    attribution_window: Annotated[AttributionWindow | None, Field(description='Attribution window to apply for conversion metrics. When provided, the seller returns conversion data using the requested lookback windows instead of their platform default. The seller echoes the applied window in the response. Sellers that do not support configurable windows ignore this field and return their default. Check get_adcp_capabilities conversion_tracking.attribution_windows for available options.')] = None
+    reporting_dimensions: Annotated[ReportingDimensions | None, Field(description='Request dimensional breakdowns in delivery reporting. Each key enables a specific breakdown dimension within by_package — include as an empty object (e.g., "device_type": {}) to activate with defaults. Omit entirely for no breakdowns (backward compatible). Unsupported dimensions are silently omitted from the response. For every requested dimension that the product declares supported, the seller MUST return the corresponding array (possibly empty) and its truncated flag. Metric-sorted dimensions also return their applied-sort echoes; demographic and property-grain arrays also return their suppressed flag. Spot uses aired_at ordering and has no sort echoes. Note: keyword, catalog_item, and creative breakdowns are returned automatically when the seller supports them; including their keys here is optional and upgrades them to this negotiated contract without changing the automatic default.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

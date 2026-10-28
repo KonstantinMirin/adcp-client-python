@@ -17,19 +17,19 @@ from ..enums.update_frequency import UpdateFrequency
 from .catalog_field_mapping import CatalogFieldMapping
 
 
-CatalogIds = Annotated[list[str], Field(description='Filter catalog to exact canonical item keys. The key field is offering_id for offering, store_id for store, hotel_id for hotel, flight_id for flight, job_id for job, vehicle_id for vehicle, listing_id for real_estate, program_id for education, destination_id for destination, and app_id for app. Product, inventory, and promotion catalogs use the stable normalized source identifier retained during ingestion (for example a retailer SKU). The same canonical key is used by catalog availability item_id.', min_length=1)]
+Ids = Annotated[list[str], Field(description='Filter catalog to exact canonical item keys. The key field is offering_id for offering, store_id for store, hotel_id for hotel, flight_id for flight, job_id for job, vehicle_id for vehicle, listing_id for real_estate, program_id for education, destination_id for destination, and app_id for app. Product, inventory, and promotion catalogs use the stable normalized source identifier retained during ingestion (for example a retailer SKU). The same canonical key is used by catalog availability item_id.', min_length=1)]
 
 
-CatalogGtins = Annotated[list[StrMatchingEE2029C8], Field(description="Filter product-type catalogs by GTIN identifiers for cross-retailer catalog matching. Accepts standard GTIN formats (GTIN-8, UPC-A/GTIN-12, EAN-13/GTIN-13, GTIN-14). Only applicable when type is 'product'.", min_length=1)]
+Gtins = Annotated[list[StrMatchingEE2029C8], Field(description="Filter product-type catalogs by GTIN identifiers for cross-retailer catalog matching. Accepts standard GTIN formats (GTIN-8, UPC-A/GTIN-12, EAN-13/GTIN-13, GTIN-14). Only applicable when type is 'product'.", min_length=1)]
 
 
-CatalogTags = Annotated[list[str], Field(description='Filter catalog to items with these tags. Tags are matched using OR logic — items matching any tag are included.', min_length=1)]
+Tags = Annotated[list[str], Field(description='Filter catalog to items with these tags. Tags are matched using OR logic — items matching any tag are included.', min_length=1)]
 
 
-CatalogCategory = Annotated[str, Field(description="Filter catalog to items in this category (e.g., 'beverages/soft-drinks', 'chef-positions').")]
+Category = Annotated[str, Field(description="Filter catalog to items in this category (e.g., 'beverages/soft-drinks', 'chef-positions').")]
 
 
-CatalogQuery = Annotated[str, Field(description="Natural language filter for catalog items (e.g., 'all pasta sauces under $5', 'amsterdam vacancies').")]
+Query = Annotated[str, Field(description="Natural language filter for catalog items (e.g., 'all pasta sauces under $5', 'amsterdam vacancies').")]
 
 
 class Catalog(AdCPBaseModel):
@@ -50,14 +50,14 @@ class Catalog(AdCPBaseModel):
     feed_format: Annotated[FeedFormat | None, Field(description='Format of the external feed at url. Required when url points to a non-AdCP feed (e.g., Google Merchant Center XML, Meta Product Catalog). Omit for offering-type catalogs where the feed is native AdCP JSON.')] = None
     update_frequency: Annotated[UpdateFrequency | None, Field(description='How often the platform should re-fetch the feed from url. Only applicable when url is provided. Platforms may use this as a hint for polling schedules.')] = None
     items: Annotated[list[dict[str, Any]] | None, Field(description="Inline catalog data. The item schema depends on the catalog type: Offering objects for 'offering', StoreItem for 'store', HotelItem for 'hotel', FlightItem for 'flight', JobItem for 'job', VehicleItem for 'vehicle', RealEstateItem for 'real_estate', EducationItem for 'education', DestinationItem for 'destination', AppItem for 'app', or freeform objects for 'product', 'inventory', and 'promotion'. Mutually exclusive with url — provide one or the other, not both. Implementations should validate items against the type-specific schema.", min_length=1)] = None
-    ids: Annotated[CatalogIds | None, Field(description='Filter catalog to exact canonical item keys. The key field is offering_id for offering, store_id for store, hotel_id for hotel, flight_id for flight, job_id for job, vehicle_id for vehicle, listing_id for real_estate, program_id for education, destination_id for destination, and app_id for app. Product, inventory, and promotion catalogs use the stable normalized source identifier retained during ingestion (for example a retailer SKU). The same canonical key is used by catalog availability item_id.')] = None
-    gtins: Annotated[CatalogGtins | None, Field(description="Filter product-type catalogs by GTIN identifiers for cross-retailer catalog matching. Accepts standard GTIN formats (GTIN-8, UPC-A/GTIN-12, EAN-13/GTIN-13, GTIN-14). Only applicable when type is 'product'.")] = None
-    tags: Annotated[CatalogTags | None, Field(description='Filter catalog to items with these tags. Tags are matched using OR logic — items matching any tag are included.')] = None
-    category: Annotated[CatalogCategory | None, Field(description="Filter catalog to items in this category (e.g., 'beverages/soft-drinks', 'chef-positions').")] = None
-    query: Annotated[CatalogQuery | None, Field(description="Natural language filter for catalog items (e.g., 'all pasta sauces under $5', 'amsterdam vacancies').")] = None
+    ids: Annotated[Ids | None, Field(description='Filter catalog to exact canonical item keys. The key field is offering_id for offering, store_id for store, hotel_id for hotel, flight_id for flight, job_id for job, vehicle_id for vehicle, listing_id for real_estate, program_id for education, destination_id for destination, and app_id for app. Product, inventory, and promotion catalogs use the stable normalized source identifier retained during ingestion (for example a retailer SKU). The same canonical key is used by catalog availability item_id.')] = None
+    gtins: Annotated[Gtins | None, Field(description="Filter product-type catalogs by GTIN identifiers for cross-retailer catalog matching. Accepts standard GTIN formats (GTIN-8, UPC-A/GTIN-12, EAN-13/GTIN-13, GTIN-14). Only applicable when type is 'product'.")] = None
+    tags: Annotated[Tags | None, Field(description='Filter catalog to items with these tags. Tags are matched using OR logic — items matching any tag are included.')] = None
+    category: Annotated[Category | None, Field(description="Filter catalog to items in this category (e.g., 'beverages/soft-drinks', 'chef-positions').")] = None
+    query: Annotated[Query | None, Field(description="Natural language filter for catalog items (e.g., 'all pasta sauces under $5', 'amsterdam vacancies').")] = None
     conversion_events: Annotated[list[EventType] | None, Field(description="Event types that represent conversions for items in this catalog. Declares what events the platform should attribute to catalog items — e.g., a job catalog converts via submit_application, a product catalog via purchase. The event's content_ids field carries the item IDs that connect back to catalog items. Use content_id_type to declare what identifier type content_ids values represent.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     content_id_type: Annotated[ContentIDType | None, Field(description="Identifier type that the event's content_ids field should be matched against for items in this catalog. For example, 'gtin' means content_ids values are Global Trade Item Numbers, 'sku' means retailer SKUs. Omit when using a custom identifier scheme not listed in the enum.")] = None
     feed_field_mappings: Annotated[list[CatalogFieldMapping] | None, Field(description='Declarative normalization rules for external feeds. Maps non-standard feed field names, date formats, price encodings, and image URLs to the AdCP catalog item schema. Applied during sync_catalogs ingestion. Supports field renames, named transforms (date, divide, boolean, split), static literal injection, and assignment of image URLs to typed asset pools.', min_length=1)] = None
 
 
-__all__ = ["Catalog", "CatalogCategory", "CatalogGtins", "CatalogIds", "CatalogQuery", "CatalogTags"]
+__all__ = ["Catalog", "Category", "Gtins", "Ids", "Query", "Tags"]

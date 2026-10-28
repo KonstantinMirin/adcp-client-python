@@ -15,7 +15,7 @@ from ...enums.webhook_security_method import WebhookSecurityMethod
 from ..provenance import Provenance
 
 
-class WebhookAssetSecurity(AdCPBaseModel):
+class Security(AdCPBaseModel):
     """
     Security configuration for webhook calls
     """
@@ -40,7 +40,7 @@ class WebhookAsset(AdCPBaseModel):
     supported_macros: Annotated[list[UniversalMacro | str] | None, Field(description='Universal macros that can be passed to webhook (e.g., DEVICE_TYPE, COUNTRY). See docs/creative/universal-macros.mdx for full list.')] = None
     required_macros: Annotated[list[UniversalMacro | str] | None, Field(description='Universal macros that must be provided for webhook to function')] = None
     response_type: Annotated[WebhookResponseType, Field(description='Expected content type of webhook response')]
-    security: Annotated[WebhookAssetSecurity, Field(description='Security configuration for webhook calls')]
+    security: Annotated[Security, Field(description='Security configuration for webhook calls')]
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
 
 

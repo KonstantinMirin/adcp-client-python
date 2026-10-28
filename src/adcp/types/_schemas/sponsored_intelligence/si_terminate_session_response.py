@@ -17,7 +17,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.si_session_status import SISessionStatus
 
 
-class SITerminateSessionResponseAcpHandoff(AdCPBaseModel):
+class AcpHandoff(AdCPBaseModel):
     """
     ACP checkout handoff data. Present when reason is handoff_transaction.
     """
@@ -31,14 +31,14 @@ class SITerminateSessionResponseAcpHandoff(AdCPBaseModel):
     expires_at: Annotated[AwareDatetime | None, Field(description='When this handoff data expires. Hosts should initiate checkout before this time.')] = None
 
 
-class SITerminateSessionResponseFollowUpAction(StrEnum):
+class Action(StrEnum):
     SAVE_FOR_LATER = 'save_for_later'
     SET_REMINDER = 'set_reminder'
     SUBSCRIBE_UPDATES = 'subscribe_updates'
     NONE = 'none'
 
 
-class SITerminateSessionResponseFollowUp(AdCPBaseModel):
+class FollowUp(AdCPBaseModel):
     """
     Suggested follow-up actions
     """
@@ -46,7 +46,7 @@ class SITerminateSessionResponseFollowUp(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#/properties/follow_up')
-    action: SITerminateSessionResponseFollowUpAction | None = None
+    action: Action | None = None
     data: Annotated[dict[str, Any] | None, Field(description='Data for follow-up action')] = None
 
 
@@ -61,8 +61,8 @@ class SITerminateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope):
     session_id: Annotated[str, Field(description='Terminated session identifier')]
     terminated: Annotated[bool, Field(description='Whether session was successfully terminated')]
     session_status: Annotated[SISessionStatus | None, Field(description="Resulting session state. 'complete' for handoff_transaction/handoff_complete, 'terminated' for user_exit/session_timeout/host_terminated.")] = None
-    acp_handoff: Annotated[SITerminateSessionResponseAcpHandoff | None, Field(description='ACP checkout handoff data. Present when reason is handoff_transaction.')] = None
-    follow_up: Annotated[SITerminateSessionResponseFollowUp | None, Field(description='Suggested follow-up actions')] = None
+    acp_handoff: Annotated[AcpHandoff | None, Field(description='ACP checkout handoff data. Present when reason is handoff_transaction.')] = None
+    follow_up: Annotated[FollowUp | None, Field(description='Suggested follow-up actions')] = None
     errors: list[Error] | None = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

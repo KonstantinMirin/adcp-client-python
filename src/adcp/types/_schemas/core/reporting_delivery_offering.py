@@ -28,7 +28,7 @@ class ReportingDeliveryOfferingReportingFeedPurpose(StrEnum):
     BILLING = 'billing'
 
 
-class ReportingDeliveryOfferingReportingProfile(AdCPBaseModel):
+class ReportingProfile(AdCPBaseModel):
     """
     Machine-readable semantic and validation contract for delivered rows. The canonicalization_* fields describe the external-materialization canonical-digest contract and are required only for offerings under the reconciled_billing tier; Core and managed-delivery offerings omit those fields but every Core revision still carries the fixed RFC 8785/JCS revision-binding digest.
     """
@@ -60,12 +60,12 @@ class ReportingDeliveryOfferingReportingDeliveryPattern(StrEnum):
     WAREHOUSE_MATERIALIZATION = 'warehouse_materialization'
 
 
-class ReportingDeliveryOfferingMethodDestinationModesItem(StrEnum):
+class DestinationModesItem(StrEnum):
     PROVISION = 'provision'
     EXISTING = 'existing'
 
 
-class ReportingDeliveryOfferingMethodProvider(AdCPBaseModel):
+class MethodProvider(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -73,7 +73,7 @@ class ReportingDeliveryOfferingMethodProvider(AdCPBaseModel):
     domain: StrMatching32F5291C
 
 
-class ReportingDeliveryOfferingMethodFormat(StrEnum):
+class Format(StrEnum):
     JSONL = 'jsonl'
     CSV = 'csv'
     PARQUET = 'parquet'
@@ -81,10 +81,10 @@ class ReportingDeliveryOfferingMethodFormat(StrEnum):
     ORC = 'orc'
 
 
-ReportingDeliveryOfferingMethodProducerIdentityProvider = ReportingDeliveryOfferingMethodProvider
+ProducerIdentityProvider = MethodProvider
 
 
-class ReportingDeliveryOfferingMethodProducerIdentity(AdCPBaseModel):
+class ProducerIdentity(AdCPBaseModel):
     """
     Seller principal a buyer grants access to for this exact buyer-hosted destination offering.
     """
@@ -96,13 +96,13 @@ class ReportingDeliveryOfferingMethodProducerIdentity(AdCPBaseModel):
         Dependencies('cloud', ('region',)),
         Dependencies('region', ('cloud',)),
     )
-    provider: ReportingDeliveryOfferingMethodProducerIdentityProvider
+    provider: ProducerIdentityProvider
     identity: StrMinLen1MaxLen512
     cloud: ReportingDatasetShareDestinationReportingCloud | None = None
     region: StrMinLen1MaxLen128 | None = None
 
 
-class ReportingDeliveryOfferingMethod(AdCPBaseModel):
+class Method(AdCPBaseModel):
     """
     Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.
     """
@@ -120,11 +120,11 @@ class ReportingDeliveryOfferingMethod(AdCPBaseModel):
     pattern: ReportingDeliveryOfferingReportingDeliveryPattern
     transport: StrMinLen1MaxLen64Matching5CDAE669
     orchestration: ReportingDeliveryMethodReportingOrchestration
-    destination_modes: Annotated[list[ReportingDeliveryOfferingMethodDestinationModesItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    provider: ReportingDeliveryOfferingMethodProvider | None = None
-    format: ReportingDeliveryOfferingMethodFormat | None = None
+    destination_modes: Annotated[list[DestinationModesItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
+    provider: MethodProvider | None = None
+    format: Format | None = None
     access_mode: StrMinLen1MaxLen64Matching5CDAE669 | None = None
-    producer_identity: Annotated[ReportingDeliveryOfferingMethodProducerIdentity | None, Field(description='Seller principal a buyer grants access to for this exact buyer-hosted destination offering.')] = None
+    producer_identity: Annotated[ProducerIdentity | None, Field(description='Seller principal a buyer grants access to for this exact buyer-hosted destination offering.')] = None
     reader_compatibility: Annotated[list[ReportingResourceReportingReaderCompatibilityItem] | None, Field(json_schema_extra={'uniqueItems': True})] = None
 
 
@@ -145,11 +145,11 @@ class ReportingDeliveryOffering(AdCPBaseModel):
     report_definition_id: Annotated[StrMinLen1MaxLen255Matching67860854, Field(description='Immutable semantic definition for metric, grain, attribution, action-report-time, timezone/calendar, source/API mapping, and restatement/finality policy. Configurations and revisions MUST echo this exact value.')]
     report_definition_uri: Annotated[HttpUrl, Field(description='Retrievable immutable reporting-report-definition.json document on the authenticated seller/provider or AdCP-registry origin.')]
     report_definition_sha256: Annotated[StrMatching5E987613, Field(description='Digest of the exact report-definition bytes. SDKs verify this before parsing and cache by digest.')]
-    reporting_profile: Annotated[ReportingDeliveryOfferingReportingProfile, Field(description='Machine-readable semantic and validation contract for delivered rows. The canonicalization_* fields describe the external-materialization canonical-digest contract and are required only for offerings under the reconciled_billing tier; Core and managed-delivery offerings omit those fields but every Core revision still carries the fixed RFC 8785/JCS revision-binding digest.')]
+    reporting_profile: Annotated[ReportingProfile, Field(description='Machine-readable semantic and validation contract for delivered rows. The canonicalization_* fields describe the external-materialization canonical-digest contract and are required only for offerings under the reconciled_billing tier; Core and managed-delivery offerings omit those fields but every Core revision still carries the fixed RFC 8785/JCS revision-binding digest.')]
     schedule: Annotated[ReportingScheduleOffering, Field(description='Period and availability SLA this offering can honor. For example, PT1H with snapshot finality explicitly advertises hourly provisional snapshots; a separate P1D official offering advertises daily finalized reporting.')]
     supported_finality: Annotated[list[ReportingFinality], Field(description='Finality classes available under this exact report definition, schedule, and delivery method. snapshot is an explicit provisional capability, not inferred from poll frequency. Use separate atomic offerings when snapshot and official schedules or methods differ.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     reconciliation_mode: Annotated[ReportingReconciliationMode, Field(description='Receipt contract included in this atomic offering. Billing offerings MUST require consumer_receipt.')]
-    method: Annotated[ReportingDeliveryOfferingMethod | None, Field(description='Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.')] = None
+    method: Annotated[Method | None, Field(description='Managed delivery method for this offering. Omit for a Core (API-delivered) offering: rows flow through existing get_media_buy_delivery and reporting_webhook transports and no destination is involved. Present only when the seller advertises managed_delivery.')] = None
 
 
 __all__ = ["ReportingDeliveryOffering", "ReportingDeliveryOfferingReportingDeliveryPattern", "ReportingDeliveryOfferingReportingFeedPurpose"]

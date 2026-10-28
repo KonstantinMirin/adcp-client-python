@@ -425,8 +425,13 @@ def test_a_named_node_is_declared_once_in_its_own_module_and_the_property_uses_i
         for a in tree.body
         if isinstance(a, ast.Assign) and isinstance(a.targets[0], ast.Name)
     }
-    assert "AdCPVersionEnvelopeAdcpVersion" in aliases, sorted(aliases)
-    assert "AdCPVersionEnvelopeAdcpMajorVersion" in aliases, sorted(aliases)
+    # §4's nested rule names a position and not the path to it
+    # (``adcp-client-python-10l.50``): the two were
+    # ``AdCPVersionEnvelopeAdcpVersion`` and ``AdCPVersionEnvelopeAdcpMajorVersion``
+    # while the fold concatenated every hop to the root, and the module path is what
+    # carries the document.  Two names, the same two positions.
+    assert "AdcpVersion" in aliases, sorted(aliases)
+    assert "AdcpMajorVersion" in aliases, sorted(aliases)
 
     cls = next(c for c in tree.body if isinstance(c, ast.ClassDef))
     fields = {
@@ -440,8 +445,8 @@ def test_a_named_node_is_declared_once_in_its_own_module_and_the_property_uses_i
     # spelling.  The document's own keywords, in pydantic's names, come from the
     # document.
     for key, symbol, stated in (
-        ("adcp_version", "AdCPVersionEnvelopeAdcpVersion", {"pattern"}),
-        ("adcp_major_version", "AdCPVersionEnvelopeAdcpMajorVersion", {"ge", "le"}),
+        ("adcp_version", "AdcpVersion", {"pattern"}),
+        ("adcp_major_version", "AdcpMajorVersion", {"ge", "le"}),
     ):
         named = constraint_aliases()
         on_alias = stated_by(aliases[symbol], named)
@@ -538,8 +543,10 @@ def test_a_fragment_reference_is_an_import_of_the_targets_symbol_and_not_a_copy(
         a.targets[0].id for a in target_tree.body if isinstance(a, ast.Assign)
     } | {a.target.id for a in target_tree.body if isinstance(a, ast.AnnAssign)}
 
-    # D3: parent name + pascal_case(property), computed by the walk and not here.
-    for key, symbol in (("kind", "CatalogLikeCategory"), ("marks", "CatalogLikeTags")):
+    # D3: ``pascal_case(property)`` for the property's OWN position, assigned by
+    # ``lower/names.py`` and not here -- the module path carries the document (§4, and
+    # ``adcp-client-python-10l.50``), so neither name repeats the target's title.
+    for key, symbol in (("kind", "Category"), ("marks", "Tags")):
         assert (module, symbol) in imported, (key, sorted(imported))
         got = fields[key]
         assert symbol in {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}, key
@@ -585,7 +592,7 @@ def test_a_class_for_a_fragment_target_names_the_targets_document_and_pointer(
     out = emit.emit(root, ["core/pointer.json"])
     assert out.refusals == {}, out.refusals
     tree = ast.parse(out.files["core/holder.py"])
-    inner = next(c for c in tree.body if isinstance(c, ast.ClassDef) and c.name == "HolderInner")
+    inner = next(c for c in tree.body if isinstance(c, ast.ClassDef) and c.name == "Inner")
     ref = next(
         ast.unparse(t.value)
         for t in inner.body
@@ -595,8 +602,8 @@ def test_a_class_for_a_fragment_target_names_the_targets_document_and_pointer(
     assert "#/properties/inner" in ref, ref
     assert "pointer.json" not in ref, ref
     # A node that is already a class is NOT given a second symbol beside it.
-    assert [c.name for c in tree.body if isinstance(c, ast.ClassDef)].count("HolderInner") == 1
-    assert "HolderInner = " not in out.files["core/holder.py"]
+    assert [c.name for c in tree.body if isinstance(c, ast.ClassDef)].count("Inner") == 1
+    assert "Inner = " not in out.files["core/holder.py"]
 
 
 # --------------------------------------------------------------------------- #

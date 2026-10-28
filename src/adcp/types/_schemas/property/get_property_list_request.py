@@ -14,7 +14,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class GetPropertyListRequestPagination(AdCPBaseModel):
+class Pagination(AdCPBaseModel):
     """
     Pagination parameters. Uses higher limits than standard pagination because property lists can contain tens of thousands of identifiers.
     """
@@ -37,7 +37,7 @@ class GetPropertyListRequest(AdCPVersionEnvelope):
     list_id: Annotated[str, Field(description='ID of the property list to retrieve')]
     account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise.')] = None
     resolve: Annotated[bool | None, Field(description='Whether to apply filters and return resolved identifiers (default: true)')] = True
-    pagination: Annotated[GetPropertyListRequestPagination | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because property lists can contain tens of thousands of identifiers.')] = None
+    pagination: Annotated[Pagination | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because property lists can contain tens of thousands of identifiers.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

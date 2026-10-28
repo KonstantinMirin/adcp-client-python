@@ -12,7 +12,7 @@ from adcp.types.constraints import HttpUrl, StrMinLen16MaxLen255Matching1E5CF9EB
 from .ext import ExtensionObject
 
 
-class PrincipalChangedWebhookReason(StrEnum):
+class Reason(StrEnum):
     """
     Coarse reason for the invalidation. Advisory routing/debug metadata; receivers MUST re-read get_principal rather than inferring the new state from the reason.
     """
@@ -39,7 +39,7 @@ class PrincipalChangedWebhook(AdCPBaseModel):
     subscriber_id: Annotated[StrMinLen1MaxLen64MatchingD373B860, Field(description="Identifies which caller-scoped notification_configs[] entry is receiving this fire. Echoed verbatim from the entry's subscriber_id.")]
     agent_url: Annotated[HttpUrl, Field(description='Canonical seller agent URL whose principal state changed. Receivers connected to multiple agents use this to select which principal record to re-read.')]
     changed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller recorded the principal-state transition.')]
-    reason: Annotated[PrincipalChangedWebhookReason, Field(description='Coarse reason for the invalidation. Advisory routing/debug metadata; receivers MUST re-read get_principal rather than inferring the new state from the reason.')]
+    reason: Annotated[Reason, Field(description='Coarse reason for the invalidation. Advisory routing/debug metadata; receivers MUST re-read get_principal rather than inferring the new state from the reason.')]
     destination_id: Annotated[StrMinLen1MaxLen64MatchingD373B860 | None, Field(description='Optional advisory hint naming the affected reporting destination for destination-scoped reasons. Receivers MAY use it for selective handling but MUST still treat the get_principal read as authoritative.')] = None
     ext: ExtensionObject | None = None
 

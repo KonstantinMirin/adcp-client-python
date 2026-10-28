@@ -14,7 +14,7 @@ from .agent_reporting_destination_state import AgentReportingDestinationState
 from .principal_declarations_state import PrincipalDeclarationsState
 
 
-class PrincipalStateRetiredDestinationsItem(AdCPBaseModel):
+class RetiredDestinationsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -41,7 +41,7 @@ class PrincipalState(AdCPBaseModel):
     notification_configs: Annotated[list[AgentNotificationConfigState] | None, Field(description='Current agent-level webhook subscribers. authentication.credentials is always omitted because it is write-only.', max_length=16)] = None
     reporting_destinations: Annotated[list[AgentReportingDestinationState] | None, Field(description='Current reusable reporting destination bindings and setup states. destination_id and destination_ref values MUST each be unique within this caller-scoped array; superseded generations of a current destination appear in its prior_destination_refs.', max_length=64)] = None
     declarations: Annotated[PrincipalDeclarationsState | None, Field(description='Declared consumption facts and the seller-computed accepted intersection. Present when and only when the seller supports the declarations section.')] = None
-    retired_destinations: Annotated[list[PrincipalStateRetiredDestinationsItem] | None, Field(description='Destinations the caller revoked by omitting them from a submitted reporting_destinations section, retained while any generation remains resolvable for reporting history. Enumerable only by the owning principal. Reusing a retired destination_id requires fresh registration and proof and produces a new generation.', max_length=64)] = None
+    retired_destinations: Annotated[list[RetiredDestinationsItem] | None, Field(description='Destinations the caller revoked by omitting them from a submitted reporting_destinations section, retained while any generation remains resolvable for reporting history. Enumerable only by the owning principal. Reusing a retired destination_id requires fresh registration and proof and produces a new generation.', max_length=64)] = None
 
 
 __all__ = ["PrincipalState"]

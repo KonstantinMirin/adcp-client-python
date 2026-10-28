@@ -13,7 +13,7 @@ from adcp.types.constraints import FloatGt0
 from .ext import ExtensionObject
 
 
-class CatalogFieldMappingTransform(StrEnum):
+class Transform(StrEnum):
     """
     Named transform to apply to the feed field value before writing to the catalog schema. See transform-specific parameters (format, timezone, by, separator).
     """
@@ -39,7 +39,7 @@ class CatalogFieldMapping(AdCPBaseModel):
     catalog_field: Annotated[str | None, Field(description="Target field on the catalog item schema, using dot notation for nested fields (e.g., 'name', 'price.amount', 'location.city'). Mutually exclusive with asset_group_id.")] = None
     asset_group_id: Annotated[str | None, Field(description="Places the feed field value (a URL) into a typed asset pool on the catalog item's assets array. The value is wrapped as an image or video asset in a group with this ID. Use standard group IDs: 'images_landscape', 'images_vertical', 'images_square', 'logo', 'video'. Mutually exclusive with catalog_field.")] = None
     value: Annotated[Any | None, Field(description='Static literal value to inject into catalog_field for every item, regardless of what the feed contains. Mutually exclusive with feed_field. Useful for fields the feed omits (e.g., currency when price is always USD, or a constant category value).')] = None
-    transform: Annotated[CatalogFieldMappingTransform | None, Field(description='Named transform to apply to the feed field value before writing to the catalog schema. See transform-specific parameters (format, timezone, by, separator).')] = None
+    transform: Annotated[Transform | None, Field(description='Named transform to apply to the feed field value before writing to the catalog schema. See transform-specific parameters (format, timezone, by, separator).')] = None
     format: Annotated[str | None, Field(description="For transform 'date': the input date format string (e.g., 'YYYYMMDD', 'MM/DD/YYYY', 'DD-MM-YYYY'). Output is always ISO 8601 (e.g., '2025-03-01'). Uses Unicode date pattern tokens.")] = None
     timezone: Annotated[str | None, Field(description="For transform 'date': the timezone of the input value. IANA timezone identifier (e.g., 'UTC', 'America/New_York', 'Europe/Amsterdam'). Defaults to UTC when omitted.")] = None
     by: Annotated[FloatGt0 | None, Field(description="For transform 'divide': the divisor to apply (e.g., 100 to convert integer cents to decimal dollars).")] = None

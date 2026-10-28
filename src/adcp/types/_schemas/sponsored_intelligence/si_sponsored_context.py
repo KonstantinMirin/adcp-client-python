@@ -14,7 +14,7 @@ from ..core.ext import ExtensionObject
 from .si_context_use import SIContextUse
 
 
-class SISponsoredContextPayingPrincipalAccount(AdCPBaseModel):
+class Account(AdCPBaseModel):
     """
     Optional seller-assigned account context for the paying principal. This intentionally carries only an account_id so the canonical economic principal remains paying_principal.brand.
     """
@@ -25,7 +25,7 @@ class SISponsoredContextPayingPrincipalAccount(AdCPBaseModel):
     account_id: Annotated[str, Field(description='Seller-assigned account identifier for the paying principal.')]
 
 
-class SISponsoredContextPayingPrincipal(AdCPBaseModel):
+class PayingPrincipal(AdCPBaseModel):
     """
     Economic accountability fact: the brand that funded or sponsored this context, with optional account/operator context. This identifies who paid for the sponsored context; it is distinct from the host's later receipt and use commitment.
     """
@@ -34,12 +34,12 @@ class SISponsoredContextPayingPrincipal(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/paying_principal')
     brand: Annotated[BrandReference, Field(description='Brand economically accountable for the sponsored context.')]
-    account: Annotated[SISponsoredContextPayingPrincipalAccount | None, Field(description='Optional seller-assigned account context for the paying principal. This intentionally carries only an account_id so the canonical economic principal remains paying_principal.brand.')] = None
+    account: Annotated[Account | None, Field(description='Optional seller-assigned account context for the paying principal. This intentionally carries only an account_id so the canonical economic principal remains paying_principal.brand.')] = None
     operator: Annotated[StrMatching32F5291C | None, Field(description='Domain of the operator acting for the paying principal, when different from the brand domain.')] = None
     display_name: Annotated[str | None, Field(description='Human-readable label for disclosure rendering. The canonical identity remains the brand/account reference.')] = None
 
 
-class SISponsoredContextDisclosureObligationTiming(StrEnum):
+class Timing(StrEnum):
     """
     When the disclosure must be presented relative to the sponsored context's influence.
     """
@@ -55,7 +55,7 @@ class SISponsoredContextDisclosureObligationTiming(StrEnum):
     """Disclose near each output that presents, compares, or is materially influenced by the sponsored context."""
 
 
-class SISponsoredContextDisclosureObligationProximity(StrEnum):
+class Proximity(StrEnum):
     """
     Where the disclosure should appear relative to the affected output.
     """
@@ -71,7 +71,7 @@ class SISponsoredContextDisclosureObligationProximity(StrEnum):
     """Disclosure should appear near the host output that was shaped by the sponsored context, even if no single rendered unit is the ad."""
 
 
-class SISponsoredContextDisclosureObligationJurisdictionsItem(AdCPBaseModel):
+class JurisdictionsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -81,7 +81,7 @@ class SISponsoredContextDisclosureObligationJurisdictionsItem(AdCPBaseModel):
     regulation: Annotated[str, Field(description='Regulation or policy identifier.')]
 
 
-class SISponsoredContextDisclosureObligation(AdCPBaseModel):
+class DisclosureObligation(AdCPBaseModel):
     """
     Disclosure obligation the receiving host must either accept and satisfy or reject before using this sponsored context. This is a declared obligation and audit input, not a protocol-level legal determination.
     """
@@ -91,12 +91,12 @@ class SISponsoredContextDisclosureObligation(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/disclosure_obligation')
     required: Annotated[bool, Field(description='Whether the declaring party requires disclosure for this sponsored context.')]
     label_text: Annotated[str | None, Field(description='Disclosure label text the host should render when disclosure is required.')] = None
-    timing: Annotated[SISponsoredContextDisclosureObligationTiming | None, Field(description="When the disclosure must be presented relative to the sponsored context's influence.")] = None
-    proximity: Annotated[SISponsoredContextDisclosureObligationProximity | None, Field(description='Where the disclosure should appear relative to the affected output.')] = None
-    jurisdictions: Annotated[list[SISponsoredContextDisclosureObligationJurisdictionsItem] | None, Field(description='Jurisdictions where this declared disclosure obligation applies.', min_length=1)] = None
+    timing: Annotated[Timing | None, Field(description="When the disclosure must be presented relative to the sponsored context's influence.")] = None
+    proximity: Annotated[Proximity | None, Field(description='Where the disclosure should appear relative to the affected output.')] = None
+    jurisdictions: Annotated[list[JurisdictionsItem] | None, Field(description='Jurisdictions where this declared disclosure obligation applies.', min_length=1)] = None
 
 
-class SISponsoredContextDeclaredByRole(StrEnum):
+class Role(StrEnum):
     """
     Role of the declaring party.
     """
@@ -106,7 +106,7 @@ class SISponsoredContextDeclaredByRole(StrEnum):
     PLATFORM = 'platform'
 
 
-class SISponsoredContextDeclaredBy(AdCPBaseModel):
+class DeclaredBy(AdCPBaseModel):
     """
     Agent or service that attached the declaration.
     """
@@ -115,7 +115,7 @@ class SISponsoredContextDeclaredBy(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#/properties/declared_by')
     agent_url: Annotated[AdCPUrl | None, Field(description='HTTPS URL of the declaring agent or service.')] = None
-    role: Annotated[SISponsoredContextDeclaredByRole, Field(description='Role of the declaring party.')]
+    role: Annotated[Role, Field(description='Role of the declaring party.')]
 
 
 class SISponsoredContext(AdCPBaseModel):
@@ -126,11 +126,11 @@ class SISponsoredContext(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-sponsored-context.json', pointer='#')
-    paying_principal: Annotated[SISponsoredContextPayingPrincipal, Field(description="Economic accountability fact: the brand that funded or sponsored this context, with optional account/operator context. This identifies who paid for the sponsored context; it is distinct from the host's later receipt and use commitment.")]
+    paying_principal: Annotated[PayingPrincipal, Field(description="Economic accountability fact: the brand that funded or sponsored this context, with optional account/operator context. This identifies who paid for the sponsored context; it is distinct from the host's later receipt and use commitment.")]
     context_use: Annotated[SIContextUse, Field(description='Declared host-side use mode for this sponsored context.')]
-    disclosure_obligation: Annotated[SISponsoredContextDisclosureObligation, Field(description='Disclosure obligation the receiving host must either accept and satisfy or reject before using this sponsored context. This is a declared obligation and audit input, not a protocol-level legal determination.')]
+    disclosure_obligation: Annotated[DisclosureObligation, Field(description='Disclosure obligation the receiving host must either accept and satisfy or reject before using this sponsored context. This is a declared obligation and audit input, not a protocol-level legal determination.')]
     declared_at: Annotated[AwareDatetime | None, Field(description='When this sponsored-context declaration was made.')] = None
-    declared_by: Annotated[SISponsoredContextDeclaredBy | None, Field(description='Agent or service that attached the declaration.')] = None
+    declared_by: Annotated[DeclaredBy | None, Field(description='Agent or service that attached the declaration.')] = None
     ext: ExtensionObject | None = None
 
 

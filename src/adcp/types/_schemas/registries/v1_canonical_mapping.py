@@ -13,18 +13,18 @@ from adcp.types.constraints import StrMinLen1
 from ..core.canonical_format_kind import CanonicalFormatKind
 
 
-class V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternFormatIdGlob(AdCPBaseModel):
+class V1PatternFormatIdGlob(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v1_pattern/oneOf/0')
     format_id_glob: Annotated[str, Field(description="Glob pattern matched against v1 format_id.id. Examples: 'iab_mrec_300x250', 'iab_leaderboard_*', 'meta_*_reels'.")]
 
 
-class V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructuralDimensions(AdCPBaseModel):
+class Dimensions(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v1_pattern/oneOf/1/properties/structural/properties/dimensions')
     width: int | None = None
     height: int | None = None
 
 
-class V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructural(AdCPBaseModel):
+class Structural(AdCPBaseModel):
     """
     Structural match against the format's slot shape, asset types, and version constraints.
     """
@@ -35,15 +35,15 @@ class V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructura
     asset_types: Annotated[list[str] | None, Field(description="Set of asset_type values that must appear in the format's slots (in any order, any count).")] = None
     vast_versions: Annotated[list[str] | None, Field(description="VAST version constraints. Strings like '>=4.0', '4.x', '4.2'.")] = None
     daast_versions: list[str] | None = None
-    dimensions: V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructuralDimensions | None = None
+    dimensions: Dimensions | None = None
 
 
-class V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructural(AdCPBaseModel):
+class V1PatternStructural(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v1_pattern/oneOf/1')
-    structural: Annotated[V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructural, Field(description="Structural match against the format's slot shape, asset types, and version constraints.")]
+    structural: Annotated[Structural, Field(description="Structural match against the format's slot shape, asset types, and version constraints.")]
 
 
-class V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItemTransform(StrEnum):
+class Transform(StrEnum):
     """
     Value transform applied during forwarding. identity copies the value; singleton_array wraps it in a one-element array.
     """
@@ -51,30 +51,30 @@ class V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItemTrans
     SINGLETON_ARRAY = 'singleton_array'
 
 
-class V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItem(AdCPBaseModel):
+class ParameterMappingsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v2/properties/parameter_mappings/items')
     source_field: Annotated[StrMinLen1, Field(description='Field read from the matched v1 format_id object.')]
     target_parameter: Annotated[StrMinLen1, Field(description='Field written into the projected v2 params object.')]
-    transform: Annotated[V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItemTransform | None, Field(description='Value transform applied during forwarding. identity copies the value; singleton_array wraps it in a one-element array.')] = 'identity'
+    transform: Annotated[Transform | None, Field(description='Value transform applied during forwarding. identity copies the value; singleton_array wraps it in a one-element array.')] = 'identity'
 
 
-class V1V2CanonicalFormatMappingRegistryMappingsItemV2(AdCPBaseModel):
+class V2(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v2')
     canonical: Annotated[CanonicalFormatKind, Field(description='v2 canonical format the v1 pattern projects to.')]
     parameters: Annotated[dict[str, Any] | None, Field(description='Optional parameters that narrow the canonical (e.g., width/height, vast_version). When present, become the params on the projected v2 ProductFormatDeclaration. The shape MUST be valid params for the named canonical.')] = None
-    parameter_mappings: Annotated[list[V1V2CanonicalFormatMappingRegistryMappingsItemV2ParameterMappingsItem] | None, Field(description='Machine-readable forwarding rules for parameters carried by a structured v1 format_id. SDKs copy each present source_field to the target_parameter after applying transform; absent source fields leave the target parameter omitted. Static v2.parameters are applied before these forwarded values.', min_length=1)] = None
+    parameter_mappings: Annotated[list[ParameterMappingsItem] | None, Field(description='Machine-readable forwarding rules for parameters carried by a structured v1 format_id. SDKs copy each present source_field to the target_parameter after applying transform; absent source fields leave the target parameter omitted. Static v2.parameters are applied before these forwarded values.', min_length=1)] = None
 
 
-class V1V2CanonicalFormatMappingRegistryMappingsItem(AdCPBaseModel):
+class MappingsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items')
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='registries/v1-canonical-mapping.json', pointer='#/properties/mappings/items/properties/v1_pattern/oneOf', keyword='oneOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['format_id_glob'], 'properties': {'format_id_glob': {'type': 'string', 'description': "Glob pattern matched against v1 format_id.id. Examples: 'iab_mrec_300x250', 'iab_leaderboard_*', 'meta_*_reels'."}}}, {'required': ['structural'], 'properties': {'structural': {'type': 'object', 'description': "Structural match against the format's slot shape, asset types, and version constraints.", 'properties': {'asset_types': {'type': 'array', 'items': {'type': 'string'}, 'description': "Set of asset_type values that must appear in the format's slots (in any order, any count)."}, 'vast_versions': {'type': 'array', 'items': {'type': 'string'}, 'description': "VAST version constraints. Strings like '>=4.0', '4.x', '4.2'."}, 'daast_versions': {'type': 'array', 'items': {'type': 'string'}}, 'dimensions': {'type': 'object', 'properties': {'width': {'type': 'integer'}, 'height': {'type': 'integer'}}}}, 'additionalProperties': True}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/oneOf'),
     )
-    v1_pattern: Annotated[V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternFormatIdGlob | V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructural, Field(description='Match pattern. Carries either format_id_glob OR structural, not both.')]
-    v2: V1V2CanonicalFormatMappingRegistryMappingsItemV2
+    v1_pattern: Annotated[V1PatternFormatIdGlob | V1PatternStructural, Field(description='Match pattern. Carries either format_id_glob OR structural, not both.')]
+    v2: V2
     deprecated: Annotated[bool | None, Field(description='When true, this mapping is retained for backward-compatibility but should not be used for new mappings. SDKs SHOULD emit lint warnings when matching a deprecated entry.')] = False
     notes: Annotated[str | None, Field(description='Optional human-readable explanation, examples, or rationale.')] = None
 
@@ -117,7 +117,7 @@ class V1V2CanonicalFormatMappingRegistry(AdCPBaseModel):
     )
     version: Annotated[str, Field(description='Semver of this registry. Bumped on every published change.')]
     last_updated: Annotated[date | None, Field(description='ISO date of the last published change.')] = None
-    mappings: Annotated[list[V1V2CanonicalFormatMappingRegistryMappingsItem], Field(description='Ordered list of v1 → v2 mappings. SDKs apply mappings in order and use the first match.')]
+    mappings: Annotated[list[MappingsItem], Field(description='Ordered list of v1 → v2 mappings. SDKs apply mappings in order and use the first match.')]
 
 
 __all__ = ["V1V2CanonicalFormatMappingRegistry"]

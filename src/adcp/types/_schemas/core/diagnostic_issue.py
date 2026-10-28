@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
-class DiagnosticIssueSeverity(StrEnum):
+class Severity(StrEnum):
     """
     'error': blocks optimization until resolved. 'warning': optimization works but effectiveness is reduced. 'info': suggestion for improvement.
     """
@@ -26,7 +26,7 @@ class DiagnosticIssue(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/diagnostic-issue.json', pointer='#')
-    severity: Annotated[DiagnosticIssueSeverity, Field(description="'error': blocks optimization until resolved. 'warning': optimization works but effectiveness is reduced. 'info': suggestion for improvement.")]
+    severity: Annotated[Severity, Field(description="'error': blocks optimization until resolved. 'warning': optimization works but effectiveness is reduced. 'info': suggestion for improvement.")]
     message: Annotated[str, Field(description='Human/agent-readable description of the issue and how to resolve it.')]
 
 

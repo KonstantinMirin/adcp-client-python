@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMatching43E30B32
 
 
-class OfferPriceModel(StrEnum):
+class Model(StrEnum):
     """
     Pricing model for this offer
     """
@@ -31,7 +31,7 @@ class OfferPrice(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/offer-price.json', pointer='#')
     amount: Annotated[NonNegativeFloat, Field(description='Price amount in the specified currency')]
     currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code')] = 'USD'
-    model: Annotated[OfferPriceModel, Field(description='Pricing model for this offer')]
+    model: Annotated[Model, Field(description='Pricing model for this offer')]
 
 
 __all__ = ["OfferPrice"]

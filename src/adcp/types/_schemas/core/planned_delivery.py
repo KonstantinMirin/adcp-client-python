@@ -18,7 +18,7 @@ from .ext import ExtensionObject
 from .frequency_cap import FrequencyCap
 
 
-class PlannedDeliveryGeo(AdCPBaseModel):
+class Geo(AdCPBaseModel):
     """
     Geographic targeting the seller will apply.
     """
@@ -30,7 +30,7 @@ class PlannedDeliveryGeo(AdCPBaseModel):
     regions: Annotated[list[str] | None, Field(description='ISO 3166-2 subdivision codes where ads will deliver.')] = None
 
 
-class PlannedDeliveryBidding(BiddingPolicy):
+class Bidding(BiddingPolicy):
     """
     Seller-interpreted media-buy bidding policy used for governance and delivery transparency. Goal-bound controls follow budget-allocation scope semantics and monetary fields use the planned delivery currency. Package-authored overrides, including explicit automatic overrides, remain on packages rather than being copied into this aggregate field.
     """
@@ -52,7 +52,7 @@ class PlannedDelivery(AdCPBaseModel):
     media_buy_id: Annotated[StrMinLen1 | None, Field(description='Seller-assigned media buy identifier. Optional on a purchase-phase prepare/check because the service may not assign the identifier until commit; required on modification and delivery lifecycle checks.')] = None
     proposal_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Proposal snapshot being executed or currently governing the MediaBuy.')] = None
     proposal_terms_digest: Annotated[StrMatching325DEB97 | None, Field(description='Digest of the proposal commercial_terms. The governance agent compares it to the digest bound during the intent check.')] = None
-    geo: Annotated[PlannedDeliveryGeo | None, Field(description='Geographic targeting the seller will apply.')] = None
+    geo: Annotated[Geo | None, Field(description='Geographic targeting the seller will apply.')] = None
     channels: Annotated[list[MediaChannel] | None, Field(description='Channels the seller will deliver on.')] = None
     start_time: Annotated[AwareDatetime | None, Field(description='Actual flight start the seller will use.')] = None
     end_time: Annotated[AwareDatetime | None, Field(description='Actual flight end the seller will use.')] = None
@@ -65,7 +65,7 @@ class PlannedDelivery(AdCPBaseModel):
     currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code for the budget. Governance execution checks require it whenever total_budget is present and require it to match the intent-authorized currency.')] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Seller-accepted cross-package allocation authority and goals. Presence with seller_optimized mode means automatic within-buy reallocations are part of the committed delivery, not separate modification actions.')] = None
     pacing: Annotated[Pacing | None, Field(description='Aggregate pacing strategy the seller will apply to total_budget.')] = None
-    bidding: Annotated[PlannedDeliveryBidding | None, Field(description='Seller-interpreted media-buy bidding policy used for governance and delivery transparency. Goal-bound controls follow budget-allocation scope semantics and monetary fields use the planned delivery currency. Package-authored overrides, including explicit automatic overrides, remain on packages rather than being copied into this aggregate field.')] = None
+    bidding: Annotated[Bidding | None, Field(description='Seller-interpreted media-buy bidding policy used for governance and delivery transparency. Goal-bound controls follow budget-allocation scope semantics and monetary fields use the planned delivery currency. Package-authored overrides, including explicit automatic overrides, remain on packages rather than being copied into this aggregate field.')] = None
     enforced_policies: Annotated[list[str] | None, Field(description='Registry policy IDs the seller will enforce for this delivery.')] = None
     ext: ExtensionObject | None = None
 

@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
-class RateLimitedDetailsScope(StrEnum):
+class Scope(StrEnum):
     """
     What the limit applies to
     """
@@ -29,7 +29,7 @@ class RateLimitedDetails(AdCPBaseModel):
     limit: Annotated[float | None, Field(description='Maximum requests allowed in the window')] = None
     remaining: Annotated[float | None, Field(description='Requests remaining in the current window')] = None
     window_seconds: Annotated[float | None, Field(description='Duration of the rate-limit window in seconds')] = None
-    scope: Annotated[RateLimitedDetailsScope | None, Field(description='What the limit applies to')] = None
+    scope: Annotated[Scope | None, Field(description='What the limit applies to')] = None
 
 
 __all__ = ["RateLimitedDetails"]

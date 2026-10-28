@@ -15,7 +15,7 @@ from .offering_asset_group import OfferingAssetGroup
 from .price import Price
 
 
-class EducationItemDegreeType(StrEnum):
+class DegreeType(StrEnum):
     """
     Type of credential awarded.
     """
@@ -28,7 +28,7 @@ class EducationItemDegreeType(StrEnum):
     BOOTCAMP = 'bootcamp'
 
 
-class EducationItemLevel(StrEnum):
+class Level(StrEnum):
     """
     Difficulty or prerequisite level.
     """
@@ -37,7 +37,7 @@ class EducationItemLevel(StrEnum):
     ADVANCED = 'advanced'
 
 
-class EducationItemModality(StrEnum):
+class Modality(StrEnum):
     """
     Delivery format.
     """
@@ -59,13 +59,13 @@ class EducationItem(AdCPBaseModel):
     school: Annotated[str, Field(description='Institution or provider name.')]
     description: Annotated[str | None, Field(description='Program description including curriculum highlights and outcomes.')] = None
     subject: Annotated[str | None, Field(description="Subject area or field of study (e.g., 'computer-science', 'business', 'healthcare').")] = None
-    degree_type: Annotated[EducationItemDegreeType | None, Field(description='Type of credential awarded.')] = None
-    level: Annotated[EducationItemLevel | None, Field(description='Difficulty or prerequisite level.')] = None
+    degree_type: Annotated[DegreeType | None, Field(description='Type of credential awarded.')] = None
+    level: Annotated[Level | None, Field(description='Difficulty or prerequisite level.')] = None
     price: Annotated[Price | None, Field(description='Tuition or course fee.')] = None
     duration: Annotated[str | None, Field(description="Program duration as a human-readable string (e.g., '4 weeks', '2 years', '6 months').")] = None
     start_date: Annotated[date | None, Field(description='Next available start date (ISO 8601 date).')] = None
     language: Annotated[str | None, Field(description="Language of instruction (e.g., 'en', 'nl', 'es').")] = None
-    modality: Annotated[EducationItemModality | None, Field(description='Delivery format.')] = None
+    modality: Annotated[Modality | None, Field(description='Delivery format.')] = None
     location: Annotated[str | None, Field(description="Campus or instruction location (e.g., 'Amsterdam, NL'). Omit for fully online programs.")] = None
     image_url: Annotated[HttpUrl | None, Field(description='Program or institution image URL.')] = None
     url: Annotated[HttpUrl | None, Field(description='Program landing page or enrollment URL.')] = None

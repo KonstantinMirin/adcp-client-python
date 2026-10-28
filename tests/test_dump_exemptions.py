@@ -87,7 +87,7 @@ def _silent_about_extras(node: Any) -> bool:
     Read as the BARE node instead, ``core/package-delivery-metric-value.json`` at
     ``/allOf/1/properties/qualifier`` counts as an exposure it does not have: the
     conjunct's whole text there is ``{"minProperties": 1}``, its sibling conjunct closes
-    the object, and the emitted ``PackageDeliveryMetricValueQualifier`` carries
+    the object, and the emitted ``Qualifier`` carries
     ``extra='forbid'`` beside its ``PropertyCount`` -- so no instance of it dumps to
     ``{}`` and no document refuses its dump.  That position joined the packaged tree at
     ``adcp-client-python-10l.21``'s fifth instalment, which is the first row to declare a

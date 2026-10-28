@@ -13,7 +13,7 @@ from ..core.error import Error
 from ..core.ext import ExtensionObject
 
 
-class CreateMediaBuyInputRequiredReason(StrEnum):
+class Reason(StrEnum):
     """
     Reason code indicating why input is needed
     """
@@ -29,7 +29,7 @@ class CreateMediaBuyInputRequired(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-async-response-input-required.json', pointer='#')
-    reason: Annotated[CreateMediaBuyInputRequiredReason | None, Field(description='Reason code indicating why input is needed')] = None
+    reason: Annotated[Reason | None, Field(description='Reason code indicating why input is needed')] = None
     errors: Annotated[list[Error] | None, Field(description='Optional validation errors or warnings for debugging purposes. Helps explain why input is required.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

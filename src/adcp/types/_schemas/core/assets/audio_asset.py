@@ -13,7 +13,7 @@ from ...enums.audio_channel_layout import AudioChannelLayout
 from ..provenance import Provenance
 
 
-class AudioAssetBitDepth(IntEnum):
+class BitDepth(IntEnum):
     """
     Bit depth
     """
@@ -38,7 +38,7 @@ class AudioAsset(AdCPBaseModel):
     codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, vorbis, opus, flac, ac3, eac3, etc.)')] = None
     sampling_rate_hz: Annotated[int | None, Field(description='Sampling rate in Hz (e.g., 44100, 48000, 96000)')] = None
     channels: Annotated[AudioChannelLayout | None, Field(description='Channel configuration')] = None
-    bit_depth: Annotated[AudioAssetBitDepth | None, Field(description='Bit depth')] = None
+    bit_depth: Annotated[BitDepth | None, Field(description='Bit depth')] = None
     bitrate_kbps: Annotated[IntMin1 | None, Field(description='Bitrate in kilobits per second')] = None
     loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS')] = None
     true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS')] = None

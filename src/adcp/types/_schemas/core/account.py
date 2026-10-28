@@ -25,7 +25,7 @@ from .reporting_delivery_config_state import ReportingDeliveryConfigurationState
 from .webhook_activity_record import WebhookActivityRecord
 
 
-class AccountCreditLimit(AdCPBaseModel):
+class CreditLimit(AdCPBaseModel):
     """
     Maximum outstanding balance allowed
     """
@@ -34,7 +34,7 @@ class AccountCreditLimit(AdCPBaseModel):
     currency: StrMatching43E30B32
 
 
-class AccountSetup(AdCPBaseModel):
+class Setup(AdCPBaseModel):
     """
     Present when status is 'pending_approval'. Contains next steps for completing account activation.
     """
@@ -47,7 +47,7 @@ class AccountSetup(AdCPBaseModel):
     expires_at: Annotated[AwareDatetime | None, Field(description='When this setup link expires.')] = None
 
 
-class AccountGovernanceAgentsItem(AdCPBaseModel):
+class GovernanceAgentsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -55,7 +55,7 @@ class AccountGovernanceAgentsItem(AdCPBaseModel):
     url: Annotated[AdCPUrl, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
 
 
-class AccountReportingBucketFormat(StrEnum):
+class Format(StrEnum):
     """
     File format for delivered files. Parquet, Avro, and ORC use internal compression (the top-level compression field is ignored for these formats).
     """
@@ -66,7 +66,7 @@ class AccountReportingBucketFormat(StrEnum):
     ORC = 'orc'
 
 
-class AccountReportingBucketCompression(StrEnum):
+class Compression(StrEnum):
     """
     Compression applied to delivered files
     """
@@ -74,7 +74,7 @@ class AccountReportingBucketCompression(StrEnum):
     NONE = 'none'
 
 
-class AccountReportingBucket(AdCPBaseModel):
+class ReportingBucket(AdCPBaseModel):
     """
     Cloud storage bucket where the seller delivers offline reporting files for this account. Seller provisions a dedicated bucket or a per-account prefix within a shared bucket, and grants the buyer read access out-of-band. Access MUST be scoped at the IAM layer so each account can only read its own prefix — bucket-wide grants are non-compliant even with per-account prefixes. Seller MUST revoke access when the account's status transitions to inactive, suspended, or closed. See security considerations for offline delivery in docs/media-buy/media-buys/optimization-reporting. Only present when the seller supports offline delivery (reporting_delivery_methods includes 'offline' in capabilities).
     """
@@ -86,8 +86,8 @@ class AccountReportingBucket(AdCPBaseModel):
     bucket: Annotated[StrMinLen3MaxLen63MatchingBF870236, Field(description='Bucket or container name')]
     prefix: Annotated[StrMaxLen512Matching7C270D5A | None, Field(description='Path prefix within the bucket. Seller appends date-based partitioning beneath this prefix.')] = None
     region: Annotated[StrMaxLen64Matching2AA13120 | None, Field(description='Cloud region for the bucket')] = None
-    format: Annotated[AccountReportingBucketFormat | None, Field(description='File format for delivered files. Parquet, Avro, and ORC use internal compression (the top-level compression field is ignored for these formats).')] = 'jsonl'
-    compression: Annotated[AccountReportingBucketCompression | None, Field(description='Compression applied to delivered files')] = 'gzip'
+    format: Annotated[Format | None, Field(description='File format for delivered files. Parquet, Avro, and ORC use internal compression (the top-level compression field is ignored for these formats).')] = 'jsonl'
+    compression: Annotated[Compression | None, Field(description='Compression applied to delivered files')] = 'gzip'
     file_retention_days: Annotated[IntMin1, Field(description='How long reporting files are retained in the bucket before deletion. Buyers must read files within this window. Minimum recommended: 14 days.')]
     setup_instructions: Annotated[AdCPUrl | None, Field(description='URL to documentation for configuring buyer read access to this bucket (IAM role, service account, etc.). Operator-facing documentation — buyer agents MUST NOT auto-fetch this URL; surface it to a human operator. If an implementation fetches it (for preview), apply webhook URL SSRF validation and do not pass the fetched content into an LLM context without indirect-prompt-injection guarding. See docs/media-buy/media-buys/optimization-reporting#security-considerations-for-offline-delivery.')] = None
 
@@ -121,11 +121,11 @@ class Account(AdCPBaseModel):
     destination_billing_entity: Annotated[Any | None, Field(description='Request-only staging field. It MUST NOT appear in account read models.')] = None
     rate_card: Annotated[str | None, Field(description='Identifier for the rate card applied to this account')] = None
     payment_terms: Annotated[PaymentTerms | None, Field(description='Payment terms agreed for this account. Binding for all invoices when the account is active.')] = None
-    credit_limit: Annotated[AccountCreditLimit | None, Field(description='Maximum outstanding balance allowed')] = None
-    setup: Annotated[AccountSetup | None, Field(description="Present when status is 'pending_approval'. Contains next steps for completing account activation.")] = None
+    credit_limit: Annotated[CreditLimit | None, Field(description='Maximum outstanding balance allowed')] = None
+    setup: Annotated[Setup | None, Field(description="Present when status is 'pending_approval'. Contains next steps for completing account activation.")] = None
     account_scope: AccountScope | None = None
-    governance_agents: Annotated[list[AccountGovernanceAgentsItem] | None, Field(description="Governance agent endpoint registered on this account. Exactly one entry per sync_governance's one-agent-per-account invariant. The array shape is preserved for wire compatibility with 3.0; `maxItems: 1` is load-bearing and mirrors the singular `governance_context` on the protocol envelope. Authentication credentials are write-only and not included in responses — use sync_governance to set or update credentials.", max_length=1, min_length=1)] = None
-    reporting_bucket: Annotated[AccountReportingBucket | None, Field(description="Cloud storage bucket where the seller delivers offline reporting files for this account. Seller provisions a dedicated bucket or a per-account prefix within a shared bucket, and grants the buyer read access out-of-band. Access MUST be scoped at the IAM layer so each account can only read its own prefix — bucket-wide grants are non-compliant even with per-account prefixes. Seller MUST revoke access when the account's status transitions to inactive, suspended, or closed. See security considerations for offline delivery in docs/media-buy/media-buys/optimization-reporting. Only present when the seller supports offline delivery (reporting_delivery_methods includes 'offline' in capabilities).")] = None
+    governance_agents: Annotated[list[GovernanceAgentsItem] | None, Field(description="Governance agent endpoint registered on this account. Exactly one entry per sync_governance's one-agent-per-account invariant. The array shape is preserved for wire compatibility with 3.0; `maxItems: 1` is load-bearing and mirrors the singular `governance_context` on the protocol envelope. Authentication credentials are write-only and not included in responses — use sync_governance to set or update credentials.", max_length=1, min_length=1)] = None
+    reporting_bucket: Annotated[ReportingBucket | None, Field(description="Cloud storage bucket where the seller delivers offline reporting files for this account. Seller provisions a dedicated bucket or a per-account prefix within a shared bucket, and grants the buyer read access out-of-band. Access MUST be scoped at the IAM layer so each account can only read its own prefix — bucket-wide grants are non-compliant even with per-account prefixes. Seller MUST revoke access when the account's status transitions to inactive, suspended, or closed. See security considerations for offline delivery in docs/media-buy/media-buys/optimization-reporting. Only present when the seller supports offline delivery (reporting_delivery_methods includes 'offline' in capabilities).")] = None
     sandbox: Annotated[bool | None, Field(description='When true, this is a sandbox account — no real platform calls, no real spend. For account-id namespaces, sandbox accounts are pre-existing test accounts on the platform discovered via list_accounts or supplied out-of-band. For buyer-declared accounts, sandbox is part of the natural key: the same brand/operator pair can have both a production and sandbox account.')] = None
     notification_configs: Annotated[list[NotificationConfig] | None, Field(description='Account-level webhook subscriptions for creative lifecycle/assignment changes, indicators.changed, account status, durable account-change wake-ups, wholesale feed changes, and reporting.delivery_ready. Buyers manage entries via sync_accounts and verify persisted state on list_accounts. account.change_recorded wakes receivers to drain list_account_changes; reporting.delivery_ready is repaired through get_reporting_status; indicator and assignment payloads are invalidations repaired completely through get_media_buys; list_creatives may provide a bounded reverse projection. Distinct from per-resource push_notification_config. Entries are keyed by account-scoped subscriber_id; credentials are write-only.', max_length=16)] = None
     reporting_delivery_configs: Annotated[list[ReportingDeliveryConfigurationState] | None, Field(description="Resolved durable reporting delivery configurations owned by the authenticated caller for this account. list_accounts MUST expose only the calling principal's set. State and seller-issued destination_ref are returned; credentials and bearer profiles MUST NOT appear. Any setup URL is a secret-free authenticated entry point, not a bearer credential.", max_length=16)] = None
@@ -133,4 +133,4 @@ class Account(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-__all__ = ["Account", "AccountCreditLimit", "AccountGovernanceAgentsItem", "AccountReportingBucket", "AccountSetup"]
+__all__ = ["Account", "CreditLimit", "GovernanceAgentsItem", "ReportingBucket", "Setup"]

@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
-class SICapabilitiesModalitiesVoice(AdCPBaseModel):
+class Voice(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -18,7 +18,7 @@ class SICapabilitiesModalitiesVoice(AdCPBaseModel):
     voice_id: Annotated[str | None, Field(description='Brand voice identifier')] = None
 
 
-class SICapabilitiesModalitiesVideo(AdCPBaseModel):
+class Video(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -27,7 +27,7 @@ class SICapabilitiesModalitiesVideo(AdCPBaseModel):
     max_duration_seconds: Annotated[int | None, Field(description='Maximum video duration')] = None
 
 
-class SICapabilitiesModalitiesAvatar(AdCPBaseModel):
+class Avatar(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -36,7 +36,7 @@ class SICapabilitiesModalitiesAvatar(AdCPBaseModel):
     avatar_id: Annotated[str | None, Field(description='Brand avatar identifier')] = None
 
 
-class SICapabilitiesModalities(AdCPBaseModel):
+class Modalities(AdCPBaseModel):
     """
     Interaction modalities supported
     """
@@ -45,12 +45,12 @@ class SICapabilitiesModalities(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/modalities')
     conversational: Annotated[bool | None, Field(description='Pure text exchange - the baseline modality')] = True
-    voice: Annotated[bool | SICapabilitiesModalitiesVoice | None, Field(description='Audio-based interaction using brand voice')] = None
-    video: Annotated[bool | SICapabilitiesModalitiesVideo | None, Field(description='Brand video content playback')] = None
-    avatar: Annotated[bool | SICapabilitiesModalitiesAvatar | None, Field(description='Animated video presence with brand avatar')] = None
+    voice: Annotated[bool | Voice | None, Field(description='Audio-based interaction using brand voice')] = None
+    video: Annotated[bool | Video | None, Field(description='Brand video content playback')] = None
+    avatar: Annotated[bool | Avatar | None, Field(description='Animated video presence with brand avatar')] = None
 
 
-class SICapabilitiesComponentsStandardItem(StrEnum):
+class StandardItem(StrEnum):
     TEXT = 'text'
     LINK = 'link'
     IMAGE = 'image'
@@ -59,7 +59,7 @@ class SICapabilitiesComponentsStandardItem(StrEnum):
     ACTION_BUTTON = 'action_button'
 
 
-class SICapabilitiesComponents(AdCPBaseModel):
+class Components(AdCPBaseModel):
     """
     Visual components supported
     """
@@ -67,11 +67,11 @@ class SICapabilitiesComponents(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#/properties/components')
-    standard: Annotated[list[SICapabilitiesComponentsStandardItem] | None, Field(description='Standard components that all SI hosts must render')] = None
+    standard: Annotated[list[StandardItem] | None, Field(description='Standard components that all SI hosts must render')] = None
     extensions: Annotated[dict[str, Any] | None, Field(description='Platform-specific extensions (chatgpt_apps_sdk, maps, forms, etc.)')] = None
 
 
-class SICapabilitiesCommerce(AdCPBaseModel):
+class Commerce(AdCPBaseModel):
     """
     Commerce capabilities
     """
@@ -82,7 +82,7 @@ class SICapabilitiesCommerce(AdCPBaseModel):
     acp_checkout: Annotated[bool | None, Field(description='Supports ACP (Agentic Commerce Protocol) checkout handoff')] = None
 
 
-class SICapabilitiesA2ui(AdCPBaseModel):
+class A2ui(AdCPBaseModel):
     """
     A2UI (Agent-to-UI) capabilities
     """
@@ -102,10 +102,10 @@ class SICapabilities(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-capabilities.json', pointer='#')
-    modalities: Annotated[SICapabilitiesModalities | None, Field(description='Interaction modalities supported')] = None
-    components: Annotated[SICapabilitiesComponents | None, Field(description='Visual components supported')] = None
-    commerce: Annotated[SICapabilitiesCommerce | None, Field(description='Commerce capabilities')] = None
-    a2ui: Annotated[SICapabilitiesA2ui | None, Field(description='A2UI (Agent-to-UI) capabilities')] = None
+    modalities: Annotated[Modalities | None, Field(description='Interaction modalities supported')] = None
+    components: Annotated[Components | None, Field(description='Visual components supported')] = None
+    commerce: Annotated[Commerce | None, Field(description='Commerce capabilities')] = None
+    a2ui: Annotated[A2ui | None, Field(description='A2UI (Agent-to-UI) capabilities')] = None
     mcp_apps: Annotated[bool | None, Field(description='Supports MCP Apps for rendering A2UI surfaces in iframes')] = False
 
 

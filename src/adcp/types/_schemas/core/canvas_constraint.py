@@ -11,19 +11,19 @@ from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import FloatGt0, StrMatching4D6E1599
 
 
-class CanvasConstraintConstraint(StrEnum):
+class Constraint(StrEnum):
     SAFE_AREA = 'safe_area'
     RESERVED_REGION = 'reserved_region'
     DECORATION_ONLY_EDGE = 'decoration_only_edge'
     NO_TEXT_OR_LOGOS = 'no_text_or_logos'
 
 
-class CanvasConstraintRegionUnit(StrEnum):
+class Unit(StrEnum):
     PX = 'px'
     PERCENT = 'percent'
 
 
-class CanvasConstraintRegion(AdCPBaseModel):
+class Region(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -32,7 +32,7 @@ class CanvasConstraintRegion(AdCPBaseModel):
     y: NonNegativeFloat
     width: FloatGt0
     height: FloatGt0
-    unit: CanvasConstraintRegionUnit | None = 'px'
+    unit: Unit | None = 'px'
 
 
 class CanvasConstraint(AdCPBaseModel):
@@ -46,10 +46,10 @@ class CanvasConstraint(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         Dependencies('breakpoint_id', ('state_id',)),
     )
-    constraint: CanvasConstraintConstraint
+    constraint: Constraint
     state_id: StrMatching4D6E1599 | None = None
     breakpoint_id: StrMatching4D6E1599 | None = None
-    region: CanvasConstraintRegion
+    region: Region
 
 
 __all__ = ["CanvasConstraint"]

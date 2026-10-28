@@ -16,7 +16,7 @@ from ..core.pagination_request import PaginationRequest
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ListAccountsRequestStatus(StrEnum):
+class Status(StrEnum):
     """
     Filter accounts by status. Omit to return accounts in all statuses.
     """
@@ -37,7 +37,7 @@ class ListAccountsRequest(AdCPVersionEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/list-accounts-request.json', pointer='#')
     account: Annotated[AccountReference | None, Field(description='Optional exact account filter. Use `account_id` to retrieve one known seller/storefront account, or the complete natural key (`brand` + `operator` + optional `operator_unit`, fixed `currency`, buyer-selected account `timezone`, and `sandbox`) for buyer-declared accounts. When present, the seller returns only matching accounts visible to the authenticated caller.')] = None
-    status: Annotated[ListAccountsRequestStatus | None, Field(description='Filter accounts by status. Omit to return accounts in all statuses.')] = None
+    status: Annotated[Status | None, Field(description='Filter accounts by status. Omit to return accounts in all statuses.')] = None
     pagination: PaginationRequest | None = None
     sandbox: Annotated[bool | None, Field(description='Filter by sandbox status. true returns only sandbox accounts, false returns only production accounts. Omit to return all accounts. Primarily used with account-id namespaces where sandbox accounts are pre-existing test accounts on the platform.')] = None
     include_webhook_activity: Annotated[bool | None, Field(description='When true, request recent webhook delivery attempts for each returned account in account.webhook_activity[]. Sellers MAY omit webhook_activity if they do not expose this debug log; when present, three-state semantics match the shared webhook_activity[] contract.')] = False

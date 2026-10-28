@@ -15,7 +15,7 @@ from .price_breakdown import PriceBreakdown
 from .price_guidance import PriceGuidance
 
 
-class TimeBasedPricingOptionParametersTimeUnit(StrEnum):
+class TimeUnit(StrEnum):
     """
     The time unit for pricing. Total cost = fixed_price × number of time_units in the campaign flight.
     """
@@ -25,7 +25,7 @@ class TimeBasedPricingOptionParametersTimeUnit(StrEnum):
     MONTH = 'month'
 
 
-class TimeBasedPricingOptionParameters(AdCPBaseModel):
+class Parameters(AdCPBaseModel):
     """
     Time-based pricing parameters
     """
@@ -33,7 +33,7 @@ class TimeBasedPricingOptionParameters(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='pricing-options/time-option.json', pointer='#/properties/parameters')
-    time_unit: Annotated[TimeBasedPricingOptionParametersTimeUnit, Field(description='The time unit for pricing. Total cost = fixed_price × number of time_units in the campaign flight.')]
+    time_unit: Annotated[TimeUnit, Field(description='The time unit for pricing. Total cost = fixed_price × number of time_units in the campaign flight.')]
     min_duration: Annotated[IntMin1 | None, Field(description='Minimum booking duration in time_units')] = None
     max_duration: Annotated[IntMin1 | None, Field(description='Maximum booking duration in time_units. Must be >= min_duration when both are present.')] = None
 
@@ -55,7 +55,7 @@ class TimeBasedPricingOption(AdCPBaseModel):
     fixed_price: Annotated[NonNegativeFloat | None, Field(description='Cost per time unit. If present, this is fixed pricing. If absent, auction-based.')] = None
     floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid per time unit for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.')] = None
     price_guidance: Annotated[PriceGuidance | None, Field(description='Optional pricing guidance for auction-based bidding')] = None
-    parameters: Annotated[TimeBasedPricingOptionParameters, Field(description='Time-based pricing parameters')]
+    parameters: Annotated[Parameters, Field(description='Time-based pricing parameters')]
     min_spend_per_package: Annotated[NonNegativeFloat | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency')] = None
     price_breakdown: Annotated[PriceBreakdown | None, Field(description='Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.')] = None
     eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(description='Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.', json_schema_extra={'uniqueItems': True})] = None

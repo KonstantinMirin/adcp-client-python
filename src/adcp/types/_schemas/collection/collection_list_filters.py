@@ -14,7 +14,7 @@ from ..enums.genre_taxonomy import GenreTaxonomy
 from ..enums.production_quality import ProductionQuality
 
 
-class CollectionListFiltersExcludeDistributionIdsItem(AdCPBaseModel):
+class ExcludeDistributionIdsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -37,7 +37,7 @@ class CollectionListFilters(AdCPBaseModel):
     genres_include: Annotated[list[str] | None, Field(description='Include only collections with any of these genres (OR logic). Collections without genre metadata are excluded. Values are interpreted against genre_taxonomy when present.', min_length=1)] = None
     genre_taxonomy: Annotated[GenreTaxonomy | None, Field(description='Taxonomy for genre filter values. When present, genres_include and genres_exclude values are interpreted as taxonomy IDs.')] = None
     kinds: Annotated[list[CollectionKind] | None, Field(description='Filter to these collection kinds', min_length=1)] = None
-    exclude_distribution_ids: Annotated[list[CollectionListFiltersExcludeDistributionIdsItem] | None, Field(description='Always exclude collections with these distribution identifiers', min_length=1)] = None
+    exclude_distribution_ids: Annotated[list[ExcludeDistributionIdsItem] | None, Field(description='Always exclude collections with these distribution identifiers', min_length=1)] = None
     production_quality: Annotated[list[ProductionQuality] | None, Field(description='Filter by production quality tier', min_length=1)] = None
 
 

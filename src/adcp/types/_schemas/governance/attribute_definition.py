@@ -9,7 +9,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMatching4D6E1599
 
 
-class AttributeDefinitionRegulatoryBasisItem(AdCPBaseModel):
+class RegulatoryBasisItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -30,7 +30,7 @@ class AttributeDefinition(AdCPBaseModel):
     attribute_id: Annotated[StrMatching4D6E1599, Field(description='Unique identifier for this attribute. Used in plan.restricted_attributes, signal-definition.restricted_attributes, and data marketplace catalog entries.')]
     name: Annotated[str, Field(description="Human-readable name (e.g., 'Health Data').")]
     description: Annotated[str, Field(description='What this attribute category covers. Defines the boundary — what is and is not included.')]
-    regulatory_basis: Annotated[list[AttributeDefinitionRegulatoryBasisItem] | None, Field(description='Regulations that define or restrict this attribute category.')] = None
+    regulatory_basis: Annotated[list[RegulatoryBasisItem] | None, Field(description='Regulations that define or restrict this attribute category.')] = None
     includes: Annotated[list[str] | None, Field(description="Specific data types that fall within this category (e.g., for health_data: 'medical conditions', 'disability status', 'prescription history', 'inferred health from behavioral signals').")] = None
     excludes: Annotated[list[str] | None, Field(description='Data types that might seem related but are explicitly outside this category. Helps with boundary cases.')] = None
     signal_patterns: Annotated[list[str] | None, Field(description="Common signal naming or tagging patterns that indicate this attribute (e.g., 'health:', 'condition_', 'diagnosis_'). Data providers and governance agents use these as hints when signals lack explicit restricted_attributes declarations.")] = None

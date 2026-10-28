@@ -15,7 +15,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ReportUsageRequestUsageItem(AdCPBaseModel):
+class UsageItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -51,7 +51,7 @@ class ReportUsageRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/report-usage-request.json', pointer='#')
     idempotency_key: Annotated[str, Field(description='Client-generated unique key for this request. If a request with the same key has already been accepted, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request. Prevents duplicate billing on retries.')]
     reporting_period: Annotated[DatetimeRange, Field(description='The time range covered by this usage report. Applies to all records in the request.')]
-    usage: Annotated[list[ReportUsageRequestUsageItem], Field(description='One or more usage records. Each record is self-contained: it carries its own account, allowing a single request to span multiple accounts.', min_length=1)]
+    usage: Annotated[list[UsageItem], Field(description='One or more usage records. Each record is self-contained: it carries its own account, allowing a single request to span multiple accounts.', min_length=1)]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

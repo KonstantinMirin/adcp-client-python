@@ -34,7 +34,7 @@ class ValidateContentDeliveryResponse(BranchDispatchMixin, AdCPVersionEnvelope, 
     )
 
 
-class ValidateContentDeliveryResponseResultsSummarySummary(AdCPBaseModel):
+class Summary(AdCPBaseModel):
     """
     Summary counts across all records
     """
@@ -44,7 +44,7 @@ class ValidateContentDeliveryResponseResultsSummarySummary(AdCPBaseModel):
     failed_records: int
 
 
-class ValidateContentDeliveryResponseResultsSummaryResultsItemFeaturesItem(AdCPBaseModel):
+class FeaturesItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#/oneOf/0/properties/results/items/properties/features/items')
     feature_id: Annotated[str, Field(description="Which feature was evaluated. Data features come from the content-standards feature catalog (e.g., 'brand_safety', 'brand_suitability', 'image_dpi'). Record-level structural checks use reserved namespaces: 'record:malformed_artifact', 'delivery:authorization'. Reserved prefixes: 'record:', 'delivery:'.")]
     status: FeatureCheckStatus
@@ -53,11 +53,11 @@ class ValidateContentDeliveryResponseResultsSummaryResultsItemFeaturesItem(AdCPB
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.')] = None
 
 
-class ValidateContentDeliveryResponseResultsSummaryResultsItem(AdCPBaseModel):
+class ResultsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#/oneOf/0/properties/results/items')
     record_id: Annotated[str, Field(description='Which delivery record was evaluated')]
     verdict: BinaryVerdict
-    features: Annotated[list[ValidateContentDeliveryResponseResultsSummaryResultsItemFeaturesItem] | None, Field(description="Per-feature breakdown. When present, SHOULD include all failed and warning features. MAY include passed features. Oracle pattern: exposes verdict + rule pointer, never the seller's threshold or the caller's submitted value (the seller authored the content standards).")] = None
+    features: Annotated[list[FeaturesItem] | None, Field(description="Per-feature breakdown. When present, SHOULD include all failed and warning features. MAY include passed features. Oracle pattern: exposes verdict + rule pointer, never the seller's threshold or the caller's submitted value (the seller authored the content standards).")] = None
 
 
 class ValidateContentDeliveryResponseResultsSummary(ValidateContentDeliveryResponse):
@@ -65,8 +65,8 @@ class ValidateContentDeliveryResponseResultsSummary(ValidateContentDeliveryRespo
     Success response
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-response.json', pointer='#/oneOf/0')
-    summary: Annotated[ValidateContentDeliveryResponseResultsSummarySummary, Field(description='Summary counts across all records')]
-    results: Annotated[list[ValidateContentDeliveryResponseResultsSummaryResultsItem], Field(description='Per-record evaluation results')]
+    summary: Annotated[Summary, Field(description='Summary counts across all records')]
+    results: Annotated[list[ResultsItem], Field(description='Per-record evaluation results')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

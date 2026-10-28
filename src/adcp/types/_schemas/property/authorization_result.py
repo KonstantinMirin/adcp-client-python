@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 
-class AuthorizationResultStatus(StrEnum):
+class Status(StrEnum):
     """
     Authorization status: authorized (agent in adagents.json), unauthorized (agent not in adagents.json), unknown (could not fetch or parse adagents.json)
     """
@@ -19,7 +19,7 @@ class AuthorizationResultStatus(StrEnum):
     UNKNOWN = 'unknown'
 
 
-class AuthorizationResultViolation(AdCPBaseModel):
+class Violation(AdCPBaseModel):
     """
     Details about the authorization failure (only present for unauthorized status)
     """
@@ -39,10 +39,10 @@ class AuthorizationResult(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/authorization-result.json', pointer='#')
-    status: Annotated[AuthorizationResultStatus, Field(description='Authorization status: authorized (agent in adagents.json), unauthorized (agent not in adagents.json), unknown (could not fetch or parse adagents.json)')]
+    status: Annotated[Status, Field(description='Authorization status: authorized (agent in adagents.json), unauthorized (agent not in adagents.json), unknown (could not fetch or parse adagents.json)')]
     publisher_domain: Annotated[str | None, Field(description='The publisher domain where adagents.json was checked')] = None
     sales_agent_url: Annotated[HttpUrl | None, Field(description='The sales agent URL that was validated')] = None
-    violation: Annotated[AuthorizationResultViolation | None, Field(description='Details about the authorization failure (only present for unauthorized status)')] = None
+    violation: Annotated[Violation | None, Field(description='Details about the authorization failure (only present for unauthorized status)')] = None
 
 
 __all__ = ["AuthorizationResult"]

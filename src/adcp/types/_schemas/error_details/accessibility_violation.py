@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMaxLen256Matching4B53B494, StrMaxLen256Matching59721198, StrMaxLen64Matching107885CB, StrMinLen1MaxLen32Matching0E0E048E, StrMinLen1MaxLen64Matching0E0E048E, StrMinLen1MaxLen64Matching4C202885
 
 
-class AccessibilityViolationDetailsViolationsItemFailureKind(StrEnum):
+class FailureKind(StrEnum):
     ALT_TEXT_MISSING = 'alt_text_missing'
     CONTRAST_RATIO_INSUFFICIENT = 'contrast_ratio_insufficient'
     CAPTIONS_MISSING = 'captions_missing'
@@ -21,7 +21,7 @@ class AccessibilityViolationDetailsViolationsItemFailureKind(StrEnum):
     OTHER = 'other'
 
 
-class AccessibilityViolationDetailsViolationsItem(AdCPBaseModel):
+class ViolationsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -30,7 +30,7 @@ class AccessibilityViolationDetailsViolationsItem(AdCPBaseModel):
     criterion: Annotated[StrMinLen1MaxLen32Matching0E0E048E, Field(description='Stable criterion identifier within criterion_source, for example 1.4.3. Open string so external standards can evolve without an AdCP enum update.')]
     criterion_source: Annotated[StrMinLen1MaxLen64Matching4C202885, Field(description='Standard or policy namespace defining the criterion, for example WCAG21, WCAG22, or EN301549.')]
     required_level: Annotated[StrMinLen1MaxLen64Matching0E0E048E, Field(description="Conformance level or policy threshold that applied, for example AA. Kept open because not every accessibility standard uses WCAG's A/AA/AAA vocabulary.")]
-    failure_kind: Annotated[AccessibilityViolationDetailsViolationsItemFailureKind | StrMaxLen64Matching107885CB, Field(description='Diagnostic failure category. Canonical values cover common portable cases. Vendor-local extensions use an x_ prefix. Portable recovery dispatches on criterion_source plus criterion after validating this details schema; failure_kind may refine diagnostics but does not select the recovery class.')]
+    failure_kind: Annotated[FailureKind | StrMaxLen64Matching107885CB, Field(description='Diagnostic failure category. Canonical values cover common portable cases. Vendor-local extensions use an x_ prefix. Portable recovery dispatches on criterion_source plus criterion after validating this details schema; failure_kind may refine diagnostics but does not select the recovery class.')]
     remediation: Annotated[StrMaxLen256Matching59721198 | None, Field(description='Optional human-readable correction guidance. Plain text only; consumers treat it as untrusted agent input.')] = None
 
 
@@ -42,7 +42,7 @@ class AccessibilityViolationDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/accessibility-violation.json', pointer='#')
-    violations: Annotated[list[AccessibilityViolationDetailsViolationsItem], Field(description='Accessibility requirements the creative or its assets failed. This is distinct from error.issues, which carries JSON Schema validator failures.', max_length=4, min_length=1)]
+    violations: Annotated[list[ViolationsItem], Field(description='Accessibility requirements the creative or its assets failed. This is distinct from error.issues, which carries JSON Schema validator failures.', max_length=4, min_length=1)]
     truncated: Annotated[bool | None, Field(description='True when the producer omitted additional violations or remediation text to keep the complete serialized error within the 4096-byte transport safety limit. Omission means false.')] = None
 
 

@@ -35,7 +35,7 @@ class GetAccountFinancialsResponse(BranchDispatchMixin, AdCPVersionEnvelope, Pro
         return "oneOf"
 
 
-class GetAccountFinancialsSuccessSpend(AdCPBaseModel):
+class Spend(AdCPBaseModel):
     """
     Spend summary for the period
     """
@@ -44,7 +44,7 @@ class GetAccountFinancialsSuccessSpend(AdCPBaseModel):
     media_buy_count: Annotated[NonNegativeInt | None, Field(description='Number of active media buys in the period')] = None
 
 
-class GetAccountFinancialsSuccessCredit(AdCPBaseModel):
+class Credit(AdCPBaseModel):
     """
     Credit status. Present for credit-based accounts (payment_terms like net_30).
     """
@@ -54,7 +54,7 @@ class GetAccountFinancialsSuccessCredit(AdCPBaseModel):
     utilization_percent: Annotated[FloatMin0Max100 | None, Field(description='Credit utilization as a percentage (0-100)')] = None
 
 
-class GetAccountFinancialsSuccessBalanceLastTopUp(AdCPBaseModel):
+class LastTopUp(AdCPBaseModel):
     """
     Most recent balance top-up
     """
@@ -63,16 +63,16 @@ class GetAccountFinancialsSuccessBalanceLastTopUp(AdCPBaseModel):
     date: Annotated[date, Field(description='Date of top-up')]
 
 
-class GetAccountFinancialsSuccessBalance(AdCPBaseModel):
+class Balance(AdCPBaseModel):
     """
     Prepay balance. Present for prepay accounts.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/balance')
     available: Annotated[NonNegativeFloat, Field(description='Remaining prepaid balance')]
-    last_top_up: Annotated[GetAccountFinancialsSuccessBalanceLastTopUp | None, Field(description='Most recent balance top-up')] = None
+    last_top_up: Annotated[LastTopUp | None, Field(description='Most recent balance top-up')] = None
 
 
-class GetAccountFinancialsSuccessPaymentStatus(StrEnum):
+class PaymentStatus(StrEnum):
     """
     Overall payment status. current: all obligations met. past_due: one or more invoices overdue. suspended: account suspended due to payment issues.
     """
@@ -81,7 +81,7 @@ class GetAccountFinancialsSuccessPaymentStatus(StrEnum):
     SUSPENDED = 'suspended'
 
 
-class GetAccountFinancialsSuccessInvoicesItemStatus(StrEnum):
+class Status(StrEnum):
     """
     Invoice status
     """
@@ -92,12 +92,12 @@ class GetAccountFinancialsSuccessInvoicesItemStatus(StrEnum):
     VOID = 'void'
 
 
-class GetAccountFinancialsSuccessInvoicesItem(AdCPBaseModel):
+class InvoicesItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/invoices/items')
     invoice_id: Annotated[str, Field(description='Seller-assigned invoice identifier')]
     period: Annotated[DateRange | None, Field(description='Billing period covered by this invoice')] = None
     amount: Annotated[NonNegativeFloat, Field(description='Invoice total in currency')]
-    status: Annotated[GetAccountFinancialsSuccessInvoicesItemStatus, Field(description='Invoice status')]
+    status: Annotated[Status, Field(description='Invoice status')]
     due_date: Annotated[date | None, Field(description='Payment due date')] = None
     paid_date: Annotated[date | None, Field(description="Date payment was received. Present when status is 'paid'.")] = None
 
@@ -117,12 +117,12 @@ class GetAccountFinancialsSuccess(GetAccountFinancialsResponse):
     currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency code for all monetary amounts in this response')]
     period: Annotated[DateRange, Field(description='The actual period covered by spend data. May differ from the requested period if the seller adjusts to billing cycle boundaries.')]
     timezone: Annotated[str, Field(description="IANA timezone of the seller's billing day boundaries (e.g., 'America/New_York'). All dates in this response — period, invoice periods, due dates — are calendar dates in this timezone. This may differ from Account.timezone or a feature-specific cap/reporting timezone when the upstream platform uses distinct clocks; buyers MUST use this value for financial periods rather than infer equality.")]
-    spend: Annotated[GetAccountFinancialsSuccessSpend | None, Field(description='Spend summary for the period')] = None
-    credit: Annotated[GetAccountFinancialsSuccessCredit | None, Field(description='Credit status. Present for credit-based accounts (payment_terms like net_30).')] = None
-    balance: Annotated[GetAccountFinancialsSuccessBalance | None, Field(description='Prepay balance. Present for prepay accounts.')] = None
-    payment_status: Annotated[GetAccountFinancialsSuccessPaymentStatus | None, Field(description='Overall payment status. current: all obligations met. past_due: one or more invoices overdue. suspended: account suspended due to payment issues.')] = None
+    spend: Annotated[Spend | None, Field(description='Spend summary for the period')] = None
+    credit: Annotated[Credit | None, Field(description='Credit status. Present for credit-based accounts (payment_terms like net_30).')] = None
+    balance: Annotated[Balance | None, Field(description='Prepay balance. Present for prepay accounts.')] = None
+    payment_status: Annotated[PaymentStatus | None, Field(description='Overall payment status. current: all obligations met. past_due: one or more invoices overdue. suspended: account suspended due to payment issues.')] = None
     payment_terms: Annotated[PaymentTerms | None, Field(description='Payment terms in effect for this account')] = None
-    invoices: Annotated[list[GetAccountFinancialsSuccessInvoicesItem] | None, Field(description='Recent invoices. Sellers may limit the number returned.')] = None
+    invoices: Annotated[list[InvoicesItem] | None, Field(description='Recent invoices. Sellers may limit the number returned.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

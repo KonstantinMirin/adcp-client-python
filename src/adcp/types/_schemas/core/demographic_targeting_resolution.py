@@ -17,7 +17,7 @@ from .ext import ExtensionObject
 from .signal_ref import SignalRef
 
 
-class DemographicTargetingResolutionExecutionContinuousBounds(AdCPBaseModel):
+class ExecutionContinuousBounds(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -26,7 +26,7 @@ class DemographicTargetingResolutionExecutionContinuousBounds(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-class DemographicTargetingResolutionExecutionEnumeratedIntervals(AdCPBaseModel):
+class ExecutionEnumeratedIntervals(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -39,7 +39,7 @@ class DemographicTargetingResolutionExecutionEnumeratedIntervals(AdCPBaseModel):
     ext: ExtensionObject | None = None
 
 
-class DemographicTargetingResolutionExecutionSignals(AdCPBaseModel):
+class ExecutionSignals(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -69,7 +69,7 @@ class DemographicTargetingResolution(AdCPBaseModel):
     requested: Annotated[DemographicTargetingIntent, Field(description='Canonical demographic predicate and determination constraints requested by the buyer.')]
     applied: Annotated[DemographicPredicate, Field(description='Canonical demographic predicate actually applied by the seller.')]
     equivalent: Annotated[Literal[True], Field(description='Always true for a stored package. requested and applied MUST denote exactly the same set, including unknown-age membership; sellers reject non-equivalent requests instead of storing an alternative.')]
-    execution: DemographicTargetingResolutionExecutionContinuousBounds | DemographicTargetingResolutionExecutionEnumeratedIntervals | DemographicTargetingResolutionExecutionSignals
+    execution: ExecutionContinuousBounds | ExecutionEnumeratedIntervals | ExecutionSignals
     applied_bases: Annotated[list[AgeDeterminationBasis] | None, Field(description='Effective user-level determination bases configured for this package after intersecting buyer accepted_bases, product supported_bases, and age_restriction. This is an auditable configuration readback, not proof that every impression used every listed basis.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     applied_verification_methods: Annotated[list[AgeVerificationMethod] | None, Field(description='Effective verification methods when applied_bases contains verified. A method name does not establish that a particular proof or claim was valid; runtime verification and claim entailment remain required.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     ext: ExtensionObject | None = None

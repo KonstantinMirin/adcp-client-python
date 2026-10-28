@@ -60,7 +60,7 @@ class CatalogExecutionRequirement(ProductExecutionRequirement):
     ext: ExtensionObject | None = None
 
 
-class DownstreamConnectionExecutionRequirementConnection(DownstreamConnectionRequirement):
+class Connection(DownstreamConnectionRequirement):
     """
     The required connection. Account-independent: `status` is omitted or `unknown`; `resource_ref`, `connection_id`, and `expires_at` MUST be omitted; `required_for`, when present, includes `create_media_buy`.
     """
@@ -81,7 +81,7 @@ class DownstreamConnectionExecutionRequirement(ProductExecutionRequirement):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-execution-requirement.json', pointer='#/oneOf/2')
     kind: Literal['downstream_connection']
-    connection: Annotated[DownstreamConnectionExecutionRequirementConnection, Field(description='The required connection. Account-independent: `status` is omitted or `unknown`; `resource_ref`, `connection_id`, and `expires_at` MUST be omitted; `required_for`, when present, includes `create_media_buy`.')]
+    connection: Annotated[Connection, Field(description='The required connection. Account-independent: `status` is omitted or `unknown`; `resource_ref`, `connection_id`, and `expires_at` MUST be omitted; `required_for`, when present, includes `create_media_buy`.')]
     ext: ExtensionObject | None = None
 
 

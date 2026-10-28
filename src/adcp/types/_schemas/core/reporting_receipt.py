@@ -16,7 +16,7 @@ from .reporting_native_version_ref import ReportingNativeVersionReference
 from .reporting_verification_profile import ReportingVerificationProfile
 
 
-class ReportingReceiptStatus(StrEnum):
+class Status(StrEnum):
     ACCEPTED = 'accepted'
     REJECTED = 'rejected'
 
@@ -42,7 +42,7 @@ class ReportingReceipt(AdCPBaseModel):
     reporting_revision_id: StrMinLen1MaxLen255Matching67860854
     reporting_materialization_id: StrMinLen1MaxLen255Matching67860854
     supersedes_reporting_receipt_id: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB | None, Field(description="Optional immutable rejected receipt replaced by this new receipt. It MUST name the caller's current rejected receipt for this obligation and revision; accepted current receipts are terminal.")] = None
-    status: ReportingReceiptStatus
+    status: Status
     verification_profile: ReportingVerificationProfile
     observed_row_count: NonNegativeInt
     observed_control_totals: Annotated[list[ReportingControlTotal], Field(json_schema_extra={'uniqueItems': True})]

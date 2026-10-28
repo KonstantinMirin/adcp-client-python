@@ -32,7 +32,7 @@ class SyncGovernanceResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolE
         return "oneOf"
 
 
-class SyncGovernanceSuccessAccountsItemStatus(StrEnum):
+class Status(StrEnum):
     """
     Sync result. synced: governance agents persisted. failed: could not complete (see errors).
     """
@@ -40,7 +40,7 @@ class SyncGovernanceSuccessAccountsItemStatus(StrEnum):
     FAILED = 'failed'
 
 
-class SyncGovernanceSuccessAccountsItemGovernanceAgentsItem(AdCPBaseModel):
+class GovernanceAgentsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -48,7 +48,7 @@ class SyncGovernanceSuccessAccountsItemGovernanceAgentsItem(AdCPBaseModel):
     url: Annotated[AdCPUrl, Field(description='Governance agent endpoint URL.')]
 
 
-class SyncGovernanceSuccessAccountsItem(AdCPBaseModel):
+class AccountsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -58,8 +58,8 @@ class SyncGovernanceSuccessAccountsItem(AdCPBaseModel):
         ConditionalRequired((Match('status', True, ('failed',)),), require=('errors',), forbid=('governance_agents',)),
     )
     account: Annotated[AccountReference, Field(description='Account reference, echoed from request')]
-    status: Annotated[SyncGovernanceSuccessAccountsItemStatus, Field(description='Sync result. synced: governance agents persisted. failed: could not complete (see errors).')]
-    governance_agents: Annotated[list[SyncGovernanceSuccessAccountsItemGovernanceAgentsItem] | None, Field(description='Governance agent now synced on this account. Reflects the persisted state after sync. Exactly one entry; the array shape mirrors the request schema and the one-agent-per-account invariant. See sync_governance request schema.', max_length=1, min_length=1)] = None
+    status: Annotated[Status, Field(description='Sync result. synced: governance agents persisted. failed: could not complete (see errors).')]
+    governance_agents: Annotated[list[GovernanceAgentsItem] | None, Field(description='Governance agent now synced on this account. Reflects the persisted state after sync. Exactly one entry; the array shape mirrors the request schema and the one-agent-per-account invariant. See sync_governance request schema.', max_length=1, min_length=1)] = None
     errors: Annotated[list[Error] | None, Field(description="Per-account errors (only present when status is 'failed')", min_length=1)] = None
 
 
@@ -74,7 +74,7 @@ class SyncGovernanceSuccess(SyncGovernanceResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
     )
-    accounts: Annotated[list[SyncGovernanceSuccessAccountsItem], Field(description='Per-account sync results')]
+    accounts: Annotated[list[AccountsItem], Field(description='Per-account sync results')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

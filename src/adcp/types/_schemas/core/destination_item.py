@@ -14,7 +14,7 @@ from .offering_asset_group import OfferingAssetGroup
 from .price import Price
 
 
-class DestinationItemLocation(AdCPBaseModel):
+class Location(AdCPBaseModel):
     """
     Geographic coordinates of the destination.
     """
@@ -26,7 +26,7 @@ class DestinationItemLocation(AdCPBaseModel):
     lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84).')]
 
 
-class DestinationItemDestinationType(StrEnum):
+class DestinationType(StrEnum):
     """
     Destination category.
     """
@@ -53,8 +53,8 @@ class DestinationItem(AdCPBaseModel):
     city: Annotated[str | None, Field(description='City name, if applicable.')] = None
     region: Annotated[str | None, Field(description='State, province, or region name.')] = None
     country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
-    location: Annotated[DestinationItemLocation | None, Field(description='Geographic coordinates of the destination.')] = None
-    destination_type: Annotated[DestinationItemDestinationType | None, Field(description='Destination category.')] = None
+    location: Annotated[Location | None, Field(description='Geographic coordinates of the destination.')] = None
+    destination_type: Annotated[DestinationType | None, Field(description='Destination category.')] = None
     price: Annotated[Price | None, Field(description='Starting price for a trip to this destination.')] = None
     image_url: Annotated[HttpUrl | None, Field(description='Destination hero image URL.')] = None
     url: Annotated[HttpUrl | None, Field(description='Destination landing page or booking URL.')] = None

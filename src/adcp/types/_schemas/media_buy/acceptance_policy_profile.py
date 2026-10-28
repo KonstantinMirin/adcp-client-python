@@ -14,7 +14,7 @@ from ..core.ext import ExtensionObject
 from .acceptance_policy_rule import AcceptancePolicyRule
 
 
-class AcceptancePolicyProfilePolicyRefsItem(AdCPBaseModel):
+class PolicyRefsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -24,7 +24,7 @@ class AcceptancePolicyProfilePolicyRefsItem(AdCPBaseModel):
     content_digest: Annotated[StrMatching3CBDBB74, Field(description="SHA-256 digest of the referenced policy entry's RFC 8785 JCS serialization with acceptance_profile omitted.")]
 
 
-class AcceptancePolicyProfileCoverage(StrEnum):
+class Coverage(StrEnum):
     """
     partial means additional unpublished rules may apply and omission is unknown. complete means this profile is exhaustive only for its declared scope and version.
     """
@@ -32,7 +32,7 @@ class AcceptancePolicyProfileCoverage(StrEnum):
     COMPLETE = 'complete'
 
 
-class AcceptancePolicyProfileScopeAppliesToItem(StrEnum):
+class AppliesToItem(StrEnum):
     ACCOUNT = 'account'
     MEDIA_BUY = 'media_buy'
     CREATIVE = 'creative'
@@ -42,7 +42,7 @@ class AcceptancePolicyProfileScopeAppliesToItem(StrEnum):
     FORMAT = 'format'
 
 
-class AcceptancePolicyProfileScope(AdCPBaseModel):
+class Scope(AdCPBaseModel):
     """
     The boundary within which a complete profile claims exhaustiveness. It is informative for partial profiles and mandatory for complete profiles.
     """
@@ -58,7 +58,7 @@ class AcceptancePolicyProfileScope(AdCPBaseModel):
         UniqueItems('jurisdiction_groups'),
     )
     subject_categories: Annotated[list[StrMatching4D6E1599], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    applies_to: Annotated[list[AcceptancePolicyProfileScopeAppliesToItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
+    applies_to: Annotated[list[AppliesToItem], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     jurisdictions: Annotated[list[StrMatchingEFC12812] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     jurisdiction_groups: Annotated[list[StrMatching4BFFD9A4] | None, Field(description="Named groups declared in this profile's region_aliases.", json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     all_jurisdictions: Annotated[Literal[True] | None, Field(description='Explicitly states that the scope is not limited by delivery jurisdiction.')] = None
@@ -78,9 +78,9 @@ class AcceptancePolicyProfile(AdCPBaseModel):
     profile_id: StrMatching71E52EB8
     version: StrMinLen1
     content_digest: Annotated[StrMatching3CBDBB74, Field(description='SHA-256 digest of the RFC 8785 JCS serialization of this profile with content_digest omitted. A profile_id/version pair is immutable; consumers reject a resolved profile whose digest differs.')]
-    policy_refs: Annotated[list[AcceptancePolicyProfilePolicyRefsItem], Field(description='Exact registry policy versions from which this profile was derived. Consumers MUST NOT silently substitute a different version.', min_length=1)]
-    coverage: Annotated[AcceptancePolicyProfileCoverage, Field(description='partial means additional unpublished rules may apply and omission is unknown. complete means this profile is exhaustive only for its declared scope and version.')]
-    scope: Annotated[AcceptancePolicyProfileScope | None, Field(description='The boundary within which a complete profile claims exhaustiveness. It is informative for partial profiles and mandatory for complete profiles.')] = None
+    policy_refs: Annotated[list[PolicyRefsItem], Field(description='Exact registry policy versions from which this profile was derived. Consumers MUST NOT silently substitute a different version.', min_length=1)]
+    coverage: Annotated[Coverage, Field(description='partial means additional unpublished rules may apply and omission is unknown. complete means this profile is exhaustive only for its declared scope and version.')]
+    scope: Annotated[Scope | None, Field(description='The boundary within which a complete profile claims exhaustiveness. It is informative for partial profiles and mandatory for complete profiles.')] = None
     region_aliases: Annotated[dict[StrMatching4BFFD9A4, Annotated[NonEmptyList[StrMatchingEFC12812], Field(json_schema_extra={'uniqueItems': True}), AfterValidator(Distinct())]] | None, Field(description='Profile-local named country groups. Rules may reference only keys declared here; consumers expand them before matching.')] = None
     description: StrMinLen1 | None = None
     rules: Annotated[list[AcceptancePolicyRule], Field(min_length=1)]

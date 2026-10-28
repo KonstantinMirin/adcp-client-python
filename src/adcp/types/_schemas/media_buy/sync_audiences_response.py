@@ -34,7 +34,7 @@ class SyncAudiencesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEn
         return "oneOf"
 
 
-class SyncAudiencesSuccessAudiencesItemAction(StrEnum):
+class Action(StrEnum):
     """
     Action taken for this audience. 'status' is present when action is created, updated, or unchanged. 'status' is absent when action is deleted or failed.
     """
@@ -45,7 +45,7 @@ class SyncAudiencesSuccessAudiencesItemAction(StrEnum):
     FAILED = 'failed'
 
 
-class SyncAudiencesSuccessAudiencesItemMatchBreakdownItem(AdCPBaseModel):
+class MatchBreakdownItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -56,7 +56,7 @@ class SyncAudiencesSuccessAudiencesItemMatchBreakdownItem(AdCPBaseModel):
     match_rate: Annotated[FloatMin0Max1, Field(description='Match rate for this identifier type (matched / submitted). Server-authoritative — consumers should prefer this value over computing their own.')]
 
 
-class SyncAudiencesSuccessAudiencesItemSourceKind(StrEnum):
+class Kind(StrEnum):
     """
     Source kind, echoed from the request.
     """
@@ -64,7 +64,7 @@ class SyncAudiencesSuccessAudiencesItemSourceKind(StrEnum):
     PLATFORM_SEGMENT = 'platform_segment'
 
 
-class SyncAudiencesSuccessAudiencesItemSourceAccessStatus(StrEnum):
+class AccessStatus(StrEnum):
     """
     Source pipe health. Set to unavailable after a failed read (the seller cannot reliably distinguish revocation from expiry from a transient vendor outage — all three observables are a failed read); cleared to active on the next successful one. With last_synced_at this tells the buyer both that the pipe is down and how stale the membership is. Never a status input: membership stays frozen at the last successful read and remains targetable.
     """
@@ -72,7 +72,7 @@ class SyncAudiencesSuccessAudiencesItemSourceAccessStatus(StrEnum):
     UNAVAILABLE = 'unavailable'
 
 
-class SyncAudiencesSuccessAudiencesItemSource(AdCPBaseModel):
+class Source(AdCPBaseModel):
     """
     Echo of the external source feeding this audience (never credentials), present on externally sourced audiences in every response including discovery-only calls — the single pane invariant: externally sourced audiences appear in discovery identically to pushed ones, with the same status enum, match reporting, and targetability. Loss of source access (revocation, access_expires_at passing, or read failure of any cause) MUST NOT change the audience status: last matched state persists and remains targetable, last_synced_at freezes, and failed re-reads MUST NOT emit suspended — that value stays reserved for consent/policy causes, which remain orthogonal. Source health is reported here via access_status instead.
     """
@@ -80,15 +80,15 @@ class SyncAudiencesSuccessAudiencesItemSource(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-audiences-response.json', pointer='#/oneOf/0/properties/audiences/items/properties/source')
-    kind: Annotated[SyncAudiencesSuccessAudiencesItemSourceKind, Field(description='Source kind, echoed from the request.')]
+    kind: Annotated[Kind, Field(description='Source kind, echoed from the request.')]
     vendor: Annotated[BrandReference, Field(description='Vendor, echoed from the request.')]
     locator: Annotated[str | None, Field(description='Dataset locator, echoed from the request (kind: dataset).')] = None
     segment_ref: Annotated[str | None, Field(description='Segment reference, echoed from the request (kind: platform_segment).')] = None
     columns_read: Annotated[list[str] | None, Field(description='Canonical identifier columns the seller actually read from the shared object on the most recent ingest (kind: dataset). Lets a buyer distinguish bad identifier data from a column the seller never read — match_breakdown reveals what resolved, not what was offered.', min_length=1)] = None
-    access_status: Annotated[SyncAudiencesSuccessAudiencesItemSourceAccessStatus | None, Field(description='Source pipe health. Set to unavailable after a failed read (the seller cannot reliably distinguish revocation from expiry from a transient vendor outage — all three observables are a failed read); cleared to active on the next successful one. With last_synced_at this tells the buyer both that the pipe is down and how stale the membership is. Never a status input: membership stays frozen at the last successful read and remains targetable.')] = None
+    access_status: Annotated[AccessStatus | None, Field(description='Source pipe health. Set to unavailable after a failed read (the seller cannot reliably distinguish revocation from expiry from a transient vendor outage — all three observables are a failed read); cleared to active on the next successful one. With last_synced_at this tells the buyer both that the pipe is down and how stale the membership is. Never a status input: membership stays frozen at the last successful read and remains targetable.')] = None
 
 
-class SyncAudiencesSuccessAudiencesItem(AdCPBaseModel):
+class AudiencesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -99,15 +99,15 @@ class SyncAudiencesSuccessAudiencesItem(AdCPBaseModel):
     audience_id: Annotated[str, Field(description="Audience ID from the request (buyer's identifier)")]
     name: Annotated[str | None, Field(description='Name of the audience')] = None
     seller_id: Annotated[str | None, Field(description='Seller-assigned identifier for this audience in their ad platform')] = None
-    action: Annotated[SyncAudiencesSuccessAudiencesItemAction, Field(description="Action taken for this audience. 'status' is present when action is created, updated, or unchanged. 'status' is absent when action is deleted or failed.")]
+    action: Annotated[Action, Field(description="Action taken for this audience. 'status' is present when action is created, updated, or unchanged. 'status' is absent when action is deleted or failed.")]
     status: Annotated[AudienceStatus | None, Field(description='Matching status. Present when action is created, updated, or unchanged; absent when action is deleted or failed.')] = None
     uploaded_count: Annotated[NonNegativeInt | None, Field(description='Number of members submitted in this sync operation (delta, not cumulative). In discovery-only calls (no audiences array), this is 0.')] = None
     total_uploaded_count: Annotated[NonNegativeInt | None, Field(description='Cumulative number of members uploaded across all syncs for this audience. Compare with matched_count to calculate match rate (matched_count / total_uploaded_count). Populated when the seller tracks cumulative upload counts.')] = None
     matched_count: Annotated[NonNegativeInt | None, Field(description="Total members matched to platform users across all syncs (cumulative, not just this call). Populated when status is 'ready'.")] = None
     effective_match_rate: Annotated[FloatMin0Max1 | None, Field(description="Deduplicated match rate across all identifier types (matched_count / total_uploaded_count after deduplication). A single number for reach estimation. Populated when status is 'ready'.")] = None
-    match_breakdown: Annotated[list[SyncAudiencesSuccessAudiencesItemMatchBreakdownItem] | None, Field(description='Per-identifier-type match results. Shows which ID types are resolving and at what rate. Helps buyers decide which identifiers to prioritize. Populated when the seller can report per-type matching. Omitted when the seller only supports aggregate match counts.', min_length=1)] = None
+    match_breakdown: Annotated[list[MatchBreakdownItem] | None, Field(description='Per-identifier-type match results. Shows which ID types are resolving and at what rate. Helps buyers decide which identifiers to prioritize. Populated when the seller can report per-type matching. Omitted when the seller only supports aggregate match counts.', min_length=1)] = None
     last_synced_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp of when the most recent sync operation was accepted by the platform. Useful for agents reasoning about audience freshness. Omitted if the seller does not track this. For externally sourced audiences, REQUIRED once counts populate (status ready or too_small): every count field is as-of this timestamp — it is the buyer's only anchor for what a count means, since two reads can differ because membership changed, match rate changed, or the seller re-read the source.")] = None
-    source: Annotated[SyncAudiencesSuccessAudiencesItemSource | None, Field(description='Echo of the external source feeding this audience (never credentials), present on externally sourced audiences in every response including discovery-only calls — the single pane invariant: externally sourced audiences appear in discovery identically to pushed ones, with the same status enum, match reporting, and targetability. Loss of source access (revocation, access_expires_at passing, or read failure of any cause) MUST NOT change the audience status: last matched state persists and remains targetable, last_synced_at freezes, and failed re-reads MUST NOT emit suspended — that value stays reserved for consent/policy causes, which remain orthogonal. Source health is reported here via access_status instead.')] = None
+    source: Annotated[Source | None, Field(description='Echo of the external source feeding this audience (never credentials), present on externally sourced audiences in every response including discovery-only calls — the single pane invariant: externally sourced audiences appear in discovery identically to pushed ones, with the same status enum, match reporting, and targetability. Loss of source access (revocation, access_expires_at passing, or read failure of any cause) MUST NOT change the audience status: last matched state persists and remains targetable, last_synced_at freezes, and failed re-reads MUST NOT emit suspended — that value stays reserved for consent/policy causes, which remain orthogonal. Source health is reported here via access_status instead.')] = None
     minimum_size: Annotated[IntMin1 | None, Field(description="Minimum matched audience size required for targeting on this platform. Populated when status is 'too_small'. Helps agents know how many more members are needed.")] = None
     errors: Annotated[list[Error] | None, Field(description="Errors for this audience (only present when action='failed')")] = None
 
@@ -123,7 +123,7 @@ class SyncAudiencesSuccess(SyncAudiencesResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',), ('task_id',))),
     )
-    audiences: Annotated[list[SyncAudiencesSuccessAudiencesItem], Field(description='Results for each audience on the account')]
+    audiences: Annotated[list[AudiencesItem], Field(description='Results for each audience on the account')]
     sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

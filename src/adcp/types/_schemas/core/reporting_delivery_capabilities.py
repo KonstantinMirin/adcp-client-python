@@ -13,7 +13,7 @@ from .reporting_delivery_offering import ReportingDeliveryOffering
 from .reporting_reliability_statistics import ReportingReliabilityStatistics
 
 
-class ReportingDeliveryCapabilitiesOperationsContact(AdCPBaseModel):
+class OperationsContact(AdCPBaseModel):
     """
     Optional non-secret human escalation path for reporting issues the protocol cannot resolve. It is display metadata for an operator, not an AdCP endpoint: agents MUST NOT dereference, probe, or send protocol traffic to these values, and they carry no authorization. Required when consumer_mismatch_escalation_seconds is advertised.
     """
@@ -61,7 +61,7 @@ class ReportingDeliveryCapabilities(AdCPBaseModel):
     automated_recovery_window_seconds: Annotated[NonNegativeInt, Field(description='Maximum late interval during which a due obligation may remain delayed while automated recovery continues before action_required.')]
     status_retention_days: Annotated[IntMin1, Field(description='Minimum period for which obligation, revision, and materialization metadata remain queryable.')]
     consumer_mismatch_escalation_seconds: Annotated[NonNegativeInt | None, Field(description="Maximum interval after a CONSUMER_STATUS_MISMATCH issue's opened_at during which the seller may keep that issue at a non-escalated recommended_action. After it, the issue MUST be action_required with a contact_ recommended_action naming the diagnosed responsible_party. Declaring it requires operations_contact so the escalation has a destination. Absence means the seller publishes no escalation commitment; it never means an unbounded one.")] = None
-    operations_contact: Annotated[ReportingDeliveryCapabilitiesOperationsContact | None, Field(description='Optional non-secret human escalation path for reporting issues the protocol cannot resolve. It is display metadata for an operator, not an AdCP endpoint: agents MUST NOT dereference, probe, or send protocol traffic to these values, and they carry no authorization. Required when consumer_mismatch_escalation_seconds is advertised.')] = None
+    operations_contact: Annotated[OperationsContact | None, Field(description='Optional non-secret human escalation path for reporting issues the protocol cannot resolve. It is display metadata for an operator, not an AdCP endpoint: agents MUST NOT dereference, probe, or send protocol traffic to these values, and they carry no authorization. Required when consumer_mismatch_escalation_seconds is advertised.')] = None
     reliability_statistics: Annotated[list[ReportingReliabilityStatistics] | None, Field(description='Optional evidence-scoped observed performance for advertised offerings. offering_id values MUST be unique and name offerings in this capability block.', json_schema_extra={'uniqueItems': True})] = None
     resource_retention_days: Annotated[IntMin1 | None, Field(description='Minimum period after publication for which at least one verified exact materialization remains readable to every still-authorized intended consumer.')] = None
     supports_webhook_activity: bool | None = False

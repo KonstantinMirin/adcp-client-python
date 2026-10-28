@@ -13,7 +13,7 @@ from ..enums.age_verification_method import AgeVerificationMethod
 from .demographic_age_range import DemographicAgeRange
 
 
-class DemographicTargetingIntentAge(DemographicAgeRange):
+class Age(DemographicAgeRange):
     """
     A canonical audience-age predicate in completed integer years. min and max are inclusive; omitting one bound means no restriction in that direction. At least one bound is required. include_unknown is always explicit because people whose age is unavailable are not members of any numeric interval. Implementations MUST reject min greater than max; JSON Schema draft-07 cannot compare sibling numeric values.
     """
@@ -35,7 +35,7 @@ class DemographicTargetingIntent(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/demographic-targeting-intent.json', pointer='#')
-    age: DemographicTargetingIntentAge
+    age: Age
 
 
 __all__ = ["DemographicTargetingIntent"]

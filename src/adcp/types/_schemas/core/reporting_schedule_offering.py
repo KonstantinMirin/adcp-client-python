@@ -13,7 +13,7 @@ from adcp.types.constraints import StrMatching3524D29B, StrMatching5E9BB4AD, Str
 from .reporting_schedule import ReportingScheduleReportingScheduleAlignment
 
 
-class ReportingScheduleOfferingPeriodAnchorPolicy(StrEnum):
+class PeriodAnchorPolicy(StrEnum):
     """
     For billing_cycle only. fixed requires the advertised anchor and timezone; configurable lets each authorized account configuration select them.
     """
@@ -21,7 +21,7 @@ class ReportingScheduleOfferingPeriodAnchorPolicy(StrEnum):
     CONFIGURABLE = 'configurable'
 
 
-class ReportingScheduleOfferingPeriodTimezonePolicy(StrEnum):
+class PeriodTimezonePolicy(StrEnum):
     """
     For source_timezone only. fixed advertises one exact upstream IANA timezone; account_resolved requires the seller to resolve and echo the account's upstream reporting timezone during configuration.
     """
@@ -42,8 +42,8 @@ class ReportingScheduleOffering(AdCPBaseModel):
     )
     period_duration: StrMatching5E9BB4AD
     alignment: ReportingScheduleReportingScheduleAlignment
-    period_anchor_policy: Annotated[ReportingScheduleOfferingPeriodAnchorPolicy | None, Field(description='For billing_cycle only. fixed requires the advertised anchor and timezone; configurable lets each authorized account configuration select them.')] = None
-    period_timezone_policy: Annotated[ReportingScheduleOfferingPeriodTimezonePolicy | None, Field(description="For source_timezone only. fixed advertises one exact upstream IANA timezone; account_resolved requires the seller to resolve and echo the account's upstream reporting timezone during configuration.")] = None
+    period_anchor_policy: Annotated[PeriodAnchorPolicy | None, Field(description='For billing_cycle only. fixed requires the advertised anchor and timezone; configurable lets each authorized account configuration select them.')] = None
+    period_timezone_policy: Annotated[PeriodTimezonePolicy | None, Field(description="For source_timezone only. fixed advertises one exact upstream IANA timezone; account_resolved requires the seller to resolve and echo the account's upstream reporting timezone during configuration.")] = None
     period_anchor: AwareDatetime | None = None
     period_timezone: StrMinLen1MaxLen255 | None = None
     delivery_sla: StrMatching3524D29B

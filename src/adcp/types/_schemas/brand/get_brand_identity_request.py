@@ -13,7 +13,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class GetBrandIdentityRequestFieldsItem(StrEnum):
+class FieldsItem(StrEnum):
     DESCRIPTION = 'description'
     INDUSTRIES = 'industries'
     KELLER_TYPE = 'keller_type'
@@ -37,7 +37,7 @@ class GetBrandIdentityRequest(AdCPVersionEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-request.json', pointer='#')
     brand_id: Annotated[str, Field(description='Brand identifier from brand.json brands array')]
-    fields: Annotated[list[GetBrandIdentityRequestFieldsItem] | None, Field(description='Optional identity sections to include in the response. When omitted, all sections the caller is authorized to see are returned. Core fields (brand_id, house, names) are always returned and do not need to be requested.', min_length=1)] = None
+    fields: Annotated[list[FieldsItem] | None, Field(description='Optional identity sections to include in the response. When omitted, all sections the caller is authorized to see are returned. Core fields (brand_id, house, names) are always returned and do not need to be requested.', min_length=1)] = None
     use_case: Annotated[str | None, Field(description="Intended use case, so the agent can tailor the response. A 'voice_synthesis' use case returns voice configs; a 'likeness' use case returns high-res photos and appearance guidelines.")] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

@@ -30,7 +30,7 @@ class LogEventResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelop
         return "oneOf"
 
 
-class LogEventSuccessPartialFailuresItem(AdCPBaseModel):
+class PartialFailuresItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -53,7 +53,7 @@ class LogEventSuccess(LogEventResponse):
     )
     events_received: Annotated[NonNegativeInt, Field(description='Number of events received')]
     events_processed: Annotated[NonNegativeInt, Field(description='Number of events successfully queued for processing')]
-    partial_failures: Annotated[list[LogEventSuccessPartialFailuresItem] | None, Field(description='Events that failed validation')] = None
+    partial_failures: Annotated[list[PartialFailuresItem] | None, Field(description='Events that failed validation')] = None
     warnings: Annotated[list[str] | None, Field(description='Non-fatal issues (low match quality, missing recommended fields, deprecation notices)')] = None
     match_quality: Annotated[FloatMin0Max1 | None, Field(description='Overall match quality score for the batch (0.0 = no matches, 1.0 = all matched)')] = None
     sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.')] = None

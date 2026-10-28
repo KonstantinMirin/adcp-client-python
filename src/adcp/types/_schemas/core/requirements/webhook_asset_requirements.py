@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
-class WebhookAssetRequirementsMethodsItem(StrEnum):
+class MethodsItem(StrEnum):
     GET = 'GET'
     POST = 'POST'
 
@@ -22,7 +22,7 @@ class WebhookAssetRequirements(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/webhook-asset-requirements.json', pointer='#')
-    methods: Annotated[list[WebhookAssetRequirementsMethodsItem] | None, Field(description='Allowed HTTP methods')] = None
+    methods: Annotated[list[MethodsItem] | None, Field(description='Allowed HTTP methods')] = None
 
 
 __all__ = ["WebhookAssetRequirements"]

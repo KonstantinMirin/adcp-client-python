@@ -11,7 +11,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from ..core.property import Property
 
 
-class PropertyErrorCode(StrEnum):
+class Code(StrEnum):
     """
     Error code
     """
@@ -31,7 +31,7 @@ class PropertyError(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-error.json', pointer='#')
-    code: Annotated[PropertyErrorCode, Field(description='Error code')]
+    code: Annotated[Code, Field(description='Error code')]
     property: Annotated[Property | None, Field(description='The property that caused the error')] = None
     message: Annotated[str, Field(description='Human-readable error message')]
 

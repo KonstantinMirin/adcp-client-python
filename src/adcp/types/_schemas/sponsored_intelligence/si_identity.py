@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 
-class SIIdentityConsentScopeItem(StrEnum):
+class ConsentScopeItem(StrEnum):
     NAME = 'name'
     EMAIL = 'email'
     SHIPPING_ADDRESS = 'shipping_address'
@@ -18,7 +18,7 @@ class SIIdentityConsentScopeItem(StrEnum):
     LOCALE = 'locale'
 
 
-class SIIdentityPrivacyPolicyAcknowledged(AdCPBaseModel):
+class PrivacyPolicyAcknowledged(AdCPBaseModel):
     """
     Brand privacy policy acknowledgment
     """
@@ -30,7 +30,7 @@ class SIIdentityPrivacyPolicyAcknowledged(AdCPBaseModel):
     brand_policy_version: Annotated[str | None, Field(description='Version of policy acknowledged')] = None
 
 
-class SIIdentityUserShippingAddress(AdCPBaseModel):
+class ShippingAddress(AdCPBaseModel):
     """
     User's shipping address for accurate pricing
     """
@@ -45,7 +45,7 @@ class SIIdentityUserShippingAddress(AdCPBaseModel):
     country: str | None = None
 
 
-class SIIdentityUser(AdCPBaseModel):
+class User(AdCPBaseModel):
     """
     User data (only present if consent_granted is true)
     """
@@ -57,7 +57,7 @@ class SIIdentityUser(AdCPBaseModel):
     name: Annotated[str | None, Field(description="User's display name")] = None
     locale: Annotated[str | None, Field(description="User's locale (e.g., en-US)")] = None
     phone: Annotated[str | None, Field(description="User's phone number")] = None
-    shipping_address: Annotated[SIIdentityUserShippingAddress | None, Field(description="User's shipping address for accurate pricing")] = None
+    shipping_address: Annotated[ShippingAddress | None, Field(description="User's shipping address for accurate pricing")] = None
 
 
 class SIIdentity(AdCPBaseModel):
@@ -70,9 +70,9 @@ class SIIdentity(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-identity.json', pointer='#')
     consent_granted: Annotated[bool, Field(description='Whether user consented to share identity')]
     consent_timestamp: Annotated[AwareDatetime | None, Field(description='When consent was granted (ISO 8601)')] = None
-    consent_scope: Annotated[list[SIIdentityConsentScopeItem] | None, Field(description='What data was consented to share')] = None
-    privacy_policy_acknowledged: Annotated[SIIdentityPrivacyPolicyAcknowledged | None, Field(description='Brand privacy policy acknowledgment')] = None
-    user: Annotated[SIIdentityUser | None, Field(description='User data (only present if consent_granted is true)')] = None
+    consent_scope: Annotated[list[ConsentScopeItem] | None, Field(description='What data was consented to share')] = None
+    privacy_policy_acknowledged: Annotated[PrivacyPolicyAcknowledged | None, Field(description='Brand privacy policy acknowledgment')] = None
+    user: Annotated[User | None, Field(description='User data (only present if consent_granted is true)')] = None
     anonymous_session_id: Annotated[str | None, Field(description='Session ID for anonymous users (when consent_granted is false)')] = None
 
 

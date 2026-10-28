@@ -14,7 +14,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.escalation_severity import EscalationSeverity
 
 
-class ReportPlanOutcomeResponseOutcomeState(StrEnum):
+class OutcomeState(StrEnum):
     """
     Outcome state. 'accepted' means state updated with no issues. 'findings' means issues were detected. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization.
     """
@@ -22,7 +22,7 @@ class ReportPlanOutcomeResponseOutcomeState(StrEnum):
     FINDINGS = 'findings'
 
 
-class ReportPlanOutcomeResponseDeliveryReconciliationStatus(StrEnum):
+class DeliveryReconciliationStatus(StrEnum):
     """
     Comparison state between the buyer-attributed observation and canonical seller statement. Present for delivery outcomes. A disputed state blocks adjustment verification while the period is open. measurement_variance records a buyer-measured cumulative_spend that differs from the seller statement; it never blocks verification — the higher amount bounds conservative exposure and decommitments instead. closed_unresolved preserves the discrepancy after operational closure without claiming a final billing result.
     """
@@ -33,7 +33,7 @@ class ReportPlanOutcomeResponseDeliveryReconciliationStatus(StrEnum):
     CLOSED_UNRESOLVED = 'closed_unresolved'
 
 
-class ReportPlanOutcomeResponseDeliveryPeriodState(StrEnum):
+class DeliveryPeriodState(StrEnum):
     """
     Operational state of the governance reporting period. Closure freezes governance evidence for that period but is not billing settlement.
     """
@@ -41,7 +41,7 @@ class ReportPlanOutcomeResponseDeliveryPeriodState(StrEnum):
     CLOSED = 'closed'
 
 
-class ReportPlanOutcomeResponseFindingsItem(AdCPBaseModel):
+class FindingsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -52,7 +52,7 @@ class ReportPlanOutcomeResponseFindingsItem(AdCPBaseModel):
     details: Annotated[dict[str, Any] | None, Field(description='Structured details for programmatic consumption.')] = None
 
 
-class ReportPlanOutcomeResponsePlanSummary(AdCPBaseModel):
+class PlanSummary(AdCPBaseModel):
     """
     Updated plan budget state. Present for 'completed' and 'failed' outcomes.
     """
@@ -73,12 +73,12 @@ class ReportPlanOutcomeResponse(AdCPVersionEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-outcome-response.json', pointer='#')
     outcome_id: Annotated[str, Field(description='Unique identifier for this outcome record.')]
-    outcome_state: Annotated[ReportPlanOutcomeResponseOutcomeState, Field(description="Outcome state. 'accepted' means state updated with no issues. 'findings' means issues were detected. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization.")]
+    outcome_state: Annotated[OutcomeState, Field(description="Outcome state. 'accepted' means state updated with no issues. 'findings' means issues were detected. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization.")]
     committed_budget: Annotated[float | None, Field(description="Budget committed from this outcome. Present for 'completed' and 'failed' outcomes.")] = None
-    delivery_reconciliation_status: Annotated[ReportPlanOutcomeResponseDeliveryReconciliationStatus | None, Field(description='Comparison state between the buyer-attributed observation and canonical seller statement. Present for delivery outcomes. A disputed state blocks adjustment verification while the period is open. measurement_variance records a buyer-measured cumulative_spend that differs from the seller statement; it never blocks verification — the higher amount bounds conservative exposure and decommitments instead. closed_unresolved preserves the discrepancy after operational closure without claiming a final billing result.')] = None
-    delivery_period_state: Annotated[ReportPlanOutcomeResponseDeliveryPeriodState | None, Field(description='Operational state of the governance reporting period. Closure freezes governance evidence for that period but is not billing settlement.')] = None
-    findings: Annotated[list[ReportPlanOutcomeResponseFindingsItem] | None, Field(description="Issues detected. Present only when outcome_state is 'findings'.")] = None
-    plan_summary: Annotated[ReportPlanOutcomeResponsePlanSummary | None, Field(description="Updated plan budget state. Present for 'completed' and 'failed' outcomes.")] = None
+    delivery_reconciliation_status: Annotated[DeliveryReconciliationStatus | None, Field(description='Comparison state between the buyer-attributed observation and canonical seller statement. Present for delivery outcomes. A disputed state blocks adjustment verification while the period is open. measurement_variance records a buyer-measured cumulative_spend that differs from the seller statement; it never blocks verification — the higher amount bounds conservative exposure and decommitments instead. closed_unresolved preserves the discrepancy after operational closure without claiming a final billing result.')] = None
+    delivery_period_state: Annotated[DeliveryPeriodState | None, Field(description='Operational state of the governance reporting period. Closure freezes governance evidence for that period but is not billing settlement.')] = None
+    findings: Annotated[list[FindingsItem] | None, Field(description="Issues detected. Present only when outcome_state is 'findings'.")] = None
+    plan_summary: Annotated[PlanSummary | None, Field(description="Updated plan budget state. Present for 'completed' and 'failed' outcomes.")] = None
     replayed: Annotated[bool | None, Field(description="Set to true when this response was returned from the idempotency cache rather than from a fresh execution. Set to false (or omitted) when the request was executed fresh. Buyers use this to distinguish cached replays from new executions — matters for billing reconciliation, audit logs, state-machine routing (cached state-tracking fields are historical snapshots, not current state — re-read via the resource's read endpoint), and any downstream system that assumes exactly-once event semantics. `replayed` appears only when the request actually resolved through the idempotency cache. Pure reads may ignore an optional `idempotency_key`; when a seller voluntarily caches keyed reads, those responses use the same replay indicator and full cache contract.")] = False
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

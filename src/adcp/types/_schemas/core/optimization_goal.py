@@ -32,7 +32,7 @@ class OptimizationGoal(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class OptimizationGoalMetricMetric(StrEnum):
+class Metric(StrEnum):
     """
     Seller-native metric to optimize for. Delivery metrics: clicks (link clicks, swipe-throughs, CTA taps that navigate away), views (content views at the billable view threshold, as defined by delivery-metrics `views`; for viewability use viewable_rate), completed_views (video/audio completions — see view_duration_seconds), reach (unique audience reach — see reach_unit and target_frequency). Duration/score metrics: viewed_seconds (time in view per impression — reported back via `delivery-metrics.viewability.viewed_seconds`, governed by the viewability `standard`). Quality-rate metrics: viewable_rate (viewable / measurable impressions under the goal's `standard`; requires `standard`). Audience action metrics: engagements (any direct interaction with the ad unit beyond viewing — social reactions/comments/shares, story/unit opens, interactive overlay taps, companion banner interactions on audio and CTV), follows (new followers, page likes, artist/podcast/channel follows, or free channel/feed subscribes; paid subscriptions use event_type: subscribe), saves (saves, bookmarks, playlist adds, pins — signals of intent to return), profile_visits (visits to the brand's in-platform page — profile, artist page, channel, or storefront. Does not include external website clicks, which are covered by 'clicks'). **DEPRECATED values** (slated for removal at next major): `attention_seconds` and `attention_score` — these have no industry-graduated definition (DoubleVerify, IAS, Adelaide, TVision, Lumen each define them differently) and cannot be meaningfully optimized for without a vendor binding. Use `kind: 'vendor_metric'` with an explicit `vendor` and `metric_id` instead — that path binds the goal to a specific measurement vendor and reconciles to the same `(vendor, metric_id)` key in delivery's `vendor_metric_values[]`. Sellers MAY reject the deprecated values with `TERMS_REJECTED` and a suggestion to use the `vendor_metric` kind.
     """
@@ -50,21 +50,21 @@ class OptimizationGoalMetricMetric(StrEnum):
     REACH = 'reach'
 
 
-class OptimizationGoalMetricVendor(BrandReference):
+class Vendor(BrandReference):
     """
     Measurement vendor judging a viewable_rate or viewed_seconds goal; not allowed for other metrics. When omitted, the seller's default viewability measurement applies. Sellers MUST reject a vendor they cannot optimize against rather than substitute another.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/0/properties/vendor')
 
 
-class OptimizationGoalMetricTargetFrequencyWindow(Duration):
+class Window(Duration):
     """
     Time window over which frequency is measured (e.g. {"interval": 7, "unit": "days"} or {"interval": 1, "unit": "campaign"} for the full flight). Weekly windows are typical for brand campaigns; daily windows suit high-cadence direct response.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/0/properties/target_frequency/properties/window')
 
 
-class OptimizationGoalMetricTargetFrequency(AdCPBaseModel):
+class TargetFrequency(AdCPBaseModel):
     """
     Target frequency band for reach optimization. Only applicable when metric is 'reach'. Frames frequency as an optimization signal: the seller should treat impressions toward entities already within the [min, max] band as lower-value, and impressions toward unreached entities as higher-value. This shifts budget toward fresh reach rather than re-reaching known users. When omitted, the seller maximizes unique reach without a frequency constraint. A hard cap can still be layered via targeting_overlay.frequency_cap if a ceiling is needed.
     """
@@ -77,7 +77,7 @@ class OptimizationGoalMetricTargetFrequency(AdCPBaseModel):
     )
     min: Annotated[IntMin1 | None, Field(description='Minimum frequency for an entity to be considered meaningfully reached within the window. Impressions that would bring an entity below this threshold are treated as high-value (growing reach). When omitted, the seller uses their platform default (typically 1).')] = None
     max: Annotated[IntMin1 | None, Field(description='Frequency at which an entity is considered saturated within the window. Impressions toward entities at or above this threshold are treated as lower-value. When both min and max are present, max must be greater than or equal to min. When omitted, the seller determines the saturation point.')] = None
-    window: Annotated[OptimizationGoalMetricTargetFrequencyWindow, Field(description='Time window over which frequency is measured (e.g. {"interval": 7, "unit": "days"} or {"interval": 1, "unit": "campaign"} for the full flight). Weekly windows are typical for brand campaigns; daily windows suit high-cadence direct response.')]
+    window: Annotated[Window, Field(description='Time window over which frequency is measured (e.g. {"interval": 7, "unit": "days"} or {"interval": 1, "unit": "campaign"} for the full flight). Weekly windows are typical for brand campaigns; daily windows suit high-cadence direct response.')]
 
 
 class OptimizationGoalMetricTargetCostPer(AdCPBaseModel):
@@ -117,17 +117,17 @@ class OptimizationGoalMetric(OptimizationGoal):
         NegatedConditional((Match('metric', True, ('viewable_rate', 'viewed_seconds')),), require=(), forbid=('standard', 'vendor')),
     )
     kind: Literal['metric']
-    metric: Annotated[OptimizationGoalMetricMetric, Field(description="Seller-native metric to optimize for. Delivery metrics: clicks (link clicks, swipe-throughs, CTA taps that navigate away), views (content views at the billable view threshold, as defined by delivery-metrics `views`; for viewability use viewable_rate), completed_views (video/audio completions — see view_duration_seconds), reach (unique audience reach — see reach_unit and target_frequency). Duration/score metrics: viewed_seconds (time in view per impression — reported back via `delivery-metrics.viewability.viewed_seconds`, governed by the viewability `standard`). Quality-rate metrics: viewable_rate (viewable / measurable impressions under the goal's `standard`; requires `standard`). Audience action metrics: engagements (any direct interaction with the ad unit beyond viewing — social reactions/comments/shares, story/unit opens, interactive overlay taps, companion banner interactions on audio and CTV), follows (new followers, page likes, artist/podcast/channel follows, or free channel/feed subscribes; paid subscriptions use event_type: subscribe), saves (saves, bookmarks, playlist adds, pins — signals of intent to return), profile_visits (visits to the brand's in-platform page — profile, artist page, channel, or storefront. Does not include external website clicks, which are covered by 'clicks'). **DEPRECATED values** (slated for removal at next major): `attention_seconds` and `attention_score` — these have no industry-graduated definition (DoubleVerify, IAS, Adelaide, TVision, Lumen each define them differently) and cannot be meaningfully optimized for without a vendor binding. Use `kind: 'vendor_metric'` with an explicit `vendor` and `metric_id` instead — that path binds the goal to a specific measurement vendor and reconciles to the same `(vendor, metric_id)` key in delivery's `vendor_metric_values[]`. Sellers MAY reject the deprecated values with `TERMS_REJECTED` and a suggestion to use the `vendor_metric` kind.")]
+    metric: Annotated[Metric, Field(description="Seller-native metric to optimize for. Delivery metrics: clicks (link clicks, swipe-throughs, CTA taps that navigate away), views (content views at the billable view threshold, as defined by delivery-metrics `views`; for viewability use viewable_rate), completed_views (video/audio completions — see view_duration_seconds), reach (unique audience reach — see reach_unit and target_frequency). Duration/score metrics: viewed_seconds (time in view per impression — reported back via `delivery-metrics.viewability.viewed_seconds`, governed by the viewability `standard`). Quality-rate metrics: viewable_rate (viewable / measurable impressions under the goal's `standard`; requires `standard`). Audience action metrics: engagements (any direct interaction with the ad unit beyond viewing — social reactions/comments/shares, story/unit opens, interactive overlay taps, companion banner interactions on audio and CTV), follows (new followers, page likes, artist/podcast/channel follows, or free channel/feed subscribes; paid subscriptions use event_type: subscribe), saves (saves, bookmarks, playlist adds, pins — signals of intent to return), profile_visits (visits to the brand's in-platform page — profile, artist page, channel, or storefront. Does not include external website clicks, which are covered by 'clicks'). **DEPRECATED values** (slated for removal at next major): `attention_seconds` and `attention_score` — these have no industry-graduated definition (DoubleVerify, IAS, Adelaide, TVision, Lumen each define them differently) and cannot be meaningfully optimized for without a vendor binding. Use `kind: 'vendor_metric'` with an explicit `vendor` and `metric_id` instead — that path binds the goal to a specific measurement vendor and reconciles to the same `(vendor, metric_id)` key in delivery's `vendor_metric_values[]`. Sellers MAY reject the deprecated values with `TERMS_REJECTED` and a suggestion to use the `vendor_metric` kind.")]
     standard: Annotated[ViewabilityStandard | None, Field(description="Viewability standard the goal is judged against. Required when metric is 'viewable_rate'; optional for 'viewed_seconds' (seller default standard when omitted); not allowed for other metrics. Must be in metric_optimization.supported_viewability_standards when declared. A goal below a same-standard viewability performance_standard never relaxes that standard.")] = None
-    vendor: Annotated[OptimizationGoalMetricVendor | None, Field(description="Measurement vendor judging a viewable_rate or viewed_seconds goal; not allowed for other metrics. When omitted, the seller's default viewability measurement applies. Sellers MUST reject a vendor they cannot optimize against rather than substitute another.")] = None
+    vendor: Annotated[Vendor | None, Field(description="Measurement vendor judging a viewable_rate or viewed_seconds goal; not allowed for other metrics. When omitted, the seller's default viewability measurement applies. Sellers MUST reject a vendor they cannot optimize against rather than substitute another.")] = None
     reach_unit: Annotated[ReachUnit | None, Field(description="Unit for reach measurement. Required when metric is 'reach'. Must be a value declared in the product's metric_optimization.supported_reach_units.")] = None
-    target_frequency: Annotated[OptimizationGoalMetricTargetFrequency | None, Field(description="Target frequency band for reach optimization. Only applicable when metric is 'reach'. Frames frequency as an optimization signal: the seller should treat impressions toward entities already within the [min, max] band as lower-value, and impressions toward unreached entities as higher-value. This shifts budget toward fresh reach rather than re-reaching known users. When omitted, the seller maximizes unique reach without a frequency constraint. A hard cap can still be layered via targeting_overlay.frequency_cap if a ceiling is needed.")] = None
+    target_frequency: Annotated[TargetFrequency | None, Field(description="Target frequency band for reach optimization. Only applicable when metric is 'reach'. Frames frequency as an optimization signal: the seller should treat impressions toward entities already within the [min, max] band as lower-value, and impressions toward unreached entities as higher-value. This shifts budget toward fresh reach rather than re-reaching known users. When omitted, the seller maximizes unique reach without a frequency constraint. A hard cap can still be layered via targeting_overlay.frequency_cap if a ceiling is needed.")] = None
     view_duration_seconds: Annotated[FloatGt0 | None, Field(description="Minimum video view duration in seconds that qualifies as a completed_view for this goal. Only applicable when metric is 'completed_views'. When omitted, the seller uses their platform default (typically 2–15 seconds). Common values: 2 (Snap/LinkedIn default), 6 (TikTok), 15 (Snap 15-second views, Meta ThruPlay). Sellers declare which durations they support in metric_optimization.supported_view_durations. Sellers must reject goals with unsupported values — silent rounding would create measurement discrepancies.")] = None
     target: Annotated[OptimizationGoalMetricTargetCostPer | OptimizationGoalMetricTargetThresholdRate | None, Field(description='Target for this metric. When omitted, the seller optimizes for maximum metric volume within budget.')] = None
     priority: Annotated[IntMin1 | None, Field(description='Relative priority among sibling goals. Lower numbers rank first. Goals without priority follow explicitly prioritized goals. Ties use array order, so the earliest goal at the lowest explicit priority is primary; when all priorities are omitted, the first goal is primary.')] = None
 
 
-class OptimizationGoalEventEventSourcesItem(AdCPBaseModel):
+class EventSourcesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -151,7 +151,7 @@ class OptimizationGoalEventTargetCostPer(AdCPBaseModel):
     value: Annotated[FloatGt0, Field(description='Target cost per event in the buy currency')]
 
 
-class OptimizationGoalEventTargetPerAdSpend(AdCPBaseModel):
+class TargetPerAdSpend(AdCPBaseModel):
     """
     DEPRECATED legacy target return per unit of ad spend. Normalize to package.bidding.roas with strength target while retaining this event goal and its value-bearing event source. Requires value_field on at least one event_sources entry.
     """
@@ -163,7 +163,7 @@ class OptimizationGoalEventTargetPerAdSpend(AdCPBaseModel):
     value: Annotated[FloatGt0, Field(description='Target return ratio (e.g., 4.0 means $4 of value per $1 spent)')]
 
 
-class OptimizationGoalEventTargetMaximizeValue(AdCPBaseModel):
+class TargetMaximizeValue(AdCPBaseModel):
     """
     Maximize total conversion value within budget, without a specific return ratio target. Steers spend toward higher-value conversions rather than maximizing conversion count. Requires value_field on at least one event_sources entry.
     """
@@ -190,8 +190,8 @@ class OptimizationGoalEvent(OptimizationGoal):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/1')
     kind: Literal['event']
-    event_sources: Annotated[list[OptimizationGoalEventEventSourcesItem], Field(description='Event source and type pairs that feed this goal. Each entry identifies a source and event type to include. When the seller supports multi_source_event_dedup (declared in get_adcp_capabilities), they deduplicate by event_id across all entries — the same business event from multiple sources counts once, using value_field and value_factor from the first matching entry. When multi_source_event_dedup is false or absent, buyers should use a single entry per goal; the seller will use only the first entry. All event sources must be configured via sync_event_sources.', min_length=1)]
-    target: Annotated[OptimizationGoalEventTargetCostPer | OptimizationGoalEventTargetPerAdSpend | OptimizationGoalEventTargetMaximizeValue | None, Field(description='Target cost or return for this event goal. When omitted, the seller optimizes for maximum conversion count within budget — regardless of whether value_field is present on event sources. The presence of value_field alone does not change the optimization objective; it only makes value available for reporting. An explicit target of maximize_value or per_ad_spend is required to steer toward value.')] = None
+    event_sources: Annotated[list[EventSourcesItem], Field(description='Event source and type pairs that feed this goal. Each entry identifies a source and event type to include. When the seller supports multi_source_event_dedup (declared in get_adcp_capabilities), they deduplicate by event_id across all entries — the same business event from multiple sources counts once, using value_field and value_factor from the first matching entry. When multi_source_event_dedup is false or absent, buyers should use a single entry per goal; the seller will use only the first entry. All event sources must be configured via sync_event_sources.', min_length=1)]
+    target: Annotated[OptimizationGoalEventTargetCostPer | TargetPerAdSpend | TargetMaximizeValue | None, Field(description='Target cost or return for this event goal. When omitted, the seller optimizes for maximum conversion count within budget — regardless of whether value_field is present on event sources. The presence of value_field alone does not change the optimization objective; it only makes value available for reporting. An explicit target of maximize_value or per_ad_spend is required to steer toward value.')] = None
     attribution_window: Annotated[OptimizationGoalEventAttributionWindow | None, Field(description="Attribution window for this optimization goal — references the canonical `attribution-window` shape (post_click, post_view, model). Values must match an option declared in the seller's `conversion_tracking.attribution_windows` capability. Sellers MUST reject windows not in their declared capabilities. When the entire field is omitted, the seller uses their default window.")] = None
     priority: Annotated[IntMin1 | None, Field(description='Relative priority among sibling goals. Lower numbers rank first. Goals without priority follow explicitly prioritized goals. Ties use array order, so the earliest goal at the lowest explicit priority is primary; when all priorities are omitted, the first goal is primary.')] = None
 

@@ -14,7 +14,7 @@ from .price_breakdown import PriceBreakdown
 from .price_guidance import PriceGuidance
 
 
-class CPVPricingOptionParametersViewThresholdDurationSeconds(AdCPBaseModel):
+class ViewThresholdDurationSeconds(AdCPBaseModel):
     """
     Time-based view threshold
     """
@@ -25,7 +25,7 @@ class CPVPricingOptionParametersViewThresholdDurationSeconds(AdCPBaseModel):
     duration_seconds: Annotated[IntMin1, Field(description='Seconds of viewing required')]
 
 
-class CPVPricingOptionParameters(AdCPBaseModel):
+class Parameters(AdCPBaseModel):
     """
     CPV-specific parameters defining the view threshold
     """
@@ -33,7 +33,7 @@ class CPVPricingOptionParameters(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='pricing-options/cpv-option.json', pointer='#/properties/parameters')
-    view_threshold: FloatMin0Max1 | CPVPricingOptionParametersViewThresholdDurationSeconds
+    view_threshold: FloatMin0Max1 | ViewThresholdDurationSeconds
 
 
 class CPVPricingOption(AdCPBaseModel):
@@ -54,7 +54,7 @@ class CPVPricingOption(AdCPBaseModel):
     floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.')] = None
     max_bid: Annotated[bool | None, Field(description='DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.')] = False
     price_guidance: Annotated[PriceGuidance | None, Field(description='Optional pricing guidance for auction-based bidding')] = None
-    parameters: Annotated[CPVPricingOptionParameters, Field(description='CPV-specific parameters defining the view threshold')]
+    parameters: Annotated[Parameters, Field(description='CPV-specific parameters defining the view threshold')]
     min_spend_per_package: Annotated[NonNegativeFloat | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency')] = None
     price_breakdown: Annotated[PriceBreakdown | None, Field(description='Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.')] = None
     eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(description='Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.', json_schema_extra={'uniqueItems': True})] = None

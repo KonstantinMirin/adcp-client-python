@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import AdCPUrl, IntMin0Max8192, IntMin1Max8192, IntMin6Max256, StrMatching3CBDBB74, StrMatchingF01B4765, StrMaxLen4096
 
 
-class PlacementPresentationDocumentCanvas(AdCPBaseModel):
+class Canvas(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -20,7 +20,7 @@ class PlacementPresentationDocumentCanvas(AdCPBaseModel):
     background_color: StrMatchingF01B4765 | None = '#ffffff'
 
 
-class PlacementPresentationDocumentCreativeSlotFit(StrEnum):
+class CreativeSlotFit(StrEnum):
     """
     How the creative render is scaled into the slot. contain preserves the whole render, cover fills and crops, and stretch fills without preserving aspect ratio.
     """
@@ -29,7 +29,7 @@ class PlacementPresentationDocumentCreativeSlotFit(StrEnum):
     STRETCH = 'stretch'
 
 
-class PlacementPresentationDocumentCreativeSlot(AdCPBaseModel):
+class CreativeSlot(AdCPBaseModel):
     """
     Rectangle into which the selected creative render is fitted and clipped without changing its manifest or renderer.
     """
@@ -41,7 +41,7 @@ class PlacementPresentationDocumentCreativeSlot(AdCPBaseModel):
     y: IntMin0Max8192
     width: IntMin1Max8192
     height: IntMin1Max8192
-    fit: Annotated[PlacementPresentationDocumentCreativeSlotFit, Field(description='How the creative render is scaled into the slot. contain preserves the whole render, cover fills and crops, and stretch fills without preserving aspect ratio.')]
+    fit: Annotated[CreativeSlotFit, Field(description='How the creative render is scaled into the slot. contain preserves the whole render, cover fills and crops, and stretch fills without preserving aspect ratio.')]
     clip: Annotated[Literal[True], Field(description='Slot overflow is always clipped so composition is deterministic.')]
 
 
@@ -88,7 +88,7 @@ class PlacementPresentationDocumentTextDecoration(AdCPBaseModel):
     font_size: IntMin6Max256
 
 
-class PlacementPresentationDocumentImageDecorationImageRef(AdCPBaseModel):
+class ImageRef(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -111,7 +111,7 @@ class PlacementPresentationDocumentImageDecoration(AdCPBaseModel):
     kind: Literal['image']
     layer: PlacementPresentationDocumentLayer
     bounds: PlacementPresentationDocumentRectangle
-    image_ref: PlacementPresentationDocumentImageDecorationImageRef
+    image_ref: ImageRef
     fit: PlacementPresentationDocumentImageDecorationFit
 
 
@@ -124,8 +124,8 @@ class PlacementPresentationDocument(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#')
     schema_version: Literal['1.0']
-    canvas: PlacementPresentationDocumentCanvas
-    creative_slot: Annotated[PlacementPresentationDocumentCreativeSlot, Field(description='Rectangle into which the selected creative render is fitted and clipped without changing its manifest or renderer.')]
+    canvas: Canvas
+    creative_slot: Annotated[CreativeSlot, Field(description='Rectangle into which the selected creative render is fitted and clipped without changing its manifest or renderer.')]
     decorations: Annotated[list[PlacementPresentationDocumentBoxDecoration | PlacementPresentationDocumentTextDecoration | PlacementPresentationDocumentImageDecoration] | None, Field(max_length=100)] = None
 
 

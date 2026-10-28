@@ -14,7 +14,7 @@ from .offering_asset_group import OfferingAssetGroup
 from .price import Price
 
 
-class RealEstateItemAddress(AdCPBaseModel):
+class Address(AdCPBaseModel):
     """
     Property address.
     """
@@ -29,7 +29,7 @@ class RealEstateItemAddress(AdCPBaseModel):
     country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
 
 
-class RealEstateItemPropertyType(StrEnum):
+class PropertyType(StrEnum):
     """
     Type of property.
     """
@@ -41,7 +41,7 @@ class RealEstateItemPropertyType(StrEnum):
     COMMERCIAL = 'commercial'
 
 
-class RealEstateItemListingType(StrEnum):
+class ListingType(StrEnum):
     """
     Whether the property is for sale or rent.
     """
@@ -49,7 +49,7 @@ class RealEstateItemListingType(StrEnum):
     FOR_RENT = 'for_rent'
 
 
-class RealEstateItemAreaUnit(StrEnum):
+class Unit(StrEnum):
     """
     Area unit.
     """
@@ -57,7 +57,7 @@ class RealEstateItemAreaUnit(StrEnum):
     SQM = 'sqm'
 
 
-class RealEstateItemArea(AdCPBaseModel):
+class Area(AdCPBaseModel):
     """
     Property size.
     """
@@ -66,10 +66,10 @@ class RealEstateItemArea(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/real-estate-item.json', pointer='#/properties/area')
     value: Annotated[NonNegativeFloat, Field(description='Area value.')]
-    unit: Annotated[RealEstateItemAreaUnit, Field(description='Area unit.')]
+    unit: Annotated[Unit, Field(description='Area unit.')]
 
 
-class RealEstateItemLocation(AdCPBaseModel):
+class Location(AdCPBaseModel):
     """
     Geographic coordinates of the property.
     """
@@ -91,15 +91,15 @@ class RealEstateItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/real-estate-item.json', pointer='#')
     listing_id: Annotated[str, Field(description='Unique identifier for this property listing.')]
     title: Annotated[str, Field(description="Listing title (e.g., 'Spacious 3BR Apartment in Jordaan').")]
-    address: Annotated[RealEstateItemAddress, Field(description='Property address.')]
+    address: Annotated[Address, Field(description='Property address.')]
     price: Annotated[Price | None, Field(description="Property price or rental rate. Use period 'month' for rentals.")] = None
-    property_type: Annotated[RealEstateItemPropertyType | None, Field(description='Type of property.')] = None
-    listing_type: Annotated[RealEstateItemListingType | None, Field(description='Whether the property is for sale or rent.')] = None
+    property_type: Annotated[PropertyType | None, Field(description='Type of property.')] = None
+    listing_type: Annotated[ListingType | None, Field(description='Whether the property is for sale or rent.')] = None
     bedrooms: Annotated[NonNegativeInt | None, Field(description='Number of bedrooms.')] = None
     bathrooms: Annotated[NonNegativeFloat | None, Field(description='Number of bathrooms (e.g., 2.5 for two full and one half bath).')] = None
-    area: Annotated[RealEstateItemArea | None, Field(description='Property size.')] = None
+    area: Annotated[Area | None, Field(description='Property size.')] = None
     description: Annotated[str | None, Field(description='Property description.')] = None
-    location: Annotated[RealEstateItemLocation | None, Field(description='Geographic coordinates of the property.')] = None
+    location: Annotated[Location | None, Field(description='Geographic coordinates of the property.')] = None
     image_url: Annotated[HttpUrl | None, Field(description='Primary property image URL.')] = None
     url: Annotated[HttpUrl | None, Field(description='Listing page URL.')] = None
     neighborhood: Annotated[str | None, Field(description='Neighborhood or area name.')] = None

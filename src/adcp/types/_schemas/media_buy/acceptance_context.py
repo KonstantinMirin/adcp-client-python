@@ -13,7 +13,7 @@ from ..core.ext import ExtensionObject
 from ..enums.advertiser_industry import AdvertiserIndustry
 
 
-class AcceptanceContextSubjectsItem(AdCPBaseModel):
+class SubjectsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -39,7 +39,7 @@ class AcceptanceContext(AdCPBaseModel):
         UniqueItems('advertiser_jurisdictions'),
         UniqueItems('delivery_jurisdictions'),
     )
-    subjects: Annotated[list[AcceptanceContextSubjectsItem] | None, Field(min_length=1)] = None
+    subjects: Annotated[list[SubjectsItem] | None, Field(min_length=1)] = None
     advertiser_roles: Annotated[list[StrMatching4D6E1599] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     advertiser_industry: AdvertiserIndustry | None = None
     advertiser_jurisdictions: Annotated[list[StrMatchingEFC12812] | None, Field(description='Jurisdictions in which the advertiser is established or legally organized. This is distinct from where an ad will be delivered.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None

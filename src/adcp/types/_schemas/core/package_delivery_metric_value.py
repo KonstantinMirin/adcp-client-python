@@ -16,7 +16,7 @@ from .delivery_metric_aggregate import DeliveryMetricAggregateStandard
 from .duration import Duration
 
 
-class PackageDeliveryMetricValueQualifier(AdCPBaseModel):
+class Qualifier(AdCPBaseModel):
     """
     Qualifier keys disambiguating this row from sibling rows under the same `metric_id`. Symmetric with `committed_metrics.qualifier` today; expected to diverge in future minors as transparency disclosures buyers don't commit to ship delivery-only. Closed (`additionalProperties: false`) — new qualifier keys ship explicitly.
     """
@@ -39,7 +39,7 @@ class PackageDeliveryMetricValue(DeliveryMetricAggregateStandard):
     A qualified standard delivery value reported at package grain. The qualifier is required and must be non-empty; unqualified spend remains on the package's flat spend field.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package-delivery-metric-value.json', pointer='#')
-    qualifier: Annotated[PackageDeliveryMetricValueQualifier, Field(description="Qualifier keys disambiguating this row from sibling rows under the same `metric_id`. Symmetric with `committed_metrics.qualifier` today; expected to diverge in future minors as transparency disclosures buyers don't commit to ship delivery-only. Closed (`additionalProperties: false`) — new qualifier keys ship explicitly.")]
+    qualifier: Annotated[Qualifier, Field(description="Qualifier keys disambiguating this row from sibling rows under the same `metric_id`. Symmetric with `committed_metrics.qualifier` today; expected to diverge in future minors as transparency disclosures buyers don't commit to ship delivery-only. Closed (`additionalProperties: false`) — new qualifier keys ship explicitly.")]
 
 
 __all__ = ["PackageDeliveryMetricValue"]

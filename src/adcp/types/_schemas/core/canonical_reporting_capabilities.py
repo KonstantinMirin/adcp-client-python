@@ -20,7 +20,7 @@ from .spot_reporting_capability import SpotReportingCapability
 from .vendor_metric_id import VendorMetricID
 
 
-class CanonicalReportingCapabilitiesVendorMetricsItem(AdCPBaseModel):
+class VendorMetricsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -29,7 +29,7 @@ class CanonicalReportingCapabilitiesVendorMetricsItem(AdCPBaseModel):
     metric_id: VendorMetricID
 
 
-class CanonicalReportingCapabilitiesDateRangeSupport(StrEnum):
+class DateRangeSupport(StrEnum):
     DATE_RANGE = 'date_range'
     LIFETIME_ONLY = 'lifetime_only'
 
@@ -55,7 +55,7 @@ class CanonicalReportingCapabilities(AdCPBaseModel):
     supports_webhooks: bool
     reporting_delivery_offering_ids: Annotated[list[ReportingDeliveryOfferingID] | None, Field(description='Product-scoped subset of get_adcp_capabilities.media_buy.reporting_delivery.offerings[].offering_id that packages using this product can satisfy. This binds seller-wide managed-delivery offerings to product/package eligibility. An empty array explicitly declares no managed offering; absence means product-level applicability is unknown and MUST NOT be inferred from the seller-wide list. Account, seat, credential, or provider constraints may narrow support further during sync_accounts validation.', json_schema_extra={'uniqueItems': True})] = None
     available_metrics: Annotated[list[AvailableMetric], Field(json_schema_extra={'uniqueItems': True})]
-    vendor_metrics: list[CanonicalReportingCapabilitiesVendorMetricsItem] | None = None
+    vendor_metrics: list[VendorMetricsItem] | None = None
     supports_creative_breakdown: bool | None = None
     supports_format_breakdown: bool | None = None
     supports_keyword_breakdown: bool | None = None
@@ -72,7 +72,7 @@ class CanonicalReportingCapabilities(AdCPBaseModel):
     supports_installment_property_breakdown: bool | None = None
     supports_placement_property_breakdown: bool | None = None
     supports_spot_breakdown: SpotReportingCapability | None = None
-    date_range_support: CanonicalReportingCapabilitiesDateRangeSupport
+    date_range_support: DateRangeSupport
     windowed_pull_granularities: Annotated[list[ReportingFrequency] | None, Field(json_schema_extra={'uniqueItems': True})] = None
     measurement_windows: Annotated[list[MeasurementWindow] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1)] = None
 

@@ -14,7 +14,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class SyncGovernanceRequestAccountsItemGovernanceAgentsItemAuthentication(AdCPBaseModel):
+class Authentication(AdCPBaseModel):
     """
     Authentication the seller presents when calling this governance agent.
     """
@@ -26,22 +26,22 @@ class SyncGovernanceRequestAccountsItemGovernanceAgentsItemAuthentication(AdCPBa
     credentials: Annotated[StrMinLen32, Field(description='Authentication credential (e.g., Bearer token).')]
 
 
-class SyncGovernanceRequestAccountsItemGovernanceAgentsItem(AdCPBaseModel):
+class GovernanceAgentsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-governance-request.json', pointer='#/properties/accounts/items/properties/governance_agents/items')
     url: Annotated[AdCPUrl, Field(description='Governance agent endpoint URL. Must use HTTPS.')]
-    authentication: Annotated[SyncGovernanceRequestAccountsItemGovernanceAgentsItemAuthentication, Field(description='Authentication the seller presents when calling this governance agent.')]
+    authentication: Annotated[Authentication, Field(description='Authentication the seller presents when calling this governance agent.')]
 
 
-class SyncGovernanceRequestAccountsItem(AdCPBaseModel):
+class AccountsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-governance-request.json', pointer='#/properties/accounts/items')
     account: Annotated[AccountReference, Field(description='Account to sync governance agents for. Use account_id for account-id namespaces or brand + operator for buyer-declared accounts.')]
-    governance_agents: Annotated[list[SyncGovernanceRequestAccountsItemGovernanceAgentsItem], Field(description="Governance agent endpoint for this account. Exactly one entry — the single agent that owns the account's full governance lifecycle. The seller calls this agent via check_governance during media buy lifecycle events. The array shape is preserved for wire compatibility with 3.0 senders; `maxItems: 1` is load-bearing and mirrors the singular `governance_context` on the protocol envelope.", max_length=1, min_length=1)]
+    governance_agents: Annotated[list[GovernanceAgentsItem], Field(description="Governance agent endpoint for this account. Exactly one entry — the single agent that owns the account's full governance lifecycle. The seller calls this agent via check_governance during media buy lifecycle events. The array shape is preserved for wire compatibility with 3.0 senders; `maxItems: 1` is load-bearing and mirrors the singular `governance_context` on the protocol envelope.", max_length=1, min_length=1)]
 
 
 class SyncGovernanceRequest(AdCPVersionEnvelope):
@@ -57,7 +57,7 @@ class SyncGovernanceRequest(AdCPVersionEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/sync-governance-request.json', pointer='#')
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. `account` gives resource-level dedup, but governance changes emit audit events and can trigger reapproval flows — this key prevents those side effects from firing twice on retry. MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
-    accounts: Annotated[list[SyncGovernanceRequestAccountsItem], Field(description='Per-account governance agent configuration. Each entry pairs an account reference with the governance agents for that account.', max_length=100, min_length=1)]
+    accounts: Annotated[list[AccountsItem], Field(description='Per-account governance agent configuration. Each entry pairs an account reference with the governance agents for that account.', max_length=100, min_length=1)]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

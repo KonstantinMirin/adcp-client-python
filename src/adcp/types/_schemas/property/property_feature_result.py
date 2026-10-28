@@ -13,7 +13,7 @@ from ..core.property_id import PropertyID
 from .property_feature_value import PropertyFeatureValue
 
 
-class PropertyFeatureResultCoverageStatus(StrEnum):
+class CoverageStatus(StrEnum):
     """
     Whether this property is covered by this governance agent: covered (has data), not_covered (not measured), pending (measurement in progress)
     """
@@ -32,7 +32,7 @@ class PropertyFeatureResult(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/property-feature-result.json', pointer='#')
     property: Annotated[str | PropertyID, Field(description='The property these features apply to')]
     features: Annotated[dict[str, PropertyFeatureValue] | None, Field(description='Map of feature_id to feature value')] = None
-    coverage_status: Annotated[PropertyFeatureResultCoverageStatus, Field(description='Whether this property is covered by this governance agent: covered (has data), not_covered (not measured), pending (measurement in progress)')]
+    coverage_status: Annotated[CoverageStatus, Field(description='Whether this property is covered by this governance agent: covered (has data), not_covered (not measured), pending (measurement in progress)')]
     last_evaluated: Annotated[AwareDatetime | None, Field(description='When features were last evaluated for this property')] = None
     ext: ExtensionObject | None = None
 

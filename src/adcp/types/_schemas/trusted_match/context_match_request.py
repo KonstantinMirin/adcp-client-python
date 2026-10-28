@@ -15,7 +15,7 @@ from ..enums.metro_system import MetroAreaSystem
 from ..enums.property_type import PropertyType
 
 
-class ContextMatchRequestArtifactRefsItemType(StrEnum):
+class ArtifactRefsItemType(StrEnum):
     """
     Identifier type. 'url' for web pages, 'url_hash' for URL-addressable content the publisher prefers not to share directly (buyer matches against pre-crawled index), 'eidr' for film/TV (EIDR DOI), 'gracenote' for music/TV (Gracenote TMS ID), 'isrc' for music recordings (International Standard Recording Code), 'gtin' for products (Global Trade Item Number — UPC, EAN, ISBN-13), 'rss_guid' for podcast episodes (RSS GUID), 'isbn' for books, 'custom' for publisher-defined identifiers.
     """
@@ -30,16 +30,16 @@ class ContextMatchRequestArtifactRefsItemType(StrEnum):
     CUSTOM = 'custom'
 
 
-class ContextMatchRequestArtifactRefsItem(AdCPBaseModel):
+class ArtifactRefsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/context-match-request.json', pointer='#/properties/artifact_refs/items')
-    type: Annotated[ContextMatchRequestArtifactRefsItemType, Field(description="Identifier type. 'url' for web pages, 'url_hash' for URL-addressable content the publisher prefers not to share directly (buyer matches against pre-crawled index), 'eidr' for film/TV (EIDR DOI), 'gracenote' for music/TV (Gracenote TMS ID), 'isrc' for music recordings (International Standard Recording Code), 'gtin' for products (Global Trade Item Number — UPC, EAN, ISBN-13), 'rss_guid' for podcast episodes (RSS GUID), 'isbn' for books, 'custom' for publisher-defined identifiers.")]
+    type: Annotated[ArtifactRefsItemType, Field(description="Identifier type. 'url' for web pages, 'url_hash' for URL-addressable content the publisher prefers not to share directly (buyer matches against pre-crawled index), 'eidr' for film/TV (EIDR DOI), 'gracenote' for music/TV (Gracenote TMS ID), 'isrc' for music recordings (International Standard Recording Code), 'gtin' for products (Global Trade Item Number — UPC, EAN, ISBN-13), 'rss_guid' for podcast episodes (RSS GUID), 'isbn' for books, 'custom' for publisher-defined identifiers.")]
     value: Annotated[str, Field(description="The identifier value. For 'url': the canonical content URL — MUST NOT contain user-specific path segments, query parameters, or fragments; use 'url_hash' when the publisher prefers not to reveal the URL. For 'url_hash': Blake3 hash of the canonicalized URL, base64-encoded (canonicalization: strip scheme, strip www./m./amp. prefixes, lowercase, strip trailing slash, strip query params and fragments). For 'eidr': the EIDR DOI (e.g., '10.5240/xxxx'). For 'gracenote': the Gracenote TMS ID (e.g., 'SH032541890000'). For 'isrc': the ISRC code (e.g., 'USRC17607839'). For 'gtin': the GTIN (e.g., '00012345678905'). For 'rss_guid': the episode GUID from the RSS feed. For 'isbn': the ISBN (e.g., '978-0-123456-78-9'). For 'custom': a publisher-defined identifier.")]
 
 
-class ContextMatchRequestGeoMetro(AdCPBaseModel):
+class Metro(AdCPBaseModel):
     """
     Metro area, using the same classification systems as AdCP targeting.
     """
@@ -51,7 +51,7 @@ class ContextMatchRequestGeoMetro(AdCPBaseModel):
     value: Annotated[str, Field(description="Metro code within the system (e.g., '501' for New York DMA).")]
 
 
-class ContextMatchRequestGeo(AdCPBaseModel):
+class Geo(AdCPBaseModel):
     """
     Coarse geographic location of the viewer. Publisher controls granularity — country is sufficient for regulatory compliance and volume filtering, region or metro helps with campaign targeting and valuation. Coarsened to prevent user identification: no postcode, no coordinates. All fields optional.
     """
@@ -61,10 +61,10 @@ class ContextMatchRequestGeo(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/context-match-request.json', pointer='#/properties/geo')
     country: Annotated[StrMatchingEFC12812 | None, Field(description="ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB', 'DE').")] = None
     region: Annotated[StrMatchingCE72C7C2 | None, Field(description="ISO 3166-2 subdivision code (e.g., 'US-CA', 'GB-SCT').")] = None
-    metro: Annotated[ContextMatchRequestGeoMetro | None, Field(description='Metro area, using the same classification systems as AdCP targeting.')] = None
+    metro: Annotated[Metro | None, Field(description='Metro area, using the same classification systems as AdCP targeting.')] = None
 
 
-class ContextMatchRequestContextSignalsSentiment(StrEnum):
+class Sentiment(StrEnum):
     """
     Content sentiment classification.
     """
@@ -74,7 +74,7 @@ class ContextMatchRequestContextSignalsSentiment(StrEnum):
     MIXED = 'mixed'
 
 
-class ContextMatchRequestContextSignals(AdCPBaseModel):
+class ContextSignals(AdCPBaseModel):
     """
     Pre-computed classifier outputs for the content environment. Use when the publisher wants to provide privacy-reduced context without sharing content or public references. Can supplement artifact_refs or replace them entirely. Ephemeral content that many users encounter (a trending query, a syndicated segment) is shared content; one user's turn or query is not. For non-public content attributable to a single user or session, only the field-specific privacy-reduced outputs permitted below may be sent. Raw content MUST NOT be included. The publisher is the classifier and privacy boundary.
     """
@@ -85,7 +85,7 @@ class ContextMatchRequestContextSignals(AdCPBaseModel):
     topics: Annotated[list[str] | None, Field(description="Content topic identifiers. Use IAB Content Taxonomy 3.0 IDs (e.g., '632' for Food & Drink) when taxonomy_id is 7, or bounded human-readable category labels (e.g., 'cooking.pasta') for custom taxonomies. For non-public content attributable to a single user or session, publishers MUST use standardized taxonomy identifiers or bounded custom category labels; custom topic strings MUST NOT reproduce distinctive verbatim phrasing and MUST NOT include PII or uniquely identifying details.", max_length=50)] = None
     taxonomy_source: Annotated[str | None, Field(description="Organization that defines the topic taxonomy. Use 'iab' for IAB Content Taxonomy. Publishers may use other values for custom taxonomies.")] = 'iab'
     taxonomy_id: Annotated[int | None, Field(description='Taxonomy version within the source. For IAB, follows the AdCOM cattax enum: 7 = Content Taxonomy 3.0. Default: 7.')] = 7
-    sentiment: Annotated[ContextMatchRequestContextSignalsSentiment | None, Field(description='Content sentiment classification.')] = None
+    sentiment: Annotated[Sentiment | None, Field(description='Content sentiment classification.')] = None
     keywords: Annotated[list[StrMaxLen100] | None, Field(description="Content keywords produced by the publisher's classifier. For non-public content attributable to a single user or session, keywords MUST be policy-filtered, MUST NOT reproduce distinctive verbatim phrasing, and MUST NOT include PII or uniquely identifying details. Publishers SHOULD prefer bounded category labels.", max_length=50)] = None
     language: Annotated[StrMatchingD790C8AB | None, Field(description="Content language in ISO 639-1 format (e.g., 'en', 'ja', 'de').")] = None
     content_policies: Annotated[list[str] | None, Field(description="Policy IDs from the AdCP policy registry that this content satisfies (e.g., 'csbs' for Common Sense Brand Standards). Buyers filter on policies they require. An empty array means no policies have been evaluated.", max_length=20)] = None
@@ -115,9 +115,9 @@ class ContextMatchRequest(AdCPBaseModel):
     placement_id: Annotated[str, Field(description="Placement identifier from the publisher's placement registry in adagents.json. Identifies where on the property this ad opportunity exists. One placement per request.")]
     seller_agent_url: Annotated[HttpUrl, Field(description="API endpoint URL of the seller agent issuing this request. The provider uses this to resolve the active package set it has synced for this seller; when `package_ids` is omitted, evaluation occurs against that full set. If `seller_agent_url` does not match any seller the provider has synced packages for, the provider MUST return an empty offer set — it MUST NOT fall back to another seller's active set. The value identifies the asking seller, is identical for every user on a given placement, and carries no user identity, so it neither varies the request per user nor weakens the context/identity decorrelation boundary. Compared using the AdCP URL canonicalization rules, not byte-equality — see docs/reference/url-canonicalization. Consistent with `seller_agent_url` on the identity match request, `seller_agent.agent_url` on `AvailablePackage`, and `agent_url` in `adagents.json`.")]
     artifact: Annotated[Artifact | None, Field(description='Full content artifact adjacent to this ad opportunity. Same schema used for content standards evaluation. The publisher sends the artifact when they want the buyer to evaluate the full content. Contractual protections govern buyer use. TEE deployment upgrades contractual trust to cryptographic verification. Because the router fans out to multiple buyer agents, publishers MUST NOT include bearer tokens, service-account credentials, or signed URLs in this artifact. Routers MUST remove every asset `access` object and remove or replace every credential-bearing asset `url` before forwarding; only public asset URLs that recipients can resolve independently may remain.')] = None
-    artifact_refs: Annotated[list[ContextMatchRequestArtifactRefsItem] | None, Field(description='Public content references adjacent to this ad opportunity. Each artifact identifies content via a public identifier the buyer can resolve independently — no private registry sync required.', max_length=20, min_length=1)] = None
-    geo: Annotated[ContextMatchRequestGeo | None, Field(description='Coarse geographic location of the viewer. Publisher controls granularity — country is sufficient for regulatory compliance and volume filtering, region or metro helps with campaign targeting and valuation. Coarsened to prevent user identification: no postcode, no coordinates. All fields optional.')] = None
-    context_signals: Annotated[ContextMatchRequestContextSignals | None, Field(description="Pre-computed classifier outputs for the content environment. Use when the publisher wants to provide privacy-reduced context without sharing content or public references. Can supplement artifact_refs or replace them entirely. Ephemeral content that many users encounter (a trending query, a syndicated segment) is shared content; one user's turn or query is not. For non-public content attributable to a single user or session, only the field-specific privacy-reduced outputs permitted below may be sent. Raw content MUST NOT be included. The publisher is the classifier and privacy boundary.")] = None
+    artifact_refs: Annotated[list[ArtifactRefsItem] | None, Field(description='Public content references adjacent to this ad opportunity. Each artifact identifies content via a public identifier the buyer can resolve independently — no private registry sync required.', max_length=20, min_length=1)] = None
+    geo: Annotated[Geo | None, Field(description='Coarse geographic location of the viewer. Publisher controls granularity — country is sufficient for regulatory compliance and volume filtering, region or metro helps with campaign targeting and valuation. Coarsened to prevent user identification: no postcode, no coordinates. All fields optional.')] = None
+    context_signals: Annotated[ContextSignals | None, Field(description="Pre-computed classifier outputs for the content environment. Use when the publisher wants to provide privacy-reduced context without sharing content or public references. Can supplement artifact_refs or replace them entirely. Ephemeral content that many users encounter (a trending query, a syndicated segment) is shared content; one user's turn or query is not. For non-public content attributable to a single user or session, only the field-specific privacy-reduced outputs permitted below may be sent. Raw content MUST NOT be included. The publisher is the classifier and privacy boundary.")] = None
     package_ids: Annotated[list[str] | None, Field(description='Restrict evaluation to specific packages. When omitted, the provider evaluates all eligible packages for this placement (the common case). MUST NOT vary by user — the same package_ids must be sent for every user on a given placement. User-dependent filtering leaks identity into the context path.', max_length=500, min_length=1)] = None
 
 

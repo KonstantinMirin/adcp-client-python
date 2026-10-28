@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMatching43E30B32
 
 
-class PricePeriod(StrEnum):
+class Period(StrEnum):
     """
     Billing period. 'night' for hotel rates, 'month' or 'year' for salaries and rentals, 'one_time' for purchase prices. Omit when the period is obvious from context (e.g., a vehicle price is always one-time).
     """
@@ -30,7 +30,7 @@ class Price(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/price.json', pointer='#')
     amount: Annotated[NonNegativeFloat, Field(description='Monetary amount in the specified currency.')]
     currency: Annotated[StrMatching43E30B32, Field(description="ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP').")]
-    period: Annotated[PricePeriod | None, Field(description="Billing period. 'night' for hotel rates, 'month' or 'year' for salaries and rentals, 'one_time' for purchase prices. Omit when the period is obvious from context (e.g., a vehicle price is always one-time).")] = None
+    period: Annotated[Period | None, Field(description="Billing period. 'night' for hotel rates, 'month' or 'year' for salaries and rentals, 'one_time' for purchase prices. Omit when the period is obvious from context (e.g., a vehicle price is always one-time).")] = None
 
 
 __all__ = ["Price"]

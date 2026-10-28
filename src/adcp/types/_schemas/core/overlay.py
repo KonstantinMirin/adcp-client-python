@@ -11,7 +11,7 @@ from adcp.types._runtime import PropertyCount, Rule
 from adcp.types.constraints import HttpUrl
 
 
-class OverlayVisual(AdCPBaseModel):
+class Visual(AdCPBaseModel):
     """
     Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.
     """
@@ -27,7 +27,7 @@ class OverlayVisual(AdCPBaseModel):
     dark: Annotated[HttpUrl | None, Field(description='URL to the overlay graphic for use on dark backgrounds (SVG or PNG)')] = None
 
 
-class OverlayBoundsUnit(StrEnum):
+class Unit(StrEnum):
     """
     'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left.
     """
@@ -39,7 +39,7 @@ class OverlayBoundsUnit(StrEnum):
     PT = 'pt'
 
 
-class OverlayBounds(AdCPBaseModel):
+class Bounds(AdCPBaseModel):
     """
     Position and size of the overlay relative to the asset's own top-left corner. See 'unit' for coordinate interpretation.
     """
@@ -51,7 +51,7 @@ class OverlayBounds(AdCPBaseModel):
     y: Annotated[float, Field(description="Vertical offset from the asset's top edge")]
     width: Annotated[NonNegativeFloat, Field(description='Width of the overlay')]
     height: Annotated[NonNegativeFloat, Field(description='Height of the overlay')]
-    unit: Annotated[OverlayBoundsUnit, Field(description="'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left.")]
+    unit: Annotated[Unit, Field(description="'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left.")]
 
 
 class Overlay(AdCPBaseModel):
@@ -64,8 +64,8 @@ class Overlay(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/overlay.json', pointer='#')
     id: Annotated[str, Field(description="Identifier for this overlay (e.g., 'play_pause', 'volume', 'publisher_logo', 'carousel_prev', 'carousel_next')")]
     description: Annotated[str | None, Field(description='Human-readable explanation of what this overlay is and how buyers should account for it')] = None
-    visual: Annotated[OverlayVisual | None, Field(description='Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.')] = None
-    bounds: Annotated[OverlayBounds, Field(description="Position and size of the overlay relative to the asset's own top-left corner. See 'unit' for coordinate interpretation.")]
+    visual: Annotated[Visual | None, Field(description='Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.')] = None
+    bounds: Annotated[Bounds, Field(description="Position and size of the overlay relative to the asset's own top-left corner. See 'unit' for coordinate interpretation.")]
 
 
 __all__ = ["Overlay"]

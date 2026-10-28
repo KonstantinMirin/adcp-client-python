@@ -12,7 +12,7 @@ from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
 
 
-class SyncCreativesInputRequiredReason(StrEnum):
+class Reason(StrEnum):
     """
     Reason code indicating why buyer input is needed
     """
@@ -29,7 +29,7 @@ class SyncCreativesInputRequired(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-async-response-input-required.json', pointer='#')
-    reason: Annotated[SyncCreativesInputRequiredReason | None, Field(description='Reason code indicating why buyer input is needed')] = None
+    reason: Annotated[Reason | None, Field(description='Reason code indicating why buyer input is needed')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

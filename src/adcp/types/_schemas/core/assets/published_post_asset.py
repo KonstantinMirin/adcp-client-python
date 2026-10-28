@@ -13,7 +13,7 @@ from adcp.types.constraints import HttpUrl
 from ..provenance import Provenance
 
 
-class PublishedPostAssetIdentityRef(AdCPBaseModel):
+class IdentityRef(AdCPBaseModel):
     """
     Optional identity hint for the authoring handle/page/channel that owns the post. Sellers MUST verify authorization from platform state; buyers MUST NOT use this object as proof of authorization.
     """
@@ -26,7 +26,7 @@ class PublishedPostAssetIdentityRef(AdCPBaseModel):
     platform_identity_id: Annotated[str | None, Field(description='Opaque platform-native identity identifier.')] = None
 
 
-class PublishedPostAssetReferenceAuthorizationStatus(StrEnum):
+class Status(StrEnum):
     """
     Current seller-observed authorization state. `authorized`: seller can serve the referenced post. `pending`: additional creator/account action is required. `expired` or `revoked`: authorization previously existed but no longer permits serving. `not_required`: the seller can legally and technically serve without a separate identity authorization. `unknown`: seller has not checked or cannot disclose the state.
     """
@@ -38,7 +38,7 @@ class PublishedPostAssetReferenceAuthorizationStatus(StrEnum):
     UNKNOWN = 'unknown'
 
 
-class PublishedPostAssetReferenceAuthorization(AdCPBaseModel):
+class ReferenceAuthorization(AdCPBaseModel):
     """
     Server-emitted, seller-observed authorization state for the referenced post or identity. Sellers MAY return this object on read surfaces. On write requests, sellers MUST ignore buyer-supplied `reference_authorization.status` and other authorization-state claims unless a platform extension explicitly defines a signed proof shape and the seller verifies that proof.
     """
@@ -46,7 +46,7 @@ class PublishedPostAssetReferenceAuthorization(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/published-post-asset.json', pointer='#/properties/reference_authorization')
-    status: Annotated[PublishedPostAssetReferenceAuthorizationStatus, Field(description='Current seller-observed authorization state. `authorized`: seller can serve the referenced post. `pending`: additional creator/account action is required. `expired` or `revoked`: authorization previously existed but no longer permits serving. `not_required`: the seller can legally and technically serve without a separate identity authorization. `unknown`: seller has not checked or cannot disclose the state.')]
+    status: Annotated[Status, Field(description='Current seller-observed authorization state. `authorized`: seller can serve the referenced post. `pending`: additional creator/account action is required. `expired` or `revoked`: authorization previously existed but no longer permits serving. `not_required`: the seller can legally and technically serve without a separate identity authorization. `unknown`: seller has not checked or cannot disclose the state.')]
     checked_at: Annotated[AwareDatetime | None, Field(description='When the seller last checked the authorization state.')] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='When the authorization expires, if the platform exposes an expiry.')] = None
     authorization_url: Annotated[HttpUrl | None, Field(description='Optional URL the buyer or creator can use to complete authorization.')] = None
@@ -68,9 +68,9 @@ class PublishedPostAsset(AdCPBaseModel):
     post_url: Annotated[HttpUrl | None, Field(description='Canonical URL for the published post. Preferred when the platform exposes a stable public or authenticated URL.')] = None
     platform: Annotated[str | None, Field(description="Optional platform or publisher namespace for the referenced post. Informational unless the seller's product declaration or platform extension narrows the accepted values.")] = None
     platform_post_id: Annotated[str | None, Field(description='Optional platform-native post identifier when a URL alone is not stable or not available. Buyers SHOULD include `platform` when using `platform_post_id` without `post_url`, unless the product or format declaration already narrows the platform. Platform-specific identifier semantics belong in platform_extensions; this field is only an opaque reference.')] = None
-    identity_ref: Annotated[PublishedPostAssetIdentityRef | None, Field(description='Optional identity hint for the authoring handle/page/channel that owns the post. Sellers MUST verify authorization from platform state; buyers MUST NOT use this object as proof of authorization.')] = None
+    identity_ref: Annotated[IdentityRef | None, Field(description='Optional identity hint for the authoring handle/page/channel that owns the post. Sellers MUST verify authorization from platform state; buyers MUST NOT use this object as proof of authorization.')] = None
     published_at: Annotated[AwareDatetime | None, Field(description='When the referenced post was originally published, if known.')] = None
-    reference_authorization: Annotated[PublishedPostAssetReferenceAuthorization | None, Field(description='Server-emitted, seller-observed authorization state for the referenced post or identity. Sellers MAY return this object on read surfaces. On write requests, sellers MUST ignore buyer-supplied `reference_authorization.status` and other authorization-state claims unless a platform extension explicitly defines a signed proof shape and the seller verifies that proof.')] = None
+    reference_authorization: Annotated[ReferenceAuthorization | None, Field(description='Server-emitted, seller-observed authorization state for the referenced post or identity. Sellers MAY return this object on read surfaces. On write requests, sellers MUST ignore buyer-supplied `reference_authorization.status` and other authorization-state claims unless a platform extension explicitly defines a signed proof shape and the seller verifies that proof.')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this reference asset, overrides manifest-level provenance.')] = None
 
 

@@ -12,7 +12,7 @@ from .catchment import Catchment
 from .ext import ExtensionObject
 
 
-class StoreItemLocation(AdCPBaseModel):
+class Location(AdCPBaseModel):
     """
     Geographic coordinates of the store.
     """
@@ -24,7 +24,7 @@ class StoreItemLocation(AdCPBaseModel):
     lng: Annotated[FloatMinNeg180Max180, Field(description='Longitude in decimal degrees (WGS 84).')]
 
 
-class StoreItemAddress(AdCPBaseModel):
+class Address(AdCPBaseModel):
     """
     Structured address for display and geocoding fallback.
     """
@@ -39,7 +39,7 @@ class StoreItemAddress(AdCPBaseModel):
     country: Annotated[StrMatchingEFC12812 | None, Field(description='ISO 3166-1 alpha-2 country code.')] = None
 
 
-StoreItemHoursValue = Annotated[str, Field(description="Time range in HH:MM-HH:MM format (e.g., '09:00-21:00'). Use 'closed' for days the store is not open.")]
+HoursValue = Annotated[str, Field(description="Time range in HH:MM-HH:MM format (e.g., '09:00-21:00'). Use 'closed' for days the store is not open.")]
 
 
 class StoreItem(AdCPBaseModel):
@@ -52,12 +52,12 @@ class StoreItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/store-item.json', pointer='#')
     store_id: Annotated[str, Field(description='Unique identifier for this store. Used to reference specific stores in targeting, inventory feeds, and creative templates.')]
     name: Annotated[str, Field(description="Human-readable store name (e.g., 'Amsterdam Flagship', 'Brooklyn Heights').")]
-    location: Annotated[StoreItemLocation, Field(description='Geographic coordinates of the store.')]
-    address: Annotated[StoreItemAddress | None, Field(description='Structured address for display and geocoding fallback.')] = None
+    location: Annotated[Location, Field(description='Geographic coordinates of the store.')]
+    address: Annotated[Address | None, Field(description='Structured address for display and geocoding fallback.')] = None
     catchments: Annotated[list[Catchment] | None, Field(description='Catchment areas for this store. Each defines a reachable area using travel time (isochrone), simple radius, or pre-computed GeoJSON. Multiple catchments allow different modes — e.g., 15-minute drive AND 10-minute walk.', min_length=1)] = None
     phone: Annotated[str | None, Field(description="Store phone number in E.164 format (e.g., '+31201234567').")] = None
     url: Annotated[HttpUrl | None, Field(description='Store-specific page URL (e.g., store locator detail page).')] = None
-    hours: Annotated[dict[Literal['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], StoreItemHoursValue] | None, Field(description='Operating hours. Keys are ISO day names (monday–sunday), values are time ranges.')] = None
+    hours: Annotated[dict[Literal['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'], HoursValue] | None, Field(description='Operating hours. Keys are ISO day names (monday–sunday), values are time ranges.')] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering stores in targeting and creative selection (e.g., 'flagship', 'pickup', 'pharmacy').", min_length=1)] = None
     ext: ExtensionObject | None = None
 

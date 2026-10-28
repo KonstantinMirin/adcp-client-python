@@ -14,7 +14,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ReportPlanAdjustmentResponseAdjustmentState(StrEnum):
+class AdjustmentState(StrEnum):
     """
     reported has seller evidence but no buyer decision; verified was accepted by the plan owner; disputed was rejected by the plan owner. Only verified records can affect net cost or headroom.
     """
@@ -23,14 +23,14 @@ class ReportPlanAdjustmentResponseAdjustmentState(StrEnum):
     DISPUTED = 'disputed'
 
 
-class ReportPlanAdjustmentResponseAdjustmentType(StrEnum):
+class AdjustmentType(StrEnum):
     DECOMMITMENT = 'decommitment'
     REFUND = 'refund'
     CREDIT = 'credit'
     MAKEGOOD = 'makegood'
 
 
-class ReportPlanAdjustmentResponseAmount(AdCPBaseModel):
+class Amount(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -39,17 +39,17 @@ class ReportPlanAdjustmentResponseAmount(AdCPBaseModel):
     currency: StrMatching43E30B32
 
 
-class ReportPlanAdjustmentResponsePlanSummaryAccountingMode(StrEnum):
+class AccountingMode(StrEnum):
     GROSS_COMMITMENT = 'gross_commitment'
     VERIFIED_NET_COST = 'verified_net_cost'
 
 
-class ReportPlanAdjustmentResponsePlanSummary(AdCPBaseModel):
+class PlanSummary(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-adjustment-response.json', pointer='#/properties/plan_summary')
-    accounting_mode: ReportPlanAdjustmentResponsePlanSummaryAccountingMode
+    accounting_mode: AccountingMode
     gross_committed: NonNegativeFloat
     adjustments_reported: NonNegativeFloat
     adjustments_verified: NonNegativeFloat
@@ -69,11 +69,11 @@ class ReportPlanAdjustmentResponse(AdCPVersionEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-adjustment-response.json', pointer='#')
     adjustment_id: Annotated[str, Field(description='Governance-agent identifier for the adjustment record.')]
-    adjustment_state: Annotated[ReportPlanAdjustmentResponseAdjustmentState, Field(description='reported has seller evidence but no buyer decision; verified was accepted by the plan owner; disputed was rejected by the plan owner. Only verified records can affect net cost or headroom.')]
-    adjustment_type: ReportPlanAdjustmentResponseAdjustmentType
-    amount: ReportPlanAdjustmentResponseAmount
+    adjustment_state: Annotated[AdjustmentState, Field(description='reported has seller evidence but no buyer decision; verified was accepted by the plan owner; disputed was rejected by the plan owner. Only verified records can affect net cost or headroom.')]
+    adjustment_type: AdjustmentType
+    amount: Amount
     headroom_restored: Annotated[NonNegativeFloat, Field(description='Amount by which current ledger commitment was reduced under the plan accounting mode.')]
-    plan_summary: ReportPlanAdjustmentResponsePlanSummary
+    plan_summary: PlanSummary
     replayed: Annotated[bool | None, Field(description="Set to true when this response was returned from the idempotency cache rather than from a fresh execution. Set to false (or omitted) when the request was executed fresh. Buyers use this to distinguish cached replays from new executions — matters for billing reconciliation, audit logs, state-machine routing (cached state-tracking fields are historical snapshots, not current state — re-read via the resource's read endpoint), and any downstream system that assumes exactly-once event semantics. `replayed` appears only when the request actually resolved through the idempotency cache. Pure reads may ignore an optional `idempotency_key`; when a seller voluntarily caches keyed reads, those responses use the same replay indicator and full cache contract.")] = False
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

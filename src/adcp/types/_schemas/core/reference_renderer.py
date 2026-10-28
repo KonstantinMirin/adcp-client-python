@@ -9,7 +9,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMatching2879A8E3, StrMatching677E9010, StrMatchingBA9364FD, StrMatchingD8D1086B, StrMatchingF1F3DC8E, StrMinLen1
 
 
-class ReferenceRendererProvenance(AdCPBaseModel):
+class Provenance(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -32,7 +32,7 @@ class ReferenceRenderer(AdCPBaseModel):
     export: Annotated[StrMinLen1, Field(description="Named package export that implements the renderer contract for this enclosing format entry. Compatibility is bound at the export-to-entry edge, not to matching version labels: registry review and contract fixtures verify that the export implements the entry's input contract. When that input contract changes, the registry MUST rerun those fixtures and MAY retain the existing export and package pin when they still pass. One package version MAY expose different named exports for different formats or input contracts.")]
     format_revision: Annotated[StrMatchingF1F3DC8E | None, Field(description="Deprecated compatibility annotation retained for previously published registry entries. Renderer package versions and community format revisions have independent lifecycles, so consumers MUST NOT require this value to equal the enclosing entry's format_revision or use matching values as evidence of compatibility. Registry review and contract fixtures bind the named export to the enclosing format's input contract. New entries SHOULD omit this field.")] = None
     integrity: Annotated[StrMatchingD8D1086B, Field(description='Subresource Integrity value for the exact npm package tarball. Consumers MUST compare this value before loading code, require the provenance subject digest to match the same tarball, and fail closed on mismatch.')]
-    provenance: ReferenceRendererProvenance
+    provenance: Provenance
 
 
 __all__ = ["ReferenceRenderer"]

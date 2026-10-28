@@ -511,7 +511,15 @@ module is its namespace and `§9`'s rule is that a document's output may not dep
 documents the run includes.
 
 *What this costs:* a long name becomes the exception it was meant to be, arising only where one
-document genuinely says `context` twice. The failure it avoids is the one the upstream v9 SDK
+document genuinely says `context` twice. **Measured on the tree the rule produced
+(`adcp-client-python-10l.50`):** 2,144 classes, median name 17 characters against 26, and
+235 / 75 / 19 / 8 longer than 30 / 40 / 50 / 60 against 808 / 364 / 141 / 47. Of 2,226 named
+positions 2,116 keep §4's short name, 107 spend one ancestor segment and 3 spend two; 25 lengthen
+against a name the module IMPORTS, which is the other half of its namespace — a class named
+`Field` beside `from pydantic import Field` makes every `Annotated[X, Field(…)]` in the module
+call the class. The longest name left is a branch named by its own sorted `required` set and the
+second is a `definitions` entry's `<Root><Key>`: both are ONE segment, so the collision rule has
+nothing to spend on either, and shortening them would be an edit to the rules above. The failure it avoids is the one the upstream v9 SDK
 measures — 1,092 of its 4,360 classes are numbered variants, `WholesaleFeedEvent1` through
 `WholesaleFeedEvent9` — because a numeric suffix carries no information about which position it
 names, where an ancestor segment does.
@@ -1270,7 +1278,7 @@ it, not by this class.
 
 Without it the same fact is counted twice and reported as a defect once. `core/delivery-metrics.json`
 is the measured case: `/properties/quartile_data` states `type: ["object", "null"]`, the field
-renders `DeliveryMetricsQuartileData | None`, and the ROOT pair passes because `_normalize`
+renders `QuartileData | None`, and the ROOT pair passes because `_normalize`
 folds the model's `anyOf: [{$ref}, {"type": "null"}]` back into the document's own list. The
 nested class is then paired with the same node and reports `differs /type` — `object` against
 `["object", "null"]` — for a fact the parent already carries and the comparison already graded.

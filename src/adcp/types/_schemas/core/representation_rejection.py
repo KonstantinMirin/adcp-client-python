@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import StrMinLen1
 
 
-class RepresentationRejectionCode(StrEnum):
+class Code(StrEnum):
     INCOMPATIBLE_FORMAT_KIND = 'incompatible_format_kind'
     FORMAT_OPTION_MISMATCH = 'format_option_mismatch'
     UNSUPPORTED_DELIVERY_TYPE = 'unsupported_delivery_type'
@@ -30,7 +30,7 @@ class RepresentationRejection(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/representation-rejection.json', pointer='#')
     representation_id: StrMinLen1
-    code: RepresentationRejectionCode
+    code: Code
     message: StrMinLen1
     details: dict[str, Any] | None = None
 

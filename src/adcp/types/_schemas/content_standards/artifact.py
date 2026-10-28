@@ -14,7 +14,7 @@ from ..core.format_id import FormatReferenceStructuredObject
 from ..core.provenance import Provenance
 
 
-class ArtifactAssetsItemTextRole(StrEnum):
+class Role(StrEnum):
     """
     Role of this text in the document. Use 'title' for the main artifact title, 'description' for summaries.
     """
@@ -27,7 +27,7 @@ class ArtifactAssetsItemTextRole(StrEnum):
     DESCRIPTION = 'description'
 
 
-class ArtifactAssetsItemTextContentFormat(StrEnum):
+class ContentFormat(StrEnum):
     """
     MIME type indicating how to parse the content field. Default: text/plain.
     """
@@ -37,15 +37,15 @@ class ArtifactAssetsItemTextContentFormat(StrEnum):
     APPLICATION_JSON = 'application/json'
 
 
-class ArtifactAssetsItemText(AdCPBaseModel):
+class AssetsItemText(AdCPBaseModel):
     """
     Text block (paragraph, heading, etc.)
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/0')
     type: Literal['text']
-    role: Annotated[ArtifactAssetsItemTextRole | None, Field(description="Role of this text in the document. Use 'title' for the main artifact title, 'description' for summaries.")] = None
+    role: Annotated[Role | None, Field(description="Role of this text in the document. Use 'title' for the main artifact title, 'description' for summaries.")] = None
     content: Annotated[StrMaxLen100000, Field(description='Text content. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')]
-    content_format: Annotated[ArtifactAssetsItemTextContentFormat | None, Field(description='MIME type indicating how to parse the content field. Default: text/plain.')] = 'text/plain'
+    content_format: Annotated[ContentFormat | None, Field(description='MIME type indicating how to parse the content field. Default: text/plain.')] = 'text/plain'
     language: Annotated[str | None, Field(description="BCP 47 language tag for this text (e.g., 'en', 'es-MX'). Useful when artifact contains mixed-language content.")] = None
     heading_level: Annotated[IntMin1Max6 | None, Field(description='Heading level (1-6), only for role=heading')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this text block, overrides artifact-level provenance')] = None
@@ -60,7 +60,7 @@ class ArtifactAssetAccessBearerToken(AdCPBaseModel):
     token: Annotated[str, Field(description="Short-lived, asset-scoped bearer token for the Authorization header. Producers MUST NOT issue a standing or broadly scoped credential here. Consumers MUST redact the token from logs, traces, errors, metrics, analytics, model context, and durable storage. Any temporary encrypted cache MUST be bounded by the credential expiry and the consumer's configured maximum lifetime.")]
 
 
-class ArtifactAssetAccessServiceAccountProvider(StrEnum):
+class Provider(StrEnum):
     """
     Cloud provider
     """
@@ -74,7 +74,7 @@ class ArtifactAssetAccessServiceAccount(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/$defs/asset_access/oneOf/1')
     method: Literal['service_account']
-    provider: Annotated[ArtifactAssetAccessServiceAccountProvider, Field(description='Cloud provider')]
+    provider: Annotated[Provider, Field(description='Cloud provider')]
     credentials: Annotated[dict[str, Any] | None, Field(description="Deprecated in AdCP 3.2 and eligible for removal in 4.0 or later only after the deprecation-policy notice and release-cycle gates are satisfied. Presence denotes the legacy inline-credential form, not workload-identity authorization. New producers MUST omit this field. Consumers MUST NOT activate received credentials automatically; they may process them only for an explicitly allowlisted legacy peer and otherwise MUST reject or quarantine them. Consumers MUST redact the complete value from logs, traces, errors, metrics, analytics, model context, and durable storage. Use the consumer's pre-authorized workload identity or `signed_url` instead.")] = None
 
 
@@ -89,7 +89,7 @@ class ArtifactAssetAccessSignedUrl(AdCPBaseModel):
 ArtifactAssetAccess = Annotated[ArtifactAssetAccessBearerToken | ArtifactAssetAccessServiceAccount | ArtifactAssetAccessSignedUrl, Field(description='Access instructions for a secured asset URL. Producers SHOULD use `signed_url` for one-off delivery unless the parties already have an identity-based access relationship. New producers MUST NOT emit `service_account.credentials`; `bearer_token` is the explicit short-lived credential path. Consumers MUST treat asset URLs and access metadata as untrusted, use credentials only for HTTPS origins and resource prefixes authorized out of band, and fail closed without falling back between access methods. The deprecated legacy field remains parseable during the 3.x compatibility window but MUST NOT be activated automatically.')]
 
 
-class ArtifactAssetsItemImage(AdCPBaseModel):
+class AssetsItemImage(AdCPBaseModel):
     """
     Image asset
     """
@@ -104,7 +104,7 @@ class ArtifactAssetsItemImage(AdCPBaseModel):
     provenance: Annotated[Provenance | None, Field(description='Provenance for this image, overrides artifact-level provenance')] = None
 
 
-class ArtifactAssetsItemVideoTranscriptFormat(StrEnum):
+class AssetsItemVideoTranscriptFormat(StrEnum):
     """
     MIME type indicating how to parse the transcript field. Default: text/plain.
     """
@@ -113,7 +113,7 @@ class ArtifactAssetsItemVideoTranscriptFormat(StrEnum):
     APPLICATION_JSON = 'application/json'
 
 
-class ArtifactAssetsItemVideoTranscriptSource(StrEnum):
+class AssetsItemVideoTranscriptSource(StrEnum):
     """
     How the transcript was generated
     """
@@ -124,7 +124,7 @@ class ArtifactAssetsItemVideoTranscriptSource(StrEnum):
     GENERATED = 'generated'
 
 
-class ArtifactAssetsItemVideo(AdCPBaseModel):
+class AssetsItemVideo(AdCPBaseModel):
     """
     Video asset
     """
@@ -134,16 +134,16 @@ class ArtifactAssetsItemVideo(AdCPBaseModel):
     access: Annotated[ArtifactAssetAccess | None, Field(description='Authentication for secured URLs')] = None
     duration_ms: Annotated[int | None, Field(description='Video duration in milliseconds')] = None
     transcript: Annotated[StrMaxLen200000 | None, Field(description='Video transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
-    transcript_format: Annotated[ArtifactAssetsItemVideoTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.')] = 'text/plain'
-    transcript_source: Annotated[ArtifactAssetsItemVideoTranscriptSource | None, Field(description='How the transcript was generated')] = None
+    transcript_format: Annotated[AssetsItemVideoTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.')] = 'text/plain'
+    transcript_source: Annotated[AssetsItemVideoTranscriptSource | None, Field(description='How the transcript was generated')] = None
     thumbnail_url: Annotated[HttpUrl | None, Field(description='Video thumbnail URL')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this video, overrides artifact-level provenance')] = None
 
 
-ArtifactAssetsItemAudioTranscriptFormat = ArtifactAssetsItemVideoTranscriptFormat
+AssetsItemAudioTranscriptFormat = AssetsItemVideoTranscriptFormat
 
 
-class ArtifactAssetsItemAudioTranscriptSource(StrEnum):
+class AssetsItemAudioTranscriptSource(StrEnum):
     """
     How the transcript was generated
     """
@@ -152,7 +152,7 @@ class ArtifactAssetsItemAudioTranscriptSource(StrEnum):
     GENERATED = 'generated'
 
 
-class ArtifactAssetsItemAudio(AdCPBaseModel):
+class AssetsItemAudio(AdCPBaseModel):
     """
     Audio asset
     """
@@ -162,12 +162,12 @@ class ArtifactAssetsItemAudio(AdCPBaseModel):
     access: Annotated[ArtifactAssetAccess | None, Field(description='Authentication for secured URLs')] = None
     duration_ms: Annotated[int | None, Field(description='Audio duration in milliseconds')] = None
     transcript: Annotated[StrMaxLen200000 | None, Field(description='Audio transcript. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')] = None
-    transcript_format: Annotated[ArtifactAssetsItemAudioTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.')] = 'text/plain'
-    transcript_source: Annotated[ArtifactAssetsItemAudioTranscriptSource | None, Field(description='How the transcript was generated')] = None
+    transcript_format: Annotated[AssetsItemAudioTranscriptFormat | None, Field(description='MIME type indicating how to parse the transcript field. Default: text/plain.')] = 'text/plain'
+    transcript_source: Annotated[AssetsItemAudioTranscriptSource | None, Field(description='How the transcript was generated')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance for this audio, overrides artifact-level provenance')] = None
 
 
-class ArtifactMetadata(AdCPBaseModel):
+class Metadata(AdCPBaseModel):
     """
     Rich metadata extracted from the artifact
     """
@@ -183,7 +183,7 @@ class ArtifactMetadata(AdCPBaseModel):
     json_ld: Annotated[list[dict[str, Any]] | None, Field(description='JSON-LD structured data (schema.org)')] = None
 
 
-class ArtifactIdentifiers(AdCPBaseModel):
+class Identifiers(AdCPBaseModel):
     """
     Platform-specific identifiers for this artifact
     """
@@ -214,10 +214,10 @@ class Artifact(AdCPBaseModel):
     url: Annotated[HttpUrl | None, Field(description='Optional URL for this artifact (web page, podcast feed, video page). Not all artifacts have URLs (e.g., Instagram content, podcast segments, TV scenes).')] = None
     published_time: Annotated[AwareDatetime | None, Field(description='When the artifact was published (ISO 8601 format)')] = None
     last_update_time: Annotated[AwareDatetime | None, Field(description='When the artifact was last modified (ISO 8601 format)')] = None
-    assets: Annotated[list[ArtifactAssetsItemText | ArtifactAssetsItemImage | ArtifactAssetsItemVideo | ArtifactAssetsItemAudio], Field(description='Artifact assets in document flow order - text blocks, images, video, audio', max_length=200)]
-    metadata: Annotated[ArtifactMetadata | None, Field(description='Rich metadata extracted from the artifact')] = None
+    assets: Annotated[list[AssetsItemText | AssetsItemImage | AssetsItemVideo | AssetsItemAudio], Field(description='Artifact assets in document flow order - text blocks, images, video, audio', max_length=200)]
+    metadata: Annotated[Metadata | None, Field(description='Rich metadata extracted from the artifact')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact — individual assets can override with their own provenance.')] = None
-    identifiers: Annotated[ArtifactIdentifiers | None, Field(description='Platform-specific identifiers for this artifact')] = None
+    identifiers: Annotated[Identifiers | None, Field(description='Platform-specific identifiers for this artifact')] = None
 
 
 __all__ = ["Artifact", "ArtifactAssetAccess"]

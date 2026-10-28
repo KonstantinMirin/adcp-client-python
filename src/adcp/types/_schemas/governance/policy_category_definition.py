@@ -11,7 +11,7 @@ from adcp.types.constraints import StrMatching4D6E1599, StrMinLen1
 from ..enums.restricted_attribute import RestrictedAttribute
 
 
-class PolicyCategoryDefinitionFacetsItem(AdCPBaseModel):
+class FacetsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -21,7 +21,7 @@ class PolicyCategoryDefinitionFacetsItem(AdCPBaseModel):
     description: StrMinLen1
 
 
-class PolicyCategoryDefinitionRegulatoryFrameworksItem(AdCPBaseModel):
+class RegulatoryFrameworksItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -43,8 +43,8 @@ class PolicyCategoryDefinition(AdCPBaseModel):
     category_id: Annotated[StrMatching4D6E1599, Field(description='Unique identifier for this category. Used in plan.policy_categories, signal-definition.policy_categories, and policy-entry.policy_categories.')]
     name: Annotated[str, Field(description="Human-readable name (e.g., 'Children-Directed Content').")]
     description: Annotated[str, Field(description='What this category covers. Defines the boundary — what campaigns or data fall under this category.')]
-    facets: Annotated[list[PolicyCategoryDefinitionFacetsItem] | None, Field(description='Registry-defined distinctions within the category that materially affect policy applicability or seller acceptance. Facets refine a category without creating a new top-level policy category.', min_length=1)] = None
-    regulatory_frameworks: Annotated[list[PolicyCategoryDefinitionRegulatoryFrameworksItem] | None, Field(description='Key regulations and standards grouped under this category. Governance agents use this to resolve specific policies from the registry.')] = None
+    facets: Annotated[list[FacetsItem] | None, Field(description='Registry-defined distinctions within the category that materially affect policy applicability or seller acceptance. Facets refine a category without creating a new top-level policy category.', min_length=1)] = None
+    regulatory_frameworks: Annotated[list[RegulatoryFrameworksItem] | None, Field(description='Key regulations and standards grouped under this category. Governance agents use this to resolve specific policies from the registry.')] = None
     restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description="Restricted attribute categories that regulations in this category prohibit for targeting. Governance agents enforce these when the category is active on a plan — if a plan declares policy_categories: ['fair_housing'], the governance agent restricts targeting on these attributes.")] = None
     requires_human_review: Annotated[bool | None, Field(description='When true, any plan declaring this category MUST set plan.human_review_required = true. Use for regulatory regimes that mandate human oversight under GDPR Art 22 or EU AI Act Annex III — fair_housing, fair_lending, fair_employment, pharmaceutical_advertising, and similar high-risk categories. Category-level setting applies to all policies and plans referencing it; policies can override on policy-entry.requires_human_review. Effective immediately regardless of individual policy `effective_date` fields.')] = False
     industries: Annotated[list[str] | None, Field(description="Industries where this category commonly applies (e.g., 'pharmaceutical' for age_restricted). Governance agents MAY suggest relevant categories when a plan's brand industry matches but no policy_categories are declared.")] = None

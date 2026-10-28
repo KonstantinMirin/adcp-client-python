@@ -21,7 +21,7 @@ class PropertyFeatureDefinitionType(StrEnum):
     CATEGORICAL = 'categorical'
 
 
-class PropertyFeatureDefinitionRange(AdCPBaseModel):
+class Range(AdCPBaseModel):
     """
     For quantitative features, the valid range of values
     """
@@ -33,7 +33,7 @@ class PropertyFeatureDefinitionRange(AdCPBaseModel):
     max: Annotated[float, Field(description='Maximum value')]
 
 
-class PropertyFeatureDefinitionCoverage(AdCPBaseModel):
+class Coverage(AdCPBaseModel):
     """
     What this feature covers (empty arrays = all)
     """
@@ -57,9 +57,9 @@ class PropertyFeatureDefinition(AdCPBaseModel):
     name: Annotated[str, Field(description='Human-readable name for the feature')]
     description: Annotated[str | None, Field(description='Description of what this feature measures or represents')] = None
     type: Annotated[PropertyFeatureDefinitionType, Field(description='The type of values this feature produces: binary (true/false), quantitative (numeric range), categorical (enumerated values)')]
-    range: Annotated[PropertyFeatureDefinitionRange | None, Field(description='For quantitative features, the valid range of values')] = None
+    range: Annotated[Range | None, Field(description='For quantitative features, the valid range of values')] = None
     allowed_values: Annotated[list[str] | None, Field(description='For categorical features, the set of valid values')] = None
-    coverage: Annotated[PropertyFeatureDefinitionCoverage | None, Field(description='What this feature covers (empty arrays = all)')] = None
+    coverage: Annotated[Coverage | None, Field(description='What this feature covers (empty arrays = all)')] = None
     methodology_url: Annotated[HttpUrl, Field(description='URL to documentation explaining how this feature is calculated/measured')]
     methodology_version: Annotated[str | None, Field(description='Version identifier for the methodology (for audit trails)')] = None
     ext: ExtensionObject | None = None

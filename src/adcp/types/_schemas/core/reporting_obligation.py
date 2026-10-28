@@ -19,7 +19,7 @@ from .reporting_schedule import ReportingSchedule
 from .reporting_status_issue import ReportingStatusIssue
 
 
-class ReportingObligationPeriod(AdCPBaseModel):
+class Period(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -29,7 +29,7 @@ class ReportingObligationPeriod(AdCPBaseModel):
     source_timezone: StrMinLen1
 
 
-class ReportingObligationReconciliationStatus(StrEnum):
+class ReconciliationStatus(StrEnum):
     """
     Consumer agreement state for the current required revision. A later superseding revision returns a receipt-required obligation to pending until that revision is accepted.
     """
@@ -39,7 +39,7 @@ class ReportingObligationReconciliationStatus(StrEnum):
     REJECTED = 'rejected'
 
 
-class ReportingObligationProductionStatus(StrEnum):
+class ProductionStatus(StrEnum):
     """
     Whether any revision has been produced for this obligation. published includes zero-row revisions.
     """
@@ -72,15 +72,15 @@ class ReportingObligation(AdCPBaseModel):
     media_buy_ids: Annotated[list[ReportingCoverageReportingMediaBuyId], Field(description='Exact frozen media-buy denominator resolved for this period, including buys with zero rows. An empty array is the definitive zero-buy set; omission is never used to mean all, empty, or unknown.', json_schema_extra={'uniqueItems': True})]
     scope_resolved_at: Annotated[AwareDatetime, Field(description='Instant at which the configured scope was resolved and frozen for this obligation. For all_media_buys, include every caller-authorized account media buy whose effective flight overlaps the half-open period and was known by this cutoff. Later-created or backdated buys do not rewrite this obligation.')]
     coverage: Annotated[ReportingCoverage, Field(description='Immutable effective coverage of the exact selected offering at this period boundary. Delivery health is evaluated separately over the covered denominator.')]
-    period: ReportingObligationPeriod
+    period: Period
     expected_at: AwareDatetime
     schedule: Annotated[ReportingSchedule, Field(description='Resolved immutable schedule generation that created this obligation.')]
     destination_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Immutable caller-owned destination generation selected by this account-authorized obligation. The account/configuration join—not possession of this reusable reference—authorizes disclosure. Present when and only when the obligation’s configuration selects a managed-delivery offering; Core (API-delivered) obligations omit every destination and materialization field.')] = None
     required_finality: ReportingFinality
     reconciliation_mode: ReportingReconciliationMode
-    reconciliation_status: Annotated[ReportingObligationReconciliationStatus, Field(description='Consumer agreement state for the current required revision. A later superseding revision returns a receipt-required obligation to pending until that revision is accepted.')]
+    reconciliation_status: Annotated[ReconciliationStatus, Field(description='Consumer agreement state for the current required revision. A later superseding revision returns a receipt-required obligation to pending until that revision is accepted.')]
     health: ReportingHealth
-    production_status: Annotated[ReportingObligationProductionStatus, Field(description='Whether any revision has been produced for this obligation. published includes zero-row revisions.')]
+    production_status: Annotated[ProductionStatus, Field(description='Whether any revision has been produced for this obligation. published includes zero-row revisions.')]
     revision_count: Annotated[NonNegativeInt, Field(description='Number of revision records for this obligation in the consistent ledger snapshot.')]
     consumer_status_count: Annotated[NonNegativeInt | None, Field(description='Complete number of immutable authenticated consumer status statements associated with this obligation in the ledger snapshot, whether originally joined by reporting_obligation_id or by the exact configuration-generation, report-definition, and period key before the obligation existed. Core status-sync history is counted independently from Reconciled Billing receipts.')] = None
     current_consumer_status_id: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB | None, Field(description='Current unsuperseded consumer status statement associated with this obligation by seller ID or its exact logical period key. Omitted when consumer_status_count is zero.')] = None

@@ -18,12 +18,12 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ListAccountChangesResponseSourceCoverageItemKind(StrEnum):
+class Kind(StrEnum):
     SELLER = 'seller'
     CONNECTED_PLATFORM = 'connected_platform'
 
 
-class ListAccountChangesResponseSourceCoverageItemStatus(StrEnum):
+class Status(StrEnum):
     """
     Connector freshness classification. For connected_platform, current means last_successful_sync_at is no older than stale_after_seconds at generated_at and the seller knows of no ingestion gap; delayed means that threshold is exceeded or a gap is known.
     """
@@ -33,7 +33,7 @@ class ListAccountChangesResponseSourceCoverageItemStatus(StrEnum):
     NOT_CONFIGURED = 'not_configured'
 
 
-class ListAccountChangesResponseSourceCoverageItem(AdCPBaseModel):
+class SourceCoverageItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -43,8 +43,8 @@ class ListAccountChangesResponseSourceCoverageItem(AdCPBaseModel):
         ConditionalRequired((Match('kind', True, ('connected_platform',)),Match('status', True, ('current',)),), require=('last_successful_sync_at', 'stale_after_seconds'), forbid=()),
     )
     source_id: Annotated[StrMaxLen255, Field(description='Opaque seller or connection reference.')]
-    kind: ListAccountChangesResponseSourceCoverageItemKind
-    status: Annotated[ListAccountChangesResponseSourceCoverageItemStatus, Field(description='Connector freshness classification. For connected_platform, current means last_successful_sync_at is no older than stale_after_seconds at generated_at and the seller knows of no ingestion gap; delayed means that threshold is exceeded or a gap is known.')]
+    kind: Kind
+    status: Annotated[Status, Field(description='Connector freshness classification. For connected_platform, current means last_successful_sync_at is no older than stale_after_seconds at generated_at and the seller knows of no ingestion gap; delayed means that threshold is exceeded or a gap is known.')]
     coverage_start: Annotated[AwareDatetime | None, Field(description='Earliest upstream time covered by this source after connection or retention limits.')] = None
     observed_through: Annotated[AwareDatetime | None, Field(description='Latest upstream point the seller has successfully observed.')] = None
     last_successful_sync_at: AwareDatetime | None = None
@@ -71,7 +71,7 @@ class ListAccountChangesResponse(BranchDispatchMixin, AdCPVersionEnvelope, Proto
     has_more: Annotated[bool | None, Field(description='True when more retained matching changes were available at generation time. False means caught up to seller ingestion, not necessarily to an unavailable or delayed connected source.')] = None
     available_since: Annotated[AwareDatetime | None, Field(description='Oldest time for which the seller currently retains change records for this account and caller. The capability guarantees at least 90 days after adoption; pre-adoption history is not fabricated.')] = None
     generated_at: Annotated[AwareDatetime | None, Field(description='Seller time when this page and its source-coverage watermarks were generated.')] = None
-    source_coverage: Annotated[list[ListAccountChangesResponseSourceCoverageItem] | None, Field(description='Account-specific feed and connector coverage. Buyers use this to distinguish feed catch-up from upstream freshness. Omission means no additional connected-source coverage is declared.', max_length=50)] = None
+    source_coverage: Annotated[list[SourceCoverageItem] | None, Field(description='Account-specific feed and connector coverage. Buyers use this to distinguish feed catch-up from upstream freshness. Omission means no additional connected-source coverage is declared.', max_length=50)] = None
     errors: list[Error] | None = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

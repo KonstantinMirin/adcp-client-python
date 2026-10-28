@@ -13,7 +13,7 @@ from adcp.types.constraints import StrMatching5E987613, StrMinLen1, StrMinLen1Ma
 ReportingCanonicalizationContractReportingPrimaryKey = StrMinLen1MaxLen128
 
 
-class ReportingCanonicalizationContractGoldenVectorsEmptyReport(AdCPBaseModel):
+class EmptyReport(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -25,7 +25,7 @@ class ReportingCanonicalizationContractGoldenVectorsEmptyReport(AdCPBaseModel):
     sha256: Literal['4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945']
 
 
-class ReportingCanonicalizationContractGoldenVectorsOrderingEncoding(AdCPBaseModel):
+class OrderingEncoding(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -37,7 +37,7 @@ class ReportingCanonicalizationContractGoldenVectorsOrderingEncoding(AdCPBaseMod
     sha256: StrMatching5E987613
 
 
-class ReportingCanonicalizationContractGoldenVectorsAdditionalItem(AdCPBaseModel):
+class AdditionalItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -49,7 +49,7 @@ class ReportingCanonicalizationContractGoldenVectorsAdditionalItem(AdCPBaseModel
     sha256: StrMatching5E987613
 
 
-class ReportingCanonicalizationContractGoldenVectors(AdCPBaseModel):
+class GoldenVectors(AdCPBaseModel):
     """
     Named cross-language conformance cases: exactly one empty_report vector, exactly one ordering_encoding vector, and an optional list of additional vectors.
     """
@@ -57,9 +57,9 @@ class ReportingCanonicalizationContractGoldenVectors(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-canonicalization-contract.json', pointer='#/properties/golden_vectors')
-    empty_report: ReportingCanonicalizationContractGoldenVectorsEmptyReport
-    ordering_encoding: ReportingCanonicalizationContractGoldenVectorsOrderingEncoding
-    additional: list[ReportingCanonicalizationContractGoldenVectorsAdditionalItem] | None = None
+    empty_report: EmptyReport
+    ordering_encoding: OrderingEncoding
+    additional: list[AdditionalItem] | None = None
 
 
 class ReportingCanonicalizationContract(AdCPBaseModel):
@@ -78,7 +78,7 @@ class ReportingCanonicalizationContract(AdCPBaseModel):
     algorithm: Literal['adcp_jcs_rows_v1']
     schema_sha256: Annotated[StrMatching5E987613, Field(description='Digest of the exact row schema to which this contract applies.')]
     primary_keys: Annotated[list[ReportingCanonicalizationContractReportingPrimaryKey], Field(description="Ordered scalar fields used to sort rows and reject duplicate logical rows. This MUST equal the offering's primary_keys.", json_schema_extra={'uniqueItems': True}, min_length=1)]
-    golden_vectors: Annotated[ReportingCanonicalizationContractGoldenVectors, Field(description='Named cross-language conformance cases: exactly one empty_report vector, exactly one ordering_encoding vector, and an optional list of additional vectors.')]
+    golden_vectors: Annotated[GoldenVectors, Field(description='Named cross-language conformance cases: exactly one empty_report vector, exactly one ordering_encoding vector, and an optional list of additional vectors.')]
 
 
 __all__ = ["ReportingCanonicalizationContract", "ReportingCanonicalizationContractReportingPrimaryKey"]

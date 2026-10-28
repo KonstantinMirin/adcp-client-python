@@ -34,7 +34,7 @@ class SearchBrandsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnv
         return "oneOf"
 
 
-class SearchBrandsResponseSearchBrandResultHouse(AdCPBaseModel):
+class House(AdCPBaseModel):
     """
     The house (corporate entity) associated with this brand. Present when a house affiliation is on record. Use relationship_trust to determine whether this association has been reciprocally confirmed by the house.
     """
@@ -46,7 +46,7 @@ class SearchBrandsResponseSearchBrandResultHouse(AdCPBaseModel):
     name: Annotated[str, Field(description='House display name')]
 
 
-class SearchBrandsResponseSearchBrandResultRelationshipTrust(StrEnum):
+class RelationshipTrust(StrEnum):
     """
     Trust verdict for the brand-to-house relationship, computed from the mutual-assertion model. inline = brand defined inside the house's own document; mutual = both sides publish the relationship (trust-extending); leaf_only = brand claims house but house has not reciprocated or declaration is expired; house_only = house claims brand, brand has not reciprocated; standalone = brand claims no house; unverifiable = claimed house could not be checked. When absent, trust has not yet been computed — absent MUST NOT be interpreted as standalone. Use get_brand_identity or verify_brand_claim for authoritative trust resolution.
     """
@@ -58,7 +58,7 @@ class SearchBrandsResponseSearchBrandResultRelationshipTrust(StrEnum):
     UNVERIFIABLE = 'unverifiable'
 
 
-class SearchBrandsResponseSearchBrandResultKellerType(StrEnum):
+class KellerType(StrEnum):
     """
     Brand architecture type: master (primary brand of house), sub_brand (carries parent name), endorsed (independent identity backed by parent), independent (operates separately)
     """
@@ -68,7 +68,7 @@ class SearchBrandsResponseSearchBrandResultKellerType(StrEnum):
     INDEPENDENT = 'independent'
 
 
-class SearchBrandsResponseSearchBrandResultLogosItemOrientation(StrEnum):
+class Orientation(StrEnum):
     """
     Logo aspect ratio orientation
     """
@@ -78,7 +78,7 @@ class SearchBrandsResponseSearchBrandResultLogosItemOrientation(StrEnum):
     STACKED = 'stacked'
 
 
-class SearchBrandsResponseSearchBrandResultLogosItemBackground(StrEnum):
+class Background(StrEnum):
     """
     Background compatibility
     """
@@ -87,7 +87,7 @@ class SearchBrandsResponseSearchBrandResultLogosItemBackground(StrEnum):
     TRANSPARENT_BG = 'transparent-bg'
 
 
-class SearchBrandsResponseSearchBrandResultLogosItemVariant(StrEnum):
+class Variant(StrEnum):
     """
     Logo variant type
     """
@@ -98,18 +98,18 @@ class SearchBrandsResponseSearchBrandResultLogosItemVariant(StrEnum):
     FULL_LOCKUP = 'full-lockup'
 
 
-class SearchBrandsResponseSearchBrandResultLogosItem(AdCPBaseModel):
+class LogosItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/logos/items')
     url: Annotated[HttpUrl, Field(description='URL to the logo asset')]
-    orientation: Annotated[SearchBrandsResponseSearchBrandResultLogosItemOrientation | None, Field(description='Logo aspect ratio orientation')] = None
-    background: Annotated[SearchBrandsResponseSearchBrandResultLogosItemBackground | None, Field(description='Background compatibility')] = None
-    variant: Annotated[SearchBrandsResponseSearchBrandResultLogosItemVariant | None, Field(description='Logo variant type')] = None
+    orientation: Annotated[Orientation | None, Field(description='Logo aspect ratio orientation')] = None
+    background: Annotated[Background | None, Field(description='Background compatibility')] = None
+    variant: Annotated[Variant | None, Field(description='Logo variant type')] = None
 
 
-class SearchBrandsResponseSearchBrandResultRights(AdCPBaseModel):
+class Rights(AdCPBaseModel):
     """
     Rights availability summary. Signals whether this brand has licensable rights and in which markets. For detailed pricing and rights records, use get_rights.
     """
@@ -131,16 +131,16 @@ class SearchBrandsResponseSearchBrandResult(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult')
     brand_id: Annotated[str, Field(description='Brand identifier. Pass to get_brand_identity or get_rights for the next step.')]
-    house: Annotated[SearchBrandsResponseSearchBrandResultHouse | None, Field(description='The house (corporate entity) associated with this brand. Present when a house affiliation is on record. Use relationship_trust to determine whether this association has been reciprocally confirmed by the house.')] = None
-    relationship_trust: Annotated[SearchBrandsResponseSearchBrandResultRelationshipTrust | None, Field(description="Trust verdict for the brand-to-house relationship, computed from the mutual-assertion model. inline = brand defined inside the house's own document; mutual = both sides publish the relationship (trust-extending); leaf_only = brand claims house but house has not reciprocated or declaration is expired; house_only = house claims brand, brand has not reciprocated; standalone = brand claims no house; unverifiable = claimed house could not be checked. When absent, trust has not yet been computed — absent MUST NOT be interpreted as standalone. Use get_brand_identity or verify_brand_claim for authoritative trust resolution.")] = None
+    house: Annotated[House | None, Field(description='The house (corporate entity) associated with this brand. Present when a house affiliation is on record. Use relationship_trust to determine whether this association has been reciprocally confirmed by the house.')] = None
+    relationship_trust: Annotated[RelationshipTrust | None, Field(description="Trust verdict for the brand-to-house relationship, computed from the mutual-assertion model. inline = brand defined inside the house's own document; mutual = both sides publish the relationship (trust-extending); leaf_only = brand claims house but house has not reciprocated or declaration is expired; house_only = house claims brand, brand has not reciprocated; standalone = brand claims no house; unverifiable = claimed house could not be checked. When absent, trust has not yet been computed — absent MUST NOT be interpreted as standalone. Use get_brand_identity or verify_brand_claim for authoritative trust resolution.")] = None
     relationship_verified_at: Annotated[AwareDatetime | None, Field(description='When the mutual-assertion edge was last confirmed by both sides. Present only when relationship_trust is mutual.')] = None
     claimed_house_domain: Annotated[str | None, Field(description='Canonical domain of the house this brand self-declares as its parent. Not trust-extending on its own. Present for leaf_only and unverifiable trust states where the brand has made a claim that could not be or has not been reciprocated.')] = None
     names: Annotated[list[DictMinProperties1[str, str]], Field(description="Localized brand names with BCP 47 locale code keys (e.g., 'en_US', 'fr_CA').")]
     description: Annotated[str | None, Field(description='Brand description')] = None
     industries: Annotated[list[AdvertiserIndustry] | None, Field(description='Brand industries, following the advertiser-industry taxonomy', min_length=1)] = None
-    keller_type: Annotated[SearchBrandsResponseSearchBrandResultKellerType | None, Field(description='Brand architecture type: master (primary brand of house), sub_brand (carries parent name), endorsed (independent identity backed by parent), independent (operates separately)')] = None
-    logos: Annotated[list[SearchBrandsResponseSearchBrandResultLogosItem] | None, Field(description='Standard-resolution logos for display during discovery. High-res variants are gated behind get_brand_identity with account authorization.')] = None
-    rights: Annotated[SearchBrandsResponseSearchBrandResultRights | None, Field(description='Rights availability summary. Signals whether this brand has licensable rights and in which markets. For detailed pricing and rights records, use get_rights.')] = None
+    keller_type: Annotated[KellerType | None, Field(description='Brand architecture type: master (primary brand of house), sub_brand (carries parent name), endorsed (independent identity backed by parent), independent (operates separately)')] = None
+    logos: Annotated[list[LogosItem] | None, Field(description='Standard-resolution logos for display during discovery. High-res variants are gated behind get_brand_identity with account authorization.')] = None
+    rights: Annotated[Rights | None, Field(description='Rights availability summary. Signals whether this brand has licensable rights and in which markets. For detailed pricing and rights records, use get_rights.')] = None
 
 
 class SearchBrandsSuccess(SearchBrandsResponse):

@@ -12,28 +12,28 @@ from adcp.types.constraints import FloatMin0Max1, HttpUrl
 from ..core.ext import ExtensionObject
 
 
-class CreativeAuditObservationCode(StrEnum):
+class Code(StrEnum):
     """
     Machine-readable observation code. `OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED` means provenance declares `human_oversight` as `edited` or `directed` while also declaring `disclosure.required: false`; the verifier is surfacing the carve-out claim for audit, not adjudicating it.
     """
     OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED = 'OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED'
 
 
-class CreativeAuditObservationSeverity(StrEnum):
+class Severity(StrEnum):
     """
     Routing severity. `audit-worthy` means the observation should be retained and may be routed to human or downstream audit review, but it is not a protocol rejection signal.
     """
     AUDIT_WORTHY = 'audit-worthy'
 
 
-class CreativeAuditObservationRecovery(StrEnum):
+class Recovery(StrEnum):
     """
     Caller recovery category for audit observations, distinct from the canonical error-code recovery enum. `informational` means the creative can continue through the normal flow; the observation is audit context rather than a required correction.
     """
     INFORMATIONAL = 'informational'
 
 
-class CreativeAuditObservationDetailsClaimedValueHumanOversight(StrEnum):
+class HumanOversight(StrEnum):
     """
     Human oversight level declared by the creative provenance.
     """
@@ -41,7 +41,7 @@ class CreativeAuditObservationDetailsClaimedValueHumanOversight(StrEnum):
     DIRECTED = 'directed'
 
 
-class CreativeAuditObservationDetailsClaimedValue(AdCPBaseModel):
+class ClaimedValue(AdCPBaseModel):
     """
     Compact object of claimed provenance values that triggered the observation.
     """
@@ -49,11 +49,11 @@ class CreativeAuditObservationDetailsClaimedValue(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/audit-observation.json', pointer='#/properties/details/properties/claimed_value')
-    human_oversight: Annotated[CreativeAuditObservationDetailsClaimedValueHumanOversight, Field(description='Human oversight level declared by the creative provenance.')]
+    human_oversight: Annotated[HumanOversight, Field(description='Human oversight level declared by the creative provenance.')]
     disclosure_required: Annotated[Literal[False], Field(description='Disclosure-required claim declared by the creative provenance.')]
 
 
-class CreativeAuditObservationDetails(AdCPBaseModel):
+class Details(AdCPBaseModel):
     """
     Audit-safe structured details. Mirrors the safe allowlist keys used for `PROVENANCE_CLAIM_CONTRADICTED`; value shapes remain observation-specific. Top-level `ext` remains the standard protocol extension point, but details do not allow arbitrary verifier response fields.
     """
@@ -63,7 +63,7 @@ class CreativeAuditObservationDetails(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/audit-observation.json', pointer='#/properties/details')
     agent_url: Annotated[HttpUrl, Field(description='Governance agent URL that produced the observation.')]
     feature_id: Annotated[str | None, Field(description='Feature or policy check that produced the observation.')] = None
-    claimed_value: Annotated[CreativeAuditObservationDetailsClaimedValue, Field(description='Compact object of claimed provenance values that triggered the observation.')]
+    claimed_value: Annotated[ClaimedValue, Field(description='Compact object of claimed provenance values that triggered the observation.')]
     observed_value: Annotated[bool | float | str | None, Field(description='Verifier observation relevant to the claim, when applicable.')] = None
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score for the observation, when applicable.')] = None
     substituted_for: Annotated[HttpUrl | None, Field(description='Buyer-nominated verifier URL when the seller or orchestrator used a different on-list governance agent.')] = None
@@ -77,12 +77,12 @@ class CreativeAuditObservation(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/audit-observation.json', pointer='#')
-    code: Annotated[CreativeAuditObservationCode, Field(description='Machine-readable observation code. `OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED` means provenance declares `human_oversight` as `edited` or `directed` while also declaring `disclosure.required: false`; the verifier is surfacing the carve-out claim for audit, not adjudicating it.')]
-    severity: Annotated[CreativeAuditObservationSeverity, Field(description='Routing severity. `audit-worthy` means the observation should be retained and may be routed to human or downstream audit review, but it is not a protocol rejection signal.')]
-    recovery: Annotated[CreativeAuditObservationRecovery, Field(description='Caller recovery category for audit observations, distinct from the canonical error-code recovery enum. `informational` means the creative can continue through the normal flow; the observation is audit context rather than a required correction.')]
+    code: Annotated[Code, Field(description='Machine-readable observation code. `OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED` means provenance declares `human_oversight` as `edited` or `directed` while also declaring `disclosure.required: false`; the verifier is surfacing the carve-out claim for audit, not adjudicating it.')]
+    severity: Annotated[Severity, Field(description='Routing severity. `audit-worthy` means the observation should be retained and may be routed to human or downstream audit review, but it is not a protocol rejection signal.')]
+    recovery: Annotated[Recovery, Field(description='Caller recovery category for audit observations, distinct from the canonical error-code recovery enum. `informational` means the creative can continue through the normal flow; the observation is audit context rather than a required correction.')]
     field: Annotated[str, Field(description='Resolved creative manifest path for the risky claim side of the observation, for example `creative_manifest.provenance.disclosure.required`. Some observations are triggered by a combination of fields; `field` anchors the primary claim, not necessarily every field in the trigger condition.')]
     message: Annotated[str, Field(description='Human-readable summary suitable for an audit queue. Do not include PII, cross-tenant data, or vendor-only report details.')]
-    details: Annotated[CreativeAuditObservationDetails, Field(description='Audit-safe structured details. Mirrors the safe allowlist keys used for `PROVENANCE_CLAIM_CONTRADICTED`; value shapes remain observation-specific. Top-level `ext` remains the standard protocol extension point, but details do not allow arbitrary verifier response fields.')]
+    details: Annotated[Details, Field(description='Audit-safe structured details. Mirrors the safe allowlist keys used for `PROVENANCE_CLAIM_CONTRADICTED`; value shapes remain observation-specific. Top-level `ext` remains the standard protocol extension point, but details do not allow arbitrary verifier response fields.')]
     ext: ExtensionObject | None = None
 
 

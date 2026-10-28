@@ -83,7 +83,7 @@ class InlineMarkupMacroDeclarationsItem(MacroDeclaration):
     location: InlineMarkupMacroDeclarationsItemLocation
 
 
-class InlineMarkupMarkupType(StrEnum):
+class MarkupType(StrEnum):
     """
     How the destination traffics the byte-preserved markup.
     """
@@ -101,11 +101,11 @@ class InlineMarkup(DisplayTagAsset):
     macro_declarations: Annotated[list[InlineMarkupMacroDeclarationsItem] | None, Field(description='Exact macro tokens present anywhere in this representation. Tokens remain byte-preserved until the resolver named by each declaration substitutes them.', min_length=1)] = None
     provenance: Provenance | None = None
     delivery_type: Literal['inline_markup']
-    markup_type: Annotated[InlineMarkupMarkupType, Field(description='How the destination traffics the byte-preserved markup.')]
+    markup_type: Annotated[MarkupType, Field(description='How the destination traffics the byte-preserved markup.')]
     markup: Annotated[StrMinLen1MaxLen1048576, Field(description='Exact third-party tag markup. Receivers MUST preserve its bytes and MUST NOT reinterpret it as a seller-hosted HTML5 bundle.')]
 
 
-class PairedRedirectMacroDeclarationsItemLocationField(StrEnum):
+class LocationField(StrEnum):
     """
     Asset field containing this occurrence.
     """
@@ -118,7 +118,7 @@ class PairedRedirectMacroDeclarationsItemLocation(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/2/properties/macro_declarations/items/allOf/1/properties/location')
-    field: Annotated[PairedRedirectMacroDeclarationsItemLocationField, Field(description='Asset field containing this occurrence.')]
+    field: Annotated[LocationField, Field(description='Asset field containing this occurrence.')]
     occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
     context: MacroValueContext
 

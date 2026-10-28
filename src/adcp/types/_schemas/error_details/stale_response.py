@@ -9,7 +9,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl
 
 
-class StaleResponseDetailsUpstream(AdCPBaseModel):
+class Upstream(AdCPBaseModel):
     """
     Identifies the upstream or sub-agent whose fetch failed and triggered cache fallback. When N upstreams are stale, the seller emits N separate STALE_RESPONSE entries (one per upstream) rather than aggregating into a single entry — mirrors the per-asset advisory precedent set by PIXEL_TRACKER_LOSSY_DOWNGRADE.
     """
@@ -21,7 +21,7 @@ class StaleResponseDetailsUpstream(AdCPBaseModel):
     name: Annotated[str | None, Field(description="Human-readable identifier for the upstream, e.g., 'creative-agent-foo' or 'inventory-service'. Used when the upstream is internal or when the URL is not informative on its own.")] = None
 
 
-class StaleResponseDetailsOriginalError(AdCPBaseModel):
+class OriginalError(AdCPBaseModel):
     """
     Minimal subset of the underlying failure that triggered cache fallback. Sellers MUST NOT include internal stack traces, credentials, or connection strings.
     """
@@ -44,8 +44,8 @@ class StaleResponseDetails(AdCPBaseModel):
     served_from_cache: Annotated[Literal[True], Field(description='Always true for STALE_RESPONSE. Acts as a positive shape sentinel so consumers can validate the details payload matches the code.')]
     cache_age_seconds: Annotated[NonNegativeInt, Field(description='Age of the cached payload in seconds at the time of the response. Informational — buyer agents MAY use this to decide whether to immediately retry for fresh data or accept the cached value.')]
     freshness_target_seconds: Annotated[NonNegativeInt | None, Field(description="The seller's freshness target for this surface, in seconds. `cache_age_seconds - freshness_target_seconds` is how far beyond target the cached entry is. Optional — sellers MAY omit when no public freshness contract is declared.")] = None
-    upstream: Annotated[StaleResponseDetailsUpstream | None, Field(description='Identifies the upstream or sub-agent whose fetch failed and triggered cache fallback. When N upstreams are stale, the seller emits N separate STALE_RESPONSE entries (one per upstream) rather than aggregating into a single entry — mirrors the per-asset advisory precedent set by PIXEL_TRACKER_LOSSY_DOWNGRADE.')] = None
-    original_error: Annotated[StaleResponseDetailsOriginalError | None, Field(description='Minimal subset of the underlying failure that triggered cache fallback. Sellers MUST NOT include internal stack traces, credentials, or connection strings.')] = None
+    upstream: Annotated[Upstream | None, Field(description='Identifies the upstream or sub-agent whose fetch failed and triggered cache fallback. When N upstreams are stale, the seller emits N separate STALE_RESPONSE entries (one per upstream) rather than aggregating into a single entry — mirrors the per-asset advisory precedent set by PIXEL_TRACKER_LOSSY_DOWNGRADE.')] = None
+    original_error: Annotated[OriginalError | None, Field(description='Minimal subset of the underlying failure that triggered cache fallback. Sellers MUST NOT include internal stack traces, credentials, or connection strings.')] = None
 
 
 __all__ = ["StaleResponseDetails"]

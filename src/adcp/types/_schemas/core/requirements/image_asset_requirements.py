@@ -13,7 +13,7 @@ from adcp.types.constraints import FloatGt0, IntGt0, IntMin1, StrMatchingA1D8FDA
 from ...enums.dimension_unit import DimensionUnit
 
 
-class ImageAssetRequirementsFormatsItem(StrEnum):
+class FormatsItem(StrEnum):
     JPG = 'jpg'
     JPEG = 'jpeg'
     PNG = 'png'
@@ -26,7 +26,7 @@ class ImageAssetRequirementsFormatsItem(StrEnum):
     EPS = 'eps'
 
 
-class ImageAssetRequirementsBleedUniform(AdCPBaseModel):
+class BleedUniform(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -34,7 +34,7 @@ class ImageAssetRequirementsBleedUniform(AdCPBaseModel):
     uniform: Annotated[NonNegativeFloat, Field(description='Same bleed on all four sides')]
 
 
-class ImageAssetRequirementsBleedBottomLeftRightTop(AdCPBaseModel):
+class BleedBottomLeftRightTop(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -45,7 +45,7 @@ class ImageAssetRequirementsBleedBottomLeftRightTop(AdCPBaseModel):
     left: NonNegativeFloat
 
 
-class ImageAssetRequirementsColorSpace(StrEnum):
+class ColorSpace(StrEnum):
     """
     Required color space. Print typically requires CMYK.
     """
@@ -74,10 +74,10 @@ class ImageAssetRequirements(AdCPBaseModel):
     parameters_from_format_id: Annotated[bool | None, Field(description="When true on a legacy template format, logical width, logical height, and pixel ratio are supplied by the parameterized format_id. The image asset's intrinsic dimensions MUST equal logical dimensions multiplied by pixel_ratio (which defaults to 1 when omitted).")] = None
     unit: Annotated[DimensionUnit | None, Field(description="Unit of measurement for width/height values. Defaults to 'px' when absent. Print formats use 'inches' or 'cm'.")] = None
     aspect_ratio: Annotated[StrMatchingA1D8FDA8 | None, Field(description="Required aspect ratio (e.g., '16:9', '1:1', '1.91:1')")] = None
-    formats: Annotated[list[ImageAssetRequirementsFormatsItem] | None, Field(description='Accepted image file formats')] = None
+    formats: Annotated[list[FormatsItem] | None, Field(description='Accepted image file formats')] = None
     min_dpi: Annotated[IntMin1 | None, Field(description='Minimum resolution in dots per inch. Always in DPI regardless of the dimension unit. Standard print requires 300 DPI, newspaper 150 DPI.')] = None
-    bleed: Annotated[ImageAssetRequirementsBleedUniform | ImageAssetRequirementsBleedBottomLeftRightTop | None, Field(description='Required bleed area beyond the trim size. The submitted image must be larger than the declared dimensions: total width = trim width + left bleed + right bleed, total height = trim height + top bleed + bottom bleed. For uniform bleed: total = trim + (2 * uniform). Uses the same unit as the parent dimensions.')] = None
-    color_space: Annotated[ImageAssetRequirementsColorSpace | None, Field(description='Required color space. Print typically requires CMYK.')] = None
+    bleed: Annotated[BleedUniform | BleedBottomLeftRightTop | None, Field(description='Required bleed area beyond the trim size. The submitted image must be larger than the declared dimensions: total width = trim width + left bleed + right bleed, total height = trim height + top bleed + bottom bleed. For uniform bleed: total = trim + (2 * uniform). Uses the same unit as the parent dimensions.')] = None
+    color_space: Annotated[ColorSpace | None, Field(description='Required color space. Print typically requires CMYK.')] = None
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes')] = None
     transparency_required: Annotated[bool | None, Field(description='Whether the image must support transparency (requires PNG, WebP, or GIF)')] = None
     animation_allowed: Annotated[bool | None, Field(description='Whether animated images (GIF, animated WebP) are accepted')] = None

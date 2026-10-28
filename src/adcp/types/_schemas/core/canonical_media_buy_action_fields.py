@@ -16,7 +16,7 @@ from .media_buy_legacy_terms_ref import MediaBuyTermsReference
 from .sla_window import SLAWindow
 
 
-class CanonicalMediaBuyActionFieldsTask(StrEnum):
+class Task(StrEnum):
     CONTROL_MEDIA_BUY = 'control_media_buy'
     REFINE_PROPOSALS = 'refine_proposals'
     SYNC_CREATIVES = 'sync_creatives'
@@ -33,7 +33,7 @@ class CanonicalMediaBuyActionFields(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('applicable_package_ids'),
     )
-    task: CanonicalMediaBuyActionFieldsTask
+    task: Task
     action: str
     mode: CanonicalMediaBuyActionMode
     sla: SLAWindow | None = None

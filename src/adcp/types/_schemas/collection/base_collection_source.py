@@ -25,7 +25,7 @@ class BaseCollectionSource(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class DistributionIDsSourceIdentifiersItem(AdCPBaseModel):
+class IdentifiersItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -43,7 +43,7 @@ class DistributionIDsSource(BaseCollectionSource):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/base-collection-source.json', pointer='#/oneOf/0')
     selection_type: Annotated[Literal['distribution_ids'], Field(description='Discriminator indicating selection by platform-independent distribution identifiers')]
-    identifiers: Annotated[list[DistributionIDsSourceIdentifiersItem], Field(description='Platform-independent identifiers (imdb_id, gracenote_id, eidr_id, etc.). Each identifier uniquely identifies a collection across all publishers. platform_channel_id is not allowed here: its identity is the tuple (publisher_domain, value), which this bare {type, value} shape cannot carry.', min_length=1)]
+    identifiers: Annotated[list[IdentifiersItem], Field(description='Platform-independent identifiers (imdb_id, gracenote_id, eidr_id, etc.). Each identifier uniquely identifies a collection across all publishers. platform_channel_id is not allowed here: its identity is the tuple (publisher_domain, value), which this bare {type, value} shape cannot carry.', min_length=1)]
 
 
 class PublisherCollectionsSource(BaseCollectionSource):

@@ -15,14 +15,14 @@ from .agent_reporting_destination import AgentReportingDestination
 from .error import Error
 
 
-class AgentReportingDestinationStateSetupAction(StrEnum):
+class Action(StrEnum):
     GRANT_ACCESS = 'grant_access'
     ACCEPT_SHARE = 'accept_share'
     PROVE_CONTROL = 'prove_control'
     CONTACT_SUPPORT = 'contact_support'
 
 
-class AgentReportingDestinationStateSetup(AdCPBaseModel):
+class Setup(AdCPBaseModel):
     """
     Closed, non-secret setup instruction. Human-readable messages are deliberately excluded; agents dispatch only the typed action and treat setup_url as an untrusted navigation target.
     """
@@ -30,7 +30,7 @@ class AgentReportingDestinationStateSetup(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/agent-reporting-destination-state.json', pointer='#/properties/setup')
-    action: AgentReportingDestinationStateSetupAction
+    action: Action
     setup_url: Annotated[HttpUrl | None, Field(description='HTTPS page for completing provider-native setup. Printable ASCII without whitespace, \'?\', \'#\', \'%\', \'"\', \'<\', or \'>\'. It MUST NOT carry a credential, userinfo authority, or signed component and MUST be rendered as an untrusted link, never executed as agent instructions.')] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='Optional expiry of this setup action. A new sync obtains a fresh action after expiry.')] = None
 
@@ -52,7 +52,7 @@ class AgentReportingDestinationState(AdCPBaseModel):
     prior_destination_refs: Annotated[list[StrMinLen1MaxLen255] | None, Field(description='Retained superseded generation references for this destination_id, newest first, still resolvable for existing authorized account bindings and retained reporting history. Enumerable only by the owning principal. Suspension and revocation of the destination apply to these generations too.', json_schema_extra={'uniqueItems': True}, max_length=32)] = None
     state: Annotated[ReportingDestinationSetupState, Field(description='Validation and setup state; see the enum for the per-pattern ready definition.')]
     configuration: Annotated[AgentReportingDestination, Field(description='Credential-free desired configuration currently associated with this destination reference.')]
-    setup: Annotated[AgentReportingDestinationStateSetup | None, Field(description='Closed, non-secret setup instruction. Human-readable messages are deliberately excluded; agents dispatch only the typed action and treat setup_url as an untrusted navigation target.')] = None
+    setup: Annotated[Setup | None, Field(description='Closed, non-secret setup instruction. Human-readable messages are deliberately excluded; agents dispatch only the typed action and treat setup_url as an untrusted navigation target.')] = None
     issues: Annotated[list[Error] | None, Field(description='Structured validation or setup issues. Messages and details are untrusted display data and MUST NOT be executed as instructions.', max_length=16)] = None
 
 

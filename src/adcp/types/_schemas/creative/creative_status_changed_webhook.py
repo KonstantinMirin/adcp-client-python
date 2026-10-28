@@ -15,7 +15,7 @@ from ..enums.creative_event_reason_code import CreativeEventReasonCode
 from ..enums.creative_status import CreativeStatus
 
 
-class CreativeStatusChangedWebhookTransitionFrom(StrEnum):
+class From(StrEnum):
     """
     Prior status — restricted to the states from which a seller/system-initiated transition can fire. For initial review outcomes the prior status is `pending_review`; for processing outcomes it is `processing`; for seller re-review, post-approval revocation, recoverable suspension, and seller-initiated archive it is `approved`; for recovery from a dependency/authorization outage or terminal escalation after a suspension it is `suspended`.
     """
@@ -25,7 +25,7 @@ class CreativeStatusChangedWebhookTransitionFrom(StrEnum):
     SUSPENDED = 'suspended'
 
 
-class CreativeStatusChangedWebhookTransition(AdCPBaseModel):
+class Transition(AdCPBaseModel):
     """
     The status transition that triggered this fire. Valid `from` values are restricted to the prior states from which a seller/system-initiated transition can fire (`processing` for processing outcomes, `pending_review` for initial review outcomes, `approved` for re-review/revocation/seller-archive/recoverable suspension, `suspended` for seller-observed recovery or terminal escalation). The post-terminal states `rejected` and `archived` MUST NOT appear as `from` — those would require a buyer-initiated unblock (`sync_creatives` resubmit / unarchive), which does not fire this event.
     """
@@ -33,12 +33,12 @@ class CreativeStatusChangedWebhookTransition(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/creative-status-changed-webhook.json', pointer='#/properties/transition')
-    from_: Annotated[CreativeStatusChangedWebhookTransitionFrom, Field(alias='from', description='Prior status — restricted to the states from which a seller/system-initiated transition can fire. For initial review outcomes the prior status is `pending_review`; for processing outcomes it is `processing`; for seller re-review, post-approval revocation, recoverable suspension, and seller-initiated archive it is `approved`; for recovery from a dependency/authorization outage or terminal escalation after a suspension it is `suspended`.')]
+    from_: Annotated[From, Field(alias='from', description='Prior status — restricted to the states from which a seller/system-initiated transition can fire. For initial review outcomes the prior status is `pending_review`; for processing outcomes it is `processing`; for seller re-review, post-approval revocation, recoverable suspension, and seller-initiated archive it is `approved`; for recovery from a dependency/authorization outage or terminal escalation after a suspension it is `suspended`.')]
     to: Annotated[CreativeStatus, Field(description='New status.')]
     observed_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when the seller observed the transition. Distinct from `fired_at` — `fired_at` reflects when the webhook was emitted, which may lag `observed_at` by up to the seller's coalescence window. **Ordering with `media-buy.impairment`:** when a creative transition also causes a media-buy impairment (e.g., `approved → suspended` or `approved → rejected` while assignments exist), the `creative.status_changed` and `impairment` fires are not ordered — buyers MUST NOT assume one arrives before the other. Reconcile via the snapshot (`list_creatives` and `get_media_buys`) when the two fires reference the same `creative_id`.")]
 
 
-class CreativeStatusChangedWebhookInitiator(StrEnum):
+class Initiator(StrEnum):
     """
     Who initiated the transition. `seller` — explicit decision by the seller (human reviewer, policy operator, takedown handler). `system` — automated seller-side process (processing pipeline, retention sweep, inactivity scan). `buyer` never appears on this event — buyer-initiated transitions are acknowledged on the `sync_creatives` response path and MUST NOT fire `creative.status_changed`.
     """
@@ -62,10 +62,10 @@ class CreativeStatusChangedWebhook(AdCPBaseModel):
     account_id: Annotated[str, Field(description="Seller's identifier for the account this creative belongs to. Echoed so multi-account buyers can route without re-resolving via `list_accounts`.")]
     creative_id: Annotated[str, Field(description="Seller's identifier for the creative whose status changed. References the same id space as `list_creatives` / `sync_creatives` responses.")]
     revision_id: Annotated[CreativeRevisionID | None, Field(description='Buyer-authored input revision to which this transition applies. Required when the reviewed state has revision identity and the seller advertises creative.supports_revisions; it need not be the current list revision when the fire is received. Omitted for unversioned current content. A stale review outcome MUST NOT emit a fire as though it applied to a newer current revision.')] = None
-    transition: Annotated[CreativeStatusChangedWebhookTransition, Field(description='The status transition that triggered this fire. Valid `from` values are restricted to the prior states from which a seller/system-initiated transition can fire (`processing` for processing outcomes, `pending_review` for initial review outcomes, `approved` for re-review/revocation/seller-archive/recoverable suspension, `suspended` for seller-observed recovery or terminal escalation). The post-terminal states `rejected` and `archived` MUST NOT appear as `from` — those would require a buyer-initiated unblock (`sync_creatives` resubmit / unarchive), which does not fire this event.')]
+    transition: Annotated[Transition, Field(description='The status transition that triggered this fire. Valid `from` values are restricted to the prior states from which a seller/system-initiated transition can fire (`processing` for processing outcomes, `pending_review` for initial review outcomes, `approved` for re-review/revocation/seller-archive/recoverable suspension, `suspended` for seller-observed recovery or terminal escalation). The post-terminal states `rejected` and `archived` MUST NOT appear as `from` — those would require a buyer-initiated unblock (`sync_creatives` resubmit / unarchive), which does not fire this event.')]
     reason_code: Annotated[CreativeEventReasonCode, Field(description='Categorical reason for the transition. Per-transition valid subsets are constrained by impairment.coherence-style narrative rules — see docs/creative/creative-lifecycle-webhooks.mdx. Receivers MUST treat unknown reason codes as forward-compatible additions and not reject the fire.')]
     reason_detail: Annotated[StrMaxLen500 | None, Field(description='Human-readable supplement to `reason_code`. Free text from the seller. Sellers MUST NOT include third-party PII in this field.')] = None
-    initiator: Annotated[CreativeStatusChangedWebhookInitiator, Field(description='Who initiated the transition. `seller` — explicit decision by the seller (human reviewer, policy operator, takedown handler). `system` — automated seller-side process (processing pipeline, retention sweep, inactivity scan). `buyer` never appears on this event — buyer-initiated transitions are acknowledged on the `sync_creatives` response path and MUST NOT fire `creative.status_changed`.')]
+    initiator: Annotated[Initiator, Field(description='Who initiated the transition. `seller` — explicit decision by the seller (human reviewer, policy operator, takedown handler). `system` — automated seller-side process (processing pipeline, retention sweep, inactivity scan). `buyer` never appears on this event — buyer-initiated transitions are acknowledged on the `sync_creatives` response path and MUST NOT fire `creative.status_changed`.')]
     ext: ExtensionObject | None = None
 
 

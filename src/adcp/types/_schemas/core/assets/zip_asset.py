@@ -11,7 +11,7 @@ from adcp.types.constraints import HttpUrl, StrMatching3CBDBB74
 from ..provenance import Provenance
 
 
-class ZipAssetAccessibility(AdCPBaseModel):
+class Accessibility(AdCPBaseModel):
     """
     Self-declared accessibility properties for this opaque creative
     """
@@ -37,7 +37,7 @@ class ZipAsset(AdCPBaseModel):
     allowed_inner_extensions: Annotated[list[str] | None, Field(description="File extensions permitted inside the zip (e.g., ['html', 'css', 'js', 'png', 'jpg', 'svg', 'webp', 'json', 'woff2']). Receivers may reject zips containing other extensions.")] = None
     backup_image_url: Annotated[HttpUrl | None, Field(description='Fallback image URL for environments that cannot render the bundled creative (e.g., non-HTML5 endpoints, ad blockers). Recommended for HTML5 banners.')] = None
     digest: Annotated[StrMatching3CBDBB74 | None, Field(description='Optional SHA-256 content digest of the zip archive (sha256:<hex>) for integrity verification. Lets receivers detect tampered or stale archives.')] = None
-    accessibility: Annotated[ZipAssetAccessibility | None, Field(description='Self-declared accessibility properties for this opaque creative')] = None
+    accessibility: Annotated[Accessibility | None, Field(description='Self-declared accessibility properties for this opaque creative')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
 
 

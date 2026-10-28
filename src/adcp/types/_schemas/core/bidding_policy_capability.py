@@ -10,7 +10,7 @@ from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import PropertyCount, RequiredGroups, Rule, UniqueItems
 
 
-class BiddingPolicyCapabilityPolicyProfileModesItem(StrEnum):
+class ModesItem(StrEnum):
     AUTOMATIC = 'automatic'
     BID_AMOUNT = 'bid_amount'
     MAX_BID = 'max_bid'
@@ -69,7 +69,7 @@ class BiddingPolicyCapabilityPolicyProfile(AdCPBaseModel):
         UniqueItems('cost_per_strengths'),
         UniqueItems('roas_strengths'),
     )
-    modes: Annotated[list[BiddingPolicyCapabilityPolicyProfileModesItem] | None, Field(description='Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
+    modes: Annotated[list[ModesItem] | None, Field(description='Standalone policy modes accepted in this exact scope and allocation context. Combination-only components belong only in supported_combinations and need not appear here. `automatic` means the seller accepts and preserves an explicit `{automatic:true}` authored block; omission only invokes inheritance/default behavior.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     cost_per_strengths: Annotated[list[BiddingPolicyCapabilityPolicyProfileCostPerStrengthsItem] | None, Field(description='Supported standalone cost_per strengths in this profile. Required exactly when modes includes cost_per.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     roas_strengths: Annotated[list[BiddingPolicyCapabilityPolicyProfileRoasStrengthsItem] | None, Field(description='Supported standalone roas strengths in this profile. Required exactly when modes includes roas.', json_schema_extra={'uniqueItems': True}, min_length=1)] = None
     supported_combinations: Annotated[list[BiddingPolicyCapabilityMaxBidWithCostPer | BiddingPolicyCapabilityMaxBidWithRoas] | None, Field(description='Multi-field policies supported in this exact scope and allocation context. Each entry independently qualifies the strengths supported in that combination; standalone strength support does not imply combination support. Absence means no multi-field combination is claimed.', min_length=1)] = None

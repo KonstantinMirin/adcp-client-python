@@ -16,7 +16,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class ActivateSignalRequestAction(StrEnum):
+class Action(StrEnum):
     """
     Whether to activate or deactivate the signal. Deactivating removes the segment from downstream platforms, required when campaigns end to comply with data governance policies (GDPR, CCPA). Defaults to 'activate' when omitted.
     """
@@ -32,7 +32,7 @@ class ActivateSignalRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='signals/activate-signal-request.json', pointer='#')
-    action: Annotated[ActivateSignalRequestAction | None, Field(description="Whether to activate or deactivate the signal. Deactivating removes the segment from downstream platforms, required when campaigns end to comply with data governance policies (GDPR, CCPA). Defaults to 'activate' when omitted.")] = 'activate'
+    action: Annotated[Action | None, Field(description="Whether to activate or deactivate the signal. Deactivating removes the segment from downstream platforms, required when campaigns end to comply with data governance policies (GDPR, CCPA). Defaults to 'activate' when omitted.")] = 'activate'
     signal_agent_segment_id: Annotated[str, Field(description='Opaque activation handle returned in the signal_agent_segment_id field of each get_signals response entry. Pass this string verbatim — do not pass the signal_id object.')]
     destinations: Annotated[list[Destination], Field(description='Target destination(s) for activation. If the authenticated caller matches one of these destinations, activation keys will be included in the response.', min_length=1)]
     pricing_option_id: Annotated[str | None, Field(description="The pricing option selected from the signal's pricing_options in the get_signals response. Required when the signal has pricing options. Records the buyer's pricing commitment at activation time; pass this same value in report_usage for billing verification.")] = None

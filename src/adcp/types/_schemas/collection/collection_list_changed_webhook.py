@@ -11,7 +11,7 @@ from adcp.types.constraints import StrMinLen16MaxLen255Matching1E5CF9EB
 from ..core.ext import ExtensionObject
 
 
-class CollectionListChangedWebhookChangeSummary(AdCPBaseModel):
+class ChangeSummary(AdCPBaseModel):
     """
     Summary of changes to the resolved list
     """
@@ -36,7 +36,7 @@ class CollectionListChangedWebhook(AdCPBaseModel):
     event: Annotated[Literal['collection_list_changed'], Field(description='The event type')]
     list_id: Annotated[str, Field(description='ID of the collection list that changed')]
     list_name: Annotated[str | None, Field(description='Name of the collection list')] = None
-    change_summary: Annotated[CollectionListChangedWebhookChangeSummary | None, Field(description='Summary of changes to the resolved list')] = None
+    change_summary: Annotated[ChangeSummary | None, Field(description='Summary of changes to the resolved list')] = None
     resolved_at: Annotated[AwareDatetime, Field(description='When the list was re-resolved')]
     cache_valid_until: Annotated[AwareDatetime | None, Field(description='When the consumer should refresh from the governance agent')] = None
     signature: Annotated[str, Field(description='HMAC-SHA256 webhook signature over {unix_timestamp}.{raw_http_body_bytes} using the secret exchanged out-of-band when the seller registered with the governance agent. Recipients MUST verify against the X-ADCP-Signature and X-ADCP-Timestamp headers using timing-safe comparison and MUST reject requests where |now - timestamp| > 300 seconds. The body copy of this field is a convenience only — the headers are authoritative. See docs/building/by-layer/L1/security#webhook-security.')]

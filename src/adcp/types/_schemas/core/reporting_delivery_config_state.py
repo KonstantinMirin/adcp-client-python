@@ -22,14 +22,14 @@ class ReportingDeliveryConfigurationStateReportingDeliveryConfigLifecycleState(S
     INACTIVE = 'inactive'
 
 
-class ReportingDeliveryConfigurationStateSetupAction(StrEnum):
+class Action(StrEnum):
     GRANT_ACCESS = 'grant_access'
     ACTIVATE_RECIPIENT = 'activate_recipient'
     AUTHORIZE_PROVIDER = 'authorize_provider'
     REPAIR_ACCESS = 'repair_access'
 
 
-class ReportingDeliveryConfigurationStateSetup(AdCPBaseModel):
+class Setup(AdCPBaseModel):
     """
     Secret-free next step when provider-side authorization or recipient activation cannot be completed automatically.
     """
@@ -37,7 +37,7 @@ class ReportingDeliveryConfigurationStateSetup(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-config-state.json', pointer='#/properties/setup')
-    action: ReportingDeliveryConfigurationStateSetupAction
+    action: Action
     message: Annotated[StrMinLen1MaxLen2000, Field(description='Untrusted display text only. SDKs and agents dispatch only on the closed action value and never execute embedded links or instructions.')]
     url: AdCPUrl | None = None
     expires_at: AwareDatetime | None = None
@@ -60,7 +60,7 @@ class ReportingDeliveryConfigurationState(AdCPBaseModel):
     publication_stopped_at: Annotated[AwareDatetime | None, Field(description='Applied schedule boundary at or after deactivation. No obligation whose period starts at or after this cutoff is created; earlier obligations remain owed through their SLA and recovery lifecycle.')] = None
     seller_managed_access_ends_at: Annotated[AwareDatetime | None, Field(description='End of historical access to a producer-hosted share/resource for a still-authorized principal after voluntary deactivation. Inapplicable to data already written into a buyer-owned destination.')] = None
     current_coverage: Annotated[ReportingCoverage | None, Field(description='Current effective product/package coverage for the selected offering and resolved account. This setup-time view may change as media buys or provider capabilities change; each period obligation later freezes its own authoritative coverage.')] = None
-    setup: Annotated[ReportingDeliveryConfigurationStateSetup | None, Field(description='Secret-free next step when provider-side authorization or recipient activation cannot be completed automatically.')] = None
+    setup: Annotated[Setup | None, Field(description='Secret-free next step when provider-side authorization or recipient activation cannot be completed automatically.')] = None
     issues: Annotated[list[ReportingStatusIssue] | None, Field(min_length=1)] = None
 
 

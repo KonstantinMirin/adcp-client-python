@@ -29,7 +29,7 @@ class ReportingReliabilityStatisticsLatencyPercentiles(AdCPBaseModel):
     p95: NonNegativeInt
 
 
-class ReportingReliabilityStatisticsAdjustmentMagnitudeItem(AdCPBaseModel):
+class AdjustmentMagnitudeItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -41,12 +41,12 @@ class ReportingReliabilityStatisticsAdjustmentMagnitudeItem(AdCPBaseModel):
     p95_absolute_delta: StrMatching564F6F3C
 
 
-class ReportingReliabilityStatisticsEvidenceBasis(StrEnum):
+class Basis(StrEnum):
     REPORTING_LEDGER = 'reporting_ledger'
     THIRD_PARTY_ATTESTATION = 'third_party_attestation'
 
 
-class ReportingReliabilityStatisticsEvidence(AdCPBaseModel):
+class Evidence(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -55,7 +55,7 @@ class ReportingReliabilityStatisticsEvidence(AdCPBaseModel):
         ConditionalRequired((Match('basis', True, ('third_party_attestation',)),), require=('attestation_uri', 'attestation_sha256'), forbid=()),
         NegatedConditional((Match('basis', True, ('third_party_attestation',)),), require=(), forbid=('attestation_uri', 'attestation_sha256')),
     )
-    basis: ReportingReliabilityStatisticsEvidenceBasis
+    basis: Basis
     generated_at: AwareDatetime
     attestation_uri: HttpUrl | None = None
     attestation_sha256: StrMatching5E987613 | None = None
@@ -80,8 +80,8 @@ class ReportingReliabilityStatistics(AdCPBaseModel):
     official_revisions_adjusted: Annotated[NonNegativeInt, Field(description='Distinct official revisions receiving at least one adjustment. Divide by official_revisions_published for the adjustment rate.')]
     publication_latency_seconds: Annotated[ReportingReliabilityStatisticsLatencyPercentiles, Field(description='Observed seconds from period.end to publication of the required revision.')]
     adjustment_latency_seconds: Annotated[ReportingReliabilityStatisticsLatencyPercentiles | None, Field(description='Observed seconds from official finalized_at to the first adjustment, required when official_revisions_adjusted is nonzero.')] = None
-    adjustment_magnitude: Annotated[list[ReportingReliabilityStatisticsAdjustmentMagnitudeItem] | None, Field(description='Optional absolute adjustment-magnitude percentiles for comparable control totals such as spend.', json_schema_extra={'uniqueItems': True})] = None
-    evidence: ReportingReliabilityStatisticsEvidence
+    adjustment_magnitude: Annotated[list[AdjustmentMagnitudeItem] | None, Field(description='Optional absolute adjustment-magnitude percentiles for comparable control totals such as spend.', json_schema_extra={'uniqueItems': True})] = None
+    evidence: Evidence
 
 
 __all__ = ["ReportingReliabilityStatistics", "ReportingReliabilityStatisticsLatencyPercentiles", "ReportingReliabilityStatisticsReportingReliabilityMeasurementPeriod"]

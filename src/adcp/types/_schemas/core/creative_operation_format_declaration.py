@@ -18,7 +18,7 @@ from .macro_resolution_capability import MacroProcessingCapability
 from .platform_extension_ref import PlatformExtensionReference
 
 
-class CreativeOperationFormatDeclarationSellerPreference(StrEnum):
+class SellerPreference(StrEnum):
     PREFERRED = 'preferred'
     ACCEPTED = 'accepted'
     DISCOURAGED = 'discouraged'
@@ -45,7 +45,7 @@ class CreativeOperationFormatDeclaration(AdCPBaseModel):
     display_name: str | None = None
     sample_render_url: AdCPUrl | None = None
     applies_to_channels: Annotated[list[MediaChannel] | None, Field(json_schema_extra={'uniqueItems': True})] = None
-    seller_preference: CreativeOperationFormatDeclarationSellerPreference | None = None
+    seller_preference: SellerPreference | None = None
     locale_policy: CreativeLocalePolicy | None = None
     canonical_formats_only: bool | None = False
     experimental: bool | None = False

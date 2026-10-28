@@ -14,7 +14,7 @@ from ..core.ext import ExtensionObject
 from ..core.version_envelope import AdCPVersionEnvelope
 
 
-class GetMediaBuyArtifactsRequestTimeRange(AdCPBaseModel):
+class TimeRange(AdCPBaseModel):
     """
     Filter to specific time period
     """
@@ -23,7 +23,7 @@ class GetMediaBuyArtifactsRequestTimeRange(AdCPBaseModel):
     end: Annotated[AwareDatetime | None, Field(description='End of time range (exclusive)')] = None
 
 
-class GetMediaBuyArtifactsRequestPagination(AdCPBaseModel):
+class Pagination(AdCPBaseModel):
     """
     Pagination parameters. Uses higher limits than standard pagination because artifact result sets can be very large.
     """
@@ -44,8 +44,8 @@ class GetMediaBuyArtifactsRequest(AdCPVersionEnvelope):
     media_buy_id: Annotated[str, Field(description='Media buy to get artifacts from')]
     package_ids: Annotated[list[str] | None, Field(description='Filter to specific packages within the media buy', min_length=1)] = None
     failures_only: Annotated[bool | None, Field(description="When true, only return artifacts where the seller's local model returned local_verdict: 'fail'. Useful for auditing false positives. Not useful when the seller does not run a local evaluation model (all verdicts are 'unevaluated').")] = False
-    time_range: Annotated[GetMediaBuyArtifactsRequestTimeRange | None, Field(description='Filter to specific time period')] = None
-    pagination: Annotated[GetMediaBuyArtifactsRequestPagination | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because artifact result sets can be very large.')] = None
+    time_range: Annotated[TimeRange | None, Field(description='Filter to specific time period')] = None
+    pagination: Annotated[Pagination | None, Field(description='Pagination parameters. Uses higher limits than standard pagination because artifact result sets can be very large.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

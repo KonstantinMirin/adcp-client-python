@@ -16,7 +16,7 @@ from ...enums.moov_atom_position import MoovAtomPosition
 from ...enums.scan_type import ScanType
 
 
-class VideoAssetRequirementsContainersItem(StrEnum):
+class ContainersItem(StrEnum):
     MP4 = 'mp4'
     WEBM = 'webm'
     MOV = 'mov'
@@ -24,7 +24,7 @@ class VideoAssetRequirementsContainersItem(StrEnum):
     MKV = 'mkv'
 
 
-class VideoAssetRequirementsCodecsItem(StrEnum):
+class CodecsItem(StrEnum):
     H264 = 'h264'
     H265 = 'h265'
     VP8 = 'vp8'
@@ -33,7 +33,7 @@ class VideoAssetRequirementsCodecsItem(StrEnum):
     PRORES = 'prores'
 
 
-class VideoAssetRequirementsAudioCodecsItem(StrEnum):
+class AudioCodecsItem(StrEnum):
     AAC = 'aac'
     PCM = 'pcm'
     AC3 = 'ac3'
@@ -59,8 +59,8 @@ class VideoAssetRequirements(AdCPBaseModel):
     aspect_ratio: Annotated[StrMatchingD342F02C | None, Field(description="Required aspect ratio (e.g., '16:9', '9:16')")] = None
     min_duration_ms: Annotated[IntMin1 | None, Field(description='Minimum duration in milliseconds')] = None
     max_duration_ms: Annotated[IntMin1 | None, Field(description='Maximum duration in milliseconds')] = None
-    containers: Annotated[list[VideoAssetRequirementsContainersItem] | None, Field(description='Accepted video container formats')] = None
-    codecs: Annotated[list[VideoAssetRequirementsCodecsItem] | None, Field(description='Accepted video codecs')] = None
+    containers: Annotated[list[ContainersItem] | None, Field(description='Accepted video container formats')] = None
+    codecs: Annotated[list[CodecsItem] | None, Field(description='Accepted video codecs')] = None
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size, where 1 KB is exactly 1,000 bytes')] = None
     min_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Minimum video bitrate in kilobits per second')] = None
     max_bitrate_kbps: Annotated[IntMin1 | None, Field(description='Maximum video bitrate in kilobits per second')] = None
@@ -72,7 +72,7 @@ class VideoAssetRequirements(AdCPBaseModel):
     min_gop_interval_seconds: Annotated[NonNegativeFloat | None, Field(description='Minimum keyframe interval in seconds')] = None
     max_gop_interval_seconds: Annotated[NonNegativeFloat | None, Field(description='Maximum keyframe interval in seconds. SSAI typically requires 1-2 second intervals.')] = None
     moov_atom_position: Annotated[MoovAtomPosition | None, Field(description="Required moov atom position in MP4 container. 'start' enables progressive download without buffering the entire file.")] = None
-    audio_codecs: Annotated[list[VideoAssetRequirementsAudioCodecsItem] | None, Field(description="Accepted audio codecs (e.g., ['aac', 'pcm', 'ac3'])")] = None
+    audio_codecs: Annotated[list[AudioCodecsItem] | None, Field(description="Accepted audio codecs (e.g., ['aac', 'pcm', 'ac3'])")] = None
     audio_sample_rates: Annotated[list[IntMin1] | None, Field(description='Accepted audio sample rates in Hz (e.g., [44100, 48000])')] = None
     audio_channels: Annotated[list[AudioChannelLayout] | None, Field(description='Accepted audio channel configurations')] = None
     loudness_lufs: Annotated[float | None, Field(description='Target integrated loudness in LUFS (e.g., -24 for broadcast, -16 for streaming)')] = None

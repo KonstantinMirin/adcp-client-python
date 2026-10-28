@@ -17,7 +17,7 @@ from ..macro_declaration import MacroDeclaration
 from ..provenance import Provenance
 
 
-class DAASTTrackerAssetMacroDeclarationsItemLocation(AdCPBaseModel):
+class Location(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -27,15 +27,15 @@ class DAASTTrackerAssetMacroDeclarationsItemLocation(AdCPBaseModel):
     context: MacroValueContext
 
 
-class DAASTTrackerAssetMacroDeclarationsItem(MacroDeclaration):
+class MacroDeclarationsItem(MacroDeclaration):
     """
     The source-faithful contract for one occurrence of one macro token. It identifies the current dialect, verified mapping status, exact asset-field occurrence, next processing operation, actor, and encoding. Translation and concrete value resolution are separate operations: a translator emits the declared native token and replaces this declaration with the target declaration. Unknown tokens are always byte-preserved.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/daast-tracker-asset.json', pointer='#/properties/macro_declarations/items')
-    location: DAASTTrackerAssetMacroDeclarationsItemLocation
+    location: Location
 
 
-class DAASTTrackerAssetTarget(StrEnum):
+class Target(StrEnum):
     """
     Which DAAST creative element this tracker scopes to — `linear` for `<Linear>/<TrackingEvents>` (DAAST 1.1 §3.2.1.7), `companion` for `<CompanionAds>/<Companion>/<TrackingEvents>` (DAAST 1.1 §3.2.2.7). DAAST has no `<NonLinearAds>` element. Defaults to `linear`. Existing 3.x assets remain structurally permissive; a tracker execution contract applies the standards-valid event/target matrix when matching a creative to a product.
     """
@@ -57,9 +57,9 @@ class DAASTTrackerAsset(AdCPBaseModel):
     asset_type: Annotated[Literal['daast_tracker'], Field(description='Discriminator identifying this as a DAAST tracker asset. See /schemas/creative/asset-types for the registry.')]
     daast_event: Annotated[Annotated[DAASTTrackingEvent, AfterValidator(NotValue(('impression', 'clickTracking', 'customClick', 'error', 'viewable', 'notViewable', 'viewUndetermined', 'measurableImpression', 'viewableImpression')))], Field(description='The DAAST tracking event this URL fires on. MUST NOT be `impression` (model as `url` asset with `url_type: "tracker_pixel"`), `clickTracking` / `customClick` (click-tracking trackers go on their own URL asset), `error`, or any of the `ViewableImpression`-element children (`viewable`, `notViewable`, `viewUndetermined`, `measurableImpression`, `viewableImpression`).')]
     url: Annotated[MacroBearingURL, Field(description='Tracker URL fired for the DAAST event. Attached declarations identify each macro occurrence, processing actor, and exact encoding profile.')]
-    macro_declarations: Annotated[list[DAASTTrackerAssetMacroDeclarationsItem] | None, Field(description='Exact tokens in `url` and their resolver/encoding contracts.', min_length=1)] = None
+    macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='Exact tokens in `url` and their resolver/encoding contracts.', min_length=1)] = None
     offset: Annotated[StrMatching38E7F7CC | None, Field(description='DAAST `offset` attribute. Required when `daast_event` is `progress` (DAAST 1.1 §3.2.4.3); ignored otherwise for compatibility with existing 3.x manifests. Same format as VAST 4.2 `Tracking@offset`: `HH:MM:SS` or `HH:MM:SS.mmm` for absolute time (two-digit hours, minutes 00–59, seconds 00–59), or an integer percentage 0–100 suffixed with `%`. Negative offsets are NOT permitted.')] = None
-    target: Annotated[DAASTTrackerAssetTarget | None, Field(description='Which DAAST creative element this tracker scopes to — `linear` for `<Linear>/<TrackingEvents>` (DAAST 1.1 §3.2.1.7), `companion` for `<CompanionAds>/<Companion>/<TrackingEvents>` (DAAST 1.1 §3.2.2.7). DAAST has no `<NonLinearAds>` element. Defaults to `linear`. Existing 3.x assets remain structurally permissive; a tracker execution contract applies the standards-valid event/target matrix when matching a creative to a product.')] = 'linear'
+    target: Annotated[Target | None, Field(description='Which DAAST creative element this tracker scopes to — `linear` for `<Linear>/<TrackingEvents>` (DAAST 1.1 §3.2.1.7), `companion` for `<CompanionAds>/<Companion>/<TrackingEvents>` (DAAST 1.1 §3.2.2.7). DAAST has no `<NonLinearAds>` element. Defaults to `linear`. Existing 3.x assets remain structurally permissive; a tracker execution contract applies the standards-valid event/target matrix when matching a creative to a product.')] = 'linear'
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance.')] = None
 
 

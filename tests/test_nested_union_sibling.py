@@ -256,7 +256,13 @@ def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None
         hop = lower_union._naming_facts(  # noqa: SLF001 -- the test is the caller
             branch, branch.get("properties"), key, refuses=False
         )
-        return names.branch_identity(hop, "X")
+        # §4's branch rules answer with the branch's own SEGMENTS now
+        # (``adcp-client-python-10l.50``), because which of the three facts wins decides
+        # whether the parent's spelling is part of the name: a ``const`` pin is spelled
+        # ON it and a title names itself.  The parent here is a chain of one, ``X``, and
+        # what is compared is the name that chain spells.
+        segments = names.branch_identity(hop, ("X",))
+        return None if segments is None else "".join(segments)
 
     named = claimed(
         "branch identities under the keyword",

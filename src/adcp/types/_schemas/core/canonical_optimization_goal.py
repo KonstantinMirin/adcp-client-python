@@ -32,7 +32,7 @@ class CanonicalOptimizationGoal(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class CanonicalOptimizationGoalMetricMetric(StrEnum):
+class Metric(StrEnum):
     CLICKS = 'clicks'
     VIEWS = 'views'
     COMPLETED_VIEWS = 'completed_views'
@@ -45,7 +45,7 @@ class CanonicalOptimizationGoalMetricMetric(StrEnum):
     REACH = 'reach'
 
 
-class CanonicalOptimizationGoalMetricTargetFrequency(AdCPBaseModel):
+class TargetFrequency(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -77,17 +77,17 @@ class CanonicalOptimizationGoalMetric(CanonicalOptimizationGoal):
         NegatedConditional((Match('metric', True, ('viewable_rate', 'viewed_seconds')),), require=(), forbid=('standard', 'vendor')),
     )
     kind: Literal['metric']
-    metric: CanonicalOptimizationGoalMetricMetric
+    metric: Metric
     standard: ViewabilityStandard | None = None
     vendor: BrandKey | None = None
     reach_unit: ReachUnit | None = None
-    target_frequency: CanonicalOptimizationGoalMetricTargetFrequency | None = None
+    target_frequency: TargetFrequency | None = None
     view_duration_seconds: FloatGt0 | None = None
     target: CanonicalOptimizationGoalMetricTarget | None = None
     priority: IntMin1 | None = None
 
 
-class CanonicalOptimizationGoalEventEventSourcesItem(AdCPBaseModel):
+class EventSourcesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -113,7 +113,7 @@ class CanonicalOptimizationGoalEvent(CanonicalOptimizationGoal):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-optimization-goal.json', pointer='#/oneOf/1')
     kind: Literal['event']
-    event_sources: Annotated[list[CanonicalOptimizationGoalEventEventSourcesItem], Field(min_length=1)]
+    event_sources: Annotated[list[EventSourcesItem], Field(min_length=1)]
     target: CanonicalOptimizationGoalEventTarget | None = None
     attribution_window: AttributionWindow | None = None
     priority: IntMin1 | None = None

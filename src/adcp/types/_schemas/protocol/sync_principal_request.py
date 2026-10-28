@@ -18,14 +18,14 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.principal_kind import PrincipalKind
 
 
-class SyncPrincipalRequestConfigurationNotificationConfigsItem(AgentNotificationConfig):
+class NotificationConfigsItem(AgentNotificationConfig):
     """
     Caller-scoped agent-level webhook subscription. Caller-anchored event types (capabilities.changed, principal.changed) always fire principal-wide; account-anchored event types may also be listed here with the explicit all_authorized_accounts acknowledgment and fire with per-delivery-attempt authorization scoping over the caller's currently authorized accounts. Registration goes through the task declared by get_adcp_capabilities.adcp.capability_changes.notifications.registration_task: sync_principal when the broader principal surface is supported, or the specialized sync_agent_notification_configs compatibility task. Both tasks operate on one underlying caller-scoped subscriber set. This surface is intentionally separate from account-level notification_configs[]: a registry or buyer can subscribe before it has an account, and one fire invalidates the agent-wide get_adcp_capabilities cache. The persisted set is scoped to the authenticated caller or registry identity, so one caller's declarative replacement cannot clear another caller's subscribers. As with other AdCP webhooks, the default signing scheme is the RFC 9421 webhook profile against the seller's brand.json agents[] JWKS; the optional authentication block opts into the deprecated Bearer / HMAC-SHA256 fallback for compatibility. Credentials and shared secrets in authentication.credentials are write-only and MUST NOT be echoed on reads. Sellers MUST verify endpoint control before activating a new or changed active agent-level notification config; delivery-time SSRF validation still applies to every fire.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-principal-request.json', pointer='#/properties/configuration/properties/notification_configs/items')
 
 
-class SyncPrincipalRequestConfiguration(AdCPBaseModel):
+class Configuration(AdCPBaseModel):
     """
     Sections to replace atomically. At least one section is required. A present array is complete desired state for that section; [] clears it; omission leaves it unchanged.
     """
@@ -36,7 +36,7 @@ class SyncPrincipalRequestConfiguration(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    notification_configs: Annotated[list[SyncPrincipalRequestConfigurationNotificationConfigsItem] | None, Field(description='Complete desired agent-level subscriber set. The same caller-scoping, proof-of-control, secret handling, and replacement rules as sync_agent_notification_configs apply.', max_length=16)] = None
+    notification_configs: Annotated[list[NotificationConfigsItem] | None, Field(description='Complete desired agent-level subscriber set. The same caller-scoping, proof-of-control, secret handling, and replacement rules as sync_agent_notification_configs apply.', max_length=16)] = None
     reporting_destinations: Annotated[list[AgentReportingDestination] | None, Field(description='Complete desired reusable reporting destination set. Omitting a previously present destination_id revokes it, and [] revokes every destination: the seller halts new deliveries to all of its generations within the advertised suspension_interval_seconds and retains it as a retired generation for reporting history. Revocation does not delete caller-owned data already delivered. destination_id values MUST be unique.', max_length=64)] = None
     declarations: Annotated[AgentDeclarations | None, Field(description='Complete declared consumption facts for this principal record. A present object replaces the declared set wholesale; {} clears it; omission leaves it unchanged. The seller computes and returns the accepted intersection in state.')] = None
 
@@ -55,7 +55,7 @@ class SyncPrincipalRequest(AdCPVersionEnvelope):
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated key for at-most-once execution, at least 16 characters; a fresh UUID v4 per logical operation is recommended. Retries MUST reuse the same key with the same body.')]
     expected_configuration_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional optimistic-concurrency fence returned by a previous successful sync. When present and stale, the seller rejects the whole request without mutation. Compare only for equality.')] = None
     expected_principal_kind: Annotated[PrincipalKind | None, Field(description='Optional assertion fence, not identity input: the caller states which party kind it believes it is authenticating as. When present and different from the seller-resolved principal_kind, the seller rejects the whole request with CONFLICT before mutation. The field never influences resolution.')] = None
-    configuration: Annotated[SyncPrincipalRequestConfiguration, Field(description='Sections to replace atomically. At least one section is required. A present array is complete desired state for that section; [] clears it; omission leaves it unchanged.')]
+    configuration: Annotated[Configuration, Field(description='Sections to replace atomically. At least one section is required. A present array is complete desired state for that section; [] clears it; omission leaves it unchanged.')]
     dry_run: Annotated[bool | None, Field(description='Validate the proposed replacements and report the would-be action without persisting them, issuing durable identifiers or grants, or sending endpoint proof challenges.')] = False
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

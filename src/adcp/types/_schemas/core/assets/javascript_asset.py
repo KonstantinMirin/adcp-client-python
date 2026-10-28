@@ -11,7 +11,7 @@ from ...enums.javascript_module_type import JavaScriptModuleType
 from ..provenance import Provenance
 
 
-class JavaScriptAssetAccessibility(AdCPBaseModel):
+class Accessibility(AdCPBaseModel):
     """
     Self-declared accessibility properties for this opaque creative
     """
@@ -33,7 +33,7 @@ class JavaScriptAsset(AdCPBaseModel):
     asset_type: Annotated[Literal['javascript'], Field(description='Discriminator identifying this as a JavaScript asset. See /schemas/creative/asset-types for the registry.')]
     content: Annotated[str, Field(description='JavaScript content')]
     module_type: Annotated[JavaScriptModuleType | None, Field(description='JavaScript module type')] = None
-    accessibility: Annotated[JavaScriptAssetAccessibility | None, Field(description='Self-declared accessibility properties for this opaque creative')] = None
+    accessibility: Annotated[Accessibility | None, Field(description='Self-declared accessibility properties for this opaque creative')] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overrides manifest-level provenance')] = None
 
 

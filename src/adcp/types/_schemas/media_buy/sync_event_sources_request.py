@@ -18,7 +18,7 @@ from ..enums.action_source import ActionSource
 from ..enums.event_type import EventType
 
 
-class SyncEventSourcesRequestEventSourcesItem(AdCPBaseModel):
+class EventSourcesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -45,7 +45,7 @@ class SyncEventSourcesRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-event-sources-request.json', pointer='#')
     idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated unique key for at-most-once execution. `event_source_id` gives resource-level dedup per source, but the sync envelope emits audit events and can trigger downstream pixel provisioning — this key prevents those side effects from firing twice on retry. Also serves as a request ID on discovery-only calls (when `event_sources` is omitted). MUST be unique per (seller, request) pair. Use a fresh UUID v4 for each request.')]
     account: Annotated[AccountReference, Field(description='Account to configure event sources for.')]
-    event_sources: Annotated[list[SyncEventSourcesRequestEventSourcesItem] | None, Field(description='Event sources to sync (create or update). When omitted, the call is discovery-only and returns all existing event sources on the account without modification.', min_length=1)] = None
+    event_sources: Annotated[list[EventSourcesItem] | None, Field(description='Event sources to sync (create or update). When omitted, the call is discovery-only and returns all existing event sources on the account without modification.', min_length=1)] = None
     delete_missing: Annotated[bool | None, Field(description='When true, event sources not included in this sync will be removed')] = False
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

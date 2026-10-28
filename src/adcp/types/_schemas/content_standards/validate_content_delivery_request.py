@@ -13,7 +13,7 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .artifact import Artifact
 
 
-class ValidateContentDeliveryRequestRecordsItemBrandContext(AdCPBaseModel):
+class BrandContext(AdCPBaseModel):
     """
     Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.
     """
@@ -22,7 +22,7 @@ class ValidateContentDeliveryRequestRecordsItemBrandContext(AdCPBaseModel):
     sku_id: Annotated[str | None, Field(description='Product/SKU identifier if applicable')] = None
 
 
-class ValidateContentDeliveryRequestRecordsItem(AdCPBaseModel):
+class RecordsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-request.json', pointer='#/properties/records/items')
     record_id: Annotated[str, Field(description='Unique identifier for this delivery record')]
     media_buy_id: Annotated[str | None, Field(description='Media buy this record belongs to (when batching across multiple buys)')] = None
@@ -30,7 +30,7 @@ class ValidateContentDeliveryRequestRecordsItem(AdCPBaseModel):
     artifact: Annotated[Artifact, Field(description='Artifact where ad was delivered')]
     country: Annotated[str | None, Field(description='ISO 3166-1 alpha-2 country code where delivery occurred')] = None
     channel: Annotated[str | None, Field(description='Channel type (e.g., display, video, audio, social)')] = None
-    brand_context: Annotated[ValidateContentDeliveryRequestRecordsItemBrandContext | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
+    brand_context: Annotated[BrandContext | None, Field(description='Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.')] = None
 
 
 class ValidateContentDeliveryRequest(AdCPVersionEnvelope):
@@ -39,7 +39,7 @@ class ValidateContentDeliveryRequest(AdCPVersionEnvelope):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-request.json', pointer='#')
     standards_id: Annotated[str, Field(description='Standards configuration to validate against')]
-    records: Annotated[list[ValidateContentDeliveryRequestRecordsItem], Field(description='Delivery records to validate (max 10,000)', max_length=10000, min_length=1)]
+    records: Annotated[list[RecordsItem], Field(description='Delivery records to validate (max 10,000)', max_length=10000, min_length=1)]
     feature_ids: Annotated[list[str] | None, Field(description='Specific features to evaluate (defaults to all)', min_length=1)] = None
     include_passed: Annotated[bool | None, Field(description='Include passed records in results')] = True
     context: ContextObject | None = None

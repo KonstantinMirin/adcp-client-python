@@ -13,10 +13,10 @@ from adcp.types.constraints import IntMin1
 from ...enums.activation_method import CreativeActivationMethod
 from ...enums.ctv_ad_experience import CTVAdExperience
 from ...enums.motion_level import CreativeMotionLevel
-from ._base import CanonicalFormatBase, CanonicalFormatBaseSlotsItem
+from ._base import CanonicalFormatBase, SlotsItem
 
 
-class CanonicalFormatNativeInFeedMenuPlacement(StrEnum):
+class MenuPlacement(StrEnum):
     """
     Menu surface variant, mapping to OpenRTB Native `plcmttype` 1 (tile/feed) and 3 (headline banner). Valid only with `ctv_ad_experience: "menu"`.
     """
@@ -24,7 +24,7 @@ class CanonicalFormatNativeInFeedMenuPlacement(StrEnum):
     HEADLINE_BANNER = 'headline_banner'
 
 
-class CanonicalFormatNativeInFeedFocusBehavior(StrEnum):
+class FocusBehavior(StrEnum):
     """
     What happens when the viewer's remote focus lands on the unit. `autoplay_*` requires a `video` asset; playback method maps to AdCOM playbackmethod on OpenRTB bridges. Valid only with `ctv_ad_experience: "menu"`.
     """
@@ -33,7 +33,7 @@ class CanonicalFormatNativeInFeedFocusBehavior(StrEnum):
     AUTOPLAY_SOUND = 'autoplay_sound'
 
 
-class CanonicalFormatNativeInFeedMainImageSizesItem(AdCPBaseModel):
+class MainImageSizesItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -42,7 +42,7 @@ class CanonicalFormatNativeInFeedMainImageSizesItem(AdCPBaseModel):
     height: IntMin1
 
 
-class CanonicalFormatNativeInFeedIconSize(AdCPBaseModel):
+class IconSize(AdCPBaseModel):
     """
     Required logical (width, height) for the icon slot when present (typical: 80×80 or 100×100). When the effective icon slot declares `pixel_ratios`, intrinsic dimensions are multiplied by the selected ratio; absence remains 1x.
     """
@@ -54,7 +54,7 @@ class CanonicalFormatNativeInFeedIconSize(AdCPBaseModel):
     height: IntMin1
 
 
-class CanonicalFormatNativeInFeedImageFormatsItem(StrEnum):
+class ImageFormatsItem(StrEnum):
     JPG = 'jpg'
     JPEG = 'jpeg'
     PNG = 'png'
@@ -62,7 +62,7 @@ class CanonicalFormatNativeInFeedImageFormatsItem(StrEnum):
     WEBP = 'webp'
 
 
-class CanonicalFormatNativeInFeedAssetSource(StrEnum):
+class AssetSource(StrEnum):
     """
     Where the rendered native assets come from. `publisher_host_recorded` is omitted (audio-specific and not meaningful for native). Other values mirror the shared production-source axis used on `image` / `video_hosted`. `buyer_uploaded` (default): buyer ships pre-rendered title/image/body. `seller_pre_rendered_from_brief`: buyer ships a brief, seller renders the native bundle. `agent_synthesized`: AI synthesis pipeline produces title + image + body from a brief; pair with `synthesis_nondeterministic: true` for generative pipelines that can't guarantee in-spec output. `publisher_owned_reference`: buyer ships an existing published post reference; the seller resolves the post into the native presentation after authorization/review.
     """
@@ -73,7 +73,7 @@ class CanonicalFormatNativeInFeedAssetSource(StrEnum):
     PUBLISHER_OWNED_REFERENCE = 'publisher_owned_reference'
 
 
-class CanonicalFormatNativeInFeedBuyerAssetAcceptance(StrEnum):
+class BuyerAssetAcceptance(StrEnum):
     """
     Whether the product accepts buyer-uploaded native assets. When `rejected`, the buyer cannot ship pre-rendered title/image/body — they must use `build_creative`, `sync_creatives` with brief inputs, or an accepted `published_post` reference so the seller produces or resolves the native bundle.
     """
@@ -108,23 +108,23 @@ class CanonicalFormatNativeInFeed(CanonicalFormatBase):
     )
     experimental: Annotated[bool | None, Field(description='Stable at 3.1 GA. Shape mirrors IAB OpenRTB Native 1.2 — the renderer contract is well-established across in-feed native and content-recommendation adopters.')] = False
     v1_translatable: Annotated[bool | None, Field(description='Translates to v1 named native formats (e.g., `native_standard`, `native_content`) via the projection registry. Sellers with existing v1 named native formats SHOULD point `v1_format_ref[]` at them.')] = True
-    slots: Annotated[list[CanonicalFormatBaseSlotsItem] | None, Field(description="Default slot shape for native_in_feed. Mirrors IAB OpenRTB Native 1.2 asset types, including the Native video asset: `video` carries a VAST document (the Native 1.2 `vasttag` field) for video-bearing native units such as CTV menu heroes with focus-triggered playback. Products MAY override (`slots_override` on the projection ref) to narrow per-slot limits (`max_chars` on title/body) or remove unused slots (a content-recommendation slot that doesn't display an icon).")] = [{'asset_group_id': 'title', 'asset_type': 'text', 'required': True}, {'asset_group_id': 'body_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'main_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'icon', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'cta', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'advertiser_name', 'asset_type': 'text', 'required': True}, {'asset_group_id': 'sponsored_label', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': True}, {'asset_group_id': 'display_url', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'rating', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'price', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'video', 'asset_type': 'vast', 'required': False}, {'asset_group_id': 'impression_tracker', 'asset_type': 'pixel_tracker', 'required': False}, {'asset_group_id': 'viewability_tracker', 'asset_type': 'pixel_tracker', 'required': False}, {'asset_group_id': 'click_tracker', 'asset_type': 'pixel_tracker', 'required': False}]
+    slots: Annotated[list[SlotsItem] | None, Field(description="Default slot shape for native_in_feed. Mirrors IAB OpenRTB Native 1.2 asset types, including the Native video asset: `video` carries a VAST document (the Native 1.2 `vasttag` field) for video-bearing native units such as CTV menu heroes with focus-triggered playback. Products MAY override (`slots_override` on the projection ref) to narrow per-slot limits (`max_chars` on title/body) or remove unused slots (a content-recommendation slot that doesn't display an icon).")] = [{'asset_group_id': 'title', 'asset_type': 'text', 'required': True}, {'asset_group_id': 'body_text', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'main_image', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'icon', 'asset_type': 'image', 'required': False}, {'asset_group_id': 'cta', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'advertiser_name', 'asset_type': 'text', 'required': True}, {'asset_group_id': 'sponsored_label', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'landing_page_url', 'asset_type': 'url', 'required': True}, {'asset_group_id': 'display_url', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'rating', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'price', 'asset_type': 'text', 'required': False}, {'asset_group_id': 'video', 'asset_type': 'vast', 'required': False}, {'asset_group_id': 'impression_tracker', 'asset_type': 'pixel_tracker', 'required': False}, {'asset_group_id': 'viewability_tracker', 'asset_type': 'pixel_tracker', 'required': False}, {'asset_group_id': 'click_tracker', 'asset_type': 'pixel_tracker', 'required': False}]
     ctv_ad_experience: Annotated[CTVAdExperience | None, Field(description='CTV experience this option serves. On native_in_feed `menu` and `overlay` are valid. `menu`: smart-TV home/menu surfaces where the platform assembles buyer assets (background/main image, logo/icon, copy, optional focus-triggered video); `menu_placement` selects the tile vs headline-banner variant, and catalog-derived sponsored tiles route to `sponsored_placement` instead. `overlay`: seller-composited in-stream overlays supplied as an asset bundle (video, logo, imagery, copy, activation copy) — the contract overlay sellers that do not ingest VAST tags use; VAST-ingesting sellers publish a `video_vast` sibling option instead. The wire name stays `native_in_feed` for 3.x even though neither surface is literally in-feed.')] = None
-    menu_placement: Annotated[CanonicalFormatNativeInFeedMenuPlacement | None, Field(description='Menu surface variant, mapping to OpenRTB Native `plcmttype` 1 (tile/feed) and 3 (headline banner). Valid only with `ctv_ad_experience: "menu"`.')] = None
-    focus_behavior: Annotated[CanonicalFormatNativeInFeedFocusBehavior | None, Field(description='What happens when the viewer\'s remote focus lands on the unit. `autoplay_*` requires a `video` asset; playback method maps to AdCOM playbackmethod on OpenRTB bridges. Valid only with `ctv_ad_experience: "menu"`.')] = None
+    menu_placement: Annotated[MenuPlacement | None, Field(description='Menu surface variant, mapping to OpenRTB Native `plcmttype` 1 (tile/feed) and 3 (headline banner). Valid only with `ctv_ad_experience: "menu"`.')] = None
+    focus_behavior: Annotated[FocusBehavior | None, Field(description='What happens when the viewer\'s remote focus lands on the unit. `autoplay_*` requires a `video` asset; playback method maps to AdCOM playbackmethod on OpenRTB bridges. Valid only with `ctv_ad_experience: "menu"`.')] = None
     motion_level: Annotated[CreativeMotionLevel | None, Field(description='Accepted motion class for the rendered unit (AdCOM attrs 21-23).')] = None
     activation_methods: Annotated[list[CreativeActivationMethod] | None, Field(description='Viewer activation mechanisms this option offers (QR, deep link, send-to-device). Activations are engagement events, not impressions.', json_schema_extra={'uniqueItems': True})] = None
     title_max_chars: Annotated[IntMin1 | None, Field(description='Maximum character length for the title slot. IAB native typical: 25 (short) to 90 (long). Buyer agents SHOULD validate ship-time title length against this.')] = None
     body_text_max_chars: Annotated[IntMin1 | None, Field(description='Maximum character length for the body_text slot. IAB native typical: 90 (mainline) to 140 (extended).')] = None
     cta_max_chars: Annotated[IntMin1 | None, Field(description='Maximum character length for the cta slot. Typical: 15–25.')] = None
     cta_values: Annotated[list[str] | None, Field(description="Permitted CTA values for this product (e.g., ['LEARN_MORE', 'SHOP_NOW', 'SIGN_UP', 'DOWNLOAD']). When set, narrows the cta slot to a closed enum.")] = None
-    main_image_sizes: Annotated[list[CanonicalFormatNativeInFeedMainImageSizesItem] | None, Field(description='Accepted logical (width, height) pairs for the main_image slot. Common IAB native sizes: 1200×627 (1.91:1), 1080×1080 (1:1), 1080×1350 (4:5). When the effective main_image slot declares `pixel_ratios`, intrinsic asset dimensions are the matched logical pair multiplied by the selected ratio; absence remains 1x.', min_length=1)] = None
-    icon_size: Annotated[CanonicalFormatNativeInFeedIconSize | None, Field(description='Required logical (width, height) for the icon slot when present (typical: 80×80 or 100×100). When the effective icon slot declares `pixel_ratios`, intrinsic dimensions are multiplied by the selected ratio; absence remains 1x.')] = None
+    main_image_sizes: Annotated[list[MainImageSizesItem] | None, Field(description='Accepted logical (width, height) pairs for the main_image slot. Common IAB native sizes: 1200×627 (1.91:1), 1080×1080 (1:1), 1080×1350 (4:5). When the effective main_image slot declares `pixel_ratios`, intrinsic asset dimensions are the matched logical pair multiplied by the selected ratio; absence remains 1x.', min_length=1)] = None
+    icon_size: Annotated[IconSize | None, Field(description='Required logical (width, height) for the icon slot when present (typical: 80×80 or 100×100). When the effective icon slot declares `pixel_ratios`, intrinsic dimensions are multiplied by the selected ratio; absence remains 1x.')] = None
     max_image_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes for main_image and icon.')] = None
-    image_formats: Annotated[list[CanonicalFormatNativeInFeedImageFormatsItem] | None, Field(description='Permitted image file formats.')] = None
+    image_formats: Annotated[list[ImageFormatsItem] | None, Field(description='Permitted image file formats.')] = None
     ssl_required: Annotated[bool | None, Field(description='Whether trackers, landing pages, and image URLs must be served over HTTPS.')] = None
-    asset_source: Annotated[CanonicalFormatNativeInFeedAssetSource | None, Field(description="Where the rendered native assets come from. `publisher_host_recorded` is omitted (audio-specific and not meaningful for native). Other values mirror the shared production-source axis used on `image` / `video_hosted`. `buyer_uploaded` (default): buyer ships pre-rendered title/image/body. `seller_pre_rendered_from_brief`: buyer ships a brief, seller renders the native bundle. `agent_synthesized`: AI synthesis pipeline produces title + image + body from a brief; pair with `synthesis_nondeterministic: true` for generative pipelines that can't guarantee in-spec output. `publisher_owned_reference`: buyer ships an existing published post reference; the seller resolves the post into the native presentation after authorization/review.")] = 'buyer_uploaded'
-    buyer_asset_acceptance: Annotated[CanonicalFormatNativeInFeedBuyerAssetAcceptance | None, Field(description='Whether the product accepts buyer-uploaded native assets. When `rejected`, the buyer cannot ship pre-rendered title/image/body — they must use `build_creative`, `sync_creatives` with brief inputs, or an accepted `published_post` reference so the seller produces or resolves the native bundle.')] = 'accepted'
+    asset_source: Annotated[AssetSource | None, Field(description="Where the rendered native assets come from. `publisher_host_recorded` is omitted (audio-specific and not meaningful for native). Other values mirror the shared production-source axis used on `image` / `video_hosted`. `buyer_uploaded` (default): buyer ships pre-rendered title/image/body. `seller_pre_rendered_from_brief`: buyer ships a brief, seller renders the native bundle. `agent_synthesized`: AI synthesis pipeline produces title + image + body from a brief; pair with `synthesis_nondeterministic: true` for generative pipelines that can't guarantee in-spec output. `publisher_owned_reference`: buyer ships an existing published post reference; the seller resolves the post into the native presentation after authorization/review.")] = 'buyer_uploaded'
+    buyer_asset_acceptance: Annotated[BuyerAssetAcceptance | None, Field(description='Whether the product accepts buyer-uploaded native assets. When `rejected`, the buyer cannot ship pre-rendered title/image/body — they must use `build_creative`, `sync_creatives` with brief inputs, or an accepted `published_post` reference so the seller produces or resolves the native bundle.')] = 'accepted'
 
 
 __all__ = ["CanonicalFormatNativeInFeed"]

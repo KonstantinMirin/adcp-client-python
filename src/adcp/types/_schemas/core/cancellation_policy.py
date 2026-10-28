@@ -13,7 +13,7 @@ from adcp.types.constraints import FloatMin0Max1
 from .duration import Duration
 
 
-class CancellationPolicyCancellationFeeType(StrEnum):
+class CancellationFeeType(StrEnum):
     """
     Fee calculation method. 'percent_remaining': percentage of remaining uncommitted spend. 'full_commitment': buyer owes the full committed budget regardless of delivery. 'fixed_fee': flat monetary amount. 'none': no financial fee (cancellation with notice is free).
     """
@@ -23,7 +23,7 @@ class CancellationPolicyCancellationFeeType(StrEnum):
     NONE = 'none'
 
 
-class CancellationPolicyCancellationFee(AdCPBaseModel):
+class CancellationFee(AdCPBaseModel):
     """
     Fee applied when the notice period is not met.
     """
@@ -35,7 +35,7 @@ class CancellationPolicyCancellationFee(AdCPBaseModel):
         ConditionalRequired((Match('type', True, ('percent_remaining',)),), require=('rate',), forbid=()),
         ConditionalRequired((Match('type', True, ('fixed_fee',)),), require=('amount',), forbid=()),
     )
-    type: Annotated[CancellationPolicyCancellationFeeType, Field(description="Fee calculation method. 'percent_remaining': percentage of remaining uncommitted spend. 'full_commitment': buyer owes the full committed budget regardless of delivery. 'fixed_fee': flat monetary amount. 'none': no financial fee (cancellation with notice is free).")]
+    type: Annotated[CancellationFeeType, Field(description="Fee calculation method. 'percent_remaining': percentage of remaining uncommitted spend. 'full_commitment': buyer owes the full committed budget regardless of delivery. 'fixed_fee': flat monetary amount. 'none': no financial fee (cancellation with notice is free).")]
     rate: Annotated[FloatMin0Max1 | None, Field(description="Fee rate as a decimal proportion of remaining committed spend. Required when type is 'percent_remaining' (e.g., 0.5 means 50% of remaining spend).")] = None
     amount: Annotated[NonNegativeFloat | None, Field(description="Fixed fee amount in the buy's currency. Required when type is 'fixed_fee'.")] = None
 
@@ -49,7 +49,7 @@ class CancellationPolicy(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/cancellation-policy.json', pointer='#')
     notice_period: Annotated[Duration, Field(description="Minimum notice period before cancellation takes effect (e.g., { interval: 30, unit: 'days' }). A guaranteed buy canceled without sufficient notice incurs the declared cancellation fee.")]
-    cancellation_fee: Annotated[CancellationPolicyCancellationFee, Field(description='Fee applied when the notice period is not met.')]
+    cancellation_fee: Annotated[CancellationFee, Field(description='Fee applied when the notice period is not met.')]
 
 
 __all__ = ["CancellationPolicy"]
