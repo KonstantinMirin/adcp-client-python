@@ -395,6 +395,21 @@ class Array(Base):
     distinct: bool = False
     #: The ``contains`` predicate, as the document states it.
     contains: Any = None
+    #: The ``allOf`` conjuncts, at CONJ, where the node states a ``type`` word of its
+    #: own that is not ``object``.  §5's ``$ref`` row at CONJ names **a container**
+    #: among the targets that are not a class a model can extend -- "the target is this
+    #: node's own TYPE, and the other conjuncts and the ``allOf``'s siblings constrain
+    #: it, which is §2's intersection at a node that declares no fields of its own" --
+    #: and an array stating its own ``items`` is that clause with the type read off the
+    #: node's own word instead of off a reference.  So the array is the TYPE and the
+    #: conjuncts constrain it, which is what ``lower.containers.array`` reads them as:
+    #: rules, hung where §2 hangs a rule over a value.
+    #:
+    #: Carried the way :attr:`Union.siblings` carries the same keyword for the same
+    #: reason -- a kind that claims the node before ``parse``'s ``allOf`` arm has to
+    #: carry the conjunct list, and its handler is the one reader of it.  Empty for
+    #: every array that states no ``allOf``, which is all but 4 of the bundle's.
+    conjuncts: tuple[Conjunct, ...] = ()
     word: Any = None
 
 
