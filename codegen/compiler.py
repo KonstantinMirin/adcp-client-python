@@ -53,6 +53,7 @@ from __future__ import annotations
 import keyword
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from enum import StrEnum
 from typing import Any, NamedTuple
 
 from adcp.types._base import Approximation, SchemaRef
@@ -2986,6 +2987,49 @@ _BOUNDS = {
 }
 
 
+class Holds(StrEnum):
+    """How a subschema-valued keyword holds the subschemas it holds."""
+
+    #: One subschema, which is the whole value: ``items`` in draft-07's single-schema
+    #: form.
+    ONE = "one"
+    #: One subschema per NAME: ``properties``, whose value is a key -> schema map.
+    PER_KEY = "per key"
+
+
+#: **The subschema-valued keywords §2's intersection rule recurses into, and how each
+#: holds its subschemas.**  §2's "this holds at ANY DEPTH, including an overlay under
+#: ``items``" and §5's ``properties`` row are the two sentences, and this is the ONE
+#: declaration the readers take them from: :func:`_at_least_as_tight`, which asks whether
+#: the pair at such a keyword composes, and :func:`_intersection`, which writes the
+#: composition at ``properties``.  The pair of keywords was spelled in both functions,
+#: which is the second copy of one keyword decision ``docs/plan/architecture.md`` §3
+#: forbids.
+#:
+#: **KNOWN GAP, reported rather than closed** (``adcp-client-python-97w``, sixth
+#: instalment): the two readers do not yet agree at ``items``.  The predicate recurses
+#: there and the merge takes the CHILD's element declaration whole, so a base that
+#: declares its element as a ``$ref`` has the reference dropped and the restatement's
+#: bare overlay stands alone -- measured, 14 sites share ``items`` with different values
+#: and 8 of them lose a base's element declaration that way, which is what refuses
+#: ``core/assets/vast-asset.json`` and ``core/assets/daast-asset.json``.  Writing the
+#: composition there is a two-line change to the loop in :func:`_intersection` and it
+#: does not land, because what it produces cannot be GRADED: the conjunction §5 names
+#: arrives at the element pointer from an ENCLOSING declaration, and §8's pairing --
+#: ``adcp.types._base.applied_schema`` -- drops an enclosing statement at the first hop
+#: that moves to another instance.  The bead carries the measurement and both candidate
+#: readings of that drop.
+#:
+#: Not the table's ``descends`` column, which is a wider reading: that column answers
+#: where the subschemas a structural keyword holds SIT (``codegen.keywords.descends_at``,
+#: for the parser and the reference walk), and it holds ``patternProperties``,
+#: ``definitions``, the combinators and the conditionals too -- keywords §2's rule has
+#: no recursion for, and whose values this rule would then have to tell apart by shape
+#: anyway.  What this names is the narrower fact: the two keywords whose composition IS
+#: the rule applied one level down.
+HOLDS: Mapping[str, Holds] = {"items": Holds.ONE, "properties": Holds.PER_KEY}
+
+
 def _at_least_as_tight(
     keyword: str, c: Any, b: Any, resolve: Callable[[str], dict | None] | None = None
 ) -> bool:
@@ -3015,35 +3059,33 @@ def _at_least_as_tight(
         if not isinstance(c, int | float) or not isinstance(b, int | float):
             return False
         return c >= b if _BOUNDS[keyword] > 0 else c <= b
-    if keyword == "items":
-        # An overlay under ``items``: the rule holds at any depth, and the
-        # recursion is the rule rather than a second one.  A LIST-valued ``items`` is
-        # draft-07's tuple form, where position matters and two different lists are not
-        # ordered by this predicate -- so it falls through to False.
-        return (
-            isinstance(c, dict) and isinstance(b, dict) and _restatement(c, b, resolve) is not None
-        )
-    if keyword == "properties":
-        # **An overlay under ``properties``, and the same recursion the ``items`` arm
-        # takes one key deeper** -- §5's ``properties`` row at CONJ in its own words:
-        # "A property two conjuncts declare is one field: its constraints intersect by
-        # §2, and two object declarations compose as an ``allOf`` of the two at that
-        # property."  §2 says the recursion is the rule rather than a second one ("this
-        # holds at ANY DEPTH"), so the question asked of each shared key is the question
-        # asked of the node: is the child's declaration compatible with the base's.
+    held = HOLDS.get(keyword)
+    if held is not None:
+        # **An overlay under a SUBSCHEMA-VALUED keyword: the rule holds at any depth,
+        # and the recursion is the rule rather than a second one** (§2, "this holds at
+        # ANY DEPTH, including an overlay under ``items``"; §5's ``properties`` row at
+        # CONJ, "A property two conjuncts declare is one field: its constraints intersect
+        # by §2, and two object declarations compose as an ``allOf`` of the two at that
+        # property").  So the question asked of each held subschema is the question asked
+        # of the node: is the child's declaration compatible with the base's.
         #
         # A key only the CHILD declares says something more about the same instance, and
         # a key only the BASE declares is one the child is silent about -- and silence is
         # not a loosening under ``allOf`` (:func:`_restatement`), because the base's
         # declaration applies wherever the child is quiet.  Neither can make the
         # composition looser, so only the shared keys are asked about.
+        #
+        # A LIST-valued ``items`` is draft-07's tuple form, where position matters and
+        # two different lists are not ordered by this predicate -- so it falls through
+        # to False with every other non-mapping value.
         if not isinstance(c, dict) or not isinstance(b, dict):
             return False
+        pairs = [(c, b)] if held is Holds.ONE else [(c[k], b[k]) for k in set(c) & set(b)]
         return all(
-            isinstance(c[k], dict)
-            and isinstance(b[k], dict)
-            and _restatement(c[k], b[k], resolve) is not None
-            for k in set(c) & set(b)
+            isinstance(x, dict)
+            and isinstance(y, dict)
+            and _restatement(x, y, resolve) is not None
+            for x, y in pairs
         )
     return False
 
@@ -3139,7 +3181,11 @@ def _intersection(
     # first argument would make the result a function of which view the walk read first
     # -- the "last wins" this rule exists to have no reading of.
     for kw in set(c) & set(b):
-        if kw == "properties" and isinstance(c[kw], dict) and isinstance(b[kw], dict):
+        if (
+            HOLDS.get(kw) is Holds.PER_KEY
+            and isinstance(c[kw], dict)
+            and isinstance(b[kw], dict)
+        ):
             # **At ``properties`` neither value is the tighter one WHOLESALE, and §5's
             # row at CONJ says why: "two object declarations compose as an ``allOf`` of
             # the two at that property".**  The composition is therefore taken PER KEY
@@ -3288,6 +3334,15 @@ def _restatement(
     # nothing to say about a two-member vocabulary.
     if not c:
         return False
+    if _conjoins(child, base):
+        # **The restatement SPELLS the composition itself, so it says everything the
+        # base says by construction**: draft-07 applies every conjunct of an ``allOf``
+        # to the same instance, so a conjunct list holding the base's own declaration
+        # says at least what that declaration says, and the rest of the list is what it
+        # adds.  :func:`_conjoins` carries the measurement and why the question has to
+        # be asked of the base's OWN declaration rather than of its dereferenced
+        # reading.
+        return True
     if "$ref" in b and b.get("$ref") != c.get("$ref"):
         # **The base's whole constraining content is a ``$ref`` this predicate could
         # NOT resolve, so whether the restatement narrows it is unanswerable** -- and
@@ -3326,6 +3381,42 @@ def _restatement(
     # intersects to the base itself, states no new fact, and is the inherited field
     # (``_annotates_differently`` then decides whether the annotations differ).
     return _as_enum(_constraining(_intersection(dc, db, resolve))) != b
+
+
+def _conjoins(child: dict, base: dict) -> bool:
+    """Is ``child`` a CONJUNCTION one of whose conjuncts is ``base``'s own declaration,
+    with something beside it?
+
+    Then it narrows, and the answer costs no comparison: ``allOf`` applies every
+    conjunct to the same instance, so the list says at least what the conjunct that IS
+    the base says, and the other conjuncts are what it says more.  ``something beside
+    it`` is what makes it a narrowing rather than a restatement of nothing -- a list
+    holding the base and no other constraining conjunct says exactly what the base says,
+    which is :func:`_restatement`'s ``False``.
+
+    **Asked of the base's OWN declaration and never of its dereferenced reading**, which
+    is the whole point of the arm.  The conjunct and the base here are the SAME ``$ref``,
+    and :func:`_dereferenced` replaces the base's with the target's whole schema -- the
+    target's own ``allOf`` of conditionals included.  The predicate then meets two values
+    at ``allOf`` that have nothing to say to each other, ``_at_least_as_tight`` has no
+    ordering for a conjunct list, and the document is refused for restating the reference
+    VERBATIM.
+
+    Measured over the 1,054 portable documents: **1 site**,
+    ``core/assets/display-tag-asset.json`` at ``/oneOf/0/properties/macro_declarations``,
+    whose branch spells in full the composition ``vast-asset.json`` and
+    ``daast-asset.json`` spell as a bare overlay --
+    ``{"items": {"allOf": [{"$ref": T}, {"properties": ...}]}}`` over the root's
+    ``{"items": {"$ref": T}}``, where ``T`` is ``core/macro-declaration.json`` and its
+    own root carries six ``if``/``then`` conjuncts.  It was the only ``allOf`` pair
+    ``_at_least_as_tight`` was ever asked about and the only one it answered False for.
+    """
+    conjuncts = _constraining(child).get("allOf")
+    if not isinstance(conjuncts, list):
+        return False
+    stated = [_constraining(c) for c in conjuncts if isinstance(c, dict)]
+    b = _constraining(base)
+    return b in stated and any(s and s != b for s in stated)
 
 
 def _dereferenced(
