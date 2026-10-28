@@ -482,6 +482,40 @@ reached first.
 - **Union branch**: its own `title`; else the `const` it pins on the discriminating property; else
   its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
 
+**Collision, which this section never stated and the emitter therefore avoided by never
+colliding (added 2026-10-28).** The nested rule above is the LAST path segment, so two positions
+of one module can derive one name — `brand.properties.context` and
+`artifacts.items.brand.properties.context` both derive `Context`. With no rule here, the emitter
+took the branch that needs none: `names.derive` folds every hop to the root and concatenates, so
+a name is unique by construction. That is why 770 of 2,014 emitted classes are longer than 30
+characters and one is `GetMediaBuyArtifactsResponseArtifactsMediaBuyIdArtifactsItemBrandContext`.
+Unique by construction is not what this section asked for; the module path already carries the
+document.
+
+The rule is:
+
+1. Every position derives its short name by the rules above.
+2. Where **N positions of one module derive the same name, ALL N lengthen** — each prepends its
+   own nearest ancestor segment — and the step repeats until every name in the module is unique.
+3. A position whose short name collides with nothing keeps it.
+
+**All N lengthen, and that is the whole of why this is order-independent.** Lengthening only the
+later collider would make the public symbol a function of which position the walk reached first,
+which §9 forbids and which `names.adopt` already refuses for the same reason: a field must never
+be typed by a *sibling* position's name. Lengthening all of them makes each name a function of
+the SET of colliding positions, and that set is a function of the one document — so the name is
+recomputable after the walk, and no census over the run enters.
+
+The resolution is also confined to one module, never compared across modules, because a name's
+module is its namespace and `§9`'s rule is that a document's output may not depend on which other
+documents the run includes.
+
+*What this costs:* a long name becomes the exception it was meant to be, arising only where one
+document genuinely says `context` twice. The failure it avoids is the one the upstream v9 SDK
+measures — 1,092 of its 4,360 classes are numbered variants, `WholesaleFeedEvent1` through
+`WholesaleFeedEvent9` — because a numeric suffix carries no information about which position it
+names, where an ancestor segment does.
+
 **The two fallbacks are new on 2026-10-26, and each replaces a refusal with a derivation.** A
 missing root title used to refuse, and a branch with no identity used to refuse. Neither is an
 acceptance fact: a symbol is not something a document states about an instance, so deriving one
