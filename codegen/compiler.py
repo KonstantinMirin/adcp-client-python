@@ -1842,9 +1842,73 @@ def _refuse_a_combinator_of_shapes(
     return None
 
 
+def _a_rule_the_target_states(uri: str, mod: Module) -> dict | None:
+    """The target's own DECLARATION where everything it states is a RULE of the composing
+    node, and ``None`` where it states anything else.
+
+    **§2's intersection, computed over DECLARATIONS, asked of a ``$ref`` conjunct.**  "An
+    ``allOf`` of ``$ref``s makes those classes the bases.  Where two composed schemas
+    constrain the same property, the field carries the intersection" -- and the
+    intersection is a function over two DECLARATIONS, which is why ``$ref`` conjuncts and
+    inline conjuncts are one list and one merge in :func:`lower_composition`.  A target
+    whose root declares only rule sources declares no property to intersect and no field
+    set to inherit: what it says about the instance is a RULE, and §2's "rules are
+    after-validators" puts a rule on the nearest class, which a draft-07 conjunct makes
+    THIS node -- exactly as an inline conjunct stating the same keywords does.  So the
+    declaration joins ``conjunct_rules`` and the node keeps its own class, rather than
+    reaching §5's "the target is this node's own TYPE" with a type that has no field set
+    to be.
+
+    **One reading of which keywords those are, and it is the table's.**
+    :func:`declaring` says which keys constrain an instance at CONJ and
+    :func:`declaration_rule_sources` says which of those compile to a rule there -- the
+    two functions the inline arm's own screen asks -- so a conjunct's contribution cannot
+    be decided one way by a ``$ref`` arm and another way by an inline arm.  A target
+    stating ONE key the pair does not pair up falls through, because a key the rule
+    families do not claim would be dropped by this arm in silence (§2).
+
+    ``mod.resolve_node`` is the reader, which is the one place a lowering holds a target's
+    schema rather than its symbol, and its scope is exactly this rule's: a no-fragment
+    cross-document reference, keyed by the URI.  ``None`` for anything else -- a local
+    reference, a fragment, a target that refused -- and the caller then takes §5's other
+    answer, which is the safe direction.
+
+    Measured over the 1,054 portable documents: **2 conjuncts in 2 documents**, both a
+    reference to a root stating ``if``/``then`` and nothing else --
+    ``core/targeting.json`` and ``core/targeting-input.json``, at ``/allOf/0`` and
+    ``/allOf/1``, naming ``core/targeting-unknown-age-eligibility-constraint.json`` and
+    ``core/targeting-verified-age-basis-constraint.json``.  Each of those targets is §4's
+    "a root stating no schema keyword at all" read through §5's ``if`` row -- a permissive
+    root model -- so taking it as a base would have given the composing class a field set
+    of ``root: Any``.
+    """
+    stating = mod.resolve_node(uri)
+    if stating is None:
+        return None
+    declared = set(declaring(stating, Position.CONJ))
+    if not declared or declared - set(declaration_rule_sources(stating, Position.CONJ)):
+        return None
+    return stating
+
+
+#: **Which of §5's non-class targets this one IS**, for a refusal at CONJ that has to name
+#: it.  The row names four -- "a scalar, an enum, a container, or a union root, whose
+#: instance is one of its branches" -- and :class:`TargetKind` tells the union root from
+#: the other three, so the sentence states the kind rather than asserting flatly that the
+#: target "is not a class".  That assertion is false for a union root, which is a class
+#: (``BranchDispatchMixin`` plus the model base), and it is the same misreading
+#: ``adcp-client-python-10l.55`` found one position over in ``lower.union._inherited``.
+_NOT_A_BASE: Mapping[TargetKind, str] = {
+    TargetKind.UNION: "is a union root, whose instance is one of its branches and which "
+    "is therefore not a class a model can extend",
+    TargetKind.ANNOTATION: "is a scalar, an enumeration, a container or a root model, "
+    "which declares no field set a model can inherit",
+}
+
+
 def _the_conjuncts_own_type(
     node: "nodes.Base",
-    conjoined: Sequence[tuple[str, str]],
+    conjoined: Sequence[tuple[str, Target]],
     *,
     fields_declared: Collection[str],
     bases: Sequence[ir.TypeRef],
@@ -1862,25 +1926,59 @@ def _the_conjuncts_own_type(
     fields of its own**.  A node declaring one is a different shape -- the instance must
     be the target AND carry those properties, and a Python type that is the target
     cannot state a property -- so it refuses by name, and the refusal says which half
-    the document stated.  Measured over the 1,054 portable documents, of the 23 nodes
-    whose ``$ref`` conjunct resolves to something that is not a class: **21 declare no
-    fields and 2 do** (``core/package-signal-targeting.json``, whose root states
-    ``properties`` and ``additionalProperties`` beside the conjunct, and
-    ``core/vendor-pricing-option.json``, whose other conjunct is an inline object).
+    the document stated.  Measured over the 1,054 portable documents, of the 35 nodes
+    whose ``$ref`` conjunct resolves to something that is not a class a model can extend:
+    **32 declare no fields and 3 do**, and all 3 of those name a UNION root --
+    ``core/package-signal-targeting.json``, whose root states ``properties`` beside the
+    conjunct; ``core/product-filters.json`` at ``/properties/signal_targeting/items``,
+    which states one property beside it; and ``core/vendor-pricing-option.json``, whose
+    other conjunct is an inline object.  (The 32 split 22 ANNOTATION / 10 UNION, so the
+    kind is not what sorts the two arms: WHAT THE NODE DECLARES is.)
+
+    **The 3 are a numbered request to the semantics document and not a deferral this
+    compiler can clear** (``adcp-client-python-10l.59``).  Two rows decide the shape and
+    they disagree: §5's ``$ref`` row says "nothing of the target is copied into the
+    module", and §5's ``oneOf``/``anyOf`` row's "A sibling a CLASS carries → that same
+    base-plus-branches shape, at a union in ANY position: the siblings become the base,
+    each branch becomes a subclass narrowing what it narrows" is the only sentence that
+    gives this node a faithful spelling -- and it needs the target's BRANCHES here, as the
+    bases of one subclass per branch.  Subclassing the union base alone is not that
+    answer: §4 part 3 gives a class that inherits ``_branch_models`` its OWN schema, so
+    the composed class would accept ``{}`` where every branch requires a key, which is a
+    widening and not a composition.
+
+    **The kind every refusal here carries is the CELL's** (``docs/plan/architecture.md``
+    §3, "a refusal's kind is derived from the cell and never chosen at a raise site").
+    ``allOf``'s cell at CONJ is a lowering effect -- "the same rule applied to the
+    conjunct's own conjuncts" -- so :func:`kind_for` answers DEFERRED, and all four raise
+    sites below read it once rather than each naming a kind.  **Two of the four hand-wrote
+    ``Kind.VERDICT`` and that was §9's first mistake**: a verdict minted for unwritten code
+    reports clearable work as finished, and the one for a union root beside declared fields
+    carried chained verdicts with it (``adcp-client-python-10l.38``).  The other two
+    hand-wrote the answer the cell gives, so their reading is unchanged and now has one
+    source.
 
     Two more screens, each for a shape §5 decides elsewhere:
 
     * **TWO non-class targets** would be §2's intersection of two Python types, and §2
       computes an intersection over DECLARATIONS rather than over decided types -- there
       is no slot on an :class:`codegen.ir.TypeRef` for the conjunction of two.  0 nodes
-      over the population; written so the first one is loud.
+      over the population, and the two that used to reach it were the intersection asked
+      of the wrong thing: ``core/targeting.json`` and ``core/targeting-input.json``
+      compose two roots stating ``if``/``then`` and nothing else, so what each contributes
+      is a RULE and :func:`_a_rule_the_target_states` is where §2's intersection over
+      declarations reads them.
     * **A conjunct stating a RULE beside the type** is §2's "where a rule hangs", and it
       is WRITTEN: with no class above the value the rule hangs off the value's own
       annotated type, which is :attr:`codegen.ir.TypeRef.validators`, and ``lower.rules``
       is asked both of §2's questions so that nothing here decides which half a keyword
-      takes.  Measured over the 1,054 portable documents, 9 of the 30 nodes that reach
-      this row state a rule beside the type and every one of them is a ``not``, in three
-      shapes §5's ``not`` row already separates:
+      takes.  Re-measured over the 1,054 portable documents at
+      ``adcp-client-python-10l.59``: **11 of the 35 nodes** that reach this row state a
+      rule beside the type -- 10 of them a ``not``, in the three shapes §5's ``not`` row
+      already separates, and 1 an inline ``if``/``then`` conjunct --
+      ``core/localized-creative-asset.json`` at ``/allOf/0``, beside a ``$ref`` to
+      ``AssetVariant`` -- which takes the same second half as the third shape below.  The
+      three shapes, as the row that wrote them measured each:
 
       - **6 over a ``const`` or an ``enum``** -- a ``$ref`` to an enumeration beside
         ``not: {enum: [...]}`` -- which is a ``NotValue`` on the value's own type and the
@@ -1900,28 +1998,32 @@ def _the_conjuncts_own_type(
         "nothing on the model; the schema half answers and the ceiling is named", and the
         same answer ``lower.scalars`` gives the same statement beside a scalar's own type.
     """
+    conj = kind_for("allOf", Position.CONJ)
     if len(conjoined) > 1:
         return Refusal(
             "allOf",
             conjoined[1][0],
-            f"two conjuncts resolve to something that is not a class -- "
-            f"{', '.join(symbol for _, symbol in conjoined)} -- so section 5's $ref row "
-            "at CONJ makes each of them this node's own TYPE and the node has one type: "
-            "the conjunction of two decided types is section 2's intersection, which is "
-            "computed over DECLARATIONS and has no slot on an ir.TypeRef",
-            kind=Kind.VERDICT,
+            "two conjuncts resolve to something that is not a class a model can extend -- "
+            + ", ".join(f"{t.symbol} ({t.kind})" for _, t in conjoined)
+            + " -- so section 5's $ref row at CONJ makes each of them this node's own "
+            "TYPE and the node has one type: the conjunction of two decided types is "
+            "section 2's intersection, which is computed over DECLARATIONS and has no "
+            "slot on an ir.TypeRef",
+            kind=conj,
         )
-    where, symbol = conjoined[0]
+    where, target = conjoined[0]
+    symbol = target.symbol
     if fields_declared or bases:
         return Refusal(
             "allOf",
             where,
-            f"{symbol} is not a class, so section 5's $ref row at CONJ makes it this "
-            f"node's own TYPE -- and that clause holds at a node declaring no fields of "
-            f"its own, where this node declares {sorted(fields_declared)} and composes "
-            f"{[b.path for b in bases]}: the instance must be {symbol} AND carry those "
-            "properties, and a Python type that IS the target has no slot for a property",
-            kind=Kind.VERDICT,
+            f"{symbol} {_NOT_A_BASE[target.kind]}, so section 5's $ref row at CONJ makes "
+            f"it this node's own TYPE -- and that clause holds at a node declaring no "
+            f"fields of its own, where this node declares {sorted(fields_declared)} and "
+            f"composes {[b.path for b in bases]}: the instance must be {symbol} AND carry "
+            "those properties, and a Python type that IS the target has no slot for a "
+            "property",
+            kind=conj,
         )
     # **§2's "Where a rule hangs", read at CONJ**: one conjunct states the TYPE and
     # another a RULE, so §2's intersection has to compose the two before either reaches
@@ -1959,7 +2061,7 @@ def _the_conjuncts_own_type(
                     "statements about one value is section 2's intersection, which is "
                     "computed over DECLARATIONS, and reading either alone would drop the "
                     "other without declaring it",
-                    kind=Kind.DEFERRED,
+                    kind=conj,
                 )
             beside[key] = stating
     if beside:
@@ -1989,7 +2091,7 @@ def _the_conjuncts_own_type(
                 "about a VALUE: a statement about which KEYS an instance supplied has "
                 "nowhere on an ir.TypeRef to live, so the faithful answer needs a "
                 "value-level presence kind that section 2 does not name",
-                kind=Kind.DEFERRED,
+                kind=conj,
             )
         # §2's SECOND half, which is the one this position takes: the rule hangs off the
         # value's own annotated type.  An empty tuple here is §5's ``not`` row's own last
@@ -2198,8 +2300,11 @@ def lower_composition(
     #: **§5's ``$ref`` row at CONJ where the target is NOT a class**: the symbol is this
     #: node's own TYPE and not a base, with the conjunct's own pointer beside it so the
     #: refusal for a shape this row does not answer can name the conjunct that carried
-    #: it.  Read once, by :func:`_the_conjuncts_own_type`, after the worklist.
-    conjoined: list[tuple[str, str]] = []
+    #: it.  The TARGET and not its symbol alone, because the refusal for a node that
+    #: declares fields has to name WHICH of §5's non-class targets this one is
+    #: (:data:`_NOT_A_BASE`) and :attr:`Target.kind` is the one derivation of that.
+    #: Read once, by :func:`_the_conjuncts_own_type`, after the worklist.
+    conjoined: list[tuple[str, Target]] = []
     inherited: dict[str, dict] = {}
     inherited_required: set[str] = set()
     #: The FIELD each inherited key came out as on the base that declares it, and the
@@ -2372,8 +2477,22 @@ def lower_composition(
                 # can say so.  The import is added here because the symbol is this
                 # module's to name either way, and the two arms differ in what they do
                 # with it rather than in whether they need it.
+                #
+                # **A target that declares only a RULE takes §2's intersection over
+                # DECLARATIONS instead, and reaches the same list an inline rule-stating
+                # conjunct does** (:func:`_a_rule_the_target_states`).  It is not one of
+                # §5's four: it declares no property to intersect and no field set to
+                # inherit, so "the target is this node's own TYPE" has no type to name --
+                # what it says about the instance is a rule, and a draft-07 conjunct
+                # applies to the same instance, so the nearest class holding it is THIS
+                # node's.  No import, because nothing of the target is named: the rule is
+                # the composed node's own.
+                stating = _a_rule_the_target_states(conjunct["$ref"], mod)
+                if stating is not None:
+                    conjunct_rules.append(stating)
+                    continue
                 mod.importing(target.symbol, target.where)
-                conjoined.append((where, target.symbol))
+                conjoined.append((where, target))
                 continue
             mod.importing(target.symbol, target.where)
             # A base another MODULE declares, carried as the symbol the module writer
