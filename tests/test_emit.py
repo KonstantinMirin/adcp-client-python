@@ -1083,27 +1083,28 @@ ROUND_TRIPS_NOTHING = ("no_instrument",)
 #:   ``content-standards/update-content-standards-request.json``, plus
 #:   ``registries/v1-canonical-mapping.json``'s ``v1_pattern``.
 DECLARED_WIDENINGS = {
-    # **ONE arrived at ``adcp-client-python-10l.34``, and it is §4's own UNDERDETERMINED
-    # row reached at a position that had no classes before.**  §8's composition rule frees
-    # ``account/sync-accounts-request.json#/properties/accounts/items``, which declares a
-    # base plus one class per branch -- so there ARE branch classes for a declaration
-    # order to choose between, which is the whole of what the kind names, and
-    # ``harness.inseparable_unions`` puts the pointer in its set for the same reason.
+    # **ELEVEN -> TEN at ``adcp-client-python-10l.30``, and the site that LEFT is named
+    # here rather than quietly dropped, which is what the ratchet is for.**
+    # ``account/sync-accounts-request.json#/properties/accounts/items/oneOf`` carried an
+    # UNDERDETERMINED declaration from ``adcp-client-python-10l.34``, and the comment
+    # that stood here said exactly why: "each branch forbids every name the other
+    # requires, which is §4's second separator exactly -- but it spells each ``not`` as
+    # an ``allOf`` CONJUNCT of the branch, and ``compiler.rules_at`` reads a node's OWN
+    # rule sources, so ``Branch.forbids`` is empty on both sides."
     #
-    # The pair genuinely is not separated BY THE DERIVATION, and the reason is worth the
-    # line: each branch forbids every name the other requires, which is §4's second
-    # separator exactly -- but it spells each ``not`` as an ``allOf`` CONJUNCT of the
-    # branch, and ``compiler.rules_at`` reads a node's OWN rule sources, so
-    # ``Branch.forbids`` is empty on both sides.  §4 is explicit that "a pair the
-    # derivation cannot separate is treated as overlapping, because admitting a union on
-    # an unproven disjointness is the defect this source exists to avoid", so the
-    # declaration is the admitted answer and not a gap papered over.  Both halves of §8's
-    # third equality agree about it, in both directions, which is asserted below.
-    (
-        "account/sync-accounts-request.json",
-        "#/properties/accounts/items/oneOf",
-        "oneOf",
-    ),
+    # That was a reading of the separator and not a fact about the document.  Draft-07
+    # conjoins an ``allOf`` conjunct with the node that holds it, so a ``not`` a conjunct
+    # states forbids the name for the BRANCH -- ``union.forbidden_names`` hands the
+    # conjuncts to ``rules_at``'s ``also``, which is the argument
+    # ``compiler.lower_composition`` already uses for exactly this, and
+    # ``harness._views`` is the verifier's own spelling of the same descent.  The pair is
+    # separated now, both halves of §8's third equality agree in both directions, and the
+    # declaration is withdrawn: §2 permits no approximation a derivation can decide.
+    #
+    # Nothing else in this set moved.  Every remaining member is a union whose branches
+    # GENUINELY overlap -- open, each requiring a name the others neither forbid nor fail
+    # to declare -- or sits behind a ``$ref`` whose facts no reading resolves;
+    # ``tests/test_union_disjointness.py`` names and partitions the whole remainder.
     ("content-standards/calibrate-content-response.json", "#/oneOf", "oneOf"),
     (
         "content-standards/create-content-standards-request.json",

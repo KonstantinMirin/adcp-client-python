@@ -50,7 +50,10 @@ def main() -> int:
           f"ours {len(approximations) - len(upstream)}, upstream {len(upstream)})")
     for one in undetermined:
         print(f"    UNDERDETERMINED {one.document}{one.pointer} {one.attribution}")
-    print(f"accounted {len(out.emitted) + len(verdicts)}")
+    # ``accounted`` is ``emitted + VERDICTS``, and the verdict term is the RESOLVED
+    # kind: a chain onto a verdict is a document this compiler has finished with, which
+    # is what ``tests/test_emit.py``'s floor counts.
+    print(f"accounted {len(out.emitted) + res[Kind.VERDICT.value]}")
     if "--names" in sys.argv:
         Path("/tmp/run.json").write_text(json.dumps({
             "emitted": sorted(out.emitted),

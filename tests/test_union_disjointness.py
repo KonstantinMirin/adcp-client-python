@@ -1012,22 +1012,28 @@ def test_a_closed_conjunct_separates_by_what_it_does_not_declare() -> None:
     assert lower_union.closures_of(patterned) == (), patterned
     assert lower_union.separates(demanding, patterned, "object", "object") is None
 
-    # The bundle's own count, DERIVED: a branch of an authored union that closes in a
-    # conjunct and not at its own node.  0 today, which is why the arm decides no pair
-    # of 3.2 and is graded above instead.
-    in_a_conjunct = [
-        f"{document}#{pointer}/{keyword}/{i}"
-        for document in sorted(bundle.portable(BUNDLE))
-        for doc in [bundle.read(BUNDLE, document)]
-        for pointer, node in harness._rule_free_nodes(doc)
-        for keyword in ("oneOf", "anyOf")
-        if isinstance(node.get(keyword), list)
-        for i, raw in enumerate(node[keyword])
-        if isinstance(raw, dict)
-        and raw.get("additionalProperties") is not False
-        and schema_parse.closed_maps(raw, keywords.Position.BRANCH)
-    ]
-    assert in_a_conjunct == [], in_a_conjunct
+    # The bundle's own count, DERIVED over the set it ranges over and named: every
+    # branch of every authored union of 3.2 that does NOT close at its own node, paired
+    # with whether a CONJUNCT of it closes.  None of them does, which is why the
+    # per-view descent decides no pair of this bundle and is graded on the constructed
+    # pair above -- and the first document to state one reddens the assertion by name.
+    conjunct_closures = claimed(
+        "branches of an authored union that do not close at their own node",
+        [
+            (
+                f"{document}#{pointer}/{keyword}/{i}",
+                bool(schema_parse.closed_maps(raw, keywords.Position.BRANCH)),
+            )
+            for document in sorted(bundle.portable(BUNDLE))
+            for doc in [bundle.read(BUNDLE, document)]
+            for pointer, node in harness._rule_free_nodes(doc)
+            for keyword in ("oneOf", "anyOf")
+            if isinstance(node.get(keyword), list)
+            for i, raw in enumerate(node[keyword])
+            if isinstance(raw, dict) and raw.get("additionalProperties") is not False
+        ],
+    )
+    assert [at for at, closes in sorted(conjunct_closures) if closes] == []
 
 
 def test_two_array_branches_separate_on_their_element_type() -> None:
@@ -1085,13 +1091,32 @@ def test_eight_open_branches_requiring_one_name_separate_on_their_nested_nots() 
     planned = _branches("compliance/comply-test-controller-response.json", "", "oneOf")
     pairs = claimed(
         "the pairs of the eight-branch controller response",
-        [
-            (i, j)
-            for i in range(len(planned))
-            for j in range(i + 1, len(planned))
-        ],
+        [(i, j) for i in range(len(planned)) for j in range(i + 1, len(planned))],
     )
-    assert len(pairs) == 28, sorted(pairs)
+    # Every branch is OPEN and requires ``success``, and the one property every branch
+    # PINS is pinned to two values over eight branches -- so there is no dispatch key and
+    # closure separates nothing.  All derived, so the claim about what does separate them
+    # is about these branches and not about a reading of their titles.
+    for plan in planned:
+        assert plan.node["additionalProperties"] is True, plan
+        assert frozenset({"success"}) in lower_union.demands(plan), plan
+        assert lower_union.closures_of(plan) == (), plan
+    shared = set.intersection(*(set(lower_union.pins(p.properties)) for p in planned))
+    assert shared == {"success"}, shared
+    assert {lower_union.pins(p.properties)["success"] for p in planned} == {True, False}
+    assert lower_union.discriminator(planned, None) == "", planned
+    # The pin separates the error branch from the seven successes and nothing else, so
+    # the pairs AMONG the successes are the ``not: {"anyOf": [...]}`` reading's alone.
+    successes = [i for i, p in enumerate(planned) if lower_union.pins(p.properties)["success"]]
+    among = claimed(
+        "pairs among the seven branches pinning success to one value",
+        [(i, j) for i in successes for j in successes if i < j],
+    )
+    assert among < pairs, sorted(among - pairs)
+    for i, j in sorted(among):
+        assert GROUPED in (
+            lower_union.separates(planned[i], planned[j], "object", "object") or ""
+        ), (i, j)
     unseparated = [
         (i, j)
         for i, j in sorted(pairs)
