@@ -158,15 +158,15 @@ tuple the emitter writes. The families are `oneOf`/`anyOf` over `required` or ov
 values, `if`/`then`/`else`, `dependencies`, `minProperties`/`maxProperties`, `uniqueItems`,
 `not`, and `contains`.
 
-**Where a rule hangs:** on the nearest class if there is one, because a class can read sibling
-fields. Where no class sits above the value — a root array, a mapping value, a `definitions`
-entry, a union branch — the rule hangs off the value's own annotated type as an after-validator
+**Rule placement.** Declare a rule on the nearest enclosing class, which can read sibling
+fields. Where no class encloses the value — a root array, a mapping value, a `definitions`
+entry, a union branch — declare it as an after-validator on the value's own annotated type
 (`AtLeastOne`, `NotValue`, `Distinct`).
 
-This paragraph decides where a rule hangs, not what it may read. A rule on the value reads the
-value's own members as a rule on a class reads its fields, so a kind naming KEYS —
-`ForbiddenGroups`, `RequiredGroups`, `PresenceGroups` — hangs off the value's own annotated type
-wherever no class sits above it.
+Placement determines where a rule is declared, not which members it reads. A rule declared on a
+value reads that value's own members, as a rule declared on a class reads its fields. A rule
+naming keys — `ForbiddenGroups`, `RequiredGroups`, `PresenceGroups` — is therefore valid as an
+after-validator wherever no class encloses the value.
 
 A rule's condition tests membership as well as equality: a `Match` clause reads a property's
 `const` or `enum`, and also `value in field`.
@@ -733,7 +733,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | --- | --- |
 | `additionalProperties` | The empty schema `{}` IS `true` and is read as `true` everywhere below, never as a typed value schema. On a class: `false` → `forbid`; `true` → `allow`; typed → `allow` with a typed `__pydantic_extra__`; absent → `ignore`. On a mapping (no `properties`) → the VALUE type; `true` or `{}` → `Any`; `false` → refused, it admits only the empty object. Beside `patternProperties` → refused, two value schemas. `false` on an `allOf` overlay would reject the fields its sibling conjunct contributes, which is why `true` is the only value an overlay can carry. ROOT beside a union → the same, on the base, inherited by every branch; a branch stating its own composes with it by the CONJ rule below. CONJ → `true` is the identity and contributes nothing, `false` on any conjunct closes the composed object, and two typed ones intersect their value schemas; a typed conjunct beside a `true` one is a widening and refuses. |
 | `patternProperties` | A mapping whose KEY carries the pattern: `dict[Annotated[str, StringConstraints(pattern=…)], V]`, which Pydantic renders back as `patternProperties` — the document's own keyword. More than one pattern → refused: that is a value schema per key shape. Beside a non-`false` `additionalProperties` → refused. |
-| `propertyNames` | The mapping's KEY type: a `$ref` → that type; `minLength` / `maxLength` → a length-bounded `str`; `pattern` → an annotated `str`; `enum` → a `Literal` of the members, which pydantic renders back as this very keyword; `anyOf` → a union of key types. Beside `patternProperties` → the key type carries both, by §2's intersection: each states a constraint on the same key. On a CLASS with declared `properties` → checked against the declared names when the class is emitted and carried nowhere, because those names are fixed and known; a declared name the constraint refuses is a contradiction in the document and refuses by name. Where that class also admits extras, a key beyond the declared names is checked by the schema half alone, and the model is looser than its document there, which §2 permits. RULE position → nothing on the model: a rule position constrains which keys a conditional *tests*, so there is no key type to annotate and no value to hang a validator on. |
+| `propertyNames` | The mapping's KEY type: a `$ref` → that type; `minLength` / `maxLength` → a length-bounded `str`; `pattern` → an annotated `str`; `enum` → a `Literal` of the members, which pydantic renders back as this very keyword; `anyOf` → a union of key types. Beside `patternProperties` → the key type carries both, by §2's intersection: each states a constraint on the same key. On a CLASS with declared `properties` → checked against the declared names when the class is emitted and carried nowhere, because those names are fixed and known; a declared name the constraint refuses is a contradiction in the document and refuses by name. Where that class also admits extras, a key beyond the declared names is checked by the schema half alone, and the model is looser than its document there, which §2 permits. RULE position → nothing on the model: a rule position constrains which keys a conditional *tests*, so there is no key type to annotate and no value to annotate. |
 | `minProperties`, `maxProperties` | On a class → a `PropertyCount` rule. `minProperties` is written only where `additionalProperties` is stated, because a dropped key would make the rule refuse what the document accepts; `maxProperties` needs no such gate, since a dropped key only lowers the count. On a mapping → `Field(min_length / max_length)` on the dict's type, because a `PropertyCount` rule counts declared fields and a dict has none. |
 | `dependencies` | The list form → a `Dependencies` rule: if A is present, B is required. The schema form refuses by name on the first occurrence, rather than being skipped. |
 <!-- end generated -->
@@ -793,11 +793,11 @@ the directive's first effect is to make it. They are the dominant class.
   `allOf`'s siblings constrain it" — and the refusals reading "*X* is not a class, so it cannot
   be a base" are the unimplemented half of that sentence.
 - **`uniqueItems` and `contains` where no class holds the value.** §2 already decides it: where
-  no class sits above the value, the rule hangs off the value's own annotated type. A root array
+  no class encloses the value, the rule is an after-validator on the value's own annotated type. A root array
   is a root model, and a root model carries a rule tuple exactly as a class does, so `Distinct`
   and `AtLeastOne` reach it. The keyword is enforced, not dropped.
 - **A root stating only `if` / `then`.** Refused because "a root is exactly one kind and this one
-  states `if`". The conditional is a rule, and §2 hangs a rule with no class above it on the
+  states `if`". The conditional is a rule, and §2 declares a rule with no enclosing class on the
   value's own type: the root is a permissive root model carrying `ConditionalRequired`. The
   document states a conditional and nothing else, and so does the model.
 
@@ -828,7 +828,7 @@ attribution.
   withdrawn 2026-10-27: a named type holds the rule perfectly well, and §2 already said how.**
   This row claimed the duplicate and existential checks are the schema half's alone where no
   class sits above the array. §2 says the opposite and is right: "Where no class sits above the
-  value — a root array, a mapping value, a `definitions` entry, a union branch — the rule hangs
+  value — a root array, a mapping value, a `definitions` entry, a union branch — the rule is declared
   off the value's own annotated type as an after-validator (`AtLeastOne`, `NotValue`,
   `Distinct`)." `Annotated[list[X], AfterValidator(…)]` carries a rule; nothing about a named
   alias prevents it.
@@ -842,7 +842,7 @@ attribution.
   for it, which is worse because an approximation looks accounted for.
 
   **The faithful answer:** declare the three in `_runtime.py` beside the other rule kinds, and
-  hang each on the value's own annotated type where no class holds it. Measured at the point this
+  declare each on the value's own annotated type where no class encloses it. Measured at the point this
   was withdrawn, **13 of 17 declared approximations were `uniqueItems`** at exactly these
   positions, so they become faithful and the *ours* backlog falls by 13 rather than being
   reported forever.
