@@ -480,7 +480,35 @@ reached first.
   element, `<Property>Value` for a mapping value, `<Root><Key>` for a `definitions` entry. The
   module path already carries the document, so a nested name does not repeat it.
 - **Union branch**: its own `title`; else the `const` it pins on the discriminating property; else
-  its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
+  the required names that **DISTINGUISH it from its siblings** — its `required` set minus the
+  names every sibling also requires; else its **index among the branches**, `<Base>Branch<i>`.
+- **`definitions` entry**: `<Key>`. The module path carries the document, so the entry does not
+  repeat the root either.
+
+**The last two are corrected on 2026-10-28, and both for the nested rule's own reason.** Each
+repeated something already carried, and each produced one of the two longest names the tree had
+left after row `10l.50` shortened the nested rule:
+
+- *The whole `required` set, including what every sibling shares.*
+  `formats/canonical/seller_rendered_stateful_display.json` at `/properties/transitions/items`
+  is the measured case: six untitled branches where **`trigger` is required by all six** and
+  `input` by four, so those two names say nothing about which branch this is. The sorted-set
+  fallback nevertheless spelled them, giving
+  `TransitionsItemInputScrollEndPercentScrollReferenceScrollStartPercentTrigger` — 76 characters,
+  of which `Input` and `Trigger` carry no identity. Subtracting the shared names leaves what
+  actually separates that branch from branch 2, which requires `scroll_threshold_percent` where
+  this one requires a start and an end. The difference is a function of the SET of branches, which
+  is a function of the one document, so §9's rule holds and no census over the run enters.
+- *`<Root><Key>` for a `definitions` entry.* `core/verification-token-claims.json` declares
+  `VerificationTokenGradingProfile`, and the rule prefixed it with the root's title to give
+  `AgenticAdvertisingOrgVerificationTokenClaimsVerificationTokenGradingProfile` — 75 characters
+  in a module already named `core/verification_token_claims.py`. The `<Root>` was there because
+  this section had no collision rule when it was written; it now has one, so the prefix is what
+  the collision rule spends when it must, not what every entry pays up front.
+
+Where subtracting the shared names leaves nothing — two branches with identical `required` sets
+and no other identity — the branch falls through to the index, which is what the fallback order
+already says.
 
 **Collision, which this section never stated and the emitter therefore avoided by never
 colliding (added 2026-10-28).** The nested rule above is the LAST path segment, so two positions
