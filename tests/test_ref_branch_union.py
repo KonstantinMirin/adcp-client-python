@@ -11,6 +11,14 @@ CONSTRUCTED bundle driven through the real entry point, and the bundle's own six
 claimed by name beside it so that the day one of them clears, this file says what it must
 then do.
 
+**AND ONE CLEARED THROUGH THIS ROW AT ``adcp-client-python-10l.55``**:
+``core/assets/asset-union.json``, whose ``/oneOf/3`` branch references the UNION root
+``core/assets/vast-asset.json``.  The branch row refused it on "VASTAsset is not a class",
+a question about :class:`compiler.Shape` reported as a statement about classes -- a union
+root IS a class and its shape simply does not cross a module boundary -- and
+:class:`compiler.TargetKind` tells the two apart.  So the derivation is no longer vacuous
+on the real bundle, and the constructed pair below still grades the mechanism.
+
 Every assertion below runs the production pipeline: ``emit.emit`` over a bundle directory,
 ``emit.write`` into a package, and then the written package is IMPORTED and asked to
 validate -- so a rendering that does not run, a base order that breaks the MRO, or a
@@ -32,6 +40,7 @@ import pytest
 from pydantic import ValidationError
 
 from adcp.types._base import BranchDispatchMixin
+from compiled import compiled
 from codegen import bundle, compiler, emit, harness
 from codegen.lower import union as lower_union
 from codegen.refusal import Kind
@@ -265,6 +274,15 @@ def test_a_ref_branch_whose_target_is_not_a_class_refuses_by_name() -> None:
     emitted as a module nobody can import.  The same refusal
     ``compiler.lower_composition`` raises for a ``$ref`` conjunct, at the one other
     position a reference becomes a base.
+
+    **THE SENTENCE IS ASSERTED, because this is the one of §4's three root outcomes the
+    branch row still refuses** (``adcp-client-python-10l.55``).  The gate used to ask
+    whether the target had a ``compiler.Shape`` and report the answer as "is not a
+    class", which was true here and FALSE for a UNION root -- a class whose shape did
+    not cross the module boundary.  It asks ``compiler.TargetKind`` now, so the only
+    target that reaches this refusal is the alias, and the detail says alias:
+    ``dog.json`` is a bare ``type: "string"`` root, which is this population's scalar
+    document.
     """
     at = _fixture(
         _ROOT,
@@ -284,6 +302,8 @@ def test_a_ref_branch_whose_target_is_not_a_class_refuses_by_name() -> None:
         assert row["keyword"] == "$ref", row
         assert row["pointer"] == "/oneOf/1", row
         assert row["resolved"] is Kind.VERDICT, row
+        assert "is not a class but an Annotated alias" in row["detail"], row
+        assert "SCALAR root" in row["detail"], row
     finally:
         shutil.rmtree(at)
 
@@ -300,16 +320,24 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
 
     What is asserted of each is the property this row is responsible for -- that no
     refusal anywhere in the run still reads "a bare $ref branch has no node to declare a
-    subclass from" -- and the property it is NOT: six of the seven still refuse, through
+    subclass from" -- and the property it is NOT: five of the seven still refuse, through
     a target of their own that another row's gap blocks, so the emitted count this row
     moves is ZERO and the constructed pair above is where the mechanism is graded.
+
+    **The second emitter arrives at ``adcp-client-python-10l.55``:**
+    ``core/assets/asset-union.json``, whose ``/oneOf/3`` branch references the UNION root
+    ``core/assets/vast-asset.json``.  The branch row refused it for not being a class --
+    the gate asked whether the target had a ``compiler.Shape`` and a union base's does not
+    cross a module boundary -- and ``compiler.TargetKind`` tells the two questions apart,
+    so §4's branch rule applies: the target supplies the fields and the union's base
+    supplies the dispatch.
 
     The retired sentence is asserted absent over the WHOLE refusal set and not over
     these eleven, because four further documents reached it through a CHAIN and a check
     over the roots alone would not see them.
     """
     population = sorted(bundle.portable(BUNDLE))
-    out = emit.emit(BUNDLE, population)
+    out = compiled(BUNDLE, population)
     roots = claimed(
         "union roots with a bare $ref branch",
         [
@@ -355,13 +383,17 @@ def test_the_bundles_ref_branch_roots_are_claimed_by_name_and_wait_on_their_targ
     for document, row in sorted(out.refusals.items()):
         assert "has no node to declare a subclass from" not in row["detail"], document
 
-    # Each of the seven still refuses but one, and every refusal is on something OTHER
-    # than this row's ground: five through a target of their own, one on a nested
+    # Each of the seven still refuses but TWO, and every refusal is on something OTHER
+    # than this row's ground: four through a target of their own, one on a nested
     # union's ``discriminator`` sibling (``salesagent-j3k2l.67``).  Asserted as "refused, by name and pointer"
     # rather than pinned to a keyword, because which gap each waits on is the other
     # rows' fact and moves when they land.
-    # ``core/media-buy-available-action-id.json`` is the ONE of the seven that emits,
-    # and it does not emit through this row: its other branch declares
+    # ``core/assets/asset-union.json`` is the second emitter and it DOES emit through
+    # this row, at ``adcp-client-python-10l.55``: a ``$ref`` branch onto a UNION root is
+    # §4's two bases like any other, once the gate asks ``compiler.TargetKind`` instead
+    # of asking whether the target has a ``compiler.Shape``.
+    # ``core/media-buy-available-action-id.json`` is the first, and it does not emit
+    # through this row: its other branch declares
     # ``type: "string"``, so the DOCUMENT says its instance is a scalar and §4 "What
     # becomes what" makes the root an ``Annotated`` alias with no branch classes
     # and no dispatch at all

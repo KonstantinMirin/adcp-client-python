@@ -47,6 +47,7 @@ from codegen.harness import Pair, check_pair, compare_schema
 from codegen.lower import names, union
 from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes, parse as schema_parse
+from compiled import compiled
 import populations
 from conftest import refusal_from
 
@@ -240,7 +241,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     )
     claimed("this step's population", pop, inside=docs)
 
-    with_row = emit.emit(BUNDLE, pop)
+    with_row = compiled(BUNDLE, pop)
     # Removing THIS ARM at THIS POSITION, rather than emptying the walk: the other
     # arms are other steps' and a verdict read with them absent is a verdict about a
     # compiler nobody runs.
@@ -279,7 +280,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         return composing_at_a_root(node, mod, *rest, **kw)
 
     with mock.patch.object(compiler, "lower_composition", without_the_root_arm):
-        without = emit.emit(BUNDLE, pop)
+        without = compiled(BUNDLE, pop)
 
     claimed("bundle.portable", docs)
     # N over this population on the merged table (43 when this lane measured it
@@ -923,7 +924,14 @@ def test_a_restatement_contradicting_the_base_still_refuses_rather_than_merging(
             },
             {
                 (REF.format("core/probe-base.json"), "/allOf/0"): compiler.Target(
-                    ".base", "ProbeBase", compiler.Shape({"n": base}, frozenset())
+                    ".base",
+                    "ProbeBase",
+                    compiler.Shape({"n": base}, frozenset()),
+                    # The target is a CLASS, which is what makes this a restatement to
+                    # merge rather than §5's CONJ answer of the node's own TYPE.
+                    # ``Target.kind`` has no default, so every hand-built target states
+                    # which of §4's three root outcomes it is.
+                    kind=compiler.TargetKind.CLASS,
                 )
             },
         ))
@@ -1424,7 +1432,11 @@ def test_a_constraining_sibling_of_a_ref_conjunct_compiles_to_nothing_and_is_rep
     shape = compiler.Shape({"a": {"type": "string"}}, frozenset())
     mod = emit.Module(
         document="probe.json",
-        targets={("x", "/allOf/0"): emit.Target("..core.probe_base", "ProbeBase", shape)},
+        targets={
+            ("x", "/allOf/0"): emit.Target(
+                "..core.probe_base", "ProbeBase", shape, kind=compiler.TargetKind.CLASS
+            )
+        },
     )
     compiler.lower_composition(_probe_node(doc, mod), mod)
     assert "ProbeBase" in {symbol for _, symbol in mod.imports}
@@ -1452,7 +1464,11 @@ def test_a_scalar_root_is_the_composing_nodes_own_type_and_not_a_base() -> None:
     sentence.  Both arms are now asserted, and the refusal is the one the clause really
     makes.
     """
-    target = {("x", "/allOf/0"): emit.Target("..core.brand_id", "BrandID", None)}
+    target = {
+        ("x", "/allOf/0"): emit.Target(
+            "..core.brand_id", "BrandID", None, kind=compiler.TargetKind.ANNOTATION
+        )
+    }
     # No fields of its own: the node IS the target.
     decided = _lower({"title": "Probe", "type": "object", "allOf": [{"$ref": "x"}]}, target)
     assert not isinstance(decided, Refusal), decided
