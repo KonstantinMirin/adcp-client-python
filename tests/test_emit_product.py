@@ -407,6 +407,21 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # of document arriving.  It held at .28, at .29 and at .21, every time as the four
     # names and not as the difference of two counts.
     assert sorted(cleared - set(composing())) == [
+        # **NINE MORE at ``adcp-client-python-10l.21``'s SEVENTH instalment, and every
+        # one is a RELEASE of exactly ``core/assets/url-asset.json``'s kind.**  That row
+        # writes the composition at ``items`` and lets the base's ``$ref`` survive it as
+        # a conjunct, so ``core/assets/vast-asset.json`` and
+        # ``core/assets/daast-asset.json`` emit -- and the element class they declare has
+        # ``core/macro-declaration.json`` for a base, which composes at ITS own root.  So
+        # with the root ``allOf`` arm stubbed out that target refuses and the chain takes
+        # all of them with it.  ``core/offering-asset-group.json`` is the first hop and
+        # the eight ``*-item.json`` documents reach it through ``/properties/assets/items``.
+        # None of them composes at its own root, so none is in ``composing()``, and each
+        # is named here so this row's credit stays separate from the release.
+        # The list is SORTED, so the nine sit at their own places below and are not in a
+        # block of their own: ``core/app-item.json`` here, then
+        # ``core/destination-item.json`` through ``core/vehicle-item.json``.
+        "core/app-item.json",
         # **ONE MORE at ``adcp-client-python-10l.21``'s FIFTH instalment, and it is a
         # RELEASE of the same kind.**  ``core/assets/url-asset.json`` composes nothing at
         # its own root -- its ``allOf`` is at
@@ -430,6 +445,9 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         # refuses.  Named here so this row's own credit stays separate from the release.
         "core/canonical-audience-evidence-selection.json",
         "core/catalog.json",
+        "core/destination-item.json",
+        "core/education-item.json",
+        "core/flight-item.json",
         # **One more since ``adcp-client-python-10l.20``, and it is a RELEASE of the same
         # kind.**  ``core/forecast-point-dimensions.json`` is a root ARRAY and composes
         # nothing at its own root, so it is not in ``composing()``.  Its own blocker was
@@ -439,6 +457,8 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         # stubbed out it chains and refuses.  Named here rather than counted, which keeps
         # this row's own credit separate from the release step 9 handed it.
         "core/forecast-point-dimensions.json",
+        "core/hotel-item.json",
+        "core/job-item.json",
         # Two more since ``salesagent-j3k2l.43``, and both are RELEASED rather than
         # claimed: neither composes at its own root, so neither is in ``composing()``;
         # each one's only blocker was a ``$ref`` into a document whose conjunct that row
@@ -460,8 +480,10 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         # ``PresenceGroups`` rule that chain emits, and with the root ``allOf`` arm
         # stubbed out the middle hop refuses, which is what puts this document here.
         "core/media-buy-support.json",
+        "core/offering-asset-group.json",
         "core/package-targeting-resolution.json",
         "core/principal-state.json",
+        "core/real-estate-item.json",
         "core/reporting-delivery-ready-webhook.json",
         # **TWO MORE at ``adcp-client-python-10l.21``'s second instalment, and both are
         # RELEASES of the same kind.**  Neither composes at its own root.
@@ -476,6 +498,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
         # ``formats/canonical/audio_daast.json`` is NOT here: it emits either way, so the
         # row did not clear it.
         "core/requirements/daast-asset-requirements.json",
+        "core/vehicle-item.json",
         "error-details/authorization-required.json",
         "error-details/macro-resolution-failed.json",
         "media-buy/acceptance-policy-catalog.json",
@@ -1061,8 +1084,23 @@ def test_the_wrong_text_at_that_pointer_is_reported_as_a_differs(
     ``_annotates_differently`` forced to ``False`` is exactly the emitter before
     this branch existed: the restatement adds nothing constraining, so the field is
     inherited and the class carries the BASE's text at a pointer its own document
-    declares. The same probe bundle, the same comparison, two emitters -- and the
-    comparison separates them by name, pointer and both texts.
+    declares. The same probe bundle, two emitters -- and the two sides separate them by
+    pointer and by both texts.
+
+    **The instrument is the TWO SIDES and no longer the comparison's ``differs``, and
+    §8's annotation clause (added 2026-10-27) is why** (``adcp-client-python-10l.21``'s
+    seventh instalment).  "There is no pointer at which an annotation is graded, because
+    it is not among the facts being compared" -- ``harness.grades_a_difference``, off
+    ``bundle.is_an_annotation`` -- so the comparison reports nothing here and a test
+    asserting a ``differs`` would be asserting that an acceptance check grades an
+    annotation.
+
+    It is not weaker: what the ``differs`` line printed was the document's text and the
+    model's, and those are exactly the two values asserted below, by pointer, in both
+    directions -- the document says one thing and the model says the other.  What is
+    LOST is the reach: the comparison said this over the whole population and these two
+    assertions say it over this probe.  §8 assigns the population-wide claim to the
+    annotation COVERAGE obligation, which is not built.
     """
     monkeypatch.setattr(compiler, "_annotates_differently", lambda child, base: False)
     cls, text, schema = _emit_probe(
@@ -1074,16 +1112,33 @@ def test_the_wrong_text_at_that_pointer_is_reported_as_a_differs(
     )
     assert "THE DOCUMENT SAYS THIS" not in text, "the patch did not reach the emitter"
 
+    # The DOCUMENT's text at each pointer, which the faithful probe above asserts the
+    # model matches.
+    assert schema["properties"]["ctx"]["description"] == "THE DOCUMENT SAYS THIS"
+    assert schema["properties"]["echo"]["description"] == "THE TARGET SAYS THIS"
+    # The BROKEN model's, at the same two pointers: the base's text in both places.
+    rendered = cls.model_json_schema()["properties"]
+    assert _described(rendered["ctx"]) == "THE BASE SAYS THIS", rendered["ctx"]
+    assert _described(rendered["echo"]) == "THE BASE SAYS THAT", rendered["echo"]
+
+    # And the comparison is silent in every direction, which is §8's clause itself: an
+    # annotation cannot change what a payload is accepted as.
     comparison = compare_schema(schema, cls)
-    assert comparison.added == [] and comparison.missing == []
-    reported = {str(d).split(":", 1)[0]: str(d) for d in comparison.differs}
-    assert sorted(reported) == ["/properties/ctx/description", "/properties/echo/description"], (
-        sorted(reported)
-    )
-    assert "THE DOCUMENT SAYS THIS" in reported["/properties/ctx/description"]
-    assert "THE BASE SAYS THIS" in reported["/properties/ctx/description"]
-    assert "THE TARGET SAYS THIS" in reported["/properties/echo/description"]
-    assert "THE BASE SAYS THAT" in reported["/properties/echo/description"]
+    assert (comparison.added, comparison.missing, comparison.differs) == ([], [], []), comparison
+
+
+def _described(rendered: dict) -> str | None:
+    """The ``description`` a rendered field states, through D4's ``T | None`` spelling.
+
+    An optional field renders as an ``anyOf`` of the live arm and ``{"type": "null"}``,
+    and the annotation sits on the live arm -- the same arm ``harness._normalize``
+    unwraps, so this reads what the comparison read.
+    """
+    if "description" in rendered:
+        return rendered["description"]
+    arms = [a for a in rendered.get("anyOf", []) if a.get("type") != "null"]
+    found = [a["description"] for a in arms if "description" in a]
+    return found[0] if len(found) == 1 else None
 
 
 def test_the_composed_field_set_is_the_union_and_requiredness_is_inherited(
@@ -1757,7 +1812,7 @@ def test_an_annotation_on_a_containers_contents_reaches_the_wire(tmp_path, monke
     assert live["additionalProperties"]["description"] == "Component properties", rendered
 
 
-def test_breaking_the_inner_annotation_carrier_reddens_the_comparison(
+def test_breaking_the_inner_annotation_carrier_drops_the_fact_at_both_positions(
     tmp_path, monkeypatch
 ) -> None:
     """The same probe with the carrier BROKEN, because a rendering that cannot be
@@ -1765,8 +1820,17 @@ def test_breaking_the_inner_annotation_carrier_reddens_the_comparison(
 
     ``_contents`` reduced to the ``_inner`` call it replaced IS the emitter before this
     change: the decided type is handed up and the node's own annotation goes nowhere.
-    The comparison then names each lost annotation at its own pointer, and nothing
-    else moves -- which is what says the two positions are the whole of the defect.
+    Each lost annotation is named at its own pointer, and nothing else moves -- which is
+    what says the two positions are the whole of the defect.
+
+    **The instrument is the MODEL's own rendered schema and no longer the comparison's
+    ``missing``, and §8's annotation clause is why** (``adcp-client-python-10l.21``'s
+    seventh instalment): "there is no pointer at which an annotation is graded".  It
+    read ``comparison.missing == {two pointers}``, and what a ``missing`` line said was
+    "the document states this and the model nothing" -- which is the two assertions
+    below, one per position, each in both directions.  The reach is what is lost: the
+    comparison said it over the whole population, these say it over this probe, and §8
+    assigns the population-wide claim to the annotation COVERAGE obligation.
     """
     from codegen.lower import containers  # noqa: PLC0415
 
@@ -1786,9 +1850,22 @@ def test_breaking_the_inner_annotation_carrier_reddens_the_comparison(
     )
     assert "ProbeComposingComponentValue" not in text, "the patch did not reach"
 
+    # The two positions, each read on both sides: the DOCUMENT states the annotation and
+    # the broken MODEL states nothing at all there.  The faithful probe above asserts
+    # the live arm carries it, so these two are that assertion falsified.
+    rendered = cls.model_json_schema()["properties"]
+    assert schema["properties"]["component"]["additionalProperties"]["description"] == (
+        "Component properties"
+    )
+    (live,) = [a for a in rendered["component"]["anyOf"] if a.get("type") != "null"]
+    assert "description" not in (live.get("additionalProperties") or {}), live
+
+    assert schema["properties"]["tags"]["items"]["description"] == "one tag"
+    (items,) = [a for a in rendered["tags"]["anyOf"] if a.get("type") != "null"]
+    assert "description" not in items["items"], items
+
+    # And nothing else moves: the comparison is silent in every direction, which is §8's
+    # clause -- an annotation cannot change what a payload is accepted as, so the only
+    # facts it could have reported here are the two above.
     comparison = compare_schema(schema, cls)
-    assert comparison.added == [], comparison.added
-    assert {str(m).split(":", 1)[0] for m in comparison.missing} == {
-        "/properties/component/additionalProperties/description",
-        "/properties/tags/items/description",
-    }, sorted(comparison.missing)
+    assert (comparison.added, comparison.missing, comparison.differs) == ([], [], []), comparison

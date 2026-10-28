@@ -1061,24 +1061,59 @@ def test_a_class_typed_by_the_narrowing_declaration_states_the_documents_descrip
     assert res.compared, res
 
 
-def test_a_class_stating_the_WIDER_descriptions_text_is_still_reported() -> None:
-    """The must-report half, and the one the old gap-fill made green.
+def test_the_document_side_states_the_narrowing_conjuncts_description_and_not_the_bases() -> None:
+    """The must-report half, and the one the old gap-fill made green -- **asked of the
+    READING and no longer of a pair's report.**
 
-    A class carrying the BASE's description where the document's own conjunct states
-    another is the exact pair the ceiling passed -- with the polarity reversed, since
-    the gap-fill graded against the base's text.  It reports ``differs``, which is the
-    proof the reading moved the authority rather than stopped comparing.
+    It was two tests, each grading a deliberately wrong class: one carrying the BASE's
+    text reported ``differs`` and one carrying none reported ``missing``, and those two
+    reports were the proof the reading moved the authority rather than stopped
+    comparing.  §8's annotation clause (added 2026-10-27) takes a ``description`` out of
+    the three REPORTS at every pointer -- ``harness.grades_a_difference``, off
+    ``bundle.is_an_annotation`` -- so neither report exists to read, and a test asserting
+    one would be asserting that the comparison grades acceptance by an annotation.
+
+    **The claim is unchanged and is asserted one function earlier, which is where this
+    module already says it belongs** ("Asserted on the function and not through a pair:
+    a pair that happens to report says nothing about which gate held").  The document
+    side is what ``_described_by_the_conjunct`` decides, so what is asserted is what the
+    DOCUMENT states at that pointer, in both directions the two pairs covered: it states
+    a description at all (the fold does not drop it), and the one it states is the
+    NARROWING conjunct's and not the base's.  The two wrong classes are kept beside it
+    and asserted to report nothing, which is the §8 clause itself.
     """
-    res = graded(NARROWED_ELEMENT, NarrowedWithTheBasesDescription)
-    assert "/properties/v/items/description" in keys(res.differs), res
+    from codegen.harness import _composed  # noqa: PLC0415
 
+    # The two views the DESCENT delivers to ``/properties/v/items``: the merged node is
+    # the first conjunct's declaration (the base, wide) and the stash is the second's
+    # (the narrowing one), which is what :func:`overlaid`'s docstring says the fixture is
+    # built to produce.  ``_composed`` is where the two meet -- the reading stands the
+    # node's own description down (asserted on the function by
+    # :func:`test_the_reading_fires_INSIDE_its_shape_so_the_table_above_is_not_vacuous`)
+    # and the gap-fill beneath it writes the conjunct's -- so both directions the two
+    # deleted pairs covered are read off what the DOCUMENT then states: it states a
+    # description at all, and the one it states is the NARROWING view's.
+    stated = _composed({**WIDE_ELEMENT, "allOf": [NARROW_ELEMENT]})
+    assert "description" in stated, stated
+    assert stated["description"] == NARROW_ELEMENT["description"], stated
+    assert stated["description"] != WIDE_ELEMENT["description"], stated
 
-def test_a_class_stating_NO_description_is_still_missing_one() -> None:
-    """The other must-report half: the reading decides WHICH description the document
-    states, never whether it states one.  A class that drops it entirely is ``missing``.
-    """
-    res = graded(NARROWED_ELEMENT, NarrowedAndSilent)
-    assert "/properties/v/items/description" in keys(res.missing), res
+    # **And the DESCENT itself is still graded end to end, on a fact §8 does compare.**
+    # The base conjunct states the WIDE vocabulary at this pointer and the narrowing one
+    # the tight one, so a descent that failed to deliver the stash would have the
+    # document state ``['a', 'b', 'c']`` where the faithful class states ``['a', 'b']``
+    # and the pair would report ``differs /properties/v/items/enum``.  It reports
+    # nothing, which is what says the stash arrived.
+    faithful = graded(NARROWED_ELEMENT, NarrowedWithItsOwnDescription)
+    assert (faithful.added, faithful.missing, faithful.differs) == ([], [], []), faithful
+    assert faithful.compared, faithful
+
+    # §8's clause, over the two classes that used to report: a model whose description
+    # disagrees with its document, and one that states none, are both silent now --
+    # neither difference can change what a payload is accepted as.
+    for model in (NarrowedWithTheBasesDescription, NarrowedAndSilent):
+        res = graded(NARROWED_ELEMENT, model)
+        assert (res.added, res.missing, res.differs) == ([], [], []), (model, res)
 
 
 #: Every gate of :func:`_described_by_the_conjunct`, perturbed ONE AT A TIME against the

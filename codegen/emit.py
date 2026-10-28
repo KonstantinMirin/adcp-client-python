@@ -142,6 +142,25 @@ PACKAGE = "adcp.types._schemas"
 #: produces.
 EMITTED_SUFFIXES = frozenset({".py", ".json"})
 
+#: **The positions a BASE is named at**, for the reference sites a composing document
+#: inherits (``inherited_sites``).  ``CONJ`` is the ``allOf`` conjunct §5's row is
+#: written for; the other two are §2's intersection rule read one level down, and they
+#: are DERIVED from the same declaration the rule's recursion is --
+#: :data:`compiler.HOLDS`, whose keywords' subschemas sit at ``ELEM`` (``items``) and
+#: ``PROP`` (``properties``).  A restatement composing a base's declaration of a
+#: property or of an element composes whatever that declaration names, so the target it
+#: names is a base of the composed class exactly as a conjunct's target is.
+#:
+#: Read off :attr:`bundle.Edge.position` and never recovered from a pointer string
+#: (``docs/plan/architecture.md`` §3), and derived rather than listed, so the set cannot
+#: disagree with the rule whose recursion produced the site.
+BASE_POSITIONS: frozenset[Position] = frozenset({Position.CONJ}) | frozenset(
+    answer.descends
+    for keyword in compiler.HOLDS
+    if (answer := keywords.cell(keyword, Position.PROP)) is not None
+    and answer.descends is not None
+)
+
 # **``FORMAT_TYPES`` and ``URL_FORMATS`` are ``codegen/lower/scalars.py``'s now**, with
 # ``_named_alias`` and ``name_the_constraint``.  They were here because the SCALAR TAIL of
 # the per-node dispatch was, and section 14 step 5 makes each kind's row
@@ -1374,8 +1393,20 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         for document, edges in sites.items()
     }
     for document, edges in sites.items():
-        direct = {e.target for e in edges if e.position is Position.CONJ and e.target}
-        composes[document] = frozenset(direct)
+        direct = {e.target for e in edges if e.position in BASE_POSITIONS and e.target}
+        # **A document INHERITS FROM ITSELF**, and that is §8's union-branch pairing read
+        # as a reference site rather than as a fact: "a sibling beside a union lowers by
+        # COMPOSITION -- the siblings become a base class; each branch becomes a subclass
+        # narrowing what it narrows", so a branch restating a property the ROOT declares
+        # composes the root's own declaration, and a key the root declares through a
+        # ``$ref`` carries a reference at a pointer the branch's composition arrives at
+        # and no edge of any document has.  The document whose sites that reference
+        # belongs to is THIS one, which is why self is in the set.
+        #
+        # It cannot shadow a site the document spells: :meth:`compiler.Module.target`
+        # asks :attr:`compiler.Module.targets` first and reads this map only where that
+        # has no entry for the ``(uri, pointer)`` pair.
+        composes[document] = frozenset(direct) | {document}
     # The transitive step, taken to a fixed point: a base's own bases contribute keys to
     # the :class:`compiler.Shape` a composing document reads, so their sites are
     # inherited too.  Over this bundle it settles in a handful of passes.

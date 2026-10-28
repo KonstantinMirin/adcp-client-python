@@ -34,7 +34,7 @@ import pytest
 from pydantic import Field, TypeAdapter, ValidationError
 
 from adcp.types._base import SchemaRef, schema_at
-from codegen import bundle, compiler, emit, ir, keywords, render
+from codegen import bundle, compiler, emit, harness, ir, keywords, render
 from codegen.keywords import Position
 from codegen.harness import (
     _entails_type,
@@ -657,7 +657,23 @@ def test_the_schema_comparison_is_what_grades_this_row() -> None:
 
     assert faithful.outcome == "pass", (faithful.missing, faithful.differs, faithful.added)
     assert widened.outcome == "model_drops_a_fact", widened
-    assert ["/enum", "/description"] == [m.split(":")[0] for m in widened.missing], widened.missing
+    # **``/description`` left this list at ``adcp-client-python-10l.21``'s seventh
+    # instalment and the row's own fact is untouched.**  It read
+    # ``["/enum", "/description"]``: the widened model is a bare ``str``, so it stated
+    # neither the vocabulary nor the root's text.  §8's annotation clause (added
+    # 2026-10-27) takes an annotation out of the compared set at every pointer --
+    # ``harness.grades_a_difference``, off ``bundle.is_an_annotation`` -- because an
+    # annotation states nothing about acceptance and these checks grade acceptance.  The
+    # fact is still LOOKED FOR, so the pair keeps its evidence; what goes is the report.
+    # The reading is
+    # not weaker: the list is still an EQUALITY and not a containment, so a fact
+    # arriving reddens, and the fact that grades THIS row is ``enum``, which is what the
+    # docstring above says and what the assertion still names.
+    assert ["/enum"] == [m.split(":")[0] for m in widened.missing], widened.missing
+    # The two sets the sentence above is about, so the move is attributable: the
+    # declaration RENDERS a description and the checks do not GRADE one.
+    assert "description" in compared_facts(Position.ROOT)
+    assert not harness.grades_a_difference("description", Position.ROOT)
     # ... and the other two checks really are blind to it: the widened annotation
     # accepts and refuses exactly what the document does, because the schema half
     # answers first.
@@ -726,11 +742,27 @@ def test_the_type_an_enums_members_force_is_excused_and_a_narrowing_is_not() -> 
         A = "a"
         B = "b"
 
-    # The model states the TYPE its members force, which is excused, and a
-    # ``description`` the document no longer fails to state -- so it is now reported.
+    # The model states the TYPE its members force, which is excused.
+    #
+    # **It stated a ``description`` beside it and that half moved at
+    # ``adcp-client-python-10l.21``'s seventh instalment.**  ``added`` read
+    # ``["/description"]``: the docstring is a fact the model states and
+    # ``{"enum": ["a", "b"]}`` does not.  §8's annotation clause (added 2026-10-27) says
+    # "``added``, ``missing`` or ``differs`` on an annotation reports a difference that
+    # cannot change what a payload is accepted as", so the fact is still LOOKED FOR --
+    # ``model_facts`` is still 2 -- and no difference about it is reported.  The clause
+    # this test is ABOUT is the ``type`` row, which is unchanged and is falsified on
+    # ``_entails_type`` below.
+    #
+    # Not weaker in the direction that matters, and the rule that answers for a
+    # description is asserted unchanged further down:
+    # ``_narrows_nothing("description", "anything", doc) is False``.  So what moved is
+    # the REPORT and neither the compared set nor the rule, and a row that puts a
+    # difference about an annotation back on the wire gets its answer from the same rule.
     excused = compare_schema(doc, Faithful)
     assert excused.model_facts == 2, excused.model_facts  # type and description
-    assert [a.split(":")[0] for a in excused.added] == ["/description"], excused.added
+    assert excused.added == [], excused.added
+    assert not harness.grades_a_difference("description", Position.ROOT)
 
     # Each case, falsified on the RULE.  End to end is the wrong level for these: every
     # model that states a wrong type without also stating the enum is already caught as

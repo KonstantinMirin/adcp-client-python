@@ -45,7 +45,7 @@ from pydantic import ValidationError
 
 from adcp.types import _base
 from adcp.types._base import AdCPBaseModel, SchemaRef, applied_schema, schema_at
-from codegen import bundle, emit
+from codegen import bundle, emit, harness, keywords
 from conftest import refusal_from
 
 from tests.nodeset import claimed, partitions, ratchet
@@ -295,11 +295,30 @@ def test_the_difference_between_the_two_halves_is_a_schema_fact() -> None:
     # the enclosing node's own conjuncts state, which is a conjunct's whole content and
     # so is not a fixed set.  The three are asserted as a SUBSET-of relation in the
     # direction that matters -- every one of them is reached, so no arm of
-    # ``_base._conjunction`` is graded by a loop that met none of it -- and ``title``
-    # and ``description`` are asserted ABSENT, because §6 answers an annotation at the
-    # pointer that states it and the splice drops them.
+    # ``_base._conjunction`` is graded by a loop that met none of it.
     assert {"properties", "required", "additionalProperties"} <= set(asserted), sorted(asserted)
-    assert not {"title", "description"} & set(asserted), sorted(asserted)
+    # **``title`` and ``description`` were asserted ABSENT here, and §8's annotation
+    # clause moved the line** (``adcp-client-python-10l.21``'s seventh instalment).  The
+    # old reading was "§6 answers an annotation at the pointer that states it and the
+    # splice drops them", and the splice still does -- which
+    # :func:`test_what_is_conjoined_at_a_constrained_node_is_its_object_type_and_its_root_s_own_statement`
+    # now grades exhaustively over ``_base._conjunction``, where the strip is.  What
+    # arrives carrying one arrives by DESCENT: an enclosing statement follows the
+    # pointer to the instance each hop moves to, so a node below a branch's own property
+    # carries the root's declaration OF THAT PROPERTY, and that declaration's
+    # description is the document's own at the instance this node describes.
+    #
+    # §8: "there is no pointer at which an annotation is graded, because it is not among
+    # the facts being compared."  So the claim is asserted against the INSTRUMENT and
+    # not by absence, which is the stronger direction -- a strip is one site that can be
+    # forgotten, and this is the compared set itself, at every position:
+    for keyword in ("title", "description"):
+        for position in keywords.Position:
+            assert bundle.is_an_annotation(keyword, position), (keyword, position)
+            assert not harness.grades_a_difference(keyword, position), (keyword, position)
+    # Non-vacuous in the direction that matters: the descent really does carry one, so
+    # the two lines above are not a property of a loop that met neither key.
+    assert "description" in asserted, sorted(asserted)
     assert all(asserted.values()), asserted
 
 
@@ -328,9 +347,25 @@ def test_what_is_conjoined_at_a_constrained_node_is_its_object_type_and_its_root
     * every other fact the node states is returned UNCHANGED, which is the half that
       says the node's own statement always wins;
     * the conjunct list is the node's OWN conjuncts with the enclosing statements
-      PREPENDED, so nothing of the node's is dropped or reordered, and no spliced
-      conjunct carries a ``title`` or a ``description`` -- §6 answers an annotation at
-      the pointer that states it.
+      PREPENDED, so nothing of the node's is dropped or reordered;
+    * **the SPLICE drops a ``title`` and a ``description``, graded where the splice is
+      made rather than over its output** -- ``_base._conjunction``, exhaustively over
+      every node of every portable document and every keyword it can be reached
+      through.  §6 answers an annotation at the pointer that states it, and the
+      enclosing node is that pointer.
+
+    **The per-statement form of that last clause moved at
+    ``adcp-client-python-10l.21``'s seventh instalment, and the reason is §8's
+    annotation clause.**  It read "no spliced conjunct carries a ``title`` or a
+    ``description``", asserted over every statement arriving at a node -- and an
+    enclosing statement DESCENDS by key now instead of being dropped at the first hop
+    that moves to another instance, so a node below a branch's own property carries the
+    root's declaration of that property with the document's own description on it.  That
+    is not a spliced conjunct and §6 does not answer it: it is the document's
+    declaration at the instance this node describes.  §8 settles what it means -- "there
+    is no pointer at which an annotation is graded" -- and the check above asserts it
+    against the compared set rather than against the splice.  So this clause keeps the
+    claim it can keep, over the function that makes the splice, where it is exhaustive.
     """
     constrained, _ = census()
     added: dict[str, set[str]] = {}
@@ -349,8 +384,6 @@ def test_what_is_conjoined_at_a_constrained_node_is_its_object_type_and_its_root
                     document,
                     pointer,
                 )
-                for one in applied["allOf"][: len(applied["allOf"]) - len(own)]:
-                    assert not {"title", "description"} & set(one), (document, pointer, one)
             assert {k: v for k, v in applied.items() if k in bare and k != "allOf"} == {
                 k: v for k, v in bare.items() if k != "allOf"
             }, (document, pointer)
@@ -359,6 +392,25 @@ def test_what_is_conjoined_at_a_constrained_node_is_its_object_type_and_its_root
     # population is a branch of a root union whose root states a sibling, which is
     # exactly what §14 step 9 made emittable.
     claimed("constrained nodes a root's own statement is spliced into", spliced_at)
+
+    # **The splice's own strip, over every node the splice can be made at** -- every
+    # node of every portable document, asked at each keyword a same-instance hop
+    # descends through.  Both of ``_conjunction``'s arms are reached: the statement it
+    # builds out of ``SAME_INSTANCE_FACTS``, whose keys are those three and so can never
+    # hold an annotation, and the conjuncts it splices off the node's own ``allOf``,
+    # which it strips.  Counted, so neither arm is graded by a loop that met none of it.
+    built, spliced_conjuncts = 0, 0
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        for _, node in bundle.nodes(doc):
+            for through in (*_base.SAME_INSTANCE_LIST, *_base.SAME_INSTANCE_ONE):
+                for one in _base._conjunction(node, through):
+                    assert not {"title", "description"} & set(one), (document, through, one)
+                    if set(one) <= set(_base.SAME_INSTANCE_FACTS):
+                        built += 1
+                    else:
+                        spliced_conjuncts += 1
+    assert built and spliced_conjuncts, (built, spliced_conjuncts)
 
 
 #: Nodes the root constrains to an object that ALSO constrain themselves, so the
@@ -458,6 +510,16 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
     # documents they come from is the fact worth pinning and it is named below.
     claimed("pairs at a node its own document constrains", {g.ref for g in rows})
     assert {g.ref.document for g in rows} == {
+        # **TWO more at ``adcp-client-python-10l.21``'s SEVENTH instalment**, and they
+        # arrive by that row's emission rather than by anything about this mechanism:
+        # ``core/assets/vast-asset.json`` and ``core/assets/daast-asset.json`` emit now
+        # that §2's intersection rule writes the composition at ``items`` and the base's
+        # ``$ref`` survives it as a conjunct, and each one's two branch classes sit at a
+        # node its own root constrains to an object.  Neither branch ``not``s a
+        # ``required`` group, so both contribute rows.  The per-row loop grades all 64
+        # and reported nothing new.
+        "core/assets/daast-asset.json",
+        "core/assets/vast-asset.json",
         # **ONE more at ``adcp-client-python-10l.21``'s FIFTH instalment**, and it arrives
         # by that row's emission rather than by anything about this mechanism:
         # ``account/list-account-changes-response.json`` is a union root that refused on a

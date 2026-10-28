@@ -1578,6 +1578,50 @@ def compared_facts(position: Position) -> tuple[str, ...]:
     return tuple(k for k in keywords.TABLE if k in rendered)
 
 
+def grades_a_difference(keyword: str, position: Position) -> bool:
+    """Is a difference at this keyword one the three checks GRADE?
+
+    **§8, added 2026-10-27: "an ANNOTATION is not a fact these three checks grade, at
+    any pointer".**  These checks grade ACCEPTANCE -- the accepts draw, the dump, and
+    this comparison between a document's facts and a model's -- and an annotation states
+    nothing about it, so the clause's own words are that "``added``, ``missing`` or
+    ``differs`` on one reports a difference that cannot change what a payload is
+    accepted as".  A model carrying a description at a pointer the document states a
+    different one at accepts exactly the same payloads.
+
+    **The predicate is ``bundle.is_an_annotation``, §1's own**, and this is its THIRD
+    reader: ``bundle.record`` asks it to settle which side wins where a ``$ref`` and
+    its target both state a key, and ``codegen.patch`` asks it to decide whether a
+    patch's keys state anything.  It is not a second judgement and it is NOT A LIST --
+    the answer is read off the TABLE's effect column, "a key whose cell compiles to no
+    type, no field and no rule", which is what "states nothing about acceptance" IS.  So
+    a keyword moving between §5 and §6 moves this answer with it, and nothing here can
+    be admitted or excluded without moving a cell.
+
+    Asked at the POSITION, because the answer differs by position and one answer for
+    all of them would be wrong at one: ``default`` at PROP compiles to a FIELD -- a fact
+    the enclosing field carries -- so a difference about it IS graded there, and it is
+    an annotation at every other position.
+
+    **It is asked at the three REPORTS and NOT of the compared set, which is what the
+    clause says and what measurement forces.**  The clause names ``added``, ``missing``
+    and ``differs``; ``compared`` is a different thing -- the pair's evidence, the count
+    that separates a graded pair from ``no_evidence`` -- and the code already keeps the
+    two apart by name for D5's URL-type row ("Counted as ``compared`` above, because the
+    fact WAS looked for").  Taking annotations out of the compared set instead was
+    measured over the whole emitted tree: 0 facts moved in any direction and **58 of
+    1,664 pairs fell from ``pass`` to ``no_evidence``**, every one a union root whose
+    only rendered fact is its own ``description`` -- so the keyword set a check ranges
+    over would have shrunk, which is what §8's first standing equality exists to
+    forbid, and 58 pairs would have gone ungraded to buy a reading of 0 facts.
+
+    :func:`compared_facts` is therefore unchanged, and so are the document-side FOLDS
+    that range over it: a conjunct's description still gap-fills the node it composes,
+    because what the model is built to carry is not what this clause is about.
+    """
+    return not bundle.is_an_annotation(keyword, position)
+
+
 #: The facts the document-side FOLDS range over: a composed conjunct's and a union
 #: branch agreement's.  The same derivation at the position those readings are taken at
 #: -- a conjunct applies to the same instance as the node it composes, and a branch of a
@@ -3180,6 +3224,17 @@ def compare_schema(
                 continue
             res.compared += 1
             where = f"{pointer}/{kw}"
+            # **§8's annotation clause, read in BOTH directions** (the loop below is the
+            # other) and read at the REPORT rather than at the compared set, which is
+            # what the clause says: "``added``, ``missing`` or ``differs`` on one reports
+            # a difference that cannot change what a payload is accepted as".  So the
+            # fact is counted as ``compared`` -- it WAS looked for, which is the same
+            # reading D5's URL-type row below is counted under -- and no difference about
+            # it is reported in any direction.  :func:`grades_a_difference` is where the
+            # predicate is read, why it is not a list, and what measurement says about
+            # taking it out of the compared set instead.
+            if not grades_a_difference(kw, at_position):
+                continue
             if kw not in got:
                 # D5's URL-type row, and its own counter: the schema half enforces
                 # this keyword and the annotation does not restate it.  Counted as
@@ -3249,6 +3304,10 @@ def compare_schema(
             if kw in doc or kw not in got:
                 continue
             res.model_facts += 1
+            # §8's annotation clause, the other direction: a model-only annotation is
+            # counted as a model fact -- it was looked for -- and is never ``added``.
+            if not grades_a_difference(kw, at_position):
+                continue
             # The two ``rewritten`` arms stood here and are DELETED WITH THE DELEGATED
             # RESOLVER (§9): that resolver dropped the node's annotations when it wrote
             # a finite type out as its members, so a faithful model stated a
