@@ -4246,8 +4246,21 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # than writing a node draft-07 reads as the target alone, so no row lowers its
     # ``properties``.  That is the second of this row's three pointer shapes and it is
     # named in the delivery as unfinished.
+    #
+    # **THREE LEFT AT ``adcp-client-python-10l.43``, ALL THREE BY EMITTING, AND ALL THREE
+    # ON ONE ROUTING GAP.**  ``compiler.lower_composition``'s ``$ref``-conjunct arm asked
+    # the binder for every reference, so a LOCAL pointer -- a pointer into the document
+    # being written -- got ``emit.answer``'s "this is not a binding at all" as the
+    # DOCUMENT's verdict.  The arm branches on the parser's document half now and routes a
+    # local pointer through ``compiler.local_reference`` (``compiler._conjunct_base``).
+    # ``core/account-identity-change-preview.json`` and ``core/registry-event.json`` held
+    # the two live sites (``#/definitions/impact`` at
+    # ``/definitions/nonblocking_impacts/items/allOf/0``, and ``#/$defs/propertyPayload``
+    # at ``/oneOf/0/properties/payload/allOf/0``), and
+    # ``account/sync-accounts-response.json`` was CHAINED behind the first and leaves with
+    # it.  The fourth document the group freed, ``core/registry-feed-response.json``, is
+    # not a union root and so was never in this profile.
     assert refused_on == {
-        "account/sync-accounts-response.json": "$ref",
         "adagents.json": "anyOf",
         "brand.json": "$ref",
         "brand/acquire-rights-response.json": "$ref",
@@ -4268,7 +4281,6 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "compliance/task-completion-data.json": "$ref",
         "content-standards/get-content-standards-response.json": "$ref",
         "content-standards/list-content-standards-response.json": "$ref",
-        "core/account-identity-change-preview.json": "$ref",
         # **``core/assets/asset-union.json``'s LINE IS DELETED AT
         # ``adcp-client-python-10l.55``, and the document EMITS.**  It held ``$ref`` for
         # the branch row's "VASTAsset is not a class", which asked whether the target had
@@ -4308,7 +4320,6 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         # ``media-buy/list-products-request.json``), so ``accounted`` rose 961 -> 967.
         "core/postal-country-system.json": "title",
         "core/product-format-declaration.json": "required",
-        "core/registry-event.json": "$ref",
         # ``$ref`` -> ``title`` at ``adcp-client-python-10l.21``'s third instalment: its
         # chain target ``core/requirements/image-asset-requirements.json`` emits now (a
         # ``type`` word beside a NESTED combinator), so the root reports its OWN
@@ -8597,6 +8608,24 @@ VERDICTS = frozenset(
         # ``10l.45`` and unwritten code rather than the document's problem.  So the
         # verdict term falls by 6 and ``accounted`` by 1, which is the correction the
         # floor below reports.
+        #
+        # **FOUR LEAVE AT ``adcp-client-python-10l.43``, ALL FOUR BY EMITTING, AND THEY
+        # ARE ONE ROUTING GAP AND NOT FOUR DOCUMENTS.**  ``compiler.lower_composition``'s
+        # ``$ref``-conjunct arm asked the binder for every reference, so a LOCAL pointer --
+        # a pointer into the document being written, which is not a binding at all -- got
+        # ``emit.answer``'s loud answer as the DOCUMENT's verdict.  The arm branches on the
+        # parser's document half now and routes a local pointer through
+        # ``compiler.local_reference`` (``compiler._conjunct_base``), which is the resolver
+        # ``lower.references.lower`` has always reached for the same reference met the
+        # other way.  The two sites were ``core/account-identity-change-preview.json`` at
+        # ``/definitions/nonblocking_impacts/items/allOf/0`` (``#/definitions/impact``) and
+        # ``core/registry-event.json`` at ``/oneOf/0/properties/payload/allOf/0``
+        # (``#/$defs/propertyPayload``); ``account/sync-accounts-response.json`` and
+        # ``core/registry-feed-response.json`` were CHAINED behind them and leave with
+        # their targets.  ``architecture.md`` §2's division is why this was a defect and
+        # not an outcome: "a defect in the compiler itself ... is not an outcome of any
+        # document", and reporting it as a document's verdict charged four documents for a
+        # route that was missing.
         "media-buy/update-media-buy-request.json",
         "media-buy/get-products-request.json",
         "core/requirements/offering-asset-constraint.json",
@@ -8605,9 +8634,7 @@ VERDICTS = frozenset(
         "content-standards/list-content-standards-response.json",
         "content-standards/get-content-standards-response.json",
         "content-standards/content-standards.json",
-        'account/sync-accounts-response.json',
         'brand.json',
-        'core/account-identity-change-preview.json',
         'core/canonical-proposal.json',
         'media-buy/get-media-buys-response.json',
         'core/package-signal-targeting-group.json',
@@ -8615,8 +8642,6 @@ VERDICTS = frozenset(
         'core/package-signal-targeting.json',
         'core/product-filters.json',
         'core/product-signal-targeting-option.json',
-        'core/registry-event.json',
-        'core/registry-feed-response.json',
         'core/signal-pricing-option.json',
         'core/targeting-input.json',
         'core/targeting.json',
@@ -8941,20 +8966,31 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # type list is row ``10l.45``'s deferral.  So the floor falls by exactly the four
     # that emit, which is the move this floor's own paragraph above says it is re-measured
     # for.
-    # **94 -> 90 AT ``adcp-client-python-10l.45``, AND THE MOVE IS ONE EMISSION PLUS
-    # THREE CHAINS THAT RE-ROOTED.**  The comparison folds a type list whose arm carries
-    # a constraint (``harness._type_list``), so ``core/attestation-reference.json``
-    # emits -- it was the PRIMARY deferral, not a chain, so it is not one of the four --
-    # and with it ``governance/get-plan-audit-logs-response.json``, which was reached
-    # only through a chain onto it.  That is the one chain that left by emitting.  The
-    # other three stopped being chains because the walk gets further and each mints its
-    # OWN primary refusal: ``core/rights-constraint.json`` and
-    # ``core/rights-attestation-evaluation.json`` DEFERRED on a ``format`` this step
-    # does not lower, and ``core/audience-evidence.json`` a VERDICT on §5's ``$ref`` row
-    # at CONJ.  Measured on the merged tree, both ways in one process: chained 94 -> 90,
-    # emitted 914 -> 916, and 0 documents stopped emitting.  Every other chain stayed a
-    # chain; six of them now resolve onto a VERDICT rather than onto a deferral, which
-    # moves the resolved split below and not this count.
+    # **94 -> 90, BY TWO ROWS INDEPENDENTLY, AND BOTH REASONS COMPOSE.**  The floor is
+    # the measured value read from below, so it records each fall rather than predicting
+    # one; two lanes lowered it from 94 in the same hour and the merge takes the lower.
+    #
+    # ``adcp-client-python-10l.45`` took it to 90: the comparison folds a type list whose
+    # arm carries a constraint (``harness._type_list``), so
+    # ``core/attestation-reference.json`` emits -- it was the PRIMARY deferral, not a
+    # chain -- and with it ``governance/get-plan-audit-logs-response.json``, reached only
+    # through a chain onto it.  The other three stopped being chains because the walk
+    # gets further and each mints its OWN primary refusal:
+    # ``core/rights-constraint.json`` and ``core/rights-attestation-evaluation.json``
+    # DEFERRED on a ``format`` this step does not lower, and
+    # ``core/audience-evidence.json`` a VERDICT on §5's ``$ref`` row at CONJ.
+    #
+    # ``adcp-client-python-10l.43`` took it to 92, and both of ITS two are emission: a
+    # local pointer reached through an ``allOf`` conjunct asks
+    # ``compiler.local_reference`` now instead of the binder
+    # (``compiler._conjunct_base``), so ``core/account-identity-change-preview.json`` and
+    # ``core/registry-event.json`` emit, and the two chains behind them leave with their
+    # targets -- ``account/sync-accounts-response.json`` and
+    # ``core/registry-feed-response.json``.
+    #
+    # On the merged tree ``chained`` is 96, above both floors: the two falls are real and
+    # other merges re-rooted documents INTO the chained set over the same period, which
+    # moves this count up and is why a floor and not an equality.
     assert len(chained) >= 90, len(chained)
     split = collections.Counter(r["resolved"] for r in chained.values())
     # **AND THE VERDICT HALF ROSE 32 -> 37 AT THE SEVENTH INSTALMENT, WHICH IS A
@@ -8993,7 +9029,14 @@ def test_a_refusal_that_is_a_verdict_is_counted_apart_from_one_that_is_pending()
     # ``signals/get-signals-response.json`` (deferred) cleared their OWN restatement
     # obstruction and re-rooted onto a chain through a target refused for another row's
     # reason.  Verdict 33 - 2 + 1 = 32, deferred 76 - 2 + 1 = 75.
-    assert split[refusal_module.Kind.VERDICT] >= 32, dict(split)
+    #
+    # **32 -> 30 AT ``adcp-client-python-10l.43``, AND THE MOVE IS EMISSION.**  The two
+    # chains the floor above lost are the same two counted here, because both were
+    # ``resolved=verdict``: ``account/sync-accounts-response.json`` and
+    # ``core/registry-feed-response.json`` each quoted a target whose own refusal was the
+    # conjunct-local routing gap's VERDICT, and both targets emit.  The deferred half is
+    # unmoved at 62, which is what says nothing re-rooted.
+    assert split[refusal_module.Kind.VERDICT] >= 30, dict(split)
     assert split[refusal_module.Kind.DEFERRED] >= 1, dict(split)
     # and the chains run deep enough that the propagation is exercised more than once
     assert (

@@ -399,6 +399,21 @@ class Target:
         """
         return Importable(self.module, self.document)
 
+    @property
+    def crosses_a_module(self) -> bool:
+        """Whether reaching :attr:`symbol` from the module being written crosses a MODULE
+        BOUNDARY, which is the one question every import screen on a base asks.
+
+        Read off :attr:`module`, which :func:`local_target` leaves EMPTY and for the reason
+        this property states: a local ``#/...`` reference resolves inside the document being
+        written, so the symbol is one THIS module declares and there is no module to import
+        it from.  Stated once, here, because the two carriers a base arrives in answer it
+        differently and both answers are the same fact: §4's union base arrives with no
+        :class:`Target` at all, and a local-pointer conjunct base arrives with one whose
+        module is empty.  :func:`_reused` is the reader.
+        """
+        return bool(self.module)
+
 
 @dataclass(frozen=True)
 class Decided:
@@ -2148,6 +2163,91 @@ def _the_conjuncts_own_type(
     return Decided(ir.TypeRef(symbol, local=True))
 
 
+def _conjunct_base(conjunct: Mapping[str, Any], where: str, mod: "Module") -> Target | Refusal:
+    """The :class:`Target` a ``$ref`` conjunct names, by whichever of the TWO resolutions
+    its DOCUMENT HALF makes it.
+
+    **The DOCUMENT HALF decides which resolution this is, and the reading is the
+    PARSER'S** -- ``bundle.split_ref``'s one reading of the ``#``, taken off
+    :attr:`nodes.Reference.head` as a field.  ``$ref`` closes a node in ``schema.parse``'s
+    arm order ("draft-07 ignores every sibling"), so parsing the conjunct at its own
+    pointer is how this arm gets the two halves without reading a delimiter itself, and
+    the inert siblings the caller has already reported travel on the node unread.
+
+    This is the route ``adcp-client-python-10l.43`` is: ``lower_composition``'s conjunct
+    arm asked :meth:`Module.target` for every reference, and a LOCAL one -- a pointer into
+    the document being written -- is not a binding at all.  The run answers such a site
+    by name (``emit.answer``'s local arm), so the conjunct arm got that sentence as a
+    document's VERDICT, which charged two documents for a routing gap:
+    ``core/account-identity-change-preview.json`` at
+    ``/definitions/nonblocking_impacts/items/allOf/0`` and ``core/registry-event.json``
+    at ``/oneOf/0/properties/payload/allOf/0``, plus 2 more through the chain.  A local
+    pointer as a conjunct is an ordinary draft-07 document and the walk already has the
+    resolver: :func:`local_reference`, which ``lower.references.lower`` reaches by
+    branching on the same field.
+
+    **Both arms hand back ONE carrier**, which is the arrangement ``lower.union._inherited``
+    already has: :func:`local_target` wraps the two records :func:`declare_object` wrote
+    for a node of THIS module in the same :class:`Target` the run built for a node of
+    another, so the kind is one derivation (:func:`target_kind`) and the shape one
+    invariant (:attr:`Target.declares`), and §5's ``$ref`` row at CONJ reads them once.
+
+    **The IMPORT is recorded here, because this is the one place that knows which
+    resolution it made.**  A remote target's symbol is one this module imports; a local
+    one's is one this module DECLARES, and recording an import for it would name
+    :attr:`Target.module` -- empty for a local target -- as the module to import from.
+    The caller's two sub-arms differ in what they do with the symbol and not in whether
+    they need it, so one call covers both, exactly as ``lower.references.lower`` makes it.
+
+    **``decided.type.local`` is asked FIRST, before the lookup**, for
+    ``_inherited``'s own measured reason: a container's :attr:`ir.TypeRef.path` is ``""``,
+    which is also the pointer of the document's ROOT, so a lookup keyed on the path would
+    hand this conjunct the root's own class.  Population 0 over the portable set -- every
+    local pointer reached through a conjunct names an object entry -- so the arm refuses by
+    name rather than being left out.
+    """
+    parsed = schema.parse(conjunct, pointer=where, position=Position.CONJ, source=mod.source)
+    if not isinstance(parsed, nodes.Reference):
+        # The caller's gate is ``keys == {"$ref"}`` and ``schema.parse`` selects the
+        # reference arm on ``"$ref" in raw`` before any other, so the two readings can
+        # only disagree if one of them changes -- a defect in this compiler and not an
+        # outcome of any document (``docs/plan/architecture.md`` §2), so it raises the one
+        # exception no layer catches rather than refusing a document.
+        raise BuildFailure(
+            f"{where}: a conjunct whose only declaring key is $ref parsed as "
+            f"{type(parsed).__name__}, so compiler.lower_composition's conjunct screen and "
+            "schema.parse's arm order disagree about what a $ref node is"
+        )
+    if parsed.head:
+        target = mod.target(parsed.uri, where)
+        if isinstance(target, Refusal):
+            return target
+        mod.importing(target.symbol, target.where)
+        return target
+    decided = local_reference(mod, parsed.into, where)
+    if isinstance(decided, Refusal):
+        return decided
+    if not decided.type.local:
+        return Refusal(
+            "$ref",
+            where,
+            f"this conjunct references {parsed.uri}, which the walk lowers to the "
+            f"annotation {decided.type.path or decided.type.container or 'Any'!r} rather "
+            "than to a symbol: section 5's $ref row at CONJ gives a BASE where the target "
+            "is a class and this node's own TYPE where it is not, and an annotation with "
+            "no name is neither -- there is no symbol for either arm to carry",
+            # **THE KIND IS THE CELL'S AND NOT THIS SITE'S** (``docs/plan/architecture.md``
+            # §3, "a refusal's kind is derived from the cell and never chosen at a raise
+            # site").  ``$ref`` at CONJ compiles to a type, so its cell is a LOWERING
+            # effect whose answer for this shape is unwritten, and :func:`kind_for` reads
+            # DEFERRED -- which is also the honest kind: §9's first rule says a refusal for
+            # code nobody has written is a deferral, and what obstructs this arm is the
+            # unwritten half of §5's ``$ref`` row at CONJ, not anything the document did.
+            kind=kind_for("$ref", Position.CONJ),
+        )
+    return local_target(mod, decided.type.path)
+
+
 def lower_composition(
     node: "nodes.Base",
     mod: Module,
@@ -2483,7 +2583,12 @@ def lower_composition(
                 )
             keys = {"$ref"}
         if keys == {"$ref"}:
-            target = mod.target(conjunct["$ref"], where)
+            # **Which of the two resolutions a reference is, is NOT this arm's reading**
+            # (``adcp-client-python-10l.43``): :func:`_conjunct_base` branches on the
+            # parser's own document half and routes a LOCAL pointer through
+            # :func:`local_reference`, so the carrier below is the same :class:`Target`
+            # either way and the import is recorded once, inside it.
+            target = _conjunct_base(conjunct, where, mod)
             if isinstance(target, Refusal):
                 # The RUN's own answer, returned upward unchanged (§6): a target that
                 # refuses makes this conjunct's base undecidable, and the CHAIN is the
@@ -2512,27 +2617,33 @@ def lower_composition(
                 # every conjunct has been read -- after, because the answer depends on
                 # what the OTHER conjuncts contribute: a type beside a field is not this
                 # row's shape at all, and the reading has to see the whole list before it
-                # can say so.  The import is added here because the symbol is this
-                # module's to name either way, and the two arms differ in what they do
-                # with it rather than in whether they need it.
+                # can say so.  **The IMPORT is :func:`_conjunct_base`'s**
+                # (``adcp-client-python-10l.43``), because that is the one place that knows
+                # a local pointer's symbol is declared HERE and imported from nowhere --
+                # the two arms differ in what they do with the symbol rather than in
+                # whether they need it, so it is recorded where the resolution is MADE.
                 #
                 # **A target that declares only a RULE takes §2's intersection over
                 # DECLARATIONS instead, and reaches the same list an inline rule-stating
-                # conjunct does** (:func:`_a_rule_the_target_states`).  It is not one of
-                # §5's four: it declares no property to intersect and no field set to
-                # inherit, so "the target is this node's own TYPE" has no type to name --
-                # what it says about the instance is a rule, and a draft-07 conjunct
-                # applies to the same instance, so the nearest class holding it is THIS
-                # node's.  No import, because nothing of the target is named: the rule is
-                # the composed node's own.
+                # conjunct does** (:func:`_a_rule_the_target_states`,
+                # ``adcp-client-python-10l.59``).  It is not one of §5's four: it declares
+                # no property to intersect and no field set to inherit, so "the target is
+                # this node's own TYPE" has no type to name -- what it says about the
+                # instance is a rule, and a draft-07 conjunct applies to the same
+                # instance, so the nearest class holding it is THIS node's.
+                #
+                # The two rows met on these lines and the resolution keeps both. Note the
+                # ORDER it forces: ``_conjunct_base`` has already recorded the import by
+                # the time the rule-only arm declines to name the target, so a rule-only
+                # conjunct records an import of a symbol its module does not spell.
+                # Measured after the merge over the whole emitted tree rather than
+                # reasoned about; the result is recorded at the merge commit.
                 stating = _a_rule_the_target_states(conjunct["$ref"], mod)
                 if stating is not None:
                     conjunct_rules.append(stating)
                     continue
-                mod.importing(target.symbol, target.where)
                 conjoined.append((where, target))
                 continue
-            mod.importing(target.symbol, target.where)
             # A base another MODULE declares, carried as the symbol the module writer
             # imported: §7 makes ``bases`` ``TypeRef``s so one slot holds that beside a
             # base this module declares, which travels by pointer until the pass runs.
@@ -3187,13 +3298,25 @@ def _reused(
             f"no type to re-use and lowering the restatement alone would type it Any",
             kind=Kind.VERDICT,
         )
-    if source is None:
+    if source is None or not source.crosses_a_module:
         # **The base is declared in THIS module**, which is §4's union base: a branch
         # composes with it and the base is not a ``$ref`` conjunct, so there is no
         # :class:`Target` for it and nothing to import -- the field's type names this
         # module's own declarations by pointer and ``lower/names.py`` binds them.  The
         # import screen below is about crossing a module boundary, and this does not
         # cross one.
+        #
+        # **TWO carriers, ONE question** (``adcp-client-python-10l.43``).  A base reached
+        # through a LOCAL ``$ref`` conjunct is in this module too, and it arrives with a
+        # :class:`Target` -- ``compiler.local_target``'s, wrapping the two records
+        # ``declare_object`` wrote for a node of THIS document -- so ``source is None``
+        # stopped being the whole of "the base is here".  The question is
+        # :attr:`Target.crosses_a_module` and it is stated on the carrier, once.
+        # Measured: ``core/registry-event.json`` composes ``#/$defs/propertyPayload`` at
+        # ``/oneOf/0/properties/payload/allOf/0`` and re-uses its ``classification``,
+        # whose type names ``/$defs/classification`` -- a POINTER this module declares and
+        # ``lower/names.py`` binds, which the screen below reported as "symbols no
+        # document this run lowered declares".
         #
         # **Re-measured at ``adcp-client-python-81c``: 9 branches reach here**, over both
         # bundles -- 6 on ``account/list-account-changes-response.json`` and 3 on

@@ -1134,9 +1134,17 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     #: The reference sites of each document, in document order: every ``$ref`` the
     #: document states, including a LOCAL one.  A local reference is in the map so that
     #: the one caller that can meet one without going through ``nodes.Reference.head``
-    #: -- ``compiler.lower_composition``'s ``$ref``-conjunct arm -- is answered by name
-    #: rather than by the absence of an entry, which is the arm the binder closure kept
-    #: for exactly this reason.
+    #: is answered by name rather than by the absence of an entry, which is the arm the
+    #: binder closure kept for exactly this reason.  **That caller is
+    #: ``lower.union._targeted``** -- §4's dispatch derivation asking a QUESTION about a
+    #: branch rather than declaring it -- and it was
+    #: ``compiler.lower_composition``'s ``$ref``-conjunct arm as well until
+    #: ``adcp-client-python-10l.43`` routed that one through ``compiler.local_reference``
+    #: (``compiler._conjunct_base``).  Measured after the routing, over the 1,054 portable
+    #: documents: **31 sites in 6 documents ask by a local URI, every one of them at a
+    #: ``oneOf``/``anyOf`` BRANCH, and all 6 emit** -- ``_targeted`` reads the refusal as
+    #: "names no class" and answers ``None``, which is the derivation's own allowed
+    #: answer, so no document is charged for it.  0 are at a conjunct.
     sites: dict[str, list[bundle.Edge]] = {}
     for edge in found:
         sites.setdefault(edge.document, []).append(edge)
@@ -1209,9 +1217,23 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             # ``references.lower`` branches on the empty document half first and asks
             # ``compiler.local_reference`` for the symbol this module declares.  This
             # stays as the loud answer for the one caller that reaches a reference
-            # another way -- ``compiler.lower_composition``'s conjunct arm -- rather
+            # another way -- ``lower.union._targeted``, §4's dispatch derivation, which
+            # reads it as "this branch names no class" and answers ``None`` -- rather
             # than being left out and reporting a pointer as a document the bundle
             # does not hold.
+            #
+            # **It is NOT a BuildFailure, and the reason is measured**
+            # (``adcp-client-python-10l.43``).  ``lower_composition``'s conjunct arm used
+            # to reach here too, and its documents were charged a VERDICT for a routing
+            # gap -- ``core/account-identity-change-preview.json`` and
+            # ``core/registry-event.json``, plus 2 through the chain; all 4 emit now that
+            # ``compiler._conjunct_base`` branches on the parser's document half.  What is
+            # left is ``_targeted``'s 31 sites in 6 documents, all at a ``oneOf``/``anyOf``
+            # BRANCH and all 6 emitting, so the arm has a live caller and raising §2's
+            # exception here would fail the build on 6 documents that are fine.  It also
+            # cannot raise on a lazy caller's behalf: :func:`resolve` computes this map
+            # EAGERLY over every edge, so the 405 local reference sites of this bundle all
+            # pass through here whether or not anyone reads the answer.
             return Refusal(
                 "$ref",
                 edge.pointer,

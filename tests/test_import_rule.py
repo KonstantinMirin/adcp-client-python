@@ -735,16 +735,29 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
 
     Asserted as the set of MODULES that call ``codegen.schema.parse.parse``, because the
     entry is what a second traversal would have to come through: every other module takes
-    a node and reads its fields.  Three callers and each is a position ``parse`` is
+    a node and reads its fields.  Four callers and each is a position ``parse`` is
     re-entered at rather than a second walk of one mapping:
 
     * ``codegen/emit.py`` -- the document ROOT, once per document (``lower_document``);
     * ``codegen/compiler.py`` -- a ``definitions`` entry at DEF, parsed on demand when a
-      ``$ref`` names it (§5: "an entry nothing references is not declared"), and the
-      MERGED declaration §2's intersection rule hands back (``_parsed_property``).
+      ``$ref`` names it (§5: "an entry nothing references is not declared"), the MERGED
+      declaration §2's intersection rule hands back (``_parsed_property``), and a ``$ref``
+      CONJUNCT, whose DOCUMENT HALF decides which of the two resolutions it is
+      (``_conjunct_base``).
+
+    **The fourth entry's sentence** (``adcp-client-python-10l.43``).  A conjunct is a
+    DECLARATION and not a node (``nodes.Conjunct``, and §2's intersection rule is why), so
+    §5's ``$ref`` row at CONJ meets a reference with no ``nodes.Reference`` beside it -- and
+    which resolution a reference is, is the ``#``'s reading, which ``bundle.split_ref``
+    makes once and the parser carries on ``nodes.Reference.head``.  Reading the delimiter in
+    ``compiler.py`` instead would be the second reading that function's own docstring names
+    as how a binder and a resolver come to disagree about which document a reference names,
+    and that is exactly the disagreement this row removed: the conjunct arm asked the binder
+    for a LOCAL pointer and two documents were charged a verdict for it.  So the parser is
+    re-entered for the one node the declaration implies, and no ``#`` is read here.
 
     Named BY SITE and not by count: the set is ``{module, enclosing function}``, so a
-    fourth entry has to be added here with the sentence that re-enters the parser for it.
+    fifth entry has to be added here with the sentence that re-enters the parser for it.
 
     Resolved by AST, for the module docstring's reasons: a lazy import inside a function
     body and a relative ``from ..schema import parse`` are both invisible to a grep.
@@ -774,6 +787,9 @@ def test_the_parser_is_the_only_entry_that_reads_a_raw_mapping() -> None:
         ("compiler.py", "decide"),
         # the MERGED declaration §2's intersection rule hands back (§6)
         ("compiler.py", "_parsed_property"),
+        # a ``$ref`` CONJUNCT, for the DOCUMENT HALF that says which resolution it is (§5's
+        # ``$ref`` row at CONJ; ``adcp-client-python-10l.43``)
+        ("compiler.py", "_conjunct_base"),
     }, sorted(sites)
 
 
