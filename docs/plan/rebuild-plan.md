@@ -722,7 +722,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | --- | --- |
 | `items` | `list[X]`, X decided by the same walk and named where it needs a symbol. A list-valued `items` → refused: that is tuple validation. ROOT array → `RootModel[list[X]]`. RULE → nothing. |
 | `minItems`, `maxItems` | `min_length` / `max_length` on the annotation of the **array's own type**, at every position. `minItems: 0` states nothing. `constraints` declares it once, generically, as `type NonEmptyList[T] = Annotated[list[T], Field(min_length=1)]`. PROP → on the field. ELEM / MAPV / DEF → the container's type must be named to carry it. BRANCH → on the branch's own type, never on the field holding the union. RULE → nothing. |
-| `uniqueItems` | A `UniqueItems` rule on the class holding the array, plus `json_schema_extra={"uniqueItems": true}` on the field so it is graded, and the keyword is stripped off the array's own declaration. Where no class sits above the array → a `Distinct` after-validator on its own annotated type, beside the same `json_schema_extra`. |
+| `uniqueItems` | A `UniqueItems` rule on the class holding the array, plus `json_schema_extra={"uniqueItems": true}` on the field so it is graded, and the keyword is stripped off the array's own declaration. Where no class encloses the array → a `Distinct` after-validator on its own annotated type, beside the same `json_schema_extra`. |
 | `contains` | An existential quantifier — `items` constrains every element, `contains` says at least one matches — and the model states the **predicate**, not a transcription of the subschema. Every position → an `AtLeastOne` after-validator on the array's own annotated type, because no class has a kind for it: `AtLeastOne(pinned=((property, const), …))` where the subschema requires properties pinned to a const, `AtLeastOne(values=(value,))` where it is a bare `const` or a one-member `enum`. A property KEY is not required to be a Python identifier, so the predicate is a tuple of pairs and not keyword arguments. Any other predicate — a bound, a pattern, a nested `contains`, a `$ref` — → the keyword is CARRIED and the schema half answers alone: a transcription of the subschema is the thing this row declines to emit, and the first document to state such a predicate decides its rendering. RULE position → a `Match` MEMBERSHIP clause, `value in field`, and no validator. |
 <!-- end generated -->
 
@@ -827,7 +827,7 @@ attribution.
 - ~~**`uniqueItems` and `contains` where even a named type cannot hold the rule.**~~ **WRONG, and
   withdrawn 2026-10-27: a named type holds the rule perfectly well, and §2 already said how.**
   This row claimed the duplicate and existential checks are the schema half's alone where no
-  class sits above the array. §2 says the opposite and is right: "Where no class sits above the
+  class encloses the array. §2 says the opposite and is right: "Where no class encloses the
   value — a root array, a mapping value, a `definitions` entry, a union branch — the rule is declared
   off the value's own annotated type as an after-validator (`AtLeastOne`, `NotValue`,
   `Distinct`)." `Annotated[list[X], AfterValidator(…)]` carries a rule; nothing about a named
