@@ -62,7 +62,7 @@ from codegen import ir, keywords, refusal
 from codegen.ir import MISSING
 from codegen.keywords import Position
 from codegen.lower import names
-from codegen.refusal import Kind, Refusal, first_refusal
+from codegen.refusal import BuildFailure, Kind, Refusal, first_refusal
 from codegen.schema import nodes, parse as schema
 
 SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool"}
@@ -264,15 +264,71 @@ class Importable(NamedTuple):
     document: str
 
 
+class TargetKind(StrEnum):
+    """What a resolved ``$ref``'s target IS, which is the one question every row that
+    wants it as a BASE asks of it.
+
+    Three kinds, because §4 "What becomes what" gives a document root three outcomes and
+    a base decision answers differently for each:
+
+    * :attr:`ANNOTATION` -- a scalar root, an enumeration or a container.  Not a class at
+      all: D2 makes it an ``Annotated`` alias and subclassing one is a ``TypeError`` at
+      import, so every row refuses it as a base.
+    * :attr:`CLASS` -- a class declaring a flat field set, which is what a base supplies
+      and what :class:`Shape` carries.
+    * :attr:`UNION` -- a class too (``BranchDispatchMixin`` plus the model base), but one
+      whose INSTANCE is one of its branches.  §5's ``$ref`` row at CONJ keeps it out of a
+      reuser's bases -- "it is not a class a model can extend: the target is this node's
+      own TYPE" -- while §4's union row makes it the first base of a ``$ref`` BRANCH, "the
+      target, which supplies the fields".  Two positions, two answers, one fact.
+
+    **It is a FIELD of :class:`Target` and not a reading of whether ``shape`` is
+    ``None``.**  A union root has a :class:`Shape` -- ``declare_object`` records one for
+    every class -- so "has no shape" and "is not a class" are different questions, and the
+    gate that conflated them refused ``core/assets/asset-union.json``'s ``$ref`` branch
+    onto ``VASTAsset`` with a sentence about a scalar alias (``adcp-client-python-10l.55``).
+    """
+
+    ANNOTATION = "annotation"
+    CLASS = "class"
+    UNION = "union"
+
+
+def target_kind(declared: "ir.Declaration | None") -> TargetKind:
+    """Which of :class:`TargetKind`'s three a node's DECLARATION makes it.
+
+    THE ONE DERIVATION, read by the two sites that have a declaration to read it off:
+    ``emit.answer``, which builds the :class:`Target` for a cross-document reference, and
+    ``lower.union._inherited``, whose LOCAL arm resolves a ``#/...`` branch against the
+    declarations this module has already made.  Asked of the declaration rather than of
+    the node, because what a node BECAME is the walk's answer and re-deriving it from the
+    schema would be a second one.
+
+    ``ir.ClassDecl.branches`` is the fact that says the instance is one of the branches --
+    the same field ``render`` writes ``_branch_models`` off -- so a union root is told
+    apart from a flat class by what its own declaration carries and never by a flag beside
+    it.  Anything that is not a class declaration at all is an annotation: an alias, an
+    enumeration, a container, or a pointer this module declared nothing at.
+    """
+    if not isinstance(declared, ir.ClassDecl):
+        return TargetKind.ANNOTATION
+    return TargetKind.UNION if declared.branches is not None else TargetKind.CLASS
+
+
 @dataclass(frozen=True)
 class Target:
     """What a resolved ``$ref`` gives the lowering that asked for it.
 
-    ``module`` and ``symbol`` are what an ANNOTATION needs.  ``shape`` is what an
-    ``allOf`` conjunct needs, and it is ``None`` when the target is not a class --
-    D2's root-scalar row is an ``Annotated`` alias, and subclassing one is a
-    ``TypeError`` at import, so a lowering refuses it as a base rather than
-    writing a module that cannot be imported.
+    ``module`` and ``symbol`` are what an ANNOTATION needs.  ``kind`` is what every row
+    that wants the target as a BASE reads, and :class:`TargetKind` carries the reasoning:
+    a row asks which of §4's three outcomes the target's root is, and it asks a FIELD
+    rather than inferring it from ``shape``.
+
+    ``shape`` is the field set the target's class DECLARES, and it is ``None`` exactly
+    where ``kind`` is :attr:`TargetKind.ANNOTATION`: an alias declares no fields.  A union
+    root carries one like any other class -- §4's "a branch composes its own with them"
+    needs it -- and which positions may stand on it is ``kind``'s question and not this
+    field's.
 
     ``document`` is the bundle path ``module`` was derived from, so a lowering that
     records the import also records WHO declares the symbol (:class:`Importable`).
@@ -282,6 +338,12 @@ class Target:
     symbol: str
     shape: Shape | None = None
     document: str = ""
+    #: KEYWORD-ONLY AND WITH NO DEFAULT, which is deliberate: a default would make every
+    #: construction site that forgot it one of §4's three outcomes by accident, and the
+    #: whole of this field is that the answer is STATED rather than inferred.  Measured --
+    #: with ``ANNOTATION`` as the default, ``tests/test_emit_product.py``'s hand-built
+    #: target for a class was read as an annotation and the restatement row never ran.
+    kind: TargetKind = field(kw_only=True)
     #: **Every symbol the target's module can hand this one, and where each is
     #: importable FROM**: the symbols that module declares, mapped to the target itself,
     #: and the symbols it imported, mapped to the documents that declare THOSE.  §1 gives
@@ -301,6 +363,30 @@ class Target:
     # one reader that needs the target's schema rather than its symbol, and it holds a
     # DECLARATION and not a node -- so it has no pointer to ask a site with, and the
     # run keys that one answer by the URI alone (:func:`Module.resolve_node`).
+
+    @property
+    def declares(self) -> Shape:
+        """The field set this target's class declares, for a row standing it as a BASE.
+
+        Asked only PAST A GATE ON :attr:`kind`: every reader refuses
+        :attr:`TargetKind.ANNOTATION` first, and the two class kinds are exactly the nodes
+        :func:`declare_object` recorded a :class:`Shape` for -- it writes the shape and the
+        declaration together, at one pointer, and both halves of this pair are read off
+        those two records in one place (``emit.answer`` across a module boundary,
+        :func:`local_target` inside one).
+
+        A kind that says CLASS with no shape beside it is therefore those two records
+        disagreeing, which is a defect in this compiler and not in any document -- so it
+        raises §2's one exception, which no layer catches, rather than returning a field
+        set nobody declared or a refusal charged to a document.
+        """
+        if self.shape is None:
+            raise BuildFailure(
+                f"{self.symbol!r} is a {self.kind} with no Shape recorded beside it: "
+                "declare_object writes a class's shape and its declaration at one "
+                "pointer, so the two records disagree"
+            )
+        return self.shape
 
     @property
     def where(self) -> Importable:
@@ -350,6 +436,30 @@ def unresolved(uri: str, pointer: str) -> Refusal:
     there is no path on which a reference is silently dropped.
     """
     return Refusal("$ref", pointer, f"{NO_TARGET} -- {uri}", kind=Kind.VERDICT)
+
+
+def local_target(mod: "Module", pointer: str) -> Target:
+    """The node at ``pointer`` of THIS module, as the :class:`Target` a row reads.
+
+    A LOCAL ``#/...`` reference resolves inside the document being written, so there is no
+    module to import from and no symbol table to bind against: ``module`` is empty and
+    ``symbol`` is the POINTER that ``lower/names.py`` binds a name to (§7), which is what
+    :func:`local_reference` already decides a local reference to.
+
+    What a row wanting the target as a BASE needs is the other two fields, and both come
+    off the two records :func:`declare_object` writes together -- the declaration
+    (:attr:`Module.at`) and the shape (:attr:`Module.shapes`), at one pointer.  So the
+    LOCAL arm and the cross-document arm of a base decision read one carrier and one
+    invariant: ``emit.answer`` builds the other instance off the same pair of records, and
+    :attr:`Target.declares` states the invariant once rather than once per arm.
+    """
+    return Target(
+        "",
+        pointer,
+        mod.shapes.get(pointer),
+        mod.document,
+        kind=target_kind(mod.at.get(pointer)),
+    )
 
 
 def decide(
@@ -2236,7 +2346,7 @@ def lower_composition(
                 # refuses makes this conjunct's base undecidable, and the CHAIN is the
                 # run's to mint because it is the one that knows the target's refusal.
                 return target
-            if target.shape is None:
+            if target.kind is not TargetKind.CLASS:
                 # **§5's ``$ref`` row at CONJ, the half that was never written** (§14
                 # step 9): "a BASE where the target is a class declaring fields.  Where
                 # it is not -- a scalar, an enum, a container, or a union root, whose
@@ -2244,6 +2354,15 @@ def lower_composition(
                 # extend: the target is this node's own TYPE, and the other conjuncts
                 # and the ``allOf``'s siblings constrain it, which is §2's intersection
                 # at a node that declares no fields of its own."
+                #
+                # **The gate is :attr:`Target.kind` and not ``shape is None``**
+                # (``adcp-client-python-10l.55``).  The row's own sentence names FOUR
+                # targets and only three of them declare no fields: a union root records a
+                # :class:`Shape` like every other class, so the question "may this stand
+                # as a base HERE" is the kind's and the shape's absence answers a
+                # different one.  CONJ's answer is unchanged -- a scalar, an enum, a
+                # container and a union root all become this node's own type -- and the
+                # BRANCH position's differs, which is why it reads the same field.
                 #
                 # So the symbol is recorded as a CONJOINED TYPE rather than as a base,
                 # and :func:`_the_conjuncts_own_type` below is what answers with it once
@@ -2261,12 +2380,12 @@ def lower_composition(
             # imported: §7 makes ``bases`` ``TypeRef``s so one slot holds that beside a
             # base this module declares, which travels by pointer until the pass runs.
             conjunct_bases.append(ir.TypeRef(target.symbol, local=True))
-            inherited.update(target.shape.properties)
-            inherited_fields.update(target.shape.decided)
-            inherited_from.update(dict.fromkeys(target.shape.properties, target))
-            inherited_required |= target.shape.required
+            inherited.update(target.declares.properties)
+            inherited_fields.update(target.declares.decided)
+            inherited_from.update(dict.fromkeys(target.declares.properties, target))
+            inherited_required |= target.declares.required
             if inherited_description is None:
-                inherited_description = target.shape.description
+                inherited_description = target.declares.description
             continue
         # **EVERY PART OF THE CONJUNCT CONTRIBUTES, and each part lowers by the decision
         # covering it** (section 2, "composition merges by intersection").  One arm

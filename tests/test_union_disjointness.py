@@ -465,6 +465,20 @@ MANIFEST_DISCRIMINATED = frozenset(
 #: ``media-buy/sync-catalogs-response.json`` on §4's FOURTH -- one branch forbids a VALUE
 #: another pins.  Both emit, and neither declares an approximation, which is the
 #: direction this set is pinned for.
+#:
+#: **ONE MORE LEFT AT ``adcp-client-python-10l.55``, AND ITS MEMBERSHIP WAS NEVER
+#: MEASURED.**  ``creative/sync-creatives-response.json`` REFUSED while it was listed
+#: here -- chained behind ``core/assets/asset-union.json``, whose ``$ref`` branch onto a
+#: union root the branch row refused -- so the walk returned on branch 0 before
+#: :func:`union.overlapping` was ever called, and the two assertions this set feeds both
+#: exempt a refusing document (``declaring == overlapping - set(out.refusals)``).  With
+#: the branch row fixed the document emits, the derivation runs, and it SEPARATES: each
+#: of the three branches carries a ``not``/``anyOf`` forbidding the names the other two
+#: require -- ``creatives``, ``errors``, and ``status``/``task_id`` -- which is §4's
+#: third source.  ``harness.inseparable_unions`` reads the same document independently
+#: and answers ``()``, so §8's third equality holds in both directions; the entry was a
+#: claim about a derivation that had not run, and dropping it puts one more root under
+#: the ``declaring <= overlapping`` bound rather than outside it.
 OVERLAPPING_ROOTS = frozenset(
     {
         "adagents.json",
@@ -478,7 +492,6 @@ OVERLAPPING_ROOTS = frozenset(
         "core/evaluator-spec.json",
         "core/postal-country-system.json",
         "creative/get-creative-features-response.json",
-        "creative/sync-creatives-response.json",
         "media-buy/build-creative-response.json",
         "media-buy/create-media-buy-response.json",
         "media-buy/update-media-buy-response.json",
@@ -621,6 +634,11 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         resolved_overlaps,
         inside=overlapping,
     )
+    # **``creative/sync-creatives-response.json`` left with its entry in
+    # :data:`OVERLAPPING_ROOTS``** (``adcp-client-python-10l.55``): this list is that set
+    # intersected with what the manifest resolves, so a root the derivation separates is
+    # not in it.  The manifest still resolves the document -- what changed is that the
+    # document is no longer claimed to overlap.
     assert set(resolved_overlaps) == {
         "content-standards/calibrate-content-response.json",
         "content-standards/create-content-standards-response.json",
@@ -629,7 +647,6 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         "content-standards/list-content-standards-response.json",
         "content-standards/validate-content-delivery-response.json",
         "creative/get-creative-features-response.json",
-        "creative/sync-creatives-response.json",
         "media-buy/build-creative-response.json",
         "media-buy/create-media-buy-response.json",
         "media-buy/update-media-buy-response.json",
