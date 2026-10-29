@@ -875,6 +875,17 @@ def _composition(raw: Mapping[str, Any], common: dict, pointer: str) -> nodes.Co
         # ``contains`` among them (:attr:`nodes.Composition.contains`).  Read here, by the
         # arm that claims the node, so ``lower_composition`` is the one reader of it.
         contains=raw.get("contains"),
+        # **The other siblings the same row reads: this node's own VALUE constraints**
+        # (:attr:`nodes.Composition.facts`).  One classification and not a list --
+        # :func:`value_facts` is the same derivation every value-carrying kind's facts
+        # take -- less the keys :attr:`nodes.Base.rules` already carries: ``uniqueItems``
+        # and ``min``/``maxProperties`` are RULE cells here, ``lower.rules`` is their one
+        # reader, and a key in both carriers would be lowered twice.
+        facts={
+            k: v
+            for k, v in value_facts(raw, common["position"]).items()
+            if k not in common["rules"]
+        },
         word=raw.get("type"),
         **common,
     )
