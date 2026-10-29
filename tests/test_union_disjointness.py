@@ -31,7 +31,7 @@ import json
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from pydantic import create_model
 
@@ -290,11 +290,13 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
             # stating its combinator at the conjunct's pointer
             # (:attr:`nodes.Union.stated_at`).  The derivation is reached unchanged: it
             # takes a branch list and knows nothing about where the keyword was written.
-            # It read FOUR at ``adcp-client-python-10l.37`` and reads one:
-            # ``display_tag``, ``html5`` and ``image`` are a presence RULE now
-            # (:data:`_PRESENCE_RULE_INSTEAD`), so they declare no branch classes and
-            # reach no dispatch.  The one left is in the OVERLAPPING half, which the
-            # partition below asserts rather than this comment.
+            # It read FOUR at ``adcp-client-python-10l.37`` and reads one: §5's
+            # presence clause now reads a disjunction of groups and an empty required
+            # half, so ``display_tag``, ``html5`` and ``image``'s size-mode ``oneOf`` is
+            # a RULE on the composed class and declares no branch classes at all.  The
+            # one left is in the OVERLAPPING half, which the partition below asserts
+            # rather than this comment, and :func:`_borne` is what says which sites those
+            # are -- this set is the roots reaching the DERIVATION and not that census.
             "governance/check-governance-request.json",
         },
         inside=bundle.portable(BUNDLE),
@@ -1450,45 +1452,61 @@ def test_every_union_the_derivation_cannot_separate_is_named_and_partitioned() -
 #: ever classified there.  They are ``governance/check-governance-request.json`` at
 #: ``/allOf/13/if/allOf/1`` and ``protocol/get-adcp-capabilities-response.json`` at
 #: ``/allOf/11/if/allOf/1``, and ``lower/rules.py`` is what reads them.
-CONJUNCT_BORNE = {
-    "adagents.json": "/oneOf/1/allOf/0",
-    "governance/check-governance-request.json": "/allOf/1",
-}
-#: **THE THREE ``formats/canonical`` DOCUMENTS LEFT, and the arm order is what took
-#: them** (``adcp-client-python-10l.75``).  ``display_tag.json``, ``html5.json`` and
-#: ``image.json`` state a ``oneOf`` of four size modes in ``/allOf/1``, and every branch
-#: of it constrains only which keys are PRESENT -- ``required`` and a ``not`` over
-#: ``required`` on two, a disjunction of groups on the third, an empty required half on
-#: the fourth.  Once ``presence_clause`` read the last two shapes the conjunct became
-#: presence-only, and :func:`parse.parse` reads ``presence_only`` BEFORE the union arm,
-#: so the node is a RULE on the composed class and never reaches the classification
-#: below.  :func:`parse._borne_by_a_conjunct` asks that same gate, so nothing here had
-#: to change for them to go: the population fell 5 -> 2 by the two readings being
-#: sequenced rather than by either one being narrowed.
-_PRESENCE_RULE_INSTEAD = (
-    "formats/canonical/display_tag.json",
-    "formats/canonical/html5.json",
-    "formats/canonical/image.json",
-)
+class Borne(NamedTuple):
+    """One union the walk classified from a CONJUNCT's combinator, as the walk built it."""
+
+    document: str
+    #: The composing node's own pointer -- what the class is declared at.
+    pointer: str
+    #: The pointer the combinator is WRITTEN at, which is one of this node's conjuncts.
+    stated_at: str
+    combinator: str
+    #: Each branch's pointer, in the document's own order.
+    branches: tuple[str, ...]
+    #: The conjuncts that still compose, at the indices the document gives them.
+    conjuncts: tuple[str, ...]
+
+    @property
+    def at(self) -> str:
+        """``document`` and ``stated_at``, for a report a reader can open."""
+        return f"{self.document}#{self.stated_at}"
 
 
-def _borne(population: list[str]) -> dict[tuple[str, str], str]:
+def _borne(population: list[str]) -> list[Borne]:
     """Every union the WALK built whose combinator is borne by a conjunct, recorded at
     the parse.
 
+    **THIS FUNCTION IS THE MEASUREMENT AND NOTHING ELSE NAMES THE SET**
+    (``adcp-client-python-10l.79``).  A hand-listed census stood beside it -- five
+    documents and their pointers -- and it went stale the day two §5 rulings landed
+    after the row that wrote it: the presence clause's disjunction half and its empty
+    required half made three of the five a RULE, so the census claimed five where the
+    derivation found two.  ``tests/nodeset.py`` says why that was the wrong shape in the
+    first place: "a check names its own set at the point it ranges over it, because a
+    set named somewhere else is a second place to go stale."  So the tests below range
+    over what this returns and assert the READINGS, and the only count any of them
+    states is :func:`nodeset.claimed`'s refusal of an empty one.
+
     Derived from the production classifier and not from a second walk of the raw
     mappings: the claim the row makes is that ``schema.parse`` decides this, so the
-    instrument has to be that function and the carrier has to be the field it sets
-    (:attr:`codegen.schema.nodes.Union.stated_at`).  A node whose combinator sits at its
-    own pointer is not one of these and does not appear.
+    instrument has to be that function and the carrier has to be the fields it sets
+    (:attr:`codegen.schema.nodes.Union.stated_at`, :attr:`~.Union.conjuncts`).  A node
+    whose combinator sits at its own pointer is not one of these and does not appear.
     """
-    seen: dict[tuple[str, str], str] = {}
+    seen: dict[tuple[str, str], Borne] = {}
     real = schema_parse.parse
 
     def traced(raw: Any, **kw: Any) -> Any:
         node = real(raw, **kw)
         if isinstance(node, nodes.Union) and node.stated_at != node.pointer:
-            seen[(node.document, node.stated_at)] = node.combinator
+            seen[(node.document, node.stated_at)] = Borne(
+                document=node.document,
+                pointer=node.pointer,
+                stated_at=node.stated_at,
+                combinator=node.combinator,
+                branches=tuple(b.pointer for b in node.branches),
+                conjuncts=tuple(c.pointer for c in node.conjuncts),
+            )
         return node
 
     schema_parse.parse = traced  # type: ignore[assignment]
@@ -1496,7 +1514,7 @@ def _borne(population: list[str]) -> dict[tuple[str, str], str]:
         emit.emit(BUNDLE, population)
     finally:
         schema_parse.parse = real  # type: ignore[assignment]
-    return seen
+    return sorted(seen.values())
 
 
 def test_a_conjuncts_combinator_of_shapes_is_a_union_at_the_pointer_it_is_written_at() -> (
@@ -1510,24 +1528,89 @@ def test_a_conjuncts_combinator_of_shapes_is_a_union_at_the_pointer_it_is_writte
     derivation -- so a conjunct stating a combinator of shapes states it about the
     composed node's instance.  ``schema.parse`` is the one classifier (§11), so it is
     what decides this, and :attr:`nodes.Union.stated_at` carries WHERE the keyword is
-    written: the branches sit at ``<conjunct>/<kw>/<i>`` and every other conjunct keeps
-    the index the document gives it.
+    written.
 
-    Nothing is rewritten and nothing is dropped.  The three ways the classification
-    DECLINES -- two conjuncts carrying one, a combinator beside a conjunct that carries
-    one, and a conjunct that states something else as well -- each leave the node a
-    :class:`nodes.Composition` and its refusal exactly where it was.
+    **Every assertion here is a READING and none is a count** (``10l.79``): the set is
+    :func:`_borne`'s, named at the point this ranges over it, and what is asserted of
+    each member is what the classification claims -- the keyword is written at one of
+    this node's own conjuncts, that conjunct declares the combinator and NOTHING else,
+    it is not presence-only (so the rule reading has already declined it), the branches
+    sit at ``<conjunct>/<kw>/<i>``, and every other conjunct keeps the index the
+    document gives it.  A document entering or leaving the set moves nothing here.
     """
     borne = _borne(sorted(bundle.portable(BUNDLE)))
-    assert {d: p for d, p in borne} == CONJUNCT_BORNE, sorted(borne)
-    # The conjunct the branch list came out of contributes NOTHING ELSE, which is the
-    # classification's own gate and is asserted of the documents rather than trusted.
-    for document, at in CONJUNCT_BORNE.items():
-        conjunct = bundle.node_at(bundle.read(BUNDLE, document), at)
-        declared = {
-            k for k in conjunct if keywords.declares(k, keywords.Position.CONJ)
-        }
-        assert declared == {borne[(document, at)]}, (document, sorted(declared))
+    claimed(
+        "unions the parser classified from a conjunct's combinator",
+        [one.at for one in borne],
+    )
+    for one in borne:
+        raw = bundle.read(BUNDLE, one.document)
+        # The COMPOSING node, which is not always the document root: a conjunct-borne
+        # union can sit at a BRANCH of another union (``adagents.json`` does).
+        enclosing = bundle.node_at(raw, one.pointer)
+        # WHERE: the keyword is written at a conjunct of this very node, and the node's
+        # own pointer is where the class is declared.
+        assert one.stated_at.startswith(f"{one.pointer}/allOf/"), one
+        index = one.stated_at[len(f"{one.pointer}/allOf/") :]
+        assert index.isdigit(), one
+        conjunct = bundle.node_at(raw, one.stated_at)
+        # THE GATE: the conjunct contributes the branch list and nothing else, so
+        # nothing of it is dropped by being read as the node's combinator.
+        declared = {k for k in conjunct if keywords.declares(k, keywords.Position.CONJ)}
+        assert declared == {one.combinator}, (one, sorted(declared))
+        # SEQUENCED AFTER THE RULE READING, which is the same gate ``parse.parse`` asks
+        # of a node's own combinator: a conjunct whose branches are presence groups is a
+        # rule on the composed class and never reaches this classification.
+        assert not schema_parse.presence_only(conjunct, keywords.Position.CONJ), one
+        # THE BRANCHES: at the conjunct's own pointer, one per branch, in order.
+        assert one.branches == tuple(
+            f"{one.stated_at}/{one.combinator}/{i}"
+            for i in range(len(conjunct[one.combinator]))
+        ), one
+        # THE OTHER CONJUNCTS: the document's own indices, with the carrier removed and
+        # nothing re-pointed -- which is what a list rebuilt by ``enumerate`` would do.
+        assert one.conjuncts == tuple(
+            f"{one.pointer}/allOf/{i}"
+            for i in range(len(enclosing["allOf"]))
+            if i != int(index)
+        ), one
+
+
+def test_the_classification_declines_rather_than_guessing(tmp_path) -> None:
+    """The three ways :func:`parse._borne_by_a_conjunct` declines, graded on PROBES.
+
+    Each leaves the node a :class:`nodes.Composition`, so its refusal stays exactly
+    where it was.  Graded on constructed documents and not on the bundle, because the
+    bundle states none of the three -- which is the measurement, and a decline arm with
+    no population is still an arm a reader has to be able to see work.
+    """
+    def classify(raw: dict) -> Any:
+        return schema_parse.parse(
+            raw,
+            pointer="",
+            position=keywords.Position.ROOT,
+            source=schema_parse.Source(document="probe.json"),
+        )
+
+    shapes = {"oneOf": [{"properties": {"a": {"type": "string"}}}, {"required": ["b"]}]}
+    # It CLASSIFIES where exactly one conjunct carries one and states nothing else.
+    one = classify({"type": "object", "allOf": [{"$ref": "x.json"}, dict(shapes)]})
+    assert isinstance(one, nodes.Union) and one.stated_at == "/allOf/1", one
+
+    # 1. TWO conjuncts carry one: the instance is described by two branch lists and
+    #    there is no single class-per-branch answer.
+    two = classify({"type": "object", "allOf": [dict(shapes), dict(shapes)]})
+    assert isinstance(two, nodes.Composition), two
+    # 2. The node states one of its own beside a conjunct that does: its own arm has
+    #    already answered, and this one must not answer again.
+    beside = classify({"type": "object", "allOf": [dict(shapes)], **shapes})
+    assert isinstance(beside, nodes.Union) and beside.stated_at == "", beside
+    # 3. The conjunct states something ELSE beside the combinator, so it contributes to
+    #    the composed class as well and the conjunction of the two has no pointer.
+    alongside = classify(
+        {"type": "object", "allOf": [{**shapes, "required": ["c"]}]}
+    )
+    assert isinstance(alongside, nodes.Composition), alongside
 
 
 def test_the_conjunct_borne_combinator_separates_or_names_the_pair() -> None:
@@ -1539,77 +1622,77 @@ def test_the_conjunct_borne_combinator_separates_or_names_the_pair() -> None:
     this test's claim, made by running the production :func:`union.separates` over the
     branches the production parse built.
 
-    **Three of the five separate and two do not, and the two are the same shape.**  Each
-    of ``display_tag``, ``html5`` and ``image`` states four size modes that forbid each
-    other's discriminants by name, so all six pairs separate -- §4's first source derives
-    NO key for any of them (no branch pins a ``const``), which is the measurement the
-    refusal they used to carry asserted.  ``adagents.json`` and
-    ``governance/check-governance-request.json`` state an ``anyOf`` as a CONSTRAINT:
-    their arms neither forbid a name nor close a map, so an instance satisfying several
-    at once exists and §4 owes them no discriminant at all.  That is
-    ``adcp-client-python-10l.30``'s partition, found again at this position.
+    **The PARTITION is the assertion and neither half is listed** (``10l.79``).  §4's
+    first source derives no key at any of these -- asserted of every member, with the
+    pins it did read reported -- so the third is what decides them, and each site either
+    separates every pair or NAMES the pairs it cannot.  Where it cannot, the shape is
+    asserted rather than the document: some branch of an overlapping site demands no name
+    at all, which is what makes it an ``anyOf`` the document states as a CONSTRAINT
+    rather than an alternation of shapes.  That is ``adcp-client-python-10l.30``'s
+    partition, derived again at this position, and rows .29 / onq own the rule it wants.
     """
-    separated: dict[str, list[str]] = {}
-    for document, at in sorted(CONJUNCT_BORNE.items()):
-        raw = bundle.read(BUNDLE, document)
+    borne = _borne(sorted(bundle.portable(BUNDLE)))
+    claimed("conjunct-borne unions the derivation is asked about", [one.at for one in borne])
+    overlaps: dict[str, list[str]] = {}
+    planned_at: dict[str, list[lower_union.Branch]] = {}
+    for one in borne:
+        raw = bundle.read(BUNDLE, one.document)
+        # The node is reached at ITS OWN pointer, which is not always the root: a
+        # conjunct-borne union can sit at a BRANCH of another union.  Parsed through the
+        # production classifier either way, so the branches asked about are the walk's.
+        enclosing = bundle.node_at(raw, one.pointer)
         node = schema_parse.parse(
-            raw,
-            pointer="",
-            position=keywords.Position.ROOT,
-            source=schema_parse.Source(
-                document=document, applied_at=bundle.constrained_to_object(raw)
+            enclosing,
+            pointer=one.pointer,
+            position=(
+                keywords.Position.ROOT if one.pointer == "" else keywords.Position.BRANCH
             ),
+            source=schema_parse.Source(
+                document=one.document, applied_at=bundle.constrained_to_object(raw)
+            ),
+            objectish=one.pointer != "",
         )
-        # adagents states its conjunct inside a BRANCH of its own root union, so the node
-        # the classifier claimed is reached through that branch rather than at the root.
-        if not (isinstance(node, nodes.Union) and node.stated_at == at):
-            node = schema_parse.parse(
-                bundle.node_at(raw, at.rsplit("/allOf/", 1)[0]),
-                pointer=at.rsplit("/allOf/", 1)[0],
-                position=keywords.Position.BRANCH,
-                source=schema_parse.Source(document=document),
-                objectish=True,
-            )
-        assert isinstance(node, nodes.Union), (document, type(node).__name__)
-        assert node.stated_at == at, (document, node.stated_at)
+        assert isinstance(node, nodes.Union), (one, type(node).__name__)
+        assert node.stated_at == one.stated_at, (one, node.stated_at)
         planned = [
-            _planned(document, parsed.pointer, branch)
+            _planned(one.document, parsed.pointer, branch)
             for parsed, branch in zip(node.branches, node.branch_raw, strict=True)
         ]
-        # §4's FIRST source derives no key at any of the five, which is what sends the
-        # question to the third.
+        planned_at[one.at] = planned
+        # §4's FIRST source derives no key, which is what sends the question to the
+        # third.  Reported with the pins it DID read, so a site that starts pinning one
+        # is readable rather than merely red.
         assert lower_union.discriminator(planned, lower_union.dispatch_key(node)) == "", (
-            document,
+            one.at,
             lower_union._why_no_pin(planned),
         )
-        separated[document] = lower_union.overlapping(planned, node)
+        overlaps[one.at] = lower_union.overlapping(planned, node)
 
     partitions(
-        set(CONJUNCT_BORNE),
-        disjoint={d for d, pairs in separated.items() if not pairs},
-        overlapping={d for d, pairs in separated.items() if pairs},
+        {one.at for one in borne},
+        disjoint={at for at, pairs in overlaps.items() if not pairs},
+        overlapping={at for at, pairs in overlaps.items() if pairs},
     )
-    # **BOTH that are left OVERLAP, and the three that separated are gone to the rule
-    # row** (:data:`_PRESENCE_RULE_INSTEAD`).  What remains at this classification is
-    # exactly the shape ``adcp-client-python-10l.30`` partitioned off: an ``anyOf`` the
-    # document states as a CONSTRAINT, which §4 owes no discriminant and rows .29 / onq
-    # compile to a rule.  The empty half is asserted rather than dropped, because a
-    # derivation that stopped separating anything would otherwise read as this set
-    # shrinking on purpose.
-    assert {d for d, pairs in separated.items() if not pairs} == set(), separated
-    # The pair is NAMED, which is what makes the overlap a finding rather than a verdict
-    # about the derivation: a reader can open the document at these two pointers.
-    assert separated["governance/check-governance-request.json"] == [
-        "/allOf/1/anyOf/0 and /allOf/1/anyOf/1"
-    ], separated
-    assert len(separated["adagents.json"]) == 15, separated  # noqa: PLR2004 -- 6 branches
-    # adagents' branch 0 demands NO name at all -- it states a property map and no
-    # ``required`` -- so every one of its 15 pairs overlaps for the same reason, which is
-    # why the count is the assertion and not a list of 15 strings.
-    assert all(
-        "/oneOf/1/allOf/0/anyOf/0 and " in p or "anyOf" in p
-        for p in separated["adagents.json"]
-    ), separated
+    for at, pairs in sorted(overlaps.items()):
+        if not pairs:
+            # Every pair separated: §4's third source names the branches and the union
+            # dispatches without a key.
+            continue
+        # The pairs are NAMED, which is what makes an overlap a finding a reader can open
+        # rather than a verdict about the derivation -- and each name is two POINTERS of
+        # this very union, not prose.
+        branches = {plan.pointer for plan in planned_at[at]}
+        for pair in pairs:
+            left, _, right = pair.partition(" and ")
+            assert left in branches and right in branches, (at, pair)
+        # THE SHAPE, derived: an ``anyOf`` stated as a CONSTRAINT has a branch that
+        # demands no name at all, so no separator §4 names can tell it from any sibling.
+        # Asserted of the branches rather than of the document, so a site joining or
+        # leaving this half carries its own reason.
+        assert any(not lower_union.demands(plan) for plan in planned_at[at]) or any(
+            not plan.forbids and not lower_union.closures_of(plan)
+            for plan in planned_at[at]
+        ), (at, pairs)
 
 
 def test_a_union_of_shapes_reaching_the_composing_row_without_a_caller_refuses() -> None:

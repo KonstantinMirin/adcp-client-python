@@ -1017,6 +1017,31 @@ That is the asymmetry Group A does not have, and it is why the two shapes separa
 dropped is the shape precision of the branches, the type widens by §2's ladder, and the gap is
 declared and attributed.
 
+### The dispatch mixin is named where no base already carries it (decided 2026-10-29)
+
+`BranchDispatchMixin` has to come FIRST so the MRO finds its `__get_pydantic_core_schema__`,
+and a union base that composes already carries it — so naming it beside such a base puts a
+class before its own subclass and Python refuses to build the module.
+
+**The suppression is a function of the BASE LIST and not of the route that reached it.** That is
+the whole decision, and it is the one reading both routes can ask: at the point the base list is
+built, the mixin is named where no base in it already carries the mixin, and omitted where one
+does. `base_if_none_composes` is the same shape at the same seam — "what the base would be if
+nothing composed" — and this is "what the mixin is if nothing already carries it".
+
+A guard keyed to the route is the alternative and it is wrong. `Enclosing` is constructed at one
+place, inside the enclosing union's branch loop, under the arm that claims a branch the parser
+classified `nodes.Union`. A nested union reaching `lower_union` through the DISPATCH instead —
+because it declares `properties` beside its own combinator, so the enclosing loop's arm does not
+claim it — arrives with no carrier, and a second guard there would be a second copy of the
+reading `Enclosing` was built to hold once (§11). Measured on `core/postal-area.json#/anyOf/0`,
+which is a fifth shape beside the four that arm's own comment counts, and the only inconsistent
+MRO in the 1,006-module tree.
+
+`Enclosing` keeps its other job. It carries the enclosing base and that base's `Shape` so a
+property both declare takes §2's restatement rule, which no base list states and which the
+dispatch route genuinely does not have.
+
 ### An `enum` conjunct beside a `$ref` to an enum (decided 2026-10-29)
 
 §2 decides the semantics already — "an enum is the intersection of the members" — and what was
