@@ -3976,12 +3976,58 @@ def lower_composition(
             # on ``core/protocol-envelope.json`` and required at their own root -- and
             # they were the last 2 ``added`` facts of the symmetric comparison.
             #
-            # The INTERSECTION where it NARROWS (section 2, :func:`_intersection`), and the node
-            # itself where only the requiredness moved: there the content is the base's
-            # already, so there is nothing of the base's to merge back in.
-            own[key] = (
-                _intersection(stating, inherited[key], mod.resolve_node) if verdict else stating
-            )
+            # The INTERSECTION, in BOTH halves (``adcp-client-python-10l.103``).
+            #
+            # **This read the node ITSELF where only the requiredness moved, on the
+            # ground that "the content is the base's already, so there is nothing of the
+            # base's to merge back in" -- and that is true of an EQUAL restatement and
+            # false of one stating LESS.**  Once silence stopped being a loosening
+            # (:func:`_restatement`), a restatement that does not narrow can state
+            # strictly less than the base, and lowering THAT node alone drops every fact
+            # the base states.  The arm below already carries the sentence, for the same
+            # shape reached without a requiredness move: "a restatement can reach this
+            # arm stating LESS than the base ... and lowering THAT node alone drops the
+            # base's bound, which is the shadow this whole rule exists to make
+            # unspellable."
+            #
+            # Measured on ``adagents.json``, where its four union branches state
+            # ``{"properties": {"formats": {"minItems": 1}}, "required": ["formats"]}``
+            # over a base declaring ``formats`` as an array of
+            # ``ProductFormatDeclaration`` with ``minItems: 1`` already: the restatement
+            # matches, so ``verdict`` is false, the requiredness moved, and the field was
+            # redeclared from ``{"minItems": 1}`` alone -- emitting ``formats: Any`` over
+            # the base's ``list[FormatsItem]``.  Three defects in one line: a
+            # TYPE-changing redeclaration of an inherited field, which this module's own
+            # rule calls a build failure; the base's ``type`` and ``items`` dropped with
+            # no declaration at all; and the ``minItems`` that WAS declared declared at
+            # rung KEYWORD -- "drop the one keyword, keep the type" -- while the output
+            # took ``Any``.  The asymmetry is the proof: the two sibling branches that
+            # state no ``required`` reached the arm below and kept the base's type and
+            # bound.
+            own[key] = _intersection(stating, inherited[key], mod.resolve_node)
+            if not _constraining(stating) or _constraining(own[key]) == _constraining(
+                _dereferenced(inherited[key], mod.resolve_node)
+            ):
+                # **The restatement says nothing about the instance the base does not,
+                # so this is section 2's REQUIREDNESS OVERLAY and takes its answer**:
+                # "Where composition makes an inherited field required, the subclass
+                # redeclares it with the base's type and no default."  The overlay loop
+                # below implements exactly that and reaches only a key NO view declares;
+                # a key that is both restated and newly required falls between the two,
+                # and this is the half that was missing.
+                #
+                # Reusing the base's DECIDED field rather than re-deciding the
+                # intersection is what keeps the KNOWN CEILING below unreached: the
+                # intersection takes the base's ``items`` with it, and re-deciding
+                # declares that nested class again at a pointer this document does not
+                # have, which is what ``schema_at`` raises on when the pair is graded.
+                held = _reused(
+                    key, inherited_fields, inherited_from, f"{pointer}/properties/{key}", mod
+                )
+                if isinstance(held, Refusal):
+                    return held
+                reuse[key] = held
+                own[key] = dict(inherited[key])
             if _constraining(own[key]).get("uniqueItems") is True and not _constraining(
                 stating
             ).get("uniqueItems"):

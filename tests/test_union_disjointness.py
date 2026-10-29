@@ -33,6 +33,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Literal, NamedTuple
 
+from jsonschema import Draft7Validator
 from pydantic import create_model
 
 from adcp.types._base import UNDERDETERMINED, SchemaRef, schema_at
@@ -51,7 +52,7 @@ DRAFT = "http://json-schema.org/draft-07/schema#"
 
 #: What each separator's answer says, so a test can tell which one decided a pair without
 #: a second copy of the three rules.
-PINNED = "is pinned to"
+PINNED = "is constrained to disjoint value sets"
 FORBIDDEN = "and the other declares no such property"
 SCALAR = "are scalars of type"
 
@@ -81,19 +82,103 @@ def _branch(**node: Any) -> lower_union.Branch:
 # --------------------------------------------------------------------------- #
 # the derivation, separator by separator
 # --------------------------------------------------------------------------- #
-def test_a_property_pinned_to_different_consts_separates_a_pair() -> None:
-    """§4's first separator, and the half that makes it a separator: an instance
-    carrying one value fails the branch pinning the other, so no instance satisfies both.
+def _pinned(value: Any, **extra: Any) -> lower_union.Branch:
+    """A branch constraining ``kind`` to ``value``, and REQUIRING it.
 
-    The same two branches pinning the SAME value are not separated by it, which is the
-    perturbation -- and it is also why this is not :func:`union.discriminator`: that one
-    needs the property SHARED by every branch, and this one needs only the pair.
+    ``required`` is part of the fixture rather than of one case because the separator is
+    gated on presence: a ``properties`` entry is satisfied by the key being absent, so a
+    branch that does not require ``kind`` says nothing that separates it from any other.
+    :func:`test_disjoint_value_sets_do_not_separate_a_pair_that_need_not_carry_the_key`
+    is the half that holds the gate.
     """
-    one = _branch(type="object", properties={"kind": {"const": "a"}})
-    two = _branch(type="object", properties={"kind": {"const": "b"}})
-    same = _branch(type="object", properties={"kind": {"const": "a"}})
-    assert PINNED in (lower_union.separates(one, two, None, None) or ""), one
-    assert lower_union.separates(one, same, None, None) is None
+    return _branch(
+        type="object", properties={"kind": value}, required=["kind"], **extra
+    )
+
+
+def test_a_property_constrained_to_disjoint_value_sets_separates_a_pair() -> None:
+    """§4's first separator, and the half that makes it a separator: an instance whose
+    ``kind`` is in one set is not in the other, so no instance satisfies both.
+
+    **It reads SETS and not single values (decided 2026-10-29).** §4: "An ``enum`` is a
+    set of pinned values and a ``not: {"enum": [...]}`` is its complement, so two
+    branches whose sets do not intersect are disjoint for the same reason two different
+    ``const``\\ s are -- the single-value case is the one-member set."  All four pairings
+    are graded here, because each is a different comparison and only the first was ever
+    written: set against set, set against a one-member set, and a set against the
+    COMPLEMENT of a set that contains it.
+
+    The perturbations are the same four with the sets INTERSECTING, which is where §4's
+    "a pair the derivation cannot separate is treated as overlapping" applies -- and they
+    include the pairing that can never separate, two complements, because whether two
+    finite excluded sets cover the value space is not something the branches state.
+
+    This is not :func:`union.discriminator`: that one needs the property SHARED by every
+    branch, and this one needs only the pair.
+    """
+    separated = (
+        (_pinned({"const": "a"}), _pinned({"const": "b"})),
+        (_pinned({"enum": ["a", "b"]}), _pinned({"const": "c"})),
+        (_pinned({"enum": ["a", "b"]}), _pinned({"enum": ["c", "d"]})),
+        (_pinned({"const": "a"}), _pinned({"not": {"enum": ["a", "b"]}})),
+        (_pinned({"enum": ["a", "b"]}), _pinned({"not": {"enum": ["a", "b", "c"]}})),
+    )
+    for one, two in separated:
+        assert PINNED in (lower_union.separates(one, two, None, None) or ""), (one, two)
+        assert PINNED in (lower_union.separates(two, one, None, None) or ""), (one, two)
+
+    overlapping = (
+        # the same value on both sides -- the pair the single-value reading already knew
+        (_pinned({"const": "a"}), _pinned({"const": "a"})),
+        # sets that share a member
+        (_pinned({"enum": ["a", "b"]}), _pinned({"enum": ["b", "c"]})),
+        # a set NOT contained in the complemented one: "a" is admitted by both
+        (_pinned({"enum": ["a", "b"]}), _pinned({"not": {"enum": ["b"]}})),
+        # two complements, which never separate
+        (_pinned({"not": {"enum": ["a"]}}), _pinned({"not": {"enum": ["b"]}})),
+        # a constraint that names no values at all has no set to intersect
+        (_pinned({"type": "string"}), _pinned({"const": "a"})),
+    )
+    for one, two in overlapping:
+        assert lower_union.separates(one, two, None, None) is None, (one, two)
+        assert lower_union.separates(two, one, None, None) is None, (one, two)
+
+
+def test_disjoint_value_sets_do_not_separate_a_pair_that_need_not_carry_the_key() -> (
+    None
+):
+    """The PRESENCE gate, which the single-value reading never had and needed.
+
+    A ``properties`` entry constrains the value a key carries and says nothing about an
+    instance that omits the key, so two branches naming disjoint sets for a key neither
+    requires are both satisfied by ``{}``.  Measured under ``Draft7Validator``: ``{}`` is
+    valid against ``{"type": "object", "properties": {"kind": {"const": "a"}}}`` and
+    against its ``"b"`` sibling, so the pair genuinely overlaps and reporting it disjoint
+    would be exactly the unproven disjointness §4's third source exists to refuse.
+
+    Three ways to satisfy the gate and each is asserted, because §4 applies a root
+    keyword to every branch: EITHER branch requiring the key is enough -- an instance of
+    that one always carries a value the other refuses -- and so is the ROOT requiring it
+    of every branch, which is the form the bundle actually uses.
+    """
+    bare = (
+        _branch(type="object", properties={"kind": {"const": "a"}}),
+        _branch(type="object", properties={"kind": {"const": "b"}}),
+    )
+    schema = {"type": "object", "properties": {"kind": {"const": "a"}}}
+    assert Draft7Validator(schema).is_valid({}), "draft-07 admits the absent key"
+    assert lower_union.separates(*bare, None, None) is None, bare
+    assert lower_union.separates(*bare[::-1], None, None) is None, bare
+
+    for one, two in (
+        (_pinned({"const": "a"}), bare[1]),
+        (bare[0], _pinned({"const": "b"})),
+    ):
+        assert PINNED in (lower_union.separates(one, two, None, None) or ""), (one, two)
+
+    assert PINNED in (
+        lower_union.separates(*bare, None, None, root_required=frozenset({"kind"})) or ""
+    ), bare
 
 
 def test_a_required_name_the_other_branch_forbids_separates_a_pair() -> None:

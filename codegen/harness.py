@@ -4516,8 +4516,13 @@ def _pins(node: Mapping[str, Any]) -> dict[str, Any]:
     """Each property this branch pins to a single value, by key.
 
     A one-member ``enum`` is a ``const`` -- section 5's ``enum`` row says so of the model
-    side and draft-07 says so of the document -- so both spellings are read, which is the
-    whole of what the first separator needs.
+    side and draft-07 says so of the document -- so both spellings are read.
+
+    **This answers the FOURTH separator now and not the first** (2026-10-29): "one branch
+    forbids a VALUE another pins" is about a single value, because ``_forbidden_values``
+    reads a single pinned value off a ``not``.  The first separator reads
+    :func:`_value_sets`, which is a different question -- which values the branch ADMITS,
+    not which one it spells.
     """
     out: dict[str, Any] = {}
     for key, declaration in (node.get("properties") or {}).items():
@@ -4528,6 +4533,87 @@ def _pins(node: Mapping[str, Any]) -> dict[str, Any]:
         elif isinstance(declaration.get("enum"), list) and len(declaration["enum"]) == 1:
             out[key] = declaration["enum"][0]
     return out
+
+
+def _named_values(node: Mapping[str, Any]) -> frozenset | None:
+    """``node``'s ``const`` or ``enum`` as a set of scalars, or ``None`` for neither.
+
+    Draft-07's own reading: a ``const`` is a one-member ``enum``.  ``None`` rather than
+    the empty set, because "names no values" and "admits nothing" are different
+    statements.  Scalars only, and a list with one non-scalar member contributes NOTHING
+    rather than its scalar part -- a partial set would claim a disjointness the document
+    does not state.
+    """
+    if "const" in node:
+        value = node["const"]
+        return frozenset({value}) if isinstance(value, (str, bool, int)) else None
+    members = node.get("enum")
+    if not isinstance(members, list) or not members:
+        return None
+    if not all(isinstance(member, (str, bool, int)) for member in members):
+        return None
+    return frozenset(members)
+
+
+def _value_sets(node: Mapping[str, Any]) -> dict[str, tuple[frozenset, bool]]:
+    """For each key this branch constrains to a value set, that set and whether it is a
+    COMPLEMENT.
+
+    **Section 4's first separator, which reads SETS as of 2026-10-29**: "An ``enum`` is a
+    set of pinned values and a ``not: {"enum": [...]}`` is its complement, so two branches
+    whose sets do not intersect are disjoint for the same reason two different ``const``\\ s
+    are -- the single-value case is the one-member set."
+
+    **A second spelling of ``codegen.lower.union.value_sets``, over the DOCUMENT**, for
+    :func:`separates`' reason: a verifier that asked the walk which values a branch admits
+    would compare the walk's answer with itself.  Written from section 4, not from it.
+
+    Nothing but ``const``, ``enum`` and a ``not`` over either contributes: a bound, a
+    pattern or a ``$ref`` constrains the value without NAMING the values, so there is no
+    set to intersect.
+    """
+    out: dict[str, tuple[frozenset, bool]] = {}
+    for key, declaration in (node.get("properties") or {}).items():
+        if not isinstance(declaration, dict):
+            continue
+        for sub, complement in ((declaration, False), (declaration.get("not"), True)):
+            if not isinstance(sub, Mapping):
+                continue
+            named = _named_values(sub)
+            if named is not None:
+                out[key] = (named, complement)
+                break
+    return out
+
+
+def _disjoint(one: tuple[frozenset, bool], other: tuple[frozenset, bool]) -> bool:
+    """Do these two value sets share no value?
+
+    Two POSITIVE sets are disjoint where they do not intersect; a positive set and a
+    COMPLEMENT are disjoint where the positive one is CONTAINED in the complemented one;
+    two COMPLEMENTS are never reported disjoint, because whether their two finite sets
+    cover the value space is not something the branches state -- and section 4's "a pair
+    the derivation cannot separate is treated as overlapping" is the answer where they do
+    not.
+    """
+    (ours, ours_complement), (theirs, theirs_complement) = one, other
+    if ours_complement and theirs_complement:
+        return False
+    if ours_complement:
+        return theirs <= ours
+    if theirs_complement:
+        return ours <= theirs
+    return not (ours & theirs)
+
+
+def _requires(node: Mapping[str, Any]) -> frozenset[str]:
+    """The names present in every instance of this branch: :func:`_demands`' singletons.
+
+    Read off the one reading of what a branch requires rather than off ``required`` a
+    second time, so a branch stating its requirement in an ``allOf`` conjunct or as a
+    presence combinator is read the same way here as by the second separator.
+    """
+    return frozenset(name for group in _demands(node) for name in group if len(group) == 1)
 
 
 def _views(node: Any) -> list[Mapping[str, Any]]:
@@ -4725,7 +4811,14 @@ def _forbidden_values(node: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-def separates(a: Mapping[str, Any], b: Mapping[str, Any], a_type: Any, b_type: Any) -> str | None:
+def separates(
+    a: Mapping[str, Any],
+    b: Mapping[str, Any],
+    a_type: Any,
+    b_type: Any,
+    *,
+    root_required: frozenset[str] = frozenset(),
+) -> str | None:
     """What tells two branch NODES apart, or ``None`` where nothing does.
 
     **A second spelling of ``codegen.lower.union.separates``, over the DOCUMENT, and
@@ -4738,13 +4831,27 @@ def separates(a: Mapping[str, Any], b: Mapping[str, Any], a_type: Any, b_type: A
 
     Section 4's four separators, each read off the branch nodes of the record:
 
-    * one property pinned to different single values;
+    * one property constrained to DISJOINT VALUE SETS;
     * a ``required`` name one branch declares and the other forbids -- BY NAME, through a
       ``not`` over ``required`` (:func:`_forbids`), which is the idiom §4 itself names
       ("each branch forbidding a name the other requires"), or by admitting no name
       outside its own map;
     * one branch forbidding a VALUE another pins;
     * scalar branches of different ``type``.
+
+    **THE FIRST SEPARATOR READS SETS AND IS GATED ON PRESENCE, 2026-10-29**
+    (``adcp-client-python-10l.102``).  Section 4: "An ``enum`` is a set of pinned values
+    and a ``not: {"enum": [...]}`` is its complement … the single-value case is the
+    one-member set."  ``_value_sets`` is the reading and ``_disjoint`` the comparison.
+    The gate is the half the single-value reading never had: a ``properties`` entry is
+    satisfied by the key being ABSENT, so two branches naming disjoint sets for a key
+    neither requires are both satisfied by an instance carrying no such key -- measured
+    under ``Draft7Validator``, ``{}`` is valid against both
+    ``{"properties": {"kind": {"const": "a"}}}`` and its ``"b"`` sibling.  So the key has
+    to be present in every instance of one of the two branches, which is ``_requires`` of
+    that branch plus ``root_required``: section 4 applies a root keyword to every branch,
+    and 19,520 of the 70,446 pairs this arm separates over the bundle get their presence
+    from the ROOT alone.
 
     **WHERE each one is read is wider, 2026-10-28** (``adcp-client-python-10l.30``), and
     the four readings moved on this side for the reason they moved on the walk's: the
@@ -4761,10 +4868,11 @@ def separates(a: Mapping[str, Any], b: Mapping[str, Any], a_type: Any, b_type: A
     branch through ``compiler.rules_at`` and ``codegen.schema.parse``, and this reads the
     document node.
     """
-    first, second = _pins(a), _pins(b)
+    first, second = _value_sets(a), _value_sets(b)
+    present = (_requires(a) | root_required, _requires(b) | root_required)
     for key in sorted(set(first) & set(second)):
-        if first[key] != second[key]:
-            return f"{key!r} is pinned two ways"
+        if _disjoint(first[key], second[key]) and any(key in names for names in present):
+            return f"{key!r} is constrained to disjoint value sets"
     for one, other in ((a, b), (b, a)):
         for group in sorted(_demands(one), key=sorted):
             if group <= _forbids(other):
@@ -4871,8 +4979,24 @@ def inseparable_unions(record: Mapping[str, Any]) -> tuple[str, ...]:
             if not all(t == "object" or (t is None and b.get("properties")) for t, b in zip(applied, branches)):
                 continue
             base = "" if pointer == "/" else pointer
+            # The ROOT's own ``required`` is handed to every pair, because section 4
+            # applies a keyword beside the combinator to every branch -- "and every
+            # branch inherits it" -- so a name the root requires is present in every
+            # instance of every branch.  The first separator's presence gate is the one
+            # reading that asks, and the walk hands the same field down
+            # (``lower.union.overlapping``, off ``nodes.Union.required``).
+            root_required = frozenset(
+                name for name in (node.get("required") or []) if isinstance(name, str)
+            )
             if any(
-                separates(branches[i], branches[j], applied[i], applied[j]) is None
+                separates(
+                    branches[i],
+                    branches[j],
+                    applied[i],
+                    applied[j],
+                    root_required=root_required,
+                )
+                is None
                 for i in range(len(branches))
                 for j in range(i + 1, len(branches))
             ):

@@ -339,6 +339,16 @@ def pins(props: Any) -> dict[str, Any]:
     A SCALAR pin only.  An object or an array ``const`` is refused by §5's ``const`` row
     at the property itself, and a value that is not hashable has no place in the
     distinctness test :func:`discriminator` runs, so it is not a pin here either.
+
+    **This is NOT §4's third-source reading any more, and the two questions are
+    different** (``adcp-client-python-10l.102``, §4's first separator reading SETS as of
+    2026-10-29).  This one asks "which ``const`` does the branch SPELL", because a name
+    and a ``Field(discriminator=…)`` are both built out of a value the branch writes
+    down; :func:`value_sets` asks "which values does the branch ADMIT for each key",
+    which a multi-member ``enum`` and a ``not`` over one also answer and neither of which
+    spells a single value to name a class after.  Keeping them apart is what lets the
+    separator read a set without ``PostalCountrySystemPlz`` becoming a class named after a
+    three-member ``enum``.
     """
     if not isinstance(props, dict):
         return {}
@@ -347,6 +357,121 @@ def pins(props: Any) -> dict[str, Any]:
         for k, v in props.items()
         if isinstance(v, dict) and isinstance(v.get("const"), (str, bool, int))
     }
+
+
+@dataclass(frozen=True)
+class ValueSet:
+    """The values a branch admits for one key: a set, or the COMPLEMENT of a set.
+
+    §4's third dispatch source, first separator, as of 2026-10-29: "**disjoint value
+    SETS** … An `enum` is a set of pinned values and a `not: {"enum": [...]}` is its
+    complement, so two branches whose sets do not intersect are disjoint for the same
+    reason two different `const`s are — the single-value case is the one-member set."
+
+    Two fields and not two classes, because :func:`disjoint` has to answer for all four
+    pairings and a reader comparing a positive set with a complement wants both facts in
+    one value.
+    """
+
+    #: The values named, which is what the instance's value must be IN (``complement``
+    #: false) or must NOT be in (``complement`` true).
+    values: frozenset
+    #: Whether :attr:`values` is the admitted set or the refused one.
+    complement: bool = False
+
+
+def value_sets(props: Any) -> dict[str, ValueSet]:
+    """For each key this property map constrains to a value set, that set.
+
+    §4's first separator reads these and :func:`pins` does not: a ``const`` is the
+    one-member set, an ``enum`` of scalars is the set it lists, and a ``not`` over either
+    is that set's complement.  Nothing else contributes -- a bound, a pattern or a
+    ``$ref`` constrains the value without naming the values, so there is no set to
+    intersect and the key says nothing about disjointness.
+
+    **Scalars only, for :func:`pins`' reason**: the members have to be comparable by
+    equality and hashable for the intersection below to mean anything, and §5's ``const``
+    and ``enum`` rows already refuse an object or an array member at the property itself.
+    A member list containing one non-scalar contributes NOTHING rather than its scalar
+    part -- a partial set would claim disjointness the document does not state, which is
+    the direction §4 forbids ("admitting a union on an unproven disjointness is the defect
+    this source exists to avoid").
+
+    ``core/postal-country-system.json`` is the measured case and it needs three of the
+    four readings at once: nine branches pin ``country`` to a ``const`` or to
+    ``{"enum": ["DE", "CH", "AT"]}``, and the tenth states
+    ``{"not": {"enum": ["US", "GB", …]}}`` -- the complement of the union of the other
+    nine.
+    """
+    if not isinstance(props, dict):
+        return {}
+    out: dict[str, ValueSet] = {}
+    for key, declaration in props.items():
+        if not isinstance(declaration, dict):
+            continue
+        for node, complement in ((declaration, False), (declaration.get("not"), True)):
+            if not isinstance(node, dict):
+                continue
+            named = _named_values(node)
+            if named is not None:
+                out[key] = ValueSet(named, complement)
+                break
+    return out
+
+
+def _named_values(node: Mapping[str, Any]) -> frozenset | None:
+    """``node``'s ``const`` or ``enum`` as a set of scalars, or ``None`` where it names none.
+
+    One reading for both spellings, which is draft-07's own: a ``const`` is a one-member
+    ``enum``.  ``None`` and not the empty set, because "this node names no values" and
+    "this node admits nothing" are different statements and only the first is what an
+    absent keyword says.
+    """
+    if "const" in node:
+        value = node["const"]
+        return frozenset({value}) if isinstance(value, (str, bool, int)) else None
+    members = node.get("enum")
+    if not isinstance(members, list) or not members:
+        return None
+    if not all(isinstance(member, (str, bool, int)) for member in members):
+        return None
+    return frozenset(members)
+
+
+def _spell(one: ValueSet) -> str:
+    """One value set, for the sentence a separator returns.
+
+    The refusal and the report both quote this, so "none of" is spelled once: a reader of
+    "``country`` is constrained to disjoint value sets" has to be able to see WHICH sets,
+    and a complement read as a plain set is the one way that sentence misleads.
+    """
+    members = sorted(one.values, key=repr)
+    return ("none of " if one.complement else "") + repr(members)
+
+
+def disjoint(one: ValueSet, other: ValueSet) -> bool:
+    """Do these two value sets share no value?
+
+    The four pairings, and the asymmetric one is the point of the ``not`` reading:
+
+    * two POSITIVE sets are disjoint where they do not intersect -- which for two
+      one-member sets is the single-value separator this generalises;
+    * a POSITIVE set and a COMPLEMENT are disjoint where the positive set is CONTAINED in
+      the complemented one: every value the first admits is a value the second refuses.
+      ``{"const": "US"}`` against ``{"not": {"enum": ["US", "GB"]}}`` is that case;
+    * two COMPLEMENTS are NEVER reported disjoint.  Each admits everything outside a
+      finite set, and whether the two finite sets cover the value space is not something
+      the branches state -- so §4's "a pair the derivation cannot separate is treated as
+      overlapping" applies, and reporting them disjoint would be the unproven disjointness
+      that rule exists to refuse.
+    """
+    if one.complement and other.complement:
+        return False
+    if one.complement:
+        return other.values <= one.values
+    if other.complement:
+        return one.values <= other.values
+    return not (one.values & other.values)
 
 
 def _const_pins(props: Any) -> tuple[Any, ...]:
@@ -845,14 +970,21 @@ def forbidden_names(parsed: "nodes.Node", raw: Any) -> frozenset[str]:
     return compiler.rules_at(parsed, *views[1:], position=Position.BRANCH).forbids
 
 
-def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
+def separates(
+    a: Branch,
+    b: Branch,
+    a_type: Any,
+    b_type: Any,
+    *,
+    root_required: frozenset[str] = frozenset(),
+) -> str | None:
     """What tells these two branches apart, or ``None`` where nothing does.
 
     §4's third dispatch source names four separators and all four are here, each
     read off the branches themselves:
 
-    * **one property pinned to different ``const`` values** -- an instance carrying one
-      value fails the branch pinning the other, so no instance satisfies both;
+    * **one property constrained to DISJOINT VALUE SETS** -- an instance whose value is
+      in one set is not in the other, so no instance satisfies both;
     * **a ``required`` name one branch declares and another forbids** -- an instance
       carrying the name fails the forbidding branch and one without it fails the
       requiring branch;
@@ -861,6 +993,30 @@ def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
 
     ``a_type`` and ``b_type`` are the ``type`` the DOCUMENT applies to each branch
     (:func:`applied_type`), because a branch stating none of its own has the root's.
+    ``root_required`` is what the ROOT requires of every instance, for the same reason --
+    §4: "every keyword beside the combinator compiles onto the base, and every branch
+    inherits it", so a name the root requires is present in every instance of every
+    branch.  The first separator below is the one reading that needs it.
+
+    **THE FIRST SEPARATOR READS DISJOINT VALUE SETS, 2026-10-29**
+    (``adcp-client-python-10l.102``).  §4: "An ``enum`` is a set of pinned values and a
+    ``not: {"enum": [...]}`` is its complement, so two branches whose sets do not
+    intersect are disjoint for the same reason two different ``const``\\ s are -- the
+    single-value case is the one-member set."  Reading single values only made
+    ``core/postal-country-system.json#/anyOf`` inseparable on 12 of its 45 pairs, every
+    one of them involving the branch pinning ``country`` to ``["DE", "CH", "AT"]`` or the
+    branch pinning its complement, while all ten branches are pairwise disjoint in fact --
+    and that one union was the declaration inlined into 116 of the 235 approximated facts.
+
+    **AND IT IS GATED ON PRESENCE, which the single-value reading never was.**  A
+    ``properties`` entry is satisfied by the key being ABSENT, so two branches naming
+    disjoint sets for a key neither of them requires are both satisfied by an instance
+    carrying no such key -- and reporting them disjoint would be the unproven disjointness
+    §4 refuses.  The gate is "present in every instance of one of the two branches":
+    :func:`requires` of that branch, plus ``root_required``.  **It costs nothing today and
+    that is measured**: over the 1,054 portable documents, 70,446 pairs separate on this
+    arm and the key is required by a branch or by the root in every one of them -- and in
+    19,520 by the ROOT only, which is why the gate cannot read the branch alone.
 
     **THE FOUR ARE UNCHANGED AND WHERE EACH ONE IS READ IS WIDER, 2026-10-28**
     (``adcp-client-python-10l.30``).  Measured over the authored unions of 3.2 whose
@@ -935,10 +1091,14 @@ def separates(a: Branch, b: Branch, a_type: Any, b_type: Any) -> str | None:
     a pair that states both element words and leaves this one to §4's "a pair the
     derivation cannot separate is treated as overlapping".
     """
-    first, second = pins(a.properties), pins(b.properties)
+    first, second = value_sets(a.properties), value_sets(b.properties)
+    present = (requires(a) | root_required, requires(b) | root_required)
     for key in sorted(set(first) & set(second)):
-        if first[key] != second[key]:
-            return f"{key!r} is pinned to {first[key]!r} on one branch and {second[key]!r} on the other"
+        if disjoint(first[key], second[key]) and any(key in names for names in present):
+            return (
+                f"{key!r} is constrained to disjoint value sets: {_spell(first[key])} on "
+                f"one branch and {_spell(second[key])} on the other"
+            )
     for one, other in ((a, b), (b, a)):
         # **The idiom §4 NAMES, read directly off the other branch's ``not``.**  §4's
         # attribution paragraph says it in as many words: "the bundle already writes the
@@ -1058,13 +1218,24 @@ def overlapping(planned: Sequence[Branch], node: "nodes.Union") -> list[str]:
     The pairs are returned rather than a boolean, so the refusal can NAME them: a reader
     of "these branches overlap" cannot tell which two without re-running the emitter, and
     a root with twelve branches has sixty-six pairs.
+
+    **The root's own ``required`` is handed down**, because §4 applies it to every branch
+    ("every keyword beside the combinator compiles onto the base, and every branch
+    inherits it") and the first separator's presence gate is the one reading that asks the
+    question.  :attr:`nodes.Union.required` is the node's own, which is the same field
+    ``compiler.lower_composition`` takes for ``_ROOT_REQUIRED`` -- one spelling, so the
+    separator and the emitted base cannot come to disagree about what the root requires.
     """
     applied = [applied_type(node, i) for i in range(len(planned))]
+    root_required = frozenset(node.required)
     return [
         f"{planned[i].pointer} and {planned[j].pointer}"
         for i in range(len(planned))
         for j in range(i + 1, len(planned))
-        if separates(planned[i], planned[j], applied[i], applied[j]) is None
+        if separates(
+            planned[i], planned[j], applied[i], applied[j], root_required=root_required
+        )
+        is None
     ]
 
 
