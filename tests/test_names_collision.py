@@ -213,7 +213,7 @@ def test_section_4s_branch_rules_name_the_branch_and_not_the_path_to_it() -> Non
     assert names.branch_identity(names.Branch(parent="/x", title="Timer Transition"), parent) == (
         ("TimerTransition",)
     )
-    assert names.branch_identity(names.Branch(parent="/x", pin="media_event"), parent) == (
+    assert names.branch_identity(names.Branch(parent="/x", pins=("media_event",)), parent) == (
         "MediaBuy",
         "TransitionsItemMediaEvent",
     )
@@ -232,7 +232,7 @@ def test_section_4s_branch_rules_name_the_branch_and_not_the_path_to_it() -> Non
     assert names.branch_identity(
         names.Branch(parent="/x", title="Timer Transition", index=3), parent
     ) == ("TimerTransition",)
-    assert names.branch_identity(names.Branch(parent="/x", pin="media_event", index=3), parent) == (
+    assert names.branch_identity(names.Branch(parent="/x", pins=("media_event",), index=3), parent) == (
         "MediaBuy",
         "TransitionsItemMediaEvent",
     )
@@ -385,3 +385,143 @@ def test_the_long_name_is_the_exception_and_not_the_rule() -> None:
             "because a row that emits more documents moves the count and not the rule"
         ),
     )
+
+
+# --------------------------------------------------------------------------- #
+# §4's RUNG axis (``adcp-client-python-10l.78``)
+# --------------------------------------------------------------------------- #
+def _ladders(hops: dict[str, names.Hop]) -> dict[str, tuple[tuple[str, ...], ...]]:
+    """Every pointer with §4's RUNGS for it, which is what ``spell_the_rungs`` takes."""
+    out = {}
+    for pointer in hops:
+        rungs = names.ladder(pointer, hops)
+        assert not isinstance(rungs, Refusal), rungs
+        out[pointer] = rungs
+    return out
+
+
+def test_rung_two_reads_every_pin_the_branch_states_in_the_documents_key_order() -> None:
+    """§4: "A branch pinning a ``const`` on several properties derives from all of them,
+    in the order the document writes the keys."
+
+    The one-pin reading declined to choose between two and fell through to the index,
+    which named the most heavily identified branches of the bundle positionally.  Both
+    halves are asserted: several pins concatenate, and ONE pin is still just that pin --
+    "one pin in key order is that one pin" -- which is what keeps the four single-pin
+    branches of ``core/postal-country-system.json`` spelling ``US``, ``GB``, ``CA``
+    and ``Plz``.
+    """
+    parent = ("PostalCountrySystem",)
+    assert names.branch_identity(
+        names.Branch(parent="/x", pins=("FR", "code_postal")), parent
+    ) == ("PostalCountrySystemFRCodePostal",)
+    assert names.branch_identity(names.Branch(parent="/x", pins=("US",)), parent) == (
+        ("PostalCountrySystemUS",)
+    )
+    # The ORDER is the document's and is never sorted.  Asserted on a pair whose two
+    # orders SPELL DIFFERENTLY, so a sort snuck in later reddens here: sorted, these two
+    # names would swap.
+    assert names.branch_identity(
+        names.Branch(parent="/x", pins=("ZA", "postal_code")), parent
+    ) == ("PostalCountrySystemZAPostalCode",)
+    assert names.branch_identity(
+        names.Branch(parent="/x", pins=("postal_code", "ZA")), parent
+    ) == ("PostalCountrySystemPostalCodeZA",)
+
+
+def test_a_rung_that_collides_has_not_identified_the_branch_so_both_fall() -> None:
+    """§4: "Where a rung derives one name for two branches it has not identified either,
+    so both fall to the next rung."
+
+    ``trusted-match/provider-registration.json``'s own shape: two branches pinning
+    ``context_match: true`` and ``identity_match: true``.  The value ``true`` is the same
+    on both and names neither, so rung 2 answers ONE name for the pair and rung 3's
+    ``required`` set is what identifies them.  Both halves are asserted, because the
+    second means nothing without the first: that the rung really does collide, and that
+    the fall lands on the required set.
+    """
+    hops = {
+        "": names.Root("TMP Provider Registration"),
+        "/anyOf/0": names.Branch(
+            parent="", pins=(True,), required=("context_match",), index=0
+        ),
+        "/anyOf/1": names.Branch(
+            parent="", pins=(True,), required=("identity_match",), index=1
+        ),
+    }
+    base = ("TMPProviderRegistration",)
+    assert names.branch_identity(hops["/anyOf/0"], base) == names.branch_identity(
+        hops["/anyOf/1"], base
+    ), "rung 2 must collide for the fall to be what resolves this"
+    spelled = names.spell_the_rungs(_ladders(hops))
+    assert not isinstance(spelled, Refusal), spelled
+    assert spelled == {
+        "": "TMPProviderRegistration",
+        "/anyOf/0": "TMPProviderRegistrationContextMatch",
+        "/anyOf/1": "TMPProviderRegistrationIdentityMatch",
+    }, spelled
+
+
+def test_a_branch_colliding_with_its_own_root_loses_the_name_and_the_root_keeps_it() -> None:
+    """§4: "the root keeps the name and the branch falls to the next rung".
+
+    ``core/postal-area.json``'s own shape: the root is titled "Postal Area" and its
+    ``/anyOf/0`` is titled "PostalArea", so both derive ``PostalArea`` and neither has an
+    ancestor segment to spend.  This refused as a hand-minted VERDICT, writing off the
+    document and the 31 chained behind it for a naming choice this compiler makes.
+
+    **The root is not special-cased and the assertion is written so that one would be
+    visible.**  What makes the root keep the name is that its LADDER has one rung, which
+    is D5 fixing a document's exported symbol -- so the ladder lengths are asserted beside
+    the names.  A reading that tested the pointer ``""`` instead would pass the name
+    assertions and state D5 a second time, and this is the assertion that tells them
+    apart.
+    """
+    hops = {
+        "": names.Root("Postal Area"),
+        "/anyOf/0": names.Branch(
+            parent="", title="PostalArea", required=("country", "system", "values"), index=0
+        ),
+        "/anyOf/1": names.Branch(parent="", title="PostalAreaWithFusedSystem", index=1),
+    }
+    ladders = _ladders(hops)
+    assert len(ladders[""]) == 1, "a root has ONE rung: D5 fixes the exported symbol"
+    assert len(ladders["/anyOf/0"]) > 1, "a titled branch has rungs to fall to"
+    spelled = names.spell_the_rungs(ladders)
+    assert not isinstance(spelled, Refusal), spelled
+    assert spelled[""] == "PostalArea", "the ROOT keeps it"
+    assert spelled["/anyOf/0"] == "PostalAreaCountrySystemValues", "the BRANCH fell"
+    # The sibling collided with nothing and keeps its own title, which is the other half
+    # of §4's collision rule: a position whose short name collides with nothing keeps it.
+    assert spelled["/anyOf/1"] == "PostalAreaWithFusedSystem"
+
+
+def test_lengthening_is_tried_before_falling_so_an_identity_is_not_given_up_early() -> None:
+    """§4's order: the collision rule LENGTHENS, and the fall is for the chains that have
+    nothing to lengthen by.
+
+    A pinned branch is spelled onto its parent's own segment, so it has the parent's
+    ancestors to spend -- unlike a TITLED branch, which names itself and is a chain of
+    one.  Here a pinned branch and an unrelated property both derive ``AX``; lengthening
+    separates them, and the branch must come out still carrying the identity its PIN
+    derived rather than having fallen to its required set or its index.
+    """
+    hops = {
+        "": names.Root("Doc"),
+        "/properties/a": names.Property(parent="", key="a"),
+        "/properties/b": names.Property(parent="", key="b"),
+        "/properties/a/anyOf/0": names.Branch(
+            parent="/properties/a", pins=("x",), required=("q",), index=0
+        ),
+        "/properties/b/properties/aX": names.Property(parent="/properties/b", key="aX"),
+    }
+    ladders = _ladders(hops)
+    assert ladders["/properties/a/anyOf/0"][0] == ("Doc", "AX"), ladders
+    spelled = names.spell_the_rungs(ladders)
+    assert not isinstance(spelled, Refusal), spelled
+    assert spelled["/properties/a/anyOf/0"] == "DocAX", spelled
+    assert spelled["/properties/b/properties/aX"] == "BAX", spelled
+    # The identity is the PIN's and was not given up: the required set would have spelled
+    # ``AQ`` and the index ``ABranch0``, and neither appears.
+    assert "Q" not in spelled["/properties/a/anyOf/0"]
+    assert "Branch" not in spelled["/properties/a/anyOf/0"]

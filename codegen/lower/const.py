@@ -151,11 +151,45 @@ def decides(node: nodes.Constant) -> dict[str, Any]:
     draft-07 here to drift from the schema half's.
 
     ``{}`` where the node states a bare ``const``, which every value is valid against.
+
+    **A ``format`` is one of these statements** (§5's ``const`` row, decided 2026-10-29,
+    ``adcp-client-python-10l.70``): "A ``format`` beside the pin compiles to NOTHING and
+    the pin alone is rendered, because a fixed value either satisfies the format or the
+    node admits nothing: the pin is checked against the format."  It is not in
+    :attr:`nodes.Constant.facts` -- ``parse.value_facts`` excludes it, because the kind
+    carries it in a field of its own -- so it is read off that field here, which is the
+    one place the node's statements about its value are collected.
     """
     stated = dict(node.facts)
     if node.word is not None:
         stated["type"] = node.word
+    if node.format is not None:
+        stated["format"] = node.format
     return stated
+
+
+#: The draft's OWN format checker, which is what makes :func:`decides`'s ``format``
+#: entry a check rather than a comment: ``jsonschema`` treats ``format`` as a pure
+#: annotation unless it is handed one, so ``Draft7Validator({"format": "uri"})`` is
+#: valid for ``"not a uri at all"`` and the row would be ASSUMING the pin satisfies the
+#: format -- which is the one thing §5's clause says it must not do.
+#:
+#: ``Draft7Validator.FORMAT_CHECKER`` and deliberately not ``jsonschema.FormatChecker()``,
+#: which is ``harness._validating``'s own reading and for its reason: the global registry
+#: carries every checker any draft defines, so it would assert ``uuid`` against a draft-07
+#: document, which draft-07 does not define as a format -- the SDK inventing a constraint.
+#: The two halves therefore decide this keyword with one vocabulary without this module
+#: importing the verifier.
+_FORMATS = jsonschema.Draft7Validator.FORMAT_CHECKER
+
+#: Which formats that checker can actually DECIDE, which depends on what is installed
+#: (``pyproject`` names ``rfc3339-validator`` and ``rfc3987`` for this bundle's own).
+#: Measured on the pinned environment: ``date``, ``date-time``, ``email``, ``idn-email``,
+#: ``ipv4``, ``ipv6``, ``iri``, ``iri-reference``, ``regex``, ``time``, ``uri``,
+#: ``uri-reference`` -- and ``uri`` is the only one any ``const`` node of this bundle
+#: states.  A format OUTSIDE it makes the validator vacuous, so the row refuses rather
+#: than reading "valid" off a check that was never made.
+_DECIDABLE = frozenset(_FORMATS.checkers)
 
 
 def lower(node: nodes.Constant, mod: compiler.Module) -> compiler.Decided | Refusal:
@@ -223,8 +257,34 @@ def lower(node: nodes.Constant, mod: compiler.Module) -> compiler.Decided | Refu
     # document's own, in sorted order, so the report is a function of the document and not
     # of the order a mapping was built in.
     stated = decides(node)
+    if node.format is not None and node.format not in _DECIDABLE:
+        # **A format the draft's own checker cannot decide leaves the pin UNCHECKED**, and
+        # §5's clause rests on the check: "the pin is checked against the format, and
+        # where it satisfies it the ``Literal`` is already strictly tighter".  With no
+        # checker for the word the validator below is vacuous, so the row would be
+        # claiming a drop costs nothing on the strength of a check it never made.  The
+        # kind is the CELL's (``format``'s cell lowers at every position), which makes it
+        # a DEFERRAL: what is missing is this project's ability to decide the word, not
+        # anything the document did.  0 sites over the portable population -- the only
+        # format any ``const`` node of this bundle states is ``uri``.
+        return Refusal(
+            "format",
+            pointer,
+            f"the pin {value!r} states format {node.format!r} beside it, and section 5's "
+            "const row compiles the format to nothing only because the pin IS checked "
+            f"against it -- which the draft's own checker cannot do for {node.format!r} "
+            f"(it decides {sorted(_DECIDABLE)}), so dropping the keyword here would rest "
+            "on a check that was never made",
+            kind=compiler.kind_for("format", node.position),
+        )
     for keyword, fact in sorted(stated.items()):
-        if jsonschema.Draft7Validator({keyword: fact}).is_valid(value):
+        # **The checker is passed, and it is what makes the ``format`` entry a check**
+        # (:data:`_FORMATS`).  Every other keyword here is decided by the vocabulary
+        # alone; ``format`` is the one draft-07 leaves as an annotation unless a checker
+        # is handed over, and a vacuous "valid" is the one answer this loop must not take.
+        if jsonschema.Draft7Validator({keyword: fact}, format_checker=_FORMATS).is_valid(
+            value
+        ):
             continue
         return Refusal(
             "const",
@@ -233,22 +293,24 @@ def lower(node: nodes.Constant, mod: compiler.Module) -> compiler.Decided | Refu
             "the node admits nothing",
             kind=Kind.VERDICT,
         )
-    # **A ``format`` BESIDE THE PIN RIDES, which is §5's ``format`` row's own fallback and
-    # the one answer left once the pin has decided the type.**  The row's first choice --
-    # "Selects a TYPE where the document's draft asserts the format and a type is named"
-    # -- has nothing to select here: §5's ``const`` row already decides this node's type,
-    # and a ``Literal`` of one pinned string is narrower than any URL type a ``uri`` could
-    # name, so substituting one would widen a node whose whole content is one value.  The
-    # row's own second answer is therefore what fires: "Otherwise rides as
-    # ``json_schema_extra={"format": …}`` on the field."  ``compiler.Decided.format`` is
-    # that carrier and ``render._field`` is what writes it, exactly as it does for the
-    # scalar the format did not select a type for (``lower.scalars.lower``'s tail).
+    # **A ``format`` BESIDE THE PIN COMPILES TO NOTHING and the pin alone is rendered**,
+    # which is §5's ``const`` row as decided on 2026-10-29 (``adcp-client-python-10l.70``):
+    # "because a fixed value either satisfies the format or the node admits nothing: the
+    # pin is checked against the format, and where it satisfies it the ``Literal`` is
+    # already strictly tighter than any type the format would select, while where it does
+    # not the node is §5's empty intersection and refuses upstream.  So no fact is dropped
+    # and §8 grades the ``format`` as not rendered at this co-occurrence."
     #
-    # **It is not one of :func:`decides`'s facts and the pin does not decide it**, which
-    # is the division between the two carriers.  A fact is decided by the pin because a
-    # ``Literal`` DROPS it -- the row has to prove the drop costs nothing, and the module
-    # docstring names the §8 ceiling where the proof holds and the comparison still reads
-    # the dropped keyword as *missing*.  A ``format`` is not dropped: it is rendered, so
-    # §8 compares the document's own keyword against the model's own and there is nothing
-    # to prove and no ceiling to name.
-    return compiler.Decided(ir.TypeRef(literals=(value,)), format=node.format)
+    # **This REPLACES the arm that rode it** as ``json_schema_extra={"format": …}``, and
+    # the two readings differ on one question: is the ``format`` a fact the pin DROPS?
+    # The riding arm said it was not dropped because it was rendered.  §5's answer is that
+    # there is nothing to drop -- the check above has already proved the pinned value
+    # satisfies the format, so the set the ``format`` admits intersected with ``{v}`` IS
+    # ``{v}``, and ``Literal[v]`` is that set exactly.  A rendered ``format`` beside it
+    # states a constraint of a WIDER set than the one the node has, which is a fact about
+    # no instance this node admits.
+    #
+    # So the ``format`` reaches :func:`decides` instead of :attr:`compiler.Decided.format`,
+    # and the division between the two carriers is gone: every statement this node makes
+    # about its value is one thing, checked in one loop, and the pin decides all of it.
+    return compiler.Decided(ir.TypeRef(literals=(value,)))

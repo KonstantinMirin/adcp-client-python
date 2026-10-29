@@ -1116,9 +1116,12 @@ def required_groups(
 
     A group is a set of names whose simultaneous presence satisfies ``sub``, so an
     enclosing ``not`` forbids it.  ``anyOf`` of branches is the union of their groups
-    (any branch satisfied satisfies ``sub``); ``allOf`` of single-group branches is one
-    group, the union of their names.  ``oneOf`` is deliberately absent: its negation is
-    "not exactly one", which no list of forbidden groups expresses.
+    (any branch satisfied satisfies ``sub``); ``allOf`` is the PRODUCT of its conjuncts'
+    group lists with the names unioned per combination, because conjunction distributes
+    over disjunction -- so an ``allOf`` of single-group conjuncts is the one group their
+    names union to, and that case is the product over one-element lists (§5, decided
+    2026-10-29).  ``oneOf`` is deliberately absent: its negation is "not exactly one",
+    which no list of forbidden groups expresses.
 
     The PARSER's, because :func:`presence_clause` is the classification and needs it, and
     ``lower/rules.py`` reads it from here for its ``not`` and its ``then``/``else`` --
@@ -1141,7 +1144,9 @@ def required_groups(
     branch whose ``not`` is only partly readable is a branch stating something a rule
     cannot say -- reading it as a clause would drop that branch's shape precision with
     nothing to report it, which is that function's own sentence.  The ``allOf`` arm never
-    takes it: ``not (A and B)`` with ``B`` dropped is ``not A``, which is STRONGER.
+    takes it: ``not (A and B)`` with ``B`` dropped is ``not A``, which is STRONGER, and
+    the same holds of the product -- dropping a conjunct leaves FEWER names in each group
+    and a smaller group forbids MORE.  §5 states that asymmetry at the product arm too.
     """
     if not isinstance(sub, Mapping):
         return None
@@ -1160,13 +1165,35 @@ def required_groups(
             out.extend(groups)
         return out or None
     if keys == {"allOf"} and isinstance(sub["allOf"], list):
-        merged: list[str] = []
+        # **A conjunction of a group with a DISJUNCTION of groups distributes** (§5, "A
+        # conjunction of a group with a disjunction of groups DISTRIBUTES into a
+        # disjunction of groups", decided 2026-10-29).  An ``allOf`` conjoins its
+        # conjuncts, so the groups that satisfy it are the PRODUCT of the conjuncts' own
+        # group lists with the names unioned per combination -- ``A and (B or C)`` is
+        # ``(A and B) or (A and C)``.  The single-group case this arm used to be is that
+        # product over one-element lists, so the arm is one derivation and not two.
+        #
+        # ``None`` from any conjunct still takes the whole ``allOf``, and the product arm
+        # NEVER takes ``partial``: dropping an unreadable conjunct leaves FEWER names in
+        # each group, and under a ``not`` a smaller group forbids MORE instances -- a rule
+        # stronger than its document, which is the narrowing §2 refuses.  The ``anyOf``
+        # arm above takes ``partial`` for the mirror reason, and that asymmetry is the
+        # whole of this function's ``partial`` docstring.
+        product: list[tuple[str, ...]] = [()]
         for branch in sub["allOf"]:
             groups = required_groups(branch, position)
-            if groups is None or len(groups) != 1:
+            if groups is None:
                 return None
-            merged.extend(groups[0])
-        return [tuple(merged)] if merged else None
+            product = [(*combination, *group) for combination in product for group in groups]
+        # A group is a SET of names, so a name two conjuncts both require appears ONCE,
+        # and the product can reach one combination by two routes when their group lists
+        # overlap -- both readers compare groups, so a second spelling of one group is a
+        # second group to them and a ``ForbiddenGroups`` would restate what it holds.
+        # Deduplicated in FIRST-OCCURRENCE order and never sorted: the group's order is
+        # the document's, and sorting would rewrite every ``ForbiddenGroups`` literal the
+        # tree already carries for a fact that did not change.
+        groups_out = [tuple(dict.fromkeys(g)) for g in product if g]
+        return list(dict.fromkeys(groups_out)) or None
     return None
 
 
