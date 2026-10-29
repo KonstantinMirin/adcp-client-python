@@ -179,7 +179,7 @@ class PreviewCreativeSubmitted(PreviewCreativeResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/3')
     response_type: Annotated[Literal['submitted'], Field(description='Preview-response discriminator for the asynchronous arm.')]
     status: Annotated[Literal['submitted'], Field(description='Discriminates this opt-in async envelope from synchronous preview responses.')]
-    task_id: Annotated[str, Field(description='Task handle used to poll get_task_status for the completed preview response.')]
+    task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
     message: Annotated[StrMaxLen2000 | None, Field(description='Optional human-readable explanation of why preview rendering was queued. Plain text only; buyers MUST treat this as untrusted agent input.')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None

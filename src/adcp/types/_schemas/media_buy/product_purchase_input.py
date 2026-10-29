@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 
 from ..core.bidding_policy import BiddingPolicy
@@ -29,10 +29,6 @@ class ProductPurchaseInput(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/product-purchase-input.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('creatives',), ('creative_assignments',), ('catalogs',))),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/product-purchase-input.json', pointer='#/properties/targeting_overlay/properties/geo_postal_areas/anyOf/0/items/anyOf/0/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'properties': {'country': {'const': 'US'}, 'system': {'enum': ['zip', 'zip_plus_four']}}}, {'properties': {'country': {'const': 'GB'}, 'system': {'enum': ['outward', 'full']}}}, {'properties': {'country': {'const': 'CA'}, 'system': {'enum': ['fsa', 'full']}}}, {'properties': {'country': {'enum': ['DE', 'CH', 'AT']}, 'system': {'const': 'plz'}}}, {'properties': {'country': {'const': 'FR'}, 'system': {'const': 'code_postal'}}}, {'properties': {'country': {'const': 'AU'}, 'system': {'const': 'postcode'}}}, {'properties': {'country': {'const': 'BR'}, 'system': {'const': 'cep'}}}, {'properties': {'country': {'const': 'IN'}, 'system': {'const': 'pin'}}}, {'properties': {'country': {'const': 'ZA'}, 'system': {'const': 'postal_code'}}}, {'properties': {'country': {'not': {'enum': ['US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA']}}, 'system': {'enum': ['postal_code', 'custom']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-        Approximation(document='media-buy/product-purchase-input.json', pointer='#/properties/targeting_overlay/properties/geo_postal_areas_exclude/anyOf/0/items/anyOf/0/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'properties': {'country': {'const': 'US'}, 'system': {'enum': ['zip', 'zip_plus_four']}}}, {'properties': {'country': {'const': 'GB'}, 'system': {'enum': ['outward', 'full']}}}, {'properties': {'country': {'const': 'CA'}, 'system': {'enum': ['fsa', 'full']}}}, {'properties': {'country': {'enum': ['DE', 'CH', 'AT']}, 'system': {'const': 'plz'}}}, {'properties': {'country': {'const': 'FR'}, 'system': {'const': 'code_postal'}}}, {'properties': {'country': {'const': 'AU'}, 'system': {'const': 'postcode'}}}, {'properties': {'country': {'const': 'BR'}, 'system': {'const': 'cep'}}}, {'properties': {'country': {'const': 'IN'}, 'system': {'const': 'pin'}}}, {'properties': {'country': {'const': 'ZA'}, 'system': {'const': 'postal_code'}}}, {'properties': {'country': {'not': {'enum': ['US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA']}}, 'system': {'enum': ['postal_code', 'custom']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
     )
     product_id: ProductId
     pricing_option_id: PricingOptionId

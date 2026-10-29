@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types.constraints import HttpUrl, StrMatchingCE72C7C2, StrMatchingEFC12812
 
 from ..enums.metro_system import MetroAreaSystem
@@ -31,9 +31,6 @@ class GeoTargets(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/offering.json', pointer='#/properties/geo_targets')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/offering.json', pointer='#/properties/geo_targets/properties/postal_areas/items/anyOf/0/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'properties': {'country': {'const': 'US'}, 'system': {'enum': ['zip', 'zip_plus_four']}}}, {'properties': {'country': {'const': 'GB'}, 'system': {'enum': ['outward', 'full']}}}, {'properties': {'country': {'const': 'CA'}, 'system': {'enum': ['fsa', 'full']}}}, {'properties': {'country': {'enum': ['DE', 'CH', 'AT']}, 'system': {'const': 'plz'}}}, {'properties': {'country': {'const': 'FR'}, 'system': {'const': 'code_postal'}}}, {'properties': {'country': {'const': 'AU'}, 'system': {'const': 'postcode'}}}, {'properties': {'country': {'const': 'BR'}, 'system': {'const': 'cep'}}}, {'properties': {'country': {'const': 'IN'}, 'system': {'const': 'pin'}}}, {'properties': {'country': {'const': 'ZA'}, 'system': {'const': 'postal_code'}}}, {'properties': {'country': {'not': {'enum': ['US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA']}}, 'system': {'enum': ['postal_code', 'custom']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-    )
     countries: Annotated[list[StrMatchingEFC12812] | None, Field(description="Countries where this offering is relevant. ISO 3166-1 alpha-2 codes (e.g., 'US', 'NL', 'DE').", min_length=1)] = None
     regions: Annotated[list[StrMatchingCE72C7C2] | None, Field(description="Regions or states where this offering is relevant. ISO 3166-2 subdivision codes (e.g., 'NL-NH', 'US-CA').", min_length=1)] = None
     metros: Annotated[list[MetrosItem] | None, Field(description='Metro areas where this offering is relevant. Each entry specifies the classification system and target values.', min_length=1)] = None
@@ -48,9 +45,6 @@ class Offering(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/offering.json', pointer='#')
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/offering.json', pointer='#/properties/geo_targets/properties/postal_areas/items/anyOf/0/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'properties': {'country': {'const': 'US'}, 'system': {'enum': ['zip', 'zip_plus_four']}}}, {'properties': {'country': {'const': 'GB'}, 'system': {'enum': ['outward', 'full']}}}, {'properties': {'country': {'const': 'CA'}, 'system': {'enum': ['fsa', 'full']}}}, {'properties': {'country': {'enum': ['DE', 'CH', 'AT']}, 'system': {'const': 'plz'}}}, {'properties': {'country': {'const': 'FR'}, 'system': {'const': 'code_postal'}}}, {'properties': {'country': {'const': 'AU'}, 'system': {'const': 'postcode'}}}, {'properties': {'country': {'const': 'BR'}, 'system': {'const': 'cep'}}}, {'properties': {'country': {'const': 'IN'}, 'system': {'const': 'pin'}}}, {'properties': {'country': {'const': 'ZA'}, 'system': {'const': 'postal_code'}}}, {'properties': {'country': {'not': {'enum': ['US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA']}}, 'system': {'enum': ['postal_code', 'custom']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-    )
     offering_id: Annotated[str, Field(description='Unique identifier for this offering. Used by hosts to reference specific offerings in si_get_offering calls.')]
     name: Annotated[str, Field(description="Human-readable offering name (e.g., 'Winter Sale', 'Free Trial', 'Enterprise Platform')")]
     description: Annotated[str | None, Field(description="Description of what's being offered")] = None

@@ -85,6 +85,7 @@ WHICH branch.  :func:`branch_identity` is the one place the order is written.
 from __future__ import annotations
 
 import keyword as _keyword
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
@@ -151,6 +152,63 @@ def _suffixed(chain: tuple[str, ...], suffix: str) -> tuple[str, ...]:
     produced there before this pass had segments.
     """
     return (chain[:-1] + (chain[-1] + suffix,)) if chain else (suffix,)
+
+
+#: One WORD of a derived symbol: an acronym run, a capitalised word, or a lowercase run.
+#: The acronym arm is first and refuses to eat the next word's capital, so
+#: ``HTMLAssetRequirements`` is three words and not ``HTMLA`` plus ``ssetRequirements``.
+#: It is the inverse of :func:`class_name`'s "only the first letter of a word is touched",
+#: which is why an acronym survives the round trip.
+_WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z][a-z0-9]*|[a-z0-9]+")
+
+
+def _words(symbol: str) -> tuple[str, ...]:
+    """A derived symbol back into the words :func:`class_name` spelled it from."""
+    return tuple(_WORD.findall(symbol))
+
+
+def _distinguishing(target: str, root: str) -> str:
+    """**What the TARGET's name says that the ROOT's does not** -- §4's fourth branch rung.
+
+    §4: "Where the root's name and the target's share a leading run, the branch takes the
+    root's name plus the target's distinguishing remainder -- so ``AssetRequirementsImage``,
+    not the target's name repeated."  The run is read at either END, because the bundle
+    writes it both ways and one rule has to cover both: ``AssetRequirements`` beside
+    ``ImageAssetRequirements`` shares its run as the target's SUFFIX, and
+    ``GetCreativeFeaturesResponse`` beside ``GetCreativeFeaturesSuccess`` shares it as
+    both names' PREFIX.  Measured over the 13 bare-``$ref`` branches of bundle 3.2 that
+    reach this rung: 12 share a suffix and 1 a prefix, and 0 share both.
+
+    **Why the remainder and not the target's name itself.**  §4's rung says "the TARGET's
+    own derived name", and spelled literally that name is already TAKEN: the branch's
+    second base IS the target, so the module imports the symbol, and :func:`spell`'s
+    ``occupied`` is the rule that an imported name is a name taken.  A branch is a chain
+    of one at this rung and has no ancestor to lengthen by, so ``occupied`` would keep the
+    shadowing name rather than refuse it -- ``class ImageAssetRequirements(AssetRequirements,
+    ImageAssetRequirements)`` -- and every field annotated with the import would be
+    retyped.  The remainder spells the same fact onto the base's own segment, which is
+    what §4's own example asks for and what the three existing suffix rungs already do
+    (:func:`_suffixed`).
+
+    Returns ``""`` where the target's name says nothing the root's does not; the rung then
+    answers nothing and the branch falls to its index, exactly as §4's root-collision
+    clause has a rung do.
+    """
+    them, mine = _words(target), _words(root)
+    prefix = 0
+    while prefix < min(len(them), len(mine)) and them[prefix] == mine[prefix]:
+        prefix += 1
+    suffix = 0
+    while (
+        suffix < min(len(them), len(mine)) - prefix
+        and them[len(them) - 1 - suffix] == mine[len(mine) - 1 - suffix]
+    ):
+        suffix += 1
+    # The longer shared run wins, and only one of the two is spent: a name sharing a run
+    # at BOTH ends would otherwise lose the middle twice.
+    if suffix > prefix:
+        return "".join(them[: len(them) - suffix])
+    return "".join(them[prefix:])
 
 
 def spelling(chain: tuple[str, ...], depth: int) -> str:
@@ -289,6 +347,20 @@ class Branch:
     pins: tuple[Any, ...] = ()
     #: Its ``required`` set, as the document lists it.
     required: tuple[str, ...] = ()
+    #: **The SYMBOL a bare ``$ref`` branch's target declares** -- §4's fourth rung, which
+    #: reads "where the branch is a bare ``$ref``, the TARGET's own derived name".  It is
+    #: the one naming fact of a branch that no reading of the branch's own node can reach:
+    #: such a branch states nothing but ``$ref``, so rungs 1 to 3 all answer ``None`` and
+    #: every one of them falls to the index.  ``lower/union.py`` resolves the target
+    #: already (:class:`union.Inherited`, "the SYMBOL, which is the branch's second base")
+    #: and hands the resolution over rather than this pass reading a reference.
+    #:
+    #: ``None`` where the branch is not a bare ``$ref``, and ``None`` where the target is
+    #: a node of THIS module: a local ``$ref``'s ``TypeRef.path`` is a POINTER until
+    #: :func:`assign` runs, so there is no name to read and the branch keeps its index.
+    #: A pointer is ``""`` or begins with ``/`` and a name is an identifier, which is this
+    #: module's own convention for telling the two apart.
+    target: str | None = None
     #: Its index among its union's branches, in the document's own order, where the branch
     #: is a CLASS and so needs a name of its own; ``None`` where it is a member type.
     index: int | None = None
@@ -346,11 +418,18 @@ def branch_identity(hop: Branch, parent: tuple[str, ...]) -> tuple[str, ...] | N
     name, which is the property :data:`INDEX_IS_THE_LAST_RUNG` states and
     ``tests/test_names_collision.py`` grades.
 
-    **The index is the LAST rung and only the last.**  It is tried after all three
-    identity rungs have answered nothing, because a positional name says nothing about
+    **The index is the LAST rung and only the last.**  It is tried after all FOUR identity
+    rungs have answered nothing, because a positional name says nothing about
     what it names; where an identity exists the identity wins, and a branch whose index
     the walk did not record (a nested union's, which needs no name of its own) answers
     ``None`` and takes the union's own derived name.
+
+    **The fourth identity rung is the bare ``$ref``'s target** (:data:`REF_TARGET_RUNG`),
+    added because the index was reaching 18 branches of this bundle and 13 of them are a
+    bare ``$ref`` whose target names itself -- ``image-asset-requirements.json``,
+    ``video-asset-requirements.json``.  ``isinstance(req, AssetRequirementsBranch7)``
+    requires counting the document's branches to learn that it means JavaScript, which is
+    the usability failure a positional name IS.
     """
     rungs = branch_rungs(hop, parent)
     return rungs[0] if rungs else None
@@ -389,6 +468,16 @@ def branch_rungs(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...],
         out.append(
             _suffixed(parent, "".join(class_name(str(k)) for k in sorted(hop.required)))
         )
+    if hop.target and parent:
+        # **Rung 4, and the last IDENTITY rung** (§4 "Names", the branch ladder): "else,
+        # where the branch is a bare ``$ref``, the TARGET's own derived name".  Both
+        # inputs -- the target's symbol and the root's own name -- are facts about the ONE
+        # branch, so the rule is insertion-stable, which is §4's own criterion and what
+        # the branch rule reverted at ``64d0f897`` failed: inserting a thirteenth asset
+        # kind ahead of the others renames none of them.
+        remainder = _distinguishing(hop.target, parent[-1])
+        if remainder:
+            out.append(_suffixed(parent, remainder))
     if hop.index is not None:
         out.append(_suffixed(parent, f"Branch{hop.index}"))
     # A rung spelling the same chain as the rung above it is not a rung to fall to: it
@@ -398,7 +487,18 @@ def branch_rungs(hop: Branch, parent: tuple[str, ...]) -> tuple[tuple[str, ...],
     return tuple(dict.fromkeys(out))
 
 
-#: §4's fourth branch rule and the one ground it stands on, in the section's own terms.
+#: §4's fourth IDENTITY branch rung, in the section's own terms.  QUOTED by the check that
+#: grades it (``tests/test_names_collision.py``), so the sentence the code states and the
+#: sentence a check reports against are one string.
+REF_TARGET_RUNG = (
+    "where the branch is a bare $ref, the TARGET's own derived name; and where the root's "
+    "name and the target's share a run, the branch takes the root's name plus the target's "
+    "distinguishing remainder -- AssetRequirementsImage, not the target's name repeated. "
+    "Both inputs are facts about the one branch, so the rule is insertion-stable "
+    "(section 4)"
+)
+
+#: §4's fifth branch rule and the one ground it stands on, in the section's own terms.
 #: QUOTED by the check that grades it (``tests/test_names_collision.py``), so the sentence
 #: the code states and the sentence a check reports against are one string.
 INDEX_IS_THE_LAST_RUNG = (

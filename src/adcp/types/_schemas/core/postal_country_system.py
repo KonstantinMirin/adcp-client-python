@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import NotValue
 from adcp.types.constraints import StrMatchingEFC12812
 
@@ -24,9 +24,6 @@ class PostalCountrySystem(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "anyOf"
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/postal-country-system.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'properties': {'country': {'const': 'US'}, 'system': {'enum': ['zip', 'zip_plus_four']}}}, {'properties': {'country': {'const': 'GB'}, 'system': {'enum': ['outward', 'full']}}}, {'properties': {'country': {'const': 'CA'}, 'system': {'enum': ['fsa', 'full']}}}, {'properties': {'country': {'enum': ['DE', 'CH', 'AT']}, 'system': {'const': 'plz'}}}, {'properties': {'country': {'const': 'FR'}, 'system': {'const': 'code_postal'}}}, {'properties': {'country': {'const': 'AU'}, 'system': {'const': 'postcode'}}}, {'properties': {'country': {'const': 'BR'}, 'system': {'const': 'cep'}}}, {'properties': {'country': {'const': 'IN'}, 'system': {'const': 'pin'}}}, {'properties': {'country': {'const': 'ZA'}, 'system': {'const': 'postal_code'}}}, {'properties': {'country': {'not': {'enum': ['US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA']}}, 'system': {'enum': ['postal_code', 'custom']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-    )
     country: Annotated[StrMatchingEFC12812, Field(description='ISO 3166-1 alpha-2 country code.')]
     system: Annotated[PostalCodeSystem, Field(description='Country-local postal code system.')]
 

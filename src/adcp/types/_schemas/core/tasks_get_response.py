@@ -84,7 +84,7 @@ class TasksGetResponse(AdCPVersionEnvelope, ProtocolEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-get-response.json', pointer='#')
-    task_id: Annotated[str, Field(description='Unique identifier for this task')]
+    task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
     task_type: Annotated[TaskType, Field(description='Type of AdCP operation')]
     protocol: Annotated[AdCPProtocol, Field(description='AdCP protocol this task belongs to')]
     status: Annotated[TaskStatus, Field(description='Current task status')]

@@ -518,24 +518,34 @@ def _const_pins(props: Any) -> tuple[Any, ...]:
     return tuple(pins(props).values())
 
 
-def _naming_facts(branch: Any, props: Any) -> Any:
-    """The three DECLARED facts §4 "Names"'s branch rules read, off one branch's
+def _naming_facts(branch: Any, props: Any, inherits: "Inherited | None" = None) -> Any:
+    """The four DECLARED facts §4 "Names"'s branch rules read, off one branch's
     declaration.
 
     One reading for the two positions a branch is named at, so a root branch and a nested
     one cannot come to read one declaration differently.
 
-    §4's fourth rule reads a fact of the branch's POSITION and not of its declaration --
+    §4's fifth rule reads a fact of the branch's POSITION and not of its declaration --
     its index among the branches -- so the caller records that one, and only where the
     branch is a class needing a name of its own (:attr:`names.Branch.index`).
+
+    **The fourth fact is the bare ``$ref`` target's SYMBOL** (:attr:`names.Branch.target`),
+    taken off the resolution this module already did rather than resolved again: §4's
+    fourth rung reads "the TARGET's own derived name" and :class:`Inherited` is "the
+    SYMBOL, which is the branch's second base".  A LOCAL target's slot holds a POINTER
+    until ``lower/names.py``'s ``assign`` runs, so only an identifier is handed over --
+    the naming pass has this module's own convention for telling a pointer from a name and
+    a rung handed a pointer would spell one.
     """
     title = branch.get("title") if isinstance(branch, Mapping) else None
     required = branch.get("required") if isinstance(branch, Mapping) else None
+    symbol = inherits.symbol if inherits is not None else None
     return names.Branch(
         parent="",
         title=title if isinstance(title, str) and title else None,
         pins=_const_pins(props),
         required=tuple(required) if isinstance(required, list) else (),
+        target=symbol if symbol and symbol.isidentifier() else None,
     )
 
 
@@ -1439,7 +1449,7 @@ def lower_union(
     # because §4's fourth rung answers for every branch whose index is recorded.
     for i, plan in enumerate(planned):
         mod.hops[plan.pointer] = replace(
-            _naming_facts(plan.node, plan.properties), parent=pointer, index=i
+            _naming_facts(plan.node, plan.properties, plan.inherits), parent=pointer, index=i
         )
 
     mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))

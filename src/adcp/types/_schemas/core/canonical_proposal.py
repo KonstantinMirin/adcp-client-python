@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
+from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import IntMin1, StrMatching325DEB97, StrMatching43E30B32, StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen255Matching67860854, StrMinLen1MaxLen500
 
@@ -61,10 +61,6 @@ class CanonicalProposal(AdCPBaseModel):
         ConditionalRequired((Match('proposal_kind', True, ('media_buy_update', 'media_buy_cancellation')),), require=('parent_proposal_id', 'media_buy_id', 'base_media_buy_revision'), forbid=()),
         ConditionalRequired((Match('proposal_status', True, ('accepted',)),), require=('media_buy_id', 'accepted_at'), forbid=()),
         ConditionalRequired((Match('proposal_status', True, ('committed',)),), require=('expires_at',), forbid=()),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/canonical-proposal.json', pointer='#/properties/commercial_terms/properties/purchases/items/properties/targeting_overlay/properties/geo_postal_areas/items/anyOf/0/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'properties': {'country': {'const': 'US'}, 'system': {'enum': ['zip', 'zip_plus_four']}}}, {'properties': {'country': {'const': 'GB'}, 'system': {'enum': ['outward', 'full']}}}, {'properties': {'country': {'const': 'CA'}, 'system': {'enum': ['fsa', 'full']}}}, {'properties': {'country': {'enum': ['DE', 'CH', 'AT']}, 'system': {'const': 'plz'}}}, {'properties': {'country': {'const': 'FR'}, 'system': {'const': 'code_postal'}}}, {'properties': {'country': {'const': 'AU'}, 'system': {'const': 'postcode'}}}, {'properties': {'country': {'const': 'BR'}, 'system': {'const': 'cep'}}}, {'properties': {'country': {'const': 'IN'}, 'system': {'const': 'pin'}}}, {'properties': {'country': {'const': 'ZA'}, 'system': {'const': 'postal_code'}}}, {'properties': {'country': {'not': {'enum': ['US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA']}}, 'system': {'enum': ['postal_code', 'custom']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-        Approximation(document='core/canonical-proposal.json', pointer='#/properties/commercial_terms/properties/purchases/items/properties/targeting_overlay/properties/geo_postal_areas_exclude/items/anyOf/0/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'properties': {'country': {'const': 'US'}, 'system': {'enum': ['zip', 'zip_plus_four']}}}, {'properties': {'country': {'const': 'GB'}, 'system': {'enum': ['outward', 'full']}}}, {'properties': {'country': {'const': 'CA'}, 'system': {'enum': ['fsa', 'full']}}}, {'properties': {'country': {'enum': ['DE', 'CH', 'AT']}, 'system': {'const': 'plz'}}}, {'properties': {'country': {'const': 'FR'}, 'system': {'const': 'code_postal'}}}, {'properties': {'country': {'const': 'AU'}, 'system': {'const': 'postcode'}}}, {'properties': {'country': {'const': 'BR'}, 'system': {'const': 'cep'}}}, {'properties': {'country': {'const': 'IN'}, 'system': {'const': 'pin'}}}, {'properties': {'country': {'const': 'ZA'}, 'system': {'const': 'postal_code'}}}, {'properties': {'country': {'not': {'enum': ['US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA']}}, 'system': {'enum': ['postal_code', 'custom']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
     )
     proposal_id: StrMinLen1MaxLen255
     proposal_kind: ProposalKind

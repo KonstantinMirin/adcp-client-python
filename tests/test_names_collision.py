@@ -525,3 +525,135 @@ def test_lengthening_is_tried_before_falling_so_an_identity_is_not_given_up_earl
     # ``AQ`` and the index ``ABranch0``, and neither appears.
     assert "Q" not in spelled["/properties/a/anyOf/0"]
     assert "Branch" not in spelled["/properties/a/anyOf/0"]
+
+
+def test_a_bare_ref_branch_takes_its_targets_distinguishing_name_and_not_its_index() -> None:
+    """§4's FOURTH rung: "where the branch is a bare ``$ref``, the TARGET's own derived
+    name"; and "where the root's name and the target's share a run, the branch takes the
+    root's name plus the target's distinguishing remainder".
+
+    ``core/requirements/asset-requirements.json``'s own shape, which is what the rung is
+    written for: twelve branches, every one of them a bare ``$ref`` with no ``title``, no
+    ``const`` pin and no ``required`` set, so rungs 1 to 3 answer nothing and all twelve
+    reached the index.  ``isinstance(req, AssetRequirementsBranch7)`` requires counting the
+    document's branches to learn that it means JavaScript, which is the usability failure a
+    positional name IS -- and the fact the rung reads was sitting in the branch's second
+    base the whole time.
+
+    **The run is read at either END, because the bundle writes it both ways.**  The target
+    carries it as a SUFFIX here (``ImageAssetRequirements`` beside ``AssetRequirements``)
+    and as a PREFIX in ``creative/get-creative-features-response.json``
+    (``GetCreativeFeaturesSuccess`` beside ``GetCreativeFeaturesResponse``), and one rule
+    covers both: 12 of the bundle's 13 such branches share a suffix, 1 a prefix, 0 both.
+
+    **Why the remainder and not the target's name spelled straight.**  The branch's second
+    base IS the target, so the module imports that symbol, and :func:`names.spell`'s
+    ``occupied`` says an imported name is a name taken.  A branch is a chain of ONE at this
+    rung and has no ancestor to lengthen by, so ``occupied`` would keep the shadowing name
+    rather than refuse it -- which is a shape the bundle already has at rung 1 and
+    ``test_no_module_of_the_tree_declares_a_name_it_imports`` is red on
+    (``core/vendor_pricing_option.py``, five branches titled exactly as their targets).
+    """
+    hops = {
+        "": names.Root("Asset Requirements"),
+        "/anyOf/0": names.Branch(parent="", target="ImageAssetRequirements", index=0),
+        "/anyOf/1": names.Branch(parent="", target="JavaScriptAssetRequirements", index=1),
+        "/anyOf/2": names.Branch(parent="", target="DAASTAssetRequirements", index=2),
+    }
+    spelled = names.spell_the_rungs(_ladders(hops))
+    assert not isinstance(spelled, Refusal), spelled
+    assert spelled == {
+        "": "AssetRequirements",
+        "/anyOf/0": "AssetRequirementsImage",
+        "/anyOf/1": "AssetRequirementsJavaScript",
+        # The acronym survives, because the word split is the inverse of ``class_name``'s
+        # "only the first letter of a word is touched".
+        "/anyOf/2": "AssetRequirementsDAAST",
+    }, spelled
+    # No branch is spelled as its own target, which is the shadowing the remainder avoids.
+    assert not {spelled[p] for p in spelled} & {
+        "ImageAssetRequirements", "JavaScriptAssetRequirements", "DAASTAssetRequirements"
+    }, spelled
+
+    # The run read at the other END: a shared PREFIX, and the remainder is the tail.
+    prefixed = names.spell_the_rungs(
+        _ladders(
+            {
+                "": names.Root("Get Creative Features Response"),
+                "/oneOf/0": names.Branch(
+                    parent="", target="GetCreativeFeaturesSuccess", index=0
+                ),
+            }
+        )
+    )
+    assert not isinstance(prefixed, Refusal), prefixed
+    assert prefixed["/oneOf/0"] == "GetCreativeFeaturesResponseSuccess", prefixed
+
+    # A target sharing NO run with the root spells its whole name onto the base's segment,
+    # rather than standing alone and shadowing the import.
+    unrelated = names.spell_the_rungs(
+        _ladders({"": names.Root("Doc"), "/oneOf/0": names.Branch(parent="", target="Other", index=0)})
+    )
+    assert not isinstance(unrelated, Refusal), unrelated
+    assert unrelated["/oneOf/0"] == "DocOther", unrelated
+
+    # A target whose name says NOTHING the root's does not leaves the rung answering
+    # nothing, and the branch keeps its index -- the same shape §4's root-collision clause
+    # has: a rung that identifies nothing is not a rung to fall to.
+    same = names.spell_the_rungs(
+        _ladders({"": names.Root("Doc"), "/oneOf/0": names.Branch(parent="", target="Doc", index=0)})
+    )
+    assert not isinstance(same, Refusal), same
+    assert same["/oneOf/0"] == "DocBranch0", same
+
+
+def test_the_ref_target_rung_outranks_the_index_and_nothing_else() -> None:
+    """The rung's PLACE in the ladder, which is what keeps the rename set bounded.
+
+    It sits below the three declared-identity rungs and above the index, so the only
+    branches it can move are the ones that were reaching the index -- which is why the
+    measured rename census over bundle 3.2 is 13 classes in 2 documents and 3,449 classes
+    before and after.  A sibling named by a ``title``, a pin or a required set does not
+    move, which is what ``core/postal-country-system.json``'s four single-pin branches
+    (``US``, ``GB``, ``CA``, ``Plz``) need.
+
+    Insertion stability is unchanged and is the reason the rung is admissible at all: both
+    inputs -- the target's symbol and the root's own name -- are facts about the ONE
+    branch, which is §4's own criterion and what the branch rule reverted at ``64d0f897``
+    failed.
+    """
+    parent = ("AssetRequirements",)
+    # Each declared identity still wins over the target.
+    assert names.branch_identity(
+        names.Branch(parent="", title="Image Asset", target="ImageAssetRequirements", index=0),
+        parent,
+    ) == ("ImageAsset",)
+    assert names.branch_identity(
+        names.Branch(parent="", pins=("image",), target="ImageAssetRequirements", index=0), parent
+    ) == ("AssetRequirementsImage",)
+    assert names.branch_identity(
+        names.Branch(parent="", required=("width",), target="ImageAssetRequirements", index=0),
+        parent,
+    ) == ("AssetRequirementsWidth",)
+    # With none of the three, the target wins over the index.
+    assert names.branch_identity(
+        names.Branch(parent="", target="ImageAssetRequirements", index=0), parent
+    ) == ("AssetRequirementsImage",)
+    # A NESTED union's branch records no index and a local ``$ref``'s target is a POINTER
+    # and not a name, so neither reaches this rung and both answer nothing.
+    assert names.branch_identity(names.Branch(parent=""), parent) is None
+
+    # Appending a branch moves no existing name, because no rung reads a sibling.
+    def hops(targets: tuple[str, ...]) -> dict[str, names.Hop]:
+        table: dict[str, names.Hop] = {"": names.Root("Asset Requirements")}
+        for i, target in enumerate(targets):
+            table[f"/anyOf/{i}"] = names.Branch(parent="", target=target, index=i)
+        return table
+
+    two = names.spell_the_rungs(_ladders(hops(("ImageAssetRequirements", "VideoAssetRequirements"))))
+    three = names.spell_the_rungs(
+        _ladders(hops(("ImageAssetRequirements", "VideoAssetRequirements", "AudioAssetRequirements")))
+    )
+    assert not isinstance(two, Refusal) and not isinstance(three, Refusal)
+    assert {p: n for p, n in three.items() if p in two} == two, three
+    assert three["/anyOf/2"] == "AssetRequirementsAudio", three
