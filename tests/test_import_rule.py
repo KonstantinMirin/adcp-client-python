@@ -1005,6 +1005,98 @@ def _total_seam_population() -> list[Path]:
     return [p for p in _modules() if _rel(p).startswith(SECTION_11_TOTAL)]
 
 
+#: **The RUN and the two layers downstream of it**, by dotted name: what §11's THIRD AST
+#: test says ``schema/`` and ``lower/`` may not import -- "no ``codegen.{render, emit,
+#: verify}`` import inside ``schema/`` or ``lower/``".
+#:
+#: ``verify`` is spelled by the paths :data:`VERIFIER` already names, so the verifier has
+#: ONE spelling in this file and a module added to it joins both rules at once.
+#: ``codegen.__main__`` is in because §11 puts it in the run row beside ``emit.py``: it
+#: holds the command and the refusal report, and a handler reaching the report would be
+#: the same inversion by a shorter path.
+THE_RUN = frozenset(
+    {"codegen.emit", "codegen.__main__", "codegen.render"}
+    | {_module_name(PKG / rel) for rel in VERIFIER}
+)
+
+
+def test_the_decision_layer_reaches_no_module_of_the_run_transitively() -> None:
+    """§11's third AST test, held by REACHABILITY and not by the population's own files.
+
+    §11's arrows run ``lower <- emit``: the run orders the documents, computes the
+    closure, writes the files and reports: the decision layer answers for one node and
+    "may not know ... files, the run".  A handler that reaches the run reads the thing
+    that called it.
+
+    **Read over the import statements of ``schema/`` and ``lower/`` alone, the rule was
+    green while the recursion went through the run** -- and that is the reading this test
+    replaces.  Every nested-node recursion went ``handler -> compiler.lower_node -> from
+    codegen.emit import decide_type -> lower.decide.decide``, so the per-node loop passed
+    through ``emit`` on every node of every document, and no file under either path
+    carried the import: ``compiler.py`` did, and it is in NEITHER population.  Nothing
+    held the boundary at all (``adcp-client-python-3be.5``), which is why the edge
+    survived two steps that were supposed to remove it.
+
+    So the population is the two paths §11 names and the GRADE is the transitive closure
+    of their imports over the whole package.  ``compiler.py`` is deliberately not named:
+    naming it would make this a list of files to keep clean, and the next module to sit
+    between a handler and the run would be off the list.  What is asserted is that
+    **nothing a handler can reach, at any remove, is the run** -- so the closure is what
+    reddens, wherever the edge is added.
+
+    Deferred imports count, and the edge this test was written for is the reason:
+    ``from codegen.emit import decide_type`` sat inside a function body, which is where an
+    import goes to break an import CYCLE while leaving the dependency exactly where it
+    was.  :func:`_named` visits every ``Import`` and ``ImportFrom`` at any depth, and
+    :func:`test_the_rule_catches_each_spelling` is the perturbation that keeps that
+    honest.
+    """
+    population = _total_seam_population()
+    assert population, "§11's third test is graded over no module"
+    graph = {_module_name(path): set(_named(path)) for path in _modules()}
+    reached: dict[str, set[str]] = {}
+    for path in population:
+        start = _module_name(path)
+        seen: set[str] = set()
+        queue = [start]
+        while queue:
+            name = queue.pop()
+            for edge in graph.get(name, ()):  # a module with no entry is not ours
+                if edge in seen or not edge.startswith("codegen"):
+                    continue
+                seen.add(edge)
+                queue.append(edge)
+        reached[start] = seen
+    through = {
+        start: sorted(seen & THE_RUN) for start, seen in reached.items() if seen & THE_RUN
+    }
+    assert through == {}, (
+        f"a module of {list(SECTION_11_TOTAL)} reaches the run: {through}; §11's arrows "
+        "run lower <- emit, and a decision layer that reaches the run has the per-node "
+        "loop passing through the thing that called it -- whichever module in between "
+        "carries the import"
+    )
+    # The control, in the two directions a closure can be green for free.  The population
+    # must REACH something -- ``codegen.lower.union`` reads the compiler, the IR and the
+    # keyword table -- and every name in :data:`THE_RUN` must be one this resolver
+    # actually resolves, which the RUN itself witnesses: ``codegen.__main__`` reaches
+    # ``emit``, ``emit`` reaches ``render`` and the verifier, and the verifier reaches its
+    # own other half.  A typo in the forbidden set would otherwise make the assertion
+    # above green over a name no module has.
+    assert reached["codegen.lower.union"], reached["codegen.lower.union"]
+    command: set[str] = set()
+    queue = ["codegen.__main__"]
+    while queue:
+        for edge in graph.get(queue.pop(), ()):
+            if edge not in command and edge.startswith("codegen"):
+                command.add(edge)
+                queue.append(edge)
+    assert THE_RUN - {"codegen.__main__"} <= command, (
+        f"THE_RUN names a module the command does not reach: "
+        f"{sorted(THE_RUN - {'codegen.__main__'} - command)}"
+    )
+
+
 def test_the_lowering_seam_raises_nothing_but_a_build_failure() -> None:
     """§11's fourth test, which REPLACES the guarantee §2 gave up.
 

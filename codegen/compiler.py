@@ -34,14 +34,13 @@ D2 makes an alias), and the carriers a lowering is handed (:class:`Module`,
 (:func:`check_keywords`), the name rules (D3) and :func:`lower_object` -- which is
 :func:`fields` plus :func:`declare_object` and has nothing else in it -- alongside.
 
-**What did NOT move is the per-node dispatch.**  ``emit.decide_type`` answers "what
-IS this node", and for an array, a mapping or a multi-type node the answer lives in
-``codegen.lower.containers``, so putting it here would make this module import a
-lowering.  It used to arrive the way reference resolution still arrives, as a
-callable on :class:`Module` with a refusing default, because reaching ``emit`` by
-name was forbidden while ``python -m codegen.emit`` bound that file twice under
-``runpy``.  ``codegen/__main__.py`` ended that, and :func:`decide` is the name:
-one function, one deferred import, and a :class:`Module` carrying data.
+**The per-node ENTRY is here and the per-node DISPATCH is not** (§5, and
+``adcp-client-python-3be.5``).  :func:`lower_node` is what a handler calls for a child,
+and the exhaustive ``match`` it routes through is ``codegen.lower.decide``'s -- reached
+by a deferred import, because that module imports every handler and a handler imports
+this one, so the module-level arrow would close a cycle while D13 fixes the direction.
+What :func:`lower_node` adds to the route is the three statements about a NODE AT A
+POINTER that apply to every arm equally, and its own docstring is where they are read.
 
 **§12 would dissolve this module, and NO ROW OWNS THAT.**  It is not a step a lane is
 behind on, and this docstring used to say it was.  Most of what §12 names has already
@@ -64,6 +63,31 @@ misleading.**  ``Module.bind`` -- the last callable carried on the context -- is
 derives the set (``render.RESERVED``), the run hands it to the walk as DATA, and
 ``names.field_name`` takes it as an argument -- so ``tests/test_import_rule.py``'s
 ``MODEL_LAYER_EXCEPTIONS`` is empty, and it may shrink and not grow.
+
+**It reached that dispatch THROUGH ``codegen.emit`` until this row, and that was the one
+§11 boundary substantively violated**: a deferred ``from codegen.emit import
+decide_type`` inside this function put the RUN inside the per-node loop of every
+document, where §11's arrows run ``lower <- emit`` and give the run "order, closure,
+files, the report" and no node at all.  No test held it, because the test §11 writes for
+that boundary ranges over ``schema/`` and ``lower/`` and the import was in neither:
+``tests/test_import_rule.py`` now closes the population's imports TRANSITIVELY, so the
+next module placed between a handler and the run reddens without being named.
+
+**This module is NOT dissolved, and the reading is which pieces are still in it.**
+§14 steps 5 and 7 said it would be, in a sentence this docstring carried while nothing
+moved; what has actually gone is the naming -- ``class_name`` and ``field_name`` are
+``codegen/lower/names.py``'s, re-exported below where a caller still spells them here,
+and ``alias_for`` and ``name_the_node`` are that module's outright, called by name from
+the one site each that is left -- the node kinds and the parser (``codegen/schema/``),
+the root selector table,
+and :attr:`Module.bind` -- a closure over the run, replaced by the dependency-ordered
+:attr:`Module.targets`.  What is still here is what step 5 assigned to the HANDLERS:
+:func:`fields`, :func:`declare_object`, :func:`declare_alias`, :func:`lower_object` and
+:func:`lower_composition`, the keyword screen :func:`check_keywords`, and the carriers.
+``codegen/lower/objects.py`` and ``codegen/lower/composition.py`` are one line each and
+say so in their own docstrings.  ``adcp-client-python-3be.6`` carries the rest; the line
+count and the importer count of this file are not goals in themselves, and ratcheting
+either would freeze the shape rather than move it.
 """
 
 from __future__ import annotations
@@ -704,7 +728,40 @@ def decide(
 def lower_node(
     node: nodes.Node, mod: "Module", *, of_a_root_union: bool = False
 ) -> Decided | Refusal:
-    """What one PARSED node is: ``emit.decide_type``, reached by name.
+    """What one PARSED node is: §4's content dedup, the ONE dispatch, and a SYMBOL where
+    another document names the node.
+
+    **The walk's per-node entry, and it reaches the run on no path** (§11's third AST
+    test, ``adcp-client-python-3be.5``).  It was ``from codegen.emit import decide_type``
+    -- a deferred import, so every nested-node recursion went ``handler -> lower_node ->
+    the run -> lower.decide.decide`` and the run layer sat inside the per-node loop.  §11
+    gives the decision layer "``Node`` -> ``Lowering``" and says it "may not know ...
+    files, the run"; the arrows run ``lower <- emit`` and that import ran the other way.
+    What was in the run was this wrapper, and nothing else of it: the dispatch was
+    ``lower.decide.decide``'s already.  ``tests/test_import_rule.py`` holds the boundary
+    by REACHABILITY now, over the closure of ``schema/`` and ``lower/``, so the next
+    module placed between a handler and the run reddens without being named.
+
+    **Three statements about THE NODE AT A POINTER, which is what makes them a wrapper
+    rather than an arm** (§5: the dispatch "contains no decision beyond the route"): adopt
+    the class an EQUAL node declared, name the node where the bundle's ``$ref``\\ s name
+    its pointer, and seed the content memo at it.  All three apply to every arm equally --
+    an array, a scalar, a mapping and a multi-type node are all annotations with no name
+    -- so they sit outside the ``match`` and above all twelve arms.
+
+    **§4's content dedup: nodes with identical content are one node.**  The memo is
+    consulted BEFORE the dispatch and seeded after it, so the second occurrence of a node
+    decides to the symbol the first DECLARED and no second class is written for it.  The
+    equality, the binding, what seeds the memo and what §4 decides about a group are all
+    ``lower/names.py``'s (:func:`names.same_node`, :func:`names.adopt`); what is HERE is
+    the CALL, and §7 cannot take it: a second occurrence's CHILDREN are never lowered, so
+    a declaration the walk did not make has no name for a pass to derive, and the pruning
+    is a decision about the walk.
+
+    ``mod.named`` is a function of the BUNDLE (``bundle.named_nodes``), not of the run's
+    document set, so whether a node gets a name does not depend on who else was emitted.
+    A class or an enumeration comes back ``local`` already, having declared itself at this
+    very pointer, so nothing is named twice and no second symbol appears for one node.
 
     ``of_a_root_union`` is the one fact §6 names as travelling DOWN the tree: "where a
     lowering needs to know something about the node ENCLOSING it, the enclosing handler
@@ -712,10 +769,33 @@ def lower_node(
     ``node.position`` and tells its branches, because "of a root union" is a statement
     about the UNION and not about the branch; ``lower.enum.resolves_no_name`` is the
     predicate that needs it, and it read ``pointer.split("/")`` before this.
-    """
-    from codegen.emit import decide_type
 
-    return decide_type(node, mod, of_a_root_union=of_a_root_union)
+    Imported on use, for the reason :func:`rules_at` and the extras store are:
+    ``codegen.lower.decide`` imports this module at module level and D13 fixes that
+    direction, so this side is the lazy one.  It is a LAYER DOWN and not the run.
+    """
+    from codegen.lower.decide import decide
+
+    pointer = node.pointer
+    collapsed = names.same_node(mod, node)
+    if collapsed is not None:
+        mod.adopted[pointer] = collapsed
+        bound = names.adopt(mod, pointer, collapsed)
+        return bound if isinstance(bound, Refusal) else Decided(bound)
+    decided = decide(node, mod, of_a_root_union=of_a_root_union)
+    if isinstance(decided, Refusal):
+        return decided
+    if pointer in mod.named and not decided.type.local:
+        named = names.name_the_node(mod, pointer, node, decided)
+        if isinstance(named, Refusal):
+            return named
+        # The node's facts moved onto the ALIAS, so what the parent holds is the symbol
+        # and nothing else: a constraint restated beside it would be the second spelling
+        # P2 removes.
+        decided = Decided(named)
+    if decided.type.local and decided.type.path == pointer:
+        mod.collapsed.append((node, pointer))
+    return decided
 
 
 @dataclass
@@ -902,7 +982,7 @@ class Module:
     #: D3's content dedup: ``(the node, the symbol declared for the FIRST node equal to
     #: it)``, in the order the walk declared them.  Two nodes with identical content are
     #: ONE node, so the second occurrence decides to the symbol the first declared rather
-    #: than declaring a second class for it.  Written and read by ``emit.decide_type``,
+    #: than declaring a second class for it.  Written and read by :func:`lower_node`,
     #: which is the one per-node walk.
     #:
     #: **The equality is §4's own**, and that is what §14 step 5 deleted the old
@@ -941,7 +1021,7 @@ class Module:
     #: collapsed and not WHERE, and "where" is the only thing a grader can compare a
     #: node against -- so the dedup is graded by asking, of every adoption, whether the
     #: adopting pointer's content really equals the declaring pointer's.  Written by
-    #: ``emit.decide_type`` on the same line that returns the adopted type, so an
+    #: :func:`lower_node` on the same line that returns the adopted type, so an
     #: adoption that went unrecorded is an adoption that did not happen.  It held the
     #: SYMBOL and holds the DECLARING POINTER, which is §7's own spelling of the table
     #: ("the adoption table pointer -> declaring pointer") and what lets the naming pass
@@ -1149,7 +1229,7 @@ class Module:
             # declaration sits at its own node and the root's pointer is written once
             # by the row -- with ONE exception, and §4 puts it there deliberately: the
             # extras store of a class with a typed ``additionalProperties`` is parsed
-            # at the CLASS's own pointer.  Routed through ``emit.decide_type``, the
+            # at the CLASS's own pointer.  Routed through :func:`lower_node`, the
             # store took that pointer's name entry and declared an ``AliasDecl`` at it
             # moments before :func:`declare_object` declared the ``ClassDecl``, and
             # this arm fired once over the 1,054 portable documents: ``brand.json`` at
@@ -1588,7 +1668,7 @@ def fields(
     **This is not the ``decided`` argument that was removed, and the reason it was
     removed does not reach it.**  That one carried a per-property type the caller had
     already decided so the union row could turn a branch's ``const`` into a
-    ``Literal``; it went because ``decide_type`` reaches ``codegen.lower.const`` for
+    ``Literal``; it went because :func:`lower_node` reaches ``codegen.lower.const`` for
     every node, so the type WAS derivable here and two lowerings had to agree about
     one keyword.  A reused type is the other case: it is not derivable here, because
     deciding it declares the nested classes AGAIN and in this module, at a pointer
@@ -1878,7 +1958,7 @@ def declare_object(
         # and its VALUE hangs off that pointer like any mapping's.
         #
         # **THE DISPATCH AND NOT THE WALK WRAPPER, and §4's shared pointer is the whole
-        # reason.**  ``lower_node`` is ``emit.decide_type``, which is the dispatch plus
+        # reason.**  :func:`lower_node` is the dispatch plus
         # three statements about THE NODE AT A POINTER -- adopt the class an earlier
         # node of identical content declared at it, name the node where the bundle's
         # ``$ref``\\ s name its pointer, and seed the content memo at it.  A pointer
@@ -4248,7 +4328,7 @@ def lower_composition(
             # reach the base's content by different routes:
             #
             # * **EQUAL** -- the node says what the base says about the instance, so
-            #   ``decide_type`` reading the node decides the base's own type and there
+            #   :func:`lower_node` reading the node decides the base's own type and there
             #   is no shadow to be had.  15 pairs and 15 documents, every one a response
             #   root composing ``core/protocol-envelope.json`` and declaring ``context``
             #   itself as a bare ``$ref`` to ``core/context.json``: the envelope states
@@ -5827,7 +5907,7 @@ def _dereferenced(
 
     Only a declaration whose whole constraining content is the reference.  A ``$ref``
     with a constraint beside it is draft-07 ignoring its sibling, which the whole
-    pipeline refuses by name rather than reading two ways (``emit.decide_type``,
+    pipeline refuses by name rather than reading two ways (:func:`lower_node`,
     :func:`lower_composition`'s sibling arm), so there is nothing here to resolve.
     """
     if resolve is None:
@@ -6093,66 +6173,6 @@ def declare_root_model(
     return Decided(ir.TypeRef(pointer, local=True))
 
 
-def _alias_for(pointer: str, node: nodes.Base, decided: Decided) -> ir.AliasDecl:
-    """One node's own decision, as the alias that names it.
-
-    Shared by the TWO rows that declare an alias -- a root (:func:`declare_alias`) and
-    a node another document names (:func:`name_the_node`) -- because "the annotation
-    for this node, under this name" is the same question in both and a second copy of
-    it is how the two come to carry a node's ``format`` or its ``description``
-    differently.  They differ only in what wraps the statement, which is each row's
-    own and stays there.
-
-    The bound and the ``format`` ride on the alias's own TYPE, exactly as a field's do
-    (§2, and :attr:`codegen.ir.TypeRef.facts`): one carrier, so an alias and a property
-    cannot come to spell one ``minLength`` two ways.
-    """
-    return ir.AliasDecl(
-        # The POINTER in the name slot until ``names.assign`` binds it (§7).
-        pointer,
-        replace(decided.type, facts=decided.constraints, format=decided.format),
-        description=node.description,
-    )
-
-
-def name_the_node(
-    mod: Module, pointer: str, node: nodes.Base, decided: Decided
-) -> Decided | Refusal:
-    """Give a node a SYMBOL in its own module, because a ``$ref`` elsewhere names it.
-
-    A fragment reference resolves to an import of a symbol the target module
-    declares, never to a copy (section 2's rule).  A node D2 makes a CLASS already
-    has one -- the walk declared it and ``decided.type.local`` says so -- and this is
-    the other case: an array, a scalar or a mapping is an annotation with no name, so
-    the target module has nothing to export and the reference has nothing to import.
-
-    **The node's type BECOMES the symbol**, which is why this returns a ``Decided``
-    rather than only declaring: the alias carries the constraints and the referring
-    property then references it, so the node's facts have ONE spelling in the module.
-    Declaring the alias and leaving the parent's field to restate the same
-    ``minLength`` inline would be the copy P2 removes, two spellings deep in one file.
-
-    Not :func:`declare_alias`, which is a ROOT's whole module -- the reference, the
-    alias and the bound ``strict_validate``, all at module scope, where there is room
-    for exactly one of each.  A named node is INSIDE a document that already has a
-    root, so it takes the alias statement alone.  It therefore carries no
-    ``__adcp_schema__`` of its own, and that is the existing arrangement rather than
-    a gap: every nested node that is not a class is ungraded on its own today, and
-    this one is graded twice over anyway -- inside its own document's pair, which
-    names the whole document, and inside its referrer's, whose resolved schema inlines
-    this very node at the pointer the reference carries.
-
-    **No name is computed here and none is passed in** (§7, and §14 step 7): the
-    declaration is made at the node's own POINTER, and ``lower/names.py`` binds it to
-    the name §4's nested rule derives for that position -- which is the hop the node's
-    parent recorded when it lowered this child.
-    """
-    collision = mod.declare(pointer, _alias_for(pointer, node, decided))
-    if collision is not None:
-        return collision
-    return Decided(ir.TypeRef(pointer, local=True))
-
-
 def local_reference(mod: Module, pointer: str, at: str) -> Decided | Refusal:
     """What a LOCAL ``$ref`` decides to: the node of THIS document that it names.
 
@@ -6292,4 +6312,4 @@ def declare_alias(
     one: either refuse such a document by name, or wrap the alias in a
     ``RootModel`` that has a config slot.
     """
-    return bind_without_a_model(mod, pointer, _alias_for(pointer, doc, decided))
+    return bind_without_a_model(mod, pointer, names.alias_for(pointer, doc, decided))

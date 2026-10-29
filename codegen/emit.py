@@ -54,11 +54,17 @@ second decider -- and the prohibition that prevented it cost three
 callables carried on :class:`compiler.Module`, which is how a lowering decided a
 child node and named a constraint.  ``codegen/__main__.py`` removes the reason: no
 module of this compiler is ever bound as ``__main__``, so this module is imported
-once, by name, on every path.  :func:`decide_type` is therefore reached through
-``compiler.lower_node`` and ``lower.scalars.name_the_constraint`` through
-:func:`codegen.compiler.carried`, and the context carries DATA rather than functions.
-``tests/test_import_rule.py`` is down to the two boundaries that are about design
-(§8, §9).
+once, by name, on every path.  ``lower.scalars.name_the_constraint`` is therefore
+reached through ``compiler.carried``, and the context carries DATA rather than
+functions.
+
+**The per-node decision was then reached through THIS module and is not any more**
+(``adcp-client-python-3be.5``).  Being nameable made the deferred import legal and left
+it pointing the wrong way: §11's arrows run ``lower <- emit``, and a wrapper here that
+``compiler.lower_node`` imported put the run inside the per-node loop.  It is
+``compiler.lower_node`` now and the banner below carries the reading.
+``tests/test_import_rule.py`` holds §11's third boundary transitively as well as §8 and
+§9, so three of its four AST tests are graded and the fourth is the ``raise`` ban.
 
 The bundle directory is an argument (D9) and there is no default, so no version
 literal can enter this package.  The output path is a function of the document
@@ -110,7 +116,6 @@ from codegen.keywords import Position
 from codegen import constraints as constraints_module
 from codegen.compiler import (
     SCALAR,
-    Decided,
     Module,
     Target,
     check_keywords,
@@ -283,100 +288,25 @@ def relative_module(frm: str, to: str, packages: Collection[str]) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# the walk: what each node IS
+# the walk: what each node IS -- and it is NOT here
 # --------------------------------------------------------------------------- #
-# **``the_same_node`` and ``bind_the_same_node`` are ``codegen/lower/names.py``'s now**
-# (§14 step 7): §4's content dedup is part of the naming pass, so the equality lookup
-# (``names.same_node``) and the binding of a later position's own name to the first
-# position's class (``names.adopt``) live beside §4's name rules and the stated SCOPE.
-# What stays in the walk is the CALL, and it has to: a second occurrence's CHILDREN are
-# never lowered, so a declaration the walk did not make has no name for a pass to
-# derive, and the pruning is a decision about the walk.
-
-
-def decide_type(
-    node: nodes.Node, mod: Module, *, of_a_root_union: bool = False
-) -> Decided | Refusal:
-    """What one schema node IS, plus a SYMBOL where another document names the node.
-
-    The decision is ``lower.decide.decide``'s, unchanged.  What is here is the two things a
-    node reached by a fragment reference or by a second parent needs and a node
-    reached once by its own parent does not: a name in this module, so the referring
-    module imports a symbol rather than copying a schema (section 2's rule), and D3's
-    content dedup.
-
-    It wraps rather than living inside the dispatch because both apply to every arm
-    equally -- an array, a scalar, a mapping and a multi-type node are all annotations
-    with no name -- and §5 says the dispatch "contains no decision beyond the route", so
-    the two tests sit outside it.  **Both READINGS are ``lower/names.py``'s already**
-    (§14 step 7): ``names.same_node`` is the equality and ``names.adopt`` binds a later
-    position's own name to the first position's class.  What stays here is the CALL, and
-    it has to -- a second occurrence's children are never lowered, so the pruning is a
-    decision about the walk.  A class or an enumeration comes back ``local`` already,
-    having declared itself at its own POINTER (the dispatch carries no name), so nothing
-    is named twice and no second symbol appears for one node.
-
-    ``mod.named`` is a function of the BUNDLE (``bundle.named_nodes``), not of the
-    run's document set, so whether a node gets a name does not depend on who else was
-    emitted.
-
-    **D3: nodes with identical content are one node.**  The memo is consulted BEFORE the
-    dispatch and seeded after it, so the second occurrence of a node decides to the
-    symbol the first DECLARED and no second class is written for it.  Three things
-    make that the whole of the rule rather than an optimisation:
-
-    * The memo is seeded only where the walk declared at THIS NODE'S OWN
-      POINTER (``mod.at.get(pointer)``), which is exactly D2's class and
-      enumeration rows and :func:`compiler.name_the_node`'s alias.  An annotation
-      declares nothing, so an identical annotation is simply decided again -- to the
-      same annotation, since the inputs are the same string -- and a ``$ref`` whose
-      symbol this module IMPORTED is not seeded either, because the import is already
-      in ``mod.imports`` and section 2's rule is an import of a symbol the TARGET
-      declares.  A node that declares a symbol at its pointer and then decides to a
-      CONTAINER over it is therefore not seeded; a nested union is the shape that would
-      be, and it is covered anyway because its BRANCHES collapse through this very
-      wrapper and two identical branch lists then decide to one annotation.  0 such
-      pairs survive the run, and clause 1 of the check reddens by name if one appears.
-    * **The CLASS is declared at the node's first position in the document's own key
-      order, and every other position derives its own name and binds the same class**
-      (:func:`codegen.lower.names.adopt`).  D3 derives a name PER POSITION, so a node at two
-      positions has two derivations and no rule in the plan picks between them -- and it
-      does not have to, because the dedup is about classes and a name bound to a class is
-      not a second class.  Measured first, because the three readings that would need one
-      name are all unavailable: naming the node from its own content is what D5 bans for
-      an alias ("an alias names a constraint, never a concept") and for an enumeration the
-      content is a member list rather than a name; naming it from the bundle reaches
-      nothing, since 0 of the 1,271 identical-content groups have a bundle ROOT carrying
-      that content; and refusing the document loses a class the bundle can state.
-      ``tests/test_emit.py`` asserts that each position declares its OWN name and that
-      every name in a group binds ONE object, so a flip in walk order reddens instead of
-      renaming a public symbol.
-    * **The adopting pointer IS declared**, under its own name, so a cross-document
-      ``$ref`` naming the second position resolves to it -- ``emit.exported`` lists the
-      symbol at every bundle-named pointer, so the import side and the export side still
-      read one fact.  Before the alias this arm refused DEFERRED instead; 0 of the
-      collapsed pointers are among the bundle's 216 named nodes, so the change closes a
-      ceiling nothing reaches rather than moving a refusal.
-    """
-    from codegen.lower.decide import decide
-
-    pointer = node.pointer
-    collapsed = lower_names.same_node(mod, node)
-    if collapsed is not None:
-        mod.adopted[pointer] = collapsed
-        bound = lower_names.adopt(mod, pointer, collapsed)
-        return bound if isinstance(bound, Refusal) else Decided(bound)
-    decided = decide(node, mod, of_a_root_union=of_a_root_union)
-    if isinstance(decided, Refusal):
-        return decided
-    if pointer in mod.named and not decided.type.local:
-        named = compiler.name_the_node(mod, pointer, node, decided)
-        if isinstance(named, Refusal):
-            return named
-        decided = named
-    if decided.type.local and decided.type.path == pointer:
-        mod.collapsed.append((node, pointer))
-    return decided
+# **``decide_type`` is ``compiler.lower_node`` now** (``adcp-client-python-3be.5``), and
+# the reading is §11's third AST test rather than a tidier home.  This module is the RUN:
+# §11 gives it "order, closure, files, the report" and says it "may not know ... kinds,
+# cells, nodes".  The wrapper read a node's pointer against ``mod.named`` and consulted
+# §4's content memo, which are both statements about a NODE, and ``compiler.lower_node``
+# reached it by a deferred ``from codegen.emit import decide_type`` -- so every
+# nested-node recursion of every document passed through this module and the run sat
+# inside the per-node loop.  The arrow §11 draws is ``lower <- emit``, one way.
+#
+# What moved with it: ``name_the_node`` and ``alias_for`` are ``codegen/lower/names.py``'s
+# (§7's pass owns a name bound to a statement), as ``same_node`` and ``adopt`` already
+# were.  What did NOT move is the CALL, and it cannot: a second occurrence's CHILDREN are
+# never lowered, so a declaration the walk did not make has no name for a pass to derive,
+# and the pruning is a decision about the walk.  So the walk's own entry holds it.
+#
+# A ROOT still reaches ``lower.decide.decide`` from here, below, and the difference is the
+# two things a root does not have (:func:`lower_document` carries the reading).
 
 
 def _local_symbols(t: ir.TypeRef) -> set[str]:
@@ -559,14 +489,17 @@ def lower_document(
     # went in part two; the parser is what this commit adds, so the raw document is read
     # ONCE, here, into a node tree, and the dispatch routes the root node by its kind.
     #
-    # :func:`decide` and not :func:`decide_type`, and the difference is the two things a
+    # ``decide`` and not ``compiler.lower_node``, and the difference is the two things a
     # ROOT does not have.  ``mod.named`` never holds the root's pointer
     # (``bundle.named_nodes`` skips a reference with no fragment), so there is nothing for
-    # :func:`compiler.name_the_node` to name; and the CONTENT MEMO is empty at the root and
-    # would be SEEDED with the whole document's content by the wrapper -- which §7 moves
-    # into ``lower/names.py`` as a pass over the finished module anyway.  So the wrapper's
-    # two jobs are both absent here and calling it would add one: a nested node of content
+    # ``names.name_the_node`` to name; and the CONTENT MEMO is empty at the root and would
+    # be SEEDED with the whole document's content by the walk's entry.  So its two jobs
+    # are both absent here and calling it would add one: a nested node of content
     # identical to the document root would adopt the root's own symbol.
+    #
+    # It is the ONE place this module names the dispatch, and the import is deferred for
+    # the same reason ``compiler``'s is -- ``lower.decide`` imports every handler and a
+    # handler imports ``compiler``, so the module-level arrow would close a cycle.
     from codegen.lower.decide import decide
 
     root = schema.parse(doc, pointer="", position=Position.ROOT, source=mod.source)
