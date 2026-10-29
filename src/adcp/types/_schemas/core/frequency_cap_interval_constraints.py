@@ -22,7 +22,7 @@ class FrequencyCapIntervalConstraints(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/frequency-cap-interval-constraints.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=('allowed_intervals',), forbid=(('minimum_interval',), ('maximum_interval',))), Presence(require=('minimum_interval', 'maximum_interval'), forbid=(('allowed_intervals',),))), 'oneOf'),
+        PresenceGroups((Presence(require=(('allowed_intervals',),), forbid=(('minimum_interval',), ('maximum_interval',))), Presence(require=(('minimum_interval', 'maximum_interval'),), forbid=(('allowed_intervals',),))), 'oneOf'),
         UniqueItems('allowed_intervals'),
     )
     unit: FrequencyCapDurationUnit

@@ -272,6 +272,23 @@ def parse(
     if combinator is not None and not presence_only(raw, position):
         return _union(raw, common, combinator, pointer, position, source)
     if isinstance(raw.get("allOf"), list) and raw.get("type") in (None, "object"):
+        # **A combinator of SHAPES one of this node's own conjuncts carries**, which
+        # draft-07 applies to the same instance, so §5's ``oneOf``/``anyOf`` row at CONJ
+        # answers it: "one class per branch over the composed bases".  Read AFTER the
+        # node's own combinator, for the arm order's own reason -- a node stating one
+        # itself has already said which branch list is its instance's.
+        #
+        # **INSIDE the word gate ``adcp-client-python-10l.64`` put on this arm, and for
+        # that row's own reason**: the cell answers "one class per branch", a node
+        # stating ``type: array`` beside an ``allOf`` is a container whose conjuncts
+        # constrain it, and a container has no branch classes.  Measured over the 1,054
+        # portable documents: all 4 composing nodes stating a non-object word state
+        # ``array`` and none of them carries a combinator in a conjunct, so the gate
+        # moves no document -- it is written this way so the first that does is read by
+        # the word rather than by this reading.
+        borne = _borne_by_a_conjunct(raw, position)
+        if borne is not None:
+            return _union(raw, common, borne[1], pointer, position, source, borne=borne[0])
         return _composition(raw, common, pointer)
 
     word = raw.get("type")
@@ -308,9 +325,44 @@ def parse(
         # SHAPE fault, :func:`_faults` carries it, and the object row is what raises it
         # (§4) -- routing the node by its own keyword is what gets the fault reported
         # instead of read as silence.
-        if ("properties" in raw or _requires_as_a_type(raw, position)) and (
-            position is Position.ROOT or objectish or applied == "object"
-        ):
+        #
+        # **AND A BRANCH OF A ROOT UNION IS A CLASS WHATEVER IT STATES, so ``objectish``
+        # ANSWERS THE FIRST HALF TOO** (``adcp-client-python-10l.37``).  That is §4's own
+        # sentence and :attr:`nodes.Union.branches`' docstring already quotes it; what it
+        # was carrying here was only the SECOND half -- "an enclosing node applies
+        # ``type: object``" -- so a branch whose whole content is a presence RULE fell to
+        # :class:`nodes.Typeless`, which has no ``required`` and no property map, and
+        # ``lower.union._plan`` refused it with "section 5's type row reads such a node as
+        # ``{}``, which IS true".  That reason is sound for a branch stating nothing and
+        # false for one stating a ``not`` over ``required`` or a presence combinator: such
+        # a branch narrows the base by exactly the rule it carries, which
+        # ``compiler.declare_object`` writes for whatever node it declares.
+        # ``formats/canonical/display_tag.json``, ``html5.json`` and ``image.json`` are
+        # the measured case -- their "responsive" branch states ``anyOf`` over four
+        # dimension names and their "none" branch states only a ``not`` over seven.
+        #
+        # **THE CLAUSE IS "EVERYTHING IT DECLARES IS A RULE HERE", and both halves are
+        # measured.**  Not the bare flag: §5 reads the empty schema as ``true``, and a
+        # branch admitting everything the base admits has no subclass to be, so a branch
+        # declaring NOTHING keeps the refusal that says so.  And not "declares anything"
+        # either -- a branch stating ``format`` or ``pattern`` and no ``type`` word states
+        # a fact about a VALUE, which no class carries, and reading it as an object costs
+        # 22 documents (measured: ``emitted`` 923 -> 901, all 22 chained behind the
+        # branches that stopped being scalars).  A RULE is precisely the thing a class
+        # with no fields can carry -- ``compiler.declare_object`` writes the tuple for
+        # whatever node it declares -- so the test is that every declaration is one, read
+        # off :attr:`nodes.Base.rules`, which is :func:`_rule_sources`' own answer at this
+        # position and already includes a presence-only combinator.  Nothing is named
+        # here: the set moves with the table and with ``presence_only``.
+        #
+        # Measured over the 1,054 portable documents: **6 branches in 3 documents** --
+        # the "responsive" and "none" branches of ``display_tag``, ``html5`` and
+        # ``image``.
+        if (
+            "properties" in raw
+            or _requires_as_a_type(raw, position)
+            or (objectish and common["declares"] and not set(common["declares"]) - set(common["rules"]))
+        ) and (position is Position.ROOT or objectish or applied == "object"):
             return _object(raw, common, pointer, position, source)
         if not isinstance(applied, str) or applied == "object":
             # An APPLIED ``object`` is already answered, by the clause above: §5 of the
@@ -663,6 +715,69 @@ def _multi_type(
     return nodes.MultiType(words=tuple(words), members=members, **common)
 
 
+def _borne_by_a_conjunct(
+    raw: Mapping[str, Any], position: Position
+) -> tuple[int, str] | None:
+    """The one ``allOf`` conjunct of ``raw`` that states a combinator of SHAPES and
+    nothing else, as ``(index, keyword)`` -- or ``None`` where no conjunct does, where
+    two do, or where the one that does states something else beside it.
+
+    **Draft-07 conjoins a conjunct with the node that holds it**, which is the same
+    reading :func:`applies_to_one_instance` makes for §4's disjointness derivation and
+    the reason ``compiler.lower_composition`` takes a conjunct's ``properties`` as the
+    composed node's fields.  So a conjunct stating ``oneOf``/``anyOf`` states it about
+    THIS node's instance, and §5's ``oneOf``/``anyOf`` row has the cell for it: "CONJ ->
+    one class per branch over the composed bases".  The classification is the parser's
+    for §11's reason -- the kind is decided once, here -- and nothing is rewritten: the
+    branch list travels as :attr:`nodes.Union.branch_raw` with its own pointers, and the
+    conjunct's index is kept so every other conjunct keeps the pointer the document
+    gives it.
+
+    ``presence_only`` is the same gate the node's own arm uses, so a conjunct stating a
+    combinator of presence GROUPS is a rule source of the composed class exactly as it
+    is today (``declaration_rule_sources`` at CONJ) and never reaches here.
+
+    **Three ways this declines, each leaving the node a :class:`nodes.Composition` and
+    its refusal exactly where it is today.**  Nothing is admitted on a guess:
+
+    * no conjunct states one -- the ordinary composing node;
+    * TWO conjuncts do, or the node states one itself beside a conjunct that does: the
+      instance is then described by two branch lists at once and there is no single
+      class-per-branch answer.  Measured over the 1,054 portable documents: **0 nodes**;
+    * the conjunct states anything else beside the combinator.  Then the conjunct also
+      contributes to the composed class, and the conjunction of ITS contribution with
+      its own branch list is the thing ``compiler._refuse_a_combinator_of_shapes``
+      refuses for having no pointer.  Measured: **0 of the 7 sites** -- every conjunct
+      carrying a combinator of shapes in this bundle states the keyword and annotations
+      alone.
+
+    Measured over the 1,054 portable documents: **7 sites in 6 documents** state a
+    combinator of shapes in a conjunct -- ``adagents.json`` at ``/oneOf/1/allOf/0``,
+    ``formats/canonical/display_tag.json``, ``html5.json`` and ``image.json`` at
+    ``/allOf/1``, ``governance/check-governance-request.json`` at ``/allOf/1`` and at
+    ``/allOf/13/if/allOf/1``, and ``protocol/get-adcp-capabilities-response.json`` at
+    ``/allOf/11/if/allOf/1``.  The last two sit under an ``if``, which §4 keeps as a rule
+    SOURCE and never hands to :func:`parse`, so five nodes reach this.
+    """
+    found: tuple[int, str] | None = None
+    for i, conjunct in enumerate(raw["allOf"]):
+        if not isinstance(conjunct, Mapping):
+            continue
+        declared = {k for k in conjunct if keywords.declares(k, Position.CONJ)}
+        combinator = next((kw for kw in UNION if isinstance(conjunct.get(kw), list)), None)
+        if combinator is None or presence_only(conjunct, Position.CONJ):
+            continue
+        if declared != {combinator} or found is not None:
+            return None
+        found = (i, combinator)
+    if found is not None and any(isinstance(raw.get(kw), list) for kw in UNION):
+        # The node states a branch list of its own as well.  Its own arm has already
+        # answered -- it runs first -- unless that one is presence-only, and then the
+        # node is a rule source AND a union of shapes at once, which no cell answers.
+        return None
+    return found
+
+
 def _union(
     raw: Mapping[str, Any],
     common: dict,
@@ -670,6 +785,8 @@ def _union(
     pointer: str,
     position: Position,
     source: Source,
+    *,
+    borne: int | None = None,
 ) -> nodes.Union:
     """``oneOf`` / ``anyOf`` whose branches are shapes.
 
@@ -686,7 +803,16 @@ def _union(
     :attr:`nodes.Union.position` is where "of a root union" is read, and no child
     reconstructs its parent.
     """
-    branches = raw[combinator]
+    # **WHERE the keyword is stated, which is not always this node** (``borne``): a
+    # conjunct carrying it states it about the same instance, so the branch pointers are
+    # the conjunct's and the conjunct list this node composes is the rest.
+    stated_at = pointer if borne is None else f"{pointer}/allOf/{borne}"
+    branches = (raw if borne is None else raw["allOf"][borne])[combinator]
+    conjuncts = tuple(
+        nodes.Conjunct(pointer=f"{pointer}/allOf/{i}", raw=conjunct)
+        for i, conjunct in enumerate(raw["allOf"] if isinstance(raw.get("allOf"), list) else ())
+        if i != borne
+    )
     word = raw.get("type")
     # **The union TELLS its branches the two things it knows about them** (§6, "a child
     # never reconstructs its parent"): that a branch of a ROOT union is a class whatever
@@ -700,10 +826,12 @@ def _union(
     inherits = word if isinstance(word, str) else None
     return nodes.Union(
         combinator=combinator,
+        stated_at=stated_at,
+        conjuncts=conjuncts,
         branches=tuple(
             parse(
                 branch,
-                pointer=f"{pointer}/{combinator}/{i}",
+                pointer=f"{stated_at}/{combinator}/{i}",
                 position=Position.BRANCH,
                 source=source,
                 objectish=position is Position.ROOT,
@@ -888,21 +1016,34 @@ def presence_only(raw: Mapping[str, Any], position: Position = Position.ROOT) ->
 #: FORBIDS.  A plain pair and not a runtime dataclass, because ``schema/`` reads the
 #: document and ``adcp.types._runtime`` is the model layer's side of the seam -- the
 #: lowering builds :class:`adcp.types._runtime.Presence` out of this.
-Clause = tuple[tuple[str, ...], tuple[tuple[str, ...], ...]]
+Clause = tuple[tuple[tuple[str, ...], ...], tuple[tuple[str, ...], ...]]
 
 
 def presence_clause(branch: Any, position: Position) -> Clause | None:
     """``branch`` as a presence statement, or ``None`` if it says anything else.
 
     **§5, "A union of presence-only branches that also forbid" (decided 2026-10-27).** A
-    branch of a presence-only union states ``required`` and, optionally, a ``not`` over
-    ``required`` groups: "every name in R present and no group of F present in full".
-    Both halves belong to the SAME branch, which is why they are read together and
-    returned paired -- a ``not`` lifted off its branch and stated beside the combinator
-    forbids its groups unconditionally, and ``core/catchment.json`` is the measurement:
-    it states three methods and forbids the other two per method, so a rule holding the
-    union of the three ``not``\\ s forbids all three and refuses every payload the
-    document admits.
+    branch of a presence-only union states its requiredness and, optionally, a ``not``
+    over ``required`` groups: "at least one group of R present in full and no group of F
+    present in full".  Both halves belong to the SAME branch, which is why they are read
+    together and returned paired -- a ``not`` lifted off its branch and stated beside the
+    combinator forbids its groups unconditionally, and ``core/catchment.json`` is the
+    measurement: it states three methods and forbids the other two per method, so a rule
+    holding the union of the three ``not``\\ s forbids all three and refuses every
+    payload the document admits.
+
+    **BOTH HALVES ARE GROUPS** (§5, "A presence clause whose required half is a
+    disjunction of groups", decided 2026-10-29).  ``required: [a, b]`` is the single
+    group ``((a, b),)`` and an ``anyOf`` over ``required`` is the groups it states, which
+    is the reading ``forbid`` already had and for the same reason -- a group is what is
+    satisfied, and a name on its own is not.  Measured over every combinator node of the
+    1,054 portable documents: **3 branches state the disjunctive spelling** and all three
+    are the ``responsive`` arm of one size mutex, at ``/allOf/1/oneOf/2`` of
+    ``formats/canonical/{image,html5,display_tag}.json``.  **0 branches state
+    ``required: []``**, so routing the required half through :func:`required_groups` --
+    which answers ``None`` for an empty name list -- takes no clause out that the
+    conjunctive reading admitted, and the rule tuples the bundle already carries do not
+    move.
 
     A branch whose ``not`` does not reduce to groups is NOT a presence clause: it
     constrains something a rule cannot say, so the node is a combinator of shapes and
@@ -910,15 +1051,17 @@ def presence_clause(branch: Any, position: Position) -> Clause | None:
     make the rule say less than the branch with nothing to report it.
 
     **A branch that FORBIDS and requires nothing is a presence clause, and its required
-    group is EMPTY** (``adcp-client-python-10l.64``).  §5's row is "each clause carries
-    its OWN required group and its own forbidden groups, because the ``not`` is per
-    branch", and the section's own reason for the kind is "every branch constrains which
-    keys are present and nothing else, so it is a rule on the root's class and not a
-    branch class" -- which a branch stating only a ``not`` over required groups satisfies.
-    Nothing in either sentence asks the required half to be non-empty, and
+    half carries NO GROUP** (``adcp-client-python-10l.64``).  §5's row is "each clause
+    carries its OWN required group and its own forbidden groups, because the ``not`` is
+    per branch", and the section's own reason for the kind is "every branch constrains
+    which keys are present and nothing else, so it is a rule on the root's class and not
+    a branch class" -- which a branch stating only a ``not`` over required groups
+    satisfies.  Nothing in either sentence asks the required half to be non-empty, and
     :meth:`adcp.types._runtime.Presence.holds` reads an empty ``require`` as the
-    quantifier over no names that it is: the clause is then exactly "no group of F
-    present", which is the branch.
+    requirement over no groups that it is: the clause is then exactly "no group of F
+    present", which is the branch.  Under GROUPS that case is a written term of
+    ``holds`` rather than a vacuous ``all(())``, because ``any(())`` is False -- the one
+    way this generalisation could have silently broken a clause it already admitted.
 
     A branch declaring NOTHING at all stays out, and that is the gate this keeps: §5's
     ``type`` row reads such a node as ``{}``, "which IS true", so it is not a statement
@@ -932,11 +1075,32 @@ def presence_clause(branch: Any, position: Position) -> Clause | None:
     if not isinstance(branch, Mapping):
         return None
     declared = {k for k in branch if keywords.declares(k, position)}
-    if not declared or not declared <= {"required", "not"}:
+    if not declared:
         return None
-    if "required" in declared and not isinstance(branch["required"], list):
-        return None
-    require = tuple(n for n in branch.get("required", ()) if isinstance(n, str))
+    # **BOTH HALVES REACH ONE DERIVATION, from the two sides of one branch** (§5, "A
+    # presence clause whose required half is a disjunction of groups", 2026-10-29; §11's
+    # one reading with two readers).  The ``not`` half was always
+    # :func:`required_groups`; the REQUIRED half is the same function asked of everything
+    # the branch declares BESIDE its ``not``, so ``required: [a, b]`` is the single group
+    # ``((a, b),)`` and an ``anyOf`` over ``required`` is the groups it states.  The
+    # screen is that function's own -- it admits ``required``, an ``anyOf`` of groups and
+    # an ``allOf`` of single-group conjuncts, and answers ``None`` for anything else --
+    # so this function keeps no parser and no keyword set of its own.  The set it used to
+    # carry, ``declared <= {"required", "not"}``, is what kept the four documents of
+    # ``adcp-client-python-10l.75`` out: a branch spelling its requirement
+    # DISJUNCTIVELY was read as a union of SHAPES, of a node where no branch declares a
+    # property, a type word or any value constraint.
+    demanded = declared - {"not"}
+    require: tuple[tuple[str, ...], ...] = ()
+    if demanded:
+        # **A branch that FORBIDS and requires nothing keeps its empty ``require``**
+        # (``adcp-client-python-10l.64``), which is this arm being skipped rather than
+        # ``required_groups`` being asked about an empty mapping -- that call answers
+        # ``None`` and would take the clause out.
+        groups = required_groups({k: branch[k] for k in demanded}, position)
+        if groups is None:
+            return None
+        require = tuple(groups)
     if "not" not in declared:
         return (require, ())
     forbid = required_groups(branch["not"], position)

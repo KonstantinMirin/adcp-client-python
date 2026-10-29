@@ -494,8 +494,33 @@ reached first.
   collision rule spends when two entries of one module need it, not what every entry pays up
   front. **This is a function of the one document and carries no dependency on a sibling set**, so
   it is insertion-stable — unlike the branch rule tried and reverted at `64d0f897`.
-- **Union branch**: its own `title`; else the `const` it pins on the discriminating property; else
-  its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
+- **Union branch**: its own `title`; else the `const`s it pins, in the document's own key order;
+  else its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
+
+**Rung 2 reads EVERY pin the branch states, and a rung that collides has not identified the
+branch (decided 2026-10-29).** Two clauses, and both are functions of the one branch, which is
+the insertion-stability criterion this section already states for the nested rule — a rule
+reading "the property the most branches pin" would rename every sibling when a branch is
+inserted, which is what was tried and reverted at `64d0f897`.
+
+A branch pinning a `const` on several properties derives from all of them, in the order the
+document writes the keys. Measured on `core/postal-country-system.json`, whose `/anyOf/4`
+through `/anyOf/8` each pin two: `FRCodePostal`, `AUPostcode`, `BRCep`, `INPin`, `ZAPostalCode`,
+where declining to choose between the two pins gave `Branch4` through `Branch8` — the positional
+name for the most heavily identified branches in the bundle. The four single-pin branches keep
+`US`, `GB`, `CA` and `Plz`, because one pin in key order is that one pin.
+
+Where a rung derives one name for two branches it has not identified either, so **both fall to
+the next rung** — the collision rule above lengthens a chain, and these chains are one segment
+with nothing to lengthen by. Measured on `trusted-match/provider-registration.json`, whose two
+branches pin `context_match: true` and `identity_match: true`: the value `true` is the same on
+both and names neither, so rung 2 answers nothing and rung 3's `required` set gives
+`ContextMatch` and `IdentityMatch`. What identifies those branches is WHICH property is present,
+which is the fact rung 3 reads.
+
+Rung 2 is not narrowed to unions that derive a dispatch discriminator. Measured: that reading
+takes `postal-country-system`'s four working names away, because no property of it is shared by
+all ten branches and the strict reading would send every branch to its index.
 
 **Collision, which this section never stated and the emitter therefore avoided by never
 colliding (added 2026-10-28).** The nested rule above is the LAST path segment, so two positions

@@ -2021,7 +2021,48 @@ def _refuse_a_combinator_of_shapes(
     to a population rather than to this row -- it was made as one, and this row's
     accepted set did not move: the refusal fires 0 times on the 1,054 portable documents
     before and after.
+
+    **THE KIND IS THE PARSER'S FIRST, and the screen reading second**
+    (``adcp-client-python-10l.37``).  A node whose combinator sits in an ``allOf``
+    CONJUNCT states it about the same instance -- draft-07 conjoins a conjunct with the
+    node that holds it -- so ``schema.parse`` classifies it a :class:`nodes.Union` and
+    the keyword is NOT in :attr:`nodes.Base.declares`, which reads this node's own keys.
+    Asked of ``declares`` alone this arm answered "no combinator here" and the composed
+    class was built with the branch list DROPPED and nothing reported, which is the one
+    outcome §2 forbids outright.  The parser's classification is the question's real
+    subject -- "is this node a union nobody is declaring the branches of" -- and
+    :attr:`nodes.Union.stated_at` is the pointer the document states the keyword at, so
+    the refusal names where it is written rather than where it applies.
+
+    **Its population is 0 and it is written anyway, which is the point of a backstop.**
+    The one node that reached it was ``adagents.json`` at ``/oneOf/1``, whose
+    ``/oneOf/1/allOf/0`` is a 6-branch ``anyOf``; ``adcp-client-python-10l.66`` landed
+    §5's own answer for a branch that is ITSELF a union -- ``lower.union``'s branch loop
+    recurses into ``lower_union`` with the enclosing base -- and that arm is read BEFORE
+    the composing one, so such a branch no longer arrives here.  Measured after that
+    merge by tracing every call: **0 of the 1,054 portable documents reach
+    ``lower_composition`` with a :class:`nodes.Union` and no ``UnionBase``.**  The arm
+    stays because what it refuses is not a shape the bundle happens to state but a
+    CALLER that forgot the branches: a fact dropped with nothing to report it is the one
+    outcome §2 does not permit at any rung, and the two arms are not duplicates -- one
+    is §5's answer and this is the assertion that the answer was taken.
+
+    :func:`kind_for` reads the cell for the kind rather than this site minting one, which
+    is ``docs/plan/architecture.md`` §3's rule and holds whether or not a document is
+    ever reported by it.
     """
+    if isinstance(node, nodes.Union):
+        return Refusal(
+            node.combinator,
+            node.stated_at,
+            f"this node composes AND its {node.combinator} is a combinator of SHAPES "
+            "whose branches nobody is declaring: section 5's row gives one class per "
+            "branch over the "
+            "composed bases, and the caller that declares them passes its UnionBase "
+            "here.  Reached without one, the branch list would be dropped from the "
+            "composed class with nothing to report it",
+            kind=kind_for(node.combinator, node.position),
+        )
     for keyword in _COMBINATORS:
         if keyword in node.declares and keyword not in screen:
             return Refusal(
@@ -2761,17 +2802,19 @@ def lower_composition(
     # the parser classifies it a ``Union``, which is §5's own arm order -- so the fields
     # read below are ``nodes.Base``'s and not the one kind this row is dispatched for.
     pointer, position = node.pointer, node.position
-    conjuncts: tuple[nodes.Conjunct, ...] | None = getattr(node, "conjuncts", None)
-    if conjuncts is None:
-        # §5's ``allOf`` row BESIDE A UNION: "the same, onto the base".  A node stating
-        # both is a :class:`nodes.Union` by §5's own arm order, so its conjunct list is a
-        # sibling (:attr:`nodes.Union.siblings`) rather than its kind -- and a conjunct is
-        # read at its own CONJ pointer either way, so there is one reading of what a
-        # conjunct list contributes and not one per kind that can state one.
-        conjuncts = tuple(
-            nodes.Conjunct(pointer=f"{node.pointer}/allOf/{i}", raw=c)
-            for i, c in enumerate(getattr(node, "siblings", {}).get("allOf") or ())
-        )
+    # §5's ``allOf`` row BESIDE A UNION: "the same, onto the base".  A node stating both
+    # is a :class:`nodes.Union` by §5's own arm order, so its conjunct list is a sibling
+    # of the combinator rather than its kind -- and a conjunct is read at its own CONJ
+    # pointer either way, so there is one reading of what a conjunct list contributes
+    # and not one per kind that can state one.
+    #
+    # **The LIST is the parser's, for both kinds** (``adcp-client-python-10l.37``).  It
+    # was rebuilt here out of :attr:`nodes.Union.siblings`, which was a second reading of
+    # ``allOf`` and could only ever yield ``enumerate``'s indices -- and a union whose
+    # combinator is borne by one of those very conjuncts composes the OTHERS, at the
+    # pointers the document gives them.  :attr:`nodes.Union.conjuncts` is that list, so
+    # the one place that saw the document decides which conjuncts compose.
+    conjuncts: tuple[nodes.Conjunct, ...] = getattr(node, "conjuncts", ())
     # **The TYPE first, BEFORE the keyword screen**, and the order is measured rather
     # than preferred: a node stating a non-object ``type`` composes no object whatever
     # else it states, so the type is the reason and a keyword it carries is not.  It sat
@@ -3755,7 +3798,13 @@ def _distribute(
                 "them with the branch's hop and this run resolved none",
                 kind=kind_for("allOf", Position.CONJ),
             )
-        mod.hops[pointer] = replace(branch.naming, parent=base, refuses=True)
+        # ``refuses`` was deleted at ``adcp-client-python-10l.41``, which replaced the
+        # flag with the PRESENCE of ``names.Branch.index``.  Nothing is passed in its
+        # place: this docstring's own sentence says the naming facts "were recorded by
+        # the module that declared it", so the target branch's hop already carries the
+        # index its declaring module gave it, and restating one here would overwrite a
+        # recorded fact with this loop's position.
+        mod.hops[pointer] = replace(branch.naming, parent=base)
         mod.importing(branch.symbol, branch.where)
         inherited = branch.declares.description
         made = declare_object(

@@ -201,12 +201,13 @@ def test_a_class_does_not_take_a_name_the_module_imports() -> None:
 
 
 def test_section_4s_branch_rules_name_the_branch_and_not_the_path_to_it() -> None:
-    """§4's three branch rules, as the segments each one places.
+    """§4's four branch rules, as the segments each one places.
 
     A title names ITSELF, so it starts a chain and the branch's ancestors are no part of
-    it; a ``const`` pin and a required set are spelled ON the parent's own segment, so a
-    branch named by either shares its base's spelling.  Which fact wins decides the
-    spelling and the placement together, which is why ``branch_identity`` returns both.
+    it; a ``const`` pin, a required set and an index are spelled ON the parent's own
+    segment, so a branch named by any of them shares its base's spelling.  Which fact
+    wins decides the spelling and the placement together, which is why
+    ``branch_identity`` returns both.
     """
     parent = ("MediaBuy", "TransitionsItem")
     assert names.branch_identity(names.Branch(parent="/x", title="Timer Transition"), parent) == (
@@ -219,7 +220,68 @@ def test_section_4s_branch_rules_name_the_branch_and_not_the_path_to_it() -> Non
     assert names.branch_identity(
         names.Branch(parent="/x", required=("trigger", "input")), parent
     ) == ("MediaBuy", "TransitionsItemInputTrigger")
+    # §4's FOURTH rung, ``<Base>Branch<i>`` (``adcp-client-python-10l.41``).  It is the
+    # LAST one and reached only here: the three rungs above each answered nothing, and a
+    # document that gives a branch no identity at all leaves nothing else to read.
+    assert names.branch_identity(names.Branch(parent="/x", index=3), parent) == (
+        "MediaBuy",
+        "TransitionsItemBranch3",
+    )
+    # And the index never OUTRANKS an identity, which is the whole of why it is accepted:
+    # the same hop carrying a title takes the title, and carrying a pin takes the pin.
+    assert names.branch_identity(
+        names.Branch(parent="/x", title="Timer Transition", index=3), parent
+    ) == ("TimerTransition",)
+    assert names.branch_identity(names.Branch(parent="/x", pin="media_event", index=3), parent) == (
+        "MediaBuy",
+        "TransitionsItemMediaEvent",
+    )
+    assert names.branch_identity(
+        names.Branch(parent="/x", required=("trigger",), index=3), parent
+    ) == ("MediaBuy", "TransitionsItemTrigger")
+    # The ONE hop left with no name at all is a NESTED union's branch, whose index the
+    # walk does not record because a member type needs no name of its own; ``segments``
+    # gives it the union's own derived name and nothing refuses.
     assert names.branch_identity(names.Branch(parent="/x"), parent) is None
+
+
+def test_inserting_a_branch_after_an_indexed_one_moves_no_existing_name() -> None:
+    """The row's own acceptance criterion: every branch class name is a function of the
+    branch node ALONE, so adding a sibling branch renames nothing already emitted.
+
+    :data:`names.INDEX_IS_THE_LAST_RUNG` is the sentence.  A positional name is normally
+    the defect -- the upstream v9 SDK numbers 1,092 of its 4,360 classes and renames a
+    sibling when a branch is inserted ahead of it -- and §4 accepts it only as the last
+    rung, where there is nothing else to read.  What makes it safe at that rung is that
+    an index is a fact of the branch's OWN position: it is never derived from what the
+    siblings state, so a branch APPENDED to the combinator adds a name and moves none.
+
+    Insertion in the MIDDLE does move the names after it, and that is the honest limit of
+    the rung -- §4 says "stable under insertion only at the end" -- so this grades the
+    property the section claims and not a stronger one.  A document that wants a stable
+    name under reordering states a ``title``, which is rung 1 and is what the upstream
+    candidate asks for.
+    """
+    def hops(count: int) -> dict[str, names.Hop]:
+        """A root union of ``count`` identity-less branches, as the walk records them."""
+        table: dict[str, names.Hop] = {"": names.Root("Asset Requirements")}
+        for i in range(count):
+            table[f"/anyOf/{i}"] = names.Branch(parent="", index=i)
+        return table
+
+    three = names.spell(_chains(hops(3)))
+    four = names.spell(_chains(hops(4)))
+    assert not isinstance(three, Refusal), three
+    assert not isinstance(four, Refusal), four
+    assert three == {
+        "": "AssetRequirements",
+        "/anyOf/0": "AssetRequirementsBranch0",
+        "/anyOf/1": "AssetRequirementsBranch1",
+        "/anyOf/2": "AssetRequirementsBranch2",
+    }, three
+    # The APPENDED branch adds a name and moves none: the row renames nothing but adds.
+    assert {p: n for p, n in four.items() if p in three} == three, four
+    assert four["/anyOf/3"] == "AssetRequirementsBranch3", four
 
 
 # --------------------------------------------------------------------------- #
@@ -294,10 +356,13 @@ def test_the_long_name_is_the_exception_and_not_the_rule() -> None:
     "the median name length falls and the count over 40 chars falls sharply; both are
     reported as measurements, not pinned".
 
-    Measured on the tree this row produced: 2,092 classes, median 17, mean 18.29, max
-    76, and 221 / 64 / 13 / 7 longer than 30 / 40 / 50 / 60 characters -- against 2,066
-    classes, median 26, mean 28.66 and 778 / 347 / 135 / 46 before it.  A ceiling, so a
-    row that emits more documents may raise the COUNT of long names and not the share.
+    Measured on the tree ``adcp-client-python-10l.50`` produced: 2,092 classes, median
+    17, mean 18.29, max 76, and 221 / 64 / 13 / 7 longer than 30 / 40 / 50 / 60
+    characters -- against 2,066 classes, median 26, mean 28.66 and 778 / 347 / 135 / 46
+    before it.  A ceiling, so a row that emits more documents may raise the COUNT of long
+    names and not the share: ``adcp-client-python-10l.41`` emitted 5 documents more and
+    the tree is 2,165 classes, median 17, mean 18.39, max 76 and 223 / 64 / 13 / 7 -- the
+    count over 30 moved by 2 and the share over 40 did not move at all.
     """
     classes = claimed(
         "every class statement of the committed tree",
@@ -316,7 +381,7 @@ def test_the_long_name_is_the_exception_and_not_the_rule() -> None:
             "§4's nested rule names a position and not the path to it, so a name is "
             "long only where the module's own names collide or where a branch's "
             "required set is long; it was 17% of the tree's 2,066 names before the rule "
-            "and is 3% of its 2,092 after.  A ceiling on the SHARE and not the count, "
+            "and is 3% of its 2,165 after.  A ceiling on the SHARE and not the count, "
             "because a row that emits more documents moves the count and not the rule"
         ),
     )
