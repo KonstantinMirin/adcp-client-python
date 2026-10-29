@@ -58,6 +58,16 @@ carries a rule, §2 always said so, and what was actually missing was the three 
 A ROOT array is the one of the four that still takes a rule TUPLE rather than a
 validator, because it is a root model and a root model has one.
 
+**A property that declares its array through a COMPOSITION is in the first group and not
+the third**, which is §2's clause of 2026-10-29: "A composing DECLARATION is not a
+position where no class encloses the value.  A property whose declaration is an ``allOf``
+still sits in the class that holds the property, so the clause above is unchanged and the
+rule is declared there -- the reader that writes it must see through the composition
+rather than the rule move to the value's own type."  So :func:`_distinct`'s gate is
+``compiler.declares_an_array``, which reads a conjunct through its ``$ref``, and the
+resolver it needs is the one parameter :func:`lower` takes that is not a fact of the
+node.
+
 **The step-5 boundary, and why it is a predicate and not a precedence rule.**  A
 ``oneOf``/``anyOf`` whose branches are SHAPES is a union root: a base, one subclass per
 branch, step 5's row.  A ``oneOf``/``anyOf`` whose every branch states only which keys
@@ -154,6 +164,8 @@ def lower(
     sources: Mapping[str, Any],
     declared: Mapping[str, Any] = {},  # noqa: B006 -- read-only, and the empty mapping is the answer
     extra_stated: bool = False,
+    *,
+    resolve: compiler.Resolver = None,
 ) -> Lowered:
     """Every rule one node states, off the three facts a node carries for it.
 
@@ -165,6 +177,13 @@ def lower(
     property holds), and ``extra_stated`` because the ``minProperties`` minimum rides
     only where the class keeps every key the document would count.
 
+    ``resolve`` is the fourth and belongs to the same reduction as the second:
+    :func:`_distinct` has to answer "is this property an ARRAY" of a declaration that
+    may say so through a ``$ref`` under an ``allOf``, and ``compiler.declares_an_array``
+    is the one reading of that.  ``None`` is the safe arm -- a composing declaration is
+    then not claimed, and the handler that claimed the keyword reports or refuses -- so a
+    caller with no run to resolve against loses no fact silently.
+
     :func:`lower_declaration` is the same reading asked of a raw declaration, for §2's
     one declaration-level reader: an ``allOf`` conjunct.
     """
@@ -174,11 +193,13 @@ def lower(
     _negated(sources, out)
     _combinator(sources, out)
     _conditional(sources, out)
-    _distinct(declared, out)
+    _distinct(declared, out, resolve)
     return out
 
 
-def lower_declaration(declaration: Mapping[str, Any], position: Position) -> Lowered:
+def lower_declaration(
+    declaration: Mapping[str, Any], position: Position, *, resolve: compiler.Resolver = None
+) -> Lowered:
     """:func:`lower`, asked of a raw DECLARATION: an ``allOf`` conjunct's rules.
 
     The sources are ``compiler.declaration_rule_sources``, which is the one reading of
@@ -195,6 +216,7 @@ def lower_declaration(declaration: Mapping[str, Any], position: Position) -> Low
         compiler.declaration_rule_sources(declaration, position),
         declared if isinstance(declared, dict) else {},
         "additionalProperties" in declaration,
+        resolve=resolve,
     )
 
 
@@ -533,25 +555,38 @@ def _combinator(node: Mapping[str, Any], out: Lowered) -> None:
         out.rules.append(RequiredGroups(tuple(c.require[0] for c in clauses), keyword))
 
 
-def _distinct(declared: Mapping[str, Any], out: Lowered) -> None:
+def _distinct(
+    declared: Mapping[str, Any], out: Lowered, resolve: compiler.Resolver = None
+) -> None:
     """``uniqueItems: true`` on an array this node holds as a property.
 
     The one keyword here that is read one level down, because D2 puts the rule on the
     NEAREST CLASS and the keyword's node -- an array -- is never a class.  Document
     order, so the emitted tuple is a function of the document's content (P7).
 
-    Gated on ``type: array`` and on the value being exactly ``true``: draft-07 applies
-    ``uniqueItems`` to an array and ignores it for every other instance, so a
-    ``uniqueItems`` on a string property says nothing and must not become a rule, and
-    ``uniqueItems: false`` is the keyword's own default and states nothing either.  A
+    Gated on the declaration DECLARING AN ARRAY and on the value being exactly ``true``:
+    draft-07 applies ``uniqueItems`` to an array and ignores it for every other instance,
+    so a ``uniqueItems`` on a string property says nothing and must not become a rule,
+    and ``uniqueItems: false`` is the keyword's own default and states nothing either.  A
     node this declines leaves the keyword on the declaration, where the array row
     refuses it by name.
+
+    **The gate is ``compiler.declares_an_array`` and not this declaration's own ``type``
+    word, because §2's clause of 2026-10-29 says a COMPOSING declaration is still a
+    property of the class that holds it**: "A property whose declaration is an ``allOf``
+    still sits in the class that holds the property ... the reader that writes it must
+    see through the composition rather than the rule move to the value's own type."  So
+    the array-ness may be stated behind a ``$ref`` under an ``allOf`` and this still
+    claims the key -- the class holds the field either way.  Read through ``compiler``
+    rather than here because ``lower_composition``'s own ``uniqueItems`` arm asks the
+    same question of the same declaration, and a gate that claimed where that arm
+    refused is the hole this closes.
     """
     claimed = [
         key
         for key, declaration in declared.items()
         if isinstance(declaration, dict)
-        and declaration.get("type") == "array"
+        and compiler.declares_an_array(declaration, resolve)
         and declaration.get("uniqueItems") is True
     ]
     if not claimed:

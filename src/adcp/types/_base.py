@@ -305,6 +305,118 @@ SAME_INSTANCE_FACTS = ("properties", "required", "additionalProperties")
 #: gives the pair one row and §8 compares neither a title nor anything derived from one.
 _ANNOTATES_THE_POINTER_THAT_STATES_IT = ("title", "description")
 
+#: The keywords draft-07 asserts about an OBJECT and IGNORES for every other instance,
+#: so a subschema stating nothing else admits every non-object vacuously.
+#:
+#: Read by :func:`entailed_types`' second clause, and it is read as a CEILING on a
+#: branch's whole key set rather than as a list of keys to look for: a branch stating
+#: one key outside it -- an ``allOf``, an ``if``, a ``not`` -- may refuse a non-object,
+#: and then the vacuity the clause reasons from does not hold.
+#:
+#: **Four keys and not seven, which makes the clause fire LESS often and never
+#: wrongly.** ``minProperties``, ``patternProperties`` and ``dependencies`` are also
+#: ignored for a non-object and are deliberately absent: a branch carrying one is
+#: screened out, the entailment does not fire, and the node is read exactly as it is
+#: read today.  Measured over the 1,054 portable documents, no site turns on them --
+#: the three ``oneOf`` nodes the clause fires at state these four keys and nothing
+#: else, and admitting ``title``/``description`` beside them adds no site at all.
+#:
+#: It equals ``codegen.keywords.ARM["object"]`` today and is NOT that table: ARM
+#: answers which keyword a ``type`` word carries on one arm of a type LIST, for a cut
+#: and its inverse fold, and omits the other three because no row of the cut decides
+#: them.  This answers which keyword says nothing about a non-object.  Same four keys,
+#: two readings, and the direction each one is conservative in is different -- so it is
+#: declared here, where the rule it serves is, rather than imported into the package
+#: from the compiler that may not be installed beside it.
+IGNORED_BY_A_NON_OBJECT = frozenset(
+    {"properties", "required", "additionalProperties", "propertyNames"}
+)
+
+
+def _as_a_member(word: Any) -> Any:
+    """A ``type`` value as a SET MEMBER: draft-07's LIST form becomes a tuple.
+
+    draft-07's ``type`` is a word or a list of them, and both are assertions about the
+    same instance -- so :func:`entailed_types` answers about both, and a set is what it
+    answers with, which a list cannot be a member of.  The tuple keeps the document's
+    own order, so two spellings of one list are two members and neither is read as the
+    other.
+    """
+    return tuple(word) if isinstance(word, list) else word
+
+
+def entails_type(node: Mapping[str, Any], value: Any) -> bool:
+    """Does this node's COMBINATOR force exactly ``value`` on its own instance?
+
+    :func:`entailed_types` asked of one candidate, for the reader that holds a ``type``
+    value and not a word: ``codegen.harness``'s comparison is handed whatever the MODEL
+    renders, which draft-07 lets be a list, and a list is no set member.  So the one
+    normalisation is applied to both sides here rather than at the call, which is what
+    keeps the two readers of the derivation from disagreeing about the list form.
+    """
+    return _as_a_member(value) in entailed_types(node)
+
+
+def entailed_types(node: Mapping[str, Any]) -> frozenset[Any]:
+    """The ``type`` words a node's COMBINATORS force on the instance it describes.
+
+    draft-07 holds a ``oneOf``/``anyOf`` against the same instance the node describes,
+    so a node stating no ``type`` of its own can still admit instances of one type
+    only -- and then the word is the document's statement about that instance, as much
+    as a stated one is.  Two clauses, and each is a property of the branch list:
+
+    * **every branch states the SAME word.**  An instance must satisfy a branch, and
+      every branch demands that type, so no other type is admitted.
+    * **a ``oneOf`` of two or more branches that each admit every non-object
+      vacuously** -- every key inside :data:`IGNORED_BY_A_NON_OBJECT` -- admits no
+      non-object at all.  A non-object satisfies ALL of them, ``oneOf`` demands
+      exactly one, so ``oneOf`` refuses it; an object may satisfy exactly one and is
+      admitted.  **This clause is ``oneOf``'s and not a combinator's**: under
+      ``anyOf`` the same branch list admits every non-object, because satisfying all
+      is satisfying at least one.  Stated as a property of the branch list rather than
+      of exclusivity it would be a NARROWING at an ``anyOf``.  A branch with no key at
+      all is excluded for the same reason read the other way: the empty schema admits
+      the objects too, so every instance satisfies every branch and the node admits
+      nothing -- a shape this says nothing about rather than one it calls ``object``.
+
+    A :class:`frozenset` and not one word, because the two combinators are independent
+    assertions and a node may state both; the clauses themselves cannot collide, since
+    the second requires a branch list that states no ``type`` word.
+
+    The members are ``type`` VALUES read through :func:`_as_a_member`, so draft-07's
+    list form is a tuple here -- a branch list whose every member states
+    ``["string", "null"]`` forces that list, which no single word expresses, and
+    :func:`entails_type` is the reader that normalises the other side.
+    :func:`applied_schema` takes an answer only where it is one ``str``, because what it
+    does with one is conjoin ``type: <word>`` into the node below and a list admits more
+    than one type -- the same reading its own clause already gives a STATED list.
+
+    **Declared in the package, beside :data:`SAME_INSTANCE_LIST`, for that data's own
+    reason**: the emitter decides whether a node can become a class from this answer,
+    the runtime decides what that class's schema is from :func:`applied_schema`, and
+    the comparison decides whether a model's ``type`` word is one its document states.
+    Three readers, one derivation.  A second spelling in any of them is a model
+    narrower than the schema it names, or the same disagreement showing up as the
+    verifier reporting a fact the emitter read off the document.
+    """
+    out: set[Any] = set()
+    for combinator in SAME_INSTANCE_LIST[1:]:  # anyOf, oneOf -- not the conjunct list
+        branches = node.get(combinator)
+        if not isinstance(branches, list) or not branches:
+            continue
+        if not all(isinstance(b, dict) for b in branches):
+            continue
+        stated = {_as_a_member(b.get("type")) for b in branches}
+        if len(stated) == 1 and (word := next(iter(stated))) is not None:
+            out.add(word)
+        elif (
+            combinator == "oneOf"
+            and len(branches) >= 2
+            and all(b and set(b) <= IGNORED_BY_A_NON_OBJECT for b in branches)
+        ):
+            out.add("object")
+    return frozenset(out)
+
 
 def _conjunction(node: dict, through: str) -> list:
     """What ``node`` asserts about the same instance, as draft-07's own conjunct list.
@@ -490,9 +602,40 @@ def applied_schema(root: dict, pointer: str) -> dict:
         same_instance = part in SAME_INSTANCE_LIST or part in SAME_INSTANCE_ONE
         if same_instance:
             declared = node.get("type") if isinstance(node, dict) else None
+            # **A WORD THE ENCLOSING NODE ENTAILS COUNTS AS ONE IT ASSERTS**, which is
+            # :func:`entailed_types` and which the node's own stated word still beats.
+            # The enclosing node's assertion about this instance is what this arm
+            # carries, and draft-07 makes that assertion out of the branch list as
+            # readily as out of a ``type`` key: a ``oneOf`` whose every branch admits
+            # every non-object vacuously admits no non-object, so the instance below
+            # the hop IS an object and the document said so.  Read here, where "what
+            # encloses this instance" is already decided, rather than at the one row
+            # that needs it, because the walk below and the comparison both reach this
+            # answer through this function and a second derivation is the divergence
+            # this function exists to prevent.
+            #
+            # Asked only where the node states no word of its own: a node declaring
+            # ``string`` over branches that entail ``object`` states a contradiction,
+            # and the clause below keeps its own word so it is refused for stating one
+            # rather than quietly rewritten.  Asked for ONE word, so a node whose two
+            # combinators entail two different types carries neither -- the document
+            # there admits nothing, and a word picked off such a list would be this
+            # function's invention rather than the document's statement.
+            #
+            # And for one ``str``, which is the same reading the STATED clause already
+            # takes of a type LIST: a ``["object", "null"]`` admits a null, so there is
+            # no single word to conjoin and nothing is carried.
+            #
             # INHERITED through a chain of such hops: a node asserting nothing passes
             # its own enclosing assertion down.
-            enclosing = declared if isinstance(declared, str) else enclosing
+            if isinstance(declared, str):
+                enclosing = declared
+            elif (
+                isinstance(node, dict)
+                and len(entailed := entailed_types(node)) == 1
+                and isinstance(word := next(iter(entailed)), str)
+            ):
+                enclosing = word
             if isinstance(node, dict):
                 conjoined += _conjunction(node, part)
             # **A second CUT drops the first one's siblings rather than guessing how
