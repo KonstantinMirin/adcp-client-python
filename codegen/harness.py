@@ -1411,10 +1411,13 @@ def _settled(node: Any, root: Any) -> Any:
     pair of them in the order ``compare`` applies them -- normalisation FIRST, "so a
     reference whose TARGET composes still has its conjuncts folded".  Anything that is not
     a mapping is handed back unchanged, which is what a list of branches is.
+
+    ``root`` reaches BOTH readings, because both resolve a local pointer against it: the
+    node's own (:func:`_normalize`) and a bare conjunct's (:func:`_composed`).
     """
     if not isinstance(node, Mapping):
         return node
-    return _composed(_normalize(node, root, declared_null=True))
+    return _composed(_normalize(node, root, declared_null=True), root)
 
 
 def _steps(
@@ -2794,8 +2797,8 @@ def _target(ref: Any, root: Any) -> Any:
     return target if isinstance(target, dict) else None
 
 
-def _branch_target(branch: Any, root: Any) -> Any:
-    """A union BRANCH that is a bare local ``$ref``, read as the node it names.
+def _branch_target(member: Any, root: Any) -> Any:
+    """A combinator MEMBER that is a bare local ``$ref``, read as the node it names.
 
     **The same reading :func:`_normalize` already takes at a NODE, taken one level in
     at a BRANCH, and taken by the one function on BOTH sides.**  §9's "a nested class
@@ -2820,12 +2823,32 @@ def _branch_target(branch: Any, root: Any) -> Any:
     the 33 resolve to a node whose own content is a ``oneOf``, which states no ``type``,
     and that is exactly the answer the one hop gives.
 
-    ``None`` from :func:`_target` is the same fail-safe: the branch stays as written.
+    **AT AN ``allOf`` CONJUNCT TOO, which is why the parameter is a MEMBER and not a
+    branch** (``adcp-client-python-fte``).  A branch and a conjunct are the same
+    POSITION as far as this reading goes -- a member of a combinator list, written as a
+    pointer because ``bundle.record`` leaves a local one as the document writes it -- and
+    a conjunct is where the reading was missing: :func:`_composed` folds a conjunct's
+    facts into the node it composes, so a conjunct left as a pointer states nothing in
+    ``FOLDED_FACTS`` and folds to nothing, and a faithful composing subclass then reads
+    as ADDING its own base's facts.  Measured over the records of all 1,054 portable
+    documents: **21 pairs, 217 added facts in 2 documents**
+    (``core/registry-event.json`` and ``core/account-identity-change-preview.json``),
+    every model of them faithful.
+
+    The two positions are gated the same way and the bundle says the gate costs nothing
+    here either: there are **54 ``allOf`` conjuncts that are a local ``$ref``, one per
+    ``allOf`` node, in 5 documents, and all 54 carry no key beside the ``$ref``**.  All
+    54 resolve, 1 to a node carrying a union -- ``core/registry-event.json``'s
+    ``#/$defs/publisherAdagentsPayload`` -- which :func:`_composed` keeps as the
+    assertion it is rather than folding, exactly as it keeps a conjunct that spells its
+    combinator inline.
+
+    ``None`` from :func:`_target` is the same fail-safe: the member stays as written.
     """
-    if not isinstance(branch, dict) or set(branch) != {"$ref"}:
-        return branch
-    target = _target(branch["$ref"], root)
-    return branch if target is None else target
+    if not isinstance(member, dict) or set(member) != {"$ref"}:
+        return member
+    target = _target(member["$ref"], root)
+    return member if target is None else target
 
 
 def _conjoined_type(node: dict, kw: str, branches: list[dict]) -> tuple[dict, list[dict]]:
@@ -3390,7 +3413,7 @@ def _tighter(keyword: str, node: Any, conjunct: Any) -> Any:
     return _UNDECIDED
 
 
-def _composed(doc: Any, depth: int = 0) -> Any:
+def _composed(doc: Any, root: Any, depth: int = 0) -> Any:
     """The document's node with every ``allOf`` conjunct's facts folded in.
 
     **``allOf`` conjoins, so a conjunct's unconditional facts ARE the
@@ -3451,16 +3474,45 @@ def _composed(doc: Any, depth: int = 0) -> Any:
     a branch is compared as a document in its own right by the pairing rather
     than through its parent.
 
-    A ``$ref`` conjunct is not resolved here, and does not need to be: the
-    caller hands this a RESOLVED document (``codegen.bundle.record`` writes it
-    into the package and ``adcp.types._base.schema_at`` reads it back), and 0 of
-    the conjuncts in that 61-document sample still carried a ``$ref``.  A
-    conjunct that somehow did would state no fact in ``compared_facts`` and so fold to
-    nothing, which is the pre-existing behaviour rather than a new hole.
+    **A LOCAL ``$ref`` CONJUNCT IS RESOLVED HERE, against ``root``, and that paragraph
+    USED TO SAY IT WAS NOT** (``adcp-client-python-fte``).  It read "the caller hands
+    this a RESOLVED document ... and 0 of the conjuncts in that 61-document sample still
+    carried a ``$ref``", and that is TRUE of a REMOTE conjunct -- ``bundle.record``
+    inlines one -- and FALSE of a LOCAL one, which §4 leaves exactly as the document
+    writes it (``tests/test_fragment_ref.py``
+    ``::test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_it``).
+    A pointer states no fact in ``FOLDED_FACTS``, so such a conjunct folded to NOTHING
+    and a composing subclass that inherits exactly what the pointer names read as ADDING
+    its base's facts: measured over the graded tree, **21 pairs and 217 added facts in
+    ``core/registry-event.json`` and ``core/account-identity-change-preview.json``**,
+    every model of them faithful.
+
+    **ONE READING AND NOT A SECOND ONE**: the hop is :func:`_branch_target`, the same
+    function :func:`_normalize` already uses at a union BRANCH, called here because a
+    conjunct is the same POSITION -- a member of a combinator list, spelled as a
+    pointer.  It is taken ONCE over the list and before anything reads it, so the fold
+    arms below, the ``properties`` and ``items`` stashes, and the ``kept`` clause at the
+    bottom all see what the conjunct STATES rather than the pointer it states it
+    through; and a member whose target is a union is kept by that clause for the same
+    reason an inline combinator is.  ``root`` is threaded in for it and is the same
+    per-side root :func:`_normalize` reads a node's ``$ref`` against -- the whole
+    resolved DOCUMENT on the document side, the model's own
+    ``model_json_schema()`` on the model's.
+
+    A conjunct the hop declines -- a pointer with a sibling, a target that is itself a
+    reference, a pointer naming nothing -- is left as written, states no fact in
+    ``compared_facts``, and folds to nothing.  That is the FAIL-SAFE direction and the
+    pre-existing behaviour: the composed node states less, every fact the model carries
+    reads as ``added``, and the pair reddens rather than passing blind.
     """
     conjuncts = doc.get("allOf") if isinstance(doc, dict) else None
     if not isinstance(conjuncts, list) or depth > _COMPOSE_DEPTH:
         return doc
+    # The conjuncts as the DOCUMENT writes them, with a bare local pointer read as the
+    # node it NAMES (:func:`_branch_target`).  Here rather than inside the loop because
+    # ``kept`` below reads the list again, and resolving in two places is the second copy
+    # §3 forbids -- one of them would then see a pointer where the other sees a union.
+    conjuncts = [_branch_target(c, root) for c in conjuncts]
     out = {k: v for k, v in doc.items() if k != "allOf"}
     for conjunct in conjuncts:
         if not isinstance(conjunct, dict):
@@ -3473,7 +3525,7 @@ def _composed(doc: Any, depth: int = 0) -> Any:
         # inherited boolean, whose ``enum`` read as ``missing``.  ``bundle.record``
         # copies the base's ``{"type": "boolean"}``, so the conjunct arrives in the
         # document's own spelling and both undoings are deleted (§9).
-        c = _composed(conjunct, depth + 1)
+        c = _composed(conjunct, root, depth + 1)
         # **The view that states the composed node's VALUE SET states its description**
         # (:func:`_described_by_the_conjunct`), read BEFORE the vocabulary axis
         # collapses: the collapse drops one of the two statements and this asks which
@@ -3568,6 +3620,12 @@ def _composed(doc: Any, depth: int = 0) -> Any:
     # states.  A conjunct whose facts DO fold is unaffected: an ``enum`` conjunct's
     # ``enum`` and ``type`` are in ``FOLDED_FACTS``, which is why the other five sites of
     # the same row compare green without this.
+    #
+    # Read off the RESOLVED list above, so a conjunct that spells its combinator through
+    # a local pointer is kept on the same terms as one that spells it inline -- 1 of the
+    # bundle's 54 local-``$ref`` conjuncts does
+    # (``core/registry-event.json#/$defs/publisherAdagentsPayload``), and before the hop
+    # it was invisible to this clause as well as to the fold.
     kept = [
         c for c in conjuncts if isinstance(c, dict) and ("oneOf" in c or "anyOf" in c)
     ]
@@ -3716,7 +3774,7 @@ def compare_schema(
         # presence is ``required`` at the parent.  A null BRANCH here is therefore
         # always a type fact, which is what makes the fold lossless and what keeps a
         # model that drops the null reportable.
-        doc = _composed(_normalize(doc, root, declared_null=True))
+        doc = _composed(_normalize(doc, root, declared_null=True), root)
         # The DOCUMENT decides whether a null branch on the model's side is a type
         # fact or D4's spelling of absence, so the document is read first and the
         # model's node is normalized against it.

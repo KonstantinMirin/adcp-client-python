@@ -2951,7 +2951,8 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
         # same argument ``_composed`` is read here for.
         root = schema_at(SchemaRef(row.ref.document, "#"))
         declared = _composed(
-            harness._normalize(schema_at(row.ref), root, declared_null=True)  # noqa: SLF001
+            harness._normalize(schema_at(row.ref), root, declared_null=True),  # noqa: SLF001
+            root,
         ).get("additionalProperties", "silent")
         # The four forms, named: a schema here is the TYPED row, graded in full by
         # ``test_a_typed_additional_properties_is_a_typed_pydantic_extra``.  What D8
@@ -4476,7 +4477,9 @@ def test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_
     claimed("graded documents stating properties with no root type", bare)
     for document in bare:
         doc = schema_at(SchemaRef(document, "#"))
-        assert _composed(doc).get("type") == "object", (document, _composed(doc).get("type"))
+        # ``doc`` IS the root here -- the pair is the document's own ``#`` -- so it is
+        # what a conjunct's local pointer resolves against.
+        assert _composed(doc, doc).get("type") == "object", (document, _composed(doc, doc))
         for admitted in ("hello", 42, [1], None, True):
             assert not jsonschema.Draft7Validator(doc).is_valid(admitted), (document, admitted)
 
