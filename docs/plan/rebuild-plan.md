@@ -732,7 +732,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | keyword | compiles to |
 | --- | --- |
 | `const` | `Literal[value]`; the type word is not restated, since Pydantic renders it. A `format` beside the pin compiles to NOTHING and the pin alone is rendered, because a fixed value either satisfies the format or the node admits nothing: the pin is checked against the format, and where it satisfies it the `Literal` is already strictly tighter than any type the format would select, while where it does not the node is §5's empty intersection and refuses upstream. So no fact is dropped and §8 grades the `format` as not rendered at this co-occurrence (`adcp-client-python-10l.70`, decided 2026-10-29). A `str`, `bool` or `int` value; an object, array, `null` or float refuses. On a branch's property → also the second of the branch-naming choices. AT a branch node, pinning the whole branch → the branch is a scalar: a `Literal` member of the union. Where EVERY branch of a root union is a scalar there are no branch classes to declare, so the root emits as an alias over the union of their types — `Literal['asap'] | AwareDatetime` — and not as a base with branches. A root union with a scalar branch beside a class branch → refused by name: the root symbol is a class or an alias, no shape in §4 carries both, and the first document to state one decides it rather than taking a rendering nothing has exercised. RULE: under `if` → a `Match` clause's value; under `then` / `else` / `not` → nothing. |
-| `enum` | A named node → `StrEnum` / `IntEnum`, base read off the members; `enumDescriptions` → member docstrings. An untitled BRANCH of a root union → a `Literal` of the members. Mixed member types, an empty list, or a duplicate member → refused. Two members whose spellings yield one Python name → refused, naming both: a silent collision would drop a member the document admits. ROOT → the enum with a module-level `strict_validate`. PROP → a nested enum. KEY → a `Literal` of the members as the mapping's KEY type, which pydantic renders back as `propertyNames: {enum: […]}` — the document's own keyword, rendered and gradable; where the key node carries a `title` the `StrEnum` is the key type and renders the same way. RULE: under `if` → `Match` values; else nothing. |
+| `enum` | A named node → `StrEnum` / `IntEnum`, base read off the members; `enumDescriptions` → member docstrings. An untitled BRANCH of a root union → a `Literal` of the members. Mixed member types, an empty list, or a duplicate member → refused. Two members whose spellings yield one Python name → a `Literal` of the members and NOT an enum class (decided 2026-10-29). The collision exists only because an enum mints a Python IDENTIFIER per member; a `Literal` needs none, so both values are carried exactly as the document spells them and nothing is dropped. This is the same answer the row already gives an untitled branch of a root union, reached by a second route. Refusing instead cost **21 of the 95 refusals** for one node — `formats/canonical/html5.json`'s `clicktag_macro`, whose `clickTag` and `clickTAG` both spell `CLICKTAG` — including `core/product.json`. The cost is that one node gives a string-literal union rather than an enum class, which is a DX difference and not a correctness one; dropping a member, which the old clause rightly refused to do, remains forbidden. ROOT → the enum with a module-level `strict_validate`. PROP → a nested enum. KEY → a `Literal` of the members as the mapping's KEY type, which pydantic renders back as `propertyNames: {enum: […]}` — the document's own keyword, rendered and gradable; where the key node carries a `title` the `StrEnum` is the key type and renders the same way. RULE: under `if` → `Match` values; else nothing. |
 | `default` | On a REQUIRED property → dropped and reported, because no rendering makes a field both required and defaulted. On a node that becomes an alias → no slot. PROP → the field's default; `None` is a default, absence is not. |
 <!-- end generated -->
 
@@ -1366,6 +1366,25 @@ folds the model's `anyOf: [{$ref}, {"type": "null"}]` back into the document's o
 nested class is then paired with the same node and reports `differs /type` — `object` against
 `["object", "null"]` — for a fact the parent already carries and the comparison already graded.
 The model is faithful at both pointers; only the pairing was wrong.
+
+**A `properties` entry whose subschema is the EMPTY SCHEMA is not a fact these checks grade
+(decided 2026-10-29).** §5's `additionalProperties` row already fixes the reading — "the empty
+schema `{}` IS `true` and is read as `true` everywhere below" — and a `properties` entry stating
+`{}` therefore constrains nothing. A document with no entry for a key and a model carrying
+`properties: {key: {}}` admit exactly the same instances, so the entry is vacuous and reporting it
+`added` counts a non-fact as a defect. One reading of the empty schema, two readers.
+
+This is what `required` naming a property no declaration declares was caught between, and it is
+**27 of the 95 refusals, 5 of them primary**. §5's `required` row called such a name "a presence
+rule with no field", a rule renders no `required` in a model's JSON schema, and the keyword's own
+cell is `rendered=True` — so the rule half reported `differs /required` and the field half
+reported an `added` `properties` entry, and the handler refused rather than emit a pair it knew
+was red. Two of this compiler's own decisions disagreeing, with no document at fault.
+
+**The field half is the right one and it is EXACT.** `required: ["x"]` with no declaration for `x`
+admits an object carrying `x` with any value, which is precisely a required field of type `Any` —
+`Any` being what §5's `type` row already gives an absent type word. Nothing is widened, nothing is
+dropped, and no declaration is owed. With the fold above, both halves of the comparison agree.
 
 So a `null` member of a type list is the FIELD's fact, graded where the field is, and a member
 class is graded against the shape it actually describes. Row `.20` found this by emitting new
