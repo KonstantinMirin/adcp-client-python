@@ -178,6 +178,27 @@ def asserted_formats(doc: dict) -> frozenset[str]:
     """
     return frozenset(harness.validator_for(doc).FORMAT_CHECKER.checkers)
 
+
+def _node_or_none(doc: dict, into: str) -> dict | None:
+    """The MAPPING a ``$ref``'s pointer half names in ``doc``, or ``None``.
+
+    The reading :attr:`referenced` and :func:`based_nodes` both fill through, so §2's
+    intersection rule resolves a fragment the same way ``bundle.record`` inlines one --
+    one pointer navigator (``bundle.node_at``) and one escaping rule.
+
+    ``None`` for a pointer naming no node, and for one naming a node that is not a
+    mapping: the rule compares two DECLARATIONS, and the answer it does something with
+    is a schema.  That is the same undecidable arm ``Module.resolve_node`` already has,
+    and refusing is the direction it points -- a reference the merge rule cannot read is
+    a declaration it must not claim is narrower.
+    """
+    try:
+        node = bundle.node_at(doc, into)
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+    return node if isinstance(node, dict) else None
+
+
 def module_path(document: str) -> str:
     """D1: the module is the document path with hyphens as underscores."""
     p = Path(document)
@@ -428,7 +449,7 @@ def lower_document(
     doc: dict,
     targets: Mapping[tuple[str, str], Target | Refusal] | None = None,
     named: frozenset[str] = frozenset(),
-    roots: Mapping[str, dict] | None = None,
+    referenced: Mapping[str, dict] | None = None,
     reserved: frozenset[str] = frozenset(),
     asked: set[tuple[str, str]] | None = None,
     inherited: Mapping[str, Target | Refusal] | None = None,
@@ -453,7 +474,7 @@ def lower_document(
         # this document and keyed by URI (``inherited_sites``).  Empty for a document
         # lowered outside a run, exactly as ``targets`` is.
         inherited_targets=inherited if inherited is not None else {},
-        roots=roots if roots is not None else {},
+        referenced=referenced if referenced is not None else {},
         reserved=reserved,
         # The run's own record of which sites this walk asked about, handed IN so that
         # it survives a refusal: a document that refuses has no module to hand back, and
@@ -978,7 +999,7 @@ def decidable(
     doc: dict,
     targets: Mapping[tuple[str, str], Target | Refusal],
     named: frozenset[str],
-    roots: Mapping[str, dict],
+    referenced: Mapping[str, dict],
     reserved: frozenset[str],
     carriers: frozenset[str],
     asked: set[tuple[str, str]],
@@ -998,7 +1019,9 @@ def decidable(
     document is lowered once, when the order reaches it, so there is no memo to consult
     and no in-flight stack to push.
     """
-    outcome = lower_document(document, doc, targets, named, roots, reserved, asked, inherited)
+    outcome = lower_document(
+        document, doc, targets, named, referenced, reserved, asked, inherited
+    )
     if isinstance(outcome, Refusal):
         return outcome
     mod, _ = outcome
@@ -1181,24 +1204,33 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     #: ``core/daast-tracker-constraints.json#/definitions/daast_versions`` and reported
     #: the fact *missing* until this map existed.
     minted: dict[str, tuple[Approximation, ...]] = {}
-    #: ``$ref`` URI -> the ROOT NODE of the document it names, for §2's intersection
-    #: rule (:meth:`compiler.Module.resolve_node`).  **Run-level and not per document**,
-    #: and the reason is whose declaration that rule reads: it compares two property
+    #: ``$ref`` URI -> the NODE it names, for §2's intersection rule
+    #: (:meth:`compiler.Module.resolve_node`).  **Run-level and not per document**, and
+    #: the reason is whose declaration that rule reads: it compares two property
     #: DECLARATIONS, and one of them is a BASE's, so the URI it asks about is a site of
     #: the base's document and not of the one being lowered.  Filled as the order
     #: finishes each document, which is early enough by construction -- a base precedes
     #: the document composing it, and the base's own targets precede the base.
-    roots: dict[str, dict] = {}
+    #:
+    #: **A FRAGMENT URI is in here too, and it held only document ROOTS until
+    #: ``adcp-client-python-10l.72``.**  The rule is about the two TARGETS, and a
+    #: reference naming ``…/vast-tracker-constraints.json#/definitions/vast_versions``
+    #: names one as squarely as a reference naming a root does; answering ``None`` for it
+    #: made the predicate read a pair of resolvable references as two it could not read,
+    #: and refuse.  ``bundle.node_at`` is the one pointer navigator, so the fragment half
+    #: is resolved by the same reading ``bundle.record`` inlines a target with.
+    referenced: dict[str, dict] = {}
     #: document -> the reference sites its walk ASKED about, kept whatever the outcome:
     #: a refused document has no module to hand back and the sites it reached before
     #: refusing are what say whether their targets are documents this run owes.
     asked: dict[str, set[tuple[str, str]]] = {}
-    #: target document -> the no-fragment URIs that name it, so the fill above is a
-    #: lookup rather than a scan per document.
-    spellings: dict[str, set[str]] = {}
+    #: target document -> the ``(URI, pointer)`` pairs that name a node of it, so the
+    #: fill above is a lookup rather than a scan per document.  A reference with no
+    #: fragment carries the empty pointer and names the root.
+    spellings: dict[str, set[tuple[str, str]]] = {}
     for edge in found:
-        if edge.target is not None and not edge.into:
-            spellings.setdefault(edge.target, set()).add(edge.uri)
+        if edge.target is not None:
+            spellings.setdefault(edge.target, set()).add((edge.uri, edge.into))
 
     def answer(document: str, edge: bundle.Edge) -> Target | Refusal:
         """What ONE reference site resolves to, for the document that is about to
@@ -1408,8 +1440,8 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         """The reference sites this document inherits from the classes it COMPOSES,
         resolved for this document and keyed by URI alone.
 
-        **§2's intersection rule is what asks for it, and ``roots`` already carries the
-        other half of the same answer.**  That map's own reason -- "the URI it asks
+        **§2's intersection rule is what asks for it, and ``referenced`` already carries
+        the other half of the same answer.**  That map's own reason -- "the URI it asks
         about is a site of the base's document and not of the one being lowered" -- is
         this one's: where a conjunct restates a property the base declares, the field
         carries the INTERSECTION, so every key the base alone declares reaches the
@@ -1439,6 +1471,52 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             for uri, edge in sorted(composes_sites.get(base, {}).items()):
                 out.setdefault(uri, answer(document, edge))
         return out
+
+    def based_nodes(document: str) -> dict[str, dict]:
+        """The node each ``$ref`` LOCAL TO A BASE'S OWN DOCUMENT names.
+
+        **The other half of what a BASE's declaration can say, and the half
+        :attr:`referenced` cannot hold** (``adcp-client-python-10l.72``).  §2's
+        intersection rule reads a base's declaration beside this document's own, and a
+        base may declare a property as a pointer into ITS OWN text --
+        ``core/vast-tracker-constraints.json`` declares ``vast_versions`` as
+        ``{"$ref": "#/definitions/vast_versions"}`` -- while the composing document names
+        the SAME NODE absolutely.  A spelling relative to another document is relative to
+        another document: :attr:`referenced` is keyed by the URI alone and so cannot hold
+        one, which is why the predicate read two references to one node as two it could
+        not read at all, and refused.
+
+        **Per DOCUMENT and not run-level, which is exactly the split
+        :func:`inherited_sites` already is**, and for the same reason: the answer is a
+        function of the composing document, because it is that document's BASES whose
+        text these spellings belong to.  ``emit.composes_sites`` excludes a local edge by
+        construction -- there is no site to answer it by URI -- so this reads the base's
+        edges directly and resolves the pointer against the base's own finished document.
+
+        **A spelling this document ITSELF writes is left out, and one two bases resolve
+        DIFFERENTLY is dropped.**  One resolver answers both sides of the comparison, so
+        a spelling that names two nodes in the documents in view has no single answer and
+        ``None`` is this map's own undecidable arm -- the safe direction, which refuses.
+        Measured over the 1,054 portable documents: **0 such collisions**, in either form
+        -- 45 of the documents a composition reaches spell a local reference and no
+        composing document shares one of those spellings with a base.  The screens are
+        here because the guarantee is the bundle's and not the rule's.
+        """
+        own = {edge.uri for edge in sites.get(document, ()) if edge.local}
+        out: dict[str, dict] = {}
+        collided: set[str] = set()
+        for base in sorted(composes.get(document, ())):
+            if base == document or base not in lowered:
+                continue
+            for edge in sites.get(base, ()):
+                if not edge.local or edge.uri in own:
+                    continue
+                node = _node_or_none(lowered[base][2], bundle.split_ref(edge.uri)[1])
+                if node is None:
+                    continue
+                if out.setdefault(edge.uri, node) != node:
+                    collided.add(edge.uri)
+        return {uri: node for uri, node in out.items() if uri not in collided}
 
     #: document -> the documents its ``allOf`` conjuncts compose, transitively.  Filled
     #: as the order finishes each document, which is early enough by construction: a
@@ -1486,7 +1564,11 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             doc,
             resolve(document),
             named.get(document, frozenset()),
-            roots,
+            # The run's own reading of every reference spelled absolutely, and beside it
+            # the spellings that are relative to a BASE's document (:func:`based_nodes`).
+            # The base's half is asked SECOND the way ``inherited_targets`` is, so a URI
+            # the run already resolves keeps the run's answer.
+            {**based_nodes(document), **referenced},
             render.RESERVED,
             render.CARRIERS,
             asked.setdefault(document, set()),
@@ -1522,12 +1604,18 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         # includes (§9), and a module with no member is returned unchanged.
         bound = lower_envelope.adopt(bound, members)
         lowered[document] = (mod, bound, doc)
-        # The target's own root node, for §2's intersection rule and for nothing else.
-        # Written when the document FINISHES, so a refused document contributes none and
-        # the rule treats such a pair as unordered -- which is the safe direction and is
-        # what the binder answered for a refused target before.
-        for uri in sorted(spellings.get(document, ())):
-            roots[uri] = doc
+        # The node each reference to this document names, for §2's intersection rule and
+        # for nothing else.  Written when the document FINISHES, so a refused document
+        # contributes none and the rule treats such a pair as unordered -- which is the
+        # safe direction and is what the binder answered for a refused target before.
+        #
+        # A pointer naming no node is left out rather than raised on: the same reading
+        # answers ``None`` for it, which is this map's own undecidable arm, and
+        # ``bundle.record`` is where a reference naming no node earns its refusal.
+        for uri, into in sorted(spellings.get(document, ())):
+            node = _node_or_none(doc, into)
+            if node is not None:
+                referenced[uri] = node
 
     # **WHAT THE RUN WRITES is §10's own sentence and not everything the order
     # visited**: "a module cannot import from a module no run wrote".  So a run owes the

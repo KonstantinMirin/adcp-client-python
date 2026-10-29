@@ -290,11 +290,11 @@ def test_the_derivation_decides_the_roots_that_reach_it_and_the_refusal_takes_th
             # stating its combinator at the conjunct's pointer
             # (:attr:`nodes.Union.stated_at`).  The derivation is reached unchanged: it
             # takes a branch list and knows nothing about where the keyword was written.
-            # Three of the four are in the DISJOINT half and the fourth is not, which the
+            # It read FOUR at ``adcp-client-python-10l.37`` and reads one:
+            # ``display_tag``, ``html5`` and ``image`` are a presence RULE now
+            # (:data:`_PRESENCE_RULE_INSTEAD`), so they declare no branch classes and
+            # reach no dispatch.  The one left is in the OVERLAPPING half, which the
             # partition below asserts rather than this comment.
-            "formats/canonical/display_tag.json",
-            "formats/canonical/html5.json",
-            "formats/canonical/image.json",
             "governance/check-governance-request.json",
         },
         inside=bundle.portable(BUNDLE),
@@ -524,30 +524,6 @@ MANIFEST_DISCRIMINATED = frozenset(
 #: and answers ``()``, so §8's third equality holds in both directions; the entry was a
 #: claim about a derivation that had not run, and dropping it puts one more root under
 #: the ``declaring <= overlapping`` bound rather than outside it.
-#:
-#: **ONE JOINS AND ONE LEAVES AT §4's FOURTH NAMING RUNG, by the SAME mechanism as the
-#: entry above -- a derivation that had never run** (reconciled at
-#: ``adcp-client-python-10l.30``).  Both documents carried D3's branch-naming VERDICT --
-#: ``core/requirements/asset-requirements.json`` at ``/anyOf/0`` and
-#: ``creative/get-creative-features-response.json`` at ``/oneOf/0``, "no title, no
-#: discriminator const and no required set" -- so neither emitted and
-#: :func:`union.overlapping` was never called for either.  ``names.Branch.index``
-#: replaced the ``refuses`` flag, both emit, and the derivation ran for the first time
-#: and answered differently for the two:
-#:
-#: * ``core/requirements/asset-requirements.json`` JOINS.  Its bare ``$ref`` branches
-#:   take their pins from their targets and no shared property is pinned to distinct
-#:   values, so §4's first source derives nothing and the third separates no pair.  It
-#:   declares §4's UNDERDETERMINED approximation at ``#/anyOf`` and
-#:   ``harness.inseparable_unions`` answers ``('#/anyOf',)`` reading the document
-#:   independently -- §8's third equality in both directions, which is the standard the
-#:   instalment above set for an entry ARRIVING.
-#: * ``creative/get-creative-features-response.json`` LEAVES, by that same standard: it
-#:   declares no approximation and ``harness.inseparable_unions`` answers ``()``.
-#:
-#: Neither move is a claim about this row's four readers.  Both are documents that
-#: reached the dispatch for the first time, which is what the ``sync-creatives`` entry
-#: records in the same words.
 OVERLAPPING_ROOTS = frozenset(
     {
         "adagents.json",
@@ -560,7 +536,24 @@ OVERLAPPING_ROOTS = frozenset(
         "content-standards/validate-content-delivery-response.json",
         "core/evaluator-spec.json",
         "core/postal-country-system.json",
+        # **ADDED when the document began EMITTING, not when it began overlapping.**
+        # ``core/requirements/asset-requirements.json``'s 12 bare ``$ref`` branches have
+        # no title and no pin, so §4's dispatch derivation separated none of them and the
+        # root has always been in this set's subject matter -- what it did not have was a
+        # module, because ``lower/names.py`` refused a branch with no identity.  §4's
+        # FOURTH branch rung (``adcp-client-python-10l.70``) names them, the document
+        # emits, and the declaration it was always owed becomes observable:
+        # ``declaring <= overlapping`` is what reddens when an entry is missing here, and
+        # that is the assertion rather than this comment.
         "core/requirements/asset-requirements.json",
+        # **``creative/get-creative-features-response.json`` LEFT, and the derivation is
+        # why.**  It was listed here while it REFUSED -- on ``title`` at ``/oneOf/0``, a
+        # branch with no identity -- so ``overlapping`` was never called for it and the
+        # two assertions this set feeds both exempt a refusing document.  §4's fourth
+        # branch rung names the branch, the document emits, the derivation runs, and it
+        # SEPARATES: the entry was a claim about a derivation that had not run, which is
+        # exactly what ``creative/sync-creatives-response.json`` left for at
+        # ``adcp-client-python-10l.55``.
         # **ONE MORE AT ``adcp-client-python-10l.37``, and it is a FINDING rather than a
         # loss.**  ``governance/check-governance-request.json``'s ``/allOf/1`` is an
         # ``anyOf`` the document states as a CONSTRAINT and not as an alternation of
@@ -727,21 +720,17 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         resolved_overlaps,
         inside=overlapping,
     )
+    # **``creative/get-creative-features-response.json`` left the same way, one row
+    # later**: §4's fourth branch rung let it emit, the derivation ran for the first time
+    # and SEPARATED it, so it is no longer in :data:`OVERLAPPING_ROOTS` and this list --
+    # that set intersected with what the manifest resolves -- loses it with it.  The
+    # manifest still resolves the document; what changed is the claim that it overlaps.
+    #
     # **``creative/sync-creatives-response.json`` left with its entry in
     # :data:`OVERLAPPING_ROOTS``** (``adcp-client-python-10l.55``): this list is that set
     # intersected with what the manifest resolves, so a root the derivation separates is
     # not in it.  The manifest still resolves the document -- what changed is that the
     # document is no longer claimed to overlap.
-    #
-    # **``creative/get-creative-features-response.json`` leaves the same way and for the
-    # same reason** (``adcp-client-python-10l.30``).  §4's fourth naming rung let it
-    # emit, the dispatch derivation ran for the first time and SEPARATED its branches, so
-    # it left :data:`OVERLAPPING_ROOTS` and leaves this intersection with it.  The
-    # manifest still resolves it; what changed is the overlap claim, which is exactly the
-    # sentence above.  ``core/requirements/asset-requirements.json`` joined that set in
-    # the same merge and does NOT appear here, because the manifest does not name it --
-    # it is in the ``the_manifest_does_not_name_it`` half of the partition above, and
-    # that half is derived rather than listed.
     assert set(resolved_overlaps) == {
         "content-standards/calibrate-content-response.json",
         "content-standards/create-content-standards-response.json",
@@ -1251,29 +1240,28 @@ def test_eight_open_branches_requiring_one_name_separate_on_their_nested_nots() 
 #: separator could reach would leave this set, and a new one joining it is a document the
 #: derivation has stopped reading.
 #:
-#: Every member but one is an ``anyOf`` the document states as a CONSTRAINT -- branches
-#: that narrow one shape rather than alternating between shapes, which §4 compiles to a
-#: rule (``AtLeastOne`` / ``PresenceGroups``) and not to a discriminated union, so no
+#: Every member is an ``anyOf`` the document states as a CONSTRAINT -- branches that
+#: narrow one shape rather than alternating between shapes, which §4 compiles to a rule
+#: (``AtLeastOne`` / ``PresenceGroups``) and not to a discriminated union, so no
 #: separator is owed one.  ``adagents.json#/oneOf/1/allOf/0/anyOf`` says so in its own
 #: ``$comment``: "Each arm asserts non-emptiness directly."
-#: ``core/postal-country-system.json`` narrows ``country`` and ``system`` ten ways; and
-#: the last three are "at least one of these two keys".
+#: ``core/postal-country-system.json`` narrows ``country`` and ``system`` ten ways; the
+#: last three are "at least one of these two keys".
 #:
-#: **THE TWO ``viewability`` NODES LEFT, and they left the POPULATION rather than the
-#: remainder** (``adcp-client-python-10l.30``'s own criterion, reconciled at
-#: ``adcp-client-python-10l.30``).  They were named here as constraints -- "one branch
-#: that forbids four metrics and one that requires ``standard``" -- and that reading was
-#: right: it is a presence statement.  ``adcp-client-python-10l.64`` taught
-#: ``schema.presence_clause`` to read a branch that FORBIDS and requires nothing, which
-#: is the first of those two branches, so ``schema.presence_only`` now answers True for
-#: ``core/forecast-point.json`` and ``core/canonical-forecast-point.json`` at
-#: ``/properties/viewability`` and :func:`_authored_unions` excludes them at its
-#: presence-only gate.  A union that is a RULE is not a union of shapes, so §4 owes it no
-#: separator and this set must not claim it either -- naming a pointer outside the
-#: population is the half of the partition that cannot redden on its own, which is why
-#: the gate asserts both directions and why this entry is removed rather than left
-#: harmlessly in place.  That row's own docstring named the same two sites as the only
-#: two it moved, so the measurement agrees from both ends.
+#: **The two ``viewability`` nodes LEFT this set, and the set is where the departure is
+#: recorded** (``adcp-client-python-10l.64``, corrected at ``10l.76``).
+#: ``core/canonical-forecast-point.json`` and ``core/forecast-point.json`` at
+#: ``/properties/viewability/anyOf`` state one branch that forbids four metrics and one
+#: that requires ``standard``, and they were named here as constraints a separator is not
+#: owed.  They are no longer in the population this set partitions at all:
+#: ``schema.presence_clause`` reads a branch stating ONLY a ``not`` over required groups
+#: as a presence clause with an empty required group, so both nodes are presence-only and
+#: :func:`_authored_unions`' own gate excludes them -- "a presence-only combinator is
+#: excluded ... it lowers to a rule on the enclosing class".  The entries went stale in
+#: the commit that made the sentence above literally true of them, which is the one place
+#: a census of a derived population can go stale: the derivation moved and the name did
+#: not move with it.  Removing them is the pin FOLLOWING the behaviour, and the partition
+#: is what reported the gap.
 _INSEPARABLE_CONSTRAINTS = frozenset(
     {
         "adagents.json#/oneOf/1/allOf/0/anyOf",
@@ -1464,11 +1452,24 @@ def test_every_union_the_derivation_cannot_separate_is_named_and_partitioned() -
 #: ``/allOf/11/if/allOf/1``, and ``lower/rules.py`` is what reads them.
 CONJUNCT_BORNE = {
     "adagents.json": "/oneOf/1/allOf/0",
-    "formats/canonical/display_tag.json": "/allOf/1",
-    "formats/canonical/html5.json": "/allOf/1",
-    "formats/canonical/image.json": "/allOf/1",
     "governance/check-governance-request.json": "/allOf/1",
 }
+#: **THE THREE ``formats/canonical`` DOCUMENTS LEFT, and the arm order is what took
+#: them** (``adcp-client-python-10l.75``).  ``display_tag.json``, ``html5.json`` and
+#: ``image.json`` state a ``oneOf`` of four size modes in ``/allOf/1``, and every branch
+#: of it constrains only which keys are PRESENT -- ``required`` and a ``not`` over
+#: ``required`` on two, a disjunction of groups on the third, an empty required half on
+#: the fourth.  Once ``presence_clause`` read the last two shapes the conjunct became
+#: presence-only, and :func:`parse.parse` reads ``presence_only`` BEFORE the union arm,
+#: so the node is a RULE on the composed class and never reaches the classification
+#: below.  :func:`parse._borne_by_a_conjunct` asks that same gate, so nothing here had
+#: to change for them to go: the population fell 5 -> 2 by the two readings being
+#: sequenced rather than by either one being narrowed.
+_PRESENCE_RULE_INSTEAD = (
+    "formats/canonical/display_tag.json",
+    "formats/canonical/html5.json",
+    "formats/canonical/image.json",
+)
 
 
 def _borne(population: list[str]) -> dict[tuple[str, str], str]:
@@ -1588,21 +1589,27 @@ def test_the_conjunct_borne_combinator_separates_or_names_the_pair() -> None:
         disjoint={d for d, pairs in separated.items() if not pairs},
         overlapping={d for d, pairs in separated.items() if pairs},
     )
-    assert {d for d, pairs in separated.items() if not pairs} == {
-        "formats/canonical/display_tag.json",
-        "formats/canonical/html5.json",
-        "formats/canonical/image.json",
-    }, separated
+    # **BOTH that are left OVERLAP, and the three that separated are gone to the rule
+    # row** (:data:`_PRESENCE_RULE_INSTEAD`).  What remains at this classification is
+    # exactly the shape ``adcp-client-python-10l.30`` partitioned off: an ``anyOf`` the
+    # document states as a CONSTRAINT, which §4 owes no discriminant and rows .29 / onq
+    # compile to a rule.  The empty half is asserted rather than dropped, because a
+    # derivation that stopped separating anything would otherwise read as this set
+    # shrinking on purpose.
+    assert {d for d, pairs in separated.items() if not pairs} == set(), separated
     # The pair is NAMED, which is what makes the overlap a finding rather than a verdict
     # about the derivation: a reader can open the document at these two pointers.
     assert separated["governance/check-governance-request.json"] == [
         "/allOf/1/anyOf/0 and /allOf/1/anyOf/1"
     ], separated
     assert len(separated["adagents.json"]) == 15, separated  # noqa: PLR2004 -- 6 branches
-    # And the separating three are separated by §4's SECOND separator read over a
-    # presence GROUP, which is ``adcp-client-python-10l.30``'s gap 2 answering here.
-    one, two = _branches("formats/canonical/display_tag.json", "/allOf/1", "oneOf")[2:]
-    assert GROUPED in (lower_union.separates(one, two, None, None) or ""), (one, two)
+    # adagents' branch 0 demands NO name at all -- it states a property map and no
+    # ``required`` -- so every one of its 15 pairs overlaps for the same reason, which is
+    # why the count is the assertion and not a list of 15 strings.
+    assert all(
+        "/oneOf/1/allOf/0/anyOf/0 and " in p or "anyOf" in p
+        for p in separated["adagents.json"]
+    ), separated
 
 
 def test_a_union_of_shapes_reaching_the_composing_row_without_a_caller_refuses() -> None:
