@@ -1470,40 +1470,60 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         for base in sorted(composes.get(document, ())):
             for uri, edge in sorted(composes_sites.get(base, {}).items()):
                 out.setdefault(uri, answer(document, edge))
+        # **A BASE's own LOCAL spelling, read from here as the fragment reference it is**
+        # (:func:`based_edges`, ``adcp-client-python-97w``).  ``composes_sites`` excludes a
+        # local edge by construction, and the composed node needs the answer: §5's
+        # ``properties`` row composes two object declarations as an ``allOf`` of the two,
+        # so where the base spells its half as a pointer into its own text,
+        # ``compiler._intersection`` plants that very pointer as a conjunct of a node
+        # belonging to THIS document.  Asked LAST, so a URI either the document or a
+        # base's absolute text spells keeps the answer it already has.
+        for uri, edge in sorted(based_edges(document).items()):
+            out.setdefault(uri, answer(document, edge))
         return out
 
-    def based_nodes(document: str) -> dict[str, dict]:
-        """The node each ``$ref`` LOCAL TO A BASE'S OWN DOCUMENT names.
+    def based_edges(document: str) -> dict[str, bundle.Edge]:
+        """Each ``$ref`` LOCAL TO A BASE'S OWN DOCUMENT, re-based as the FRAGMENT
+        reference it is when read from ``document``.
 
-        **The other half of what a BASE's declaration can say, and the half
-        :attr:`referenced` cannot hold** (``adcp-client-python-10l.72``).  §2's
-        intersection rule reads a base's declaration beside this document's own, and a
-        base may declare a property as a pointer into ITS OWN text --
+        **THE ONE RE-BASING, and both halves of §2's rule read it**
+        (``adcp-client-python-10l.72`` for the predicate, ``adcp-client-python-97w`` for
+        the field).  §2's intersection rule reads a base's declaration beside this
+        document's own, and a base may declare a property as a pointer into ITS OWN text:
         ``core/vast-tracker-constraints.json`` declares ``vast_versions`` as
-        ``{"$ref": "#/definitions/vast_versions"}`` -- while the composing document names
-        the SAME NODE absolutely.  A spelling relative to another document is relative to
-        another document: :attr:`referenced` is keyed by the URI alone and so cannot hold
-        one, which is why the predicate read two references to one node as two it could
-        not read at all, and refused.
+        ``{"$ref": "#/definitions/vast_versions"}``, and
+        ``core/response-payload-jws-envelope.json`` declares ``payload`` as
+        ``{"$ref": "#/definitions/response_payload"}``.  A spelling relative to another
+        document is relative to another document, so neither :attr:`referenced` nor
+        ``composes_sites`` can hold one: both are keyed by the URI alone, across the run.
+
+        Read from the composing document, such a spelling is an ORDINARY fragment
+        reference into the base -- which is what this returns, and the whole of the
+        re-basing: ``local`` goes false, ``target`` becomes the base, and ``into`` is the
+        pointer half ``bundle.split_ref`` reads.  Nothing is rewritten and no URI is
+        constructed; the edge is the same reference STATED from the standpoint that can
+        resolve it, so :func:`answer` and ``bundle.node_at`` each do what they already do.
+        The two readers take the two halves they need: :func:`based_nodes` the NODE, for
+        the predicate, and :func:`inherited_sites` the TARGET, for the import the composed
+        field needs (P2: a cross-document reference is an import and not a copy).
 
         **Per DOCUMENT and not run-level, which is exactly the split
         :func:`inherited_sites` already is**, and for the same reason: the answer is a
         function of the composing document, because it is that document's BASES whose
-        text these spellings belong to.  ``emit.composes_sites`` excludes a local edge by
-        construction -- there is no site to answer it by URI -- so this reads the base's
-        edges directly and resolves the pointer against the base's own finished document.
+        text these spellings belong to.
 
         **A spelling this document ITSELF writes is left out, and one two bases resolve
-        DIFFERENTLY is dropped.**  One resolver answers both sides of the comparison, so
-        a spelling that names two nodes in the documents in view has no single answer and
-        ``None`` is this map's own undecidable arm -- the safe direction, which refuses.
-        Measured over the 1,054 portable documents: **0 such collisions**, in either form
-        -- 45 of the documents a composition reaches spell a local reference and no
-        composing document shares one of those spellings with a base.  The screens are
-        here because the guarantee is the bundle's and not the rule's.
+        DIFFERENTLY is dropped.**  One resolver answers both sides of the comparison, so a
+        spelling that names two nodes in the documents in view has no single answer and
+        ``None`` is the undecidable arm -- the safe direction, which refuses.  Measured
+        over the 1,054 portable documents: **0 such collisions**, in either form -- 45 of
+        the documents a composition reaches spell a local reference and no composing
+        document shares one of those spellings with a base.  The screens are here because
+        the guarantee is the bundle's and not the rule's.
         """
         own = {edge.uri for edge in sites.get(document, ()) if edge.local}
-        out: dict[str, dict] = {}
+        out: dict[str, bundle.Edge] = {}
+        seen: dict[str, dict] = {}
         collided: set[str] = set()
         for base in sorted(composes.get(document, ())):
             if base == document or base not in lowered:
@@ -1511,12 +1531,30 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             for edge in sites.get(base, ()):
                 if not edge.local or edge.uri in own:
                     continue
-                node = _node_or_none(lowered[base][2], bundle.split_ref(edge.uri)[1])
+                into = bundle.split_ref(edge.uri)[1]
+                node = _node_or_none(lowered[base][2], into)
                 if node is None:
                     continue
-                if out.setdefault(edge.uri, node) != node:
+                if seen.setdefault(edge.uri, node) != node:
                     collided.add(edge.uri)
-        return {uri: node for uri, node in out.items() if uri not in collided}
+                    continue
+                out.setdefault(edge.uri, edge._replace(local=False, target=base, into=into))
+        return {uri: edge for uri, edge in out.items() if uri not in collided}
+
+    def based_nodes(document: str) -> dict[str, dict]:
+        """The node each of :func:`based_edges`'s re-based references names, for §2's
+        intersection rule reading a BASE's declaration (``compiler.Module.referenced``).
+
+        The NODE half of the one re-basing, resolved by the same reading the run resolves
+        every other fragment with -- so a base's local pointer and a composing document's
+        absolute reference to the same node are one answer, which is the whole of
+        ``adcp-client-python-10l.72``.
+        """
+        return {
+            uri: node
+            for uri, edge in based_edges(document).items()
+            if (node := _node_or_none(lowered[edge.target][2], edge.into)) is not None
+        }
 
     #: document -> the documents its ``allOf`` conjuncts compose, transitively.  Filled
     #: as the order finishes each document, which is early enough by construction: a
