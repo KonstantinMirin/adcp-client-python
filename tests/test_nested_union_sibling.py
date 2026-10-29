@@ -227,15 +227,24 @@ def test_a_constraining_sibling_of_a_nested_union_still_refuses() -> None:
 
 
 def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None:
-    """§4 "Names"'s ``const`` choice reads ``discriminator.propertyName`` HERE too.
+    """``discriminator.propertyName`` is §4's FIRST DISPATCH SOURCE and names nothing.
 
-    Two properties pinned on every branch is the case where the keyword decides, because
-    :func:`union._const_pin` takes a single pin without it and refuses to choose between
-    two by spelling.  So the branch names are a function of what the keyword names: with
-    ``propertyName: "kind"`` the arms are named off ``kind``, and the same branches with
-    the keyword gone have no identity at all.
+    **This test asserted the opposite and §4 decided against it** (rung 2 reads EVERY pin,
+    2026-10-29; ``adcp-client-python-10l.78``).  The premise was that two pinned
+    properties is "the case where the keyword decides, because ``_const_pin`` takes a
+    single pin without it and refuses to choose between two by spelling" -- so the keyword
+    chose, and without it the branches had no identity at all.  Rung 2 now reads every pin
+    in the document's own key order, which is an answer the keyword is not needed for: the
+    two branches below are ``XARound`` and ``XBSquare`` whether the union nominates a
+    property or not.
 
-    :func:`union.branch_identity` is the one reading of those rules and :func:`union.nested`
+    So what is graded here is the keyword's REMAINING role, and it is asserted in both
+    directions: ``dispatch_key`` reads it (it is §4's first dispatch source, which decides
+    whether the base carries ``Field(discriminator=…)``), and the branch NAMES are
+    identical with it and without it.  A reading that let it back into the naming path
+    reddens on the second assertion.
+
+    :func:`union.branch_identity` is the one reading of §4's rungs and :func:`union.nested`
     is one of its two callers, so this is the nested position's naming and not the root's.
     """
     branches = [
@@ -261,8 +270,12 @@ def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None
     # them is this module's (``_naming_facts``), which is the seam §14 step 7 drew: the
     # walk extracts the three facts and the pass decides which one wins.
     def identity(branch: Any, key: str | None) -> str | None:
+        # ``key`` is accepted and deliberately NOT passed: §4's rung 2 takes no nominated
+        # property, and ``_naming_facts`` has no parameter for one.  The helper keeps the
+        # argument so the two calls below read as the two cases they are.
+        assert key is None or isinstance(key, str)
         hop = lower_union._naming_facts(  # noqa: SLF001 -- the test is the caller
-            branch, branch.get("properties"), key
+            branch, branch.get("properties")
         )
         # §4's branch rules answer with the branch's own SEGMENTS now
         # (``adcp-client-python-10l.50``), because which of the facts wins decides
@@ -282,8 +295,11 @@ def test_the_keyword_is_read_at_this_position_and_not_merely_tolerated() -> None
         "branch identities under the keyword",
         [identity(b, lower_union.dispatch_key(keyed)) for b in branches],
     )
-    assert named == {"XA", "XB"}, sorted(named)
-    assert {identity(b, lower_union.dispatch_key(bare)) for b in branches} == {None}
+    # BOTH pins, in the document's own key order: ``kind`` then ``shape``.
+    assert named == {"XARound", "XBSquare"}, sorted(named)
+    # And the SAME names with the keyword gone, which is the half that says the keyword
+    # is a dispatch source and not a naming input.
+    assert {identity(b, lower_union.dispatch_key(bare)) for b in branches} == named
 
 
 def _union_node(declaration: dict[str, Any]) -> Any:

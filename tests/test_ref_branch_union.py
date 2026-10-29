@@ -264,21 +264,27 @@ def test_a_ref_branch_root_with_no_derivable_dispatch_names_its_branches_by_inde
     at = _fixture(_ROOT, repeated)
     try:
         out = emit.emit(at, ["root.json"])
-        # The TARGETS emit -- they are reached through the ``$ref`` and each one is an
-        # ordinary object root.  It is the union ROOT that refuses.
-        assert "root.json" not in out.emitted, out.emitted
-        row = out.refusals["root.json"]
-        # NOT the combinator and NOT the root: the dispatch declared and the walk went
-        # on, so what refuses is a BRANCH, on D3's own keyword.
-        assert row["keyword"] == "title", row
-        assert row["pointer"].startswith("/oneOf/"), row
-        assert "OVERLAP" not in row["detail"], row
-        assert "salesagent-j3k2l.60" not in row["detail"], row
-        # A property of the DOCUMENT -- two of its nodes derive one name -- so a verdict,
-        # and the sentence is the collision's and no longer the identity's.
-        assert row["kind"] is Kind.VERDICT, row
-        assert "derive the class name 'AnimalPet'" in row["detail"], row
-        assert "no identity to derive a name from" not in row["detail"], row
+        # **THE THIRD FIXTURE EMITS NOW, and §4 is what changed** (rung 2 collides so both
+        # branches FALL, 2026-10-29; ``adcp-client-python-10l.78``).  It refused here on
+        # the collision rule with a hand-minted VERDICT: both branches pin ``pet``, both
+        # derived ``AnimalPet``, and both chains were one segment with nothing to lengthen
+        # by.  §4 reads that as the rung having failed to identify either branch rather
+        # than as the document's own fault -- "two nodes of this document derive one class
+        # name" is a fact about ``lower/names.py`` -- so both fall.
+        #
+        # They land on rung FOUR and not rung three, and the reason is this fixture's own
+        # shape: a bare ``$ref`` branch states no ``required`` of its OWN (its target
+        # does), so rung 3 answers nothing for it and the index is what is left.  That is
+        # the same reading the first two fixtures above exercise, reached from a collision
+        # instead of from an absence.
+        assert not out.refusals, out.refusals
+        assert "root.json" in out.emitted, out.emitted
+        text = out.files["root.py"]
+        for name in ("AnimalBranch0", "AnimalBranch1"):
+            assert f"class {name}(Animal, " in text, (name, text)
+        # The name the collision produced appears NOWHERE: it identified neither branch,
+        # so it is not a name either of them keeps.
+        assert "AnimalPet" not in text, text
     finally:
         shutil.rmtree(at)
 
