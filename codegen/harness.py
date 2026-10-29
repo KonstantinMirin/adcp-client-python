@@ -2143,6 +2143,15 @@ class ComparisonResult:
     #: disappears into a green ``missing`` is invisible and permanent, and this one
     #: must stay auditable at its positions.
     extra_key_typed: list[str] = field(default_factory=list)
+    #: A model-only ``properties`` ENTRY that states no graded fact, so the document
+    #: having no entry for the key and the model carrying one admit the same instances
+    #: -- see :func:`_states_no_graded_fact`.  Counted apart from ``added`` for the
+    #: reason the three lists above are counted apart from ``missing``: a fold that
+    #: disappears into a green bucket is invisible and permanent, and this one must stay
+    #: auditable at its positions.  It is the ``added`` side's first such list, and the
+    #: direction matters -- ``added`` is the half that can make a faithful SDK refuse
+    #: valid traffic, so an entry here is one a reader must be able to go and look at.
+    vacuous_entry: list[str] = field(default_factory=list)
     detail: str = ""
 
     @property
@@ -2320,6 +2329,50 @@ def _url_typed(got: Mapping[str, Any]) -> bool:
     return (
         got.get("type") == "string" and got.get("format") == "uri" and got.get("minLength") == 1
     )
+
+
+def _states_no_graded_fact(entry: Any) -> bool:
+    """Is this ``properties`` ENTRY the empty schema, so that it constrains nothing?
+
+    **Section 8's empty-schema clause, and it is the one fold on the ``added`` side.**
+    "A ``properties`` entry whose subschema is the EMPTY SCHEMA is not a fact these
+    checks grade.  Section 5's ``additionalProperties`` row already fixes the reading --
+    the empty schema ``{}`` IS ``true`` and is read as ``true`` everywhere below -- and a
+    ``properties`` entry stating ``{}`` therefore constrains nothing.  A document with no
+    entry for a key and a model carrying ``properties: {key: {}}`` admit exactly the same
+    instances, so the entry is vacuous and reporting it ``added`` counts a non-fact as a
+    defect.  One reading of the empty schema, two readers."
+
+    **Why the per-key arm needs this and the per-keyword arm does not.**  The arm above
+    asks :func:`grades_a_difference` of every model-only KEYWORD and skips the ones that
+    are annotations, so a model-only ``title`` at a pointer is already not ``added``.
+    The per-key arm reports a whole ENTRY in one line, so without this it reports as
+    ``added`` an entry every one of whose keys the other arm would have skipped.  The
+    fold makes the two arms give one answer, which is why its predicate is
+    :func:`grades_a_difference` and not a list of key names.
+
+    That is also what makes "the empty schema" the right scope rather than a literal
+    ``{} or True``: pydantic renders a bare ``Any`` field as ``{"title": "Id"}``, and a
+    ``title`` is an annotation by the TABLE's own effect column -- section 8's annotation
+    clause already says a difference about one "cannot change what a payload is accepted
+    as".  So the entry this folds is the empty schema read through the clause that
+    already decides which keys state nothing.
+
+    **Scoped to that and nothing wider.**  ``{}`` and ``true`` are the same subschema and
+    both are vacuous; any GRADED key in the entry is a real fact and still reports
+    ``added``, which is the one outcome section 2 never permits a model to carry
+    undeclared.  ``false`` is not folded and must not be: it admits nothing, which is the
+    tightest statement a subschema can make.
+
+    The position is PROP, because an entry of ``properties`` is a property declaration
+    and that is the position :func:`grades_a_difference` is asked at everywhere else the
+    comparison descends into one.
+    """
+    if entry is True or entry == {}:
+        return True
+    if not isinstance(entry, Mapping):
+        return False  # ``false``, which admits nothing, and anything that is not a schema
+    return all(not grades_a_difference(key, Position.PROP) for key in entry)
 
 
 def _constrains_nothing(keyword: str, doc: Mapping[str, Any], *, required: bool = False) -> bool:
@@ -3892,10 +3945,30 @@ def compare_schema(
                     res.missing.append(f"{into}: the model declares no such property")
                     continue
                 compare(props[key], mine[key], into, Position.PROP, required=key in demanded)
+        # **A model-only ENTRY is the ``properties`` keyword's own fact at this node**,
+        # which is the reading §8 already takes in the other direction one arm above
+        # ("a property the model does not declare is the ``properties`` keyword's own
+        # fact and the comparison reports it per KEY"), and both lines below are spelled
+        # from it: the pointer and keyword before the colon are ``<node>/properties``
+        # and the KEY is named in the sentence.  That is what makes the two lines
+        # readable as one keyword's -- ``tests/test_decision_set.py`` derives each
+        # admission mechanism's reach by reading the keyword off the production message,
+        # and a line keyed on the property name would pin a set of property names there,
+        # which moves whenever the emitter emits more.
         for key in sorted(set(mine) - set(props)):
             res.model_facts += 1
+            # §8's empty-schema clause: a ``properties`` entry stating no graded fact is
+            # not a fact these checks grade, so it is not ``added``.
+            if _states_no_graded_fact(mine[key]):
+                res.vacuous_entry.append(
+                    f"{pointer}/properties: the model declares {key!r} and the document "
+                    f"does not, stating {mine[key]!r} for it -- the empty schema, which "
+                    "constrains nothing"
+                )
+                continue
             res.added.append(
-                f"{pointer}/properties/{_esc(key)}: the document declares no such property"
+                f"{pointer}/properties: the model declares {key!r}, the document no such "
+                "property"
             )
         if isinstance(doc.get("items"), dict):
             compare(doc["items"], got.get("items"), f"{pointer}/items", Position.ELEM)
