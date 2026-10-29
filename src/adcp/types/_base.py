@@ -495,14 +495,35 @@ def applied_schema(root: dict, pointer: str) -> dict:
             enclosing = declared if isinstance(declared, str) else enclosing
             if isinstance(node, dict):
                 conjoined += _conjunction(node, part)
-            # **A second cut DROPS the first one's siblings rather than guessing how
-            # the two compose.**  A conjunct of a conjunct, or a branch below one, would
-            # need a reading of which of the outer siblings' nodes answers the inner
-            # hop, and this rule makes none.  Dropped rather than carried, so such a
-            # pair reports a fact the model states and the document does not -- loud --
-            # rather than passing for nothing.
-            siblings = []
-            cutting = node.get("allOf") if part == "allOf" and isinstance(node, dict) else None
+            # **A second CUT drops the first one's siblings rather than guessing how
+            # the two compose.**  A conjunct of a conjunct would need a reading of which
+            # of the outer siblings' nodes answers the inner cut, and this rule makes
+            # none.  Dropped rather than carried, so such a pair reports a fact the model
+            # states and the document does not -- loud -- rather than passing for
+            # nothing.
+            #
+            # **A BRANCH below a conjunct is NOT a second cut and keeps them**
+            # (``adcp-client-python-10l.37``).  The sentence above covered it and the
+            # reason does not reach it: a ``oneOf``/``anyOf``/``then``/``else`` hop moves
+            # to no other instance, so a sibling conjunct's statement holds against the
+            # branch's instance in the spelling it already has and there is nothing to
+            # read.  This is §8's third pairing rule followed as far as the pointer goes,
+            # exactly as the ``not same_instance`` arm below already follows it through a
+            # KEY hop -- and without it the composition §2 writes into a branch class is
+            # graded against the branch's bare text, so every fact a ``$ref`` conjunct
+            # contributes reads as ``added``: the comparison's word for a model NARROWER
+            # than its document, which §8 says is never declarable.
+            #
+            # Measured over the committed tree: **8 pairs**, the four branches each of
+            # ``formats/canonical/display_tag.json`` and ``image.json`` at
+            # ``#/allOf/1/oneOf/<i>``, whose base is ``formats/canonical/_base.json``
+            # through the sibling conjunct ``#/allOf/0``.  No other pair's comparison
+            # moves by one fact.
+            if part == "allOf":
+                siblings = []
+                cutting = node.get("allOf") if isinstance(node, dict) else None
+            else:
+                cutting = None
         else:
             enclosing = None  # the hop moves to a different instance
             cutting = None

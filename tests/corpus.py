@@ -92,7 +92,28 @@ ROOT = Path(__file__).resolve().parents[1]
 #: redden on any in-flight record change, which is correct work.  Regenerated on a miss it
 #: cannot go stale at all.  **The cost of that choice is stated rather than hidden: a fresh
 #: checkout's first run is a full cold run.**
-DIRECTORY = ROOT / ".accepts-corpus"
+#:
+#: **SHARED ACROSS WORKTREES, because the key is a content address and a worktree is not
+#: one of its inputs** (measured 2026-10-29).  ``harness.corpus_key`` hashes the schema,
+#: the example count, the format strategies and the generator version; none of those is
+#: where the checkout sits, so an entry one lane draws answers every other lane's question
+#: about the same document.  Held per worktree it did not: **7,343 entries across nine
+#: stores holding 1,830 unique keys**, so 5,513 draws were paid again for an answer another
+#: store already had -- at 0.15 s to 2,356 s each.  The two lanes with the emptiest stores
+#: (8 entries and 0) were the two whose validation ran longest.
+#:
+#: A lane that makes a document emit for the FIRST time is what fills this, and that is why
+#: sharing matters more than it looks: the cold draw is the price of SUCCESS, and paid per
+#: worktree it is charged once to the lane that earned it and again to every lane that
+#: merges it. ``ADCP_CACHE`` overrides the location; the default is beside the checkouts
+#: rather than inside one, so no worktree owns it.
+#:
+#: Concurrency-safe without a lock for the reason ``put`` already is: one file per key,
+#: written to a temporary and ``os.replace``\\ d into place, and two lanes computing the
+#: same key compute the same bytes.
+CACHE_ROOT = Path(os.environ.get("ADCP_CACHE") or ROOT.parent / ".adcp-cache")
+
+DIRECTORY = CACHE_ROOT / "accepts-corpus"
 
 
 class Store:

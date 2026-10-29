@@ -489,10 +489,26 @@ def _combinator(node: Mapping[str, Any], out: Lowered) -> None:
             continue
         if not any(c.require or c.forbid for c in clauses):
             continue
-        if any(c.forbid for c in clauses):
+        # **:class:`RequiredGroups` is the degenerate case and the test for it is
+        # DERIVED, not the forbid half alone** (§5's disjunctive required half, decided
+        # 2026-10-29).  That kind holds a flat group list and counts the groups PRESENT;
+        # a clause list holds the branches and counts the CLAUSES that hold.  The two say
+        # the same thing exactly when every clause is one group: then "group i present"
+        # and "clause i holds" are the same statement, and flattening is a spelling.
+        # They come apart the moment a clause carries two groups -- under ``oneOf`` an
+        # instance satisfying both of one clause's groups is ONE clause and TWO groups,
+        # so the flat kind would report "2 of these groups are present, the document
+        # admits exactly one" of a payload the document admits.  So a clause that is not
+        # exactly one group takes the kind that can hold it, which is the same reason
+        # ``core/catchment.json`` gives for not hoisting the ``not``\\ s.
+        #
+        # ``!= 1`` and not ``> 1``: a clause carrying NO group is a branch that only
+        # forbids, which has no group to contribute to a flat list at all and whose whole
+        # content would vanish from it.
+        if any(c.forbid for c in clauses) or any(len(c.require) != 1 for c in clauses):
             out.rules.append(PresenceGroups(clauses, keyword))
             continue
-        out.rules.append(RequiredGroups(tuple(c.require for c in clauses), keyword))
+        out.rules.append(RequiredGroups(tuple(c.require[0] for c in clauses), keyword))
 
 
 def _distinct(declared: Mapping[str, Any], out: Lowered) -> None:

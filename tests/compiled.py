@@ -68,7 +68,17 @@ from codegen import emit
 
 #: Where a compile is held between processes.  Gitignored: it is derived, and a committed
 #: one would be a file a reader could edit into a result no compiler produced.
-STORE = Path(__file__).resolve().parent.parent / ".emit-cache"
+#:
+#: **SHARED ACROSS WORKTREES**, for ``tests/corpus.py``'s reason and with its safety: the
+#: key is a digest of every ``.py`` under ``codegen/`` plus the bundle and the population,
+#: so two checkouts holding the same compiler compute the same key and the same bytes, and
+#: a checkout that does not never collides.  Held per worktree it cost ~9 GB across nine
+#: stores to answer questions several of them shared -- a lane sitting at trunk's base pays
+#: a 180 s cold compile for a result trunk computed an hour earlier.  ``ADCP_CACHE``
+#: overrides the location; the default is beside the checkouts rather than inside one.
+CACHE_ROOT = Path(os.environ.get("ADCP_CACHE") or Path(__file__).resolve().parents[2] / ".adcp-cache")
+
+STORE = CACHE_ROOT / "emit-cache"
 
 
 @functools.cache

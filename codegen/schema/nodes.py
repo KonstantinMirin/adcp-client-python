@@ -274,9 +274,31 @@ class Union(Base):
     are parsed ``objectish`` and ``lower.enum.resolves_no_name`` is HANDED "of a root
     union" rather than reconstructing it from a pointer.  A child never reconstructs its
     parent.
+
+    **THE COMBINATOR IS NOT ALWAYS AT THIS NODE'S OWN POINTER** (§5's
+    ``oneOf``/``anyOf`` row at CONJ, ``adcp-client-python-10l.37``).  Draft-07 applies an
+    ``allOf`` conjunct to the SAME instance the node describes -- which is what
+    :func:`codegen.schema.parse.applies_to_one_instance` already reads for §4's
+    disjointness derivation -- so a conjunct stating a combinator of shapes states it
+    about this node, and §5's cell answers "CONJ -> one class per branch over the
+    composed bases".  :attr:`stated_at` is where the keyword sits and :attr:`conjuncts`
+    is the conjunct list MINUS the one that carries it, each at the index the document
+    gives it, so the branch pointers and the remaining conjuncts' pointers are both the
+    document's own.
     """
 
     combinator: str
+    #: The pointer of the node that STATES :attr:`combinator` -- this node's own, or the
+    #: ``allOf`` conjunct that carries it.  A FIELD and not a reading of the branch
+    #: pointers, because a refusal about the keyword has to name the pointer the document
+    #: states it at and the parser is the one layer that saw where that was.
+    stated_at: str = ""
+    #: The ``allOf`` conjuncts that contribute to the COMPOSED class, each at the pointer
+    #: the document gives it.  Built here rather than re-derived from
+    #: :attr:`siblings`, because the conjunct carrying the branch list contributes
+    #: nothing to the composition -- the branches are :attr:`branches` -- and dropping it
+    #: from the list without keeping the indices would re-point every conjunct after it.
+    conjuncts: tuple[Conjunct, ...] = ()
     #: Every branch, parsed at BRANCH, in document order -- including one that is not a
     #: schema, which parses to :class:`Typeless` and whose own declaration below is what
     #: the ``oneOf``/``anyOf`` row refuses it by.  Aligned 1:1 with :attr:`branch_raw`,
@@ -395,6 +417,21 @@ class Array(Base):
     distinct: bool = False
     #: The ``contains`` predicate, as the document states it.
     contains: Any = None
+    #: The ``allOf`` conjuncts, at CONJ, where the node states a ``type`` word of its
+    #: own that is not ``object``.  §5's ``$ref`` row at CONJ names **a container**
+    #: among the targets that are not a class a model can extend -- "the target is this
+    #: node's own TYPE, and the other conjuncts and the ``allOf``'s siblings constrain
+    #: it, which is §2's intersection at a node that declares no fields of its own" --
+    #: and an array stating its own ``items`` is that clause with the type read off the
+    #: node's own word instead of off a reference.  So the array is the TYPE and the
+    #: conjuncts constrain it, which is what ``lower.containers.array`` reads them as:
+    #: rules, declared where §2 declares a rule over a value.
+    #:
+    #: Carried the way :attr:`Union.siblings` carries the same keyword for the same
+    #: reason -- a kind that claims the node before ``parse``'s ``allOf`` arm has to
+    #: carry the conjunct list, and its handler is the one reader of it.  Empty for
+    #: every array that states no ``allOf``, which is all but 4 of the bundle's.
+    conjuncts: tuple[Conjunct, ...] = ()
     word: Any = None
 
 
