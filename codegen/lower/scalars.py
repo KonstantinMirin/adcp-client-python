@@ -389,6 +389,7 @@ def typeless(node: nodes.Typeless, mod: Module) -> Decided | Refusal:
     once with a rule to carry and once without.
     """
     from codegen import bundle
+    from codegen.lower import approximate
     from codegen.lower import rules as lower_rules
 
     if node.position is Position.ROOT:
@@ -499,9 +500,36 @@ def typeless(node: nodes.Typeless, mod: Module) -> Decided | Refusal:
     # ``maxLength`` -- the keyword lowers at every position the walk decides a node at.
     # :func:`no_type_to_lower_onto` is the deleted arm's sentence restored WITHOUT its
     # minted kind, which is what the arm got wrong and the screen got right.
-    refused = check_keywords(node, {*lower_rules.ON_A_VALUE}, mod=mod)
+    #
+    # **AND THE SENTENCE IS NOW ANSWERED FOR THE KEYWORDS THIS ROW CAN DECLARE.**  It
+    # named the answer and did not give it: "what clears it is §2's ladder at rung
+    # KEYWORD -- §5(b)'s widening row, which declares the drop, and not this one".  Row
+    # ``10l.35`` turned that into a numbered request, and §5(b) is this row's after all:
+    # a widening is declared BY THE HANDLER THAT DROPS THE FACT -- ``approximate.declare``
+    # is "the ONE place a widening is minted" (architecture §2) and reads the rung off the
+    # cell, so declaring here mints nothing and chooses nothing.  What §5(b) forbids is a
+    # handler writing its own rung or its own attribution, and this writes neither.
+    #
+    # The facts are :attr:`nodes.Typeless.facts`, by ``parse.value_facts`` -- the same
+    # derivation every value-carrying kind uses -- so the keyword set is the TABLE's at
+    # this position and not a list kept here, and the VALUE each declaration names is the
+    # document's own, which is §9's rule ("never approximate on a keyword the walk itself
+    # inserted").  Document order, because ``value_facts`` reads the declaration in it and
+    # §6 makes the report a function of the document.
+    refused = check_keywords(node, {*lower_rules.ON_A_VALUE, *node.facts}, mod=mod)
     if refused is not None:
         return no_type_to_lower_onto(refused, node)
+    # Measured over the 1,054 portable documents: **one** node reaches this loop,
+    # ``compliance/comply-test-controller-response.json`` at
+    # ``/oneOf/6/properties/recorded_calls/items/properties/payload``, which states a
+    # ``maxLength: 65536`` and no ``type`` -- its description says the value is "object
+    # when content_type is JSON-shaped ... string otherwise", so the bound is the string
+    # arm's and the document states no arms.  The widening drops the bound and keeps
+    # ``Any``, which is what rung KEYWORD IS ("drop the one keyword, keep the type"), and
+    # the attribution is OURS at the cell's own address because the document states its
+    # fact plainly -- there is nothing upstream to file.
+    for keyword, fact in node.facts.items():
+        approximate.declare(mod, node.pointer, keyword, node.position, fact)
     # §4's typeless row, with §5's ``not`` row on it where the document states one: a
     # typeless node is ``Any``, and ``Annotated[Any, AfterValidator(NotValue(…)))]`` is
     # ``Any`` minus the values the document excludes, which is the document's own reading

@@ -158,26 +158,15 @@ tuple the emitter writes. The families are `oneOf`/`anyOf` over `required` or ov
 values, `if`/`then`/`else`, `dependencies`, `minProperties`/`maxProperties`, `uniqueItems`,
 `not`, and `contains`.
 
-**Where a rule hangs:** on the nearest class if there is one, because a class can read sibling
-fields. Where no class sits above the value — a root array, a mapping value, a `definitions`
-entry, a union branch — the rule hangs off the value's own annotated type as an after-validator
+**Rule placement.** Declare a rule on the nearest enclosing class, which can read sibling
+fields. Where no class encloses the value — a root array, a mapping value, a `definitions`
+entry, a union branch — declare it as an after-validator on the value's own annotated type
 (`AtLeastOne`, `NotValue`, `Distinct`).
 
-**A value-level rule may state which KEYS the value supplied, and the three kinds above are not
-the limit (added 2026-10-28).** The distinction this paragraph draws is about where a rule
-HANGS, not about what it may read: "a class can read sibling fields" is about reading the
-siblings *of* the value, and a callable on the value reads the value's **own** members as freely
-as a class reads its fields. At a position with no class above it, the value *is* the object, so
-`ForbiddenGroups`, `RequiredGroups` and `PresenceGroups` are admissible there as
-`_runtime.ValueRule`s — "a callable on the value, and all it is" — without a new kind.
-
-Six documents refuse today for want of this sentence, and the refusal they carry asks for "a
-value-level presence kind that §2 does not name". It is not a new kind that was missing; it is
-this clause. `core/product.json` and `core/canonical-product.json` at
-`/properties/publisher_properties/items/allOf/0` are the measured case: `PublisherPropertySelector`
-is the node's own type by §5's `$ref` row at CONJ, a conjunct states `not` beside it, §5's `not`
-row makes that a `ForbiddenGroups`, and the node has no class — but the value it annotates is
-exactly the object whose keys the rule forbids.
+Placement determines where a rule is declared, not which members it reads. A rule declared on a
+value reads that value's own members, as a rule declared on a class reads its fields. A rule
+naming keys — `ForbiddenGroups`, `RequiredGroups`, `PresenceGroups` — is therefore valid as an
+after-validator wherever no class encloses the value.
 
 A rule's condition tests membership as well as equality: a `Match` clause reads a property's
 `const` or `enum`, and also `value in field`.
@@ -505,8 +494,33 @@ reached first.
   collision rule spends when two entries of one module need it, not what every entry pays up
   front. **This is a function of the one document and carries no dependency on a sibling set**, so
   it is insertion-stable — unlike the branch rule tried and reverted at `64d0f897`.
-- **Union branch**: its own `title`; else the `const` it pins on the discriminating property; else
-  its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
+- **Union branch**: its own `title`; else the `const`s it pins, in the document's own key order;
+  else its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
+
+**Rung 2 reads EVERY pin the branch states, and a rung that collides has not identified the
+branch (decided 2026-10-29).** Two clauses, and both are functions of the one branch, which is
+the insertion-stability criterion this section already states for the nested rule — a rule
+reading "the property the most branches pin" would rename every sibling when a branch is
+inserted, which is what was tried and reverted at `64d0f897`.
+
+A branch pinning a `const` on several properties derives from all of them, in the order the
+document writes the keys. Measured on `core/postal-country-system.json`, whose `/anyOf/4`
+through `/anyOf/8` each pin two: `FRCodePostal`, `AUPostcode`, `BRCep`, `INPin`, `ZAPostalCode`,
+where declining to choose between the two pins gave `Branch4` through `Branch8` — the positional
+name for the most heavily identified branches in the bundle. The four single-pin branches keep
+`US`, `GB`, `CA` and `Plz`, because one pin in key order is that one pin.
+
+Where a rung derives one name for two branches it has not identified either, so **both fall to
+the next rung** — the collision rule above lengthens a chain, and these chains are one segment
+with nothing to lengthen by. Measured on `trusted-match/provider-registration.json`, whose two
+branches pin `context_match: true` and `identity_match: true`: the value `true` is the same on
+both and names neither, so rung 2 answers nothing and rung 3's `required` set gives
+`ContextMatch` and `IdentityMatch`. What identifies those branches is WHICH property is present,
+which is the fact rung 3 reads.
+
+Rung 2 is not narrowed to unions that derive a dispatch discriminator. Measured: that reading
+takes `postal-country-system`'s four working names away, because no property of it is shared by
+all ten branches and the strict reading would send every branch to its index.
 
 **Collision, which this section never stated and the emitter therefore avoided by never
 colliding (added 2026-10-28).** The nested rule above is the LAST path segment, so two positions
@@ -537,15 +551,7 @@ module is its namespace and `§9`'s rule is that a document's output may not dep
 documents the run includes.
 
 *What this costs:* a long name becomes the exception it was meant to be, arising only where one
-document genuinely says `context` twice. **Measured on the tree the rule produced
-(`adcp-client-python-10l.50`):** 2,144 classes, median name 17 characters against 26, and
-235 / 75 / 19 / 8 longer than 30 / 40 / 50 / 60 against 808 / 364 / 141 / 47. Of 2,226 named
-positions 2,116 keep §4's short name, 107 spend one ancestor segment and 3 spend two; 25 lengthen
-against a name the module IMPORTS, which is the other half of its namespace — a class named
-`Field` beside `from pydantic import Field` makes every `Annotated[X, Field(…)]` in the module
-call the class. The longest name left is a branch named by its own sorted `required` set and the
-second is a `definitions` entry's `<Root><Key>`: both are ONE segment, so the collision rule has
-nothing to spend on either, and shortening them would be an edit to the rules above. The failure it avoids is the one the upstream v9 SDK
+document genuinely says `context` twice. The failure it avoids is the one the upstream v9 SDK
 measures — 1,092 of its 4,360 classes are numbered variants, `WholesaleFeedEvent1` through
 `WholesaleFeedEvent9` — because a numeric suffix carries no information about which position it
 names, where an ancestor segment does.
@@ -701,7 +707,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | `properties` | A class with one field per key. ROOT beside a union → fields on the base, inherited by every branch. PROP / ELEM / MAPV / DEF → a nested class. BRANCH → the branch class. CONJ → fields of the composed class. A property two conjuncts declare is one field: its constraints intersect by §2, and two object declarations compose as an `allOf` of the two at that property; an empty intersection — two type words, disjoint enums — refuses, because the document admits nothing there. A `default` or a `description` is not a constraint, and the document's own statement wins over a base's. RULE: under `if` → the values a `Match` clause tests, read only where `const` or `enum`; under `then` / `else` / `not` → nothing. |
 | `required` | The named fields are required: no `\| None`, no default. Naming a property no node declares → refused, a presence rule with no field. `required: []` → nothing. ROOT beside a union → required on the base's fields, and the names recorded in `_ROOT_REQUIRED`, so a refusal can separate a field the root requires from one that selects a branch. BRANCH → the branch class's requiredness, and the third of the branch-naming choices. CONJ → unioned into the composed class's `required`; a `required`-only conjunct → the overlay. RULE → a presence rule: `RequiredGroups`, `ForbiddenGroups` under `not`, the keys a `Match` clause tests under `if`, `ConditionalRequired` / `NegatedConditional` under `then` / `else`. |
 | `definitions`, `$defs` | Nothing by itself: a bag of named subschemas. Each entry is declared on demand when a `$ref` names it, as the node's own kind, under `<Root><Key>`. |
-| `$ref` | Another document's root → an IMPORT of that module's symbol; nothing of the target is copied into the module, and in the document of record (§3) the target is inlined unchanged. A fragment of another document → an import of a symbol the target declares. Local `#/…` → the entry decided on demand in this module; a cycle refuses. An annotation sibling → the sibling's description wins. A CONSTRAINING sibling → nothing, and REPORTED: draft-07 ignores every sibling of `$ref`, so the keyword constrains no instance and the document's accepted set is the target's alone. The record keeps the key, because §3 drops none; the declaration's cell says it compiles to nothing at this co-occurrence, so §8 does not grade it; and the report names it, because a key that reads as a constraint and is inert is worth reading once. Refusing it instead would refuse a document whose accepted set its own draft decides, and letting the referring value win would make the record state an acceptance fact the bundle does not — §9's last rule. KEY → the key type. BRANCH of a root union → a class with two bases; of a nested union → a member type. CONJ → a BASE where the target is a class declaring fields. Where it is not — a scalar, an enum, a container, or a union root, whose instance is one of its branches — it is not a class a model can extend: the target is this node's own TYPE, and the other conjuncts and the `allOf`'s siblings constrain it, which is §2's intersection at a node that declares no fields of its own. |
+| `$ref` | Another document's root → an IMPORT of that module's symbol; nothing of the target is copied into the module, and in the document of record (§3) the target is inlined unchanged. A fragment of another document → an import of a symbol the target declares. Local `#/…` → the entry decided on demand in this module; a cycle refuses. An annotation sibling → the sibling's description wins. A CONSTRAINING sibling → nothing, and REPORTED: draft-07 ignores every sibling of `$ref`, so the keyword constrains no instance and the document's accepted set is the target's alone. The record keeps the key, because §3 drops none; the declaration's cell says it compiles to nothing at this co-occurrence, so §8 does not grade it; and the report names it, because a key that reads as a constraint and is inert is worth reading once. Refusing it instead would refuse a document whose accepted set its own draft decides, and letting the referring value win would make the record state an acceptance fact the bundle does not — §9's last rule. KEY → the key type. BRANCH of a root union → a class with two bases; of a nested union → a member type. CONJ → a BASE where the target is a class declaring fields. Where it is not — a scalar, an enum, a container, or a union root — it is not a class a model can extend: the target is this node's own TYPE, and the other conjuncts and the `allOf`'s siblings constrain it, which is §2's intersection at a node that declares no fields of its own. A UNION root beside a node that DOES declare fields distributes: conjunction distributes over disjunction, so `(A | B) and C` is `(A and C) | (B and C)`, and the node is a union whose branches each take one of the target's branches as a base and add the node's own fields. Each branch of a union root is a class declaring fields, so this is the CONJ rule above applied once per branch and not a second answer. A property the node and the target's branch BOTH declare is one field taking §2's intersection, exactly as the `properties` row at CONJ states it for two conjuncts — the node's declaration does not shadow the branch's, and two `const`s intersect to the pin where they agree and to nothing where they differ. A distributed branch whose intersection is EMPTY is DROPPED, and the node refuses only where every branch is: `(A \| B \| C) and D` with `A and D` empty is exactly `(B and D) \| (C and D)`, so the accepted set is unchanged and nothing is approximated. The emptiness must be PROVED from the pins the two sides state — disjoint `const`s, disjoint `enum`s, disjoint type words — which is the same test the empty-intersection row names; an intersection this compiler cannot compute is the restatement row and not this one. |
 <!-- end generated -->
 
 ### Values
@@ -741,7 +747,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | --- | --- |
 | `items` | `list[X]`, X decided by the same walk and named where it needs a symbol. A list-valued `items` → refused: that is tuple validation. ROOT array → `RootModel[list[X]]`. RULE → nothing. |
 | `minItems`, `maxItems` | `min_length` / `max_length` on the annotation of the **array's own type**, at every position. `minItems: 0` states nothing. `constraints` declares it once, generically, as `type NonEmptyList[T] = Annotated[list[T], Field(min_length=1)]`. PROP → on the field. ELEM / MAPV / DEF → the container's type must be named to carry it. BRANCH → on the branch's own type, never on the field holding the union. RULE → nothing. |
-| `uniqueItems` | A `UniqueItems` rule on the class holding the array, plus `json_schema_extra={"uniqueItems": true}` on the field so it is graded, and the keyword is stripped off the array's own declaration. Where no class sits above the array → a `Distinct` after-validator on its own annotated type, beside the same `json_schema_extra`. |
+| `uniqueItems` | A `UniqueItems` rule on the class holding the array, plus `json_schema_extra={"uniqueItems": true}` on the field so it is graded, and the keyword is stripped off the array's own declaration. Where no class encloses the array → a `Distinct` after-validator on its own annotated type, beside the same `json_schema_extra`. |
 | `contains` | An existential quantifier — `items` constrains every element, `contains` says at least one matches — and the model states the **predicate**, not a transcription of the subschema. Every position → an `AtLeastOne` after-validator on the array's own annotated type, because no class has a kind for it: `AtLeastOne(pinned=((property, const), …))` where the subschema requires properties pinned to a const, `AtLeastOne(values=(value,))` where it is a bare `const` or a one-member `enum`. A property KEY is not required to be a Python identifier, so the predicate is a tuple of pairs and not keyword arguments. Any other predicate — a bound, a pattern, a nested `contains`, a `$ref` — → the keyword is CARRIED and the schema half answers alone: a transcription of the subschema is the thing this row declines to emit, and the first document to state such a predicate decides its rendering. RULE position → a `Match` MEMBERSHIP clause, `value in field`, and no validator. |
 <!-- end generated -->
 
@@ -752,7 +758,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | --- | --- |
 | `additionalProperties` | The empty schema `{}` IS `true` and is read as `true` everywhere below, never as a typed value schema. On a class: `false` → `forbid`; `true` → `allow`; typed → `allow` with a typed `__pydantic_extra__`; absent → `ignore`. On a mapping (no `properties`) → the VALUE type; `true` or `{}` → `Any`; `false` → refused, it admits only the empty object. Beside `patternProperties` → refused, two value schemas. `false` on an `allOf` overlay would reject the fields its sibling conjunct contributes, which is why `true` is the only value an overlay can carry. ROOT beside a union → the same, on the base, inherited by every branch; a branch stating its own composes with it by the CONJ rule below. CONJ → `true` is the identity and contributes nothing, `false` on any conjunct closes the composed object, and two typed ones intersect their value schemas; a typed conjunct beside a `true` one is a widening and refuses. |
 | `patternProperties` | A mapping whose KEY carries the pattern: `dict[Annotated[str, StringConstraints(pattern=…)], V]`, which Pydantic renders back as `patternProperties` — the document's own keyword. More than one pattern → refused: that is a value schema per key shape. Beside a non-`false` `additionalProperties` → refused. |
-| `propertyNames` | The mapping's KEY type: a `$ref` → that type; `minLength` / `maxLength` → a length-bounded `str`; `pattern` → an annotated `str`; `enum` → a `Literal` of the members, which pydantic renders back as this very keyword; `anyOf` → a union of key types. Beside `patternProperties` → the key type carries both, by §2's intersection: each states a constraint on the same key. On a CLASS with declared `properties` → checked against the declared names when the class is emitted and carried nowhere, because those names are fixed and known; a declared name the constraint refuses is a contradiction in the document and refuses by name. Where that class also admits extras, a key beyond the declared names is checked by the schema half alone, and the model is looser than its document there, which §2 permits. RULE position → nothing on the model: a rule position constrains which keys a conditional *tests*, so there is no key type to annotate and no value to hang a validator on. |
+| `propertyNames` | The mapping's KEY type: a `$ref` → that type; `minLength` / `maxLength` → a length-bounded `str`; `pattern` → an annotated `str`; `enum` → a `Literal` of the members, which pydantic renders back as this very keyword; `anyOf` → a union of key types. Beside `patternProperties` → the key type carries both, by §2's intersection: each states a constraint on the same key. On a CLASS with declared `properties` → checked against the declared names when the class is emitted and carried nowhere, because those names are fixed and known; a declared name the constraint refuses is a contradiction in the document and refuses by name. Where that class also admits extras, a key beyond the declared names is checked by the schema half alone, and the model is looser than its document there, which §2 permits. RULE position → nothing on the model: a rule position constrains which keys a conditional *tests*, so there is no key type to annotate and no value to annotate. |
 | `minProperties`, `maxProperties` | On a class → a `PropertyCount` rule. `minProperties` is written only where `additionalProperties` is stated, because a dropped key would make the rule refuse what the document accepts; `maxProperties` needs no such gate, since a dropped key only lowers the count. On a mapping → `Field(min_length / max_length)` on the dict's type, because a `PropertyCount` rule counts declared fields and a dict has none. |
 | `dependencies` | The list form → a `Dependencies` rule: if A is present, B is required. The schema form refuses by name on the first occurrence, rather than being skipped. |
 <!-- end generated -->
@@ -812,11 +818,11 @@ the directive's first effect is to make it. They are the dominant class.
   `allOf`'s siblings constrain it" — and the refusals reading "*X* is not a class, so it cannot
   be a base" are the unimplemented half of that sentence.
 - **`uniqueItems` and `contains` where no class holds the value.** §2 already decides it: where
-  no class sits above the value, the rule hangs off the value's own annotated type. A root array
+  no class encloses the value, the rule is an after-validator on the value's own annotated type. A root array
   is a root model, and a root model carries a rule tuple exactly as a class does, so `Distinct`
   and `AtLeastOne` reach it. The keyword is enforced, not dropped.
 - **A root stating only `if` / `then`.** Refused because "a root is exactly one kind and this one
-  states `if`". The conditional is a rule, and §2 hangs a rule with no class above it on the
+  states `if`". The conditional is a rule, and §2 declares a rule with no enclosing class on the
   value's own type: the root is a permissive root model carrying `ConditionalRequired`. The
   document states a conditional and nothing else, and so does the model.
 
@@ -846,8 +852,8 @@ attribution.
 - ~~**`uniqueItems` and `contains` where even a named type cannot hold the rule.**~~ **WRONG, and
   withdrawn 2026-10-27: a named type holds the rule perfectly well, and §2 already said how.**
   This row claimed the duplicate and existential checks are the schema half's alone where no
-  class sits above the array. §2 says the opposite and is right: "Where no class sits above the
-  value — a root array, a mapping value, a `definitions` entry, a union branch — the rule hangs
+  class encloses the array. §2 says the opposite and is right: "Where no class encloses the
+  value — a root array, a mapping value, a `definitions` entry, a union branch — the rule is declared
   off the value's own annotated type as an after-validator (`AtLeastOne`, `NotValue`,
   `Distinct`)." `Annotated[list[X], AfterValidator(…)]` carries a rule; nothing about a named
   alias prevents it.
@@ -861,7 +867,7 @@ attribution.
   for it, which is worse because an approximation looks accounted for.
 
   **The faithful answer:** declare the three in `_runtime.py` beside the other rule kinds, and
-  hang each on the value's own annotated type where no class holds it. Measured at the point this
+  declare each on the value's own annotated type where no class encloses it. Measured at the point this
   was withdrawn, **13 of 17 declared approximations were `uniqueItems`** at exactly these
   positions, so they become faithful and the *ours* backlog falls by 13 rather than being
   reported forever.
@@ -893,7 +899,10 @@ attribution.
   nothing, which is a contradiction in the document. Rung TOP, and this is the answer the `not`
   row already gives for `not: {}`: "admits nothing, which the typeless `Any` carries", with the
   schema half refusing every payload. Attribution upstream, because a conjunction admitting
-  nothing is a defect in the conjunction.
+  nothing is a defect in the conjunction. This row is about a node whose WHOLE accepted set is
+  empty. One empty DISJUNCT of a union that still admits something is not that node: §5's `$ref`
+  distribution clause drops the branch, the document's accepted set is unchanged, and no
+  declaration is owed.
 - **A keyword in none of §5, §6 or §7.** Rung TOP: the node is `Any`. Draft-07 ignores an
   unknown key, so the document may be narrower than `Any` but can never be wider, which makes
   `Any` the one safe rung when the keyword's reach is unknown. §2's by-name principle is intact
@@ -957,6 +966,50 @@ presence branch gives a rule, and an instance satisfying only the rule is none o
 That is the asymmetry Group A does not have, and it is why the two shapes separate. The fact
 dropped is the shape precision of the branches, the type widens by §2's ladder, and the gap is
 declared and attributed.
+
+### A presence clause whose required half is a disjunction of groups (decided 2026-10-29)
+
+Group A's clause carries "its OWN required group" — one group, read as a conjunction of names.
+Four documents spell that half as a DISJUNCTION: `formats/canonical/image.json`,
+`formats/canonical/html5.json` and `formats/canonical/display_tag.json` at `/allOf/1`, and
+`governance/check-governance-request.json` at `/allOf/1`. One branch of each states an `anyOf`
+of `required` groups where the others state `required` directly.
+
+**A clause's required half is a disjunction of GROUPS, which is what its forbidden half already
+is.** `Presence.forbid` holds groups because `not: {"required": [a, b]}` forbids the PAIR and
+says nothing about either name alone. The same reading of the required half makes
+`required: [a, b]` the single group `((a, b),)` and an `anyOf` over `required` the groups it
+states. A clause holds when at least one of its groups is present in full, and a clause stating
+no group states no requirement and holds. One field means one thing — the groups this branch's
+requiredness admits — where a second field beside it would make one clause carry two readings of
+one keyword.
+
+Both halves derive from `schema.required_groups`, which already reads `required` and a
+combinator over `required` into groups. That is §11's one reading with two readers: the `not`
+half and the required half reach the same derivation from the two sides of one branch.
+
+Dropping the disjunct is not available, measured on `image.json`, whose four size modes are
+`{}`, `{min_width}`, `{width, height}` and `{sizes}`. With the disjunct dropped the rule rejects
+`{}`, which the document admits as the "none" mode, so the model is TIGHTER than its document.
+§2 admits a widening and never a narrowing.
+
+`RequiredGroups` reads the same document fact as a RULE and stays separate, for the reason
+`Presence` states itself: a clause has no `errors` because a branch is not violated on its own,
+and only the combinator above it decides how many branches an instance may satisfy.
+
+**A conjunction of a group with a disjunction of groups DISTRIBUTES into a disjunction of
+groups**, which is the same principle the `$ref` row's distribution clause states one row above:
+conjunction distributes over disjunction. `required_groups` reads an `allOf` of single-group
+conjuncts as one group, the union of their names; an `allOf` whose conjuncts each give a LIST of
+groups is the product of those lists with the names unioned per combination, and the single-group
+case is that product over one-element lists. So
+`allOf: [{"required": [g]}, {"anyOf": [{"required": [a]}, {"required": [b]}]}]` is the two groups
+`((g, a), (g, b))`, which is what the document says and what `governance/check-governance-request.json`
+states at `/allOf/1`.
+
+The product arm never takes `partial`, for the reason the `allOf` arm already does not: dropping an
+unreadable conjunct from a product leaves FEWER names in each group, which under a `not` forbids
+MORE, and a rule stronger than its document is the narrowing §2 refuses.
 
 ---
 
@@ -1274,26 +1327,14 @@ instance the branch describes, so a field the branch inherits from the base is a
 states and not one it added. A pair the payload generator cannot draw for still has to pass the
 comparison, and names the shape that blocked the draw.
 
-**At a union in ANY position, not only a root one (widened 2026-10-27).** This rule read "a
-branch class of a ROOT union … under the ROOT's siblings", and the restriction was never
-justified: the reason above is draft-07's evaluation rule, which does not care where the union
-sits. The cost of the narrower reading was 9 documents blocking 42 — group G2 of
-`docs/plan/reasons-vs-rows.md` — refused on the ground that pushing the sibling into each branch
-"states it at a pointer the document does not", which is the exact objection this rule exists to
-answer.
+**At a union in ANY position, not only a root one.** The reason above is draft-07's evaluation
+rule, which does not care where the union sits.
 
-**So a sibling beside a union lowers by COMPOSITION, and nothing is approximated.** The siblings
-become a base class; each branch becomes a subclass narrowing what it narrows; the union is over
-the subclasses. `account/sync-accounts-request.json` at `/properties/accounts/items` is the
-measured case: `type: object`, `additionalProperties: true`, 16 declared `properties` and 2
-`dependencies` at the node, and two `oneOf` branches that declare **no properties at all** and
-differ only in `required` — `[brand, operator, billing]` against `[account]`. Every fact is kept,
-the branches separate on disjoint `required`, and each branch class is paired against its node
-read under those siblings, so the inherited fields are facts its node states.
-
-Where a branch also *restates* a property the siblings declare, the restatement composes by the
-conjunct rule below; composition and intersection are the same operation reached from two
-directions.
+So a sibling beside a union lowers by COMPOSITION and nothing is approximated: the siblings
+become a base class, each branch becomes a subclass narrowing what it narrows, and the union is
+over the subclasses. Where a branch also restates a property the siblings declare, the
+restatement composes by the conjunct rule below — composition and intersection are the same
+operation reached from two directions.
 
 **The dual of that rule, for a node whose `type` is a LIST (added 2026-10-26).** A class cut
 out of a type list is paired with its node read at **its own type word**, not at the whole list.
@@ -1315,68 +1356,29 @@ class is graded against the shape it actually describes. Row `.20` found this by
 documents into the three checks, reported it, and declined to invent the rule — which is why it
 is here and not in a handler.
 
-**The third pairing rule, for a node at a CONJUNCT of an `allOf` (added 2026-10-27).** A class,
-root model or alias cut out at `…/allOf/N` is paired with its node read **as the composition** —
-the intersection of every conjunct of that `allOf`, taken with the keywords stated beside the
+**The third pairing rule, for a node at a CONJUNCT of an `allOf`.** A class, root model or
+alias cut out at `…/allOf/N` is paired with its node read **as the composition** — the
+intersection of every conjunct of that `allOf`, taken with the keywords stated beside the
 `allOf`. Not with the conjunct's own text.
 
-The reason is the union-branch rule's reason, and the two are the same rule about different
-combinators. Draft-07's `allOf` holds every conjunct against the SAME instance, so a fact a
-sibling conjunct states is a fact this node's instance must satisfy. It is not a fact this class
-*added*, any more than a base's field is one a union branch added.
+Draft-07's `allOf` holds every conjunct against the same instance, so a fact a sibling conjunct
+states is a fact this node's instance must satisfy, not one this class added. Pairing against the
+conjunct's own text instead reports every such fact as `added`, which is the comparison's word
+for a model NARROWER than its document — so the instrument would report the faithful model as the
+defect it exists to catch. `added` is therefore never declarable.
 
-Pairing against the conjunct's own text instead inverts the comparison's meaning. Every fact the
-other conjuncts contribute reads as `added`, and `added` is the comparison's word for *the model
-is narrower than its document* — the one defect §2 forbids outright. So the instrument would
-report the faithful model as the defect it exists to catch, 18 times over, and the only way to
-quiet it would be to let `added` be declared away. That is the repair to refuse: `added` is how a
-tightened model is caught, and a declarable `added` is no instrument at all.
+This rule is what makes §5's `properties` row at CONJ gradable.
 
-`core/assets/url-asset.json` is the measured case, at
-`/properties/macro_declarations/items/allOf/1/properties/location`. One conjunct declares
-`location` whole, with `field` as `{"type": "string", "enum": ["url", "markup", "content",
-"ad_request_url", "clickthrough_url"]}`; the other declares `{"properties": {"field": {"const":
-"url"}}}` and nothing else. The composition is `field` as `{"type": "string", "const": "url"}`,
-because `"url"` is a member of the enum — expressible exactly, so **the model keeps the fact and
-no approximation arises**. Read as the composition, both halves state `const` and the pair is
-silent. Read as the conjunct's own text, the same faithful model reports a `missing const`
-beside an `added enum`: one fact, counted twice, in opposite directions.
-
-This rule is why §5's `properties` row at CONJ is reachable. That row was decided and
-unimplemented because a `SchemaRef` carrying an `allOf` segment had nowhere to be graded — zero
-such classes exist in the committed tree, so the gap was invisible. Writing the row makes the
-count non-zero, and this is the rule that grades them. Row `.21`'s fourth instalment found it by
-implementing §5(b) as written, measuring 22 pairs red where the declaration census was empty, and
-declining to edit §8 to suit its own code.
-
-**An ANNOTATION is not a fact these three checks grade, at any pointer (added 2026-10-27).**
-The predicate is `bundle.is_an_annotation(keyword, position)` — §1's own, the one `record`
-already reads to settle a `$ref`'s sibling, so this is a third reader of one line and not a
-second judgement. An annotation is a key whose cell compiles to no type, no field and no rule,
+**An ANNOTATION is not a fact these three checks grade, at any pointer.** The predicate is
+`bundle.is_an_annotation(keyword, position)` — §1's own, the one `record` already reads to settle
+a `$ref`'s sibling. An annotation is a key whose cell compiles to no type, no field and no rule,
 which is what "states nothing about acceptance" IS; so `added`, `missing` or `differs` on one
 reports a difference that cannot change what a payload is accepted as, and these checks grade
 acceptance.
 
-*Why it is stated here rather than left implicit.* Row `97w`'s sixth instalment wrote the
-carrier that composes a branch's restatement with the root's declaration of the same property,
-measured **`emitted 908 / refused 146`** with 12 documents newly emitting, and then found two
-strictly contradictory gradings of one `description`: carrying annotations on descent makes the
-comparison report a non-fact, which is what
-`test_the_difference_between_the_two_halves_is_a_schema_fact` exists to forbid, while stripping
-them moves the same `description` from `added` at the element pointer to `missing` at the branch
-pointer. It reported both readings and changed neither side.
-
-Both readings are answers to the wrong question. **There is no pointer at which an annotation is
-graded**, because it is not among the facts being compared — so the composition lands and the
-`description` is simply not a difference. A model that carries a description at a pointer the
-document states it at differently accepts exactly the same payloads.
-
-*What this does NOT license.* A description reaching the consumer is worth something, and
-dropping every one of them silently would be a real regression — just not an acceptance one. So
-annotation COVERAGE is its own obligation, graded separately: every description the document
-states reaches some emitted class. It belongs with §5's ergonomic rows and not among these
-three, because a check that mixes acceptance with ergonomics reports a defect in one as a defect
-in the other, which is the confusion this clause removes.
+Annotation COVERAGE is its own obligation, graded with §5's ergonomic rows and not among these
+three: every description the document states reaches some emitted class. A check that mixes
+acceptance with ergonomics reports a defect in one as a defect in the other.
 
 A check is exhaustive over the set of nodes it claims, or it does not exist. A check that
 enumerates a subset reports on that subset only, and says so.

@@ -4004,19 +4004,27 @@ def test_the_serializer_is_set_on_the_schema_the_wrapper_holds_and_not_on_a_defi
     claimed("union bases carrying the root's own fields", with_fields)
 
 
-def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointer() -> None:
-    """D3's last rule, which is to refuse.
+def test_a_branch_with_no_derivable_identity_takes_its_index_and_the_document_emits() -> None:
+    """D3's last rule, which is a FALLBACK and not a refusal
+    (``adcp-client-python-10l.41``).
 
     A branch is named by its ``title``, else by the discriminator ``const``, else by its
-    sorted required set.  A branch with none of those has no identity, and the rule a
-    previous generator reached for -- name the sole classed branch after its PARENT --
-    makes a class name a function of what its siblings happen to be, so adding a branch
-    renames an unrelated class.
+    sorted required set, else by its INDEX among the branches -- ``<Base>Branch<i>``.
+    This test asserted the refusal §4's fourth rung retires: a name is not an acceptance
+    fact, so deriving one from the branch's own position neither widens nor narrows, and
+    the refusal was minting a verdict where the section states a terminus.
 
-    Graded on a bundle of its own, because the refusal has to be reachable with every
-    OTHER keyword satisfied: in the 3.2 bundle a nameless branch always sits beside a
-    keyword that refuses first, so a test over the bundle would assert the wrong refusal.
-    The control is the same document with a title added, which emits.
+    What the index must NOT be is a reading of the neighbourhood.  The rule a previous
+    generator reached for -- name the sole classed branch after its PARENT -- makes a
+    class name a function of what its siblings happen to be, so adding a branch renames
+    an unrelated class.  An index is a fact of the branch's own position, so the control
+    below adds a THIRD branch and asserts the first two keep their names;
+    ``tests/test_names_collision.py`` grades the same property on the rule alone.
+
+    Graded on a bundle of its own, because the fallback has to be reachable with every
+    OTHER keyword satisfied: in the 3.2 bundle an identity-less branch usually sits beside
+    a keyword that refuses first.  The second control is the same document with a title
+    on the first arm, which takes rung 1 and proves the index is reached only last.
 
     **The first branch is CLOSED, and that is one of the "other keywords satisfied".**
     §4's third dispatch source reached this fixture at ``salesagent-j3k2l.67``: with both
@@ -4042,16 +4050,34 @@ def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointe
     (BUNDLE_FIXTURE := Path(tempfile.mkdtemp())) / "x.json"
     (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(nameless))
     out = emit.emit(BUNDLE_FIXTURE, ["x.json"])
-    assert out.emitted == {}
-    assert out.refusals["x.json"]["keyword"] == "title", out.refusals
-    assert out.refusals["x.json"]["pointer"] == "/oneOf/0", out.refusals
+    assert out.refusals == {}, out.refusals
+    assert out.emitted == {"x.json": "adcp.types._schemas.x"}, out.emitted
+    # The FIRST arm has no identity and takes the index; the SECOND states ``required``,
+    # which is rung 3 and outranks it -- so the two rungs are visible in one module.
+    assert "class NamelessBranch0(Nameless)" in out.files["x.py"], out.files["x.py"]
+    assert "class NamelessB(Nameless)" in out.files["x.py"], out.files["x.py"]
 
+    # The row's acceptance criterion through the whole emitter: a branch APPENDED to the
+    # combinator adds a class and moves no existing name.
+    grown = json.loads(json.dumps(nameless))
+    grown["oneOf"].append({"type": "object", "properties": {"c": {"type": "string"}},
+                           "required": ["c"]})
+    (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(grown))
+    added = emit.emit(BUNDLE_FIXTURE, ["x.json"])
+    assert added.refusals == {}, added.refusals
+    assert "class NamelessBranch0(Nameless)" in added.files["x.py"], added.files["x.py"]
+    assert "class NamelessB(Nameless)" in added.files["x.py"], added.files["x.py"]
+    assert "class NamelessC(Nameless)" in added.files["x.py"], added.files["x.py"]
+
+    # And the index is the LAST rung: a title on the same branch takes rung 1 and the
+    # positional name is not emitted at all.
     titled = json.loads(json.dumps(nameless))
     titled["oneOf"][0]["title"] = "The First Arm"
     (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(titled))
     control = emit.emit(BUNDLE_FIXTURE, ["x.json"])
     assert control.refusals == {}, control.refusals
     assert "TheFirstArm" in control.files["x.py"], control.files["x.py"]
+    assert "Branch0" not in control.files["x.py"], control.files["x.py"]
     shutil.rmtree(BUNDLE_FIXTURE)
 
 
@@ -4219,7 +4245,12 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     #   (``creative/get-creative-features-response.json``,
     #   ``trusted-match/provider-registration.json`` -- and
     #   ``core/postal-country-system.json`` joined them at
-    #   ``adcp-client-python-10l.35``, see its line below), ``anyOf`` for
+    #   ``adcp-client-python-10l.35``.  **``title`` is ONE entry now
+    #   (``adcp-client-python-10l.41``)**: §4's fourth branch rung names a branch with no
+    #   identity by its INDEX, so two of the three EMIT and what is left is
+    #   ``trusted-match/provider-registration.json``, whose two branches pin one ``const``
+    #   and derive ONE name -- a different mechanism, and
+    #   ``adcp-client-python-10l.42``'s row), ``anyOf`` for
     #   ``adagents.json``'s conjunct
     #   and ``$ref`` for ``brand.json``, which is ``adcp-client-python-857``.
     #
@@ -4302,34 +4333,42 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         # element class can be graded.  Both emit, with 9 documents chained behind them.
         "core/async-response-data.json": "$ref",
         "core/canonical-placement.json": "$ref",
-        "core/postal-area.json": "$ref",
-        # ``pattern`` -> ``title`` at ``adcp-client-python-10l.35``, and this is THE PIN
-        # WORKING.  §2's intersection rule merges the root's
-        # ``{"type": "string", "pattern": "^[A-Z]{2}$"}`` for ``country`` into each
-        # ``anyOf`` branch's ``{"const": "US"}`` / ``{"enum": [...]}``, and the ``const``
-        # and ``enum`` rows answered "a later D2 row does" for the ``pattern`` -- a row
-        # that cannot exist, since the keyword lowers at every position.  Both rows claim
-        # it now, because the PIN decides it: the value satisfies the pattern, so the
-        # ``Literal``/enumeration is exactly the document's own set.  The document reports
-        # its own next obstruction instead, and it is D3's: ``/anyOf/4`` pins a ``const``
-        # on BOTH of its properties, so no single one is the discriminator and the branch
-        # has no identity to derive a name from.  A VERDICT, which is the honest direction
-        # -- and the five documents chained behind this one became verdicts with it
-        # (``core/postal-area.json``, ``core/offering.json``,
-        # ``core/product-offer-filters.json``,
-        # ``media-buy/product-discovery-criteria.json``,
-        # ``media-buy/list-products-request.json``), so ``accounted`` rose 961 -> 967.
-        "core/postal-country-system.json": "title",
+        # ``$ref`` -> ``allOf`` at ``adcp-client-python-10l.41``.  It held the chain into
+        # ``core/postal-country-system.json``, which EMITS now, so this document reports
+        # its OWN obstruction one pointer on: ``/anyOf/0/allOf/0`` conjoins that document
+        # and the class it resolves to is not a class at all -- a root union matching none
+        # of §4's dispatch sources is a plain ``A | B``, which §5's ``$ref`` row at CONJ
+        # cannot make a base of.  Another row's keyword and a PRIMARY verdict of its own,
+        # where it was chained before.
+        "core/postal-area.json": "allOf",
+        # **``core/postal-country-system.json``'s LINE IS DELETED AT
+        # ``adcp-client-python-10l.41``, and the document EMITS.**  It held ``pattern``,
+        # then ``title`` at ``adcp-client-python-10l.35`` when the pin made both the
+        # ``const`` and the ``enum`` rows claim the merged pattern.  The ``title`` was
+        # D3's identity refusal: ``/anyOf/4`` through ``/anyOf/9`` state no title, and 4
+        # through 8 pin a ``const`` on BOTH of their properties, so no SINGLE one is the
+        # discriminator and §4's second rung declines to choose by spelling.  §4's FOURTH
+        # rung names them, ``PostalCountrySystemBranch4`` through ``...Branch9``, beside
+        # ``PostalCountrySystemUS``, ``...GB``, ``...CA`` and ``...Plz``, which keep rung
+        # 2.  The five documents chained behind it moved with it: four still chain and
+        # ``core/postal-area.json`` became a primary verdict, which is its line above.
         "core/product-format-declaration.json": "required",
-        # ``$ref`` -> ``title`` at ``adcp-client-python-10l.21``'s third instalment: its
-        # chain target ``core/requirements/image-asset-requirements.json`` emits now (a
-        # ``type`` word beside a NESTED combinator), so the root reports its OWN
-        # obstruction -- 12 bare ``$ref`` branches with no title and no pin, which is
-        # D3's row and the shape that function's own docstring already names.
-        "core/requirements/asset-requirements.json": "title",
+        # **``core/requirements/asset-requirements.json``'s LINE IS DELETED AT
+        # ``adcp-client-python-10l.41``, and the document EMITS.**  It held ``$ref`` until
+        # ``adcp-client-python-10l.21``'s third instalment freed its chain, and then
+        # ``title``: 12 bare ``$ref`` branches, none of which states a title or pins a
+        # ``const``, so the first three rungs answer nothing.  §4's fourth names them
+        # ``AssetRequirementsBranch0`` through ``...Branch11``, each inheriting its
+        # target's class.  ``core/requirements/catalog-requirements.json`` and
+        # ``core/requirements/offering-asset-constraint.json`` chained behind it and emit
+        # with it.
         "core/tracker-execution-selector.json": "$ref",
         "core/wholesale-feed-event.json": "$ref",
-        "creative/get-creative-features-response.json": "title",
+        # **``creative/get-creative-features-response.json``'s LINE IS DELETED AT
+        # ``adcp-client-python-10l.41``, and the document EMITS.**  Its ``/oneOf/0`` is a
+        # bare ``$ref`` with no title, beside two arms that state their own, so §4's
+        # fourth rung names it ``GetCreativeFeaturesResponseBranch0`` and the two titled
+        # arms keep rung 1 -- the two rungs in one module.
         # ``properties`` -> ``$ref`` at ``adcp-client-python-10l.34``: the nested union at
         # ``/oneOf/1/properties/results/items`` composes its siblings now, so the document
         # reports a CHAIN instead -- its ``/oneOf/2/properties/manifest`` references
@@ -4346,10 +4385,29 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "media-buy/create-media-buy-request.json": "required",
         "media-buy/create-media-buy-response.json": "$ref",
         "media-buy/decline-proposals-response.json": "required",
-        "media-buy/get-reporting-status-response.json": "oneOf",
+        # ``oneOf`` -> ``$ref`` and ``anyOf`` -> ``$ref`` at
+        # ``adcp-client-python-10l.66``, and this is THE PIN WORKING for the two roots
+        # whose BRANCH is itself a union of shapes.  ``_plan`` claimed the ROOT's
+        # combinator and not a nested one, so the screen answered "a later D2 row does"
+        # of a keyword whose cell at BRANCH is ``Effect.TYPE`` at rung ``JOIN``.  The
+        # branch loop recurses now, exactly as §5's cell says -- "a sibling a CLASS
+        # carries -> that same base-plus-branches shape, at a union in ANY position" --
+        # with the enclosing union's base as the nested base's base, so both roots get
+        # past the branch and report what is actually behind it.
+        #
+        # ``get-reporting-status-response`` reaches §5(b)'s restatement row at
+        # ``/oneOf/0/oneOf/0/properties/view``: the inner branch restates a ``$ref``
+        # property as ``{"const": ..., "type": "string"}``, which neither matches nor
+        # narrows, and that row is unwritten -- a DEFERRAL, and another lane's.
+        # ``proposal-refinement`` reaches a CHAIN at ``/properties/criteria`` onto
+        # ``media-buy/product-discovery-criteria.json``, which runs out to
+        # ``core/postal-country-system.json``'s ``/anyOf/4`` branch-naming VERDICT, so it
+        # joins :data:`VERDICTS` behind the six ``adcp-client-python-10l.35`` put there.
+        # Emitted is unchanged at 923 on both trees; ``accounted`` rose 958 -> 959.
+        "media-buy/get-reporting-status-response.json": "$ref",
         "media-buy/list-products-response.json": "$ref",
         "media-buy/media-buy-commitment-response.json": "$ref",
-        "media-buy/proposal-refinement.json": "anyOf",
+        "media-buy/proposal-refinement.json": "$ref",
         "media-buy/refine-proposals-response.json": "type",
         "media-buy/request-proposals-request.json": "required",
         "media-buy/request-proposals-response.json": "$ref",
@@ -5951,9 +6009,22 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # ``governance/policy-entry.json`` behind it; each declares a typed
     # ``additionalProperties`` of its own.  All three are the MAPPING path, so the store
     # list below is unchanged by them.
+    #
+    # **``brand.json`` joins at ``adcp-client-python-857``, and it is the STORE path six
+    # times over** -- the first addition to this list the extras store's own defect was
+    # holding back, and the one that more than doubles the store list below.  It declared an
+    # ``AliasDecl`` and then a ``ClassDecl`` at ``/definitions/colors`` and refused:
+    # §4 parses a class's extras store at the CLASS's pointer, the store was reaching
+    # ``emit.decide_type``, and that wrapper names the node at a pointer the bundle's
+    # ``$ref``\\ s name.  Four of the document's six store sites sit at such a pointer
+    # (``colors``, ``fonts``, ``border_radius``, ``elevation``), so the walk met the
+    # collision at the first of them and the other five sites were never graded.
+    # ``compiler.declare_object`` sends the store to the DISPATCH now.  Named rather
+    # than counted, and the six rows are in the store list below.
     emitted_typed = sorted(set(typed) & set(out.emitted))
     assert emitted_typed == [
         "a2ui/component.json",
+        "brand.json",
         "brand/get-brand-identity-response.json",
         "brand/search-brands-response.json",
         "collection/get-collection-list-response.json",
@@ -6032,7 +6103,24 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # so the store's annotation carries ``AfterValidator(Distinct())`` -- the first store
     # in the tree whose annotation holds a CALL, which the four-character split hid every
     # name inside.
+    # **FIVE -> ELEVEN at ``adcp-client-python-857``, and all six are ``brand.json``'s.**
+    # The document is the store's own defect report: §4 parses the store at the CLASS's
+    # pointer, the store was reaching ``emit.decide_type``, and the wrapper named the
+    # node at ``/definitions/colors`` -- a pointer the document's own ``$ref`` names --
+    # so an ``AliasDecl`` landed where ``declare_object`` was about to write the
+    # ``ClassDecl``.  Four of the six (``colors``, ``fonts``, ``border_radius``,
+    # ``elevation``) sit at a bundle-named pointer and would each have collided; the
+    # walk reported the first.  The store now reaches the DISPATCH, which makes no
+    # statement about a pointer the store does not own, and the six sites are graded
+    # for the first time.  They are also the first store sites BELOW a document root
+    # that are not inside a union branch.
     assert [row for row in store if row[0] in out.emitted] == [
+        ("brand.json", "/definitions/colors"),
+        ("brand.json", "/definitions/fonts"),
+        ("brand.json", "/definitions/border_radius"),
+        ("brand.json", "/definitions/elevation"),
+        ("brand.json", "/definitions/spacing/properties/scale"),
+        ("brand.json", "/definitions/visual_guidelines/properties/type_scale"),
         ("brand/get-brand-identity-response.json", "/oneOf/0/properties/fonts"),
         ("core/canonical-media-buy-features.json", "/"),
         ("core/media-buy-features.json", "/"),
@@ -8059,13 +8147,17 @@ def test_a_keyword_beside_a_const_is_decided_by_the_pin() -> None:
     document's own set; or it does not, and the node admits NOTHING.  Both directions
     below, on the same keyword.
 
-    :data:`codegen.lower.const.CLAIMS` is still two keywords, because the node's own
-    facts are not a property of the row: they are whatever the document states beside
-    this pin, derived once by the parser from the table
-    (``codegen.schema.parse.value_facts``), and :func:`codegen.lower.const.lower` claims
-    them beside ``CLAIMS``.
+    :data:`codegen.lower.const.CLAIMS` names ``format`` beside the pin and the type word
+    and nothing else, because the node's own FACTS are not a property of the row: they
+    are whatever the document states beside this pin, derived once by the parser from the
+    table (``codegen.schema.parse.value_facts``), and
+    :func:`codegen.lower.const.lower` claims them beside ``CLAIMS``.  ``format`` is in
+    ``CLAIMS`` and not in the facts for the reason ``value_facts`` excludes it -- "the
+    kind consumes it in a field of its own" -- and the row's answer for it is the other
+    one of the two: a fact is decided by the pin and DROPPED, a ``format`` RIDES.
+    ``test_a_format_beside_a_const_rides_on_the_annotation`` grades that arm.
     """
-    assert lower_const.CLAIMS == frozenset({"type", "const"})
+    assert lower_const.CLAIMS == frozenset({"type", "const", "format"})
     # the pin CONTRADICTS the constraint: the node admits nothing, so a Literal of the
     # value would be a model wider than its schema.  Reported on ``const``, which is the
     # keyword the node is refused BY -- the sibling is stated plainly and is satisfiable.
@@ -8097,6 +8189,78 @@ def test_a_keyword_beside_a_const_is_decided_by_the_pin() -> None:
         }
     )
     assert patterned.model_json_schema()["properties"]["k"]["const"] == "US"
+
+
+def test_a_format_beside_a_const_rides_on_the_annotation() -> None:
+    """A ``format`` beside a pin: the row consumes it and the ANNOTATION carries it.
+
+    **This was ``refusal.DEFERRED_TO_A_LATER_ROW``, and that was row ``10l.35``'s defect
+    arriving a second time.**  The sentence -- "this step lowers no such keyword (a later
+    D2 row does)" -- promises a row for a position that needs one, and ``format`` needs
+    none: its cell LOWERS at every one of §3's nine positions, so there is no later row
+    to write and the promise could never be kept.  The first clause below is that, read
+    off the table rather than restated, which is the one reading that cannot go stale if
+    a cell moves.
+
+    **The row's answer is §5's ``format`` row's own fallback.**  Its first choice --
+    "Selects a TYPE where the document's draft asserts the format and a type is named"
+    -- has nothing to select at a pin: §5's ``const`` row already decides the type, and a
+    ``Literal`` of one URI string is narrower than any URL type a ``uri`` could name, so
+    substituting one would WIDEN a node whose whole content is one value. So the row
+    takes "Otherwise rides as ``json_schema_extra={"format": …}`` on the field", which is
+    ``compiler.Decided.format`` and ``render._field``, exactly as an unselected format on
+    a plain scalar does.
+
+    **Both halves name it, and that is why this is not an approximation.** A fact the
+    model drops is the thing §2's ladder is for, and the module's own ceiling note says
+    what a dropped keyword costs here: §8 reads the document's keyword as *missing*.  A
+    ridden format is RENDERED, so the comparison has the keyword on both sides and
+    passes -- which the ``compare_schema`` clause asserts rather than assumes, in both
+    directions, at the position the bundle reaches the shape at.
+
+    The shape is §2's intersection rule again and the population is **2**, measured over
+    the nodes the walk decides: ``core/attestation-reference.json``'s ``claim_type`` is
+    ``{"type": "string", "format": "uri"}`` and two documents restate it with a pin.  So
+    the last clause asserts the bundle's own two, by name -- neither refuses on
+    ``format`` any more.
+    """
+    for position in keywords.Position:
+        cell = keywords.cell("format", position)
+        assert cell is not None and keywords.lowers(cell), position
+
+    doc = {
+        "title": "Pinned",
+        "type": "object",
+        "properties": {
+            "claim_type": {
+                "type": "string",
+                "format": "uri",
+                "const": "https://adcontextprotocol.org/claims/rights/grant",
+            }
+        },
+        "required": ["claim_type"],
+    }
+    model, text = _constructed(doc)
+    rendered = model.model_json_schema()["properties"]["claim_type"]
+    assert rendered["const"] == "https://adcontextprotocol.org/claims/rights/grant", rendered
+    assert rendered["format"] == "uri", rendered
+    assert "AnyUrl" not in text and "HttpUrl" not in text, text
+
+    # Graded at the DOCUMENT, which is where §8's pair sits: the format rides on the
+    # FIELD, so the annotation alone does not carry it and a comparison handed the
+    # annotation would report the document's own keyword as missing -- the exact reading
+    # a dropped format would give, and therefore no grade of the ride at all.
+    graded = compare_schema(doc, model)
+    assert graded.outcome == "pass", graded
+    assert "format" not in str(graded.missing + graded.differs + graded.added), graded
+
+    out = compiled(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    on_format = {
+        document: r["pointer"]
+        for document, r in out.refusals.items()
+        if r["keyword"] == "format"
+    }
+    assert on_format == {}, on_format
 
 
 def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
@@ -8631,9 +8795,16 @@ VERDICTS = frozenset(
         # route that was missing.
         "media-buy/update-media-buy-request.json",
         "media-buy/get-products-request.json",
-        "core/requirements/offering-asset-constraint.json",
-        "core/requirements/catalog-requirements.json",
-        "core/requirements/asset-requirements.json",
+        # **THREE LEAVE BY EMITTING AT ``adcp-client-python-10l.41``**:
+        # ``core/requirements/asset-requirements.json``, whose 12 bare ``$ref`` branches
+        # state no title and pin no ``const``, so §4's FOURTH branch rung names them
+        # ``AssetRequirementsBranch0`` through ``...Branch11``; and
+        # ``core/requirements/catalog-requirements.json`` and
+        # ``core/requirements/offering-asset-constraint.json``, which were chained behind
+        # it and emit with it.  The refusal they carried was D3 minting a verdict where
+        # §4 states a fallback -- "a branch with no title, no pinned ``const`` and no
+        # ``required`` set takes its index among the branches" -- and a name is not an
+        # acceptance fact, so nothing about what these documents accept has moved.
         "content-standards/list-content-standards-response.json",
         "content-standards/get-content-standards-response.json",
         "content-standards/content-standards.json",
@@ -8649,7 +8820,10 @@ VERDICTS = frozenset(
         'core/targeting-input.json',
         'core/targeting.json',
         'core/vendor-pricing-option.json',
-        'creative/get-creative-features-response.json',
+        # ``creative/get-creative-features-response.json``'s LINE IS DELETED AT
+        # ``adcp-client-python-10l.41`` and the document EMITS: its ``/oneOf/0`` is a bare
+        # ``$ref`` with no title of its own, so §4's fourth rung names it
+        # ``GetCreativeFeaturesResponseBranch0`` beside the two arms that state titles.
         'media-buy/accept-proposal-response.json',
         'media-buy/buy-products-response.json',
         'media-buy/commercial-terms.json',
@@ -8750,12 +8924,40 @@ VERDICTS = frozenset(
         # arriving is attributable" means here: nothing stopped emitting, nothing started
         # refusing, and six documents stopped being counted as clearable work that no row
         # was going to clear.
-        "core/postal-country-system.json",
+        #
+        # **ONE OF THE SIX LEFT AT ``adcp-client-python-10l.41``, BY EMITTING, AND THE
+        # FIVE BEHIND IT STAYED.**  ``core/postal-country-system.json``'s ``/anyOf/4``
+        # through ``/anyOf/9`` state no title, and 4 through 8 pin a ``const`` on BOTH
+        # their properties, so §4's second rung declines to choose by spelling -- but §4's
+        # FOURTH rung names them, ``PostalCountrySystemBranch4`` through ``...Branch9``,
+        # and the document emits.  The five chained behind it re-resolve one pointer on
+        # rather than clearing: ``core/postal-area.json`` conjoins the now-emitting
+        # document at ``/anyOf/0/allOf/0``, and what it resolves to is a plain ``A | B``
+        # and not a class, so §5's ``$ref`` row at CONJ refuses it -- a PRIMARY verdict of
+        # its own now, on ``allOf``, with the other four still chained behind it.  So the
+        # set loses one member and gains none, and the obstruction the four carry is the
+        # same document's as before.
         "core/postal-area.json",
         "core/offering.json",
         "core/product-offer-filters.json",
         "media-buy/product-discovery-criteria.json",
         "media-buy/list-products-request.json",
+        # **A SEVENTH JOINS THAT SAME CHAIN AT ``adcp-client-python-10l.66``, and it is
+        # the sixth document behind the verdict named just above rather than a new
+        # claim.**  ``lower/union.py``'s ``_plan`` deferred a branch that is ITSELF a
+        # ``oneOf``/``anyOf`` of shapes -- "a later D2 row does", of a keyword whose cell
+        # at BRANCH is a lowering effect at rung JOIN -- which is the fourth handler of
+        # the defect the six above record.  The branch loop writes the cell's own answer
+        # now (the siblings become a base, each branch a subclass, and the enclosing
+        # union's base is that base's base), so ``media-buy/proposal-refinement.json``
+        # gets past ``/oneOf/1`` and reports its real obstruction: a ``$ref`` at
+        # ``/properties/criteria`` onto ``media-buy/product-discovery-criteria.json``,
+        # which is in this set two lines up, and the chain runs out to
+        # ``core/postal-country-system.json``'s ``/anyOf/4`` branch-naming verdict.
+        # ``accounted`` rose 958 -> 959 and the emitted set is byte-identical: nothing
+        # stopped emitting, nothing started refusing, and one more document stopped being
+        # counted as clearable work that no row was going to clear.
+        "media-buy/proposal-refinement.json",
     }
 )
 

@@ -69,7 +69,7 @@ class Catchment(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catchment.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=('travel_time', 'transport_mode'), forbid=(('radius',), ('geometry',))), Presence(require=('radius',), forbid=(('travel_time',), ('geometry',))), Presence(require=('geometry',), forbid=(('travel_time',), ('radius',)))), 'oneOf'),
+        PresenceGroups((Presence(require=(('travel_time', 'transport_mode'),), forbid=(('radius',), ('geometry',))), Presence(require=(('radius',),), forbid=(('travel_time',), ('geometry',))), Presence(require=(('geometry',),), forbid=(('travel_time',), ('radius',)))), 'oneOf'),
     )
     catchment_id: Annotated[str, Field(description="Identifier for this catchment, used to reference specific catchment areas in targeting (e.g., 'walk', 'drive', 'primary').")]
     label: Annotated[str | None, Field(description="Human-readable label for this catchment (e.g., '15-min drive', '1km walking radius').")] = None

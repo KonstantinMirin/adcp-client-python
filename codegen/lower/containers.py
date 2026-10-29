@@ -85,7 +85,7 @@ from codegen import bundle, compiler, ir
 from codegen.lower import approximate, names, rules
 from codegen.schema import nodes
 from codegen.schema import parse as nodes_parse
-from codegen.keywords import Position
+from codegen.keywords import Position, declares
 from codegen.compiler import Decided, Module
 from codegen.refusal import Kind, Refusal
 
@@ -134,7 +134,13 @@ BOUNDS = ("minItems", "maxItems")
 #: 102 on a TYPELESS node, which is a ``contains``-only ``allOf`` conjunct or a node
 #: inside another ``contains``.  Those 102 are not admitted here and are not this row's
 #: position; no document of the deferred population is blocked at one.
-_ARRAY_CLAIMS = frozenset({"type", "items", "uniqueItems", "contains", *BOUNDS})
+#:
+#: ``allOf`` is in here for :func:`_the_conjuncts_constrain_the_array`'s reason: §5's
+#: ``$ref`` row at CONJ makes a CONTAINER its node's own TYPE rather than a base, so an
+#: array stating an ``allOf`` is an array whose conjuncts constrain it and this row is
+#: the one that reads them.  The conjuncts' OWN keywords are screened per conjunct, at
+#: the conjunct's own pointer, by that function.
+_ARRAY_CLAIMS = frozenset({"type", "items", "uniqueItems", "contains", "allOf", *BOUNDS})
 
 #: A MAPPING's own bounds -- how many keys it may carry -- in the document's spelling,
 #: and the ones a field holding the mapping can carry.  The same shape as
@@ -252,6 +258,120 @@ def _contents(node: nodes.Node, what: str, mod: Module) -> ir.TypeRef | Refusal:
     return _inner(decided, pointer, what, mod)
 
 
+def _the_conjuncts_constrain_the_array(node: nodes.Array) -> tuple[Any, ...] | Refusal:
+    """§5's ``$ref`` row at CONJ, reached through the node's own ``type`` word: the array
+    is the TYPE and its conjuncts are RULES on it.
+
+    "Where it is not -- a scalar, an enum, **a container**, or a union root, whose
+    instance is one of its branches -- it is not a class a model can extend: the target
+    is this node's own TYPE, and the other conjuncts and the ``allOf``'s siblings
+    constrain it, which is §2's intersection at a node that declares no fields of its
+    own."  :func:`compiler._the_conjuncts_own_type` is that clause where the type comes
+    from a ``$ref`` conjunct; this is the same clause where it comes from the node's own
+    ``type: array`` beside its own ``items``, and the array a node declares for itself is
+    as little a class a model can extend as one it names by reference.
+
+    **Where the rules hang is §2's and not this function's**, and the two halves are
+    ``lower.rules``'s: ``on_a_value`` is the value half -- "where no class sits above the
+    value ... the rule hangs off the value's own annotated type as an after-validator
+    (``AtLeastOne``, ``NotValue``, ``Distinct``)" -- and :func:`lower_declaration` is the
+    class half.  §5's ``contains`` row is what makes the value half the one an array's
+    conjunct takes at EVERY position: "Every position → an ``AtLeastOne`` after-validator
+    on the array's own annotated type, **because no class has a kind for it**."  So a
+    conjunct whose rules come back on the CLASS half is a shape this row does not answer,
+    and it refuses rather than hanging a statement about an array's contents off the
+    fields of whatever class happens to hold the array.
+
+    **Nothing here mints a kind**: a refusal reports on the conjunct's own keyword and
+    ``compiler.kind_for`` reads the kind off that keyword's cell at CONJ
+    (``docs/plan/architecture.md`` §3).
+
+    Measured over every node of the 1,054 portable documents -- the 4 composing arrays
+    ``schema.parse``'s arm order measured, which are this function's whole population:
+
+    * ``media-buy/legacy-purchase-continuation-input.json`` ``/properties/accepted_losses``
+      and ``media-buy/request-proposals-response.json``
+      ``/properties/purchase_continuation/oneOf/1/properties/losses``, each two conjuncts
+      stating a bare ``contains: {"const": ...}`` -> two ``AtLeastOne(values=(v,))``.  Two
+      existential quantifiers over one list are two independent after-validators, so there
+      is no intersection to compute and nothing is dropped.
+    * ``media-buy/refine-proposals-request.json`` ``/properties/refinements`` and
+      ``media-buy/refine-proposals-response.json`` ``/properties/results``, each one
+      conjunct stating ``if: {"contains": ...}`` with ``then: {"items": ...}``.  §5's
+      ``if`` row reads a ``Match`` clause list "where it states ``required`` plus
+      ``properties`` with ``const`` or ``enum`` values; **otherwise nothing, and the
+      schema half answers**" -- this ``if`` states a ``contains`` -- and §5's ``then`` row
+      gives its ``properties`` "nothing on the model; the schema half narrows the value",
+      which its ``items`` takes for the same reason.  Both cells are ``rendered=False``,
+      so §8 compares no fact at the pointer and there is no widening to declare: this is
+      the ceiling ``lower/rules.py`` already states once for the whole module ("nothing
+      here refuses a document ... ``CanvasConstraint.model_validate`` builds while
+      ``strict_validate`` refuses"), not a fact the annotation drops where a cell says it
+      should carry one.
+    """
+    out: list[Any] = []
+    for conjunct in node.conjuncts:
+        raw = conjunct.raw
+        if not isinstance(raw, Mapping):
+            # ``allOf: [3]`` is a malformed document, which is why
+            # :attr:`nodes.Conjunct.raw` travels as the document wrote it.  §4 gives the
+            # parser the SHAPE faults and the row raises them, so this is a VERDICT about
+            # the document and not a cell's answer.
+            return Refusal(
+                "allOf",
+                conjunct.pointer,
+                f"an allOf conjunct is {raw!r}, not a schema",
+                kind=Kind.VERDICT,
+            )
+        sources = compiler.declaration_rule_sources(raw, Position.CONJ)
+        on_a_class = rules.lower_declaration(raw, Position.CONJ).rules
+        if on_a_class:
+            # §2's FIRST half asked at a node that is a LIST: the statement is about which
+            # keys an instance supplied, and a list supplies none.  Hanging it on the class
+            # whose field holds the array would make it a statement about THAT class's
+            # fields, which is a different claim about a different instance.  0 sites over
+            # the portable population; written so the first one is loud.
+            return Refusal(
+                "allOf",
+                conjunct.pointer,
+                f"a conjunct of this array states {sorted(sources)}, which section 5 "
+                f"lowers to {', '.join(sorted(type(r).__name__ for r in on_a_class))} -- a "
+                "rule on the nearest CLASS, and the nearest class's fields are not this "
+                "list's contents.  Section 5's contains row is why an array's conjunct "
+                "takes section 2's OTHER half at every position ('because no class has a "
+                "kind for it'), and the three value kinds it names there (AtLeastOne, "
+                "NotValue, Distinct) are each about a VALUE",
+                kind=compiler.kind_for("allOf", Position.CONJ),
+            )
+        unread = [
+            key
+            for key in sorted(raw)
+            if declares(key, Position.CONJ)
+            and key not in sources
+            and key != "contains"
+        ]
+        if unread:
+            # A conjunct restating the array's own type facts -- ``items``, ``minItems``,
+            # a ``properties`` map -- is §2's intersection over DECLARATIONS, which this
+            # row does not compute: the array is already decided from the node's own
+            # declaration and an :class:`codegen.ir.TypeRef` has no slot for the
+            # conjunction of two.  0 sites over the portable population.  Reported on the
+            # conjunct's FIRST such keyword, with the kind that keyword's own cell gives.
+            return Refusal(
+                unread[0],
+                conjunct.pointer,
+                f"a conjunct of this array states {unread}, which section 5's $ref row at "
+                "CONJ does not answer for a container: the array is this node's own TYPE, "
+                "decided from its own items and bounds, and a conjunct restating one of "
+                "those is section 2's intersection over DECLARATIONS -- computed before a "
+                "node is decided, with no slot on an ir.TypeRef for the conjunction of two "
+                "decided types",
+                kind=compiler.kind_for(unread[0], Position.CONJ),
+            )
+        out.extend(rules.on_a_value(sources, contains=raw.get("contains")))
+    return tuple(out)
+
+
 # --------------------------------------------------------------------------- #
 # the rows
 # --------------------------------------------------------------------------- #
@@ -302,6 +422,14 @@ def array(node: nodes.Array, mod: Module) -> Decided | Refusal:
         distinct=node.distinct and position not in (Position.ROOT, Position.PROP),
         contains=node.contains,
     )
+    # §5's ``$ref`` row at CONJ, reached through this node's own ``type`` word: the array
+    # is the TYPE and the conjuncts constrain it.  The node's OWN statement comes first
+    # and the conjuncts follow in document order, so the rendered annotation is a function
+    # of the document's content and not of a dict's iteration (P7).
+    conjoined = _the_conjuncts_constrain_the_array(node)
+    if isinstance(conjoined, Refusal):
+        return conjoined
+    bound = (*bound, *conjoined)
     bounds = dict(node.bounds)
     if "items" not in node.declares:
         # ``{"type": "array"}`` admits a list of anything, and ``Any`` is that set --

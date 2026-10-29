@@ -105,7 +105,20 @@ from codegen.refusal import Kind, Refusal
 #: constraint of its own value this node states, derived once by the parser from the
 #: table (``parse.value_facts``).  :func:`lower` claims them because the PIN DECIDES THEM
 #: -- see :func:`decides`.
-CLAIMS = frozenset({"type", "const"})
+#: **``format`` is the third, and it is claimed for the same reason the other two are:
+#: the row consumes it.**  Measured over the nodes the WALK decides (not the raw bundle):
+#: exactly **2** ``const`` nodes state a ``format``, both ``uri``, both at PROP, both
+#: produced by §2's intersection rule merging ``core/attestation-reference.json``'s
+#: ``claim_type`` -- ``{"type": "string", "format": "uri"}`` -- with a restatement that
+#: pins it (``core/rights-constraint.json``, ``core/rights-attestation-evaluation.json``).
+#: **0** ``enum`` nodes state one anywhere, which is why ``lower.enum`` grows no such
+#: field.  Before this the screen answered them with
+#: ``refusal.DEFERRED_TO_A_LATER_ROW`` -- "this step lowers no such keyword (a later D2
+#: row does)" -- which is defect row ``10l.35``'s shape exactly: ``format``'s cell LOWERS
+#: at every one of the nine positions, so the promised row cannot exist.  What the row
+#: owes is :func:`lower`'s ``format`` arm, and the answer is §5's ``format`` row's own
+#: fallback and not a deferral.
+CLAIMS = frozenset({"type", "const", "format"})
 
 #: The value types the COMPILER can spell as a ``Literal``, which is where the one
 #: refusal about the value itself comes from.  dmcg's ``DataType.literals`` is
@@ -220,4 +233,22 @@ def lower(node: nodes.Constant, mod: compiler.Module) -> compiler.Decided | Refu
             "the node admits nothing",
             kind=Kind.VERDICT,
         )
-    return compiler.Decided(ir.TypeRef(literals=(value,)))
+    # **A ``format`` BESIDE THE PIN RIDES, which is §5's ``format`` row's own fallback and
+    # the one answer left once the pin has decided the type.**  The row's first choice --
+    # "Selects a TYPE where the document's draft asserts the format and a type is named"
+    # -- has nothing to select here: §5's ``const`` row already decides this node's type,
+    # and a ``Literal`` of one pinned string is narrower than any URL type a ``uri`` could
+    # name, so substituting one would widen a node whose whole content is one value.  The
+    # row's own second answer is therefore what fires: "Otherwise rides as
+    # ``json_schema_extra={"format": …}`` on the field."  ``compiler.Decided.format`` is
+    # that carrier and ``render._field`` is what writes it, exactly as it does for the
+    # scalar the format did not select a type for (``lower.scalars.lower``'s tail).
+    #
+    # **It is not one of :func:`decides`'s facts and the pin does not decide it**, which
+    # is the division between the two carriers.  A fact is decided by the pin because a
+    # ``Literal`` DROPS it -- the row has to prove the drop costs nothing, and the module
+    # docstring names the §8 ceiling where the proof holds and the comparison still reads
+    # the dropped keyword as *missing*.  A ``format`` is not dropped: it is rendered, so
+    # §8 compares the document's own keyword against the model's own and there is nothing
+    # to prove and no ceiling to name.
+    return compiler.Decided(ir.TypeRef(literals=(value,)), format=node.format)

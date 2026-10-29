@@ -1355,15 +1355,44 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         # position as "not a class": §4's branch row refused
         # ``core/assets/asset-union.json`` at ``/oneOf/3`` because ``VASTAsset`` had no
         # shape, with a sentence about a scalar alias that ``VASTAsset`` is not.
-        shape = mod.shapes.get(edge.into)
-        return Target(
-            relative_module(document, edge.target),
-            symbol,
-            None if shape is None else _bound_shape(shape, bound.symbols),
-            edge.target,
-            kind=compiler.target_kind(mod.at.get(edge.into)),
-            imports=_importable(document, edge.target, bound.symbols, mod.imported),
-        )
+        #
+        # **A UNION BASE'S BRANCHES CROSS WITH IT, as one :class:`compiler.Target` each**
+        # (``adcp-client-python-10l.68``).  §5's ``$ref`` row at CONJ distributes a union
+        # target over a node that declares fields of its own, and the composing module
+        # then declares one class per branch -- so it needs each branch's symbol, its
+        # shape and §4's three naming facts, none of which it can read off the target's
+        # declarations.  ``compiler.branches_of`` is the one derivation and it reads
+        # ``ClassDecl.branches``, which already names the branch POINTERS; this closure is
+        # what turns a pointer of the target's module into a :class:`compiler.Target`, and
+        # the ROOT's own answer is built by the same call, so a branch and a root cannot
+        # be assembled two different ways.
+        #
+        # ``declarer`` is bound once, past the ``edge.target is None`` screen above: the
+        # closure is what
+        # carries it into every branch's answer, and a narrowing a closure cannot see is
+        # exactly what the type checker reports here.
+        declarer = edge.target
+        module = relative_module(document, declarer)
+        importables = _importable(document, declarer, bound.symbols, mod.imported)
+
+        def at(pointer: str, spelled: str) -> Target:
+            shape = mod.shapes.get(pointer)
+            hop = mod.hops.get(pointer)
+            declared = mod.at.get(pointer)
+            return Target(
+                module,
+                spelled,
+                None if shape is None else _bound_shape(shape, bound.symbols),
+                declarer,
+                kind=compiler.target_kind(declared),
+                imports=importables,
+                naming=hop if isinstance(hop, lower_names.Branch) else None,
+                branches=compiler.branches_of(
+                    declared, lambda p: at(p, bound.symbols[p])
+                ),
+            )
+
+        return at(edge.into, symbol)
 
     def resolve(document: str) -> dict[tuple[str, str], Target | Refusal]:
         """This document's reference sites, resolved: §5's ``targets``.

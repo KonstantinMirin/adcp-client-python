@@ -57,8 +57,8 @@ class BreakpointsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/seller_rendered_stateful_display.json', pointer='#/properties/states/items/properties/breakpoints/items')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=('width',), forbid=(('width_range',), ('width_mode',))), Presence(require=('width_range',), forbid=(('width',), ('width_mode',))), Presence(require=('width_mode',), forbid=(('width',), ('width_range',)))), 'anyOf'),
-        PresenceGroups((Presence(require=('height',), forbid=(('height_range',), ('viewport_height_percent',))), Presence(require=('height_range',), forbid=(('height',), ('viewport_height_percent',))), Presence(require=('viewport_height_percent',), forbid=(('height',), ('height_range',)))), 'anyOf'),
+        PresenceGroups((Presence(require=(('width',),), forbid=(('width_range',), ('width_mode',))), Presence(require=(('width_range',),), forbid=(('width',), ('width_mode',))), Presence(require=(('width_mode',),), forbid=(('width',), ('width_range',)))), 'anyOf'),
+        PresenceGroups((Presence(require=(('height',),), forbid=(('height_range',), ('viewport_height_percent',))), Presence(require=(('height_range',),), forbid=(('height',), ('viewport_height_percent',))), Presence(require=(('viewport_height_percent',),), forbid=(('height',), ('height_range',)))), 'anyOf'),
     )
     breakpoint_id: Annotated[StrMatching4D6E1599, Field(description='Stable identifier used by `state_canvases[].breakpoint_id`.')]
     width: IntMin1 | None = None

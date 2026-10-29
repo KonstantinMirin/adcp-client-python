@@ -19,6 +19,15 @@ above the value -- a root array, a mapping value, a ``definitions`` entry, a uni
 document's statement takes, so the two cannot both claim it and neither can silently
 drop it.
 
+**§2's clause of 2026-10-28 adds the other axis, and :func:`as_the_object` is it**: "a
+value-level rule may state which KEYS the value supplied, and the three kinds above are
+not the limit ... at a position with no class above it, the value *is* the object."  So a
+rule :func:`lower` wrote for a class may hang on the value's own type where there is no
+class, and whether it may is a property of the KIND -- "a callable on the value, and all
+it is" -- asked as ``isinstance(rule, ValueRule)`` and never as a list of names here.
+The kinds that are not get NAMED back to the caller, which is why that function returns
+two tuples rather than one.
+
 **Nothing here refuses a document.**  That is D4, and it is the one judgement this
 module makes, so it is stated once rather than per keyword.  The accepted set of every
 emitted class is ``strict_validate``, which validates the payload against the
@@ -68,7 +77,7 @@ both the boundary predicate and the clause values.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -251,6 +260,73 @@ def on_a_value(
     return tuple(out)
 
 
+@dataclass(frozen=True)
+class AsTheObject:
+    """§2's clause of 2026-10-28, asked of one node's CLASS-half rules: the ones its own
+    annotated type can carry, and the ones it cannot.
+
+    Two tuples and not one, because the second is what keeps the first from being a
+    silent drop: a caller with no class writes ``carried`` onto the type and REFUSES for
+    ``declined``, naming the kind.  §2 admits nothing by silence.
+    """
+
+    #: The rules that ARE callables on the value, in the order they were lowered -- so
+    #: the annotation stays a function of the document's content and not of a set's
+    #: iteration (P7).
+    carried: tuple[ValueRule, ...] = ()
+    #: The rules that are not, which have nowhere to live at a position with no class.
+    declined: tuple[Rule, ...] = ()
+
+
+def as_the_object(rules: Sequence[Rule]) -> AsTheObject:
+    """§2's clause of 2026-10-28: which of a node's class-half rules its own VALUE carries.
+
+    "**A value-level rule may state which KEYS the value supplied, and the three kinds
+    above are not the limit.**  The distinction §2 draws is about where a rule HANGS, not
+    about what it may read ... at a position with no class above it, the value *is* the
+    object, so ``ForbiddenGroups``, ``RequiredGroups`` and ``PresenceGroups`` are
+    admissible there as ``_runtime.ValueRule``s -- 'a callable on the value, and all it
+    is' -- without a new kind."
+
+    **This is §2's two places read a THIRD time and still by one reader.**  :func:`lower`
+    is the class half and :func:`on_a_value` is the value half, and those two stay
+    disjoint per keyword SHAPE: a ``not`` over a ``const`` is a statement about a value
+    and a ``not`` over ``required`` is a statement about keys, and the reductions split
+    them.  What this adds is the other axis -- a statement about KEYS at a position with
+    no class -- and it re-reads no keyword to answer it: the rules are already lowered,
+    and the question asked of each is whether the KIND is a value rule.
+
+    **``isinstance(rule, ValueRule)`` and never a list of kind names**, which is the
+    whole reason :class:`adcp.types._runtime.ValueRule` is ``runtime_checkable``: §2's
+    clause says the admissible kinds are the ones that are "a callable on the value, and
+    all it is", so admissibility is a property of the kind and a list here would be a
+    second copy of the clause -- the one thing ``docs/plan/architecture.md`` §3 forbids.
+    A kind that is not one (``Dependencies``, ``PropertyCount``,
+    ``ConditionalRequired``, ``NegatedConditional``, ``UniqueItems``) reaches
+    :attr:`AsTheObject.declined`, and the caller reports it.
+
+    ``UniqueItems`` is the instructive decline: it names a SIBLING FIELD's array, so it
+    reads the value's members through a name the value supplied rather than the value
+    itself, and §2 already gives it the other kind at the other position
+    (:class:`adcp.types._runtime.Distinct`).  A caller reaching it here has a
+    ``uniqueItems`` with no class above it AND no array row to write the ``Distinct``,
+    which is a shape no row writes.
+
+    Measured over the 1,054 portable documents at ``adcp-client-python-10l.63``: the one
+    caller is ``compiler._the_conjuncts_own_type``, 2 sites, both a ``ForbiddenGroups``
+    from ``not``/``required`` -- ``core/canonical-product.json`` and
+    ``core/product.json`` -- and ``declined`` is empty at every one of them.
+    """
+    carried: list[ValueRule] = []
+    declined: list[Rule] = []
+    for rule in rules:
+        if isinstance(rule, ValueRule):
+            carried.append(rule)
+            continue
+        declined.append(rule)
+    return AsTheObject(tuple(carried), tuple(declined))
+
+
 def contains_predicate(sub: Any) -> AtLeastOne | None:
     """§5's ``contains`` row as a PREDICATE, or ``None`` where it decides none.
 
@@ -413,10 +489,26 @@ def _combinator(node: Mapping[str, Any], out: Lowered) -> None:
             continue
         if not any(c.require or c.forbid for c in clauses):
             continue
-        if any(c.forbid for c in clauses):
+        # **:class:`RequiredGroups` is the degenerate case and the test for it is
+        # DERIVED, not the forbid half alone** (§5's disjunctive required half, decided
+        # 2026-10-29).  That kind holds a flat group list and counts the groups PRESENT;
+        # a clause list holds the branches and counts the CLAUSES that hold.  The two say
+        # the same thing exactly when every clause is one group: then "group i present"
+        # and "clause i holds" are the same statement, and flattening is a spelling.
+        # They come apart the moment a clause carries two groups -- under ``oneOf`` an
+        # instance satisfying both of one clause's groups is ONE clause and TWO groups,
+        # so the flat kind would report "2 of these groups are present, the document
+        # admits exactly one" of a payload the document admits.  So a clause that is not
+        # exactly one group takes the kind that can hold it, which is the same reason
+        # ``core/catchment.json`` gives for not hoisting the ``not``\\ s.
+        #
+        # ``!= 1`` and not ``> 1``: a clause carrying NO group is a branch that only
+        # forbids, which has no group to contribute to a flat list at all and whose whole
+        # content would vanish from it.
+        if any(c.forbid for c in clauses) or any(len(c.require) != 1 for c in clauses):
             out.rules.append(PresenceGroups(clauses, keyword))
             continue
-        out.rules.append(RequiredGroups(tuple(c.require for c in clauses), keyword))
+        out.rules.append(RequiredGroups(tuple(c.require[0] for c in clauses), keyword))
 
 
 def _distinct(declared: Mapping[str, Any], out: Lowered) -> None:
