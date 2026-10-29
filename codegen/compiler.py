@@ -358,7 +358,7 @@ class Target:
     #: than inventing one.
     imports: Mapping[str, Importable] = field(default_factory=dict)
 
-    # **The target's own ROOT NODE is not here and is ``Module.roots``'s now.**  §2's
+    # **The target's own NODE is not here and is ``Module.referenced``'s now.**  §2's
     # intersection rule asked of two declarations that are each a bare ``$ref`` is the
     # one reader that needs the target's schema rather than its symbol, and it holds a
     # DECLARATION and not a node -- so it has no pointer to ask a site with, and the
@@ -564,7 +564,7 @@ class Module:
     #: run (:func:`unresolved`).
     targets: Mapping[tuple[str, str], Target | Refusal] = field(default_factory=dict)
     #: **The sites this document's BASES spell, resolved for this document and keyed by
-    #: the URI alone** -- the other half of what :attr:`roots` is here for.
+    #: the URI alone** -- the other half of what :attr:`referenced` is here for.
     #:
     #: §2's intersection rule reads a BASE's declaration beside this document's own
     #: (:func:`_intersection`), so every key the base alone declares reaches the composed
@@ -592,13 +592,20 @@ class Module:
     #: output writes 11 modules nothing imports and nobody named.  A set rather than a
     #: count, because the fixed point the run takes is over the TARGETS.
     asked: set[tuple[str, str]] = field(default_factory=set)
-    #: ``$ref`` URI -> the ROOT NODE of the document it names, for the one reader that
-    #: needs the target's schema rather than its symbol: §2's intersection rule asked of
-    #: two declarations that are each a bare ``$ref`` (:func:`Module.resolve_node`).
-    #: Keyed by the URI alone, because that reader holds a declaration and not a node and
-    #: so has no pointer to ask with; populated only for a reference with NO fragment,
-    #: which is that rule's own scope.
-    roots: Mapping[str, dict] = field(default_factory=dict)
+    #: ``$ref`` URI -> the NODE it names, for the one reader that needs the target's
+    #: schema rather than its symbol: §2's intersection rule asked of two declarations
+    #: that are each a bare ``$ref`` (:func:`Module.resolve_node`).  Keyed by the URI
+    #: alone, because that reader holds a declaration and not a node and so has no
+    #: pointer to ask with.
+    #:
+    #: **It held document ROOTS and holds NODES** (``adcp-client-python-10l.72``).  Two
+    #: spellings reach one beside the root: a FRAGMENT URI, which names a node of
+    #: another document, and a pointer LOCAL TO A BASE'S OWN DOCUMENT, which names a node
+    #: of a document this one composes.  The run resolves both (``emit.referenced`` and
+    #: ``emit.based_nodes``) and the rule reads one map, because whether one declaration
+    #: narrows another is a fact about the two TARGETS and a reference this could not
+    #: read was a declaration the rule had to refuse.
+    referenced: Mapping[str, dict] = field(default_factory=dict)
     #: The formats this document's own draft asserts; see ``emit.asserted_formats``.
     #: Empty by default, so a node lowered outside ``lower_document`` selects no
     #: format-derived type rather than one nothing checks.
@@ -820,7 +827,7 @@ class Module:
         )
 
     def resolve_node(self, uri: str) -> dict | None:
-        """The schema a cross-document reference names, or ``None``.
+        """The schema a reference names, or ``None``.
 
         For section 2's intersection rule and for nothing else: two declarations that are each
         a bare ``$ref`` state the same KIND of thing about an instance and whether one
@@ -831,10 +838,28 @@ class Module:
         enumeration where the base it composes references a three-member one, and the
         one member IS one of the three -- a narrowing the reference pair cannot show.
 
-        ``None`` for anything undecidable -- a local reference, a fragment, a target
-        that refuses -- and the caller then treats the pair as not ordered and refuses
-        the document.  That is the safe direction: a reference the merge rule cannot
-        read is a declaration it must not claim is narrower.
+        ``None`` for anything undecidable -- a URI naming no document of this bundle, a
+        pointer naming no node, a target that refuses -- and the caller then treats the
+        pair as not ordered and refuses the document.  That is the safe direction: a
+        reference the merge rule cannot read is a declaration it must not claim is
+        narrower.
+
+        **A FRAGMENT and a BASE'S OWN LOCAL POINTER are no longer among the undecidable,
+        and that is ``adcp-client-python-10l.72``.**  Both name a node as squarely as a
+        no-fragment URI does, and answering ``None`` for them made the rule refuse a pair
+        of references it could have read -- measured on
+        ``core/tracker-execution-selector.json``, whose ``/oneOf/1`` names four nodes of
+        ``core/vast-tracker-constraints.json`` ABSOLUTELY where the base it composes
+        declares the same four as pointers into its own text.  The same node, written two
+        ways.  A spelling relative to another document cannot be keyed by the URI alone
+        across the whole run, so the run resolves the base's half PER DOCUMENT
+        (``emit.based_nodes``) and hands the two readings in as one map.
+
+        **A LOCAL pointer of THIS document is still ``None``, and that is scope and not
+        an oversight**: the field a local reference decides is
+        :func:`local_reference`'s, this map is the merge rule's, and a composing
+        document's own local spelling is screened OUT of the base's half so that it
+        cannot answer for the base's.
 
         **A reference is never DEREFERENCED into the field**, only into the predicate
         (:func:`_restatement`).  The field is decided from the document's own ``$ref``,
@@ -847,13 +872,14 @@ class Module:
         exception.  Nothing about the reading changed -- a refused target was ``None``
         before and is ``None`` here -- which is what makes it a relocation.
 
-        **And the binder itself is gone** (§14 step 7): :attr:`roots` is the same two
-        answers as DATA, built by the run from the documents it has already lowered, so
-        a missing entry is every one of the undecidable cases at once -- a local
-        reference, a fragment, a target that refuses, a URI naming no document -- and
-        the caller treats the pair as unordered and refuses, which is the safe direction.
+        **And the binder itself is gone** (§14 step 7): :attr:`referenced` is the same
+        two answers as DATA, built by the run from the documents it has already lowered,
+        so a missing entry is every one of the undecidable cases at once -- a reference
+        local to this document, a target that refuses, a URI naming no document of this
+        bundle, a pointer naming no node of the document it does name -- and the caller
+        treats the pair as unordered and refuses, which is the safe direction.
         """
-        return self.roots.get(uri)
+        return self.referenced.get(uri)
 
     def target(self, uri: str, pointer: str) -> Target | Refusal:
         """What the run resolved the reference at ``pointer`` to.
@@ -3520,10 +3546,13 @@ def _at_least_as_tight(
         # field left the class entirely, and three emitted modules changed.  6 sites,
         # all in that document.
         #
-        # ``None`` from the resolver is every undecidable case at once -- a local
-        # reference, a fragment, a URI naming no document, a target that refused -- and
-        # it answers False here, which is this predicate's own rule: "a keyword this
-        # cannot read is not tight enough and the caller refuses."
+        # ``None`` from the resolver is every undecidable case at once -- a URI naming no
+        # document, a pointer naming no node, a target that refused, a reference local to
+        # the document being written -- and it answers False here, which is this
+        # predicate's own rule: "a keyword this cannot read is not tight enough and the
+        # caller refuses."  A FRAGMENT and a pointer local to a BASE's document are no
+        # longer in that list and are read like any other reference
+        # (:meth:`Module.resolve_node`, ``adcp-client-python-10l.72``).
         if resolve is None or not isinstance(c, str) or not isinstance(b, str):
             return False
         target_c, target_b = resolve(c), resolve(b)
@@ -3898,23 +3927,41 @@ def _restatement(
         # novelty test says the child adds something, and the field is decided from the
         # child alone with every fact behind the reference dropped.
         #
-        # Measured over the 1,054 portable documents: **1 site**,
-        # ``brand/verify-brand-claim-response.json#/definitions/signed_response``, whose
-        # conjunct restates ``payload`` with two properties over
-        # ``core/response-payload-jws-envelope.json``'s ``{"$ref":
-        # "#/definitions/response_payload"}`` -- a pointer into the BASE's own document,
-        # which ``Module.resolve_node`` answers by URI and so cannot reach.  Emitted, the
-        # class dropped 6 of the 8 properties that payload requires and the comparison
-        # reported 4 ``missing`` and 2 ``differs`` for it, which is a model wider than
-        # its document.
+        # **RE-MEASURED over the 1,054 portable documents: 0 sites, down from 3, and the
+        # 3 were one defect** (``adcp-client-python-10l.72``).  The comment here read
+        # "1 site" and named one of them; the arm had 3, and every one was a pointer
+        # LOCAL TO THE BASE'S OWN DOCUMENT:
         #
-        # It reports through the shared "neither matches nor narrows" arm and takes that
-        # arm's kind, which is the arm's own answer and not this clause's: what the
-        # document needs is §5's ``properties`` row -- "two object declarations compose
-        # as an ``allOf`` of the two at that property" -- which is decided and
-        # unimplemented, and which the same arm refuses the subschema-valued
-        # restatements of ``core/assets/*-asset.json`` for.  Filed rather than decided
-        # here.
+        # * ``core/tracker-execution-selector.json`` at ``/oneOf/1``, whose
+        #   ``vast_versions``, ``vast_event``, ``target`` and ``offset`` each name a node
+        #   of ``core/vast-tracker-constraints.json`` ABSOLUTELY where the base it
+        #   composes declares the same four as ``{"$ref": "#/definitions/…"}``.  THE SAME
+        #   NODE, written once absolutely and once relative to the base's own document --
+        #   so the pair was never unreadable, it was unread.
+        # * ``brand/verify-brand-claim-response.json`` and
+        #   ``brand/verify-brand-claims-response.json`` at
+        #   ``/definitions/signed_response``, whose conjunct restates ``payload`` with two
+        #   properties over ``core/response-payload-jws-envelope.json``'s ``{"$ref":
+        #   "#/definitions/response_payload"}``.
+        #
+        # :meth:`Module.resolve_node` reads both spellings now, so no pair in this bundle
+        # reaches this clause.  **It stays, and a population of 0 is not "a derivation
+        # matching nothing" here**: it is not an arm producing an outcome for a shape no
+        # document has, it is the one place :func:`_at_least_as_tight`'s refuse-what-you-
+        # cannot-read rule is spelled for ``$ref``, and deleting it ADMITS the unreadable
+        # pair rather than refusing it -- :func:`_intersection` then drops the base's
+        # reference (its ``covered`` arm) and the field is decided from the child alone
+        # with every fact behind the reference gone.  Measured before the resolver read
+        # the two spellings: emitted, the brand class dropped 6 of the 8 properties
+        # ``payload`` requires and the comparison reported 4 ``missing`` and 2
+        # ``differs``, which is a model wider than its document.
+        #
+        # The two ``brand`` documents still refuse, one clause down and on their own
+        # facts: the base now dereferences to its object, ``properties`` composes per key
+        # (§5's row), and ``required`` is what the pair is not ordered by -- the child
+        # requires ``task`` and ``response``, the base's target requires eight.  That is
+        # ``adcp-client-python-97w``'s, and it reports through the shared "neither matches
+        # nor narrows" arm and takes that arm's kind.
         return None
     if not all(_at_least_as_tight(k, c[k], b[k], resolve) for k in set(c) & set(b)):
         return None
