@@ -592,7 +592,31 @@ reached first.
   front. **This is a function of the one document and carries no dependency on a sibling set**, so
   it is insertion-stable — unlike the branch rule tried and reverted at `64d0f897`.
 - **Union branch**: its own `title`; else the `const`s it pins, in the document's own key order;
-  else its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
+  else its sorted `required` set; else, where the branch is a bare `$ref`, **the TARGET's own
+  derived name**; else its **index among the branches**, `<Base>Branch<i>`.
+
+**A bare `$ref` branch is named for its TARGET, and the index is the rung after that (decided
+2026-10-29).** §4 already makes such a branch inherit the target's property map for the pin rung,
+and the target is a document whose own class name this section derives — so the name is available
+and the index is a worse answer that was reached only because no rung asked.
+
+A positional name is the one outcome a consumer cannot work with. `AssetRequirementsBranch0`
+through `...Branch11` are the twelve asset kinds — `image-asset-requirements.json`,
+`video-asset-requirements.json`, `audio-asset-requirements.json` and so on — and a caller writing
+`isinstance(req, AssetRequirementsBranch7)` has to count the document's branches to know it means
+JavaScript. **Measured: 19 classes over 6 documents take the index today**, and every one of them
+is a bare `$ref` whose target names itself.
+
+Where the root's name and the target's share a leading run, the branch takes the root's name plus
+the target's distinguishing remainder, so `core/requirements/asset-requirements.json`'s branch on
+`image-asset-requirements.json` is `AssetRequirementsImage` and not the target's name repeated.
+Both inputs are facts about the one branch — its root and its target — so the rule is
+insertion-stable, which is what §4's own criterion asks and what the branch rule reverted at
+`64d0f897` failed.
+
+**The spelling needs a rename census before it lands**, as rung 2's did: the four single-pin
+branches of `postal-country-system` had to keep `US`, `GB`, `CA` and `Plz`, and the same question
+applies to every sibling of the 19.
 
 **Rung 2 reads EVERY pin the branch states, and a rung that collides has not identified the
 branch (decided 2026-10-29).** Two clauses, and both are functions of the one branch, which is
