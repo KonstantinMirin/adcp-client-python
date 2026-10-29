@@ -58,6 +58,19 @@ def lower(node: nodes.Reference, mod: Module) -> Decided | Refusal:
         # refusal to carry ``through=``; this row has nothing to add to it.
         return target
     mod.importing(target.symbol, target.where)
+    # **A CHAIN HOP's ``description`` travels to the referring node**
+    # (:attr:`compiler.Module.described`), which is the same carriage
+    # :attr:`compiler.Module.referred` already gives a local target's ``default`` and for
+    # the same reason: ``emit._declaring_site`` resolves a fragment whose node is itself a
+    # ``$ref`` to the module that DECLARES the symbol, and the node it passed THROUGH may
+    # state a ``description`` sibling -- which §5's ``$ref`` row makes authoritative and
+    # ``bundle.record`` inlines at this very pointer.  Recorded rather than returned,
+    # because a ``description`` is an annotation and not one of ``ir.FACTS``: "everything
+    # else a document can say about a value is a type ..., an annotation (and so a field's
+    # ``description``), a rule, or a keyword the walk refuses".  The node's OWN sibling
+    # wins, which is read where the field is built.
+    if target.described is not None:
+        mod.described[node.pointer] = target.described
     return Decided(ir.TypeRef(target.symbol, local=True))
 
 
@@ -102,17 +115,31 @@ def _root(node: nodes.Reference, mod: Module) -> Decided | Refusal:
         # run's to mint: the target is where the obstruction is.
         return target
     if target.kind is not compiler.TargetKind.CLASS:
-        return Refusal(
-            "$ref",
-            node.pointer,
-            f"a root that is a bare reference to {node.uri!r} whose target is not a "
-            "class declaring fields: section 5's bare-$ref root gives a subclass where "
-            "the target is a class and an IDENTITY binding where it is an alias, an "
-            "enumeration or a root model, and the identity half is unwritten -- "
-            "population 0 over the portable set, where the one bare-$ref root's target "
-            "is a class",
-            kind=Kind.DEFERRED,
-        )
+        # **§5(a)'s IDENTITY half, and it is one return rather than a second shape.**
+        # "Where the target is an alias, an enumeration or a root model there is nothing
+        # to subclass and the symbol is bound to the target by identity, which §1's own
+        # carve-out already admits inside a module and now admits across one: ``X is Y``
+        # holds and the domain surface exports it once."  The TYPE is the target's
+        # symbol, and ``emit.lower``'s ROOT wrapper is what turns a root that declared
+        # no class into ``ir.AliasDecl`` beside ``__adcp_schema__`` and
+        # ``strict_validate`` -- the same two statements a scalar root and an
+        # enumeration root bind, so a class, an alias and an identity binding cannot
+        # come to answer differently about what their own document accepts.
+        #
+        # A UNION ROOT is in this arm and not in the subclass one, which is the live
+        # site: ``core/signal-pricing-option.json`` is a bare ``$ref`` to
+        # ``core/vendor-pricing-option.json``, whose root distributes a union target
+        # over its own fields and so is a :attr:`compiler.TargetKind.UNION`.  A
+        # SUBCLASS of it would accept none of the branches, and that is measured in
+        # ``BranchDispatchMixin`` rather than reasoned: "the base is the class that
+        # DECLARES ``_branch_models`` (``"_branch_models" not in cls.__dict__``); a
+        # class that inherits it gets its own shape back".  §5's ``$ref`` row at CONJ
+        # is what decides the kind -- "a scalar, an enum, a container, or a union root
+        # ... is not a class a model can extend: **the target is this node's own
+        # TYPE**" -- and a bare ``$ref`` root IS a composing node with one ``$ref``
+        # conjunct and no properties of its own (the docstring above says so), so this
+        # arm is that sentence at a root and not a fourth answer.
+        return Decided(ir.TypeRef(mod.importing(target.symbol, target.where), local=True))
     mod.importing(target.symbol, target.where)
     declared = compiler.declare_object(
         node,
