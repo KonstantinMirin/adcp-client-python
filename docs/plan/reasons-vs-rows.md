@@ -1,5 +1,19 @@
 # Reasons versus rows: the two differences
 
+> **SUPERSEDED on 2026-10-29. Every figure below is measured at base `02841377` and none of
+> them survives to trunk `26c20abc`** — the three numbers went `885 / 169` to `959 / 95` and
+> the primary/chained split `60 / 109` to `18 / 77`. The audit was re-run in both directions
+> at that trunk and its result is **in the tracker, not in this file**: `bd show
+> adcp-client-python-10l` carries the summary, and every row it closed, corrected or filed
+> carries its own measurement. Nineteen rows closed on "the obstruction is gone"; three
+> unowned mechanisms were filed (`-3bg`, `-ot0`, `-uqf`), two of which account for 48 of the
+> 95 refusals.
+>
+> **This file is kept as the record of the first run, not as a reading of the compiler.** It
+> is left unedited on purpose: a stale audit that says which base it was taken at is
+> evidence, and the same document re-written in place would lose the one thing the re-run
+> proved — that a stated figure goes stale and a stated reading does not.
+
 An audit of one question — **does the set of reasons we cannot emit equal the set of rows we have
 filed?** — compared in both directions. A reason with no row is work nobody has scheduled. A row
 with no reason costs a lane when someone picks it up.
