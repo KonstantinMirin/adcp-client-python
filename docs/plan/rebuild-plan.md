@@ -100,6 +100,28 @@ same defect as an exemption with no issue behind it, which §9 already names.
 
 ## 2. Design principles
 
+### A refusal is the document's; a broken invariant is ours (decided 2026-10-29)
+
+A `Refusal` names a fact about the document — a keyword it states that no row reads yet
+(DEFERRED), or a thing the document itself says that admits nothing (VERDICT). **Where the
+compiler cannot proceed for a reason that is not a fact about the document at all, that is not a
+refusal and must not be reported as one. It raises.**
+
+Two nodes of one document deriving one class name is a fact about `lower/names.py`. A base
+ordered before its own subclass is a fact about the MRO this compiler builds. Neither is anything
+the document's author could read, act on, or fix, and reporting one as the document's obstruction
+is how `core/postal-area.json` and **the 31 documents chained behind it** came to be counted
+`accounted` — "nothing more can be done here" — for a naming choice we make.
+
+The practical test is the report line. If a reader of the refusal would go to the schema to
+understand it, it is a refusal. If they would go to `codegen/`, it is ours, and an exception at
+the pointer is both louder and honest where a refusal is quiet and wrong.
+
+This is why an unreachable arm guarding a compiler invariant needs no `Refusal.kind`: the
+question "is this a verdict or a deferral" does not apply to it, because it is neither. `kind_for`
+answering DEFERRED for such an arm is not the table being wrong — it is the arm being the wrong
+shape.
+
 ### The schema decides acceptance
 
 Every emitted class carries `strict_validate`, which validates a payload against the class's own
@@ -509,6 +531,18 @@ through `/anyOf/8` each pin two: `FRCodePostal`, `AUPostcode`, `BRCep`, `INPin`,
 where declining to choose between the two pins gave `Branch4` through `Branch8` — the positional
 name for the most heavily identified branches in the bundle. The four single-pin branches keep
 `US`, `GB`, `CA` and `Plz`, because one pin in key order is that one pin.
+
+**A boolean pin contributes no segment, because `true` names nothing** (`adcp-client-python-10l.93`,
+decided 2026-10-29). This is not a carve-out from the key-order rule — it is the same sentence this
+section already states two paragraphs down, that `true` on both branches "names neither", applied
+per pin instead of per branch. A pin identifies a branch by its VALUE, and a boolean's two values
+are the same two for every property in the bundle. Measured: three branches pin something
+identifying beside a `true`, so reading every pin appended a segment identifying nothing —
+`PackageSignalTargetingBinary` became `PackageSignalTargetingBinaryTrue`.
+
+It subsumes the collision case rather than sitting beside it. A branch whose pins are all boolean
+contributes no segment at all, so rung 2 answers nothing for it and it falls through — which is
+what `trusted-match/provider-registration.json` needs, reached now by one rule rather than two.
 
 Where a rung derives one name for two branches it has not identified either, so **both fall to
 the next rung** — the collision rule above lengthens a chain, and these chains are one segment
