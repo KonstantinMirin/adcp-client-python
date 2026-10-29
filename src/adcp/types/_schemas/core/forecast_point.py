@@ -74,7 +74,7 @@ class Viewability(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-point.json', pointer='#/properties/viewability')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=(), forbid=(('measurable_impressions',), ('viewable_impressions',), ('viewable_rate',), ('viewed_seconds',))), Presence(require=('standard',), forbid=())), 'anyOf'),
+        PresenceGroups((Presence(require=(), forbid=(('measurable_impressions',), ('viewable_impressions',), ('viewable_rate',), ('viewed_seconds',))), Presence(require=(('standard',),), forbid=())), 'anyOf'),
     )
     vendor: Annotated[BrandReference | None, Field(description='Vendor expected to produce or verify these viewability values.')] = None
     measurable_impressions: Annotated[ForecastRange | None, Field(description='Forecasted impressions where viewability can be measured. Coverage denominator for viewable_rate and viewed_seconds.')] = None

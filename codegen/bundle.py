@@ -16,7 +16,7 @@ from __future__ import annotations
 import copy
 import json
 from collections.abc import Collection, Iterator, Mapping
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import NamedTuple
 
 from adcp.types._base import applied_schema
@@ -120,6 +120,36 @@ def portable(bundle: Path) -> list[str]:
         and str(p.relative_to(bundle)) not in REGISTRY
     ]
     return sorted(out)
+
+
+def package_roots(bundle: Path) -> frozenset[str]:
+    """The documents whose own path is ALSO a directory of this bundle.
+
+    ``docs/plan/architecture.md``, the layout rule beside ``write`` (2026-10-29): where
+    the bundle holds both a document at path ``P`` and a directory at path ``P``, the
+    two are one namespace and the document is its ROOT -- it emits ``P/__init__.py``
+    and the directory's documents are its submodules.  ``brand.json`` beside ``brand/``
+    is the one such pair in bundle 3.2.
+
+    **A function of the BUNDLE and not of the run's document set**, which is the same
+    requirement :func:`named_nodes` is written to and for the same reason (P7): a
+    module whose PATH varied with which other documents were emitted would make
+    ``brand.json``'s import spelling depend on whether anything under ``brand/``
+    happened to be in the run.  So the directories are read off every portable
+    document, including the ones that refuse -- a ``brand/`` holding nothing but
+    refusals still makes ``brand.json`` the root of a package with one file in it,
+    which is inert and importable, where the alternative is a name that moves.
+
+    Every ANCESTOR is a directory too, so a document at ``a.json`` beside
+    ``a/b/c.json`` is a package root even though nothing sits directly in ``a/``.
+    """
+    documents = portable(bundle)
+    directories = {
+        "/".join(PurePosixPath(d).parts[: i + 1])
+        for d in documents
+        for i in range(len(PurePosixPath(d).parts) - 1)
+    }
+    return frozenset(d for d in documents if d.removesuffix(".json") in directories)
 
 
 def read(bundle: Path, document: str) -> dict:

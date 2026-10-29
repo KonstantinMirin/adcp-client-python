@@ -3347,7 +3347,7 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
                 continue
             target = str(resolved)
             symbol = _symbol(target)
-            module = emit.relative_module(document, target)
+            module = emit.relative_module(document, target, bundle.package_roots(BUNDLE))
             assert (module, symbol) in imported, (document, key, module, symbol)
             got = annotated[names.field_name(key, render.RESERVED)]
             named = {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}
@@ -6835,6 +6835,103 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     assert sorted(out.beside) == ["constraints.py", "envelopes.py"], sorted(out.beside)
     for rel in sorted(out.beside):
         assert (tmp_path / rel).read_text() == (TREE.parent / rel).read_text(), rel
+
+
+def test_a_document_whose_path_is_also_a_directorys_is_that_packages_root() -> None:
+    """``docs/plan/architecture.md``, the layout rule beside ``write`` (2026-10-29):
+    where the bundle holds both a document at path ``P`` and a directory at path ``P``,
+    the two are ONE NAMESPACE and the document is its root.
+
+    **The cost the rule names is the thing this holds**, in the rule's own words: "one
+    ``__init__.py`` carries content where the others are markers, and
+    ``emit.relative_module``'s hop arithmetic has to agree with it, which is a check a
+    test can hold".  The arithmetic is the half that goes wrong first and is silent when
+    it does -- a leading dot too few resolves to a module that EXISTS, just the wrong
+    one -- so it is read off the EMITTED module's own import block rather than restated
+    here.
+
+    The defect this replaces was measured: ``brand.py`` holding 113 classes beside a
+    0-byte ``brand/__init__.py``, where Python resolves the dotted name to the package,
+    the module is unimportable, and the run reports the document as emitted.  Three
+    things make that impossible now and each is a clause below -- the file is the
+    package's own ``__init__``, the empty marker does not overwrite it, and the name
+    Python resolves is the one ``emit`` recorded.
+    """
+    roots = claimed("documents whose path is also a directory's", bundle.package_roots(BUNDLE))
+    out = compiled(BUNDLE, tree_population())
+    emitting = claimed(
+        "package roots this run emits", roots & set(out.emitted), inside=tree_population()
+    )
+
+    for document in sorted(emitting):
+        stem = emit.module_path(document)
+        # Clause 1: the FILE is the package's own ``__init__`` and the NAME is the
+        # package.  Both read off the production functions, and the second is what
+        # keeps ``__init__`` out of the dotted name -- a package's ``__init__`` IS the
+        # package, and ``...brand.__init__`` would import its body a second time.
+        assert emit.module_file(document, roots) == f"{stem}/__init__"
+        assert emit.module_name(document) == f"{emit.PACKAGE}.{stem.replace('/', '.')}"
+        assert out.emitted[document] == emit.module_name(document)
+
+        # Clause 2: the empty package MARKER did not overwrite it.  ``emit`` writes a
+        # 0-byte ``__init__.py`` for every directory the tree has, and that loop runs
+        # after the modules are written -- a plain assignment there is the same
+        # unimportable-module defect arriving from the other side.
+        rel = f"{stem}/__init__.py"
+        assert out.files[rel], rel
+        assert not (TREE / f"{stem}.py").exists(), f"{stem}.py is shadowed by {stem}/"
+
+        # Clause 3: THE HOP ARITHMETIC, read off the module's own import block.  The
+        # file sits one level below ``_schemas``, so every import of a module OUTSIDE
+        # its own package needs two dots where a top-level module needs one.  Asserted
+        # per import and against the production derivation, so a dot miscounted in
+        # either direction names the import it got wrong.
+        tree = ast.parse((TREE / rel).read_text())
+        relative = [n for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) and n.level]
+        assert relative, f"{rel} has no relative import; clause 3 grades nothing"
+        for node in relative:
+            spelled = "." * node.level + (node.module or "")
+            target = next(
+                d
+                for d in out.emitted
+                if emit.relative_module(document, d, roots) == spelled
+            )
+            assert emit.relative_module(document, target, roots) == spelled
+            # Two dots at least, because the package root is never at the tree's top
+            # level: one dot from inside ``brand/`` names ``brand`` itself.
+            assert node.level >= 2, (rel, spelled)
+
+    # Clause 4: NOTHING in the tree spells a package's body as ``__init__``.  That is
+    # the import Python answers with a SECOND module object for one file, which is the
+    # defect ``codegen/__main__.py``'s own docstring records at the ``runpy`` boundary.
+    # Over the whole tree rather than over the roots, because the spelling is wrong
+    # wherever it appears and a future root would make it reachable from elsewhere.
+    for path in sorted(TREE.rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.ImportFrom):
+                assert "__init__" not in (node.module or ""), (path, node.module)
+                assert all(a.name != "__init__" for a in node.names), path
+
+    # Clause 5: the cycle the layout makes POSSIBLE is absent, and it is asserted
+    # rather than argued: a package root's ``__init__`` executes on every import of
+    # anything under it, so an ``__init__`` importing its own submodule, or a submodule
+    # importing the root, is a cycle this tree has never had before.  Both directions
+    # are derived from the emitted import edges, so neither is a reading of one file.
+    for document in sorted(emitting):
+        stem = emit.module_path(document)
+        inward = {
+            d
+            for d in out.emitted
+            if d != document and emit.module_path(d).startswith(f"{stem}/")
+        }
+        own = ast.parse((TREE / f"{stem}/__init__.py").read_text())
+        for node in ast.walk(own):
+            if isinstance(node, ast.ImportFrom) and node.level == 1:
+                raise AssertionError(f"{stem}/__init__.py imports its own package: {node.module}")
+        for other in sorted(inward):
+            text = (TREE / f"{emit.module_path(other)}.py").read_text()
+            spelled = emit.relative_module(other, document, roots)
+            assert f"from {spelled} import " not in text, (other, spelled)
 
 
 #: A two-document bundle for the prune: both documents emit, and the second is then

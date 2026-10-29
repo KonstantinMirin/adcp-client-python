@@ -33,7 +33,7 @@ class Viewability(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-forecast-point.json', pointer='#/properties/viewability')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
-        PresenceGroups((Presence(require=(), forbid=(('measurable_impressions',), ('viewable_impressions',), ('viewable_rate',), ('viewed_seconds',))), Presence(require=('standard',), forbid=())), 'anyOf'),
+        PresenceGroups((Presence(require=(), forbid=(('measurable_impressions',), ('viewable_impressions',), ('viewable_rate',), ('viewed_seconds',))), Presence(require=(('standard',),), forbid=())), 'anyOf'),
     )
     vendor: BrandKey | None = None
     measurable_impressions: ForecastRange | None = None
