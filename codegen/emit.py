@@ -713,6 +713,73 @@ def _bound_shape(shape: compiler.Shape, symbols: Mapping[str, str]) -> compiler.
     )
 
 
+def _declaring_site(
+    bundle_dir: Path, known: Collection[str], edge: bundle.Edge
+) -> tuple[bundle.Edge, str | None] | None:
+    """The same reference re-pointed at the document that DECLARES what it names, with
+    the ``description`` the chain passed through -- or ``None`` where its own target
+    declares it.
+
+    §5's ``$ref`` row reads "a fragment of another document → an import of a symbol the
+    target declares", and the node a fragment names may be ITSELF a ``$ref``: then the
+    target module IMPORTS that symbol and declares nothing at the pointer, so the row's
+    sentence names no symbol at that site and the chain has to be walked to the module
+    the sentence is about.  Binding the target's own imported name instead would be a
+    re-export and §1's second way to reach one class; following the chain is one import
+    path per class, from the declarer.
+
+    **This is the reading the refusal at the one live site deferred** -- "10 of the 76
+    [named nodes], in 3 documents, all 3 refused on a keyword of their own -- so 0 are
+    reachable and the step whose population reaches one decides whether the chain is
+    followed".  ``core/catalog-selection.json`` at ``/properties/type`` is that
+    population arriving: its target ``core/catalog.json#/properties/type`` is a bare
+    ``$ref`` to ``enums/catalog-type.json``, whose module declares ``CatalogType``.
+
+    A hop is taken only where the node is a ``$ref`` naming a DOCUMENT of this bundle: a
+    LOCAL pointer is one the target's own module resolves and declares, so there is
+    nothing to follow, and a URI naming no document of the bundle is the refusal
+    ``answer``'s own screen already makes.  ``seen`` bounds the walk, so a chain that
+    cycles between documents stops rather than recurring -- the caller then reports the
+    site it stopped at, which is the refusal this function declined to replace.
+
+    **The DESCRIPTION the chain passed through travels with it.**  A node the chain hops
+    over may state a ``description`` sibling, and §5's ``$ref`` row gives a sibling the
+    other answer -- "the sibling's description wins" -- while ``bundle.record`` inlines
+    exactly that text at the REFERRING pointer.  So a chain that returned only the symbol
+    would make the model *missing* a fact at a pointer the comparison reaches, which is
+    §8's defect in the undeclared direction.  The FIRST sibling along the chain is the
+    one taken, which is the record's own precedence: the referrer's own wins over it (read
+    where the field is built) and it wins over the declarer's.
+
+    ``None`` and not the edge unchanged, so a caller cannot recurse on its own input:
+    the only edge this returns is one naming a DIFFERENT (document, pointer) site.
+    """
+    target, into, uri = edge.target, edge.into, edge.uri
+    described: str | None = None
+    seen = {(target, into)}
+    while into:
+        try:
+            node = bundle.node_at(bundle.read(bundle_dir, target), into)
+        except (KeyError, IndexError, TypeError, ValueError):
+            return None
+        if not isinstance(node, dict) or "$ref" not in node:
+            break
+        head, pointer = bundle.split_ref(str(node["$ref"]))
+        if not head:
+            break
+        nxt = bundle.document_for(head, known)
+        if nxt is None or (nxt, pointer) in seen:
+            break
+        text = node.get("description")
+        if described is None and isinstance(text, str) and text:
+            described = text
+        seen.add((nxt, pointer))
+        target, into, uri = nxt, pointer, str(node["$ref"])
+    if (target, into) == (edge.target, edge.into):
+        return None
+    return edge._replace(target=target, into=into, uri=uri), described
+
+
 def _importable(
     asking: str, target: str, symbols: Mapping[str, str], imported: Mapping[str, str]
 ) -> dict[str, compiler.Importable]:
@@ -1339,11 +1406,25 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             #  * a pointer whose node is ITSELF a ``$ref``.  The symbol there is
             #    one the target module IMPORTED rather than declared, so binding it
             #    would make this a re-export, and section 2's rule is an import of a
-            #    symbol the target DECLARES.  10 of the 76, in 3 documents, all 3
-            #    refused on a keyword of their own -- so 0 are reachable and the
-            #    step whose population reaches one decides whether the chain is
-            #    followed to the declaring module.
+            #    symbol the target DECLARES.  **So the CHAIN is followed to the
+            #    module that declares it** (:func:`_declaring_site`), which is the
+            #    answer the comment standing here deferred to "the step whose
+            #    population reaches one" -- and this is that step.  Following it is
+            #    the OPPOSITE of a re-export: the symbol is taken from its declarer,
+            #    one import path per class, which is section 1's own rule.
             if edge.into not in bound.symbols:
+                hop = _declaring_site(bundle_dir, known, edge)
+                if hop is not None:
+                    #: The chain's own answer, plus the ``description`` the hop carried:
+                    #: §5's ``$ref`` row makes a sibling's description authoritative and
+                    #: ``bundle.record`` inlines it at the REFERRING pointer, so it
+                    #: travels with the resolution (:attr:`compiler.Target.described`)
+                    #: and ``lower.references`` records it for the field.
+                    chained, described = hop
+                    resolved = answer(document, chained)
+                    if isinstance(resolved, Refusal) or described is None:
+                        return resolved
+                    return dataclasses_replace(resolved, described=described)
                 return Refusal(
                     "$ref",
                     edge.pointer,

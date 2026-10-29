@@ -373,6 +373,17 @@ class Target:
     #: the branch POINTERS on the declaring side -- so nothing of the IR is widened and
     #: what is new is only that the fact crosses the module boundary.
     branches: TargetBranches | None = None
+    #: **The ``description`` a CHAIN HOP carried, and ``None`` where the reference
+    #: reached its declarer in one hop.**  §5's ``$ref`` row resolves a fragment whose
+    #: node is itself a ``$ref`` to the module that DECLARES the symbol
+    #: (``emit._declaring_site``), and the node it passed THROUGH may state a
+    #: ``description`` sibling -- which the same row gives the other answer, "the
+    #: sibling's description wins".  ``bundle.record`` inlines exactly that text at the
+    #: referring pointer, so a chain that dropped it would make the model *missing* a
+    #: fact at a pointer the comparison reaches.  The FIRST sibling along the chain, for
+    #: the record's own precedence: the referrer's own wins over this, and this over the
+    #: declarer's.
+    described: str | None = None
 
     # **The target's own NODE is not here and is ``Module.referenced``'s now.**  §2's
     # intersection rule asked of two declarations that are each a bare ``$ref`` is the
@@ -739,6 +750,20 @@ class Module:
     #: is a VALUE and not a constraint (§2: "it neither widens nor narrows what the class
     #: accepts"), so this cannot be declared as an approximation and has to be carried.
     referred: dict[str, Any] = field(default_factory=dict)
+    #: **The ``description`` a CHAINED remote ``$ref`` carried, keyed by the REFERRING
+    #: node's pointer** -- :attr:`referred`'s sibling, written by ``lower.references``
+    #: and read by :func:`fields`, with the node's OWN sibling winning where it states
+    #: one.  §5's ``$ref`` row resolves a fragment whose node is itself a ``$ref`` to the
+    #: module that declares the symbol, and the node passed THROUGH may state a
+    #: ``description`` sibling the same row makes authoritative; ``bundle.record``
+    #: inlines that text at the referring pointer, so dropping it is a *missing* fact at
+    #: a pointer the comparison reaches.
+    #:
+    #: A second map rather than a wider :attr:`referred`, because the two carry different
+    #: facts from different resolutions -- a ``default`` from a LOCAL target, a
+    #: ``description`` from a REMOTE chain -- and one map holding both would need a reader
+    #: to know which resolution put each key there.
+    described: dict[str, str] = field(default_factory=dict)
 
     #: The pointers of this document's nodes an ENCLOSING node already constrains to
     #: ``type: "object"``; see ``bundle.constrained_to_object``.  A fact about the
@@ -1590,6 +1615,16 @@ def fields(
         # OWN sibling wins where it states one -- the same precedence §5's ``$ref`` row
         # gives a ``description`` sibling.
         stated = child.annotations.get("default", mod.referred.get(child.pointer, MISSING))
+        # **And through a CHAINED remote ``$ref`` the hop's ``description`` is this
+        # field's** (:attr:`Module.described`), by the same precedence and for the same
+        # reason: §5's ``$ref`` row makes a sibling's ``description`` authoritative, and
+        # ``bundle.record`` inlines the hop's text at this very pointer -- so the node's
+        # OWN sibling wins and the chain's stands where the node is silent.
+        described = (
+            child.description
+            if child.description is not None
+            else mod.described.get(child.pointer)
+        )
         if stated is not MISSING:
             if is_required:
                 # Section 5's ``default`` row: **on a REQUIRED property, dropped and
@@ -1623,7 +1658,7 @@ def fields(
                 type=field_type,
                 required=is_required,
                 default=default,
-                description=child.description,
+                description=described,
                 distinct=is_distinct,
             )
         )

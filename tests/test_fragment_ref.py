@@ -645,6 +645,74 @@ def test_a_fragment_naming_a_node_the_walk_never_reaches_is_refused_with_it_name
     assert "core/hasadef.json" in r["detail"], r
 
 
+def test_a_fragment_whose_node_is_itself_a_ref_imports_from_the_declaring_module(
+    tmp_path: Path,
+) -> None:
+    """The chain is FOLLOWED to the module that declares the symbol (``_declaring_site``).
+
+    §5's ``$ref`` row reads "a fragment of another document → an import of a symbol the
+    target DECLARES", and the node a fragment names may be itself a ``$ref``: the middle
+    module then IMPORTS that symbol and declares nothing at the pointer, so the row's
+    sentence names no symbol at that site.  Binding the middle module's imported name
+    would be a re-export and §1's second way to reach one class; following the chain is
+    one import path per class, taken FROM THE DECLARER.
+
+    Both halves are asserted, because either alone passes while the other fails: the
+    referrer imports from the DECLARING module (not the middle one), and the middle
+    module is still the one whose node supplies the field's own ``description`` -- §5's
+    ``$ref`` row gives an annotation sibling of a ``$ref`` the answer "the sibling's
+    description wins", and ``bundle.record`` inlines exactly that text at the referring
+    pointer, so a chain that dropped it would report *missing* at a pointer it reached.
+    """
+    root = write_bundle(
+        tmp_path,
+        {
+            "enums/leaf.json": {
+                "title": "Leaf Kind",
+                "type": "string",
+                "enum": ["a", "b"],
+                "description": "The declarer's own text.",
+            },
+            "core/middle.json": {
+                "title": "Middle",
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "$ref": f"{BASE}enums/leaf.json",
+                        "description": "The middle node's sibling, which wins.",
+                    }
+                },
+            },
+            "core/head.json": {
+                "title": "Head",
+                "type": "object",
+                "properties": {"kind": {"$ref": f"{BASE}core/middle.json#/properties/kind"}},
+            },
+        },
+    )
+    out = emit.emit(root, ["core/head.json"])
+    assert out.refusals == {}, out.refusals
+    text = out.files["core/head.py"]
+    tree = ast.parse(text)
+    # FROM THE DECLARER: the import names the enums module, never ``core/middle``.
+    frm = {
+        ("." * n.level + (n.module or ""), a.name)
+        for n in ast.walk(tree)
+        if isinstance(n, ast.ImportFrom)
+        for a in n.names
+    }
+    assert ("..enums.leaf", "LeafKind") in frm, frm
+    assert not any("middle" in module for module, _ in frm), frm
+
+    # The description the RECORD states at the referring pointer is the middle node's
+    # sibling, and that is the one the field carries.
+    record = bundle.record(root, "core/head.json")
+    assert (
+        record["properties"]["kind"]["description"] == "The middle node's sibling, which wins."
+    ), record["properties"]["kind"]
+    assert "The middle node's sibling, which wins." in text, text
+
+
 def test_a_fragment_whose_target_document_is_refused_names_the_targets_own_keyword(
     tmp_path: Path,
 ) -> None:
@@ -1940,52 +2008,127 @@ def test_a_bare_ref_root_accepts_exactly_what_its_target_accepts(tmp_path: Path)
     # The schema half is graded over the real bundle by the three checks.
 
 
-def test_the_identity_half_of_the_bare_ref_root_is_unwritten_and_says_so(
+def test_a_bare_ref_root_whose_target_is_no_class_is_bound_by_identity(
     tmp_path: Path,
 ) -> None:
-    """§5(a)'s OTHER half -- "bound to the target **by identity**" -- has population 0.
+    """§5(a)'s OTHER half, WRITTEN: "bound to the target **by identity**".
 
     "Where the target is an alias, an enumeration or a root model there is nothing to
-    subclass and the symbol is bound to the target by identity."  Measured: the one
-    bare-``$ref`` root in the portable set names a class, so this arm has no live site
-    and it is DEFERRED by name rather than written against nothing -- which is what the
-    row does for every arm whose population is 0 (§4's mixed root union is the other).
+    subclass and the symbol is bound to the target by identity, which §1's own carve-out
+    already admits inside a module and now admits across one: ``X is Y`` holds and the
+    domain surface exports it once."
 
-    ``Target.shape`` is the reading of "is a class", and it is ``None`` for a union ROOT
-    as well: ``emit.resolve`` declines to hand a union base's shape across a module
-    boundary, and §4 part 3 is why that matters here -- a subclass of a union base
-    declared elsewhere keeps its OWN schema, so it would accept none of the branches.
+    The TYPE is the imported symbol and the root wrapper is what binds it, which is the
+    whole of the arm: ``emit.lower`` turns a root that declared no class into
+    ``ir.AliasDecl`` beside ``__adcp_schema__`` and ``strict_validate``, the same two
+    statements a scalar root and an enumeration root bind.  So three facts are asserted
+    and each fails on its own -- the module imports the target's symbol, the root alias
+    names it and copies none of its facts, and the binding names THIS document.
+
+    The node's own ``description`` rides on the alias and the target's does not: §5's
+    ``$ref`` row gives an annotation sibling the other answer -- "the sibling's
+    description wins" -- so a document that says why it is deprecated says it here.
     """
     root = write_bundle(
         tmp_path,
         {
-            "core/scalar.json": {"title": "Scalar", "type": "string"},
+            "core/scalar.json": {
+                "title": "Scalar",
+                "type": "string",
+                "description": "The target's own text, which the sibling beats.",
+            },
             "core/alias.json": {**BARE_REF_ROOT, "$ref": f"{BASE}core/scalar.json"},
         },
     )
-    r = refusal_for(root, "core/alias.json")
-    assert (r["keyword"], r["pointer"]) == ("$ref", "/"), r
-    assert r["resolved"] is Kind.DEFERRED, r
-    assert "identity half is unwritten" in r["detail"], r
-    assert "population 0" in r["detail"], r
+    out = emit.emit(root, ["core/alias.json"])
+    assert out.refusals == {}, out.refusals
+    assert sorted(out.emitted) == ["core/alias.json", "core/scalar.json"], out.emitted
+
+    tree = ast.parse(out.files["core/alias.py"])
+    imported = {a.name for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) for a in n.names}
+    assert "Scalar" in imported, imported
+    # No class at all: a target that is not a class has nothing to subclass, which is
+    # the sentence this arm implements.
+    assert [c.name for c in tree.body if isinstance(c, ast.ClassDef)] == [], out.files[
+        "core/alias.py"
+    ]
+    (bound,) = [
+        n
+        for n in tree.body
+        if isinstance(n, ast.Assign)
+        and isinstance(n.targets[0], ast.Name)
+        and n.targets[0].id == "AliasLike"
+    ]
+    names = {n.id for n in ast.walk(bound.value) if isinstance(n, ast.Name)}
+    assert "Scalar" in names, ast.unparse(bound)
+    # Nothing of the target is copied (P2): the alias states the type and the node's own
+    # description, and no constraint of the target's.
+    assert kwargs_of(bound.value) <= {"description"}, ast.unparse(bound)
+    assert BARE_REF_ROOT["description"] in ast.unparse(bound), ast.unparse(bound)
+    assert "core/alias.json" in out.files["core/alias.py"]
 
 
-def test_the_one_bare_ref_root_in_the_bundle_reports_its_targets_refusal(tmp_path: Path) -> None:
-    """The LIVE half: the row's own refusal is retired and what is left is the target's.
+def test_the_one_bare_ref_root_in_the_bundle_is_an_identity_binding_onto_a_union_root(
+    tmp_path: Path,
+) -> None:
+    """The LIVE half, and it is the IDENTITY arm rather than the subclass one.
 
     ``core/signal-pricing-option.json`` is a deprecated alias of
     ``core/vendor-pricing-option.json`` and the only bare-``$ref`` root in the portable
-    set.  Its own obstruction -- "a root that is a bare reference ... would bind this
-    module's own symbol to a class another module declares" -- is gone, and the document
-    now reports a CHAIN through its target, which refuses on §5's ``$ref`` row at CONJ
-    (its conjunct's target ``VendorPricing`` is a union root, and the node declares
-    fields of its own).  So this row is landed and the document's remaining distance is
-    its target's, enumerated here rather than left looking like this row's.
+    set.  Its target EMITS -- §5's ``$ref`` distribution clause landed -- and the root it
+    declares is a UNION: ``core/vendor-pricing-option.json`` composes an inline object
+    with ``core/signal-pricing.json``, whose root is a ``oneOf``, so the target is a
+    :attr:`compiler.TargetKind.UNION` and not the flat class the subclass arm wants.
+
+    **A subclass of it would accept none of the branches, and that is measured in
+    ``BranchDispatchMixin`` rather than reasoned**: "the base is the class that DECLARES
+    ``_branch_models`` (``"_branch_models" not in cls.__dict__``); a class that inherits
+    it gets its own shape back".  So §5's ``$ref`` row at CONJ is the clause that decides
+    this one -- "a scalar, an enum, a container, or a union root ... is not a class a
+    model can extend: the target is this node's own TYPE" -- and a bare ``$ref`` root is
+    a composing node with one ``$ref`` conjunct and no properties of its own.
+
+    Asserted as the READING and not as a census: the document emits, its module binds the
+    root to the target's own symbol, and ``target_kind`` answers ``UNION`` for that
+    target.  The number of bare-``$ref`` roots is the one pin, and it is derived.
     """
     assert len(bare_ref_roots()) == BARE_REF_ROOTS, bare_ref_roots()
     assert bare_ref_roots() == ["core/signal-pricing-option.json"], bare_ref_roots()
     out = compiled(BUNDLE, bare_ref_roots())
-    r = out.refusals["core/signal-pricing-option.json"]
-    assert r["kind"] == "chained", r
-    assert "core/vendor-pricing-option.json is refused" in r["detail"], r
-    assert "bind this module's own symbol" not in r["detail"], r
+    assert "core/signal-pricing-option.json" not in out.refusals, out.refusals
+    assert out.emitted["core/signal-pricing-option.json"].endswith(
+        "core.signal_pricing_option"
+    ), out.emitted
+
+    files = emit.emit(BUNDLE, bare_ref_roots()).files
+    # The TARGET's root is a union, which is what puts this site in the identity arm:
+    # ``BranchDispatchMixin`` is the base ``render`` writes for a root whose instance is
+    # one of its branches, and ``_branch_models`` is the tuple it dispatches over.
+    target = ast.parse(files["core/vendor_pricing_option.py"])
+    (declared,) = [
+        c
+        for c in target.body
+        if isinstance(c, ast.ClassDef) and c.name == "VendorPricingOption"
+    ]
+    assert "BranchDispatchMixin" in {
+        b.id for b in declared.bases if isinstance(b, ast.Name)
+    }, ast.dump(declared)
+
+    # And the referrer declares no class: the root symbol IS the target's, bound beside
+    # this document's own ``__adcp_schema__``.
+    tree = ast.parse(files["core/signal_pricing_option.py"])
+    assert [c.name for c in tree.body if isinstance(c, ast.ClassDef)] == [], files[
+        "core/signal_pricing_option.py"
+    ]
+    (bound,) = [
+        n
+        for n in tree.body
+        if isinstance(n, ast.Assign)
+        and isinstance(n.targets[0], ast.Name)
+        and n.targets[0].id == "SignalPricingOption"
+    ]
+    assert "VendorPricingOption" in {
+        n.id for n in ast.walk(bound.value) if isinstance(n, ast.Name)
+    }, ast.unparse(bound)
+    assert "core/signal-pricing-option.json" in files["core/signal_pricing_option.py"]
+
