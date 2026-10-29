@@ -509,6 +509,30 @@ MANIFEST_DISCRIMINATED = frozenset(
 #: and answers ``()``, so §8's third equality holds in both directions; the entry was a
 #: claim about a derivation that had not run, and dropping it puts one more root under
 #: the ``declaring <= overlapping`` bound rather than outside it.
+#:
+#: **ONE JOINS AND ONE LEAVES AT §4's FOURTH NAMING RUNG, by the SAME mechanism as the
+#: entry above -- a derivation that had never run** (reconciled at
+#: ``adcp-client-python-10l.78``).  Both documents carried D3's branch-naming VERDICT --
+#: ``core/requirements/asset-requirements.json`` at ``/anyOf/0`` and
+#: ``creative/get-creative-features-response.json`` at ``/oneOf/0``, "no title, no
+#: discriminator const and no required set" -- so neither emitted and
+#: :func:`union.overlapping` was never called for either.  ``names.Branch.index``
+#: replaced the ``refuses`` flag, both emit, and the derivation ran for the first time
+#: and answered differently for the two:
+#:
+#: * ``core/requirements/asset-requirements.json`` JOINS.  Its bare ``$ref`` branches
+#:   take their pins from their targets and no shared property is pinned to distinct
+#:   values, so §4's first source derives nothing and the third separates no pair.  It
+#:   declares §4's UNDERDETERMINED approximation at ``#/anyOf`` and
+#:   ``harness.inseparable_unions`` answers ``('#/anyOf',)`` reading the document
+#:   independently -- §8's third equality in both directions, which is the standard the
+#:   instalment above set for an entry ARRIVING.
+#: * ``creative/get-creative-features-response.json`` LEAVES, by that same standard: it
+#:   declares no approximation and ``harness.inseparable_unions`` answers ``()``.
+#:
+#: Neither move is a claim about this row's four readers.  Both are documents that
+#: reached the dispatch for the first time, which is what the ``sync-creatives`` entry
+#: records in the same words.
 OVERLAPPING_ROOTS = frozenset(
     {
         "adagents.json",
@@ -521,7 +545,7 @@ OVERLAPPING_ROOTS = frozenset(
         "content-standards/validate-content-delivery-response.json",
         "core/evaluator-spec.json",
         "core/postal-country-system.json",
-        "creative/get-creative-features-response.json",
+        "core/requirements/asset-requirements.json",
         "media-buy/build-creative-response.json",
         "media-buy/create-media-buy-response.json",
         "media-buy/update-media-buy-response.json",
@@ -669,6 +693,16 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
     # intersected with what the manifest resolves, so a root the derivation separates is
     # not in it.  The manifest still resolves the document -- what changed is that the
     # document is no longer claimed to overlap.
+    #
+    # **``creative/get-creative-features-response.json`` leaves the same way and for the
+    # same reason** (``adcp-client-python-10l.78``).  §4's fourth naming rung let it
+    # emit, the dispatch derivation ran for the first time and SEPARATED its branches, so
+    # it left :data:`OVERLAPPING_ROOTS` and leaves this intersection with it.  The
+    # manifest still resolves it; what changed is the overlap claim, which is exactly the
+    # sentence above.  ``core/requirements/asset-requirements.json`` joined that set in
+    # the same merge and does NOT appear here, because the manifest does not name it --
+    # it is in the ``the_manifest_does_not_name_it`` half of the partition above, and
+    # that half is derived rather than listed.
     assert set(resolved_overlaps) == {
         "content-standards/calibrate-content-response.json",
         "content-standards/create-content-standards-response.json",
@@ -676,7 +710,6 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
         "content-standards/get-media-buy-artifacts-response.json",
         "content-standards/list-content-standards-response.json",
         "content-standards/validate-content-delivery-response.json",
-        "creative/get-creative-features-response.json",
         "media-buy/build-creative-response.json",
         "media-buy/create-media-buy-response.json",
         "media-buy/update-media-buy-response.json",
@@ -1183,15 +1216,28 @@ def test_eight_open_branches_requiring_one_name_separate_on_their_nested_nots() 
 #: that narrow one shape rather than alternating between shapes, which §4 compiles to a
 #: rule (``AtLeastOne`` / ``PresenceGroups``) and not to a discriminated union, so no
 #: separator is owed one.  ``adagents.json#/oneOf/1/allOf/0/anyOf`` says so in its own
-#: ``$comment``: "Each arm asserts non-emptiness directly."  The two ``viewability``
-#: nodes state one branch that forbids four metrics and one that requires ``standard``;
+#: ``$comment``: "Each arm asserts non-emptiness directly."
 #: ``core/postal-country-system.json`` narrows ``country`` and ``system`` ten ways; and
 #: the last three are "at least one of these two keys".
+#:
+#: **THE TWO ``viewability`` NODES LEFT, and they left the POPULATION rather than the
+#: remainder** (``adcp-client-python-10l.30``'s own criterion, reconciled at
+#: ``adcp-client-python-10l.78``).  They were named here as constraints -- "one branch
+#: that forbids four metrics and one that requires ``standard``" -- and that reading was
+#: right: it is a presence statement.  ``adcp-client-python-10l.64`` taught
+#: ``schema.presence_clause`` to read a branch that FORBIDS and requires nothing, which
+#: is the first of those two branches, so ``schema.presence_only`` now answers True for
+#: ``core/forecast-point.json`` and ``core/canonical-forecast-point.json`` at
+#: ``/properties/viewability`` and :func:`_authored_unions` excludes them at its
+#: presence-only gate.  A union that is a RULE is not a union of shapes, so §4 owes it no
+#: separator and this set must not claim it either -- naming a pointer outside the
+#: population is the half of the partition that cannot redden on its own, which is why
+#: the gate asserts both directions and why this entry is removed rather than left
+#: harmlessly in place.  That row's own docstring named the same two sites as the only
+#: two it moved, so the measurement agrees from both ends.
 _INSEPARABLE_CONSTRAINTS = frozenset(
     {
         "adagents.json#/oneOf/1/allOf/0/anyOf",
-        "core/canonical-forecast-point.json#/properties/viewability/anyOf",
-        "core/forecast-point.json#/properties/viewability/anyOf",
         "core/postal-country-system.json#/anyOf",
         "media-buy/buy-products-request.json#/anyOf",
         "media-buy/request-proposals-request.json#/anyOf",
