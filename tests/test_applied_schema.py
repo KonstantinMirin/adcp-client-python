@@ -726,11 +726,11 @@ def _write(tmp_path: Path, documents: dict[str, dict]) -> Path:
     return root
 
 
-def _union(root_type: str | None) -> dict:
+def _union(root_type: str | None, combinator: str = "oneOf") -> dict:
     """A union root whose branches declare no ``type`` of their own."""
     doc: dict = {
         "title": "Probe",
-        "oneOf": [
+        combinator: [
             {"properties": {"kind": {"const": "a"}, "a": {"type": "string"}}, "required": ["kind"]},
             {"properties": {"kind": {"const": "b"}, "b": {"type": "string"}}, "required": ["kind"]},
         ],
@@ -741,36 +741,55 @@ def _union(root_type: str | None) -> dict:
 
 
 def test_a_typeless_branch_emits_only_while_its_root_constrains_the_instance(tmp_path) -> None:
-    """The one distinction, run both ways on two documents that differ in one key.
+    """The one distinction, run three ways on documents that differ in one key.
 
     The ``jsonschema`` lines are what make this a measurement rather than a
     restatement, and they are asked of the BRANCH, because the branch node is the
-    schema a branch class is paired with.  With the root's ``type`` the branch refuses
-    a string; without it the branch admits one, and a class there would be narrower
-    than the schema it names.
+    schema a branch class is paired with.  Where the root constrains the instance the
+    branch refuses a string; where nothing does, the branch admits one and a class
+    there would be narrower than the schema it names.
 
-    Measured aside, and the reason the document is not the unit: the typeless
-    DOCUMENT refuses a string too, but on ``oneOf`` -- ``properties`` and ``required``
-    are both vacuous for a non-object, so every branch matches it and none matches
-    uniquely.  A document-level probe would therefore pass for both arms and grade
-    nothing.
+    **WHICH ROOTS CONSTRAIN IT IS NOT ONLY THE ONES THAT SAY SO, and the third arm is
+    that** (``_base.entailed_types``, decided 2026-10-29).  A ``oneOf`` of two or more
+    branches that each admit every non-object VACUOUSLY -- ``properties`` and
+    ``required`` are ignored for a non-object -- admits no non-object at all: a string
+    satisfies BOTH branches, ``oneOf`` demands exactly one, so the document refuses it.
+    The word is then the document's statement about the instance as surely as a stated
+    one, and the branch class is faithful rather than narrow.  The typeless ``oneOf``
+    probe was this test's "does not constrain" arm and it is its SECOND CONSTRAINING
+    arm now; the last two assertions of the old reading -- that it refuses and that the
+    branch admits a string -- were a true measurement of the document read two
+    incompatible ways, which is what the clause settles.
+
+    **The arm that really does not constrain is the same branch list under ``anyOf``**,
+    and that is the exclusivity the clause rests on rather than a second probe shape:
+    satisfying all is satisfying at least one, so the ``anyOf`` document ADMITS a
+    string -- asserted below, on the document and not only on the branch -- and a class
+    at its branch would refuse what the document accepts.
     """
-    with_type, without = _union("object"), _union(None)
-    assert jsonschema.Draft7Validator(applied_schema(without, "/oneOf/0")).is_valid("a string")
-    assert not jsonschema.Draft7Validator(applied_schema(with_type, "/oneOf/0")).is_valid(
-        "a string"
-    )
-    assert not jsonschema.Draft7Validator(with_type).is_valid("a string")
-    assert not jsonschema.Draft7Validator(without).is_valid("a string")  # on oneOf, not on type
+    with_type, entailing = _union("object"), _union(None)
+    no_word = _union(None, "anyOf")
+    # Nothing constrains the ``anyOf`` branch, and nothing constrains the DOCUMENT
+    # either: both admit a string, which is why a class there is the narrowing §2 forbids.
+    assert jsonschema.Draft7Validator(applied_schema(no_word, "/anyOf/0")).is_valid("a string")
+    assert jsonschema.Draft7Validator(no_word).is_valid("a string")
+    # The stated word and the entailed one, each refusing the string at the branch and at
+    # the document -- the second of them on ``oneOf`` rather than on ``type``.
+    for probe, hop in ((with_type, "/oneOf/0"), (entailing, "/oneOf/0")):
+        assert not jsonschema.Draft7Validator(applied_schema(probe, hop)).is_valid("a string")
+        assert not jsonschema.Draft7Validator(probe).is_valid("a string")
 
-    out = emit.emit(_write(tmp_path / "a", {"core/probe.json": with_type}), ["core/probe.json"])
-    assert out.refusals == {}, out.refusals
-    assert "core/probe.json" in out.emitted
+    for name, probe in (("a", with_type), ("c", entailing)):
+        out = emit.emit(
+            _write(tmp_path / name, {"core/probe.json": probe}), ["core/probe.json"]
+        )
+        assert out.refusals == {}, out.refusals
+        assert "core/probe.json" in out.emitted
 
-    out = emit.emit(_write(tmp_path / "b", {"core/probe.json": without}), ["core/probe.json"])
+    out = emit.emit(_write(tmp_path / "b", {"core/probe.json": no_word}), ["core/probe.json"])
     assert "core/probe.json" not in out.emitted
     row = out.refusals["core/probe.json"]
-    assert (row["keyword"], row["pointer"]) == ("type", "/oneOf/0"), row
+    assert (row["keyword"], row["pointer"]) == ("type", "/anyOf/0"), row
     assert "nothing enclosing it constrains the instance to an object" in row["detail"]
 
 

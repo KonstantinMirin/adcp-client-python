@@ -81,17 +81,40 @@ CACHE_ROOT = Path(os.environ.get("ADCP_CACHE") or Path(__file__).resolve().paren
 STORE = CACHE_ROOT / "emit-cache"
 
 
+#: The modules of the emitted PACKAGE that the compiler reads as a consumer reads them,
+#: and which are therefore inputs to the compile exactly as ``codegen/`` is.
+#:
+#: **Named, and not a glob over ``src/adcp/``**: ``src/adcp/types/_schemas/`` is the
+#: compile's OUTPUT, so a glob would key each entry on the previous run's result and no
+#: entry would ever be hit again.  These two are hand-written and are the whole of what
+#: ``codegen`` imports from the package -- ``_base`` for ``applied_schema``,
+#: ``SchemaRef`` and the approximation kinds, ``_runtime`` for the rule dataclasses.
+_PACKAGE_INPUTS = ("src/adcp/types/_base.py", "src/adcp/types/_runtime.py")
+
+
 @functools.cache
 def _compiler_digest() -> str:
-    """A digest over every ``.py`` of ``codegen/``, so a compiler edit moves the key.
+    """A digest over every ``.py`` of ``codegen/`` and the package modules it READS, so
+    an edit to anything the output is a function of moves the key.
 
     Sorted by path, with the path in the digest beside the bytes, so adding an empty
     module changes the answer and renaming one does too.  Cached per process because the
     source cannot change under a running interpreter that has already imported it.
+
+    **:data:`_PACKAGE_INPUTS` is here because the compile READS them and the module
+    docstring's own correctness argument reaches them.**  That argument is "the output is
+    a function of three things -- the bundle, the population, and ``codegen/`` itself --
+    and the third is the one a cache gets wrong"; it is a function of a fourth, because
+    ``bundle.constrained_to_object`` is ``_base.applied_schema`` and ``lower.rules``
+    lowers to ``_runtime``'s dataclasses.  Without them a lane that edits
+    ``applied_schema`` alone is served the previous compile and every figure it reports
+    describes code it did not run -- the exact defect this key exists to prevent, one
+    package boundary further out.
     """
-    root = Path(__file__).resolve().parent.parent / "codegen"
+    root = Path(__file__).resolve().parent.parent
+    paths = [*sorted((root / "codegen").rglob("*.py")), *(root / p for p in _PACKAGE_INPUTS)]
     h = hashlib.sha256()
-    for path in sorted(root.rglob("*.py")):
+    for path in paths:
         h.update(path.relative_to(root).as_posix().encode())
         h.update(path.read_bytes())
     return h.hexdigest()

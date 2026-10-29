@@ -51,7 +51,7 @@ set it sits in may only shrink.
 from __future__ import annotations
 
 import keyword
-from collections.abc import Callable, Collection, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any, NamedTuple
@@ -1209,7 +1209,10 @@ class Rules:
 
 
 def rules_at(
-    node: "nodes.Base", *also: Mapping[str, Any], position: Position = Position.ROOT
+    node: "nodes.Base",
+    *also: Mapping[str, Any],
+    position: Position = Position.ROOT,
+    resolve: "Resolver" = None,
 ) -> Rules:
     """D6's reading of a node, for a lowering that cannot import the rules module.
 
@@ -1236,6 +1239,17 @@ def rules_at(
     asked about one node, and each conjunct is screened by its own call at its own
     pointer, which is what keeps a refusal pointing at the node that caused it.
 
+    **``resolve`` is here for ONE consumer and the other seven reductions never see
+    it**: ``uniqueItems`` sits one level DOWN, on the array a property holds, and a
+    property may declare that array through a COMPOSITION -- so ``_distinct``'s gate is
+    :func:`declares_an_array`, which reads a conjunct through its ``$ref`` the way §2's
+    intersection already reads one.  Every caller has ``mod`` in scope and passes
+    ``mod.resolve_node``; a caller that passes nothing gets the gate's safe arm, which
+    answers ``False`` for a composing declaration and leaves the keyword for the handler
+    that claimed it to report or refuse.  Threaded as a parameter rather than read off a
+    module-level anything because the resolver is a fact of the RUN and this function is
+    a pure reading of a node.
+
     **Converted to node fields.**  The node's own reading is :attr:`nodes.Base.rules`
     (the rule sources, which the parser classified from the table at this position),
     :attr:`nodes.Base.declared` (``uniqueItems`` sits one level down, on the array a
@@ -1249,8 +1263,13 @@ def rules_at(
     from codegen.lower import rules
 
     lowered = [
-        rules.lower(node.rules, node.declared, "additionalProperties" in node.declares),
-        *(rules.lower_declaration(c, position) for c in also),
+        rules.lower(
+            node.rules,
+            node.declared,
+            "additionalProperties" in node.declares,
+            resolve=resolve,
+        ),
+        *(rules.lower_declaration(c, position, resolve=resolve) for c in also),
     ]
     screen = frozenset(node.rules)
     distinct: list[str] = []
@@ -1811,7 +1830,7 @@ def declare_object(
     reading rather than a rewritten mapping (``lower_composition`` and the union's
     ``$ref`` branch, which is a composition of the union base and the target).
     """
-    stated = rules_at(node, *rule_nodes, position=position)
+    stated = rules_at(node, *rule_nodes, position=position, resolve=mod.resolve_node)
     # D8's typed row: a property the class does not DECLARE is validated against
     # the document's own value schema, through pydantic's ``__pydantic_extra__``.
     # The TYPE is the same ``dict[K, V]`` a mapping node lowers to, decided by the
@@ -1998,7 +2017,7 @@ def lower_object(
     # (:func:`declare_object`) -- so this row and the ``allOf`` row and a union branch
     # all admit the same keywords and all write the same rule.
     pointer, position = node.pointer, node.position
-    stated = rules_at(node, position=position)
+    stated = rules_at(node, position=position, resolve=mod.resolve_node)
     refused = check_keywords(
         node,
         # The cells an OBJECT node consumes, which is what is left of a ``handled``
@@ -3279,7 +3298,7 @@ def lower_composition(
             f"an allOf of type {word!r} composes no object",
             kind=Kind.VERDICT,
         )
-    stated = rules_at(node, position=position)
+    stated = rules_at(node, position=position, resolve=mod.resolve_node)
     if union is None:
         # A node that composes AND carries a combinator of shapes, where nobody is
         # declaring the branches: the conjunction of a conjunct list with a branch list
@@ -3801,64 +3820,73 @@ def lower_composition(
         )
 
     if node.rules.get("uniqueItems") is True:
-        # **THE NODE'S OWN ``uniqueItems``, WHICH THIS HANDLER CLAIMS AND NOTHING
-        # LOWERS**, split into the two arms draft-07's keyword groups give it.
+        # **THE NODE'S OWN ``uniqueItems``, WHICH THIS HANDLER CLAIMS**, split into the
+        # three arms draft-07's keyword semantics give it and §2's clause of 2026-10-29
+        # sorts.
         #
         # ``rules_at``'s ``screen`` is ``frozenset(node.rules)`` -- every key whose cell
         # is RULE here, claimed whatever came of it -- while the rule itself is
         # ``lower.rules._distinct``, which reads a ``uniqueItems`` ONE LEVEL DOWN, off the
-        # array a PROPERTY of this node holds.  A composing node's own ``uniqueItems`` is
-        # about its OWN instance, so ``_distinct`` never sees it and the claim is empty:
-        # the keyword was neither lowered nor refused.  That is §3's "a keyword whose cell
-        # lowers must be claimed by its handler" read in the other direction, and §2's
-        # "nothing is approximated by silence" is what makes it this row's business.
+        # array a PROPERTY of the class ABOVE this node holds.  So the question is whose
+        # claim this keyword is, and §2 answers it: "A composing DECLARATION is not a
+        # position where no class encloses the value.  A property whose declaration is an
+        # ``allOf`` still sits in the class that holds the property, so the clause above
+        # is unchanged and the rule is declared there -- the reader that writes it must
+        # see through the composition rather than the rule move to the value's own type."
         #
-        # **The arm is chosen by what the conjuncts make the instance**, which is the same
-        # question §5's ``$ref`` row at CONJ already answers for every other sibling:
+        # **The arm is chosen by what the conjuncts make the INSTANCE and by whether a
+        # class encloses it**, and the first half is :func:`declares_an_array` -- the
+        # same function ``_distinct``'s gate is, asked of the same declaration in the
+        # spelling this row holds it, so the gate cannot claim a key this arm refuses or
+        # refuse one the gate claimed:
         #
-        # * conjuncts that are all class BASES make the instance an OBJECT, and draft-07
-        #   applies ``uniqueItems`` to an ARRAY and ignores it for every other instance --
-        #   so the keyword constrains nothing here and the drop is EXACT.  Dropped and
-        #   REPORTED, which is §7's own shape for a name that cannot constrain an instance,
-        #   and not refused.  0 sites over the portable population.
-        # * a non-class TARGET supplies the type (``conjoined``), and where that target is
-        #   an array the keyword DOES constrain it -- §5's ``uniqueItems`` row decides the
-        #   rule, and neither of its two halves claims it at this node: the class above
-        #   does not, because ``_distinct`` reads the property declaration's own ``type``
-        #   word and this declaration's array-ness is behind a ``$ref`` under the
-        #   ``allOf``; and the value-level ``Distinct`` is gated on "no class encloses the
-        #   array", which is false at a PROP whose class holds the field.  So the obstruction
-        #   is unwritten code at the rules seam and this is a DEFERRAL naming it.
+        # * the conjuncts do NOT make the instance an array -- all class bases, a scalar
+        #   target, an enumeration -- and draft-07 applies ``uniqueItems`` to an ARRAY and
+        #   ignores it for every other instance, so the keyword constrains nothing here
+        #   and the drop is EXACT.  Dropped and REPORTED, which is §7's own shape for a
+        #   name that cannot constrain an instance, and not refused.  0 sites over the
+        #   portable population.
+        # * they DO, and this node is a PROP: the class holding the field states the rule,
+        #   which is §5's ``uniqueItems`` row's first clause and ``_distinct``'s claim.
+        #   Nothing is carried here -- the rule tuple is on the enclosing class and
+        #   :attr:`codegen.ir.Field.distinct` renders the fact onto the field, exactly as
+        #   it is for an array that spells its own ``type`` word at this position
+        #   (``lower.containers.array``'s PROP gate).  **3 sites**, all in
+        #   ``core/catalog-selection.json``.
+        # * they DO and no class encloses the value -- a ROOT, a mapping value, a
+        #   ``definitions`` entry, a union branch.  §5's row's SECOND clause is the answer
+        #   there and the ``Distinct`` would hang on the composition's own annotated type;
+        #   that is unwritten, so this is a DEFERRAL naming it.  **0 sites** over the
+        #   portable population, written so the first one is loud rather than dropped.
         #
         # Measured over the 1,054 portable documents, on the documents' own text: **3
         # composing nodes state ``uniqueItems``, all three in ``core/catalog-selection.json``
         # at ``/properties/ids``, ``/properties/gtins`` and ``/properties/tags``, each a
-        # bare ``$ref`` to an array property of ``core/catalog.json``.**  Before this arm
-        # the document emitted with all three dropped: the class carried no ``UniqueItems``
-        # rule, the fields no ``json_schema_extra``, and the schema comparison reported 51
-        # ``missing /…/uniqueItems`` facts over the document and the 5 that reference it --
-        # a model accepting duplicates its document refuses, with no declaration.
-        if conjoined:
+        # bare ``$ref`` to an array property of ``core/catalog.json``.**  With neither
+        # half claiming them the document emitted and all three were dropped: the class
+        # carried no ``UniqueItems`` rule, the fields no ``json_schema_extra``, and the
+        # schema comparison reported 51 ``missing /…/uniqueItems`` facts over the document
+        # and the 5 that reference it -- a model accepting duplicates its document
+        # refuses, with no declaration.  That is what the gate reading a conjunct closes.
+        if not a_conjunct_declares_an_array((c.raw for c in node.conjuncts), mod.resolve_node):
+            mod.carries_nothing.append(
+                f"{pointer}: uniqueItems: this node's conjuncts put no array at its "
+                "instance, and draft-07 applies uniqueItems to an array and ignores it "
+                "for every other instance -- the keyword constrains no instance here and "
+                "the class carries nothing for it"
+            )
+        elif position is not Position.PROP:
             return Refusal(
                 "uniqueItems",
                 pointer,
-                "this node states uniqueItems beside an allOf whose target supplies its "
-                "TYPE (section 5's $ref row at CONJ): the keyword constrains that type "
-                "where it is an array, and neither half of section 5's uniqueItems row "
-                "claims it here -- the class holding the field does not, because "
-                "lower.rules._distinct reads the property declaration's own type word and "
-                "this declaration's array-ness is stated behind the $ref, and the "
-                "value-level Distinct is the row's answer only where no class encloses the "
-                "array.  Dropping it would widen the model to accept duplicates the "
-                "document refuses",
+                "this node composes an array and states uniqueItems at a position no "
+                "class encloses: section 5's uniqueItems row puts the rule on the nearest "
+                "class and there is none, so its second clause -- a Distinct on the "
+                "value's own annotated type -- is the answer, and for a COMPOSITION that "
+                "clause is unwritten.  Dropping it would widen the model to accept "
+                "duplicates the document refuses",
                 kind=kind_for("uniqueItems", position),
             )
-        mod.carries_nothing.append(
-            f"{pointer}: uniqueItems: this node's conjuncts are all class bases, so its "
-            "instance is an object, and draft-07 applies uniqueItems to an array and "
-            "ignores it for every other instance -- the keyword constrains no instance "
-            "here and the class carries nothing for it"
-        )
     if contains is not None and not conjoined:
         # **A ``contains`` beside conjuncts that are all BASES.**  §5's row makes the
         # sibling constrain the TYPE a non-class target supplies, and a node whose
@@ -4012,7 +4040,7 @@ def lower_composition(
         mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
         mod.imports.add(("typing", "ClassVar"))
 
-    stated = rules_at(node, *conjunct_rules, position=position)
+    stated = rules_at(node, *conjunct_rules, position=position, resolve=mod.resolve_node)
 
     own: dict[str, dict] = {}
     #: The keys whose field is the inherited one wearing this document's annotations.
@@ -5785,6 +5813,77 @@ def _dereferenced(
         return declaration
     target = resolve(content["$ref"])
     return target if isinstance(target, dict) else declaration
+
+
+#: The type of the one resolver this module's predicates take.  Named because
+#: :func:`declares_an_array` is read by ``lower.rules`` as well, and the parameter it
+#: threads is this one.
+Resolver = Callable[[str], dict | None] | None
+
+
+def declares_an_array(declaration: Any, resolve: Resolver = None) -> bool:
+    """Does this DECLARATION put an ARRAY at the instance it describes?
+
+    §5's ``uniqueItems`` row's gate, and the one reading of it.  draft-07 asserts
+    ``uniqueItems`` about an array and IGNORES it for every other instance, so whether
+    the keyword constrains anything at a position is exactly this question -- and a
+    declaration may answer it through a COMPOSITION rather than with a ``type`` word of
+    its own.
+
+    **§2's clause of 2026-10-29 is why this reads a conjunct rather than the rule moving
+    to the value's own type**: "A composing DECLARATION is not a position where no class
+    encloses the value.  A property whose declaration is an ``allOf`` still sits in the
+    class that holds the property, so the clause above is unchanged and the rule is
+    declared there -- the reader that writes it must see through the composition rather
+    than the rule move to the value's own type."  So the gate sees through, and §2's
+    "a rule on the nearest class" is unchanged.
+
+    **The direction this is conservative in is the one that matters.**  Answering
+    ``True`` where the instance need not be an array would put a
+    :class:`adcp.types._runtime.UniqueItems` on a class for a value draft-07 ignores the
+    keyword for -- a model NARROWER than its document, which §2 forbids outright.  So
+    every arm asserts the array rather than failing to exclude it: a ``type`` word that
+    IS ``"array"``, and an ``allOf`` CONJUNCT that declares one, because draft-07 holds
+    every conjunct against the same instance and one of them demanding an array is
+    enough.  A ``type`` LIST including ``"array"`` is NOT an arm, deliberately: it
+    admits a non-array, so the keyword is ignored for some instance the declaration
+    admits.  Answering ``False`` where the instance is an array loses no fact silently:
+    the keyword is then neither lowered nor stripped, and the handler that claimed it
+    reports or refuses.
+
+    Two readers, in the two spellings they hold: ``lower.rules._distinct``, which has
+    the property's DECLARATION out of :attr:`codegen.schema.nodes.Base.declared`, and
+    :func:`lower_composition`'s ``uniqueItems`` arm, which holds the same declaration as
+    a parsed node and asks :func:`a_conjunct_declares_an_array` of its conjunct list.
+    One reading, because a gate that claimed the keyword and an arm that refused it
+    would be §3's "a keyword whose cell lowers must be claimed by its handler" read two
+    ways at one node -- which is exactly the hole this closes.
+    """
+    if not isinstance(declaration, Mapping):
+        return False
+    if declaration.get("type") == "array":
+        return True
+    conjuncts = declaration.get("allOf")
+    return isinstance(conjuncts, list) and a_conjunct_declares_an_array(conjuncts, resolve)
+
+
+def a_conjunct_declares_an_array(conjuncts: Iterable[Any], resolve: Resolver = None) -> bool:
+    """:func:`declares_an_array`, asked of a raw CONJUNCT LIST.
+
+    The same question in the spelling :func:`lower_composition` holds it -- that row has
+    the conjuncts as :class:`codegen.schema.nodes.Conjunct` values and no declaration to
+    put them back into, and §9 forbids deciding a position from a view of one the bundle
+    does not hold, so the list is asked rather than a ``{"allOf": […]}`` rebuilt around
+    it.
+
+    A conjunct that is nothing but a ``$ref`` is read as its TARGET, through
+    :func:`_dereferenced` and therefore by the same rule §2's intersection already reads
+    one by: whether the composed instance is an array is a fact about the TARGET, which
+    no amount of reading the reference can answer.  ``None`` from the resolver leaves the
+    conjunct as written, which states no ``type`` and so answers ``False`` -- the safe
+    direction, and the same one :meth:`Module.resolve_node`'s undecidable arm points.
+    """
+    return any(declares_an_array(_dereferenced(c, resolve), resolve) for c in conjuncts)
 
 
 #: The draft-07 type word each JSON value has.  ``bool`` before ``int`` because

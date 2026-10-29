@@ -102,6 +102,7 @@ from adcp.types._base import (
     UNDERDETERMINED,
     Approximation,
     SchemaRef,
+    entailed_types,
 )
 from codegen import attribution, bundle, dump_exemptions, keywords
 from codegen.keywords import Position, Rung
@@ -2219,12 +2220,27 @@ def _entails_type(doc: dict, value: Any) -> bool:
       documents, state the ``enum`` and no ``type``**.  Gated on ONE implied type, so a
       model claiming ``integer`` over a string enum, or any type at all over a mixed
       vocabulary, is still reported.
-    * a ``oneOf``/``anyOf`` whose EVERY branch declares the same ``type``.  Draft-07
-      requires an instance to satisfy a branch, so a root that states no ``type`` of its
-      own and whose branches all state ``object`` admits only objects.  §4's union base is
-      a pydantic model and so renders ``type: object``; **34 of this bundle's union roots
-      state the branches' type and not their own**, 33 of them with the branches read as
-      written and the 34th only once a branch's local reference is.
+    * a COMBINATOR that forces the type, which is ``_base.entailed_types`` and is read
+      there and not restated here.  Draft-07 requires an instance to satisfy a branch,
+      so a root that states no ``type`` of its own and whose branches all state
+      ``object`` admits only objects -- and a ``oneOf`` whose every branch admits every
+      non-object VACUOUSLY admits no non-object either, which is that function's second
+      clause.  §4's union base is a pydantic model and so renders ``type: object``;
+      **34 of this bundle's union roots state the branches' type and not their own**,
+      33 of them with the branches read as written and the 34th only once a branch's
+      local reference is.
+
+      **This arm USED TO require a STATED word on every branch and that is what it no
+      longer does**, because the two halves must read one derivation: the walk reaches
+      the same answer through ``bundle.constrained_to_object``, which is
+      ``applied_schema``'s rule, and a branch of the entailing ``oneOf`` therefore
+      becomes a class.  The base of such a union renders ``type: object`` against a
+      document node stating none, so this arm answering ``False`` would report a
+      model-only ``type`` at a node whose document excludes every non-object -- the
+      divergence ``bundle.constrained_to_object``'s docstring names, arriving as a
+      verifier disagreement rather than as a crash.  §9 permits the import: the
+      derivation is declared in the emitted package, and the verifier reads that
+      declaration the way a consumer does rather than reading the walk.
 
       **The branch is asked for its own ``type`` word and a branch that is a bare local
       ``$ref`` has none**, which is why :func:`_normalize` resolves one before this arm
@@ -2261,19 +2277,13 @@ def _entails_type(doc: dict, value: Any) -> bool:
         # ``type`` word equals, so a mixed vocabulary never reaches one answer.
         implied = {_JSON_TYPE.get(type(m)) for m in members}
         return len(implied) == 1 and value in implied
-    # **The two combinators are OR-ed and the first one present no longer decides
-    # alone.**  ``oneOf`` and ``anyOf`` are independent assertions about the same
-    # instance, so a node stating both must satisfy both and either one forcing the type
-    # is enough.  The loop returned on the first it found, which read a node whose
-    # ``anyOf`` entails the type and whose ``oneOf`` does not as entailing nothing.
-    for combinator in ("oneOf", "anyOf"):
-        branches = doc.get(combinator)
-        if (
-            isinstance(branches, list)
-            and branches
-            and all(isinstance(b, dict) and b.get("type") == value for b in branches)
-        ):
-            return True
+    # **The two combinators are OR-ed and the first one present does not decide
+    # alone**, which is why :func:`entailed_types` answers with a SET: ``oneOf`` and
+    # ``anyOf`` are independent assertions about the same instance, so a node stating
+    # both must satisfy both and either one forcing the type is enough.  Membership and
+    # not equality, for exactly that reason.
+    if value in entailed_types(doc):
+        return True
     # **An ``allOf`` where ANY conjunct entails it, which is the DUAL of the arm above
     # and the fourth shape of the same question** (``adcp-client-python-10l.21``).  A
     # draft-07 conjunct applies to the SAME instance, so an instance must satisfy every
