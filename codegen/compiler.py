@@ -245,6 +245,61 @@ class Shape:
     #: ``cls.__doc__`` is ``None`` for a subclass with no docstring of its own, so the
     #: fact reaches ``model_json_schema()`` only if the emitter writes it.
     description: str | None = None
+    #: The ``extra`` policy the class RESOLVED -- ``"forbid"``, ``"allow"`` or ``None``
+    #: where the document gives it none.  Written by :func:`declare_object` beside
+    #: :attr:`decided` and :attr:`description`, and carried for exactly their reason: a
+    #: subclass cannot read it off the base's node, because it does not have the base's
+    #: node.
+    #:
+    #: **§5's ``additionalProperties`` row, "a class DECLARES the ``extra`` the document
+    #: gives it and never inherits it"** (decided 2026-10-29,
+    #: ``adcp-client-python-10l.80``).  pydantic merges ``model_config`` along the MRO,
+    #: so a class composing TWO bases takes whichever value the LATER one happens to
+    #: carry -- and ``absent -> ignore`` on that base silently overrides an ``allow`` the
+    #: document states.  Measured on
+    #: ``content-standards/get-content-standards-response.json#/oneOf/0``: the union base
+    #: resolves ``allow`` from the root's envelope conjunct, the composed target
+    #: ``ContentStandards`` carries the model base's default ``ignore``, it arrives second
+    #: in the bases tuple, and the branch class resolved ``ignore`` -- dropping keys the
+    #: document admits, which §8 reported as ``missing /additionalProperties``.
+    #:
+    #: So this is read where §8's pairing fold puts the fact -- what the document states
+    #: at the class's own pointer, which for a composing class is its own
+    #: ``additionalProperties`` and, failing that, its bases' resolved value -- and
+    #: WRITTEN on the class, so MRO order decides nothing a document states.  TRANSITIVE
+    #: by construction like the other two: a class that composes records what it
+    #: resolved, so a subclass reads one value rather than walking a chain.
+    extra: str | None = None
+
+
+def stated_extra(first: str | None, *rest: str | None) -> str | None:
+    """The ``extra`` policy of a class composing views that each resolved one: the FIRST
+    that states one, in the order the document states them.
+
+    **Not a lattice over the values, and that was measured.**  A first cut made
+    ``forbid`` win on §5's CONJ sentence ("``false`` on any conjunct closes the composed
+    object"), which is draft-07's own conjunction and is the TIGHTER reading -- and §5's
+    ``additionalProperties`` row does not send this to draft-07, it sends it to the fold:
+    "the value is read from what the document states at the class's own pointer **after
+    §8's pairing fold**".  ``harness._composed`` gap-fills -- a keyword only a conjunct
+    states fills a gap and never overrides the node's own -- so the fold answers with the
+    FIRST view that states one, and a lattice answers with something the grader does not
+    read.  Measured on ``media-buy/decline-proposals-response.json#/anyOf/1``: the root
+    states ``additionalProperties: false`` and the branch's ``$ref`` target states
+    ``true``, the fold yields ``true``, and the lattice resolved ``forbid`` -- a model
+    REFUSING keys the document admits, which is the one direction §2 forbids outright.
+
+    So this is :attr:`Shape.description`'s own rule at the same seam and for the same
+    reason, which is why that attribute's docstring already says it: "the description the
+    FIRST base that states one states ... because that is what ``harness._composed``
+    gap-fills on the document side -- ``if kw not in out`` over the conjuncts in order --
+    and the two halves have to read one composed document the same way."  One rule, two
+    keywords, one reading of the composed document.
+    """
+    for value in (first, *rest):
+        if value is not None:
+            return value
+    return None
 
 
 class Importable(NamedTuple):
@@ -1744,6 +1799,24 @@ def declare_object(
         if isinstance(store, Refusal):
             return store
         extra_type = store.type
+    #: What the DOCUMENT gives this class for ``extra``, read where §8's pairing fold
+    #: puts the fact: this node's own ``additionalProperties`` first, and the value its
+    #: BASES resolved where the node states none (:attr:`Shape.extra`, which carries the
+    #: whole reason).  Written onto the class unconditionally below, so pydantic's
+    #: ``model_config`` merge along the MRO cannot decide it.
+    #:
+    #: ``None`` only where neither the node nor anything it composes states one, and then
+    #: ``AdCPBaseModel``'s own ``extra="ignore"`` is the answer -- one value, fixed by the
+    #: model base rather than by which base happened to arrive second, so there is
+    #: nothing for an MRO order to decide and nothing for this class to state.  That is
+    #: the one case the row's "never inherits" does not reach, and it is written here
+    #: rather than left implicit: the clobber is a disagreement between two bases, and
+    #: silence everywhere is not one.
+    resolved_extra = (
+        "allow"
+        if extra_type is not None
+        else {False: "forbid", True: "allow"}.get(ap, shape.extra)
+    )
     described = node.description if node.description is not None else description
     declaration = ir.ClassDecl(
         # **The POINTER in the name slot, until the pass runs** (§7, and
@@ -1754,11 +1827,17 @@ def declare_object(
         ref=schema_ref(mod.document, pointer),
         fields=tuple(props),
         description=described,
-        # D8; absent leaves the base's default in place.  A TYPED
-        # ``additionalProperties`` is ``allow`` with the type beside it: the
-        # properties are part of the document, so they are retained, and
-        # ``__pydantic_extra__`` is what validates them.
-        extra="allow" if extra_type is not None else {False: "forbid", True: "allow"}.get(ap),
+        # D8, and §5's ``additionalProperties`` row: **a class DECLARES the ``extra``
+        # the document gives it and never inherits it** (:attr:`Shape.extra`, which
+        # carries the measurement).  It read the node's own value alone and left
+        # ``None`` -- "absent leaves the base's default in place" -- and that sentence
+        # is the defect: pydantic merges ``model_config`` along the MRO, so a class
+        # composing TWO bases took whichever value the later one carried and a default
+        # ``ignore`` silently overrode an ``allow`` the document states.  A TYPED
+        # ``additionalProperties`` is ``allow`` with the type beside it: the properties
+        # are part of the document, so they are retained, and ``__pydantic_extra__`` is
+        # what validates them.
+        extra=resolved_extra,
         extras=extra_type,
         bases=bases,
         rules=stated.rules,
@@ -1795,6 +1874,10 @@ def declare_object(
         shape,
         decided={**shape.decided, **{p.wire: p for p in props}},
         description=described,
+        # TRANSITIVE for :attr:`Shape.decided`'s reason: a subclass of THIS class reads
+        # one value rather than walking a chain of base documents to find who last
+        # stated an ``additionalProperties``.
+        extra=resolved_extra,
     )
     collision = mod.declare(pointer, declaration)
     if collision is not None:
@@ -1820,6 +1903,7 @@ def lower_object(
     mod: Module,
     *,
     bases: tuple[ir.TypeRef, ...] = (),
+    inherits: "Shape | None" = None,
 ) -> str | Refusal:
     """Append the class for an object NODE, children first, and return its POINTER.
 
@@ -1926,7 +2010,20 @@ def lower_object(
         # :attr:`nodes.Base.declared` is the property DECLARATIONS, which is what a
         # :class:`Shape` is: §2's intersection rule merges declarations of one property
         # and §4 "Names" reads a branch's own ``const`` pin off one.
-        Shape(node.declared, frozenset(required)),
+        # **``extra`` is the one thing this row INHERITS, and §5's
+        # ``additionalProperties`` row is why it has to** (2026-10-29): the branch arm of
+        # ``lower.union`` reaches this row for a branch whose base declares no property,
+        # and a base declaring none can still have resolved an ``allow`` -- a root
+        # stating ``additionalProperties: true`` beside its combinator and no
+        # ``properties``.  Left out, the class states nothing and pydantic's
+        # ``model_config`` merge decides, which is the clobber :attr:`Shape.extra`
+        # records.  Nothing else of a base is read here, because a base that declares a
+        # property sends the branch to ``lower_composition`` instead.
+        Shape(
+            node.declared,
+            frozenset(required),
+            extra=None if inherits is None else inherits.extra,
+        ),
         position,
         extras=node.extras,
         bases=bases,
@@ -2875,6 +2972,15 @@ def lower_composition(
     conjoined: list[tuple[str, Target, nodes.Reference]] = []
     inherited: dict[str, dict] = {}
     inherited_required: set[str] = set()
+    #: The ``extra`` policy the FIRST of this node's bases that resolved one resolved
+    #: (:func:`stated_extra`), in the order the document composes them -- the caller's
+    #: own base first and the ``$ref`` conjuncts after, which is the order
+    #: :attr:`Shape.description` is gap-filled in and for that attribute's reason:
+    #: ``harness._composed`` reads the composed document that way and the two halves have
+    #: to read it the same.  So the value :func:`declare_object` writes where this node
+    #: states no ``additionalProperties`` is the composed document's, not whichever base
+    #: pydantic's ``model_config`` merge happens to reach last.
+    inherited_extra: str | None = None
     #: The FIELD each inherited key came out as on the base that declares it, and the
     #: base it came from.  Read only by the annotation-only arm below, which re-uses
     #: the field rather than re-deciding the node; :attr:`Shape.decided` says why.
@@ -2890,6 +2996,8 @@ def lower_composition(
         inherited.update(inherits.properties)
         inherited_fields.update(inherits.decided)
         inherited_required |= inherits.required
+        if inherited_extra is None:
+            inherited_extra = inherits.extra
     #: Every LOCAL declaration that won its key, and where it was declared.  The
     #: root's own properties and an inline conjunct's land in the SAME map,
     #: because draft-07 applies both to the same instance.
@@ -3128,6 +3236,8 @@ def lower_composition(
             inherited_fields.update(target.declares.decided)
             inherited_from.update(dict.fromkeys(target.declares.properties, target))
             inherited_required |= target.declares.required
+            if inherited_extra is None:
+                inherited_extra = target.declares.extra
             if inherited_description is None:
                 inherited_description = target.declares.description
             continue
@@ -3693,6 +3803,7 @@ def lower_composition(
             {**inherited, **own},
             frozenset(required | inherited_required),
             decided=inherited_fields,
+            extra=inherited_extra,
         ),
         position,
         extras=getattr(node, "extras", None),
@@ -3958,6 +4069,15 @@ def _distribute(
                 {**base_shape.properties, **branch.declares.properties},
                 base_shape.required | branch.declares.required,
                 decided={**base_shape.decided, **branch.declares.decided},
+                # The TARGET BRANCH's first, then the base's -- the same order the
+                # three lines above give a shared PROPERTY, and for the same reason this
+                # docstring already states: "the target wins a shared key, because the
+                # target is the branch's own declaration".  This class states no
+                # ``additionalProperties`` of its own (the node is the ``$ref``
+                # conjunct), so what it DECLARES is what the composed document states at
+                # its pointer -- and :func:`declare_object` writes it, so the order the
+                # two bases sit in decides nothing.
+                extra=stated_extra(branch.declares.extra, base_shape.extra),
                 description=inherited,
             ),
             Position.BRANCH,
