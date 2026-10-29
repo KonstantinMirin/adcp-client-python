@@ -49,6 +49,12 @@ from typing import Any
 from adcp.types._base import KINDS, UNDERDETERMINED, WIDENED, Approximation, SchemaRef
 from adcp.types._runtime import Rule, ValueRule
 
+# §2's one exception, named here because :meth:`ClassDecl.__post_init__` raises it.
+# ``codegen/refusal.py`` imports nothing of this package -- its own module docstring says
+# so, "which is also what keeps the import graph acyclic once every lowering needs it" --
+# so naming it from the IR closes no cycle.
+from codegen.refusal import BuildFailure
+
 #: **Section 7's ``Approximation``, bound here and declared in the artifact's own
 #: package.**  The section's table puts it in this layer -- "document, pointer, keyword,
 #: kind (WIDENED / UNDERDETERMINED), rung, the fact the annotation does not carry in the
@@ -366,6 +372,47 @@ class ClassDecl:
     #: class that is not a union base, which is what tells a reader the slot is not
     #: merely empty.
     branches: tuple[TypeRef, ...] | None = None
+
+    def __post_init__(self) -> None:
+        """**A base list naming one class twice RAISES** (``architecture.md``, 2026-10-29).
+
+        §2's division decides which of the two this is: "a refusal is the document's and a
+        broken invariant is ours".  Nothing a document can state produces a duplicate base
+        -- a composition names conjuncts, a union base names ``BranchDispatchMixin`` and
+        ``AdCPBaseModel``, a branch names its base, and in every case the list is a
+        function of what the WALK derived from them -- so the reader of such a report would
+        go to ``codegen/`` and not to the schema.  An exception at the pointer is loud and
+        honest where a refusal would be quiet and wrong: ``class X(Indicator, Indicator)``
+        is ``TypeError: duplicate base class`` at IMPORT, three test files away from the
+        walk that built it, and it charges a document that did nothing wrong.
+
+        **Here and not in ``compiler.dispatching_bases``**, which ``adcp-client-python-10l.105``
+        measured: that function is called from two sites (``compiler``'s distribution arm
+        and ``lower/union.py``) and is not the chokepoint every base list passes through.
+        This is -- every class declaration constructs one, on every route.
+
+        **And it fires on BOTH spellings of the list, which is why it is in
+        ``__post_init__`` rather than at the call sites.**  A base travels as a POINTER
+        until ``lower/names.py`` binds it (:attr:`bases`' own note), so two DISTINCT
+        pointers naming one class are a duplicate only after binding -- and
+        ``names._bound`` rebuilds the declaration with ``dataclasses.replace``, which runs
+        this.  ``adcp-client-python-10l.98``'s own defect was exactly that shape: two
+        pointers, one symbol, caught at neither call site.
+
+        Keyed on ``TypeRef.path``, because that is the symbol ``render.klass`` writes into
+        ``base_classes`` -- the name Python will see -- and not on the ``TypeRef``, two of
+        which can differ in a slot the base list does not render.
+        """
+        seen: list[str] = []
+        for base in self.bases:
+            if base.path in seen:
+                raise BuildFailure(
+                    f"{self.name}: the base list names {base.path!r} twice "
+                    f"({[b.path for b in self.bases]}); section 2 makes a duplicate base "
+                    "a broken invariant of the compiler and not an outcome of "
+                    f"{self.ref.document if self.ref is not None else 'any document'}"
+                )
+            seen.append(base.path)
 
 
 @dataclass(frozen=True)

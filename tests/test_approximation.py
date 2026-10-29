@@ -31,6 +31,7 @@ instruments are perturbed here.
 from __future__ import annotations
 
 import importlib
+import pathlib
 from typing import Any, ClassVar
 
 import pytest
@@ -125,17 +126,33 @@ def test_the_four_rungs_section_5_states_are_the_rungs_the_cells_carry() -> None
     assert keywords.cell("format", Position.PROP).widens_to is Rung.TYPE
 
 
-def test_a_position_override_for_a_rung_renders_no_grid_clause() -> None:
-    """The two CONJ overrides must not move the generated grids, and here is why they do not.
+def test_a_position_override_for_a_rung_renders_a_grid_clause_only_when_it_has_one() -> None:
+    """``keywords.py``'s own rule, in BOTH its cases.
 
-    ``keywords.py``'s own rule: "An override whose ``compiles`` is EMPTY renders no clause:
-    it records a cell the default sentence already covers in prose."
-    ``tests/test_keywords.py`` holds the grids themselves; this asserts the mechanism the
-    two overrides rely on, so a later row cannot give one a sentence and silently change
-    the committed document.
+    "An override whose ``compiles`` is EMPTY renders no clause: it records a cell the
+    default sentence already covers in prose."  ``tests/test_keywords.py`` holds the grids
+    themselves; this asserts the mechanism the two CONJ overrides rely on, so a later row
+    cannot give one a sentence and silently change the committed document.
+
+    **This test asserted BOTH overrides were empty and ``enum``'s stopped being empty**
+    (``adcp-client-python-10l.109``).  §5's ``enum`` row at CONJ gained a decided sentence
+    -- "beside a ``$ref`` whose target is an enumeration → §2's intersection of the two
+    vocabularies" -- and the grid moved with it, which is the OPPOSITE of the silent change
+    the test exists to forbid: the clause is in the committed document, and
+    ``test_keywords.py`` is what holds it there.  So the claim is read the way the rule is
+    written -- empty renders nothing, non-empty renders its own clause AND the committed
+    grid carries it -- rather than as a pin on which of the two cells happens to be empty.
     """
-    for keyword in ("type", "enum"):
-        assert keywords.TABLE[keyword].at[Position.CONJ].compiles == ""
+    assert keywords.TABLE["type"].at[Position.CONJ].compiles == ""
+    said = keywords.TABLE["enum"].at[Position.CONJ].compiles
+    assert said, "enum's CONJ override is empty again; the clause below is then a stale pin"
+    # The one obligation the emptiness was standing in for: whatever the override says is
+    # in the generated region of the committed document.  Read out of the document rather
+    # than restated here, so this cannot pass against a sentence nobody published.
+    grids = (
+        pathlib.Path(__file__).resolve().parents[1] / "docs" / "plan" / "rebuild-plan.md"
+    ).read_text()
+    assert said.strip() in grids, said
 
 
 def test_a_rung_cannot_be_asked_of_a_cell_that_states_no_fact() -> None:

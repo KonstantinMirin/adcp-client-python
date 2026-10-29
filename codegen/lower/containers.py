@@ -368,7 +368,11 @@ def _the_conjuncts_constrain_the_array(node: nodes.Array) -> tuple[Any, ...] | R
                 "decided types",
                 kind=compiler.kind_for(unread[0], Position.CONJ),
             )
-        out.extend(rules.on_a_value(sources, contains=raw.get("contains")))
+        # ``rules.contains_source`` and not ``raw.get("contains")``: §4 names
+        # ``lower/rules.py`` the one reader of a rule source, and this module is not it
+        # (``tests/test_import_rule.py``'s ``MAY_READ_A_DECLARATION``, which may shrink and
+        # may not grow).  The keyword read and the position gate are unchanged.
+        out.extend(rules.on_a_value(sources, contains=rules.contains_source(raw)))
     return tuple(out)
 
 
