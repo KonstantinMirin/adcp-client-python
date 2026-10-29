@@ -148,6 +148,35 @@ nobody can audit against the table that was supposed to hold it.
 
 ---
 
+### The subject of grading is a FRESH EMIT, never the committed tree (decided 2026-10-29)
+
+The schema is pinned and the drawn instances are content-addressed, so what a class is graded
+against is a function of the bundle and the compiler alone. **Grading therefore reads the tree a
+fresh run emits. The committed tree is an ARTIFACT, verified by one byte-compare, and is never the
+subject.**
+
+`tests/test_emit.py`'s `graded()` does `import adcp.types._schemas` and walks it, which puts a
+committed artifact in the grading path and causes three failures this project reported as
+unrelated:
+
+* the committed tree was **39 documents stale and 35 more differed byte for byte**, so every
+  census over it graded a mixture of two compilers — three import-path collisions and one stale
+  decision were invisible in `src/` and visible in a fresh run;
+* `test_emit.py` **cannot collect** when one committed module fails to import, because `graded()`
+  runs at parametrize time, so a single bad base list errors ~2,400 tests;
+* the import obligation is downstream of its own precondition, which is the clause above.
+
+Regenerate, then grade. The order is the whole rule: a change to the compiler is followed by a
+regeneration and the grading reads that, so a stale tree cannot be graded and a tree that does not
+build fails one named test instead of disabling the file.
+
+The instruments exist. `tests/compiled.py` returns the fresh emit in under a second warm, keyed on
+the compiler's own source, and `tests/_imports_a_tree.py` already writes a fresh tree to a
+temporary directory and imports it in a child process — the child being forced rather than
+convenient, because an emitted module imports `adcp.types.constraints` by ABSOLUTE name and a
+fresh tree imported in the suite's own interpreter resolves its aliases through the committed
+alias module.
+
 ### A check may not be downstream of its own precondition (decided 2026-10-29)
 
 `tests/test_emit.py`'s `test_every_module_of_the_tree_imports_and_every_class_of_it_is_defined`
