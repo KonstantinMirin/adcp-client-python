@@ -3436,13 +3436,29 @@ def lower_composition(
             # declaration nothing earns.  A rung is written when §8 has a form for the
             # direction it drops in, and that is a decision §8 makes rather than this
             # arm.
-            disagreeing = _disagreeing(stating, inherited[key])
+            disagreeing = _disagreeing(stating, inherited[key], mod.resolve_node)
+            # **The sentence states its own obstruction, which means the DEREFERENCED
+            # reading and the two values at the keyword that failed** (``10l.92``).  It
+            # printed ``sorted(_constraining(...))`` of the RAW declarations, so a base
+            # whose whole content is a bare reference read as "inherited states
+            # ['$ref']" -- true of the text and not of what was compared, since
+            # :func:`_restatement` resolves such a base before it compares anything.
+            # Three refusals here said that, and the keyword they named was the
+            # reference they had already resolved past.
+            inherited_read = _constraining(_dereferenced(inherited[key], mod.resolve_node))
+            stating_read = _constraining(_dereferenced(stating, mod.resolve_node))
             return Refusal(
                 disagreeing,
                 at[key],
                 f"the restatement of {key!r} neither matches nor narrows the "
-                f"inherited declaration: inherited states {sorted(_constraining(inherited[key]))}, "
-                f"this states {sorted(_constraining(stating))}.  "
+                f"inherited declaration at {disagreeing!r}: inherited says "
+                f"{inherited_read.get(disagreeing)!r}, this says "
+                f"{stating_read.get(disagreeing)!r}.  inherited states "
+                f"{sorted(inherited_read)}, this states {sorted(stating_read)}, and the "
+                "keyword above is the first the two SHARE that this one does not say at "
+                "least as much at -- a keyword only the inherited declaration states is "
+                "never the obstruction, because under allOf the base's statement applies "
+                "wherever the restatement is quiet.  "
                 "docs/plan/rebuild-plan.md section 5(b) decides this row at rung "
                 "KEYWORD -- the field takes the base's declaration and the "
                 "restatement's extra facts are dropped -- and the facts it drops are "
@@ -5007,9 +5023,47 @@ def _as_enum(constraining: dict) -> dict:
     return out
 
 
-def _disagreeing(child: dict, base: dict) -> str:
-    """The keyword a refusal is reported on: the first the two do not agree about."""
-    c, b = _constraining(child), _constraining(base)
+def _disagreeing(
+    child: dict, base: dict, resolve: Callable[[str], dict | None] | None = None
+) -> str:
+    """The keyword a refusal is reported on: **the first SHARED one the restatement does
+    not say at least as much at**, read through the same two lenses
+    :func:`_restatement` compares through.
+
+    **It was ``min()`` over every key the two differ about, and that set contains keys
+    only the BASE states -- which can never be the obstruction** (``10l.92``).  Under
+    ``allOf`` the base's declaration applies wherever the child is quiet, so the child's
+    silence at a keyword is not a loosening and :func:`_restatement` does not read it as
+    one: the predicate ranges over ``set(c) & set(b)`` alone.  A refusal naming a
+    base-only key therefore attributes itself to a keyword nothing looked at.
+
+    **Measured, and it cost a whole row its shape** (``adcp-client-python-10l.82``).
+    ``core/audience-evidence-selection.json`` and
+    ``governance/check-governance-response.json`` restate one property, ``action_binding``,
+    and were blocked by one keyword, ``required`` -- and reported under ``anyOf`` and
+    under ``additionalProperties``, both base-only keys that sort first.  The row was
+    handed to a lane as two keyword headings and is one shape.  The three that still
+    refuse here all reported ``$ref``, because ``$`` sorts before every letter and the
+    base's whole content is a bare reference that :func:`_dereferenced` RESOLVES before
+    anything is compared -- so the reported keyword was one the comparison never reads.
+    Their obstructions, measured and now reported: ``required`` for both
+    ``brand/verify-brand-claim-response.json`` and
+    ``brand/verify-brand-claims-response.json`` (the restatement requires two names where
+    the base's target requires eight), and ``additionalProperties`` for
+    ``media-buy/get-reporting-status-response.json``'s ``adcp_error`` (``false`` over the
+    target's ``true``).
+
+    **The fallback is one arm and not a guess.** :func:`_restatement` answers ``None`` at
+    exactly two places: the tightness loop, which by construction leaves a failing shared
+    keyword for this to find, and the arm for a base whose whole content is a ``$ref``
+    this could not resolve -- where there is no shared keyword at all, the obstruction
+    really is the unreadable reference, and the union reading below names it.
+    """
+    dc, db = _dereferenced(child, resolve), _dereferenced(base, resolve)
+    c, b = _as_enum(_constraining(dc)), _as_enum(_constraining(db))
+    failing = sorted(k for k in set(c) & set(b) if not _at_least_as_tight(k, c[k], b[k], resolve))
+    if failing:
+        return failing[0]
     return min({k for k in set(c) | set(b) if c.get(k) != b.get(k)} or {"allOf"})
 
 
