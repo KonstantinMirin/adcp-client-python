@@ -596,7 +596,14 @@ reached first.
   derived name**; else its **index among the branches**, `<Base>Branch<i>`.
 
 **A bare `$ref` branch is named for its TARGET, and the index is the rung after that (decided
-2026-10-29).** §4 already makes such a branch inherit the target's property map for the pin rung,
+2026-10-29; corrected on implementation the same day).** The name is the target's
+DISTINGUISHING REMAINDER and never the target's own symbol spelled straight: the branch's second
+base IS the target, so the module imports that symbol, and `spell()`'s `occupied` keeps a
+shadowing name rather than refusing it where a chain of one segment has no ancestor to spend.
+That shape is already red — `core/vendor_pricing_option.py` emits
+`class CpmPricing(VendorPricingOption, CpmPricing)` five times — so a rule producing it would
+have shipped the defect it was written to avoid. Where the two names share nothing, the branch
+takes `<Doc><Other>`. §4 already makes such a branch inherit the target's property map for the pin rung,
 and the target is a document whose own class name this section derives — so the name is available
 and the index is a worse answer that was reached only because no rung asked.
 
@@ -604,8 +611,11 @@ A positional name is the one outcome a consumer cannot work with. `AssetRequirem
 through `...Branch11` are the twelve asset kinds — `image-asset-requirements.json`,
 `video-asset-requirements.json`, `audio-asset-requirements.json` and so on — and a caller writing
 `isinstance(req, AssetRequirementsBranch7)` has to count the document's branches to know it means
-JavaScript. **Measured: 19 classes over 6 documents take the index today**, and every one of them
-is a bare `$ref` whose target names itself.
+JavaScript. **Measured on a FRESH RUN: 18 classes over 7 documents take the index, of which 13 are bare
+`$ref`s** and are what this rung reaches. The other five are other shapes — a nested registry
+branch, an `allOf` arm, a properties-only arm, and a `not`-complement branch with the copy another
+document inlines. An earlier figure of 19 over 6 was read off the committed tree, which was 39
+documents stale, and assumed one shape for all of them.
 
 Where the root's name and the target's share a leading run, the branch takes the root's name plus
 the target's distinguishing remainder, so `core/requirements/asset-requirements.json`'s branch on
