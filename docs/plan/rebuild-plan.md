@@ -225,6 +225,24 @@ value reads that value's own members, as a rule declared on a class reads its fi
 naming keys — `ForbiddenGroups`, `RequiredGroups`, `PresenceGroups` — is therefore valid as an
 after-validator wherever no class encloses the value.
 
+**A composing DECLARATION is not a position where no class encloses the value** (decided
+2026-10-29). A property whose declaration is an `allOf` still sits in the class that holds the
+property, so the clause above is unchanged and the rule is declared there — the reader that
+writes it must see through the composition rather than the rule move to the value's own type.
+
+Measured on `core/catalog-selection.json` at `/properties/ids`, whose `uniqueItems` reached
+neither half of the row: `rules_at`'s screen claims every RULE-cell key the node carries, and
+`lower.rules._distinct` reads `uniqueItems` one level down off the array a property holds, so a
+composing declaration fell between them. `_distinct`'s `type == "array"` gate is the thing that
+has to read a conjunct; carrying `distinct` on the composition instead would declare the rule on
+the value's annotated type, which this clause reserves for where no class encloses it, and one
+does.
+
+The same reading answers it for every value keyword that composes, which is why it is stated here
+and not per keyword. `contains` is the exception already recorded in §5's two-array clause, and
+for its own reason: a declaration holds one `contains` key, so two cannot be spelled in a merged
+declaration at all.
+
 A rule's condition tests membership as well as equality: a `Match` clause reads a property's
 `const` or `enum`, and also `value in field`.
 
