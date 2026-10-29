@@ -4238,6 +4238,50 @@ def _at_least_as_tight(
         return (
             isinstance(c, list) and isinstance(b, list) and all(member in b for member in c)
         )
+    if keyword == "required":
+        # **``required`` is the one keyword whose intersection is a UNION, and the
+        # ordering is therefore the SUPERSET and not the subset** -- §2's own sentence,
+        # "a composed class's ``required`` is the union of its own and every base's",
+        # and §5's ``required`` row at CONJ, "unioned into the composed class's
+        # ``required``".  A name list says which keys the instance must supply, so
+        # demanding MORE names admits FEWER instances: ``c`` is at least as tight when
+        # every name ``b`` demands is one ``c`` demands too.  :func:`_intersection`
+        # writes the union at this keyword, which is the other half of the same rule and
+        # is not correct without this one.
+        #
+        # **Without the arm the keyword fell through to this predicate's closing
+        # ``False``** -- "a keyword this cannot read is not tight enough and the caller
+        # refuses" -- and a restatement adding a required name refused as a loosening,
+        # which is the opposite of what it states.  Measured over the 1,054 portable
+        # documents: it is the ONLY keyword blocking the ``action_binding`` restatement
+        # in ``core/audience-evidence-selection.json`` and
+        # ``governance/check-governance-response.json``, whose refusals were REPORTED on
+        # ``anyOf`` and on ``additionalProperties`` because :func:`_disagreeing` names
+        # the first key of the whole disagreeing set and the base states both of those
+        # where the child is silent -- silence that is not a loosening and was never the
+        # obstruction.  One shape under two keyword headings.
+        #
+        # **A SUPERSET and not the pair's mere readability, and the difference is one
+        # MEASURED verdict** (``adcp-client-python-10l.82``).  §2 states the union with no
+        # condition on it, so a child requiring FEWER names is not a loosening either and
+        # the honest predicate would answer True for every pair of lists -- which is what
+        # this arm said for one measurement.  It takes
+        # ``brand/verify-brand-claim-response.json`` and
+        # ``brand/verify-brand-claims-response.json`` past this predicate (their
+        # ``payload`` requires ``task`` and ``response`` where the base's target requires
+        # eight, ``adcp-client-python-97w``) and onto a VERDICT at
+        # ``/definitions/signed_response/allOf/1/properties/payload/allOf/0`` reading
+        # "#/definitions/response_payload names no node of this document": the ``$ref``
+        # conjunct the arm below APPENDS carries the base's own spelling, and that
+        # spelling is a pointer LOCAL TO THE BASE'S DOCUMENT -- resolvable by
+        # :meth:`Module.resolve_node`, which reads both spellings for the predicate, and
+        # not by the lowering that then reads the appended conjunct against the document
+        # being WRITTEN.  A verdict minted there is §9's first mistake for code nobody has
+        # written, and dropping the arm instead emits a class missing 6 of the 8
+        # properties ``payload`` requires -- the widening the arm's own comment measured.
+        # So the superset half lands and the rest waits on the conjunct carrying a
+        # reference the composing module can resolve.
+        return isinstance(c, list) and isinstance(b, list) and all(n in c for n in b)
     if keyword in _BOUNDS:
         if isinstance(c, bool) or isinstance(b, bool):
             return False  # draft-04's boolean exclusiveMinimum: a different keyword
@@ -4460,6 +4504,17 @@ def _intersection(
             # and the two lists are not composed by this rule, so it falls through to
             # the tightness arm below with every other non-mapping value.
             merged[kw] = _intersection(c[kw], b[kw], resolve)
+        elif kw == "required" and isinstance(c[kw], list) and isinstance(b[kw], list):
+            # **The UNION at ``required``, and neither value is the tighter one**: §2's
+            # "a composed class's ``required`` is the union of its own and every base's"
+            # and §5's ``required`` row at CONJ, "unioned into the composed class's
+            # ``required``".  :func:`_at_least_as_tight` carries the ordering half; this
+            # is what the field is decided FROM, and taking either list whole is the
+            # shadow §2 forbids in the one direction it forbids -- the base's list drops
+            # a name the restatement demands, which accepts an instance the document
+            # refuses.  Order preserved, child's names first, so the composition of a
+            # declaration with itself is itself and the rendered class is stable.
+            merged[kw] = [*c[kw], *(n for n in b[kw] if n not in c[kw])]
         elif not _at_least_as_tight(kw, c[kw], b[kw], resolve):
             merged[kw] = b[kw]
     # **The base's reference SURVIVES as a ``$ref`` CONJUNCT where both declarations
@@ -4488,11 +4543,37 @@ def _intersection(
     # composition in its own branch text (:func:`_conjoins`), its element declares
     # ``allOf`` and not ``properties``, so this arm does not fire and the document's own
     # conjunct list is what stands.
+    #
+    # **"Declares an object" is not "declares ``properties``", and reading it that way
+    # left the arm's own rule unwritten for two further shapes** (``…10l.82``).  The
+    # clause is about a CONTAINER the two declarations agree on -- §5's ``properties``
+    # row at CONJ for an object, §2's "this holds at ANY DEPTH, including an overlay
+    # under ``items``" for an array -- and a container is declared by any of its
+    # keywords, not by one of them.  :func:`_container_kind` is the reading, and it is
+    # what makes the two measured shapes below the same site as the two above:
+    #
+    # * ``core/signal-coverage-forecast.json`` at
+    #   ``/properties/points/items/allOf/1/properties/dimensions``, whose restatement is
+    #   a bare ``{"contains": {...}}`` over ``core/forecast-point.json``'s ``{"$ref":
+    #   core/forecast-point-dimensions.json}``.  Both declare an ARRAY; the reference
+    #   dropped, the merge is a TYPELESS node and the ``contains`` row refused it for
+    #   having no type to lower onto -- a type the document states behind the reference.
+    # * ``media-buy/get-reporting-status-response.json`` at
+    #   ``/oneOf/0/oneOf/1/properties/pagination``, whose restatement is ``{"type":
+    #   "object", "required": ["has_more", "total_count"]}`` over a base's bare
+    #   reference.  Both declare an OBJECT and neither name is a property the merge
+    #   declares, so §5's ``required`` row refused it as "a presence rule with no field"
+    #   -- the two fields being behind the dropped reference.
+    #
+    # The ``const``-beside-``$ref`` five are the control and are UNCHANGED: a ``{"type":
+    # "string", "const": v}`` restatement declares no container, so the arm does not
+    # fire, the reference is dropped as the paragraph above decides, and the model is
+    # looser than the base's conjunct where §2 permits it.
     conjoined_the_reference = (
         set(b) == {"$ref"}
         and "$ref" not in merged
-        and "properties" in c
-        and "properties" in _constraining(_dereferenced(base, resolve))
+        and _container_kind(c) is not None
+        and _container_kind(c) == _container_kind(_constraining(_dereferenced(base, resolve)))
     )
     if conjoined_the_reference:
         own_conjuncts = merged.get("allOf")
@@ -4555,6 +4636,59 @@ def _intersection(
 #: and a child stating one says nothing about the other, so merging the base's is
 #: correct and is what section 2's "a bound is the tighter one" means per keyword.
 _AXES: tuple[frozenset[str], ...] = (frozenset({"const", "enum"}),)
+
+
+#: **The keywords that DECLARE a container, by the container they declare it to be.**
+#: §5's object and array sections are the two lists and this is a reading of them: every
+#: keyword whose row constrains an object is in the first set and every keyword whose row
+#: constrains an array is in the second, so a declaration stating any of them has said
+#: which container the instance is -- as surely as a ``type`` word does, and §8's own
+#: comparison makes the same derivation on the document side.
+#:
+#: Read by :func:`_container_kind` and by nothing else.  Not a second copy of
+#: :data:`HOLDS`, which names the two keywords §2's intersection RECURSES into; this names
+#: the wider fact that a keyword belongs to a container's row group, which is what decides
+#: whether two declarations are two declarations of ONE container.
+_CONTAINER_KEYWORDS: Mapping[str, frozenset[str]] = {
+    "object": frozenset(
+        {
+            "properties",
+            "required",
+            "additionalProperties",
+            "patternProperties",
+            "propertyNames",
+            "minProperties",
+            "maxProperties",
+            "dependencies",
+        }
+    ),
+    "array": frozenset(
+        {"items", "additionalItems", "contains", "minItems", "maxItems", "uniqueItems"}
+    ),
+}
+
+
+def _container_kind(constraining: Mapping[str, Any]) -> str | None:
+    """Which container a declaration declares -- ``"object"``, ``"array"`` or neither.
+
+    The ``type`` word where it states one, and otherwise the keyword group its own
+    keywords fall in (:data:`_CONTAINER_KEYWORDS`): a node stating ``contains`` has said
+    the instance is an array as surely as ``type: array`` does, and draft-07's keyword
+    groups are what make that an entailment rather than a guess.
+
+    ``None`` where the declaration names neither container and where it names BOTH --
+    a ``type`` list spanning the two, or a node stating ``properties`` beside ``items``.
+    Both are declarations this cannot read as one container, and the caller's rule is
+    that two declarations compose as a conjunct only where they agree on which container
+    they are about.
+    """
+    words = _type_words(constraining.get("type")) & {"object", "array"}
+    if len(words) == 1:
+        return next(iter(words))
+    if words:
+        return None
+    found = {kind for kind, group in _CONTAINER_KEYWORDS.items() if group & set(constraining)}
+    return next(iter(found)) if len(found) == 1 else None
 
 
 def _type_words(stated: Any) -> frozenset[str]:
