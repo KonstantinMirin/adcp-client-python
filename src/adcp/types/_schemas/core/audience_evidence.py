@@ -70,7 +70,7 @@ class Subject(AttestationResourceSubject):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-evidence.json', pointer='#/properties/attestation_refs/items/allOf/1/properties/subject')
     resource_type: Annotated[Literal['https://adcontextprotocol.org/claims/subjects/audience-evidence'], Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
-    content_digest: StrMatching3CBDBB74
+    content_digest: Annotated[StrMatching3CBDBB74, Field(description='Optional SHA-256 pin for the exact content or immutable snapshot identified by this resource subject. This is part of the complete typed subject identity and is distinct from AttestationReference.content_digest, which pins credential bytes.')]
 
 
 class AttestationRefsItem(AttestationReference):

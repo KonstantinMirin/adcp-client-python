@@ -7,7 +7,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Presence, PresenceGroups, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatGt0, FloatMin1, FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl, IntMin1, StrMatching157DF383, StrMatching43E30B32, StrMatchingEFC12812, StrMinLen1
 
@@ -351,9 +351,6 @@ class ProductFilters(AdCPBaseModel):
         UniqueItems('social_placement_surfaces'),
         UniqueItems('audience_activation_methods'),
         UniqueItems('required_metrics'),
-    )
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/product-filters.json', pointer='#/properties/postal_areas/items/anyOf/0/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'properties': {'country': {'const': 'US'}, 'system': {'enum': ['zip', 'zip_plus_four']}}}, {'properties': {'country': {'const': 'GB'}, 'system': {'enum': ['outward', 'full']}}}, {'properties': {'country': {'const': 'CA'}, 'system': {'enum': ['fsa', 'full']}}}, {'properties': {'country': {'enum': ['DE', 'CH', 'AT']}, 'system': {'const': 'plz'}}}, {'properties': {'country': {'const': 'FR'}, 'system': {'const': 'code_postal'}}}, {'properties': {'country': {'const': 'AU'}, 'system': {'const': 'postcode'}}}, {'properties': {'country': {'const': 'BR'}, 'system': {'const': 'cep'}}}, {'properties': {'country': {'const': 'IN'}, 'system': {'const': 'pin'}}}, {'properties': {'country': {'const': 'ZA'}, 'system': {'const': 'postal_code'}}}, {'properties': {'country': {'not': {'enum': ['US', 'GB', 'CA', 'DE', 'CH', 'AT', 'FR', 'AU', 'BR', 'IN', 'ZA']}}, 'system': {'enum': ['postal_code', 'custom']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
     )
     delivery_type: DeliveryType | None = None
     exclusivity: Annotated[Exclusivity | None, Field(description="Filter by exclusivity level. Returns products matching the specified exclusivity (e.g., 'exclusive' returns only sole-sponsorship products).")] = None

@@ -37,7 +37,7 @@ class AssetRequirements(BranchDispatchMixin, AdCPBaseModel):
     )
 
 
-class AssetRequirementsBranch0(AssetRequirements, ImageAssetRequirements):
+class AssetRequirementsImage(AssetRequirements, ImageAssetRequirements):
     """
     Requirements for image creative assets. These define the technical constraints for image files.
     """
@@ -47,7 +47,7 @@ class AssetRequirementsBranch0(AssetRequirements, ImageAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/0')
 
 
-class AssetRequirementsBranch1(AssetRequirements, VideoAssetRequirements):
+class AssetRequirementsVideo(AssetRequirements, VideoAssetRequirements):
     """
     Requirements for video creative assets. These define the technical constraints for video files.
     """
@@ -57,7 +57,7 @@ class AssetRequirementsBranch1(AssetRequirements, VideoAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/1')
 
 
-class AssetRequirementsBranch2(AssetRequirements, AudioAssetRequirements):
+class AssetRequirementsAudio(AssetRequirements, AudioAssetRequirements):
     """
     Requirements for audio creative assets.
     """
@@ -67,7 +67,7 @@ class AssetRequirementsBranch2(AssetRequirements, AudioAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/2')
 
 
-class AssetRequirementsBranch3(AssetRequirements, TextAssetRequirements):
+class AssetRequirementsText(AssetRequirements, TextAssetRequirements):
     """
     Requirements for text creative assets such as headlines, body copy, and CTAs.
     """
@@ -77,7 +77,7 @@ class AssetRequirementsBranch3(AssetRequirements, TextAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/3')
 
 
-class AssetRequirementsBranch4(AssetRequirements, MarkdownAssetRequirements):
+class AssetRequirementsMarkdown(AssetRequirements, MarkdownAssetRequirements):
     """
     Requirements for markdown creative assets.
     """
@@ -87,7 +87,7 @@ class AssetRequirementsBranch4(AssetRequirements, MarkdownAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/4')
 
 
-class AssetRequirementsBranch5(AssetRequirements, HTMLAssetRequirements):
+class AssetRequirementsHTML(AssetRequirements, HTMLAssetRequirements):
     """
     Requirements for HTML creative assets. These define the execution environment constraints that the HTML must be compatible with.
     """
@@ -97,7 +97,7 @@ class AssetRequirementsBranch5(AssetRequirements, HTMLAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/5')
 
 
-class AssetRequirementsBranch6(AssetRequirements, CSSAssetRequirements):
+class AssetRequirementsCSS(AssetRequirements, CSSAssetRequirements):
     """
     Requirements for CSS creative assets.
     """
@@ -107,7 +107,7 @@ class AssetRequirementsBranch6(AssetRequirements, CSSAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/6')
 
 
-class AssetRequirementsBranch7(AssetRequirements, JavaScriptAssetRequirements):
+class AssetRequirementsJavaScript(AssetRequirements, JavaScriptAssetRequirements):
     """
     Requirements for JavaScript creative assets. These define the execution environment constraints that the JavaScript must be compatible with.
     """
@@ -117,7 +117,7 @@ class AssetRequirementsBranch7(AssetRequirements, JavaScriptAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/7')
 
 
-class AssetRequirementsBranch8(AssetRequirements, VASTAssetRequirements):
+class AssetRequirementsVAST(AssetRequirements, VASTAssetRequirements):
     """
     Requirements for VAST (Video Ad Serving Template) creative assets.
     """
@@ -127,7 +127,7 @@ class AssetRequirementsBranch8(AssetRequirements, VASTAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/8')
 
 
-class AssetRequirementsBranch9(AssetRequirements, DAASTAssetRequirements):
+class AssetRequirementsDAAST(AssetRequirements, DAASTAssetRequirements):
     """
     Requirements for DAAST (Digital Audio Ad Serving Template) creative assets.
     """
@@ -137,7 +137,7 @@ class AssetRequirementsBranch9(AssetRequirements, DAASTAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/9')
 
 
-class AssetRequirementsBranch10(AssetRequirements, URLAssetRequirements):
+class AssetRequirementsURL(AssetRequirements, URLAssetRequirements):
     """
     Requirements for URL assets such as click-through URLs, tracking pixels, and landing pages.
     """
@@ -147,7 +147,7 @@ class AssetRequirementsBranch10(AssetRequirements, URLAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/10')
 
 
-class AssetRequirementsBranch11(AssetRequirements, WebhookAssetRequirements):
+class AssetRequirementsWebhook(AssetRequirements, WebhookAssetRequirements):
     """
     Requirements for webhook creative assets.
     """
@@ -157,7 +157,7 @@ class AssetRequirementsBranch11(AssetRequirements, WebhookAssetRequirements):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/asset-requirements.json', pointer='#/anyOf/11')
 
 
-AssetRequirements._branch_models = (AssetRequirementsBranch0, AssetRequirementsBranch1, AssetRequirementsBranch2, AssetRequirementsBranch3, AssetRequirementsBranch4, AssetRequirementsBranch5, AssetRequirementsBranch6, AssetRequirementsBranch7, AssetRequirementsBranch8, AssetRequirementsBranch9, AssetRequirementsBranch10, AssetRequirementsBranch11,)
+AssetRequirements._branch_models = (AssetRequirementsImage, AssetRequirementsVideo, AssetRequirementsAudio, AssetRequirementsText, AssetRequirementsMarkdown, AssetRequirementsHTML, AssetRequirementsCSS, AssetRequirementsJavaScript, AssetRequirementsVAST, AssetRequirementsDAAST, AssetRequirementsURL, AssetRequirementsWebhook,)
 AssetRequirements.model_rebuild(force=True)
 
 

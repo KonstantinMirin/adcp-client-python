@@ -33,7 +33,7 @@ class GetCreativeFeaturesResponse(BranchDispatchMixin, AdCPVersionEnvelope, Prot
         return "oneOf"
 
 
-class GetCreativeFeaturesResponseBranch0(GetCreativeFeaturesResponse, GetCreativeFeaturesSuccess):
+class GetCreativeFeaturesResponseSuccess(GetCreativeFeaturesResponse, GetCreativeFeaturesSuccess):
     """
     Terminal success response. In AdCP 3.x evaluation_id is an optional migration field that providers SHOULD emit; it becomes required in AdCP 4.0. When present, it is the provider-side reconciliation identity allocated when the evaluation was accepted and remains stable across exact replays and asynchronous completion.
     """
@@ -79,7 +79,7 @@ class GetCreativeFeaturesSubmitted(GetCreativeFeaturesResponse):
     ext: ExtensionObject | None = None
 
 
-GetCreativeFeaturesResponse._branch_models = (GetCreativeFeaturesResponseBranch0, GetCreativeFeaturesError, GetCreativeFeaturesSubmitted,)
+GetCreativeFeaturesResponse._branch_models = (GetCreativeFeaturesResponseSuccess, GetCreativeFeaturesError, GetCreativeFeaturesSubmitted,)
 GetCreativeFeaturesResponse.model_rebuild(force=True)
 
 
