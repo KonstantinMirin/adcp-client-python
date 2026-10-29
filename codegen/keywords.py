@@ -458,7 +458,15 @@ _VALUES: dict[str, Row] = {
             True,
             None,
             "`Literal[value]`; the type word is not restated, since Pydantic renders "
-            "it. A `str`, `bool` or `int` value; an object, array, `null` or float "
+            "it. A `format` beside the pin compiles to NOTHING and the pin alone is "
+            "rendered, because a fixed value either satisfies the format or the node "
+            "admits nothing: the pin is checked against the format, and where it "
+            "satisfies it the `Literal` is already strictly tighter than any type the "
+            "format would select, while where it does not the node is §5's empty "
+            "intersection and refuses upstream. So no fact is dropped and §8 grades the "
+            "`format` as not rendered at this co-occurrence "
+            "(`adcp-client-python-10l.70`, decided 2026-10-29). "
+            "A `str`, `bool` or `int` value; an object, array, `null` or float "
             "refuses. On a branch's property → also the second of the branch-naming "
             "choices. AT a branch node, pinning the whole branch → the branch is a "
             "scalar: a `Literal` member of the union. Where EVERY branch of a root "
