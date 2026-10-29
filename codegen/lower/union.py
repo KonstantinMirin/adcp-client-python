@@ -475,14 +475,21 @@ class Enclosing:
     pair the branch loop's other three arms already hand their readers -- one reading of
     "what a branch of this union inherits", whichever shape the branch turns out to be.
 
-    **``BranchDispatchMixin`` is NOT named again beside it**, and that is the whole reason
-    this is a carrier rather than a ``bases`` tuple the caller composes.  The mixin has to
-    come FIRST so the MRO finds its ``__get_pydantic_core_schema__``
-    (``compiler.lower_composition``'s ``base_if_none_composes`` records the measurement),
-    and the enclosing base already carries it there -- so naming it beside the enclosing
-    base puts a class before its own subclass and Python refuses to build the module.  The
-    nested base inherits the hook with its own ``_branch_models``, which is what makes a
-    payload reaching the outer arm dispatch again inside it.
+    **The MIXIN is not this carrier's business, and that was a mistake this held once.**
+    The enclosing base already carries ``BranchDispatchMixin``, so naming it beside this
+    base would put a class before its own subclass -- but that is a fact about the BASE
+    LIST and not about the route, and :func:`compiler.dispatching_bases` is the one
+    reading of it (§5, decided 2026-10-29).  Keyed to the carrier instead, the suppression
+    missed a nested union that reaches ``lower_union`` through the DISPATCH rather than
+    through the branch loop below, and ``core/postal-area.json`` emitted a module that
+    does not import.  The nested base inherits the hook with its own ``_branch_models``
+    either way, which is what makes a payload reaching the outer arm dispatch again
+    inside it.
+
+    What is LEFT here is the half no base list states: the enclosing base's
+    :class:`compiler.Shape`, so a property both declare takes §2's restatement rule
+    instead of this base shadowing the field.  That is why the carrier survives the rule
+    rather than being replaced by it.
     """
 
     #: The enclosing union's base, by POINTER until ``lower/names.py`` binds it (§7).
@@ -1265,7 +1272,9 @@ def lower_union(
         )
 
     mod.imports.add((ir.BASE_MODULE, "AdCPBaseModel"))
-    mod.imports.add((ir.BASE_MODULE, "BranchDispatchMixin"))
+    # The mixin's import is NOT added here: ``compiler.dispatching_bases`` adds it where
+    # it NAMES the mixin, so the import and the name are one decision.  Added here too, a
+    # base whose list already carries the mixin would import a symbol it does not spell.
     mod.imports.add(("typing", "ClassVar"))
     # §4's three facts the emitter writes onto the BASE, as the class's own slots rather
     # than as class-body text (``docs/plan/architecture.md`` §7): ``_ROOT_REQUIRED`` is
@@ -1308,16 +1317,20 @@ def lower_union(
     stated_base = compiler.lower_composition(
         node,
         mod,
-        # ``BranchDispatchMixin`` FIRST, because the MRO is what finds its
+        # The mixin FIRST, because the MRO is what finds its
         # ``__get_pydantic_core_schema__``, and the model base only where the root
         # composes nothing -- a root that composes reaches ``AdCPBaseModel`` through its
         # conjuncts' own classes, and naming it beside them puts a class before two of
         # its own subclasses (``compiler.lower_composition``'s
         # ``base_if_none_composes``).
-        bases=(
-            (enclosing.base,)
-            if enclosing is not None
-            else (ir.TypeRef("BranchDispatchMixin", local=True),)
+        #
+        # **``compiler.dispatching_bases`` decides whether it is named, and this site does
+        # not** (§5, "the dispatch mixin is named where no base already carries it"): with
+        # an :class:`Enclosing` the list is the enclosing base, which carries the mixin
+        # already, and the suppression that used to be this conditional's other arm is now
+        # a function of the LIST.  One reading, which the dispatch route asks too.
+        bases=compiler.dispatching_bases(
+            (enclosing.base,) if enclosing is not None else (), mod
         ),
         base_if_none_composes=(
             None if enclosing is not None else ir.TypeRef("AdCPBaseModel", local=True)
@@ -1469,11 +1482,19 @@ def lower_union(
         # where a class is required whatever the node states: §4 makes every branch a
         # class because ``isinstance(payload, Base)`` is what the dispatch IS, and
         # ``A | B`` answers that for nothing.  So the disjunction is the same one, read at
-        # the position that supplies the base.  Measured over the 1,054 portable
-        # documents: **4 union branches reach this arm and all 4 state a sibling a class
-        # carries**, so the clause moves no document today and is written for the reason
-        # :func:`lower`'s own is -- the first branch to be a bare union of shapes gets the
-        # class its enclosing dispatch needs instead of a type nothing can subclass.
+        # the position that supplies the base: the first branch to be a bare union of
+        # shapes gets the class its enclosing dispatch needs instead of a type nothing can
+        # subclass.
+        #
+        # **WHAT THIS ARM CLAIMS, stated as a reading rather than a count.**  It claims a
+        # branch the PARSER classified :class:`nodes.Union`, which is the branches whose
+        # own combinator is their kind by §5's arm order.  It does NOT claim a branch that
+        # reaches a union some other way -- a branch composing a ``$ref`` whose target is a
+        # union root is a :class:`nodes.Composition` here, and §5's ``$ref`` row
+        # distributes it inside ``compiler.lower_composition`` instead.  That is
+        # ``core/postal-area.json`` at ``/anyOf/0``, and a census of "the branches that
+        # reach this arm" went stale the moment that row landed, which is why the claim is
+        # the classification and not a number.
         if isinstance(plan.parsed, nodes.Union):
             inner = lower_union(
                 plan.parsed,
