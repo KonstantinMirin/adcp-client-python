@@ -26,24 +26,33 @@ unreachable code, and the same holds for ``enum.Enum``'s own reserved names
 
 **No member name is ever suffixed.**  A suffix would make two different values
 reachable under two names that differ only by punctuation nobody chose, so two
-values that spell one member name REFUSE the document instead -- see
-:func:`decide`.  The injectivity that makes that safe is computed over
-:func:`member_name`, which is the function that ACTUALLY RUNS: the compiler's
-``Enum`` model renders ``{{ field.name }}`` verbatim and names nothing itself, so
-binding the check to any other function would leave it vacuous while the compiler
-aliased two values onto one member.  ``tests/test_enum.py`` asserts the verbatim
-rendering rather than assuming it.
+values that spell one member name get NO ENUM CLASS at all: §5's row gives them a
+``Literal`` of the members, because the collision exists only where a Python
+IDENTIFIER has to be minted per member and a ``Literal`` mints none
+(:func:`two_members_spell_one_name`).  The injectivity that makes the SUFFIXLESS
+rule safe is computed over :func:`member_name`, which is the function that
+ACTUALLY RUNS: the compiler's ``Enum`` model renders ``{{ field.name }}``
+verbatim and names nothing itself, so binding the test to any other function
+would leave it vacuous while the compiler aliased two values onto one member.
+That is also why the ROUTE is asked of ``member_name`` and not of a second
+spelling function written beside it -- one derivation, read twice.
+``tests/test_enum.py`` asserts the verbatim rendering rather than assuming it.
 
-**Four refusals, and all four are statements about REPRESENTABILITY** rather than
-keywords this row has not got to yet:
+**Three refusals, and all three are statements about REPRESENTABILITY** rather
+than keywords this row has not got to yet.  Each is a property of the VALUE SET
+and therefore holds whichever of the two renderings the set takes, which is why
+:func:`decide` is the one reading of it:
 
-* two values spelling one member name -- the class would have fewer members than
-  the document has values, and which value won would depend on document order;
 * members of mixed type -- there is no one base, and ``StrEnum`` over an integer
   silently stringifies it;
 * an empty ``enum`` -- it admits no instance, so there is nothing to enumerate;
 * a value appearing twice -- Python ALIASES the second member onto the first
-  silently, so the class would again carry fewer members than the document lists.
+  silently, so the class would carry fewer members than the document lists, and
+  ``Literal`` deduplicates it the same way.
+
+A fourth refusal stood here until 2026-10-29 and §5's row withdrew it: two values
+spelling one member name is a property of the NAMING and not of the value set, so
+the row drops the name rather than the document.
 
 **``bool`` is excluded on purpose** and is not an oversight of :data:`BASES`:
 ``bool`` is a subclass of ``int``, so a boolean enum would otherwise render an
@@ -148,8 +157,8 @@ _BRANCH_OF = ("oneOf", "anyOf")
 def lower(
     node: nodes.Enumeration, mod: Module, *, of_a_root_union: bool = False
 ) -> Decided | Refusal:
-    """§4's enumeration row: a ``StrEnum``/``IntEnum`` where a name reaches the node, and
-    a ``Literal`` of its members where none does.
+    """§4's enumeration row: a ``StrEnum``/``IntEnum`` where a name reaches the node and
+    its members spell one name each, and a ``Literal`` of its members otherwise.
 
     **``of_a_root_union`` is a fact this row is HANDED, and §6 settled that it must be.**
     §6 said the pointer read ``hops[-2]`` "becomes ``node.position is BRANCH``" and then
@@ -167,6 +176,13 @@ def lower(
     nested rule), which nothing else wants, so a name reaches it and it keeps its
     ``StrEnum``.  A branch of a ROOT union takes none, because the root's own class holds
     the only name that position derives.
+
+    **The ``Literal`` has a SECOND route in, and §5's row says it is the same answer**:
+    a node whose members spell fewer Python names than it has values
+    (:func:`two_members_spell_one_name`).  The two routes are ``or``-ed rather than folded
+    into one predicate because they answer different questions --
+    :func:`resolves_no_name` is about the POSITION, which is a sentence its own docstring
+    insists on, and this one is about the MEMBERS -- and they agree on what to do about it.
     """
     # **The row's own screen, at the node's own position, over the cells this row
     # consumes.**  It was in ``emit._decide``'s enum arm and the conversion dropped it;
@@ -201,7 +217,9 @@ def lower(
     outside = excluded(node)
     if outside is not None:
         return outside
-    if resolves_no_name(node, of_a_root_union=of_a_root_union):
+    if resolves_no_name(node, of_a_root_union=of_a_root_union) or two_members_spell_one_name(
+        node
+    ):
         return literal(node)
     # **Declared at the node's POINTER, with no name of its own** (§7): the enumeration
     # the walk builds carries the pointer in its name slot and ``lower/names.py`` binds
@@ -314,6 +332,43 @@ def resolves_no_name(node: nodes.Enumeration, *, of_a_root_union: bool = False) 
     return not node.title and (of_a_root_union or node.position is Position.KEY)
 
 
+def two_members_spell_one_name(node: nodes.Enumeration) -> bool:
+    """Do two of the node's members spell ONE Python member name?  Then §5's row renders
+    a ``Literal`` and no enum class.
+
+    **§5's ``enum`` row, decided 2026-10-29**: "Two members whose spellings yield one
+    Python name → a ``Literal`` of the members and NOT an enum class.  The collision
+    exists only because an enum mints a Python IDENTIFIER per member; a ``Literal`` needs
+    none, so both values are carried exactly as the document spells them and nothing is
+    dropped.  This is the same answer the row already gives an untitled branch of a root
+    union, reached by a second route."  So this is not a widening: the accepted set is the
+    same list of values either way, no rung of §2's ladder is spent and nothing is
+    attributed.  What is given up is an importable symbol per member, which is DX.
+
+    **Asked of :func:`member_name` and of nothing else.**  The question "do these two
+    values collide" is only answerable by the function that does the spelling, and a
+    second spelling function written here to answer it would be a copy that can disagree
+    with the one that runs -- the defect the module docstring's injectivity paragraph
+    exists to prevent, arriving from the other side.  One derivation, read twice: once
+    here to choose the rendering, once in :func:`decide` to name the members of the
+    rendering that has names.
+
+    A DUPLICATE VALUE also spells one name twice, and that is a refusal
+    (:func:`decide`) rather than a route -- a ``Literal`` deduplicates a repeated value
+    exactly as ``Enum`` aliases a repeated member, so the document's list is longer than
+    either rendering whatever is chosen.  The order is what keeps the sentence right:
+    this predicate sends the node to :func:`literal`, which reads the value set through
+    :func:`decide`, which reports the repeat on its own terms before any name is read.
+
+    THE READING, not the figure: the group is every ``enum`` node of the bundle two of
+    whose members spell one member name.  ``tests/test_enum.py`` names that set and
+    asserts the rendering each of its nodes takes, so a second node joining it is a
+    reading that changes and not a count that moves.
+    """
+    spelled = [member_name(value) for value in node.members]
+    return len(set(spelled)) < len(spelled)
+
+
 def literal(node: nodes.Enumeration) -> compiler.Decided | Refusal:
     """D2's rendering for a value set no name reaches: a ``Literal`` of its members.
 
@@ -324,12 +379,16 @@ def literal(node: nodes.Enumeration) -> compiler.Decided | Refusal:
     handed to it is unused -- this rendering claims no symbol -- and is passed as the
     empty string so that nothing here invents one.
 
-    KNOWN CEILING: ``decide`` also refuses two values that spell ONE MEMBER NAME, and a
-    ``Literal`` has no member names, so that refusal does not belong to this rendering.
-    It is shared anyway rather than split, because splitting it is two readings of the
-    value set to keep in step for a case the bundle does not have: measured over the 4
-    nodes this reaches, 0 carry such a pair. The upgrade, at the first one, is to take
-    the values before ``member_name`` runs rather than to copy the other three refusals.
+    **The ceiling that stood here is GONE, and it is gone by the sharing rather than by a
+    split.**  It read: ``decide`` also refuses two values that spell one member name, a
+    ``Literal`` has no member names, so that refusal does not belong to this rendering --
+    and the upgrade named for the first colliding node was "take the values before
+    ``member_name`` runs".  §5's row took that upgrade one step further on 2026-10-29 by
+    sending the colliding node HERE, so the refusal is not in ``decide`` for this
+    rendering to be excused from: what is left there are the three statements about the
+    value set, every one of which this rendering owes as much as an enum class does.  The
+    member names ``decide`` derives on this path are read by nobody -- the rendering has
+    no slot for one -- which is the whole of why the collision stops mattering.
     """
     enumerated = decide(node, "")
     if isinstance(enumerated, Refusal):
@@ -386,9 +445,22 @@ def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl | Refusal:
     # the parser makes of the two, and §14's preamble settles the byte delta: a *bytes*
     # mark forbids an UNDECLARED change and not conforming to a sentence the semantics
     # document already decided.
+    # **A MEMBER NAME IS DERIVED HERE AND NEVER JUDGED HERE, since 2026-10-29.**  A
+    # hand-written ``Kind.VERDICT`` stood in this loop for two values spelling one member
+    # name -- one of the three left in this compiler, and the one that cost 21 of the 95
+    # refusals for ``formats/canonical/html5.json``'s ``clicktag_macro`` alone.  §5's row
+    # withdrew the clause: the collision is a property of the NAMING, which is this
+    # compiler's, and ``architecture.md`` §2 forbids reporting a compiler's property as a
+    # document's verdict -- so the row drops the NAME (the node renders as a ``Literal``,
+    # :func:`two_members_spell_one_name`) and keeps every member the document states.
+    # Deleting the raise site is part of that row and not a consequence of it: a refusal
+    # left standing beside a route that no longer reaches it is a second answer waiting
+    # for a caller.
+    #
+    # What remains is the repeated VALUE, which is a property of the value set: both
+    # renderings carry fewer values than the document lists, so neither can state it.
     descriptions = node.descriptions
     seen: set[Any] = set()
-    spelled: dict[str, Any] = {}
     members: list[ir.Member] = []
     for value in values:
         if value in seen:
@@ -401,14 +473,6 @@ def decide(node: nodes.Enumeration, name: str) -> ir.EnumDecl | Refusal:
             )
         seen.add(value)
         member = member_name(value)
-        if member in spelled:
-            return Refusal(
-                "enum",
-                pointer,
-                f"{value!r} and {spelled[member]!r} both spell the member {member!r}",
-                kind=Kind.VERDICT,
-            )
-        spelled[member] = value
         text = descriptions.get(str(value))
         members.append(
             ir.Member(
