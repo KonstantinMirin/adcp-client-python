@@ -527,7 +527,7 @@ MANIFEST_DISCRIMINATED = frozenset(
 #:
 #: **ONE JOINS AND ONE LEAVES AT §4's FOURTH NAMING RUNG, by the SAME mechanism as the
 #: entry above -- a derivation that had never run** (reconciled at
-#: ``adcp-client-python-10l.78``).  Both documents carried D3's branch-naming VERDICT --
+#: ``adcp-client-python-10l.30``).  Both documents carried D3's branch-naming VERDICT --
 #: ``core/requirements/asset-requirements.json`` at ``/anyOf/0`` and
 #: ``creative/get-creative-features-response.json`` at ``/oneOf/0``, "no title, no
 #: discriminator const and no required set" -- so neither emitted and
@@ -734,7 +734,7 @@ def test_the_manifests_dispatch_source_has_no_union_to_dispatch_in_this_bundle()
     # document is no longer claimed to overlap.
     #
     # **``creative/get-creative-features-response.json`` leaves the same way and for the
-    # same reason** (``adcp-client-python-10l.78``).  §4's fourth naming rung let it
+    # same reason** (``adcp-client-python-10l.30``).  §4's fourth naming rung let it
     # emit, the dispatch derivation ran for the first time and SEPARATED its branches, so
     # it left :data:`OVERLAPPING_ROOTS` and leaves this intersection with it.  The
     # manifest still resolves it; what changed is the overlap claim, which is exactly the
@@ -1261,7 +1261,7 @@ def test_eight_open_branches_requiring_one_name_separate_on_their_nested_nots() 
 #:
 #: **THE TWO ``viewability`` NODES LEFT, and they left the POPULATION rather than the
 #: remainder** (``adcp-client-python-10l.30``'s own criterion, reconciled at
-#: ``adcp-client-python-10l.78``).  They were named here as constraints -- "one branch
+#: ``adcp-client-python-10l.30``).  They were named here as constraints -- "one branch
 #: that forbids four metrics and one that requires ``standard``" -- and that reading was
 #: right: it is a presence statement.  ``adcp-client-python-10l.64`` taught
 #: ``schema.presence_clause`` to read a branch that FORBIDS and requires nothing, which
