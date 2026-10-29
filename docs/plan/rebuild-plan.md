@@ -494,8 +494,33 @@ reached first.
   collision rule spends when two entries of one module need it, not what every entry pays up
   front. **This is a function of the one document and carries no dependency on a sibling set**, so
   it is insertion-stable — unlike the branch rule tried and reverted at `64d0f897`.
-- **Union branch**: its own `title`; else the `const` it pins on the discriminating property; else
-  its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
+- **Union branch**: its own `title`; else the `const`s it pins, in the document's own key order;
+  else its sorted `required` set; else its **index among the branches**, `<Base>Branch<i>`.
+
+**Rung 2 reads EVERY pin the branch states, and a rung that collides has not identified the
+branch (decided 2026-10-29).** Two clauses, and both are functions of the one branch, which is
+the insertion-stability criterion this section already states for the nested rule — a rule
+reading "the property the most branches pin" would rename every sibling when a branch is
+inserted, which is what was tried and reverted at `64d0f897`.
+
+A branch pinning a `const` on several properties derives from all of them, in the order the
+document writes the keys. Measured on `core/postal-country-system.json`, whose `/anyOf/4`
+through `/anyOf/8` each pin two: `FRCodePostal`, `AUPostcode`, `BRCep`, `INPin`, `ZAPostalCode`,
+where declining to choose between the two pins gave `Branch4` through `Branch8` — the positional
+name for the most heavily identified branches in the bundle. The four single-pin branches keep
+`US`, `GB`, `CA` and `Plz`, because one pin in key order is that one pin.
+
+Where a rung derives one name for two branches it has not identified either, so **both fall to
+the next rung** — the collision rule above lengthens a chain, and these chains are one segment
+with nothing to lengthen by. Measured on `trusted-match/provider-registration.json`, whose two
+branches pin `context_match: true` and `identity_match: true`: the value `true` is the same on
+both and names neither, so rung 2 answers nothing and rung 3's `required` set gives
+`ContextMatch` and `IdentityMatch`. What identifies those branches is WHICH property is present,
+which is the fact rung 3 reads.
+
+Rung 2 is not narrowed to unions that derive a dispatch discriminator. Measured: that reading
+takes `postal-country-system`'s four working names away, because no property of it is shared by
+all ten branches and the strict reading would send every branch to its index.
 
 **Collision, which this section never stated and the emitter therefore avoided by never
 colliding (added 2026-10-28).** The nested rule above is the LAST path segment, so two positions
@@ -682,7 +707,7 @@ is the one place a keyword decision lives, and a grid is its rendering.
 | `properties` | A class with one field per key. ROOT beside a union → fields on the base, inherited by every branch. PROP / ELEM / MAPV / DEF → a nested class. BRANCH → the branch class. CONJ → fields of the composed class. A property two conjuncts declare is one field: its constraints intersect by §2, and two object declarations compose as an `allOf` of the two at that property; an empty intersection — two type words, disjoint enums — refuses, because the document admits nothing there. A `default` or a `description` is not a constraint, and the document's own statement wins over a base's. RULE: under `if` → the values a `Match` clause tests, read only where `const` or `enum`; under `then` / `else` / `not` → nothing. |
 | `required` | The named fields are required: no `\| None`, no default. Naming a property no node declares → refused, a presence rule with no field. `required: []` → nothing. ROOT beside a union → required on the base's fields, and the names recorded in `_ROOT_REQUIRED`, so a refusal can separate a field the root requires from one that selects a branch. BRANCH → the branch class's requiredness, and the third of the branch-naming choices. CONJ → unioned into the composed class's `required`; a `required`-only conjunct → the overlay. RULE → a presence rule: `RequiredGroups`, `ForbiddenGroups` under `not`, the keys a `Match` clause tests under `if`, `ConditionalRequired` / `NegatedConditional` under `then` / `else`. |
 | `definitions`, `$defs` | Nothing by itself: a bag of named subschemas. Each entry is declared on demand when a `$ref` names it, as the node's own kind, under `<Root><Key>`. |
-| `$ref` | Another document's root → an IMPORT of that module's symbol; nothing of the target is copied into the module, and in the document of record (§3) the target is inlined unchanged. A fragment of another document → an import of a symbol the target declares. Local `#/…` → the entry decided on demand in this module; a cycle refuses. An annotation sibling → the sibling's description wins. A CONSTRAINING sibling → nothing, and REPORTED: draft-07 ignores every sibling of `$ref`, so the keyword constrains no instance and the document's accepted set is the target's alone. The record keeps the key, because §3 drops none; the declaration's cell says it compiles to nothing at this co-occurrence, so §8 does not grade it; and the report names it, because a key that reads as a constraint and is inert is worth reading once. Refusing it instead would refuse a document whose accepted set its own draft decides, and letting the referring value win would make the record state an acceptance fact the bundle does not — §9's last rule. KEY → the key type. BRANCH of a root union → a class with two bases; of a nested union → a member type. CONJ → a BASE where the target is a class declaring fields. Where it is not — a scalar, an enum, a container, or a union root — it is not a class a model can extend: the target is this node's own TYPE, and the other conjuncts and the `allOf`'s siblings constrain it, which is §2's intersection at a node that declares no fields of its own. A UNION root beside a node that DOES declare fields distributes: conjunction distributes over disjunction, so `(A | B) and C` is `(A and C) | (B and C)`, and the node is a union whose branches each take one of the target's branches as a base and add the node's own fields. Each branch of a union root is a class declaring fields, so this is the CONJ rule above applied once per branch and not a second answer. |
+| `$ref` | Another document's root → an IMPORT of that module's symbol; nothing of the target is copied into the module, and in the document of record (§3) the target is inlined unchanged. A fragment of another document → an import of a symbol the target declares. Local `#/…` → the entry decided on demand in this module; a cycle refuses. An annotation sibling → the sibling's description wins. A CONSTRAINING sibling → nothing, and REPORTED: draft-07 ignores every sibling of `$ref`, so the keyword constrains no instance and the document's accepted set is the target's alone. The record keeps the key, because §3 drops none; the declaration's cell says it compiles to nothing at this co-occurrence, so §8 does not grade it; and the report names it, because a key that reads as a constraint and is inert is worth reading once. Refusing it instead would refuse a document whose accepted set its own draft decides, and letting the referring value win would make the record state an acceptance fact the bundle does not — §9's last rule. KEY → the key type. BRANCH of a root union → a class with two bases; of a nested union → a member type. CONJ → a BASE where the target is a class declaring fields. Where it is not — a scalar, an enum, a container, or a union root — it is not a class a model can extend: the target is this node's own TYPE, and the other conjuncts and the `allOf`'s siblings constrain it, which is §2's intersection at a node that declares no fields of its own. A UNION root beside a node that DOES declare fields distributes: conjunction distributes over disjunction, so `(A | B) and C` is `(A and C) | (B and C)`, and the node is a union whose branches each take one of the target's branches as a base and add the node's own fields. Each branch of a union root is a class declaring fields, so this is the CONJ rule above applied once per branch and not a second answer. A property the node and the target's branch BOTH declare is one field taking §2's intersection, exactly as the `properties` row at CONJ states it for two conjuncts — the node's declaration does not shadow the branch's, and two `const`s intersect to the pin where they agree and to nothing where they differ. A distributed branch whose intersection is EMPTY is DROPPED, and the node refuses only where every branch is: `(A \| B \| C) and D` with `A and D` empty is exactly `(B and D) \| (C and D)`, so the accepted set is unchanged and nothing is approximated. The emptiness must be PROVED from the pins the two sides state — disjoint `const`s, disjoint `enum`s, disjoint type words — which is the same test the empty-intersection row names; an intersection this compiler cannot compute is the restatement row and not this one. |
 <!-- end generated -->
 
 ### Values
@@ -874,7 +899,10 @@ attribution.
   nothing, which is a contradiction in the document. Rung TOP, and this is the answer the `not`
   row already gives for `not: {}`: "admits nothing, which the typeless `Any` carries", with the
   schema half refusing every payload. Attribution upstream, because a conjunction admitting
-  nothing is a defect in the conjunction.
+  nothing is a defect in the conjunction. This row is about a node whose WHOLE accepted set is
+  empty. One empty DISJUNCT of a union that still admits something is not that node: §5's `$ref`
+  distribution clause drops the branch, the document's accepted set is unchanged, and no
+  declaration is owed.
 - **A keyword in none of §5, §6 or §7.** Rung TOP: the node is `Any`. Draft-07 ignores an
   unknown key, so the document may be narrower than `Any` but can never be wider, which makes
   `Any` the one safe rung when the keyword's reach is unknown. §2's by-name principle is intact
@@ -938,6 +966,50 @@ presence branch gives a rule, and an instance satisfying only the rule is none o
 That is the asymmetry Group A does not have, and it is why the two shapes separate. The fact
 dropped is the shape precision of the branches, the type widens by §2's ladder, and the gap is
 declared and attributed.
+
+### A presence clause whose required half is a disjunction of groups (decided 2026-10-29)
+
+Group A's clause carries "its OWN required group" — one group, read as a conjunction of names.
+Four documents spell that half as a DISJUNCTION: `formats/canonical/image.json`,
+`formats/canonical/html5.json` and `formats/canonical/display_tag.json` at `/allOf/1`, and
+`governance/check-governance-request.json` at `/allOf/1`. One branch of each states an `anyOf`
+of `required` groups where the others state `required` directly.
+
+**A clause's required half is a disjunction of GROUPS, which is what its forbidden half already
+is.** `Presence.forbid` holds groups because `not: {"required": [a, b]}` forbids the PAIR and
+says nothing about either name alone. The same reading of the required half makes
+`required: [a, b]` the single group `((a, b),)` and an `anyOf` over `required` the groups it
+states. A clause holds when at least one of its groups is present in full, and a clause stating
+no group states no requirement and holds. One field means one thing — the groups this branch's
+requiredness admits — where a second field beside it would make one clause carry two readings of
+one keyword.
+
+Both halves derive from `schema.required_groups`, which already reads `required` and a
+combinator over `required` into groups. That is §11's one reading with two readers: the `not`
+half and the required half reach the same derivation from the two sides of one branch.
+
+Dropping the disjunct is not available, measured on `image.json`, whose four size modes are
+`{}`, `{min_width}`, `{width, height}` and `{sizes}`. With the disjunct dropped the rule rejects
+`{}`, which the document admits as the "none" mode, so the model is TIGHTER than its document.
+§2 admits a widening and never a narrowing.
+
+`RequiredGroups` reads the same document fact as a RULE and stays separate, for the reason
+`Presence` states itself: a clause has no `errors` because a branch is not violated on its own,
+and only the combinator above it decides how many branches an instance may satisfy.
+
+**A conjunction of a group with a disjunction of groups DISTRIBUTES into a disjunction of
+groups**, which is the same principle the `$ref` row's distribution clause states one row above:
+conjunction distributes over disjunction. `required_groups` reads an `allOf` of single-group
+conjuncts as one group, the union of their names; an `allOf` whose conjuncts each give a LIST of
+groups is the product of those lists with the names unioned per combination, and the single-group
+case is that product over one-element lists. So
+`allOf: [{"required": [g]}, {"anyOf": [{"required": [a]}, {"required": [b]}]}]` is the two groups
+`((g, a), (g, b))`, which is what the document says and what `governance/check-governance-request.json`
+states at `/allOf/1`.
+
+The product arm never takes `partial`, for the reason the `allOf` arm already does not: dropping an
+unreadable conjunct from a product leaves FEWER names in each group, which under a `not` forbids
+MORE, and a rule stronger than its document is the narrowing §2 refuses.
 
 ---
 

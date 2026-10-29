@@ -513,6 +513,12 @@ alias or an enumeration gets a `RootBinding` declaration from `lower_document`, 
 one function that knows a root is a root. The document-set predicates a step's result was
 stated over are the tests' business and live under `tests/`.
 
+**The committed tree's own population is not one of those predicates (added 2026-10-29).** It
+is `bundle.portable` — every document of the bundle that can be emitted at all — because the
+tree is an ARTIFACT and not a phase. The steps' selectors grade their steps and are untouched by
+this; written from their union the tree omits documents that emit, and which ones it happens to
+carry depends on what a past run reached through `$ref` closure, which is not a derivation.
+
 **The context.** `Context` is a frozen value built once per document by `lower_document` and
 passed down unchanged:
 
@@ -851,6 +857,27 @@ same text whether it is emitted alone or with the whole bundle.
 constraints module, and prunes stale emitted files on a whole-bundle run, as today. `main` lives
 in `codegen/__main__.py`, so `python -m codegen` is the command and no module of the compiler is
 ever bound as `__main__`.
+
+**The layout, and a document whose path is also a directory's (decided 2026-10-29).** A
+document's module is its bundle path with hyphens as underscores — `emit.module_path`, whose
+one-line docstring was the only record of it until now. Where the bundle holds both a document
+at path `P` and a directory at path `P`, **the two are one namespace and the document is its
+root**: the document emits `P/__init__.py` and the directory's documents are its submodules.
+`brand.json` beside `brand/` is the one such pair in bundle 3.2.
+
+The alternative that was measured and rejected is writing both — `brand.py` holding 113 classes
+beside a `brand/__init__.py` of 0 bytes, where Python resolves the name to the package and the
+module is UNIMPORTABLE. A written module no import can reach is the artifact defect §14's tree
+population row exists to remove, and it is silent: the run reports the document as emitted.
+
+A distinguishing suffix is not taken, because it mints a public name no document states, and §4
+derives every name from the document. Calling the bundle at fault is not taken either: the
+layout is draft-07-legal and the bundle is pinned, so refusing it relocates the defect into a
+document that emits.
+
+This makes one `__init__.py` carry content where the others are markers. That is the cost, and
+it is a smaller one than an unimportable module: `emit.relative_module`'s hop arithmetic has to
+agree with it, which is a check a test can hold.
 
 **What the report prints, 2026-10-26.** It printed `emitted N / refused M (deferred …, verdict
 …)`, and the directive retires that pair: `M` goes to zero over this bundle and the pair stops

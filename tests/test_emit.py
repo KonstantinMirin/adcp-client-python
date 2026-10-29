@@ -4053,19 +4053,27 @@ def test_the_serializer_is_set_on_the_schema_the_wrapper_holds_and_not_on_a_defi
     claimed("union bases carrying the root's own fields", with_fields)
 
 
-def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointer() -> None:
-    """D3's last rule, which is to refuse.
+def test_a_branch_with_no_derivable_identity_takes_its_index_and_the_document_emits() -> None:
+    """D3's last rule, which is a FALLBACK and not a refusal
+    (``adcp-client-python-10l.41``).
 
     A branch is named by its ``title``, else by the discriminator ``const``, else by its
-    sorted required set.  A branch with none of those has no identity, and the rule a
-    previous generator reached for -- name the sole classed branch after its PARENT --
-    makes a class name a function of what its siblings happen to be, so adding a branch
-    renames an unrelated class.
+    sorted required set, else by its INDEX among the branches -- ``<Base>Branch<i>``.
+    This test asserted the refusal §4's fourth rung retires: a name is not an acceptance
+    fact, so deriving one from the branch's own position neither widens nor narrows, and
+    the refusal was minting a verdict where the section states a terminus.
 
-    Graded on a bundle of its own, because the refusal has to be reachable with every
-    OTHER keyword satisfied: in the 3.2 bundle a nameless branch always sits beside a
-    keyword that refuses first, so a test over the bundle would assert the wrong refusal.
-    The control is the same document with a title added, which emits.
+    What the index must NOT be is a reading of the neighbourhood.  The rule a previous
+    generator reached for -- name the sole classed branch after its PARENT -- makes a
+    class name a function of what its siblings happen to be, so adding a branch renames
+    an unrelated class.  An index is a fact of the branch's own position, so the control
+    below adds a THIRD branch and asserts the first two keep their names;
+    ``tests/test_names_collision.py`` grades the same property on the rule alone.
+
+    Graded on a bundle of its own, because the fallback has to be reachable with every
+    OTHER keyword satisfied: in the 3.2 bundle an identity-less branch usually sits beside
+    a keyword that refuses first.  The second control is the same document with a title
+    on the first arm, which takes rung 1 and proves the index is reached only last.
 
     **The first branch is CLOSED, and that is one of the "other keywords satisfied".**
     §4's third dispatch source reached this fixture at ``salesagent-j3k2l.67``: with both
@@ -4091,16 +4099,34 @@ def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointe
     (BUNDLE_FIXTURE := Path(tempfile.mkdtemp())) / "x.json"
     (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(nameless))
     out = emit.emit(BUNDLE_FIXTURE, ["x.json"])
-    assert out.emitted == {}
-    assert out.refusals["x.json"]["keyword"] == "title", out.refusals
-    assert out.refusals["x.json"]["pointer"] == "/oneOf/0", out.refusals
+    assert out.refusals == {}, out.refusals
+    assert out.emitted == {"x.json": "adcp.types._schemas.x"}, out.emitted
+    # The FIRST arm has no identity and takes the index; the SECOND states ``required``,
+    # which is rung 3 and outranks it -- so the two rungs are visible in one module.
+    assert "class NamelessBranch0(Nameless)" in out.files["x.py"], out.files["x.py"]
+    assert "class NamelessB(Nameless)" in out.files["x.py"], out.files["x.py"]
 
+    # The row's acceptance criterion through the whole emitter: a branch APPENDED to the
+    # combinator adds a class and moves no existing name.
+    grown = json.loads(json.dumps(nameless))
+    grown["oneOf"].append({"type": "object", "properties": {"c": {"type": "string"}},
+                           "required": ["c"]})
+    (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(grown))
+    added = emit.emit(BUNDLE_FIXTURE, ["x.json"])
+    assert added.refusals == {}, added.refusals
+    assert "class NamelessBranch0(Nameless)" in added.files["x.py"], added.files["x.py"]
+    assert "class NamelessB(Nameless)" in added.files["x.py"], added.files["x.py"]
+    assert "class NamelessC(Nameless)" in added.files["x.py"], added.files["x.py"]
+
+    # And the index is the LAST rung: a title on the same branch takes rung 1 and the
+    # positional name is not emitted at all.
     titled = json.loads(json.dumps(nameless))
     titled["oneOf"][0]["title"] = "The First Arm"
     (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(titled))
     control = emit.emit(BUNDLE_FIXTURE, ["x.json"])
     assert control.refusals == {}, control.refusals
     assert "TheFirstArm" in control.files["x.py"], control.files["x.py"]
+    assert "Branch0" not in control.files["x.py"], control.files["x.py"]
     shutil.rmtree(BUNDLE_FIXTURE)
 
 
@@ -4268,7 +4294,12 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     #   (``creative/get-creative-features-response.json``,
     #   ``trusted-match/provider-registration.json`` -- and
     #   ``core/postal-country-system.json`` joined them at
-    #   ``adcp-client-python-10l.35``, see its line below), ``anyOf`` for
+    #   ``adcp-client-python-10l.35``.  **``title`` is ONE entry now
+    #   (``adcp-client-python-10l.41``)**: §4's fourth branch rung names a branch with no
+    #   identity by its INDEX, so two of the three EMIT and what is left is
+    #   ``trusted-match/provider-registration.json``, whose two branches pin one ``const``
+    #   and derive ONE name -- a different mechanism, and
+    #   ``adcp-client-python-10l.42``'s row), ``anyOf`` for
     #   ``adagents.json``'s conjunct
     #   and ``$ref`` for ``brand.json``, which is ``adcp-client-python-857``.
     #
@@ -4351,34 +4382,42 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         # element class can be graded.  Both emit, with 9 documents chained behind them.
         "core/async-response-data.json": "$ref",
         "core/canonical-placement.json": "$ref",
-        "core/postal-area.json": "$ref",
-        # ``pattern`` -> ``title`` at ``adcp-client-python-10l.35``, and this is THE PIN
-        # WORKING.  §2's intersection rule merges the root's
-        # ``{"type": "string", "pattern": "^[A-Z]{2}$"}`` for ``country`` into each
-        # ``anyOf`` branch's ``{"const": "US"}`` / ``{"enum": [...]}``, and the ``const``
-        # and ``enum`` rows answered "a later D2 row does" for the ``pattern`` -- a row
-        # that cannot exist, since the keyword lowers at every position.  Both rows claim
-        # it now, because the PIN decides it: the value satisfies the pattern, so the
-        # ``Literal``/enumeration is exactly the document's own set.  The document reports
-        # its own next obstruction instead, and it is D3's: ``/anyOf/4`` pins a ``const``
-        # on BOTH of its properties, so no single one is the discriminator and the branch
-        # has no identity to derive a name from.  A VERDICT, which is the honest direction
-        # -- and the five documents chained behind this one became verdicts with it
-        # (``core/postal-area.json``, ``core/offering.json``,
-        # ``core/product-offer-filters.json``,
-        # ``media-buy/product-discovery-criteria.json``,
-        # ``media-buy/list-products-request.json``), so ``accounted`` rose 961 -> 967.
-        "core/postal-country-system.json": "title",
+        # ``$ref`` -> ``allOf`` at ``adcp-client-python-10l.41``.  It held the chain into
+        # ``core/postal-country-system.json``, which EMITS now, so this document reports
+        # its OWN obstruction one pointer on: ``/anyOf/0/allOf/0`` conjoins that document
+        # and the class it resolves to is not a class at all -- a root union matching none
+        # of §4's dispatch sources is a plain ``A | B``, which §5's ``$ref`` row at CONJ
+        # cannot make a base of.  Another row's keyword and a PRIMARY verdict of its own,
+        # where it was chained before.
+        "core/postal-area.json": "allOf",
+        # **``core/postal-country-system.json``'s LINE IS DELETED AT
+        # ``adcp-client-python-10l.41``, and the document EMITS.**  It held ``pattern``,
+        # then ``title`` at ``adcp-client-python-10l.35`` when the pin made both the
+        # ``const`` and the ``enum`` rows claim the merged pattern.  The ``title`` was
+        # D3's identity refusal: ``/anyOf/4`` through ``/anyOf/9`` state no title, and 4
+        # through 8 pin a ``const`` on BOTH of their properties, so no SINGLE one is the
+        # discriminator and §4's second rung declines to choose by spelling.  §4's FOURTH
+        # rung names them, ``PostalCountrySystemBranch4`` through ``...Branch9``, beside
+        # ``PostalCountrySystemUS``, ``...GB``, ``...CA`` and ``...Plz``, which keep rung
+        # 2.  The five documents chained behind it moved with it: four still chain and
+        # ``core/postal-area.json`` became a primary verdict, which is its line above.
         "core/product-format-declaration.json": "required",
-        # ``$ref`` -> ``title`` at ``adcp-client-python-10l.21``'s third instalment: its
-        # chain target ``core/requirements/image-asset-requirements.json`` emits now (a
-        # ``type`` word beside a NESTED combinator), so the root reports its OWN
-        # obstruction -- 12 bare ``$ref`` branches with no title and no pin, which is
-        # D3's row and the shape that function's own docstring already names.
-        "core/requirements/asset-requirements.json": "title",
+        # **``core/requirements/asset-requirements.json``'s LINE IS DELETED AT
+        # ``adcp-client-python-10l.41``, and the document EMITS.**  It held ``$ref`` until
+        # ``adcp-client-python-10l.21``'s third instalment freed its chain, and then
+        # ``title``: 12 bare ``$ref`` branches, none of which states a title or pins a
+        # ``const``, so the first three rungs answer nothing.  §4's fourth names them
+        # ``AssetRequirementsBranch0`` through ``...Branch11``, each inheriting its
+        # target's class.  ``core/requirements/catalog-requirements.json`` and
+        # ``core/requirements/offering-asset-constraint.json`` chained behind it and emit
+        # with it.
         "core/tracker-execution-selector.json": "$ref",
         "core/wholesale-feed-event.json": "$ref",
-        "creative/get-creative-features-response.json": "title",
+        # **``creative/get-creative-features-response.json``'s LINE IS DELETED AT
+        # ``adcp-client-python-10l.41``, and the document EMITS.**  Its ``/oneOf/0`` is a
+        # bare ``$ref`` with no title, beside two arms that state their own, so §4's
+        # fourth rung names it ``GetCreativeFeaturesResponseBranch0`` and the two titled
+        # arms keep rung 1 -- the two rungs in one module.
         # ``properties`` -> ``$ref`` at ``adcp-client-python-10l.34``: the nested union at
         # ``/oneOf/1/properties/results/items`` composes its siblings now, so the document
         # reports a CHAIN instead -- its ``/oneOf/2/properties/manifest`` references
@@ -8818,9 +8857,16 @@ VERDICTS = frozenset(
         # route that was missing.
         "media-buy/update-media-buy-request.json",
         "media-buy/get-products-request.json",
-        "core/requirements/offering-asset-constraint.json",
-        "core/requirements/catalog-requirements.json",
-        "core/requirements/asset-requirements.json",
+        # **THREE LEAVE BY EMITTING AT ``adcp-client-python-10l.41``**:
+        # ``core/requirements/asset-requirements.json``, whose 12 bare ``$ref`` branches
+        # state no title and pin no ``const``, so §4's FOURTH branch rung names them
+        # ``AssetRequirementsBranch0`` through ``...Branch11``; and
+        # ``core/requirements/catalog-requirements.json`` and
+        # ``core/requirements/offering-asset-constraint.json``, which were chained behind
+        # it and emit with it.  The refusal they carried was D3 minting a verdict where
+        # §4 states a fallback -- "a branch with no title, no pinned ``const`` and no
+        # ``required`` set takes its index among the branches" -- and a name is not an
+        # acceptance fact, so nothing about what these documents accept has moved.
         "content-standards/list-content-standards-response.json",
         "content-standards/get-content-standards-response.json",
         "content-standards/content-standards.json",
@@ -8836,7 +8882,10 @@ VERDICTS = frozenset(
         'core/targeting-input.json',
         'core/targeting.json',
         'core/vendor-pricing-option.json',
-        'creative/get-creative-features-response.json',
+        # ``creative/get-creative-features-response.json``'s LINE IS DELETED AT
+        # ``adcp-client-python-10l.41`` and the document EMITS: its ``/oneOf/0`` is a bare
+        # ``$ref`` with no title of its own, so §4's fourth rung names it
+        # ``GetCreativeFeaturesResponseBranch0`` beside the two arms that state titles.
         'media-buy/accept-proposal-response.json',
         'media-buy/buy-products-response.json',
         'media-buy/commercial-terms.json',
@@ -8937,7 +8986,19 @@ VERDICTS = frozenset(
         # arriving is attributable" means here: nothing stopped emitting, nothing started
         # refusing, and six documents stopped being counted as clearable work that no row
         # was going to clear.
-        "core/postal-country-system.json",
+        #
+        # **ONE OF THE SIX LEFT AT ``adcp-client-python-10l.41``, BY EMITTING, AND THE
+        # FIVE BEHIND IT STAYED.**  ``core/postal-country-system.json``'s ``/anyOf/4``
+        # through ``/anyOf/9`` state no title, and 4 through 8 pin a ``const`` on BOTH
+        # their properties, so §4's second rung declines to choose by spelling -- but §4's
+        # FOURTH rung names them, ``PostalCountrySystemBranch4`` through ``...Branch9``,
+        # and the document emits.  The five chained behind it re-resolve one pointer on
+        # rather than clearing: ``core/postal-area.json`` conjoins the now-emitting
+        # document at ``/anyOf/0/allOf/0``, and what it resolves to is a plain ``A | B``
+        # and not a class, so §5's ``$ref`` row at CONJ refuses it -- a PRIMARY verdict of
+        # its own now, on ``allOf``, with the other four still chained behind it.  So the
+        # set loses one member and gains none, and the obstruction the four carry is the
+        # same document's as before.
         "core/postal-area.json",
         "core/offering.json",
         "core/product-offer-filters.json",
