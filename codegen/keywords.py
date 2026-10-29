@@ -298,7 +298,16 @@ _STRUCTURE: dict[str, Row] = {
             "words → `A \\| B`, each sibling keyword going to the one type word that "
             "can carry it. Absent → `Any`; absent beside `properties` → an object, "
             "where an enclosing node applies `type: object` to the same instance, and "
-            "refused otherwise.",
+            "refused otherwise. An enclosing `oneOf` APPLIES a type word it does not "
+            "state, where TWO OR MORE of its branches admit that type vacuously: "
+            "`oneOf` admits an instance satisfying exactly one branch, so an instance "
+            "two branches both admit is refused by the combinator, and the type is "
+            "excluded by the document itself. This is EXACT and not a widening — it "
+            "reads a constraint the document imposes rather than relaxing one — so it "
+            "owes no declaration and no rung. It holds at `oneOf` ALONE: at `anyOf` an "
+            "instance one branch admits is admitted, so the same derivation there would "
+            "state a constraint the document does not "
+            "(`adcp-client-python-10l.69`, decided 2026-10-29).",
         ),
         grid=STRUCTURE,
     ),
@@ -445,11 +454,30 @@ _STRUCTURE: dict[str, Row] = {
                 False,
                 None,
                 " → a BASE where the target is a class declaring fields. Where it is "
-                "not — a scalar, an enum, a container, or a union root, whose instance "
-                "is one of its branches — it is not a class a model can extend: the "
+                "not — a scalar, an enum, a container, or a union root — it is not a "
+                "class a model can extend: the "
                 "target is this node's own TYPE, and the other conjuncts and the "
                 "`allOf`'s siblings constrain it, which is §2's intersection at a node "
-                "that declares no fields of its own.",
+                "that declares no fields of its own. A UNION root beside a node that "
+                "DOES declare fields distributes: conjunction distributes over "
+                "disjunction, so `(A | B) and C` is `(A and C) | (B and C)`, and the "
+                "node is a union whose branches each take one of the target's branches "
+                "as a base and add the node's own fields. Each branch of a union root "
+                "is a class declaring fields, so this is the CONJ rule above applied "
+                "once per branch and not a second answer. A property the node and the "
+                "target's branch BOTH declare is one field taking §2's intersection, "
+                "exactly as the `properties` row at CONJ states it for two conjuncts — "
+                "the node's declaration does not shadow the branch's, and two `const`s "
+                "intersect to the pin where they agree and to nothing where they "
+                "differ. A distributed branch whose intersection is EMPTY is DROPPED, "
+                "and the node refuses only where every branch is: "
+                "`(A \\| B \\| C) and D` with `A and D` empty is exactly "
+                "`(B and D) \\| (C and D)`, so the accepted set is unchanged and "
+                "nothing is approximated. The emptiness must be PROVED from the pins "
+                "the two sides state — disjoint `const`s, disjoint `enum`s, disjoint "
+                "type words — which is the same test the empty-intersection row names; "
+                "an intersection this compiler cannot compute is the restatement row "
+                "and not this one.",
             ),
         },
         grid=STRUCTURE,
@@ -463,7 +491,15 @@ _VALUES: dict[str, Row] = {
             True,
             None,
             "`Literal[value]`; the type word is not restated, since Pydantic renders "
-            "it. A `str`, `bool` or `int` value; an object, array, `null` or float "
+            "it. A `format` beside the pin compiles to NOTHING and the pin alone is "
+            "rendered, because a fixed value either satisfies the format or the node "
+            "admits nothing: the pin is checked against the format, and where it "
+            "satisfies it the `Literal` is already strictly tighter than any type the "
+            "format would select, while where it does not the node is §5's empty "
+            "intersection and refuses upstream. So no fact is dropped and §8 grades the "
+            "`format` as not rendered at this co-occurrence "
+            "(`adcp-client-python-10l.70`, decided 2026-10-29). "
+            "A `str`, `bool` or `int` value; an object, array, `null` or float "
             "refuses. On a branch's property → also the second of the branch-naming "
             "choices. AT a branch node, pinning the whole branch → the branch is a "
             "scalar: a `Literal` member of the union. Where EVERY branch of a root "
@@ -495,8 +531,18 @@ _VALUES: dict[str, Row] = {
             "`enumDescriptions` → member docstrings. An untitled BRANCH of a root "
             "union → a `Literal` of the members. Mixed member types, an empty list, "
             "or a duplicate member → refused. Two members whose spellings yield one "
-            "Python name → refused, naming both: a silent collision would drop a "
-            "member the document admits.",
+            "Python name → a `Literal` of the members and NOT an enum class (decided "
+            "2026-10-29). The collision exists only because an enum mints a Python "
+            "IDENTIFIER per member; a `Literal` needs none, so both values are carried "
+            "exactly as the document spells them and nothing is dropped. This is the "
+            "same answer the row already gives an untitled branch of a root union, "
+            "reached by a second route. Refusing instead cost **21 of the 95 refusals** "
+            "for one node — `formats/canonical/html5.json`'s `clicktag_macro`, whose "
+            "`clickTag` and `clickTAG` both spell `CLICKTAG` — including "
+            "`core/product.json`. The cost is that one node gives a string-literal "
+            "union rather than an enum class, which is a DX difference and not a "
+            "correctness one; dropping a member, which the old clause rightly refused "
+            "to do, remains forbidden.",
         ),
         {
             Position.ROOT: Cell(
@@ -764,7 +810,7 @@ _ARRAYS: dict[str, Row] = {
             "A `UniqueItems` rule on the class holding the array, plus "
             '`json_schema_extra={"uniqueItems": true}` on the field so it is graded, '
             "and the keyword is stripped off the array's own declaration. Where no "
-            "class sits above the array → a `Distinct` after-validator on its own "
+            "class encloses the array → a `Distinct` after-validator on its own "
             "annotated type, beside the same `json_schema_extra`.",
         ),
         grid=ARRAYS,
@@ -818,7 +864,19 @@ _OBJECTS: dict[str, Row] = {
             "The empty schema `{}` IS `true` and is read as `true` everywhere below, "
             "never as a typed value schema. On a class: `false` → `forbid`; `true` → "
             "`allow`; typed → `allow` with a typed `__pydantic_extra__`; absent → "
-            "`ignore`. On a mapping (no `properties`) → the VALUE type; `true` or "
+            "`ignore`. **A class DECLARES the `extra` the document gives it and never "
+            "inherits it** (decided 2026-10-29): pydantic merges `model_config` along "
+            "the MRO, so a branch composing TWO bases takes whichever value the later "
+            "base happens to carry, and `absent → ignore` on that base silently "
+            "overrides an `allow` the document states. Measured on "
+            "`content-standards/get-content-standards-response.json#/oneOf/0`, where "
+            "the union base states `allow` from the root's envelope conjunct and the "
+            "composed target's default `ignore` wins the merge, so the model drops keys "
+            "the document admits and §8 reports `missing /additionalProperties`. The "
+            "value is read from what the document states at the class's own pointer "
+            "after §8's pairing fold — which is where the root's conjunct arrives — and "
+            "written on the class, so MRO order decides nothing a document states. "
+            "On a mapping (no `properties`) → the VALUE type; `true` or "
             "`{}` → `Any`; `false` → refused, it admits only the empty object. Beside "
             "`patternProperties` → refused, two value schemas. `false` on an `allOf` "
             "overlay would reject the fields its sibling conjunct contributes, which "
@@ -882,7 +940,7 @@ _OBJECTS: dict[str, Row] = {
                 Position.KEY,
                 " position → nothing on the model: a rule position constrains which "
                 "keys a conditional *tests*, so there is no key type to annotate and "
-                "no value to hang a validator on.",
+                "no value to annotate.",
             )
         },
         grid=OBJECTS,
