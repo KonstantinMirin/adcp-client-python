@@ -2231,36 +2231,30 @@ def _distributes(
     bases: Sequence[ir.TypeRef],
     conj: Kind,
 ) -> TargetBranches | Refusal:
-    """§5's DISTRIBUTION clause, and the two shapes it does not reach.
+    """§5's DISTRIBUTION clause, and the one shape it does not reach.
 
     "(A | B) and C is (A and C) | (B and C), and the node is a union whose branches each
     take one of the target's branches as a base and add the node's own fields."  The
     distribution puts the node's fields on the BASE and the branch's on the branch, which
-    is two classes and one instance -- so the two statements have to be DISJOINT and the
-    node's have to be the NODE'S OWN.  Where either fails the row has no faithful
-    spelling, and both refusals are DEFERRALS off ``allOf``'s own cell at CONJ: what
-    obstructs each is unwritten code and not anything a document did (§9's first rule).
+    is two classes and one instance -- so the node's statements have to be the NODE'S OWN.
+    The refusal is a DEFERRAL off ``allOf``'s own cell at CONJ: what obstructs it is
+    unwritten code and not anything a document did (§9's first rule).
 
-    **1. A key the node and a BRANCH both declare is §2's intersection, and nothing here
-    computes one.**  The two declarations reach two different classes, and the base's
-    field is the one the MRO finds -- so the branch's own declaration is SHADOWED, which
-    is the one defect §2's restatement rule exists to make unspellable.  Measured over the
-    1,054 portable documents: **1 node** --
-    ``core/audience-evidence.json#/properties/attestation_refs/items/allOf/1/properties
-    /subject``, whose conjunct states ``type: {const: resource}`` beside ``$ref``
-    ``AttestationSubject``, whose three branches pin ``brand``, ``agent`` and
-    ``resource`` on that same key.  Two of the three intersections are EMPTY, which §5's
-    ``properties`` row decides by name ("an empty intersection -- two type words, disjoint
-    enums -- refuses, because the document admits nothing there"), and the shadow makes
-    all three classes pin ``resource``: measured on the emitted tree, the two
-    contradicting branches reported ``differs /properties/type/const`` and the base's own
-    dispatch raised "Value 'resource' for discriminator 'type' mapped to multiple
-    choices".  Clearing it is §2's intersection asked of a branch, which is
-    :func:`_restatement` over a declaration this module does not hold -- the branch's is
-    the TARGET's -- so it is a row and not an arm.
+    **A key the node and a BRANCH both declare used to refuse here and is WRITTEN**
+    (``adcp-client-python-10l.76``, and §5's own clause at ``d504150d``): "A property the
+    node and the target's branch BOTH declare is one field taking §2's intersection ...
+    the node's declaration does not shadow the branch's."  The screen's reading of the
+    defect was right -- the base's field is the one the MRO finds, so the branch's own
+    declaration was shadowed and ``core/audience-evidence.json``'s three branches all
+    pinned ``type: 'resource'``, which made the base's own dispatch raise "Value
+    'resource' for discriminator 'type' mapped to multiple choices".  What it had wrong is
+    that there was "nothing here to intersect": the branch's DECLARATION crosses the
+    module boundary on :attr:`Shape.properties`, beside the symbol and the field set, so
+    §2's intersection has both sides and :func:`_intersected_at_a_branch` computes it with
+    the same two functions every other restatement passes through.
 
-    **2. A field the node carries that its OWN declaration does not state has no pointer
-    on the branch's side.**  §8 pairs a branch class with "its branch node read UNDER THE
+    **A field the node carries that its OWN declaration does not state has no pointer on
+    the branch's side.**  §8 pairs a branch class with "its branch node read UNDER THE
     ROOT'S SIBLINGS", which at this position is what the node asserts about the same
     instance -- its own ``properties``, ``required`` and ``additionalProperties`` -- and
     ``_base.applied_schema`` drops the outer conjunct siblings at a second cut rather than
@@ -2276,34 +2270,32 @@ def _distributes(
     document accepts (``model_refused_valid``).  What is unwritten is §8's reading of a
     branch BELOW a conjunct with siblings, which is the pairing document's to decide.
 
-    A node whose own declaration carries every field reaches neither, which is
-    ``core/package-signal-targeting.json`` and ``core/product-filters.json``'s
-    ``/properties/signal_targeting/items`` -- and both grade clean.
+    **The question is asked of the FIELDS and no longer of ``bases``**
+    (``adcp-client-python-10l.76``).  The screen read ``elsewhere or bases``, and the
+    second half is both redundant and over-broad.  Redundant: every field a base
+    contributes is in ``inherited`` at the call site and therefore in
+    ``fields_declared``, so a base that puts a field on the class puts a name in
+    ``elsewhere`` already.  Over-broad: a base that declares NOTHING puts no field
+    anywhere, and ``bases`` fires for one -- measured on
+    ``core/postal-area.json#/anyOf/0``, a BRANCH of a root union whose root states only
+    ``anyOf``, so the union base it composes has no fields at all and arrives here as the
+    single pointer ``''``.  Refusing it printed ``this node carries [''] from another
+    conjunct``, which names no field because there is none.  Composing a fieldless union
+    base is §4's ordinary arrangement for a branch of a root union, not a second source
+    of fields.
+
+    A node whose own declaration carries every field reaches neither this nor the
+    intersection's own refusals, which is ``core/package-signal-targeting.json`` and
+    ``core/product-filters.json``'s ``/properties/signal_targeting/items`` -- and both
+    grade clean.
     """
-    restated = sorted(
-        {key for branch in branches.of for key in branch.declares.properties}
-        & set(fields_declared)
-    )
-    if restated:
-        return Refusal(
-            "allOf",
-            where,
-            f"this node and the branches of its union target both declare {restated}: "
-            "section 5's $ref row distributes the conjunction over the target's branches, "
-            "which puts this node's declaration on the BASE and the branch's on the "
-            "branch, and two declarations of one property are section 2's INTERSECTION -- "
-            "computed over declarations, and the branch's is the target's rather than "
-            "this module's, so there is nothing here to intersect and the base's field "
-            "would shadow the branch's",
-            kind=conj,
-        )
     own = set(getattr(node, "declared", {})) | set(getattr(node, "required", ()))
     elsewhere = sorted(set(fields_declared) - own)
-    if elsewhere or bases:
+    if elsewhere:
         return Refusal(
             "allOf",
             where,
-            f"this node carries {elsewhere or [b.path for b in bases]} from another "
+            f"this node carries {elsewhere} from another "
             "conjunct rather than from its own declaration, and section 5's $ref row "
             "distributes the conjunction over the target's branches: section 8 pairs each "
             "branch class with its branch node read under what THIS node asserts about "
@@ -3712,7 +3704,9 @@ def lower_composition(
     )
     if distributing is None or isinstance(declared, Refusal):
         return declared
-    return _distribute(declared, *distributing, mod=mod)
+    return _distribute(
+        declared, *distributing, asserted=_asserted_properties(node, conjuncts), mod=mod
+    )
 
 
 def _distributed_pointer(where: str, branches: TargetBranches, index: int) -> str:
@@ -3735,12 +3729,127 @@ def _distributed_pointer(where: str, branches: TargetBranches, index: int) -> st
     return f"{where}/{branches.combinator}/{index}"
 
 
+def _intersected_at_a_branch(
+    asserted: Mapping[str, list[dict]],
+    branch: Target,
+    pointer: str,
+    required: Collection[str],
+    mod: Module,
+) -> list[ir.Field] | Refusal:
+    """The fields ONE distributed branch declares of its own: §2's intersection of what
+    the node asserts with what the branch declares, at every key both state.
+
+    §5's ``$ref`` row at CONJ: "A property the node and the target's branch BOTH declare
+    is one field taking §2's intersection, exactly as the ``properties`` row at CONJ
+    states it for two conjuncts -- **the node's declaration does not shadow the
+    branch's**, and two ``const``\\ s intersect to the pin where they agree and to
+    nothing where they differ."
+
+    **Why the field has to be on the BRANCH and cannot be left to the two bases.**  A
+    distributed branch's bases are ``(this node's class, the target's branch)`` in that
+    order, so the MRO finds the NODE's field and the branch's own declaration is
+    shadowed -- which is the one defect §2's restatement rule exists to make
+    unspellable, and which is measurable: before this, ``core/audience-evidence.json``
+    pinned ``type: 'resource'`` on all three branches and the base's dispatch raised
+    "Value 'resource' for discriminator 'type' mapped to multiple choices".  Declaring
+    the intersection on the branch is what beats both bases with the one declaration the
+    document actually states there.
+
+    **The decision is :func:`_restatement`'s and the value is :func:`_intersection`'s**,
+    which are the same two functions every other restatement in this module passes
+    through -- so a shared key at a distributed branch and a shared key at a flat base
+    cannot come to disagree about what §2's intersection IS.  The three answers:
+
+    * it NARROWS -- the branch declares the field, decided from the intersection;
+    * it says the SAME thing or nothing -- no field, and the shadow is harmless because
+      the node's field and the branch's are then one field.  ``type`` at
+      ``core/audience-evidence.json`` is this case: the node states ``{const: resource}``
+      and the branch ``{type: string, const: resource}``;
+    * it is INCOMPATIBLE -- the caller refuses, and it must NOT drop the branch.
+      :func:`_provably_empty` is what licenses a drop and its docstring says why this is
+      not that question: an intersection this compiler cannot ORDER is §5's restatement
+      row, and a branch dropped for one admits instances the document admits, which is a
+      model narrower than its document.
+
+    A key more than one view of the node asserts would need those views merged before
+    this intersection, which is §2's intersection one level up and which no caller
+    computes: 0 sites over the portable population, so it refuses rather than reading the
+    first view and dropping the rest.
+    """
+    out: list[ir.Field] = []
+    for key in branch.declares.properties:
+        views = asserted.get(key)
+        if not views:
+            continue
+        if len(views) > 1:
+            return Refusal(
+                "properties",
+                f"{pointer}/properties/{key}",
+                f"{len(views)} declarations of {key!r} reach this node, and a distributed "
+                f"branch intersects ONE of them with {branch.symbol}'s: merging them first "
+                "is section 2's intersection one level up, which no row computes here",
+                kind=kind_for("properties", Position.CONJ),
+            )
+        stated, theirs = views[0], branch.declares.properties[key]
+        # **The predicate is asked in BOTH directions and the merge takes whichever
+        # narrowed**, which is ``declare``'s own arrangement for two local declarations of
+        # one key -- the rule is symmetric, so which side the walk read first cannot
+        # change the answer.  Either direction gives the same intersection; what the
+        # direction decides is which declaration is the child of the merge.
+        if _restatement(stated, theirs, mod.resolve_node):
+            intersected = _intersection(stated, theirs, mod.resolve_node)
+        elif _restatement(theirs, stated, mod.resolve_node):
+            # **The BRANCH's declaration is the tighter one, and the field is still
+            # declared here.**  §2 has the field carry the intersection, which at this
+            # position the branch already states -- but the distributed class's FIRST base
+            # is this node's, so the node's wider declaration is what the MRO finds and
+            # the branch's narrowing would be lost.  Declaring the intersection on the
+            # branch is what keeps it.  Measured: ``core/postal-area.json#/anyOf/0``
+            # declares ``system`` as a ``$ref`` to the whole ``postal-system``
+            # enumeration and each of the target's ten branches narrows it to that
+            # country's own members -- ``{"enum": ["zip", "zip_plus_four"]}`` for
+            # ``PostalCountrySystemUS`` -- so without this arm every branch would carry
+            # the full vocabulary.
+            intersected = _intersection(theirs, stated, mod.resolve_node)
+        elif _restatement(stated, theirs, mod.resolve_node) is None:
+            return Refusal(
+                _disagreeing(stated, theirs),
+                f"{pointer}/properties/{key}",
+                f"what this node asserts about {key!r} and {branch.symbol}'s declaration "
+                "of it neither match nor narrow one another in either direction, so "
+                "section 2's intersection of the two is not computable -- and a branch is "
+                "DROPPED only where the intersection is PROVABLY empty (disjoint consts, "
+                "enums or type words), which this is not: dropping it would refuse "
+                "instances the document admits",
+                kind=kind_for("properties", Position.CONJ),
+            )
+        else:
+            # Says the same thing, or nothing: the node's field and the branch's are one
+            # field, so the base's declaration shadowing the branch's loses nothing.
+            continue
+        merged = _parsed_property(intersected, f"{pointer}/properties/{key}", mod)
+        if isinstance(merged, Refusal):
+            return merged
+        decided = fields(
+            {key: merged},
+            [key] if key in required else (),
+            pointer,
+            mod,
+            position=Position.BRANCH,
+        )
+        if isinstance(decided, Refusal):
+            return decided
+        out += decided
+    return out
+
+
 def _distribute(
     base: str,
     where: str,
     branches: TargetBranches,
     reference: "nodes.Reference",
     *,
+    asserted: Mapping[str, list[dict]],
     mod: Module,
 ) -> str | Refusal:
     """§5's distribution, written: one subclass per branch of the target, over the base.
@@ -3807,6 +3916,14 @@ def _distribute(
         mod.hops[pointer] = replace(branch.naming, parent=base)
         mod.importing(branch.symbol, branch.where)
         inherited = branch.declares.description
+        # §5's intersection clause at a distributed branch: a key the node and this
+        # branch both declare is ONE field, and it is declared HERE so that neither base
+        # shadows the other (:func:`_intersected_at_a_branch`).
+        own = _intersected_at_a_branch(
+            asserted, branch, pointer, base_shape.required | branch.declares.required, mod
+        )
+        if isinstance(own, Refusal):
+            return own
         made = declare_object(
             # **The node is the ``$ref`` CONJUNCT**, which is the node of THIS document
             # that names the branch, and it states nothing of its own -- so the branch
@@ -3817,7 +3934,7 @@ def _distribute(
             reference,
             pointer,
             mod,
-            (),
+            own,
             Shape(
                 {**base_shape.properties, **branch.declares.properties},
                 base_shape.required | branch.declares.required,
