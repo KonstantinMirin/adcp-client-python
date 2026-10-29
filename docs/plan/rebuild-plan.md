@@ -983,6 +983,49 @@ That is the asymmetry Group A does not have, and it is why the two shapes separa
 dropped is the shape precision of the branches, the type widens by §2's ladder, and the gap is
 declared and attributed.
 
+### An `enum` conjunct beside a `$ref` to an enum (decided 2026-10-29)
+
+§2 decides the semantics already — "an enum is the intersection of the members" — and what was
+unwritten is the RENDERING. `keywords.cell("enum", CONJ)` carries effect `TYPE` with an empty
+`compiles` string: the cell says the keyword lowers and no handler claims it, which is the
+defect this epic has now found seven times.
+
+**The intersection renders as a `Literal` over the TARGET's members, not over their raw values.**
+`Literal[CreativeApprovalStatus.PENDING_REVIEW, …]` and `Literal['pending_review', …]` dump
+identically — `{"enum": [the three], "type": "string"}` — so §8 compares the same fact either
+way, and the member form keeps the imported symbol a caller can name. Where §8 cannot tell two
+renderings apart, DX decides, and a caller reaching the enum class is worth more than a bare
+string.
+
+Population one: `core/creative-approval-scope.json` at `/properties/approval_status/allOf/1`.
+Measured over every `allOf` in the bundle whose conjuncts are a bare `$ref` plus an inline
+conjunct stating none of `type`, `properties`, `required`, `additionalProperties` or `allOf` —
+186 sites, of which `if`/`then` is 142, `not` 34, `anyOf` 3, `oneOf` 3, `else`/`if`/`then` 2,
+`errorMessage` with `not` 1, and `enum` **1**. Every one but the `enum` is a rule or a
+combinator and is already routed.
+
+The cell is where this belongs, and the grid row is its rendering.
+
+### Two ARRAY declarations under one `allOf` (decided 2026-10-29)
+
+§5's `properties` row at CONJ states the `allOf` spelling for two OBJECT declarations and says
+nothing for two arrays, which is what the `$ref` row's own "the other conjuncts **and the
+`allOf`'s siblings** constrain it" runs into at an array target.
+
+**Two array declarations intersect, member by member, as two object declarations do.** `items`
+intersects as a declaration and is handed back to the parser as one node, which is §2's rule
+unchanged. The bounds take the tighter end — the greater `minItems`, the lesser `maxItems` — and
+a `minItems` above a `maxItems` is an empty intersection and refuses. `uniqueItems` holds where
+either conjunct states it, because a conjunction of constraints is satisfied only by an instance
+satisfying both. Every `contains` is kept: two `contains` predicates are two independent
+`AtLeastOne` rules over the same value, never merged into one, because `contains: A` and
+`contains: B` demand a member satisfying each and a single merged predicate would demand one
+member satisfying both.
+
+That last clause is the only place the array case is not symmetric with the object case, and the
+reason is that `properties` is keyed and `contains` is not: two declarations of one KEY are one
+field, while two `contains` are two facts about the list.
+
 ### A presence clause whose required half is a disjunction of groups (decided 2026-10-29)
 
 Group A's clause carries "its OWN required group" — one group, read as a conjunction of names.
