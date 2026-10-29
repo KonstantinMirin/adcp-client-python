@@ -5,13 +5,19 @@ which holds the argument parser and the refusal report and nothing else:
 
     python -m codegen --bundle schemas/cache/3.2 core/pagination-request.json
 
-The committed tree is the same command over the steps' whole population, which is
-derived from the bundle and never listed by hand.  The predicates it is the union of
-live in ``tests/populations.py`` and ``tests/test_emit.py``'s ``population()`` is the
-union -- ``docs/plan/architecture.md`` §5 puts them there ("the document-set predicates
-a step's result was stated over are the tests' business and live under ``tests/``"), so
-this package names no population and the one the tree is graded against is the one the
-suite counts.
+The committed tree is the same command over ``bundle.portable(BUNDLE)``: every
+document of the bundle that can be emitted at all, derived from the bundle and never
+listed by hand.  ``tests/test_emit.py``'s ``tree_population()`` is that reading and is
+what regenerates the tree; it is NOT the union of the seven STEP selectors
+(``population()``, whose predicates live in ``tests/populations.py``), because a step is
+a phase of the rebuild and the tree is an ARTIFACT -- a population drawn from the phases
+made the tree's contents depend on which documents an earlier run happened to reach
+through a ``$ref`` (``adcp-client-python-10l.73``).
+``docs/plan/architecture.md`` §5 puts the STEP predicates under ``tests/`` ("the
+document-set predicates a step's result was stated over are the tests' business and live
+under ``tests/``") and they are still there; the tree's population is the bundle's own
+and is read by the one predicate this package already has.  So this package still names
+no population, and the one the tree is graded against is the one the suite counts.
 
 A document this command does not name is still emitted when a named one
 REFERENCES it: a module cannot import a symbol from a module no run wrote, so
@@ -200,12 +206,50 @@ def _node_or_none(doc: dict, into: str) -> dict | None:
 
 
 def module_path(document: str) -> str:
-    """D1: the module is the document path with hyphens as underscores."""
+    """D1: the module is the document path with hyphens as underscores.
+
+    **The NAME's path and not always the FILE's.**  A document whose path is also a
+    directory's is that package's root and its file is ``<this>/__init__.py``
+    (:func:`module_file`), but a package's ``__init__`` IS the package, so the name
+    Python imports it under is this and nothing is appended to it.  The two readings
+    are :func:`module_name` and :func:`module_file` and there are no others.
+    """
     p = Path(document)
     return "/".join([*p.parent.parts, p.stem]).replace("-", "_")
 
 
-def relative_module(frm: str, to: str) -> str:
+def module_name(document: str) -> str:
+    """D1's module as the DOTTED name Python imports it under.
+
+    The one reader: ``f"{PACKAGE}.{module_path(d).replace('/', '.')}"`` was spelled at
+    three sites and in the suite, and a package root is the case where a second
+    spelling would have gone wrong -- ``brand/__init__`` dotted is
+    ``...brand.__init__``, which imports a SECOND module object for the package's own
+    body and executes it twice.  ``__init__`` is never in the name because a package's
+    ``__init__`` is the package.
+    """
+    return f"{PACKAGE}.{module_path(document).replace('/', '.')}"
+
+
+def module_file(document: str, packages: Collection[str]) -> str:
+    """D1's module as the FILE that holds it, without the ``.py``.
+
+    ``docs/plan/architecture.md``, the layout rule beside ``write`` (2026-10-29):
+    where the bundle holds both a document at path ``P`` and a directory at path
+    ``P``, the two are one namespace and the document is its ROOT, so it is written to
+    ``P/__init__.py`` and the directory's documents are its submodules.  ``packages``
+    is ``bundle.package_roots``, a function of the bundle and never of the run.
+
+    The measured alternative is what this replaces: ``brand.py`` holding 113 classes
+    beside a 0-byte ``brand/__init__.py``, where Python resolves the name to the
+    package and the module is UNIMPORTABLE while the run reports the document as
+    emitted.
+    """
+    rel = module_path(document)
+    return f"{rel}/__init__" if document in packages else rel
+
+
+def relative_module(frm: str, to: str, packages: Collection[str]) -> str:
     """D1 again: the import spelling is a function of the two document paths.
 
     ``error-details/creative-revision-content-mismatch.json`` referencing
@@ -218,8 +262,17 @@ def relative_module(frm: str, to: str) -> str:
     relative import is the one spelling that cannot name it.  An absolute
     ``adcp.types._schemas.core...`` inside a generated module would publish the
     private path 690 times over.
+
+    **The two sides read D1 differently and that asymmetry is the whole of the
+    package-root rule here.**  The LEADING DOTS count hops up from the importing
+    module, which is a fact about where its FILE sits -- ``brand/__init__.py`` is one
+    level below ``_schemas``, so its ten imports are ``..core.brand_ref`` and not
+    ``.core.brand_ref``, and that is the arithmetic that goes wrong first.  The TAIL
+    names the target, which is a NAME: a package root is spelled as the package, so a
+    module under ``brand/`` reaches it as ``..brand`` and never as ``.__init__`` --
+    which would import the package's body a second time under a second name.
     """
-    src, dst = module_path(frm).split("/"), module_path(to).split("/")
+    src, dst = module_file(frm, packages).split("/"), module_path(to).split("/")
     common = 0
     while common < len(src) - 1 and common < len(dst) - 1 and src[common] == dst[common]:
         common += 1
@@ -781,7 +834,11 @@ def _declaring_site(
 
 
 def _importable(
-    asking: str, target: str, symbols: Mapping[str, str], imported: Mapping[str, str]
+    asking: str,
+    target: str,
+    symbols: Mapping[str, str],
+    imported: Mapping[str, str],
+    packages: Collection[str],
 ) -> dict[str, compiler.Importable]:
     """Every symbol ``target``'s module can hand ``asking``, and where each comes from.
 
@@ -798,9 +855,12 @@ def _importable(
     impossible -- one module, one namespace -- and the declaration wins if one ever is,
     because the target is then itself the declarer.
     """
-    declares = compiler.Importable(relative_module(asking, target), target)
+    declares = compiler.Importable(relative_module(asking, target, packages), target)
     return {
-        **{s: compiler.Importable(relative_module(asking, d), d) for s, d in imported.items()},
+        **{
+            s: compiler.Importable(relative_module(asking, d, packages), d)
+            for s, d in imported.items()
+        },
         **dict.fromkeys(symbols.values(), declares),
     }
 
@@ -1202,6 +1262,13 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     """
     out = Emitted()
     packages: set[str] = set()
+    #: The documents whose own path is also a DIRECTORY of the bundle, so the document
+    #: is that package's ROOT and is written to ``<path>/__init__.py`` (the layout rule
+    #: beside :func:`write`).  Read from the BUNDLE and bound once, for the reason
+    #: ``named`` below is: a module's PATH -- and therefore every import spelling that
+    #: names it, and every leading dot in its own import block -- must not depend on
+    #: which other documents this run was given.
+    package_roots = bundle.package_roots(bundle_dir)
     known = set(bundle.portable(bundle_dir))
     # **ONE SCAN of the bundle, and three readings of it** (``bundle.edges``): the
     # per-document ``named`` set, the pointers a root ``allOf`` composes, and the
@@ -1485,8 +1552,10 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         # carries it into every branch's answer, and a narrowing a closure cannot see is
         # exactly what the type checker reports here.
         declarer = edge.target
-        module = relative_module(document, declarer)
-        importables = _importable(document, declarer, bound.symbols, mod.imported)
+        module = relative_module(document, declarer, package_roots)
+        importables = _importable(
+            document, declarer, bound.symbols, mod.imported, package_roots
+        )
 
         def at(pointer: str, spelled: str) -> Target:
             shape = mod.shapes.get(pointer)
@@ -1767,11 +1836,11 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
 
     for document in sorted(lowered):
         mod, bound, doc = lowered[document]
-        rel = module_path(document)
+        rel = module_file(document, package_roots)
         out.files[f"{rel}.py"] = render.module(
             bound, exported(mod, bound, composed.get(document, frozenset()))
         )
-        out.emitted[document] = f"{PACKAGE}.{rel.replace('/', '.')}"
+        out.emitted[document] = module_name(document)
         # **The two halves of what §4's dedup did, derived from one table.**  §7's symbol
         # table holds every pointer a type resolves at, which is the DECLARED pointers
         # plus the adopting ones that bound a class by identity with no declaration of
@@ -1844,8 +1913,13 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             "kind": r.kind,
             "resolved": r.resolved,
         }
+    # ``setdefault``, because a package whose bundle path is ALSO a document's has
+    # already had its ``__init__.py`` written above -- that document IS the package's
+    # root (the layout rule beside :func:`write`).  A plain assignment here replaced
+    # ``brand/__init__.py``'s 113 classes with the empty marker, which is the same
+    # unimportable-module defect the rule removes, arriving from the other side.
     for pkg in packages:
-        out.files[f"{pkg}/__init__.py"] = ""
+        out.files.setdefault(f"{pkg}/__init__.py", "")
     out.files["__init__.py"] = ""
     # D5's alias module, unioned over the run.  A shape resolved in two documents
     # is one symbol, and ``check_injective`` (inside ``declare``) fails the build
@@ -1913,10 +1987,7 @@ def _envelope_bases(bundle_dir: Path, shape: Sequence[bundle.Agreed]) -> str:
                 f"{title!r} derives {symbol!r}, not an identifier, so no module declares "
                 "a symbol the base could name"
             )
-        binding[one.target] = (
-            f"{PACKAGE}.{module_path(one.target).replace('/', '.')}",
-            symbol,
-        )
+        binding[one.target] = (module_name(one.target), symbol)
     if not shape:
         return render.envelopes_module((), frozenset())
     declaration, imports = lower_envelope.base(shape, binding, render.RESERVED)

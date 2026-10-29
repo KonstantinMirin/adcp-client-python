@@ -92,10 +92,17 @@ whole tree, name the population and the package together:
 
 ```bash
 PYTHONPATH=.:tests uv run --no-sync python -c \
-  'from codegen import emit; from test_emit import population; from pathlib import Path; \
-   out = emit.emit(Path("schemas/cache/3.2"), population()); \
+  'from codegen import emit; from test_emit import tree_population; from pathlib import Path; \
+   out = emit.emit(Path("schemas/cache/3.2"), tree_population()); \
    emit.write(out, Path("src/adcp/types/_schemas"), Path("src/adcp/types"))'
 ```
+
+`tree_population()` is `bundle.portable(BUNDLE)` — every document of the bundle
+that can be emitted at all. It is deliberately NOT the union of the seven step
+selectors (`population()`, which grades the rebuild's phases): a step is a phase
+and the tree is an artifact, and a population drawn from the phases made the
+tree's contents depend on which documents an earlier run happened to reach
+through a `$ref`.
 
 That command is also the only one that PRUNES. `package` is the run's scope, so
 passing it says this run covers the whole population — and a whole-population run

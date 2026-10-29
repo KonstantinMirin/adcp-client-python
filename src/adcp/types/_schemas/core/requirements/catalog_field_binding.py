@@ -65,7 +65,7 @@ class CatalogFieldBindingAssetPool(CatalogFieldBinding, CatalogFieldBindingAsset
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/catalog-field-binding.json', pointer='#/oneOf/1')
 
 
-class CatalogFieldBindingCatalogGroup(CatalogFieldBinding):
+class CatalogFieldBindingCatalogGroupTrue(CatalogFieldBinding):
     """
     A format repeatable_group where each repetition corresponds to one catalog item. Iterates the group over catalog items in catalog item order.
     """
@@ -80,7 +80,7 @@ class CatalogFieldBindingCatalogGroup(CatalogFieldBinding):
     ext: ExtensionObject | None = None
 
 
-CatalogFieldBinding._branch_models = (CatalogFieldBindingScalar, CatalogFieldBindingAssetPool, CatalogFieldBindingCatalogGroup,)
+CatalogFieldBinding._branch_models = (CatalogFieldBindingScalar, CatalogFieldBindingAssetPool, CatalogFieldBindingCatalogGroupTrue,)
 CatalogFieldBinding.model_rebuild(force=True)
 
 

@@ -26,7 +26,7 @@ class AudienceSelector(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class AudienceSelectorTypeValueValueType(AudienceSelector):
+class AudienceSelectorSignalBinary(AudienceSelector):
     """
     Signal-based selector for binary signals — user either matches or doesn't. The governance agent can resolve published signal definitions for structural validation.
     """
@@ -44,7 +44,7 @@ class AudienceSelectorTypeValueValueType(AudienceSelector):
     value: Annotated[bool, Field(description='Whether to include (true) or exclude (false) users matching this signal')]
 
 
-class AudienceSelectorTypeValueTypeValues(AudienceSelector):
+class AudienceSelectorSignalCategorical(AudienceSelector):
     """
     Signal-based selector for categorical signals — target users with specific values.
     """
@@ -62,7 +62,7 @@ class AudienceSelectorTypeValueTypeValues(AudienceSelector):
     values: Annotated[list[str], Field(description='Values to target. Users with any of these values will be included.', min_length=1)]
 
 
-class AudienceSelectorTypeValueType(AudienceSelector):
+class AudienceSelectorSignalNumeric(AudienceSelector):
     """
     Signal-based selector for numeric signals — target users within a value range.
     """
@@ -94,7 +94,7 @@ class AudienceSelectorDescription(AudienceSelector):
     category: Annotated[str | None, Field(description="Optional grouping hint for the governance agent (e.g., 'demographic', 'behavioral', 'contextual', 'financial')")] = None
 
 
-AudienceSelector._branch_models = (AudienceSelectorTypeValueValueType, AudienceSelectorTypeValueTypeValues, AudienceSelectorTypeValueType, AudienceSelectorDescription,)
+AudienceSelector._branch_models = (AudienceSelectorSignalBinary, AudienceSelectorSignalCategorical, AudienceSelectorSignalNumeric, AudienceSelectorDescription,)
 AudienceSelector.model_rebuild(force=True)
 
 

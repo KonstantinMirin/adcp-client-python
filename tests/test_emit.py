@@ -205,15 +205,59 @@ def lowered_nodes(document: str) -> list[tuple[str, dict]]:
 
 
 @functools.cache
-def population() -> list[str]:
-    """What the committed tree is emitted from.  A reference TARGET is not here and
-    does not need to be: ``emit`` walks ``$ref`` and emits the closure.
+def tree_population() -> list[str]:
+    """**What the committed tree is emitted from: the bundle's own portable set.**
 
-    The union of the steps' own selectors, which OVERLAP by design -- a leaf
-    object with an inline enum belongs to step 1 and to step 3 alike, and 26
-    leaves and 94 referencing documents are already inside step 3's 535.  The
-    overlap is a property of the POPULATION and not of the dispatch table, whose
-    rows read a document's ROOT and claim 0 documents in common (asserted below).
+    ``adcp-client-python-10l.73``.  It was :func:`population`, the union of the seven
+    STEP selectors, and a step is a phase of the rebuild while the tree is an
+    ARTIFACT -- so the artifact's contents were a function of which documents the
+    phases happened to claim, plus whichever others some earlier run reached
+    transitively through ``emit``'s ``$ref`` closure.  Measured on trunk at this row:
+    63 portable documents are outside :func:`population`, 56 of them EMIT, and 47 of
+    those 56 are in the committed tree anyway because a named document references
+    them.  Which is why regenerating trunk from :func:`population` **deletes** 34
+    files -- 17 documents whose module is in the tree and whose name no current
+    reference reaches.  A set whose membership depends on which documents the last
+    regeneration happened to reach is not a derivation, and ``core/property.json``,
+    ``core/collection.json``, ``core/frequency-cap.json`` and ``core/brand-id.json``
+    are ordinary public types a caller imports.
+
+    So the population is the bundle's, read by the one predicate that already
+    answers "can this document be emitted at all" -- ``bundle.portable`` -- and no
+    new document-set predicate is written for it.  ``docs/plan/architecture.md`` §5
+    keeps "the document-set predicates a step's result was stated over" under
+    ``tests/`` and that still holds: the seven selectors are unchanged below and go
+    on grading their own steps.  This is not one of them.  It is the whole bundle,
+    and the 7 portable documents that refuse need nothing -- ``emit`` writes no
+    module for a refusal, so widening the population adds modules and no refusal.
+
+    A reference TARGET needs no entry here either, and now cannot have one it does
+    not already have: ``emit`` walks ``$ref`` and emits the closure, and over this
+    population the closure reaches nothing outside it (asserted in
+    ``test_the_committed_tree_is_what_a_fresh_run_emits``).
+    """
+    return sorted(bundle.portable(BUNDLE))
+
+
+@functools.cache
+def population() -> list[str]:
+    """The union of the seven STEP selectors: what each phase of the rebuild was
+    stated over.  A reference TARGET is not here and does not need to be: ``emit``
+    walks ``$ref`` and emits the closure.
+
+    The selectors OVERLAP by design -- a leaf object with an inline enum belongs to
+    step 1 and to step 3 alike, and 26 leaves and 94 referencing documents are
+    already inside step 3's 535.  The overlap is a property of the POPULATION and not
+    of the dispatch table, whose rows read a document's ROOT and claim 0 documents in
+    common (asserted below).
+
+    **Not what the committed tree is emitted from, since
+    ``adcp-client-python-10l.73``**: that is :func:`tree_population`, which is the
+    bundle's portable set, and this is a PROPER PART of it.  The two are kept apart
+    rather than merged because they answer different questions -- "which documents
+    did this phase state its result over" is a fact about the rebuild, and "which
+    documents does the SDK ship a class for" is a fact about the artifact -- and the
+    tests below that grade a step read this one.
     """
     return sorted(
         set(leaves())
@@ -685,8 +729,14 @@ def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
     * a nested class names its own node and not its document's root, because a
       nested class is a subschema (and the previous arrangement could not bind
       one at all -- a nested class had no row and so no ``strict_validate``).
+
+    ``graded()`` reads the COMMITTED TREE, so the population it is compared against
+    is the tree's own (:func:`tree_population`) and not the steps' union.  They were
+    the same function and the equality above held only because the tree happened to
+    carry every closure document some past run had written
+    (``adcp-client-python-10l.73``).
     """
-    emitted = set(compiled(BUNDLE, population()).emitted)
+    emitted = set(compiled(BUNDLE, tree_population()).emitted)
     rows = graded()
     assert {g.ref.document for g in rows} == emitted
     roots = [g for g in rows if g.ref.pointer == "#"]
@@ -3298,7 +3348,7 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
                 continue
             target = str(resolved)
             symbol = _symbol(target)
-            module = emit.relative_module(document, target)
+            module = emit.relative_module(document, target, bundle.package_roots(BUNDLE))
             assert (module, symbol) in imported, (document, key, module, symbol)
             got = annotated[names.field_name(key, render.RESERVED)]
             named = {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}
@@ -6745,8 +6795,24 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     which P10 forbids for the reason this step demonstrates: the renderer changed
     and the recorded text was the OLD renderer's, so the comparison graded the
     change rather than the inputs.
+
+    **Over :func:`tree_population` and not :func:`population`
+    (``adcp-client-python-10l.73``)**, which is the same defect read at the
+    population rather than at the bytes: the comparison was against the emission of
+    the seven STEP selectors' union, while 47 of the tree's files were there because
+    an earlier run reached their documents through a ``$ref`` from a named one.  Both
+    sides of a byte compare can be stale together when the set one of them is drawn
+    from depends on when it was last written.  The population is the bundle's own
+    portable set now, so the closure adds nothing to it -- asserted below, because a
+    closure that reached outside the population would mean the tree carries a module
+    for a document ``bundle.portable`` rejects.
     """
-    out = compiled(BUNDLE, population())
+    out = compiled(BUNDLE, tree_population())
+    # The closure is INSIDE the population, which is what makes this population the
+    # whole answer rather than a seed.  A reference target outside it would be a
+    # module in the tree for a document the bundle does not call portable, and the
+    # prune below would then be deciding about a file no population names.
+    assert not set(out.emitted) - set(tree_population())
     # The alias module is written BESIDE the tree, because an alias belongs to no
     # document and so has no domain to live under (D5), and it is public where
     # ``_schemas`` is not.  ``write`` takes that directory explicitly and has no
@@ -6772,6 +6838,103 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     assert sorted(out.beside) == ["constraints.py", "envelopes.py"], sorted(out.beside)
     for rel in sorted(out.beside):
         assert (tmp_path / rel).read_text() == (TREE.parent / rel).read_text(), rel
+
+
+def test_a_document_whose_path_is_also_a_directorys_is_that_packages_root() -> None:
+    """``docs/plan/architecture.md``, the layout rule beside ``write`` (2026-10-29):
+    where the bundle holds both a document at path ``P`` and a directory at path ``P``,
+    the two are ONE NAMESPACE and the document is its root.
+
+    **The cost the rule names is the thing this holds**, in the rule's own words: "one
+    ``__init__.py`` carries content where the others are markers, and
+    ``emit.relative_module``'s hop arithmetic has to agree with it, which is a check a
+    test can hold".  The arithmetic is the half that goes wrong first and is silent when
+    it does -- a leading dot too few resolves to a module that EXISTS, just the wrong
+    one -- so it is read off the EMITTED module's own import block rather than restated
+    here.
+
+    The defect this replaces was measured: ``brand.py`` holding 113 classes beside a
+    0-byte ``brand/__init__.py``, where Python resolves the dotted name to the package,
+    the module is unimportable, and the run reports the document as emitted.  Three
+    things make that impossible now and each is a clause below -- the file is the
+    package's own ``__init__``, the empty marker does not overwrite it, and the name
+    Python resolves is the one ``emit`` recorded.
+    """
+    roots = claimed("documents whose path is also a directory's", bundle.package_roots(BUNDLE))
+    out = compiled(BUNDLE, tree_population())
+    emitting = claimed(
+        "package roots this run emits", roots & set(out.emitted), inside=tree_population()
+    )
+
+    for document in sorted(emitting):
+        stem = emit.module_path(document)
+        # Clause 1: the FILE is the package's own ``__init__`` and the NAME is the
+        # package.  Both read off the production functions, and the second is what
+        # keeps ``__init__`` out of the dotted name -- a package's ``__init__`` IS the
+        # package, and ``...brand.__init__`` would import its body a second time.
+        assert emit.module_file(document, roots) == f"{stem}/__init__"
+        assert emit.module_name(document) == f"{emit.PACKAGE}.{stem.replace('/', '.')}"
+        assert out.emitted[document] == emit.module_name(document)
+
+        # Clause 2: the empty package MARKER did not overwrite it.  ``emit`` writes a
+        # 0-byte ``__init__.py`` for every directory the tree has, and that loop runs
+        # after the modules are written -- a plain assignment there is the same
+        # unimportable-module defect arriving from the other side.
+        rel = f"{stem}/__init__.py"
+        assert out.files[rel], rel
+        assert not (TREE / f"{stem}.py").exists(), f"{stem}.py is shadowed by {stem}/"
+
+        # Clause 3: THE HOP ARITHMETIC, read off the module's own import block.  The
+        # file sits one level below ``_schemas``, so every import of a module OUTSIDE
+        # its own package needs two dots where a top-level module needs one.  Asserted
+        # per import and against the production derivation, so a dot miscounted in
+        # either direction names the import it got wrong.
+        tree = ast.parse((TREE / rel).read_text())
+        relative = [n for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) and n.level]
+        assert relative, f"{rel} has no relative import; clause 3 grades nothing"
+        for node in relative:
+            spelled = "." * node.level + (node.module or "")
+            target = next(
+                d
+                for d in out.emitted
+                if emit.relative_module(document, d, roots) == spelled
+            )
+            assert emit.relative_module(document, target, roots) == spelled
+            # Two dots at least, because the package root is never at the tree's top
+            # level: one dot from inside ``brand/`` names ``brand`` itself.
+            assert node.level >= 2, (rel, spelled)
+
+    # Clause 4: NOTHING in the tree spells a package's body as ``__init__``.  That is
+    # the import Python answers with a SECOND module object for one file, which is the
+    # defect ``codegen/__main__.py``'s own docstring records at the ``runpy`` boundary.
+    # Over the whole tree rather than over the roots, because the spelling is wrong
+    # wherever it appears and a future root would make it reachable from elsewhere.
+    for path in sorted(TREE.rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.ImportFrom):
+                assert "__init__" not in (node.module or ""), (path, node.module)
+                assert all(a.name != "__init__" for a in node.names), path
+
+    # Clause 5: the cycle the layout makes POSSIBLE is absent, and it is asserted
+    # rather than argued: a package root's ``__init__`` executes on every import of
+    # anything under it, so an ``__init__`` importing its own submodule, or a submodule
+    # importing the root, is a cycle this tree has never had before.  Both directions
+    # are derived from the emitted import edges, so neither is a reading of one file.
+    for document in sorted(emitting):
+        stem = emit.module_path(document)
+        inward = {
+            d
+            for d in out.emitted
+            if d != document and emit.module_path(d).startswith(f"{stem}/")
+        }
+        own = ast.parse((TREE / f"{stem}/__init__.py").read_text())
+        for node in ast.walk(own):
+            if isinstance(node, ast.ImportFrom) and node.level == 1:
+                raise AssertionError(f"{stem}/__init__.py imports its own package: {node.module}")
+        for other in sorted(inward):
+            text = (TREE / f"{emit.module_path(other)}.py").read_text()
+            spelled = emit.relative_module(other, document, roots)
+            assert f"from {spelled} import " not in text, (other, spelled)
 
 
 #: A two-document bundle for the prune: both documents emit, and the second is then
@@ -8490,9 +8653,10 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
             # imported module, because identity is a property of the module and of
             # nothing else -- the text cannot say whether ``X = Y`` produced an alias or
             # a copy.  A module the committed tree does not carry would make this clause
-            # silent, so the skip is counted and asserted at 0 below rather than passed
-            # over: the tree is written from ``population()`` and this loop runs over the
-            # whole portable set, which is the wider of the two.
+            # silent, so the skip is counted and asserted EMPTY below rather than passed
+            # over.  It can no longer have a member: the tree is emitted from
+            # ``bundle.portable`` since ``adcp-client-python-10l.73``, which is the very
+            # set this loop runs over, so every document it reaches has a module.
             if importlib.util.find_spec(out.emitted[document]) is not None:
                 module = importlib.import_module(out.emitted[document])
                 bound = [getattr(module, s) for s in symbols]
@@ -8514,25 +8678,23 @@ def test_identical_content_is_one_class_and_different_content_is_never_one() -> 
     # row that emitted a module -- ``declared`` went 1413 -> 1426 at
     # ``salesagent-j3k2l.21`` alone -- and none of them is a fact the four clauses do
     # not already assert per member.
-    # **ONE member at ``adcp-client-python-10l.21``'s third instalment, and it is the
-    # TWO-POPULATION gap the clause above already names rather than a group going
-    # unchecked.**  This loop ranges over ``bundle.portable`` and the committed tree is
-    # written from ``population()``, which is the narrower of the two -- so a document
-    # that begins emitting OUTSIDE that population has no module for clause 2 to import.
-    # ``core/targeting-overlay-support.json`` is that document: a ``type`` word beside a
-    # NESTED combinator stopped refusing it (§5(a)'s first bullet), and it is not in
-    # ``population()`` because none of the seven step selectors claims it.
+    # **IT HAD ONE MEMBER AND HAS NONE, and the clause that named it said why it would
+    # go** (``adcp-client-python-10l.73``): "this one leaves the moment the populations
+    # meet".  The member was ``core/targeting-overlay-support.json`` -- a ``type`` word
+    # beside a NESTED combinator stopped refusing it (§5(a)'s first bullet) and no step
+    # selector claimed it, so the committed tree, written from ``population()``, carried
+    # no module for clause 2 to import.  The tree is emitted from ``bundle.portable``
+    # now, which is the set this loop ranges over, so the gap is closed at the
+    # population rather than exempted at the member.
     #
-    # Asserted as the DERIVED containment plus the name, which is what keeps it from
-    # becoming an allowlist: the containment says the skip can only ever be a document
-    # the tree is not written from, and the name says which -- so a group skipped for any
-    # OTHER reason still reddens, and this one leaves the moment the populations meet.
-    outside = claimed(
-        "documents this loop reaches that the tree is not written from",
-        set(out.emitted) - set(population()),
+    # Asserted as the DERIVED equality of the two populations and then as the empty
+    # skip, in that order, so the reason comes before the consequence: if the tree's
+    # population ever narrows again this names the documents it dropped, rather than
+    # reporting a dedup group that went unchecked.
+    assert set(out.emitted) <= set(tree_population()), sorted(
+        set(out.emitted) - set(tree_population())
     )
-    assert unverifiable <= outside, sorted(unverifiable - outside)
-    assert unverifiable == {"core/targeting-overlay-support.json"}, sorted(unverifiable)
+    assert unverifiable == set(), sorted(unverifiable)
     claimed("declared (document, pointer) names", declared)
     claimed("content groups reached", groups)
     claimed("adoptions", adoptions)
@@ -9860,8 +10022,12 @@ def test_the_const_row_has_exactly_one_lowering() -> None:
 # --------------------------------------------------------------------------- #
 #: The population every clause of :func:`test_every_conjunct_contributes_every_part_of_itself`
 #: runs over, stated rather than read back off the structure it grades (D14).  All of it is
-#: measured over ``population()``, the documents the COMMITTED TREE carries, because the
-#: identity clauses import the class the node declared.
+#: measured over ``population()``, the steps' own union, which the identity clauses need
+#: only because they import the class the node declared -- and every document in it has a
+#: module, since ``population()`` is a PART of the population the committed tree is
+#: emitted from (``tree_population``, ``adcp-client-python-10l.73``).  The counts below
+#: are this population's and move with it, which is why it is the narrower of the two:
+#: widening them is a measurement this row did not take.
 #:
 #: The per-part sets PARTITION the conjunct sites -- `partitions` reports a site no part
 #: claims and a site two parts claim, each by name -- so a conjunct moving from one part

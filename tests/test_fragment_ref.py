@@ -532,7 +532,9 @@ def test_a_fragment_reference_is_an_import_of_the_targets_symbol_and_not_a_copy(
         if isinstance(n, ast.ImportFrom)
         for a in n.names
     }
-    module = emit.relative_module("core/selection.json", "core/target.json")
+    # A hand-built two-document bundle, so no document of it is a package root
+    # (``bundle.package_roots``) and the spelling is the ordinary sibling one.
+    module = emit.relative_module("core/selection.json", "core/target.json", frozenset())
     cls = next(c for c in tree.body if isinstance(c, ast.ClassDef))
     fields = {
         t.target.id: t.annotation

@@ -24,7 +24,7 @@ class SignalTargetingExpression(BranchDispatchMixin, AdCPBaseModel):
         return "oneOf"
 
 
-class SignalTargetingExpressionBinary(SignalTargetingExpression):
+class SignalTargetingExpressionBinaryTrue(SignalTargetingExpression):
     """
     Binary signal expression. In grouped package targeting, value is always true; use a parent group with operator 'none' for exclusion.
     """
@@ -67,7 +67,7 @@ class SignalTargetingExpressionNumeric(SignalTargetingExpression):
     max_value: Annotated[float | None, Field(description="Maximum value, inclusive. Omit for no maximum. Should be within the signal definition's range when declared.")] = None
 
 
-SignalTargetingExpression._branch_models = (SignalTargetingExpressionBinary, SignalTargetingExpressionCategorical, SignalTargetingExpressionNumeric,)
+SignalTargetingExpression._branch_models = (SignalTargetingExpressionBinaryTrue, SignalTargetingExpressionCategorical, SignalTargetingExpressionNumeric,)
 SignalTargetingExpression.model_rebuild(force=True)
 
 

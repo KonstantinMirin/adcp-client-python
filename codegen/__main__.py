@@ -2,13 +2,19 @@
 
     python -m codegen --bundle schemas/cache/3.2 core/pagination-request.json
 
-The committed tree is the same command over the steps' whole population, which is
-derived from the bundle and never listed by hand.  The predicates it is the union of
-live in ``tests/populations.py`` and ``tests/test_emit.py``'s ``population()`` is the
-union -- ``docs/plan/architecture.md`` §5 puts them there ("the document-set predicates
-a step's result was stated over are the tests' business and live under ``tests/``"), so
-this package names no population and the one the tree is graded against is the one the
-suite counts.
+The committed tree is the same command over ``bundle.portable(BUNDLE)``: every
+document of the bundle that can be emitted at all, derived from the bundle and never
+listed by hand.  ``tests/test_emit.py``'s ``tree_population()`` is that reading and is
+what regenerates the tree; it is NOT the union of the seven STEP selectors
+(``population()``, whose predicates live in ``tests/populations.py``), because a step is
+a phase of the rebuild and the tree is an ARTIFACT -- a population drawn from the phases
+made the tree's contents depend on which documents an earlier run happened to reach
+through a ``$ref`` (``adcp-client-python-10l.73``).
+``docs/plan/architecture.md`` §5 puts the STEP predicates under ``tests/`` ("the
+document-set predicates a step's result was stated over are the tests' business and live
+under ``tests/``") and they are still there; the tree's population is the bundle's own
+and is read by the one predicate this package already has.  So this package still names
+no population, and the one the tree is graded against is the one the suite counts.
 
 A document this command does not name is still emitted when a named one
 REFERENCES it: a module cannot import a symbol from a module no run wrote, so
