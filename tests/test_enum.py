@@ -401,8 +401,17 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
     ]
     assert assigned == [m.name for m in members], (assigned, text)
 
-    # So the check is over `member_name`, and it is injective over the bundle at
-    # every node the walk reaches -- which is the claim, with its denominator.
+    # So the check is over `member_name`, and it is injective at every node the walk
+    # reaches THAT GETS AN ENUM CLASS -- which is the claim, with its denominator.
+    #
+    # **The else branch inverted on 2026-10-29 and the claim it holds is now the
+    # ROUTE.**  It read: a colliding node's document refuses before this is read, so
+    # the injectivity is vacuous nowhere.  §5's ``enum`` row withdrew that refusal --
+    # the node renders a ``Literal``, which mints no member name at all -- so what the
+    # branch asserts is that the colliding node minted NO enum class, which is what
+    # keeps the injectivity above a statement about every class and not about most of
+    # them.  Read off the module the COMPILER produced, because a document that
+    # emits for the first time has no file in the committed tree yet.
     nodes: set[tuple[str, str]] = set()
     for document in sorted({g.ref.document for g in graded()}):
         for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
@@ -412,8 +421,18 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
             spelled = [lower_enum.member_name(v) for v in values]
             if len(set(spelled)) == len(spelled):
                 nodes.add((document, pointer))
-            else:  # the one colliding node's document refuses before this is read
-                assert document not in compiled(BUNDLE, population()).emitted, (document, pointer)
+            else:  # routed to a ``Literal``, so no class was minted from it
+                source = compiled(BUNDLE, population()).files[
+                    f"{emit.module_path(document)}.py"
+                ]
+                minted = {
+                    frozenset(n for n, _ in _members(cls))
+                    for cls in ast.walk(ast.parse(source))
+                    if isinstance(cls, ast.ClassDef)
+                    and {b.id for b in cls.bases if isinstance(b, ast.Name)}
+                    & {"StrEnum", "IntEnum"}
+                }
+                assert frozenset(spelled) not in minted, (document, pointer)
     # The enum NODES the walk reaches, as a non-empty set.  It is deliberately NOT
     # derived from the enum CLASS count above -- a node under a position that reuses an
     # already-declared class is reached without adding one, and the two figures were
@@ -793,29 +812,31 @@ def test_the_type_an_enums_members_force_is_excused_and_a_narrowing_is_not() -> 
 
 
 # --------------------------------------------------------------------------- #
-# the four refusals, and the base this bundle does not reach
+# the three refusals, the base this bundle does not reach, and the collision
+# that is a rendering and not a refusal
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize(
     ("values", "because"),
     [
-        (["clickTag", "clickTAG"], "both spell the member"),
         (["a", 1], "mixed type"),
         ([], "enumerates nothing"),
         (["a", "a"], "appears twice"),
         ([True, False], "bool is an int subclass"),
     ],
-    ids=["one-member-name", "mixed-types", "empty", "duplicated-value", "boolean"],
+    ids=["mixed-types", "empty", "duplicated-value", "boolean"],
 )
 def test_a_node_this_row_cannot_represent_refuses_by_name(values: list, because: str) -> None:
-    """The four representability refusals, plus the excluded base.
+    """The three representability refusals, plus the excluded base.
 
     **None of them is reachable from this bundle**, and that is stated rather than
-    hidden: the one colliding node lives in
-    ``formats/canonical/html5.json``, whose root composes and therefore refuses on
-    ``allOf`` before any enum is read (measured cascade cost: 0), and there are 0
-    mixed, 0 empty, 0 duplicated and 0 boolean enum nodes over all 1,069.  So they
-    are graded on nodes written here, which is the right level -- they are
-    properties of the lowering, not of the bundle.
+    hidden: there are 0 mixed, 0 empty, 0 duplicated and 0 boolean enum nodes over
+    all 1,069.  So they are graded on nodes written here, which is the right level
+    -- they are properties of the lowering, not of the bundle.
+
+    **The fourth case left this list on 2026-10-29 and became the test below it.**
+    ``["clickTag", "clickTAG"]`` was a parameter here, asserting the hand-written
+    verdict §5's ``enum`` row withdrew; the collision now selects a RENDERING, so
+    there is nothing for this test to catch and a refusal would be the defect.
     """
     caught = refusal_from(lower_enum.decide(_probe({"enum": values}, "/properties/x"), "Probe"))
     assert caught.keyword == "enum"
@@ -823,46 +844,66 @@ def test_a_node_this_row_cannot_represent_refuses_by_name(values: list, because:
     assert because in caught.detail, caught.detail
 
 
-def test_the_colliding_node_is_in_the_bundle_and_its_document_refuses_earlier() -> None:
-    """Both halves of "unreachable", so the claim is measured and not assumed."""
+def test_two_members_spelling_one_name_give_a_literal_of_both_and_no_enum_class() -> None:
+    """§5's ``enum`` row, decided 2026-10-29, at the one node of the bundle that reaches it.
+
+    "Two members whose spellings yield one Python name → a ``Literal`` of the members
+    and NOT an enum class.  The collision exists only because an enum mints a Python
+    IDENTIFIER per member; a ``Literal`` needs none, so both values are carried exactly
+    as the document spells them and nothing is dropped."
+
+    Four claims, each read off something derived:
+
+    * the collision is still in the bundle, and it is asked of ``member_name`` -- the
+      function that names the members -- rather than of a second spelling here;
+    * the node lowers to a ``Literal`` carrying BOTH values in the document's own
+      order and spelling, so nothing is dropped and no member is aliased away;
+    * the document EMITS, where it refused with 20 chained behind it before;
+    * and the emitted module states both spellings, which is the only place a dropped
+      member could hide.
+
+    The pointer is NOT pinned as a constant: it is derived from the document by the
+    same predicate the compiler routes on, so a second colliding node joins the set
+    and reddens here rather than passing unseen.
+    """
     document = "formats/canonical/html5.json"
-    node = bundle.read(BUNDLE, document)["properties"]["clicktag_macro"]
+    raw = bundle.read(BUNDLE, document)
+    node = raw["properties"]["clicktag_macro"]
     assert node["enum"] == ["clickTag", "clickTAG"]
     assert len({lower_enum.member_name(v) for v in node["enum"]}) == 1
-    out = compiled(BUNDLE, population())
-    # THE KEYWORD IS NO LONGER PINNED HERE, which is this file's own precedent --
-    # 9cd0aeaa9, "stop pinning the keyword a negative fixture refuses on".  This
-    # refusal has read ``allOf`` at ``/allOf/0``, then ``$ref`` at ``/allOf/0``,
-    # then ``oneOf`` at ``/allOf/1``, moving each time a later row claimed more of
-    # this root; and the comment beside it said every time that the claim "holds
-    # on either keyword".  A pin on a keyword the test does not assert is just
-    # somewhere for a re-measurement to keep landing.
-    #
-    # So the claim is asserted directly, over a population derived from the
-    # document rather than named: the collision is still there, the document does
-    # not emit, so no class was built from the colliding node -- and the refusal
-    # fires OUTSIDE that node, so the walk never read it.
+
     walked = claimed(
         "enum nodes of this document",
-        [
-            p
-            for p, n in bundle.nodes(bundle.read(BUNDLE, document))
-            if isinstance(n.get("enum"), list) and n["enum"]
-        ],
+        [p for p, n in bundle.nodes(raw) if isinstance(n.get("enum"), list) and n["enum"]],
     )
     colliding = [
         p
-        for p, n in bundle.nodes(bundle.read(BUNDLE, document))
+        for p, n in bundle.nodes(raw)
         if isinstance(n.get("enum"), list)
         and n["enum"]
         and len({lower_enum.member_name(v) for v in n["enum"]}) != len(n["enum"])
     ]
     assert colliding == ["/properties/clicktag_macro"], colliding
     assert set(colliding) <= set(walked), colliding
-    assert document not in out.emitted
-    assert not any(
-        out.refusals[document]["pointer"].startswith(p) for p in colliding
-    ), out.refusals[document]
+
+    # The ROUTE and the RENDERING, off the lowering itself rather than off the tree:
+    # the predicate answers yes and the node decides to a ``Literal`` of both values.
+    probe = _probe(node, "/properties/clicktag_macro")
+    assert lower_enum.two_members_spell_one_name(probe) is True
+    decided = lower_enum.literal(probe)
+    assert not isinstance(decided, refusal_module.Refusal), decided
+    assert decided.type.literals == ("clickTag", "clickTAG"), decided.type
+
+    # And the document emits, which is the 21 refusals the withdrawn clause cost.
+    #
+    # Read off the COMPILE and not off the committed tree: a newly emitting document
+    # has no module there until the tree is repopulated, and the claim is about what
+    # the compiler produces.
+    out = compiled(BUNDLE, population())
+    assert document not in out.refusals, out.refusals[document]
+    assert document in out.emitted
+    source = out.files[f"{emit.module_path(document)}.py"]
+    assert "'clickTag'" in source and "'clickTAG'" in source, source
 
 
 def test_an_integer_enum_becomes_an_int_enum_at_the_three_nodes_that_carry_one() -> None:

@@ -490,8 +490,18 @@ _VALUES: dict[str, Row] = {
             "`enumDescriptions` → member docstrings. An untitled BRANCH of a root "
             "union → a `Literal` of the members. Mixed member types, an empty list, "
             "or a duplicate member → refused. Two members whose spellings yield one "
-            "Python name → refused, naming both: a silent collision would drop a "
-            "member the document admits.",
+            "Python name → a `Literal` of the members and NOT an enum class (decided "
+            "2026-10-29). The collision exists only because an enum mints a Python "
+            "IDENTIFIER per member; a `Literal` needs none, so both values are carried "
+            "exactly as the document spells them and nothing is dropped. This is the "
+            "same answer the row already gives an untitled branch of a root union, "
+            "reached by a second route. Refusing instead cost **21 of the 95 refusals** "
+            "for one node — `formats/canonical/html5.json`'s `clicktag_macro`, whose "
+            "`clickTag` and `clickTAG` both spell `CLICKTAG` — including "
+            "`core/product.json`. The cost is that one node gives a string-literal "
+            "union rather than an enum class, which is a DX difference and not a "
+            "correctness one; dropping a member, which the old clause rightly refused "
+            "to do, remains forbidden.",
         ),
         {
             Position.ROOT: Cell(
