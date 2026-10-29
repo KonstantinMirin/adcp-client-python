@@ -74,6 +74,18 @@ neither widens nor narrows and costs no approximation; the index is a function o
 branch's own position in its own document, so no census over the run enters and the
 refusal was minting a verdict where §4 states a fallback.
 
+**Not EVERYTHING here runs in the pass, and the reading is which calls the WALK makes.**
+Four functions are the walk's: :func:`same_node` and :func:`adopt`, because a second
+occurrence's children are never lowered and the pruning is a decision about the walk;
+and :func:`alias_for` and :func:`name_the_node`, because the alias a ``$ref``-named node
+takes carries that node's own facts and the parent's field must reference it rather than
+restate it.  All four are NAMING acts -- a name bound to a declaration, at a pointer --
+which is why §7 puts them beside the rules, and none of them computes a name: each
+declares at a POINTER and :func:`assign` is still the one function that binds a symbol.
+:func:`name_the_node` and :func:`alias_for` arrived from ``compiler.py`` at
+``adcp-client-python-3be.5``, with the walk's per-node entry (``compiler.lower_node``),
+which is what stopped reaching them through ``codegen.emit``.
+
 **The index is the LAST rung and is accepted only there.**  A positional name carries
 nothing about which position it names -- the upstream v9 SDK numbers 1,092 of its 4,360
 classes and renames a sibling when a branch is inserted ahead of it -- so §4 reaches for
@@ -95,7 +107,7 @@ from codegen.refusal import Kind, Refusal
 from codegen.schema import nodes
 
 if TYPE_CHECKING:  # pragma: no cover -- the annotation only; see :func:`assign`
-    from codegen.compiler import Module
+    from codegen.compiler import Decided, Module
 
 #: **The stated scope of the content dedup** (§14 step 7's own words for this row, and
 #: §9's rule behind it).  Read by ``tests/test_emit.py``, so the sentence the code states
@@ -566,10 +578,11 @@ def same_node(mod: Module, node: nodes.Base) -> str | None:
     reason the memo is a SEQUENCE are both written down: a node carries mappings and is
     not hashable, and a hash would be a second spelling of what identical means.
 
-    **Measured over the memo's own population**, which is the nodes ``emit.decide_type``
-    is called on: 7,250 nodes in 677 documents over the whole portable set, 283 groups of
-    more than one node by the deleted key and 283 by this equality, and 0 documents whose
-    partition differs.  So the replacement is a relocation and not a decision.
+    **Measured over the memo's own population**, which is the nodes
+    ``compiler.lower_node`` is called on: 7,250 nodes in 677 documents over the whole
+    portable set, 283 groups of more than one node by the deleted key and 283 by this
+    equality, and 0 documents whose partition differs.  So the replacement is a
+    relocation and not a decision.
 
     **Asked in the WALK and not in the pass, and the reason is the pruning.**  A second
     occurrence's CHILDREN are never lowered -- they would declare a second class each,
@@ -578,6 +591,19 @@ def same_node(mod: Module, node: nodes.Base) -> str | None:
     actually decides about a group: which pointer declares, what each pointer is called,
     and that a later pointer binds the class by identity (:func:`adopt`, :func:`assign`).
     :data:`SCOPE` is the scope of all of it.
+
+    **What SEEDS the memo is a symbol declared AT THE NODE'S OWN POINTER**, which is
+    exactly D2's class and enumeration rows and :func:`name_the_node`'s alias
+    (``compiler.lower_node`` is the one writer of ``mod.collapsed``).  An annotation
+    declares nothing, so an identical annotation is simply decided again -- to the same
+    annotation, since the inputs are the same -- and a ``$ref`` whose symbol the module
+    IMPORTED is not seeded either, because the import is already in ``mod.imports`` and
+    §2's rule is an import of a symbol the TARGET declares.  A node that declares a
+    symbol at its pointer and then decides to a CONTAINER over it is therefore not
+    seeded; a nested union is the shape that would be, and it is covered anyway because
+    its BRANCHES collapse through the same entry and two identical branch lists then
+    decide to one annotation.  No such pair survives the run, and clause 1 of the check
+    reddens by name if one appears.
     """
     return next((at for other, at in mod.collapsed if other == node), None)
 
@@ -630,6 +656,85 @@ def adopt(mod: Module, pointer: str, declared: str) -> ir.TypeRef | Refusal:
     collision = mod.declare(
         pointer, ir.AliasDecl(pointer, ir.TypeRef(declared, local=True))
     )
+    if collision is not None:
+        return collision
+    return ir.TypeRef(pointer, local=True)
+
+
+# --------------------------------------------------------------------------- #
+# §2's rule at a node some OTHER document names: the alias that holds the symbol
+# --------------------------------------------------------------------------- #
+def alias_for(pointer: str, node: nodes.Base, decided: Decided) -> ir.AliasDecl:
+    """One node's own decision, as the alias that names it.
+
+    Shared by the THREE rows that declare an alias -- a root
+    (``compiler.declare_alias``), a node another document names
+    (:func:`name_the_node`) and a container's described contents
+    (``lower.containers._contents``) -- because "the annotation for this node, under this
+    name" is the same question in all three and a second copy of it is how two of them
+    come to carry a node's ``format`` or its ``description`` differently.  They differ
+    only in what wraps the statement, which is each row's own and stays there.
+
+    The bound and the ``format`` ride on the alias's own TYPE, exactly as a field's do
+    (§2, and :attr:`codegen.ir.TypeRef.facts`): one carrier, so an alias and a property
+    cannot come to spell one ``minLength`` two ways.
+
+    **Here and not in ``compiler.py`` because an alias is a NAME BOUND TO A STATEMENT**,
+    which §7 makes this module's: ":func:`adopt` and this build the same declaration, and
+    the reading that tells them apart is what each binds -- ``adopt`` binds a class an
+    EQUAL node already declared and carries no facts of its own, because every fact is
+    already on that class; this binds the node's OWN decision, so every fact it states
+    has to ride along or be dropped."
+    """
+    return ir.AliasDecl(
+        # The POINTER in the name slot until :func:`assign` binds it (§7).
+        pointer,
+        replace(decided.type, facts=decided.constraints, format=decided.format),
+        description=node.description,
+    )
+
+
+def name_the_node(
+    mod: Module, pointer: str, node: nodes.Base, decided: Decided
+) -> ir.TypeRef | Refusal:
+    """Give a node a SYMBOL in its own module, because a ``$ref`` elsewhere names it.
+
+    A fragment reference resolves to an import of a symbol the target module declares,
+    never to a copy (§2's rule).  A node D2 makes a CLASS already has one -- the walk
+    declared it and ``decided.type.local`` says so -- and this is the other case: an
+    array, a scalar or a mapping is an annotation with no name, so the target module has
+    nothing to export and the reference has nothing to import.
+
+    **The node's type BECOMES the symbol**, which is why the TYPE comes back rather than
+    only the declaration being made: the alias carries the constraints and the referring
+    property then references it, so the node's facts have ONE spelling in the module.
+    Declaring the alias and leaving the parent's field to restate the same ``minLength``
+    inline would be the copy P2 removes, two spellings deep in one file.
+
+    Not ``compiler.declare_alias``, which is a ROOT's whole module -- the reference, the
+    alias and the bound ``strict_validate``, all at module scope, where there is room for
+    exactly one of each.  A named node is INSIDE a document that already has a root, so
+    it takes the alias statement alone.  It therefore carries no ``__adcp_schema__`` of
+    its own, and that is the existing arrangement rather than a gap: every nested node
+    that is not a class is ungraded on its own today, and this one is graded twice over
+    anyway -- inside its own document's pair, which names the whole document, and inside
+    its referrer's, whose resolved schema inlines this very node at the pointer the
+    reference carries.
+
+    **No name is computed here and none is passed in** (§7, and §14 step 7): the
+    declaration is made at the node's own POINTER, and :func:`assign` binds it to the
+    name §4's nested rule derives for that position -- which is the hop the node's parent
+    recorded when it lowered this child.
+
+    **It returns the TYPE and not a ``Decided``, which is :func:`adopt`'s signature**, and
+    the two callers are the reason as much as the symmetry is: ``lower.containers``
+    answers ``ir.TypeRef | Refusal`` itself and now returns this call's result straight,
+    and the walk's own entry (``compiler.lower_node``) is the one place that wraps.  It
+    is also what keeps this module's arrow to ``compiler.py`` inside ``if
+    TYPE_CHECKING`` -- ``compiler`` imports this module at module level, so a runtime
+    name from it here would close the cycle the audit reports.
+    """
+    collision = mod.declare(pointer, alias_for(pointer, node, decided))
     if collision is not None:
         return collision
     return ir.TypeRef(pointer, local=True)

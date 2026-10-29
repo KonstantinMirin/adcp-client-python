@@ -25,7 +25,7 @@ name instead, and the refusal carries what the document said:
   a container has no slot in the compiler's ``DataType``, and D5's answer is to
   resolve the inner type to a NAME -- one the bundle itself gives a titled root,
   then one pydantic gives, then an alias emitted in ``adcp.types.constraints``.
-  **That module now exists** (``codegen/constraints.py``), so ``decide_type``
+  **That module now exists** (``codegen/constraints.py``), so ``compiler.lower_node``
   hands this module an inner type whose constraints are already on the type and
   :func:`_inner` sees none: ``dict[str, StrMinLen1]`` and
   ``list[StrMatchingEFC12812]`` are plain references and need nothing from the
@@ -218,13 +218,17 @@ def _contents(node: nodes.Node, what: str, mod: Module) -> ir.TypeRef | Refusal:
     a surface (``salesagent-j3k2l.28``).
 
     **The node is NAMED, which is the mechanism this pipeline already has for a node
-    whose facts need a carrier.**  ``compiler.name_the_node`` declares the
+    whose facts need a carrier.**  ``names.name_the_node`` declares the
     ``Annotated`` alias a fragment-referenced node already gets, from the same
-    ``_alias_for`` -- so the annotation a container's contents carry and the annotation
-    a referenced node carries have ONE spelling, and ``dict[str, X]`` where ``X`` is a
-    local symbol is a plain reference the compiler needs nothing extra for.  The name
-    is D3's nested rule, already computed by the caller and passed in, so none is
-    derived here.
+    ``names.alias_for`` -- so the annotation a container's contents carry and the
+    annotation a referenced node carries have ONE spelling, and ``dict[str, X]`` where
+    ``X`` is a local symbol is a plain reference the compiler needs nothing extra for.
+    The name is D3's nested rule, and ``lower/names.py`` assigns it in its own pass, so
+    none is derived here.
+
+    It returns the named TYPE directly, refusal included: ``name_the_node`` answers
+    ``ir.TypeRef | Refusal``, which is this function's own signature, so there is no
+    unwrapping step between the two and no second place a refusal could be re-wrapped.
 
     Gated on the type not being LOCAL already: a node D2 makes a class, or one the walk
     has named, carries its own description in its own declaration, and a second alias
@@ -232,7 +236,7 @@ def _contents(node: nodes.Node, what: str, mod: Module) -> ir.TypeRef | Refusal:
     refuses a symbol or a pointer twice by name, so a collision is a refusal rather
     than a silent overwrite.
 
-    What this still drops is every annotation ``_alias_for`` does not carry -- a
+    What this still drops is every annotation ``names.alias_for`` does not carry -- a
     ``default`` on an inner node has no slot on an alias and would still read as
     ``missing``, which is the safe direction and is visible.  0 inner nodes of the
     bundle state one.
@@ -244,17 +248,14 @@ def _contents(node: nodes.Node, what: str, mod: Module) -> ir.TypeRef | Refusal:
     if not decided.type.local and node.description:
         # **The node's OWN name is asked for FIRST, and the order is the P2 rule rather
         # than a preference.**  A described node is named here anyway, and
-        # ``_alias_for`` puts the description, the constraints and the ``format`` on
+        # ``names.alias_for`` puts the description, the constraints and the ``format`` on
         # that one alias -- so asking :func:`_inner` first would resolve a SECOND name
         # for the same node in ``adcp.types.constraints``, which this declaration then
         # does not reference: two names for one node, and a line in a public module
         # nothing reads.  Measured on ``trusted-match/publisher-tmpx-config.json``,
         # whose described mapping value recorded ``DictMinProperties1MaxProperties2``
         # and then rendered its bound inline under its own name.
-        named = compiler.name_the_node(mod, pointer, node, decided)
-        if isinstance(named, Refusal):
-            return named
-        return named.type
+        return names.name_the_node(mod, pointer, node, decided)
     return _inner(decided, pointer, what, mod)
 
 
@@ -817,8 +818,9 @@ def multi_type(node: nodes.MultiType, mod: Module) -> Decided | Refusal:
     """``X | Y`` for a node whose ``type`` is a list, each keyword on its OWN arm.
 
     An arm is the node re-cut to one type, carrying only the keywords that type can
-    carry (:data:`ARM`), and lowered by the same ``decide_type`` as any other node --
-    so a string arm gets its ``minLength`` and the ``number`` arm beside it does not.
+    carry (:data:`ARM`), and lowered by the same ``compiler.lower_node`` as any other
+    node -- so a string arm gets its ``minLength`` and the ``number`` arm beside it does
+    not.
     That is draft-07's own semantics: a constraint keyword applies to instances of the
     type it is defined for and is ignored for every other type.
 

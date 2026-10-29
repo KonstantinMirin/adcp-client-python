@@ -6,7 +6,7 @@ constrained scalar it meets:
 
 1. **a type the bundle itself names** -- a titled root carrying those
    constraints, reached ``by $ref as an import``.  That already works and needs
-   nothing here: ``emit.decide_type``'s ``$ref`` arm binds the target's module
+   nothing here: ``compiler.lower_node``'s ``$ref`` arm binds the target's module
    and names its symbol, and nothing of the target's own schema is copied (P2).
    An INLINE declaration is not that case and must not be turned into one.
    Measured over the bundle: 229 titled scalar roots, and rewriting an inline
@@ -344,7 +344,7 @@ def resolve(
     """The dotted path this shape's named type is reachable at, or ``None``.
 
     Rung 2 before rung 3, which is D5's own order, and rung 1 is not here: it is
-    reached through a ``$ref`` in ``emit.decide_type`` and never by matching an
+    reached through a ``$ref`` in the walk's own per-node entry and never by matching an
     inline declaration against another document's content (see the module
     docstring).
 

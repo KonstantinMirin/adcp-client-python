@@ -1796,7 +1796,7 @@ def test_an_annotation_on_a_containers_contents_reaches_the_wire(tmp_path, monke
     ``'Component properties'``.
 
     ``containers._contents`` now NAMES such a node, through the same
-    ``compiler.name_the_node`` a fragment-referenced node already goes through, so the
+    ``names.name_the_node`` a fragment-referenced node already goes through, so the
     annotation has one spelling.  Both inner positions the comparison reads are probed
     -- a mapping's value and an array's element -- and the real emitter and the real
     comparison are what grade it.

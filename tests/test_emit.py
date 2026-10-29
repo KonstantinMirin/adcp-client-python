@@ -1499,7 +1499,7 @@ def test_the_url_type_row_is_its_own_category_and_each_half_is_gated() -> None:
 
     # 4. BROKEN ON PURPOSE -- any OTHER keyword the document states is still
     #    reported, because the row names ``pattern`` and nothing else.  This is
-    #    the gate that keeps ``emit.decide_type``'s refusal honest: a
+    #    the gate that keeps ``compiler.lower_node``'s refusal honest: a
     #    ``format: uri`` node stating a ``maxLength`` refuses at emission rather
     #    than going missing here.
     capped = compare_schema({**bare, "maxLength": 20}, AdCPUrl)
@@ -1552,7 +1552,7 @@ def test_the_url_type_row_is_its_own_category_and_each_half_is_gated() -> None:
 
     # 9. BROKEN ON PURPOSE -- a document that states the maxLength ITSELF is
     #    compared, and a document stating a DIFFERENT one differs rather than being
-    #    excused.  That second case is what `emit.decide_type` refuses by name: the
+    #    excused.  That second case is what `compiler.lower_node` refuses by name: the
     #    bundle has 4 such positions, all `maxLength: 2048`.
     agrees = compare_schema({**bare, "maxLength": 2083}, HttpUrl)
     assert agrees.outcome == "pass"
@@ -5929,7 +5929,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # holding back, and the one that more than doubles the store list below.  It declared an
     # ``AliasDecl`` and then a ``ClassDecl`` at ``/definitions/colors`` and refused:
     # §4 parses a class's extras store at the CLASS's pointer, the store was reaching
-    # ``emit.decide_type``, and that wrapper names the node at a pointer the bundle's
+    # the walk's per-node entry, and that entry names the node at a pointer the bundle's
     # ``$ref``\\ s name.  Four of the document's six store sites sit at such a pointer
     # (``colors``, ``fonts``, ``border_radius``, ``elevation``), so the walk met the
     # collision at the first of them and the other five sites were never graded.
@@ -6019,7 +6019,7 @@ def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
     # name inside.
     # **FIVE -> ELEVEN at ``adcp-client-python-857``, and all six are ``brand.json``'s.**
     # The document is the store's own defect report: §4 parses the store at the CLASS's
-    # pointer, the store was reaching ``emit.decide_type``, and the wrapper named the
+    # pointer, the store was reaching the walk's per-node entry, and that entry named the
     # node at ``/definitions/colors`` -- a pointer the document's own ``$ref`` names --
     # so an ``AliasDecl`` landed where ``declare_object`` was about to write the
     # ``ClassDecl``.  Four of the six (``colors``, ``fonts``, ``border_radius``,

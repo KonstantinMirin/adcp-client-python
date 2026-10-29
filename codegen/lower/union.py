@@ -2263,8 +2263,7 @@ def _inherited(parsed: "nodes.Node", mod: compiler.Module) -> Inherited | Refusa
     conjunct's base already takes from ``mod.target`` in ``compiler.lower_composition``.
 
     **``compiler.lower_node`` is what reads the reference**, and it is read ONCE here,
-    because
-    ``emit.decide_type``'s ``$ref`` arm is the one place in this generator that decides
+    because its ``$ref`` arm is the one place in this generator that decides
     which of the two resolutions a reference is: an absolute one binds a module and
     imports its symbol, a LOCAL ``#/...`` one names a node of the document being written
     and ``compiler.local_reference`` declares it.  Reading the ``#`` here instead would

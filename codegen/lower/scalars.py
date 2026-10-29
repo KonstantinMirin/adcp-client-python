@@ -137,7 +137,7 @@ def _named_alias(
     The record and the type go together or they do not go: an alias referenced and not
     recorded is an ``ImportError`` in the written tree, and one recorded and not
     referenced is a line in a public module nothing reads.  Shared by the two callers
-    that resolve a shape -- the scalar tail of :func:`decide_type` and
+    that resolve a shape -- the scalar tail of :func:`lower` and
     :func:`name_the_constraint` -- so there is one place that pairs them.
 
     Only an alias in ``adcp.types.constraints`` is recorded: rung 2 resolves to a
@@ -169,13 +169,13 @@ def name_the_constraint(decided: Decided, mod: compiler.Module) -> ir.TypeRef | 
     on the :class:`Decided` the walk already produced -- the scalar's own type word is
     recoverable from :data:`SCALAR`, a container names itself in ``Type.container`` --
     so there is no second reading of a node's constraints to disagree with
-    :func:`decide_type`'s.
+    :func:`lower`'s.
 
     Two shapes reach it, and they are the two that can arrive with a fact still on
     them:
 
     * a bare SCALAR carrying a ``format`` no type was selected for.  Constraints
-      alone never arrive here, because :func:`decide_type` has already resolved a
+      alone never arrive here, because :func:`lower` has already resolved a
       spellable scalar shape to an alias -- what arrives with constraints on it is a
       shape the alias module declined, and the answer is the same ``None``.
     * a CONTAINER carrying its own bound: ``minItems``/``maxItems`` on a list,
