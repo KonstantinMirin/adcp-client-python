@@ -5133,12 +5133,51 @@ def _intersection(
         and _container_kind(c) is not None
         and _container_kind(c) == _container_kind(_constraining(_dereferenced(base, resolve)))
     )
+    # **The APPEND IS IDEMPOTENT, because ``allOf`` is: a conjunct already in the list
+    # states nothing a second time.**  §2's rule is "composition merges by intersection"
+    # and §5's ``allOf`` row reads every member as applying to the same instance, so
+    # ``A ∧ A`` is ``A`` and a conjunct list that names one member twice says exactly
+    # what the list naming it once says.  The list is still a LIST and not a set -- the
+    # paragraph above decides the ORDER, and the pointer a nested class is stamped at
+    # depends on it -- so what is written here is idempotence at the one member this arm
+    # appends, not a dedup of the list.
+    #
+    # **Why the arm fires twice at one node, which is the defect this clause closes**
+    # (``adcp-client-python-10l.98``).  Two declarations can reach one node with the SAME
+    # bare reference at the same key, and each is a separate, correct merge: the node's
+    # OWN declaration meets a conjunct's in :func:`declare`, and the result then meets the
+    # INHERITED one in the restatement loop.  Both merges see ``b == {"$ref": T}``, both
+    # satisfy the gate -- the first append leaves the reference under ``allOf`` and not
+    # under ``$ref``, so ``"$ref" not in merged`` still holds -- and the second wrote
+    # ``{"allOf": [{"$ref": T}, {"$ref": T}]}``.
+    #
+    # That is a node NO DOCUMENT STATES, and §9 is why it must not be written rather than
+    # repaired downstream: "do not decide a position the bundle does not hold from a view
+    # of it".  Its visible consequence was a base list naming one class twice, which
+    # Python refuses to build -- but the base list is the SYMPTOM and the declaration is
+    # the defect, so a dedup beside ``dispatching_bases`` would have left the malformed
+    # declaration for §8's document-side fold and for every refusal pointer below it.
+    #
+    # Measured over the 1,054 portable documents: the arm fired on an already-present
+    # conjunct at 4 merges, over 2 nodes, both of them ``core/indicator.json`` reached
+    # through ``core/indicator-bearing.json`` beside a node that declares the same
+    # ``items`` reference itself --
+    # ``creative/list-creatives-response.json#/properties/creatives/items/properties/assignments/properties/assigned_packages/items``
+    # and
+    # ``media-buy/get-media-buys-response.json#/properties/media_buys/items/properties/packages/items/properties/creative_approvals/items``.
+    # The second is not in the committed tree, which is why one unimportable module was
+    # found and not two.
+    #
+    # The equality is on the CONJUNCT this arm would write and not on the target it names:
+    # the claim is "this arm has already written this member", which is the one claim
+    # idempotence needs.  A conjunct carrying the same reference with a SIBLING is a
+    # different declaration and §5's ``$ref`` row reads it differently; 0 of the 4
+    # measured sites is that shape, so no site rests on the wider reading.
     if conjoined_the_reference:
         own_conjuncts = merged.get("allOf")
-        merged["allOf"] = [
-            *(own_conjuncts if isinstance(own_conjuncts, list) else []),
-            {"$ref": b["$ref"]},
-        ]
+        own_conjuncts = own_conjuncts if isinstance(own_conjuncts, list) else []
+        if {"$ref": b["$ref"]} not in own_conjuncts:
+            merged["allOf"] = [*own_conjuncts, {"$ref": b["$ref"]}]
     resolved = _dereferenced(child, resolve)
     # **The BASE is gap-filled THROUGH ITS OWN REFERENCE, for the same reason the child
     # is read through one.**  §6's description-authority clause 3 is "silence
